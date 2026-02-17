@@ -165,12 +165,12 @@ def school_link_query(doctype, txt, searchfield, start, page_len, filters):
     if _is_system_manager(user):
         return frappe.db.sql(
             """
-			SELECT name, school_name
-			  FROM `tabSchool`
-			 WHERE name LIKE %s OR school_name LIKE %s
-			 ORDER BY school_name ASC, name ASC
-			 LIMIT %s, %s
-			""",
+            SELECT name, school_name
+              FROM `tabSchool`
+             WHERE name LIKE %s OR school_name LIKE %s
+             ORDER BY school_name ASC, name ASC
+             LIMIT %s, %s
+            """,
             (search_txt, search_txt, start, page_len),
         )
 
@@ -190,13 +190,13 @@ def school_link_query(doctype, txt, searchfield, start, page_len, filters):
     placeholders = ", ".join(["%s"] * len(allowed))
     return frappe.db.sql(
         f"""
-		SELECT name, school_name
-		  FROM `tabSchool`
-		 WHERE name IN ({placeholders})
-		   AND (name LIKE %s OR school_name LIKE %s)
-		 ORDER BY school_name ASC, name ASC
-		 LIMIT %s, %s
-		""",
+        SELECT name, school_name
+          FROM `tabSchool`
+         WHERE name IN ({placeholders})
+           AND (name LIKE %s OR school_name LIKE %s)
+         ORDER BY school_name ASC, name ASC
+         LIMIT %s, %s
+        """,
         [*allowed, search_txt, search_txt, start, page_len],
     )
 
@@ -214,13 +214,13 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
     search_txt = f"%{txt or ''}%"
     return frappe.db.sql(
         """
-		SELECT name
-		  FROM `tabAcademic Year`
-		 WHERE school = %s
-		   AND name LIKE %s
-		 ORDER BY year_start_date DESC, name DESC
-		 LIMIT %s, %s
-		""",
+        SELECT name
+          FROM `tabAcademic Year`
+         WHERE school = %s
+           AND name LIKE %s
+         ORDER BY year_start_date DESC, name DESC
+         LIMIT %s, %s
+        """,
         (school, search_txt, start, page_len),
     )
 

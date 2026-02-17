@@ -82,17 +82,17 @@ def _build_schedule_index(student_group: str) -> Dict[tuple[int, int], dict]:
     """
     rows = frappe.db.sql(
         """
-		select
-			name,
-			parent,
-			rotation_day,
-			block_number,
-			instructor,
-			employee,
-			location
-		from `tabStudent Group Schedule`
-		where parent = %s
-		""",
+        select
+            name,
+            parent,
+            rotation_day,
+            block_number,
+            instructor,
+            employee,
+            location
+        from `tabStudent Group Schedule`
+        where parent = %s
+        """,
         student_group,
         as_dict=True,
     )
@@ -146,14 +146,14 @@ def _delete_obsolete_teaching_bookings(
     """
     rows = frappe.db.sql(
         """
-		select name, employee, from_datetime, to_datetime
-		from `tabEmployee Booking`
-		where source_doctype = %s
-		  and source_name = %s
-		  and booking_type = %s
-		  and from_datetime >= %s
-		  and to_datetime <= %s
-		""",
+        select name, employee, from_datetime, to_datetime
+        from `tabEmployee Booking`
+        where source_doctype = %s
+          and source_name = %s
+          and booking_type = %s
+          and from_datetime >= %s
+          and to_datetime <= %s
+        """,
         [BOOKING_SOURCE_DOCTYPE, student_group, "Teaching", start_dt, end_dt],
         as_dict=True,
     )
@@ -431,11 +431,11 @@ def rebuild_employee_bookings_for_all_student_groups(
 
     rows = frappe.db.sql(
         f"""
-		select sg.name
-		from `tabStudent Group` sg
-		{join_ay}
-		{where_clause}
-		""",
+        select sg.name
+        from `tabStudent Group` sg
+        {join_ay}
+        {where_clause}
+        """,
         params,
         as_dict=True,
     )

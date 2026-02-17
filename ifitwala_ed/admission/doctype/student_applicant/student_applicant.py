@@ -269,13 +269,13 @@ class StudentApplicant(Document):
             return
         invalid = frappe.db.sql(
             """
-			SELECT name
-			  FROM `tabFile`
-			 WHERE attached_to_doctype = 'Student Applicant'
-			   AND attached_to_name = %s
-			   AND (attached_to_field IS NULL OR attached_to_field = '' OR attached_to_field != 'applicant_image')
-			 LIMIT 1
-			""",
+            SELECT name
+              FROM `tabFile`
+             WHERE attached_to_doctype = 'Student Applicant'
+               AND attached_to_name = %s
+               AND (attached_to_field IS NULL OR attached_to_field = '' OR attached_to_field != 'applicant_image')
+             LIMIT 1
+            """,
             (self.name,),
             as_dict=True,
         )
@@ -630,19 +630,19 @@ class StudentApplicant(Document):
         org_placeholders = ", ".join(["%s"] * len(ancestor_orgs))
         rows = frappe.db.sql(
             f"""
-			SELECT ip.name AS policy_name,
-			       ip.policy_key AS policy_key,
-			       ip.organization AS policy_organization,
-			       pv.name AS policy_version
-			  FROM `tabInstitutional Policy` ip
-			  JOIN `tabPolicy Version` pv
-			    ON pv.institutional_policy = ip.name
-			 WHERE ip.is_active = 1
-			   AND pv.is_active = 1
-			   AND ip.organization IN ({org_placeholders})
-			   AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
-			   AND ip.applies_to LIKE %s
-			""",
+            SELECT ip.name AS policy_name,
+                   ip.policy_key AS policy_key,
+                   ip.organization AS policy_organization,
+                   pv.name AS policy_version
+              FROM `tabInstitutional Policy` ip
+              JOIN `tabPolicy Version` pv
+                ON pv.institutional_policy = ip.name
+             WHERE ip.is_active = 1
+               AND pv.is_active = 1
+               AND ip.organization IN ({org_placeholders})
+               AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
+               AND ip.applies_to LIKE %s
+            """,
             (*ancestor_orgs, self.school, "%Applicant%"),
             as_dict=True,
         )
@@ -680,13 +680,13 @@ class StudentApplicant(Document):
 
         required_types = frappe.db.sql(
             """
-			SELECT name, code, document_type_name
-			  FROM `tabApplicant Document Type`
-			 WHERE is_required = 1
-			   AND is_active = 1
-			   AND (organization IS NULL OR organization = '' OR organization = %s)
-			   AND (school IS NULL OR school = '' OR school = %s)
-			""",
+            SELECT name, code, document_type_name
+              FROM `tabApplicant Document Type`
+             WHERE is_required = 1
+               AND is_active = 1
+               AND (organization IS NULL OR organization = '' OR organization = %s)
+               AND (school IS NULL OR school = '' OR school = %s)
+            """,
             (self.organization, self.school),
             as_dict=True,
         )
@@ -797,15 +797,15 @@ def academic_year_intent_query(doctype, txt, searchfield, start, page_len, filte
     placeholders = ", ".join(["%s"] * len(scope))
     return frappe.db.sql(
         f"""
-		SELECT name
-		  FROM `tabAcademic Year`
-		 WHERE archived = 0
-		   AND visible_to_admission = 1
-		   AND school IN ({placeholders})
-		   AND name LIKE %s
-		 ORDER BY year_start_date DESC, name DESC
-		 LIMIT %s, %s
-		""",
+        SELECT name
+          FROM `tabAcademic Year`
+         WHERE archived = 0
+           AND visible_to_admission = 1
+           AND school IN ({placeholders})
+           AND name LIKE %s
+         ORDER BY year_start_date DESC, name DESC
+         LIMIT %s, %s
+        """,
         [*scope, search_txt, start, page_len],
     )
 
@@ -821,12 +821,12 @@ def school_by_organization_query(doctype, txt, searchfield, start, page_len, fil
     search_txt = f"%{txt or ''}%"
     return frappe.db.sql(
         """
-		SELECT name
-		  FROM `tabSchool`
-		 WHERE organization = %s
-		   AND name LIKE %s
-		 ORDER BY name ASC
-		 LIMIT %s, %s
-		""",
+        SELECT name
+          FROM `tabSchool`
+         WHERE organization = %s
+           AND name LIKE %s
+         ORDER BY name ASC
+         LIMIT %s, %s
+        """,
         (organization, search_txt, start, page_len),
     )

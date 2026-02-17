@@ -151,12 +151,12 @@ def get_filter_meta():
     # Active Program Enrollments in authorized schools
     pe_rows = frappe.db.sql(
         """
-		SELECT DISTINCT pe.school, pe.program, p.program_name
-		FROM `tabProgram Enrollment` pe
-		LEFT JOIN `tabProgram` p ON p.name = pe.program
-		WHERE pe.archived = 0
-		  AND pe.school IN %(schools)s
-		""",
+        SELECT DISTINCT pe.school, pe.program, p.program_name
+        FROM `tabProgram Enrollment` pe
+        LEFT JOIN `tabProgram` p ON p.name = pe.program
+        WHERE pe.archived = 0
+          AND pe.school IN %(schools)s
+        """,
         {"schools": tuple(auth_schools)},
         as_dict=True,
     )
@@ -252,13 +252,13 @@ def search_students(search_text: str = "", school: str | None = None, program: s
             params["txt"] = f"%{search_text}%"
 
         sql = f"""
-			SELECT DISTINCT s.name AS student, s.student_full_name
-			FROM `tabProgram Enrollment` pe
-			JOIN `tabStudent` s ON s.name = pe.student
-			WHERE {" AND ".join(conditions)}
-			ORDER BY s.student_full_name
-			LIMIT 20
-		"""
+            SELECT DISTINCT s.name AS student, s.student_full_name
+            FROM `tabProgram Enrollment` pe
+            JOIN `tabStudent` s ON s.name = pe.student
+            WHERE {" AND ".join(conditions)}
+            ORDER BY s.student_full_name
+            LIMIT 20
+        """
         rows = frappe.db.sql(sql, params, as_dict=True)
         return [{"student": r.student, "student_full_name": r.student_full_name} for r in rows]
 
@@ -296,13 +296,13 @@ def search_students(search_text: str = "", school: str | None = None, program: s
         params["txt"] = f"%{search_text}%"
 
     sql = f"""
-		SELECT DISTINCT s.name AS student, s.student_full_name
-		FROM `tabProgram Enrollment` pe
-		JOIN `tabStudent` s ON s.name = pe.student
-		WHERE {" AND ".join(conditions)}
-		ORDER BY s.student_full_name
-		LIMIT 20
-	"""
+        SELECT DISTINCT s.name AS student, s.student_full_name
+        FROM `tabProgram Enrollment` pe
+        JOIN `tabStudent` s ON s.name = pe.student
+        WHERE {" AND ".join(conditions)}
+        ORDER BY s.student_full_name
+        LIMIT 20
+    """
 
     rows = frappe.db.sql(sql, params, as_dict=True)
     return [{"student": r.student, "student_full_name": r.student_full_name} for r in rows]
@@ -384,17 +384,17 @@ def _identity_block(student: str, program: str | None, school: str | None):
 
     student_groups = frappe.db.sql(
         """
-		SELECT sg.name,
-		       sg.student_group_name AS label,
-		       sg.student_group_abbreviation AS abbreviation,
-		       sg.group_based_on,
-		       sg.course,
-		       sg.attendance_scope
-		FROM `tabStudent Group Student` sgs
-		LEFT JOIN `tabStudent Group` sg ON sg.name = sgs.parent
-		WHERE sgs.student = %s
-		ORDER BY sg.student_group_name
-		""",
+        SELECT sg.name,
+               sg.student_group_name AS label,
+               sg.student_group_abbreviation AS abbreviation,
+               sg.group_based_on,
+               sg.course,
+               sg.attendance_scope
+        FROM `tabStudent Group Student` sgs
+        LEFT JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+        WHERE sgs.student = %s
+        ORDER BY sg.student_group_name
+        """,
         (student,),
         as_dict=True,
     )
@@ -586,28 +586,28 @@ def _attendance_block(student: str, academic_year: str | None):
 
 def _task_rows(student: str, program: str | None):
     sql = """
-		SELECT
-			t.name as task,
-			t.title,
-			t.course,
-			c.course_name,
-			t.student_group,
-			t.delivery_type,
-			t.due_date,
-			t.status as task_status,
-			t.program,
-			t.academic_year,
-			ts.status,
-			ts.complete,
-			ts.mark_awarded,
-			ts.visible_to_student,
-			ts.visible_to_guardian,
-			ts.updated_on
-		FROM `tabTask Student` ts
-		INNER JOIN `tabTask` t ON t.name = ts.parent
-		LEFT JOIN `tabCourse` c ON c.name = t.course
-		WHERE ts.student = %(student)s
-	"""
+        SELECT
+            t.name as task,
+            t.title,
+            t.course,
+            c.course_name,
+            t.student_group,
+            t.delivery_type,
+            t.due_date,
+            t.status as task_status,
+            t.program,
+            t.academic_year,
+            ts.status,
+            ts.complete,
+            ts.mark_awarded,
+            ts.visible_to_student,
+            ts.visible_to_guardian,
+            ts.updated_on
+        FROM `tabTask Student` ts
+        INNER JOIN `tabTask` t ON t.name = ts.parent
+        LEFT JOIN `tabCourse` c ON c.name = t.course
+        WHERE ts.student = %(student)s
+    """
     params = {"student": student}
     if program:
         sql += " AND (t.program = %(program)s OR t.program IS NULL)"
@@ -670,12 +670,12 @@ def _learning_block(student: str, program: str | None, academic_year: str | None
     # Current courses from Program Enrollment Course
     pec_rows = frappe.db.sql(
         """
-		SELECT pec.course, pec.course_name, pec.status, pec.term_start, pec.term_end
-		FROM `tabProgram Enrollment` pe
-		LEFT JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name
-		WHERE pe.student = %(student)s {program_filter}
-		ORDER BY pec.course_name
-		""".format(program_filter="AND pe.program = %(program)s" if program else ""),
+        SELECT pec.course, pec.course_name, pec.status, pec.term_start, pec.term_end
+        FROM `tabProgram Enrollment` pe
+        LEFT JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name
+        WHERE pe.student = %(student)s {program_filter}
+        ORDER BY pec.course_name
+        """.format(program_filter="AND pe.program = %(program)s" if program else ""),
         {"student": student, "program": program} if program else {"student": student},
         as_dict=True,
     )

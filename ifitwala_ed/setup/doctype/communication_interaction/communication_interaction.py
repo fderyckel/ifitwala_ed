@@ -256,11 +256,11 @@ def get_org_comm_interaction_summary(comm_names=None):
     # 1) counts per communication + intent
     rows = frappe.db.sql(
         """
-		SELECT org_communication, intent_type, COUNT(*) as cnt
-		FROM `tabCommunication Interaction`
-		WHERE org_communication IN %(comms)s
-		GROUP BY org_communication, intent_type
-		""",
+        SELECT org_communication, intent_type, COUNT(*) as cnt
+        FROM `tabCommunication Interaction`
+        WHERE org_communication IN %(comms)s
+        GROUP BY org_communication, intent_type
+        """,
         {"comms": comms_tuple},
         as_dict=True,
     )
@@ -286,11 +286,11 @@ def get_org_comm_interaction_summary(comm_names=None):
 
     reaction_rows = frappe.db.sql(
         """
-		SELECT org_communication, reaction_code, intent_type, COUNT(*) as cnt
-		FROM `tabCommunication Interaction`
-		WHERE org_communication IN %(comms)s
-		GROUP BY org_communication, reaction_code, intent_type
-		""",
+        SELECT org_communication, reaction_code, intent_type, COUNT(*) as cnt
+        FROM `tabCommunication Interaction`
+        WHERE org_communication IN %(comms)s
+        GROUP BY org_communication, reaction_code, intent_type
+        """,
         {"comms": comms_tuple},
         as_dict=True,
     )
@@ -319,14 +319,14 @@ def get_org_comm_interaction_summary(comm_names=None):
     # 3) comments_total = visible COMMENT entries only
     comments_rows = frappe.db.sql(
         """
-		SELECT org_communication, COUNT(*) as cnt
-		FROM `tabCommunication Interaction`
-		WHERE org_communication IN %(comms)s
-			AND intent_type = 'Comment'
-			AND COALESCE(TRIM(note), '') != ''
-			AND visibility != 'Hidden'
-		GROUP BY org_communication
-		""",
+        SELECT org_communication, COUNT(*) as cnt
+        FROM `tabCommunication Interaction`
+        WHERE org_communication IN %(comms)s
+            AND intent_type = 'Comment'
+            AND COALESCE(TRIM(note), '') != ''
+            AND visibility != 'Hidden'
+        GROUP BY org_communication
+        """,
         {"comms": comms_tuple},
         as_dict=True,
     )
@@ -339,11 +339,11 @@ def get_org_comm_interaction_summary(comm_names=None):
     # 4) current user's interaction (keep full row)
     self_rows = frappe.db.sql(
         """
-		SELECT *
-		FROM `tabCommunication Interaction`
-		WHERE org_communication IN %(comms)s
-		  AND user = %(user)s
-		""",
+        SELECT *
+        FROM `tabCommunication Interaction`
+        WHERE org_communication IN %(comms)s
+          AND user = %(user)s
+        """,
         {"comms": comms_tuple, "user": user},
         as_dict=True,
     )
@@ -429,26 +429,26 @@ def get_communication_thread(org_communication: str, limit_start: int = 0, limit
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			i.name,
-			i.user,
-			u.full_name,
-			i.audience_type,
-			i.intent_type,
-			i.reaction_code,
-			i.note,
-			i.visibility,
-			i.is_teacher_reply,
-			i.is_pinned,
-			i.is_resolved,
-			DATE_FORMAT(CONVERT_TZ(i.creation, 'UTC', @@session.time_zone), %(ts_fmt)s) as creation,
-			i.modified
-		FROM `tab{source_doctype}` i
-		LEFT JOIN `tabUser` u ON u.name = i.user
-		WHERE {where_clause}
-		ORDER BY i.is_pinned DESC, i.creation ASC
-		LIMIT %(limit_start)s, %(limit_page_length)s
-		""",
+        SELECT
+            i.name,
+            i.user,
+            u.full_name,
+            i.audience_type,
+            i.intent_type,
+            i.reaction_code,
+            i.note,
+            i.visibility,
+            i.is_teacher_reply,
+            i.is_pinned,
+            i.is_resolved,
+            DATE_FORMAT(CONVERT_TZ(i.creation, 'UTC', @@session.time_zone), %(ts_fmt)s) as creation,
+            i.modified
+        FROM `tab{source_doctype}` i
+        LEFT JOIN `tabUser` u ON u.name = i.user
+        WHERE {where_clause}
+        ORDER BY i.is_pinned DESC, i.creation ASC
+        LIMIT %(limit_start)s, %(limit_page_length)s
+        """,
         params,
         as_dict=True,
     )

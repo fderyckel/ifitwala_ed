@@ -21,7 +21,7 @@ class LeaveType(Document):
                 filters={"leave_type": self.name, "from_date": ("<=", today()), "to_date": (">=", today())},
                 fields=["name"],
             )
-            leave_allocation = [l["name"] for l in leave_allocation]
+            leave_allocation = [allocation["name"] for allocation in leave_allocation]
             if leave_allocation:
                 frappe.throw(
                     _(

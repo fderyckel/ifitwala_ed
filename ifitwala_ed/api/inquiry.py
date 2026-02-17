@@ -103,11 +103,11 @@ def _get_descendant_organizations(root_org: str):
         return []
     rows = frappe.db.sql(
         """
-		SELECT name
-		FROM `tabOrganization`
-		WHERE lft >= %(lft)s AND rgt <= %(rgt)s
-		ORDER BY lft ASC, name ASC
-		""",
+        SELECT name
+        FROM `tabOrganization`
+        WHERE lft >= %(lft)s AND rgt <= %(rgt)s
+        ORDER BY lft ASC, name ASC
+        """,
         {"lft": org_bounds.lft, "rgt": org_bounds.rgt},
         as_list=True,
     )
@@ -211,13 +211,13 @@ def get_dashboard_data(filters=None):
     params_with_today = {**params, "today": nowdate()}
     overdue_first = frappe.db.sql(
         """
-		SELECT COUNT(*)
-		FROM `tabInquiry` i
-		WHERE {where}
-			AND i.first_contacted_at IS NULL
-			AND i.first_contact_due_on IS NOT NULL
-			AND i.first_contact_due_on < %(today)s
-		""".format(where=where),
+        SELECT COUNT(*)
+        FROM `tabInquiry` i
+        WHERE {where}
+            AND i.first_contacted_at IS NULL
+            AND i.first_contact_due_on IS NOT NULL
+            AND i.first_contact_due_on < %(today)s
+        """.format(where=where),
         params_with_today,
         as_dict=False,
     )[0][0]
@@ -226,10 +226,10 @@ def get_dashboard_data(filters=None):
     avg_first = (
         frappe.db.sql(
             """
-		SELECT AVG(i.response_hours_first_contact)
-		FROM `tabInquiry` i
-		WHERE {where} AND i.response_hours_first_contact IS NOT NULL
-		""".format(where=where),
+        SELECT AVG(i.response_hours_first_contact)
+        FROM `tabInquiry` i
+        WHERE {where} AND i.response_hours_first_contact IS NOT NULL
+        """.format(where=where),
             params,
             as_dict=False,
         )[0][0]
@@ -239,10 +239,10 @@ def get_dashboard_data(filters=None):
     avg_from_assign = (
         frappe.db.sql(
             """
-		SELECT AVG(i.response_hours_from_assign)
-		FROM `tabInquiry` i
-		WHERE {where} AND i.response_hours_from_assign IS NOT NULL
-		""".format(where=where),
+        SELECT AVG(i.response_hours_from_assign)
+        FROM `tabInquiry` i
+        WHERE {where} AND i.response_hours_from_assign IS NOT NULL
+        """.format(where=where),
             params,
             as_dict=False,
         )[0][0]
@@ -258,12 +258,12 @@ def get_dashboard_data(filters=None):
     avg_first_30 = (
         frappe.db.sql(
             f"""
-		SELECT AVG(i.response_hours_first_contact)
-		FROM `tabInquiry` i
-		WHERE {SUBMITTED_LOCAL_EXPR} >= %(from30)s AND {SUBMITTED_LOCAL_EXPR} <= %(to30)s
-			AND ({where})
-			AND i.response_hours_first_contact IS NOT NULL
-		""",
+        SELECT AVG(i.response_hours_first_contact)
+        FROM `tabInquiry` i
+        WHERE {SUBMITTED_LOCAL_EXPR} >= %(from30)s AND {SUBMITTED_LOCAL_EXPR} <= %(to30)s
+            AND ({where})
+            AND i.response_hours_first_contact IS NOT NULL
+        """,
             params30,
             as_dict=False,
         )[0][0]
@@ -273,12 +273,12 @@ def get_dashboard_data(filters=None):
     avg_from_assign_30 = (
         frappe.db.sql(
             f"""
-		SELECT AVG(i.response_hours_from_assign)
-		FROM `tabInquiry` i
-		WHERE {SUBMITTED_LOCAL_EXPR} >= %(from30)s AND {SUBMITTED_LOCAL_EXPR} <= %(to30)s
-			AND ({where})
-			AND i.response_hours_from_assign IS NOT NULL
-		""",
+        SELECT AVG(i.response_hours_from_assign)
+        FROM `tabInquiry` i
+        WHERE {SUBMITTED_LOCAL_EXPR} >= %(from30)s AND {SUBMITTED_LOCAL_EXPR} <= %(to30)s
+            AND ({where})
+            AND i.response_hours_from_assign IS NOT NULL
+        """,
             params30,
             as_dict=False,
         )[0][0]
@@ -288,14 +288,14 @@ def get_dashboard_data(filters=None):
     # ── monthly averages (YYYY-MM by submitted_at)
     monthly = frappe.db.sql(
         f"""
-		SELECT DATE_FORMAT({SUBMITTED_LOCAL_EXPR}, '%%Y-%%m') AS ym,
-				 AVG(i.response_hours_first_contact) AS a_first,
-				 AVG(i.response_hours_from_assign)  AS a_assign
-		FROM `tabInquiry` i
-		WHERE {where}
-		GROUP BY DATE_FORMAT({SUBMITTED_LOCAL_EXPR}, '%%Y-%%m')
-		ORDER BY ym
-		""",
+        SELECT DATE_FORMAT({SUBMITTED_LOCAL_EXPR}, '%%Y-%%m') AS ym,
+                 AVG(i.response_hours_first_contact) AS a_first,
+                 AVG(i.response_hours_from_assign)  AS a_assign
+        FROM `tabInquiry` i
+        WHERE {where}
+        GROUP BY DATE_FORMAT({SUBMITTED_LOCAL_EXPR}, '%%Y-%%m')
+        ORDER BY ym
+        """,
         params,
         as_dict=True,
     )
@@ -309,11 +309,11 @@ def get_dashboard_data(filters=None):
     # ── who has assignments (assignee distribution)
     assignees = frappe.db.sql(
         f"""
-		SELECT i.assigned_to AS label, COUNT(*) AS value
-		FROM `tabInquiry` i
-		WHERE {where} AND i.assigned_to IS NOT NULL
-		GROUP BY i.assigned_to ORDER BY value DESC
-		""",
+        SELECT i.assigned_to AS label, COUNT(*) AS value
+        FROM `tabInquiry` i
+        WHERE {where} AND i.assigned_to IS NOT NULL
+        GROUP BY i.assigned_to ORDER BY value DESC
+        """,
         params,
         as_dict=True,
     )
@@ -321,11 +321,11 @@ def get_dashboard_data(filters=None):
     # ── inquiry types (composition)
     types = frappe.db.sql(
         f"""
-		SELECT COALESCE(i.type_of_inquiry, '—') AS label, COUNT(*) AS value
-		FROM `tabInquiry` i
-		WHERE {where}
-		GROUP BY i.type_of_inquiry ORDER BY value DESC
-		""",
+        SELECT COALESCE(i.type_of_inquiry, '—') AS label, COUNT(*) AS value
+        FROM `tabInquiry` i
+        WHERE {where}
+        GROUP BY i.type_of_inquiry ORDER BY value DESC
+        """,
         params,
         as_dict=True,
     )
@@ -338,25 +338,25 @@ def get_dashboard_data(filters=None):
 
     due_today = frappe.db.sql(
         """
-		SELECT COUNT(*)
-		FROM `tabInquiry` i
-		WHERE {where}
-			AND i.first_contacted_at IS NULL
-			AND DATE(i.first_contact_due_on) = %(today)s
-		""".format(where=where),
+        SELECT COUNT(*)
+        FROM `tabInquiry` i
+        WHERE {where}
+            AND i.first_contacted_at IS NULL
+            AND DATE(i.first_contact_due_on) = %(today)s
+        """.format(where=where),
         {**params, "today": today},
         as_dict=False,
     )[0][0]
 
     upcoming = frappe.db.sql(
         """
-		SELECT COUNT(*)
-		FROM `tabInquiry` i
-		WHERE {where}
-			AND i.first_contacted_at IS NULL
-			AND DATE(i.first_contact_due_on) > %(up_from)s
-			AND DATE(i.first_contact_due_on) <= %(up_to)s
-		""".format(where=where),
+        SELECT COUNT(*)
+        FROM `tabInquiry` i
+        WHERE {where}
+            AND i.first_contacted_at IS NULL
+            AND DATE(i.first_contact_due_on) > %(up_from)s
+            AND DATE(i.first_contact_due_on) <= %(up_to)s
+        """.format(where=where),
         {**params, "up_from": up_from, "up_to": up_to},
         as_dict=False,
     )[0][0]
@@ -364,12 +364,12 @@ def get_dashboard_data(filters=None):
     # ── Pipeline by workflow_state
     pipeline = frappe.db.sql(
         f"""
-		SELECT COALESCE(i.workflow_state, '—') AS label, COUNT(*) AS value
-		FROM `tabInquiry` i
-		WHERE {where}
-		GROUP BY i.workflow_state
-		ORDER BY value DESC
-		""",
+        SELECT COALESCE(i.workflow_state, '—') AS label, COUNT(*) AS value
+        FROM `tabInquiry` i
+        WHERE {where}
+        GROUP BY i.workflow_state
+        ORDER BY value DESC
+        """,
         params,
         as_dict=True,
     )
@@ -377,17 +377,17 @@ def get_dashboard_data(filters=None):
     # ── Weekly Inquiry Volume (week starts Monday)
     weekly = frappe.db.sql(
         f"""
-		SELECT
-			DATE_FORMAT(
-				DATE_SUB(DATE({SUBMITTED_LOCAL_EXPR}), INTERVAL WEEKDAY({SUBMITTED_LOCAL_EXPR}) DAY),
-				'%%Y-%%m-%%d'
-			) AS week_start,
-			COUNT(*) AS value
-		FROM `tabInquiry` i
-		WHERE {where}
-		GROUP BY week_start
-		ORDER BY week_start
-		""",
+        SELECT
+            DATE_FORMAT(
+                DATE_SUB(DATE({SUBMITTED_LOCAL_EXPR}), INTERVAL WEEKDAY({SUBMITTED_LOCAL_EXPR}) DAY),
+                '%%Y-%%m-%%d'
+            ) AS week_start,
+            COUNT(*) AS value
+        FROM `tabInquiry` i
+        WHERE {where}
+        GROUP BY week_start
+        ORDER BY week_start
+        """,
         params,
         as_dict=True,
     )
@@ -411,26 +411,26 @@ def get_dashboard_data(filters=None):
 
     sla_den = frappe.db.sql(
         """
-		SELECT COUNT(*)
-		FROM `tabInquiry` i
-		WHERE i.first_contact_due_on IS NOT NULL
-			AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
-			AND ({rest_where})
-		""".format(rest_where=rest_where),
+        SELECT COUNT(*)
+        FROM `tabInquiry` i
+        WHERE i.first_contact_due_on IS NOT NULL
+            AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
+            AND ({rest_where})
+        """.format(rest_where=rest_where),
         params30,
         as_dict=False,
     )[0][0]
 
     sla_num = frappe.db.sql(
         """
-		SELECT COUNT(*)
-		FROM `tabInquiry` i
-		WHERE i.first_contact_due_on IS NOT NULL
-			AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
-			AND i.first_contacted_at IS NOT NULL
-			AND DATE(i.first_contacted_at) <= i.first_contact_due_on
-			AND ({rest_where})
-		""".format(rest_where=rest_where),
+        SELECT COUNT(*)
+        FROM `tabInquiry` i
+        WHERE i.first_contact_due_on IS NOT NULL
+            AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
+            AND i.first_contacted_at IS NOT NULL
+            AND DATE(i.first_contacted_at) <= i.first_contact_due_on
+            AND ({rest_where})
+        """.format(rest_where=rest_where),
         params30,
         as_dict=False,
     )[0][0]
@@ -470,10 +470,10 @@ def get_inquiry_organizations():
     _ensure_access()
     rows = frappe.db.sql(
         """
-		SELECT name
-		FROM `tabOrganization`
-		ORDER BY lft ASC, name ASC
-		""",
+        SELECT name
+        FROM `tabOrganization`
+        ORDER BY lft ASC, name ASC
+        """,
         as_list=True,
     )
     return [r[0] for r in rows]
@@ -484,10 +484,10 @@ def get_inquiry_schools():
     _ensure_access()
     rows = frappe.db.sql(
         """
-		SELECT name
-		FROM `tabSchool`
-		ORDER BY lft ASC, name ASC
-		""",
+        SELECT name
+        FROM `tabSchool`
+        ORDER BY lft ASC, name ASC
+        """,
         as_list=True,
     )
     return [r[0] for r in rows]
@@ -497,12 +497,12 @@ def get_inquiry_schools():
 def academic_year_link_query(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
     return frappe.db.sql(
         """
-		SELECT name
-		FROM `tabAcademic Year`
-		WHERE name LIKE %(txt)s
-		ORDER BY year_start_date DESC, name DESC
-		LIMIT %(start)s, %(page_len)s
-		""",
+        SELECT name
+        FROM `tabAcademic Year`
+        WHERE name LIKE %(txt)s
+        ORDER BY year_start_date DESC, name DESC
+        LIMIT %(start)s, %(page_len)s
+        """,
         {"txt": f"%{txt or ''}%", "start": int(start or 0), "page_len": int(page_len or 20)},
     )
 
@@ -512,14 +512,14 @@ def academic_year_link_query(doctype=None, txt=None, searchfield=None, start=0, 
 def inquiry_organization_link_query(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
     return frappe.db.sql(
         """
-		SELECT name
-		FROM `tabOrganization`
-		WHERE name LIKE %(txt)s
-			AND get_inquiry = 1
-			AND COALESCE(archived, 0) = 0
-		ORDER BY lft ASC, name ASC
-		LIMIT %(start)s, %(page_len)s
-		""",
+        SELECT name
+        FROM `tabOrganization`
+        WHERE name LIKE %(txt)s
+            AND get_inquiry = 1
+            AND COALESCE(archived, 0) = 0
+        ORDER BY lft ASC, name ASC
+        LIMIT %(start)s, %(page_len)s
+        """,
         {"txt": f"%{txt or ''}%", "start": int(start or 0), "page_len": int(page_len or 20)},
     )
 
@@ -529,21 +529,21 @@ def admission_user_link_query(doctype=None, txt=None, searchfield=None, start=0,
     """Enabled users with Admission Officer/Manager role; match name/full_name/email."""
     return frappe.db.sql(
         """
-		SELECT u.name, u.full_name
-		FROM `tabUser` u
-		WHERE u.enabled = 1
-			AND u.name IN (
-			SELECT parent FROM `tabHas Role`
-			WHERE role IN ('Admission Officer','Admission Manager')
-			)
-			AND (
-			u.name LIKE %(txt)s
-			OR u.full_name LIKE %(txt)s
-			OR u.email LIKE %(txt)s
-			)
-		ORDER BY u.full_name ASC, u.creation DESC
-		LIMIT %(start)s, %(page_len)s
-		""",
+        SELECT u.name, u.full_name
+        FROM `tabUser` u
+        WHERE u.enabled = 1
+            AND u.name IN (
+            SELECT parent FROM `tabHas Role`
+            WHERE role IN ('Admission Officer','Admission Manager')
+            )
+            AND (
+            u.name LIKE %(txt)s
+            OR u.full_name LIKE %(txt)s
+            OR u.email LIKE %(txt)s
+            )
+        ORDER BY u.full_name ASC, u.creation DESC
+        LIMIT %(start)s, %(page_len)s
+        """,
         {"txt": f"%{txt or ''}%", "start": int(start or 0), "page_len": int(page_len or 20)},
     )
 
@@ -553,11 +553,11 @@ def get_inquiry_types():
     # Returns a simple list of distinct, non-empty types (alphabetical)
     rows = frappe.db.sql(
         """
-		SELECT DISTINCT type_of_inquiry
-		FROM `tabInquiry`
-		WHERE COALESCE(type_of_inquiry, '') <> ''
-		ORDER BY type_of_inquiry
-		""",
+        SELECT DISTINCT type_of_inquiry
+        FROM `tabInquiry`
+        WHERE COALESCE(type_of_inquiry, '') <> ''
+        ORDER BY type_of_inquiry
+        """,
         as_dict=False,
     )
     return [r[0] for r in rows]

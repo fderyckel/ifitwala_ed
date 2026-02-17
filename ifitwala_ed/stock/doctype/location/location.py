@@ -171,13 +171,13 @@ class Location(Document):
         # 1) Find active Student Groups that reference this Location
         sg_rows = frappe.db.sql(
             """
-			SELECT DISTINCT sg.name AS name
-			FROM `tabStudent Group Schedule` AS sgs
-			INNER JOIN `tabStudent Group` AS sg
-				ON sg.name = sgs.parent
-			WHERE sgs.location = %s
-			  AND sg.status = 'Active'
-			""",
+            SELECT DISTINCT sg.name AS name
+            FROM `tabStudent Group Schedule` AS sgs
+            INNER JOIN `tabStudent Group` AS sg
+                ON sg.name = sgs.parent
+            WHERE sgs.location = %s
+              AND sg.status = 'Active'
+            """,
             (self.name,),
             as_dict=True,
         )
@@ -190,12 +190,12 @@ class Location(Document):
         # 2) Count active students per Student Group
         count_rows = frappe.db.sql(
             """
-			SELECT parent AS name, COUNT(*) AS active_count
-			FROM `tabStudent Group Student`
-			WHERE parent IN %(groups)s
-			  AND COALESCE(active, 0) = 1
-			GROUP BY parent
-			""",
+            SELECT parent AS name, COUNT(*) AS active_count
+            FROM `tabStudent Group Student`
+            WHERE parent IN %(groups)s
+              AND COALESCE(active, 0) = 1
+            GROUP BY parent
+            """,
             {"groups": tuple(sg_names)},
             as_dict=True,
         )

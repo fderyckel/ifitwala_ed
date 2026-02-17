@@ -5,6 +5,7 @@ import datetime
 
 import frappe
 from frappe import _
+from frappe.model.document import Document
 from frappe.query_builder.functions import Max, Min, Sum
 from frappe.utils import (
     add_days,
@@ -58,8 +59,6 @@ class InsufficientLeaveBalanceError(frappe.ValidationError):
 class LeaveAcrossAllocationsError(frappe.ValidationError):
     pass
 
-
-from frappe.model.document import Document
 
 HR_OVERRIDE_ROLES = {"HR Manager", "HR User", "Academic Admin", "System Manager"}
 

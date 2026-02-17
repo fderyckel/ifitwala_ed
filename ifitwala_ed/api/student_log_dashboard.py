@@ -221,15 +221,15 @@ def get_dashboard_data(filters=None):
 
             student_logs = frappe.db.sql(
                 f"""
-				SELECT
-					sl.date,
-					sl.log_type,
-					sl.log         AS content,
-					sl.author_name AS author
-				FROM `tabStudent Log` sl
-				WHERE {where_detail}
-				ORDER BY sl.date DESC
-				""",
+                SELECT
+                    sl.date,
+                    sl.log_type,
+                    sl.log         AS content,
+                    sl.author_name AS author
+                FROM `tabStudent Log` sl
+                WHERE {where_detail}
+                ORDER BY sl.date DESC
+                """,
                 p,
                 as_dict=True,
             )
@@ -271,13 +271,13 @@ def get_distinct_students(filters=None, search_text: str = ""):
 
         return frappe.db.sql(
             f"""
-			SELECT DISTINCT sl.student, s.student_full_name AS student_full_name
-			FROM `tabStudent Log` sl
-			INNER JOIN `tabStudent` s ON sl.student = s.name
-			WHERE {where_clause}
-			ORDER BY s.student_full_name
-			LIMIT 100
-			""",
+            SELECT DISTINCT sl.student, s.student_full_name AS student_full_name
+            FROM `tabStudent Log` sl
+            INNER JOIN `tabStudent` s ON sl.student = s.name
+            WHERE {where_clause}
+            ORDER BY s.student_full_name
+            LIMIT 100
+            """,
             params,
             as_dict=True,
         )
@@ -302,21 +302,21 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
 
     logs = frappe.db.sql(
         f"""
-		SELECT
-			sl.date,
-			sl.student          AS student,
-			s.student_full_name AS student_full_name,
-			sl.program,
-			sl.log_type,
-			sl.log              AS content,
-			sl.author_name      AS author,
-			sl.requires_follow_up
-		FROM `tabStudent Log` sl
-		LEFT JOIN `tabStudent` s ON s.name = sl.student
-		WHERE {where_clause}
-		ORDER BY sl.date DESC
-		LIMIT %(start)s, %(page_len)s
-		""",
+        SELECT
+            sl.date,
+            sl.student          AS student,
+            s.student_full_name AS student_full_name,
+            sl.program,
+            sl.log_type,
+            sl.log              AS content,
+            sl.author_name      AS author,
+            sl.requires_follow_up
+        FROM `tabStudent Log` sl
+        LEFT JOIN `tabStudent` s ON s.name = sl.student
+        WHERE {where_clause}
+        ORDER BY sl.date DESC
+        LIMIT %(start)s, %(page_len)s
+        """,
         {**params, "start": start, "page_len": page_length},
         as_dict=True,
     )
@@ -351,14 +351,14 @@ def get_filter_meta():
 
     schools = frappe.db.sql(
         f"""
-		SELECT DISTINCT
-			sc.name,
-			sc.school_name AS label
-		FROM `tabStudent Log` sl
-		JOIN `tabSchool` sc ON sc.name = sl.school
-		WHERE {where_clause}
-		ORDER BY sc.school_name
-		""",
+        SELECT DISTINCT
+            sc.name,
+            sc.school_name AS label
+        FROM `tabStudent Log` sl
+        JOIN `tabSchool` sc ON sc.name = sl.school
+        WHERE {where_clause}
+        ORDER BY sc.school_name
+        """,
         params,
         as_dict=True,
     )
@@ -371,46 +371,46 @@ def get_filter_meta():
 
     academic_years = frappe.db.sql(
         f"""
-		SELECT DISTINCT
-			ay.name,
-			ay.academic_year_name AS label,
-			ay.year_start_date,
-			ay.year_end_date,
-			ay.school
-		FROM `tabStudent Log` sl
-		JOIN `tabAcademic Year` ay ON ay.name = sl.academic_year
-		WHERE {where_clause}
-		ORDER BY ay.year_start_date DESC
-		""",
+        SELECT DISTINCT
+            ay.name,
+            ay.academic_year_name AS label,
+            ay.year_start_date,
+            ay.year_end_date,
+            ay.school
+        FROM `tabStudent Log` sl
+        JOIN `tabAcademic Year` ay ON ay.name = sl.academic_year
+        WHERE {where_clause}
+        ORDER BY ay.year_start_date DESC
+        """,
         params,
         as_dict=True,
     )
 
     programs = frappe.db.sql(
         f"""
-		SELECT DISTINCT
-			p.name,
-			p.program_name AS label
-		FROM `tabStudent Log` sl
-		JOIN `tabProgram` p ON p.name = sl.program
-		WHERE {where_clause}
-		ORDER BY p.program_name
-		""",
+        SELECT DISTINCT
+            p.name,
+            p.program_name AS label
+        FROM `tabStudent Log` sl
+        JOIN `tabProgram` p ON p.name = sl.program
+        WHERE {where_clause}
+        ORDER BY p.program_name
+        """,
         params,
         as_dict=True,
     )
 
     authors = frappe.db.sql(
         f"""
-		SELECT DISTINCT
-			e.employee_full_name AS label,
-			e.user_id            AS user_id
-		FROM `tabStudent Log` sl
-		JOIN `tabEmployee` e ON e.user_id = sl.owner
-		WHERE {where_clause}
-		  AND e.employment_status = 'Active'
-		ORDER BY e.employee_full_name
-		""",
+        SELECT DISTINCT
+            e.employee_full_name AS label,
+            e.user_id            AS user_id
+        FROM `tabStudent Log` sl
+        JOIN `tabEmployee` e ON e.user_id = sl.owner
+        WHERE {where_clause}
+          AND e.employment_status = 'Active'
+        ORDER BY e.employee_full_name
+        """,
         params,
         as_dict=True,
     )

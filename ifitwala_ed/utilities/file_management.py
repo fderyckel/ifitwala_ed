@@ -223,14 +223,14 @@ def _mark_other_versions_not_latest(file_doc, slot: Tuple[str, str, str, str]):
     doctype, name, file_category, logical_key = slot
     frappe.db.sql(
         """
-		UPDATE `tabFile`
-		SET custom_is_latest = 0
-		WHERE attached_to_doctype = %s
-		  AND attached_to_name = %s
-		  AND custom_file_category = %s
-		  AND custom_logical_key = %s
-		  AND name != %s
-		""",
+        UPDATE `tabFile`
+        SET custom_is_latest = 0
+        WHERE attached_to_doctype = %s
+          AND attached_to_name = %s
+          AND custom_file_category = %s
+          AND custom_logical_key = %s
+          AND name != %s
+        """,
         (
             doctype,
             name,

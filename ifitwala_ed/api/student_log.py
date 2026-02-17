@@ -40,28 +40,28 @@ def get_student_logs(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
     # we enforce strict filters (student + visible_to_student) and only return minimal columns.
     rows = frappe.db.sql(
         """
-		SELECT
-			l.name,
-			l.date,
-			l.time,
-			l.log_type,
-			l.author_name,
-			l.follow_up_status,
-			l.log,
-			CASE WHEN rr.reference_name IS NULL THEN 1 ELSE 0 END AS is_unread
-		FROM `tabStudent Log` l
-		LEFT JOIN (
-			SELECT DISTINCT reference_name
-			FROM `tabPortal Read Receipt`
-			WHERE user = %(user)s
-			  AND reference_doctype = %(ref_dt)s
-		) rr
-		ON rr.reference_name = l.name
-		WHERE l.student = %(student)s
-		  AND l.visible_to_student = 1
-		ORDER BY l.date DESC, l.time DESC, l.name DESC
-		LIMIT %(limit)s OFFSET %(offset)s
-		""",
+        SELECT
+            l.name,
+            l.date,
+            l.time,
+            l.log_type,
+            l.author_name,
+            l.follow_up_status,
+            l.log,
+            CASE WHEN rr.reference_name IS NULL THEN 1 ELSE 0 END AS is_unread
+        FROM `tabStudent Log` l
+        LEFT JOIN (
+            SELECT DISTINCT reference_name
+            FROM `tabPortal Read Receipt`
+            WHERE user = %(user)s
+              AND reference_doctype = %(ref_dt)s
+        ) rr
+        ON rr.reference_name = l.name
+        WHERE l.student = %(student)s
+          AND l.visible_to_student = 1
+        ORDER BY l.date DESC, l.time DESC, l.name DESC
+        LIMIT %(limit)s OFFSET %(offset)s
+        """,
         {
             "user": frappe.session.user,
             "ref_dt": LOG_DOCTYPE,
@@ -332,37 +332,37 @@ def search_follow_up_users(**payload):
 
     if role:
         sql = f"""
-			SELECT
-				u.name AS user_id,
-				u.full_name AS full_name,
-				e.school AS school
-			FROM `tabEmployee` e
-			INNER JOIN `tabUser` u ON u.name = e.user_id
-			INNER JOIN `tabHas Role` hr ON hr.parent = u.name
-			WHERE
-				e.user_id IS NOT NULL
-				AND e.school IN %(schools)s
-				AND hr.role = %(role)s
-				{name_filter_sql}
-			ORDER BY u.full_name ASC
-			LIMIT %(limit)s
-		"""
+            SELECT
+                u.name AS user_id,
+                u.full_name AS full_name,
+                e.school AS school
+            FROM `tabEmployee` e
+            INNER JOIN `tabUser` u ON u.name = e.user_id
+            INNER JOIN `tabHas Role` hr ON hr.parent = u.name
+            WHERE
+                e.user_id IS NOT NULL
+                AND e.school IN %(schools)s
+                AND hr.role = %(role)s
+                {name_filter_sql}
+            ORDER BY u.full_name ASC
+            LIMIT %(limit)s
+        """
         params["role"] = role
     else:
         sql = f"""
-			SELECT
-				u.name AS user_id,
-				u.full_name AS full_name,
-				e.school AS school
-			FROM `tabEmployee` e
-			INNER JOIN `tabUser` u ON u.name = e.user_id
-			WHERE
-				e.user_id IS NOT NULL
-				AND e.school IN %(schools)s
-				{name_filter_sql}
-			ORDER BY u.full_name ASC
-			LIMIT %(limit)s
-		"""
+            SELECT
+                u.name AS user_id,
+                u.full_name AS full_name,
+                e.school AS school
+            FROM `tabEmployee` e
+            INNER JOIN `tabUser` u ON u.name = e.user_id
+            WHERE
+                e.user_id IS NOT NULL
+                AND e.school IN %(schools)s
+                {name_filter_sql}
+            ORDER BY u.full_name ASC
+            LIMIT %(limit)s
+        """
 
     rows = frappe.db.sql(sql, params, as_dict=True)
 
@@ -403,29 +403,29 @@ def get_form_options(**payload):
         if not up_chain:
             log_types = frappe.db.sql(
                 """
-				SELECT
-					name AS value,
-					log_type AS label
-				FROM `tabStudent Log Type`
-				WHERE (school IS NULL OR school = '')
-				ORDER BY log_type ASC
-				""",
+                SELECT
+                    name AS value,
+                    log_type AS label
+                FROM `tabStudent Log Type`
+                WHERE (school IS NULL OR school = '')
+                ORDER BY log_type ASC
+                """,
                 as_dict=True,
             )
         else:
             log_types = frappe.db.sql(
                 """
-				SELECT
-					name AS value,
-					log_type AS label
-				FROM `tabStudent Log Type`
-				WHERE (
-					school IN %(schools)s
-					OR school IS NULL
-					OR school = ''
-				)
-				ORDER BY log_type ASC
-				""",
+                SELECT
+                    name AS value,
+                    log_type AS label
+                FROM `tabStudent Log Type`
+                WHERE (
+                    school IN %(schools)s
+                    OR school IS NULL
+                    OR school = ''
+                )
+                ORDER BY log_type ASC
+                """,
                 {"schools": tuple(up_chain)},
                 as_dict=True,
             )
@@ -443,34 +443,34 @@ def get_form_options(**payload):
     if allowed_schools:
         next_steps = frappe.db.sql(
             """
-			SELECT
-				name AS value,
-				next_step AS label,
-				associated_role AS role,
-				school
-			FROM `tabStudent Log Next Step`
-			WHERE (
-				school IN %(schools)s
-				OR school IS NULL
-				OR school = ''
-			)
-			ORDER BY next_step ASC
-			""",
+            SELECT
+                name AS value,
+                next_step AS label,
+                associated_role AS role,
+                school
+            FROM `tabStudent Log Next Step`
+            WHERE (
+                school IN %(schools)s
+                OR school IS NULL
+                OR school = ''
+            )
+            ORDER BY next_step ASC
+            """,
             {"schools": tuple(allowed_schools)},
             as_dict=True,
         )
     else:
         next_steps = frappe.db.sql(
             """
-			SELECT
-				name AS value,
-				next_step AS label,
-				associated_role AS role,
-				school
-			FROM `tabStudent Log Next Step`
-			WHERE (school IS NULL OR school = '')
-			ORDER BY next_step ASC
-			""",
+            SELECT
+                name AS value,
+                next_step AS label,
+                associated_role AS role,
+                school
+            FROM `tabStudent Log Next Step`
+            WHERE (school IS NULL OR school = '')
+            ORDER BY next_step ASC
+            """,
             as_dict=True,
         )
 

@@ -231,12 +231,12 @@ class ProgramEnrollmentTool(Document):
 def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
     return frappe.db.sql(
         """
-		SELECT name
-		FROM `tabAcademic Year`
-		WHERE name LIKE %(txt)s
-		ORDER BY COALESCE(year_start_date, '0001-01-01') DESC, name DESC
-		LIMIT %(start)s, %(page_len)s
-		""",
+        SELECT name
+        FROM `tabAcademic Year`
+        WHERE name LIKE %(txt)s
+        ORDER BY COALESCE(year_start_date, '0001-01-01') DESC, name DESC
+        LIMIT %(start)s, %(page_len)s
+        """,
         {"txt": f"%{txt}%", "start": start, "page_len": page_len},
     )
 
@@ -254,10 +254,10 @@ def _get_offering_window(program_offering: str):
     # 1) Try child table window
     min_max = frappe.db.sql(
         """
-		SELECT MIN(year_start_date), MAX(year_end_date)
-		FROM `tabProgram Offering Academic Year`
-		WHERE parent = %(po)s AND parenttype = 'Program Offering'
-		""",
+        SELECT MIN(year_start_date), MAX(year_end_date)
+        FROM `tabProgram Offering Academic Year`
+        WHERE parent = %(po)s AND parenttype = 'Program Offering'
+        """,
         {"po": program_offering},
         as_dict=False,
     )
@@ -295,14 +295,14 @@ def program_offering_target_ay_query(doctype, txt, searchfield, start, page_len,
     # Primary path: use the curated child rows
     rows = frappe.db.sql(
         """
-		SELECT poay.academic_year
-		FROM `tabProgram Offering Academic Year` poay
-		WHERE poay.parent = %(po)s
-		  AND poay.parenttype = 'Program Offering'
-		  AND (poay.academic_year LIKE %(txt)s OR IFNULL(poay.ay_name, '') LIKE %(txt)s)
-		ORDER BY COALESCE(poay.year_start_date, '0001-01-01') DESC, poay.academic_year DESC
-		LIMIT %(start)s, %(page_len)s
-		""",
+        SELECT poay.academic_year
+        FROM `tabProgram Offering Academic Year` poay
+        WHERE poay.parent = %(po)s
+          AND poay.parenttype = 'Program Offering'
+          AND (poay.academic_year LIKE %(txt)s OR IFNULL(poay.ay_name, '') LIKE %(txt)s)
+        ORDER BY COALESCE(poay.year_start_date, '0001-01-01') DESC, poay.academic_year DESC
+        LIMIT %(start)s, %(page_len)s
+        """,
         params,
     )
     if rows:
@@ -328,10 +328,10 @@ def program_offering_target_ay_query(doctype, txt, searchfield, start, page_len,
         params.update({"off_end": off_end})
 
     sql = f"""
-		SELECT name
-		FROM `tabAcademic Year`
-		WHERE {" AND ".join(clauses)}
-		ORDER BY COALESCE(year_start_date, '0001-01-01') DESC, name DESC
-		LIMIT %(start)s, %(page_len)s
-	"""
+        SELECT name
+        FROM `tabAcademic Year`
+        WHERE {" AND ".join(clauses)}
+        ORDER BY COALESCE(year_start_date, '0001-01-01') DESC, name DESC
+        LIMIT %(start)s, %(page_len)s
+    """
     return frappe.db.sql(sql, params)

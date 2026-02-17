@@ -441,20 +441,20 @@ def get_active_program_enrollment(student):
     today = frappe.utils.today()
     pe = frappe.db.sql(
         """
-		SELECT
-			pe.name,
-			pe.program,
-			pe.academic_year,
-			pe.program_offering,     -- NEW
-			pe.school                -- NEW (authoritative delivery school)
-		FROM `tabProgram Enrollment` pe
-		JOIN `tabAcademic Year` ay ON pe.academic_year = ay.name
-		WHERE pe.student = %s
-		  AND %s BETWEEN ay.year_start_date AND ay.year_end_date
-		  AND (pe.archived = 0 OR pe.archived IS NULL)
-		ORDER BY ay.year_start_date DESC
-		LIMIT 1
-	""",
+        SELECT
+            pe.name,
+            pe.program,
+            pe.academic_year,
+            pe.program_offering,     -- NEW
+            pe.school                -- NEW (authoritative delivery school)
+        FROM `tabProgram Enrollment` pe
+        JOIN `tabAcademic Year` ay ON pe.academic_year = ay.name
+        WHERE pe.student = %s
+          AND %s BETWEEN ay.year_start_date AND ay.year_end_date
+          AND (pe.archived = 0 OR pe.archived IS NULL)
+        ORDER BY ay.year_start_date DESC
+        LIMIT 1
+    """,
         (student, today),
         as_dict=True,
     )
@@ -511,13 +511,13 @@ def assign_follow_up(log_name: str, user: str):
 
     ok = frappe.db.sql(
         """
-		SELECT 1
-		FROM `tabSchool` s1
-		JOIN `tabSchool` s2
-			ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
-		WHERE s1.name = %s AND s2.name = %s
-		LIMIT 1
-		""",
+        SELECT 1
+        FROM `tabSchool` s1
+        JOIN `tabSchool` s2
+            ON s2.lft >= s1.lft AND s2.rgt <= s1.rgt
+        WHERE s1.name = %s AND s2.name = %s
+        LIMIT 1
+        """,
         (assignee_anchor, sl.school),
     )
     if not ok:
@@ -553,12 +553,12 @@ def assign_follow_up(log_name: str, user: str):
     prev_user = current_assignee
     frappe.db.sql(
         """
-		UPDATE `tabToDo`
-		SET status = 'Closed'
-		WHERE reference_type = 'Student Log'
-		  AND reference_name = %s
-		  AND status = 'Open'
-		""",
+        UPDATE `tabToDo`
+        SET status = 'Closed'
+        WHERE reference_type = 'Student Log'
+          AND reference_name = %s
+          AND status = 'Open'
+        """,
         (sl.name,),
     )
 
@@ -643,12 +643,12 @@ def auto_close_completed_logs():
     # 1) Close any OPEN ToDos for these logs in a single SQL
     frappe.db.sql(
         f"""
-		UPDATE `tabToDo`
-		SET status = 'Closed'
-		WHERE reference_type = 'Student Log'
-		  AND status = 'Open'
-		  AND reference_name IN ({", ".join(["%s"] * len(eligible))})
-		""",
+        UPDATE `tabToDo`
+        SET status = 'Closed'
+        WHERE reference_type = 'Student Log'
+          AND status = 'Open'
+          AND reference_name IN ({", ".join(["%s"] * len(eligible))})
+        """,
         tuple(eligible),
     )
 
@@ -740,10 +740,10 @@ def complete_log(log_name: str):
     # 2) Close all OPEN ToDos
     frappe.db.sql(
         """
-		UPDATE `tabToDo`
-		SET status = 'Closed'
-		WHERE reference_type = %s AND reference_name = %s AND status = 'Open'
-		""",
+        UPDATE `tabToDo`
+        SET status = 'Closed'
+        WHERE reference_type = %s AND reference_name = %s AND status = 'Open'
+        """,
         ("Student Log", log_row.name),
     )
 
@@ -896,19 +896,19 @@ def _user_is_pastoral_lead_for_student(user: str, student: str) -> bool:
 
     row = frappe.db.sql(
         """
-		SELECT 1
-		FROM `tabStudent Group Instructor` sgi
-		INNER JOIN `tabStudent Group` sg
-			ON sg.name = sgi.parent
-		INNER JOIN `tabStudent Group Student` sgs
-			ON sgs.parent = sg.name
-		WHERE
-			sgi.user_id = %(user)s
-			AND sg.status = 'Active'
-			AND sg.group_based_on = 'Pastoral'
-			AND sgs.student = %(student)s
-		LIMIT 1
-		""",
+        SELECT 1
+        FROM `tabStudent Group Instructor` sgi
+        INNER JOIN `tabStudent Group` sg
+            ON sg.name = sgi.parent
+        INNER JOIN `tabStudent Group Student` sgs
+            ON sgs.parent = sg.name
+        WHERE
+            sgi.user_id = %(user)s
+            AND sg.status = 'Active'
+            AND sg.group_based_on = 'Pastoral'
+            AND sgs.student = %(student)s
+        LIMIT 1
+        """,
         {"user": user, "student": student},
         as_dict=False,
     )
@@ -1012,24 +1012,24 @@ def get_student_log_visibility_predicate(
         params["employee"] = emp.get("name") or ""
         conditions.append(
             f"""
-			EXISTS (
-				SELECT 1
-				FROM `tabStudent Group Student` sgs
-				JOIN `tabStudent Group` sg ON sg.name = sgs.parent
-				JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sg.name
-				LEFT JOIN `tabInstructor` ins ON ins.name = sgi.instructor
-				WHERE sgs.student = {table_alias}.student
-				  AND IFNULL(sgs.active, 1) = 1
-				  AND IFNULL(sg.status, 'Active') = 'Active'
-				  AND sg.group_based_on = 'Pastoral'
-				  AND sg.academic_year = {table_alias}.academic_year
-				  AND (
-					  sgi.user_id = %(user)s
-					  OR ins.linked_user_id = %(user)s
-					  OR sgi.employee = %(employee)s
-				  )
-			)
-			"""
+            EXISTS (
+                SELECT 1
+                FROM `tabStudent Group Student` sgs
+                JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+                JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sg.name
+                LEFT JOIN `tabInstructor` ins ON ins.name = sgi.instructor
+                WHERE sgs.student = {table_alias}.student
+                  AND IFNULL(sgs.active, 1) = 1
+                  AND IFNULL(sg.status, 'Active') = 'Active'
+                  AND sg.group_based_on = 'Pastoral'
+                  AND sg.academic_year = {table_alias}.academic_year
+                  AND (
+                      sgi.user_id = %(user)s
+                      OR ins.linked_user_id = %(user)s
+                      OR sgi.employee = %(employee)s
+                  )
+            )
+            """
         )
 
     # Academic Staff (teaching context)
@@ -1038,24 +1038,24 @@ def get_student_log_visibility_predicate(
         params["employee"] = emp.get("name") or params.get("employee") or ""
         conditions.append(
             f"""
-			EXISTS (
-				SELECT 1
-				FROM `tabStudent Group Student` sgs
-				JOIN `tabStudent Group` sg ON sg.name = sgs.parent
-				JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sg.name
-				LEFT JOIN `tabInstructor` ins ON ins.name = sgi.instructor
-				WHERE sgs.student = {table_alias}.student
-				  AND IFNULL(sgs.active, 1) = 1
-				  AND IFNULL(sg.status, 'Active') = 'Active'
-				  AND sg.group_based_on != 'Pastoral'
-				  AND sg.academic_year = {table_alias}.academic_year
-				  AND (
-					  sgi.user_id = %(user)s
-					  OR ins.linked_user_id = %(user)s
-					  OR sgi.employee = %(employee)s
-				  )
-			)
-			"""
+            EXISTS (
+                SELECT 1
+                FROM `tabStudent Group Student` sgs
+                JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+                JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sg.name
+                LEFT JOIN `tabInstructor` ins ON ins.name = sgi.instructor
+                WHERE sgs.student = {table_alias}.student
+                  AND IFNULL(sgs.active, 1) = 1
+                  AND IFNULL(sg.status, 'Active') = 'Active'
+                  AND sg.group_based_on != 'Pastoral'
+                  AND sg.academic_year = {table_alias}.academic_year
+                  AND (
+                      sgi.user_id = %(user)s
+                      OR ins.linked_user_id = %(user)s
+                      OR sgi.employee = %(employee)s
+                  )
+            )
+            """
         )
 
     # Curriculum Coordinator (program oversight)
@@ -1064,19 +1064,19 @@ def get_student_log_visibility_predicate(
         params["employee"] = emp.get("name") or params.get("employee") or ""
         conditions.append(
             f"""
-			EXISTS (
-				SELECT 1
-				FROM `tabProgram Coordinator` pc
-				JOIN `tabProgram Enrollment` pe ON pe.program = pc.parent
-				WHERE pc.parenttype = 'Program'
-				  AND pc.parentfield = 'program_coordinators'
-				  AND pc.coordinator = %(employee)s
-				  AND pe.student = {table_alias}.student
-				  AND pe.program = {table_alias}.program
-				  AND IFNULL(pe.archived, 0) = 0
-				  AND pe.academic_year = {table_alias}.academic_year
-			)
-			"""
+            EXISTS (
+                SELECT 1
+                FROM `tabProgram Coordinator` pc
+                JOIN `tabProgram Enrollment` pe ON pe.program = pc.parent
+                WHERE pc.parenttype = 'Program'
+                  AND pc.parentfield = 'program_coordinators'
+                  AND pc.coordinator = %(employee)s
+                  AND pe.student = {table_alias}.student
+                  AND pe.program = {table_alias}.program
+                  AND IFNULL(pe.archived, 0) = 0
+                  AND pe.academic_year = {table_alias}.academic_year
+            )
+            """
         )
 
     if not conditions:

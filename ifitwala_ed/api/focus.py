@@ -27,12 +27,12 @@ def _get_user_full_names(user_ids: list[str]) -> dict[str, str]:
 
     rows = frappe.db.sql(
         """
-		select
-			name,
-			ifnull(full_name, name) as full_name
-		from `tabUser`
-		where name in %(ids)s
-		""",
+        select
+            name,
+            ifnull(full_name, name) as full_name
+        from `tabUser`
+        where name in %(ids)s
+        """,
         {"ids": tuple(ids)},
         as_dict=True,
     )
@@ -183,39 +183,39 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
     # - We keep a fallback to ToDo.owner for older rows/edge-cases.
     action_rows = frappe.db.sql(
         """
-		select
-			t.reference_name as log_name,
-			t.date as todo_due_date,
+        select
+            t.reference_name as log_name,
+            t.date as todo_due_date,
 
-			-- canonical assigner identity (can differ from Student Log.owner)
-			nullif(trim(ifnull(t.assigned_by, '')), '') as todo_assigned_by,
-			nullif(trim(ifnull(t.assigned_by_full_name, '')), '') as todo_assigned_by_full_name,
+            -- canonical assigner identity (can differ from Student Log.owner)
+            nullif(trim(ifnull(t.assigned_by, '')), '') as todo_assigned_by,
+            nullif(trim(ifnull(t.assigned_by_full_name, '')), '') as todo_assigned_by_full_name,
 
-			-- fallback (older ToDo rows)
-			nullif(trim(ifnull(t.owner, '')), '') as todo_owner,
+            -- fallback (older ToDo rows)
+            nullif(trim(ifnull(t.owner, '')), '') as todo_owner,
 
-			s.student_name,
-			s.next_step,
-			s.requires_follow_up,
-			s.follow_up_status,
-			s.follow_up_person
-		from `tabToDo` t
-		join `tabStudent Log` s
-		  on s.name = t.reference_name
-		where t.allocated_to = %(user)s
-		  and t.reference_type = %(ref_type)s
-		  and (%(open_only)s = 0 or t.status = 'Open')
-		  and ifnull(s.requires_follow_up, 0) = 1
-		  and lower(ifnull(s.follow_up_status, '')) != 'completed'
-		  and not exists (
-				select 1
-				from `tabStudent Log Follow Up` f
-				where f.student_log = s.name
-				  and f.docstatus = 1
-		  )
-		order by t.date asc, t.modified desc
-		limit %(limit)s offset %(offset)s
-		""",
+            s.student_name,
+            s.next_step,
+            s.requires_follow_up,
+            s.follow_up_status,
+            s.follow_up_person
+        from `tabToDo` t
+        join `tabStudent Log` s
+          on s.name = t.reference_name
+        where t.allocated_to = %(user)s
+          and t.reference_type = %(ref_type)s
+          and (%(open_only)s = 0 or t.status = 'Open')
+          and ifnull(s.requires_follow_up, 0) = 1
+          and lower(ifnull(s.follow_up_status, '')) != 'completed'
+          and not exists (
+                select 1
+                from `tabStudent Log Follow Up` f
+                where f.student_log = s.name
+                  and f.docstatus = 1
+          )
+        order by t.date asc, t.modified desc
+        limit %(limit)s offset %(offset)s
+        """,
         {
             "user": user,
             "ref_type": STUDENT_LOG_DOCTYPE,
@@ -311,22 +311,22 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
     # ------------------------------------------------------------
     review_rows = frappe.db.sql(
         """
-		select
-			s.name as log_name,
-			s.student_name
-		from `tabStudent Log` s
-		where s.owner = %(user)s
-		  and ifnull(s.requires_follow_up, 0) = 1
-		  and lower(ifnull(s.follow_up_status, '')) != 'completed'
-		  and exists (
-				select 1
-				from `tabStudent Log Follow Up` f
-				where f.student_log = s.name
-				  and f.docstatus = 1
-		  )
-		order by s.modified desc
-		limit 200
-		""",
+        select
+            s.name as log_name,
+            s.student_name
+        from `tabStudent Log` s
+        where s.owner = %(user)s
+          and ifnull(s.requires_follow_up, 0) = 1
+          and lower(ifnull(s.follow_up_status, '')) != 'completed'
+          and exists (
+                select 1
+                from `tabStudent Log Follow Up` f
+                where f.student_log = s.name
+                  and f.docstatus = 1
+          )
+        order by s.modified desc
+        limit 200
+        """,
         {"user": user},
         as_dict=True,
     )

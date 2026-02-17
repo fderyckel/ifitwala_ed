@@ -529,12 +529,12 @@ def _get_active_term_window(
 
     rows = frappe.db.sql(
         f"""
-		SELECT t.term_start_date, t.term_end_date
-		FROM `tabTerm` t
-		WHERE {" AND ".join(conditions)}
-		ORDER BY t.term_start_date DESC
-		LIMIT 1
-		""",
+        SELECT t.term_start_date, t.term_end_date
+        FROM `tabTerm` t
+        WHERE {" AND ".join(conditions)}
+        ORDER BY t.term_start_date DESC
+        LIMIT 1
+        """,
         params,
         as_dict=True,
     )
@@ -568,11 +568,11 @@ def _resolve_instruction_days(
 
     calendar_rows = frappe.db.sql(
         """
-		SELECT DISTINCT ss.school_calendar
-		FROM `tabSchool Schedule` ss
-		WHERE ss.school IN %(schools)s
-		  AND COALESCE(ss.school_calendar, '') != ''
-		""",
+        SELECT DISTINCT ss.school_calendar
+        FROM `tabSchool Schedule` ss
+        WHERE ss.school IN %(schools)s
+          AND COALESCE(ss.school_calendar, '') != ''
+        """,
         {"schools": tuple(school_scope)},
         as_dict=True,
     )
@@ -586,11 +586,11 @@ def _resolve_instruction_days(
 
     holiday_rows = frappe.db.sql(
         """
-		SELECT h.parent AS calendar_name, h.holiday_date
-		FROM `tabSchool Calendar Holidays` h
-		WHERE h.parent IN %(calendars)s
-		  AND h.holiday_date BETWEEN %(date_from)s AND %(date_to)s
-		""",
+        SELECT h.parent AS calendar_name, h.holiday_date
+        FROM `tabSchool Calendar Holidays` h
+        WHERE h.parent IN %(calendars)s
+          AND h.holiday_date BETWEEN %(date_from)s AND %(date_to)s
+        """,
         {
             "calendars": tuple(calendar_names),
             "date_from": date_from,
@@ -683,33 +683,33 @@ def _build_attendance_where(
     if program_scope:
         conditions.append(
             f"""(
-			{alias}.program IN %(program_scope)s
-			OR (
-				COALESCE({alias}.program, '') = ''
-				AND EXISTS (
-					SELECT 1
-					FROM `tabStudent Group` sg_program
-					WHERE sg_program.name = {alias}.student_group
-						AND sg_program.program IN %(program_scope)s
-				)
-			)
-		)"""
+            {alias}.program IN %(program_scope)s
+            OR (
+                COALESCE({alias}.program, '') = ''
+                AND EXISTS (
+                    SELECT 1
+                    FROM `tabStudent Group` sg_program
+                    WHERE sg_program.name = {alias}.student_group
+                        AND sg_program.program IN %(program_scope)s
+                )
+            )
+        )"""
         )
         params["program_scope"] = tuple(program_scope)
     elif ctx.get("program"):
         conditions.append(
             f"""(
-			{alias}.program = %(program)s
-			OR (
-				COALESCE({alias}.program, '') = ''
-				AND EXISTS (
-					SELECT 1
-					FROM `tabStudent Group` sg_program
-					WHERE sg_program.name = {alias}.student_group
-						AND sg_program.program = %(program)s
-				)
-			)
-		)"""
+            {alias}.program = %(program)s
+            OR (
+                COALESCE({alias}.program, '') = ''
+                AND EXISTS (
+                    SELECT 1
+                    FROM `tabStudent Group` sg_program
+                    WHERE sg_program.name = {alias}.student_group
+                        AND sg_program.program = %(program)s
+                )
+            )
+        )"""
         )
         params["program"] = ctx["program"]
 
@@ -759,15 +759,15 @@ def _compute_period_kpis(
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			COUNT(*) AS expected_sessions,
-			SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present_sessions,
-			SUM(CASE WHEN {LATE_SQL} THEN 1 ELSE 0 END) AS late_sessions,
-			SUM(CASE WHEN c.count_as_present = 0 AND NOT ({EXCUSED_SQL}) AND NOT ({LATE_SQL}) THEN 1 ELSE 0 END) AS unexplained_absent_sessions
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		WHERE {where_clause}
-		""",
+        SELECT
+            COUNT(*) AS expected_sessions,
+            SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present_sessions,
+            SUM(CASE WHEN {LATE_SQL} THEN 1 ELSE 0 END) AS late_sessions,
+            SUM(CASE WHEN c.count_as_present = 0 AND NOT ({EXCUSED_SQL}) AND NOT ({LATE_SQL}) THEN 1 ELSE 0 END) AS unexplained_absent_sessions
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        WHERE {where_clause}
+        """,
         params,
         as_dict=True,
     )
@@ -836,17 +836,17 @@ def _get_heatmap_payload(ctx: dict[str, Any], *, heatmap_mode: str) -> dict[str,
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			a.attendance_date AS x,
-			{y_expr} AS y,
-			SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present,
-			COUNT(*) AS expected
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		WHERE {where_clause}
-		GROUP BY a.attendance_date, y
-		ORDER BY a.attendance_date ASC, y ASC
-		""",
+        SELECT
+            a.attendance_date AS x,
+            {y_expr} AS y,
+            SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present,
+            COUNT(*) AS expected
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        WHERE {where_clause}
+        GROUP BY a.attendance_date, y
+        ORDER BY a.attendance_date ASC, y ASC
+        """,
         params,
         as_dict=True,
     )
@@ -896,19 +896,19 @@ def _compute_student_metrics(
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			a.student,
-			MAX(COALESCE(NULLIF(a.student_name, ''), s.student_full_name, a.student)) AS student_name,
-			COUNT(*) AS expected_sessions,
-			SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present_sessions,
-			SUM(CASE WHEN {LATE_SQL} THEN 1 ELSE 0 END) AS late_sessions,
-			SUM(CASE WHEN c.count_as_present = 0 AND NOT ({EXCUSED_SQL}) AND NOT ({LATE_SQL}) THEN 1 ELSE 0 END) AS unexplained_absences
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		LEFT JOIN `tabStudent` s ON s.name = a.student
-		WHERE {where_clause}
-		GROUP BY a.student
-		""",
+        SELECT
+            a.student,
+            MAX(COALESCE(NULLIF(a.student_name, ''), s.student_full_name, a.student)) AS student_name,
+            COUNT(*) AS expected_sessions,
+            SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present_sessions,
+            SUM(CASE WHEN {LATE_SQL} THEN 1 ELSE 0 END) AS late_sessions,
+            SUM(CASE WHEN c.count_as_present = 0 AND NOT ({EXCUSED_SQL}) AND NOT ({LATE_SQL}) THEN 1 ELSE 0 END) AS unexplained_absences
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        LEFT JOIN `tabStudent` s ON s.name = a.student
+        WHERE {where_clause}
+        GROUP BY a.student
+        """,
         params,
         as_dict=True,
     )
@@ -953,14 +953,14 @@ def _compute_block_1_pattern_counts(ctx: dict[str, Any]) -> dict[str, int]:
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			a.student,
-			SUM(CASE WHEN c.count_as_present = 0 THEN 1 ELSE 0 END) AS block_1_absences
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		WHERE {where_clause}
-		GROUP BY a.student
-		""",
+        SELECT
+            a.student,
+            SUM(CASE WHEN c.count_as_present = 0 THEN 1 ELSE 0 END) AS block_1_absences
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        WHERE {where_clause}
+        GROUP BY a.student
+        """,
         params,
         as_dict=True,
     )
@@ -980,25 +980,25 @@ def _compute_mismatch_students(ctx: dict[str, Any]) -> list[dict[str, Any]]:
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			wd.student,
-			MAX(COALESCE(NULLIF(wd.student_name, ''), s.student_full_name, wd.student)) AS student_name,
-			COUNT(DISTINCT wd.attendance_date) AS mismatch_days
-		FROM `tabStudent Attendance` wd
-		INNER JOIN `tabStudent Attendance Code` c_wd ON c_wd.name = wd.attendance_code
-		LEFT JOIN `tabStudent Attendance` bl
-			ON bl.student = wd.student
-			AND bl.attendance_date = wd.attendance_date
-			AND bl.whole_day = 0
-		LEFT JOIN `tabStudent Attendance Code` c_bl ON c_bl.name = bl.attendance_code
-		LEFT JOIN `tabStudent` s ON s.name = wd.student
-		WHERE {where_clause}
-			AND c_wd.count_as_present = 1
-		GROUP BY wd.student
-		HAVING SUM(CASE WHEN c_bl.count_as_present = 0 THEN 1 ELSE 0 END) > 0
-		ORDER BY mismatch_days DESC
-		LIMIT 60
-		""",
+        SELECT
+            wd.student,
+            MAX(COALESCE(NULLIF(wd.student_name, ''), s.student_full_name, wd.student)) AS student_name,
+            COUNT(DISTINCT wd.attendance_date) AS mismatch_days
+        FROM `tabStudent Attendance` wd
+        INNER JOIN `tabStudent Attendance Code` c_wd ON c_wd.name = wd.attendance_code
+        LEFT JOIN `tabStudent Attendance` bl
+            ON bl.student = wd.student
+            AND bl.attendance_date = wd.attendance_date
+            AND bl.whole_day = 0
+        LEFT JOIN `tabStudent Attendance Code` c_bl ON c_bl.name = bl.attendance_code
+        LEFT JOIN `tabStudent` s ON s.name = wd.student
+        WHERE {where_clause}
+            AND c_wd.count_as_present = 1
+        GROUP BY wd.student
+        HAVING SUM(CASE WHEN c_bl.count_as_present = 0 THEN 1 ELSE 0 END) > 0
+        ORDER BY mismatch_days DESC
+        LIMIT 60
+        """,
         params,
         as_dict=True,
     )
@@ -1239,33 +1239,33 @@ def _get_context_sparkline(ctx: dict[str, Any], student: str) -> dict[str, Any] 
 
     attendance_rows = frappe.db.sql(
         f"""
-		SELECT
-			a.attendance_date AS day,
-			COUNT(*) AS expected,
-			SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		WHERE {attendance_where}
-		GROUP BY a.attendance_date
-		ORDER BY a.attendance_date ASC
-		""",
+        SELECT
+            a.attendance_date AS day,
+            COUNT(*) AS expected,
+            SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        WHERE {attendance_where}
+        GROUP BY a.attendance_date
+        ORDER BY a.attendance_date ASC
+        """,
         attendance_params,
         as_dict=True,
     )
 
     academic_rows = frappe.db.sql(
         """
-		SELECT
-			DATE(COALESCE(t.published_on, t.completed_on, t.modified)) AS day,
-			AVG(COALESCE(t.official_grade_value, t.official_score, 0)) AS average_value,
-			COUNT(*) AS samples
-		FROM `tabTask Outcome` t
-		WHERE t.student = %(student)s
-			AND t.school IN %(school_scope)s
-			AND DATE(COALESCE(t.published_on, t.completed_on, t.modified)) BETWEEN %(date_from)s AND %(date_to)s
-		GROUP BY DATE(COALESCE(t.published_on, t.completed_on, t.modified))
-		ORDER BY day ASC
-		""",
+        SELECT
+            DATE(COALESCE(t.published_on, t.completed_on, t.modified)) AS day,
+            AVG(COALESCE(t.official_grade_value, t.official_score, 0)) AS average_value,
+            COUNT(*) AS samples
+        FROM `tabTask Outcome` t
+        WHERE t.student = %(student)s
+            AND t.school IN %(school_scope)s
+            AND DATE(COALESCE(t.published_on, t.completed_on, t.modified)) BETWEEN %(date_from)s AND %(date_to)s
+        GROUP BY DATE(COALESCE(t.published_on, t.completed_on, t.modified))
+        ORDER BY day ASC
+        """,
         {
             "student": student,
             "school_scope": tuple(ctx["school_scope"]),
@@ -1284,18 +1284,18 @@ def _get_context_sparkline(ctx: dict[str, Any], student: str) -> dict[str, Any] 
     if log_visibility_sql != "0=1":
         behaviour_rows = frappe.db.sql(
             f"""
-			SELECT
-				sl.date AS day,
-				COUNT(*) AS total_logs,
-				SUM(CASE WHEN sl.requires_follow_up = 1 THEN 1 ELSE 0 END) AS follow_up_logs
-			FROM `tabStudent Log` sl
-			WHERE sl.student = %(student)s
-				AND sl.school IN %(school_scope)s
-				AND sl.date BETWEEN %(date_from)s AND %(date_to)s
-				AND ({log_visibility_sql})
-			GROUP BY sl.date
-			ORDER BY sl.date ASC
-			""",
+            SELECT
+                sl.date AS day,
+                COUNT(*) AS total_logs,
+                SUM(CASE WHEN sl.requires_follow_up = 1 THEN 1 ELSE 0 END) AS follow_up_logs
+            FROM `tabStudent Log` sl
+            WHERE sl.student = %(student)s
+                AND sl.school IN %(school_scope)s
+                AND sl.date BETWEEN %(date_from)s AND %(date_to)s
+                AND ({log_visibility_sql})
+            GROUP BY sl.date
+            ORDER BY sl.date ASC
+            """,
             {
                 "student": student,
                 "school_scope": tuple(ctx["school_scope"]),
@@ -1347,20 +1347,20 @@ def _compute_scope_compliance_rows(ctx: dict[str, Any]) -> list[dict[str, Any]]:
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			a.school,
-			MAX(sc.school_name) AS school_label,
-			COALESCE(a.program, '') AS program,
-			COUNT(*) AS expected_sessions,
-			SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present_sessions
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		LEFT JOIN `tabSchool` sc ON sc.name = a.school
-		WHERE {where_clause}
-		GROUP BY a.school, COALESCE(a.program, '')
-		ORDER BY school_label ASC, program ASC
-		LIMIT 200
-		""",
+        SELECT
+            a.school,
+            MAX(sc.school_name) AS school_label,
+            COALESCE(a.program, '') AS program,
+            COUNT(*) AS expected_sessions,
+            SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present_sessions
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        LEFT JOIN `tabSchool` sc ON sc.name = a.school
+        WHERE {where_clause}
+        GROUP BY a.school, COALESCE(a.program, '')
+        ORDER BY school_label ASC, program ASC
+        LIMIT 200
+        """,
         params,
         as_dict=True,
     )
@@ -1395,15 +1395,15 @@ def _compute_method_mix_rows(ctx: dict[str, Any]) -> list[dict[str, Any]]:
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			COALESCE(NULLIF(a.attendance_method, ''), 'Manual') AS attendance_method,
-			COUNT(*) AS count
-		FROM `tabStudent Attendance` a
-		WHERE {where_clause}
-		GROUP BY COALESCE(NULLIF(a.attendance_method, ''), 'Manual')
-		ORDER BY count DESC
-		LIMIT 50
-		""",
+        SELECT
+            COALESCE(NULLIF(a.attendance_method, ''), 'Manual') AS attendance_method,
+            COUNT(*) AS count
+        FROM `tabStudent Attendance` a
+        WHERE {where_clause}
+        GROUP BY COALESCE(NULLIF(a.attendance_method, ''), 'Manual')
+        ORDER BY count DESC
+        LIMIT 50
+        """,
         params,
         as_dict=True,
     )
@@ -1431,19 +1431,19 @@ def _get_code_usage_payload(ctx: dict[str, Any]) -> dict[str, Any]:
 
     usage_rows = frappe.db.sql(
         f"""
-		SELECT
-			c.name AS code_name,
-			c.attendance_code,
-			c.attendance_code_name,
-			c.count_as_present,
-			COUNT(*) AS count
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		WHERE {where_clause}
-		GROUP BY c.name, c.attendance_code, c.attendance_code_name, c.count_as_present
-		ORDER BY count DESC
-		LIMIT 200
-		""",
+        SELECT
+            c.name AS code_name,
+            c.attendance_code,
+            c.attendance_code_name,
+            c.count_as_present,
+            COUNT(*) AS count
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        WHERE {where_clause}
+        GROUP BY c.name, c.attendance_code, c.attendance_code_name, c.count_as_present
+        ORDER BY count DESC
+        LIMIT 200
+        """,
         params,
         as_dict=True,
     )
@@ -1610,41 +1610,41 @@ def _get_ledger_payload(
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			a.student AS student,
-			MAX(COALESCE(NULLIF(a.student_name, ''), st.student_full_name, a.student)) AS student_label,
-			IF(a.course IS NULL, 'Whole Day', 'Course') AS attendance_type,
-			a.course AS course,
-			a.student_group AS student_group,
-			{code_columns_sql},
-			{present_sum_sql} AS present_count,
-			{total_sum_sql} AS total_count,
-			{percentage_present_sql} AS percentage_present,
-			{percentage_late_sql} AS percentage_late
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		LEFT JOIN `tabStudent` st ON st.name = a.student
-		WHERE {where_for_data}
-		GROUP BY a.student, attendance_type, a.course, a.student_group
-		ORDER BY {sort_expression}
-		LIMIT %(limit)s OFFSET %(offset)s
-		""",
+        SELECT
+            a.student AS student,
+            MAX(COALESCE(NULLIF(a.student_name, ''), st.student_full_name, a.student)) AS student_label,
+            IF(a.course IS NULL, 'Whole Day', 'Course') AS attendance_type,
+            a.course AS course,
+            a.student_group AS student_group,
+            {code_columns_sql},
+            {present_sum_sql} AS present_count,
+            {total_sum_sql} AS total_count,
+            {percentage_present_sql} AS percentage_present,
+            {percentage_late_sql} AS percentage_late
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        LEFT JOIN `tabStudent` st ON st.name = a.student
+        WHERE {where_for_data}
+        GROUP BY a.student, attendance_type, a.course, a.student_group
+        ORDER BY {sort_expression}
+        LIMIT %(limit)s OFFSET %(offset)s
+        """,
         params_with_paging,
         as_dict=True,
     )
 
     total_rows_result = frappe.db.sql(
         f"""
-		SELECT COUNT(*) AS total_rows
-		FROM (
-			SELECT 1
-			FROM `tabStudent Attendance` a
-			INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-			LEFT JOIN `tabStudent` st ON st.name = a.student
-			WHERE {where_for_data}
-			GROUP BY a.student, IF(a.course IS NULL, 'Whole Day', 'Course'), a.course, a.student_group
-		) ledger_rows
-		""",
+        SELECT COUNT(*) AS total_rows
+        FROM (
+            SELECT 1
+            FROM `tabStudent Attendance` a
+            INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+            LEFT JOIN `tabStudent` st ON st.name = a.student
+            WHERE {where_for_data}
+            GROUP BY a.student, IF(a.course IS NULL, 'Whole Day', 'Course'), a.course, a.student_group
+        ) ledger_rows
+        """,
         params,
         as_dict=True,
     )
@@ -1652,16 +1652,16 @@ def _get_ledger_payload(
 
     summary_rows = frappe.db.sql(
         f"""
-		SELECT
-			COUNT(*) AS raw_records,
-			COUNT(DISTINCT a.student) AS total_students,
-			SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS total_present,
-			SUM(CASE WHEN c.count_as_present = 1 AND {LATE_SQL} THEN 1 ELSE 0 END) AS total_late_present,
-			COUNT(*) AS total_attendance
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		WHERE {where_for_data}
-		""",
+        SELECT
+            COUNT(*) AS raw_records,
+            COUNT(DISTINCT a.student) AS total_students,
+            SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS total_present,
+            SUM(CASE WHEN c.count_as_present = 1 AND {LATE_SQL} THEN 1 ELSE 0 END) AS total_late_present,
+            COUNT(*) AS total_attendance
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        WHERE {where_for_data}
+        """,
         params,
         as_dict=True,
     )
@@ -1761,46 +1761,46 @@ def _safe_code_fieldname(attendance_code: str, index: int) -> str:
 def _get_ledger_filter_options(*, where_clause: str, params: dict[str, Any]) -> dict[str, Any]:
     courses = frappe.db.sql(
         f"""
-		SELECT DISTINCT a.course
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		WHERE {where_clause}
-			AND COALESCE(a.course, '') != ''
-		ORDER BY a.course ASC
-		LIMIT 400
-		""",
+        SELECT DISTINCT a.course
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        WHERE {where_clause}
+            AND COALESCE(a.course, '') != ''
+        ORDER BY a.course ASC
+        LIMIT 400
+        """,
         params,
         as_dict=True,
     )
 
     instructors = frappe.db.sql(
         f"""
-		SELECT DISTINCT a.instructor
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		WHERE {where_clause}
-			AND COALESCE(a.instructor, '') != ''
-		ORDER BY a.instructor ASC
-		LIMIT 400
-		""",
+        SELECT DISTINCT a.instructor
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        WHERE {where_clause}
+            AND COALESCE(a.instructor, '') != ''
+        ORDER BY a.instructor ASC
+        LIMIT 400
+        """,
         params,
         as_dict=True,
     )
 
     students = frappe.db.sql(
         f"""
-		SELECT
-			a.student,
-			MAX(COALESCE(NULLIF(a.student_name, ''), st.student_full_name, a.student)) AS student_name
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		LEFT JOIN `tabStudent` st ON st.name = a.student
-		WHERE {where_clause}
-			AND COALESCE(a.student, '') != ''
-		GROUP BY a.student
-		ORDER BY student_name ASC
-		LIMIT 500
-		""",
+        SELECT
+            a.student,
+            MAX(COALESCE(NULLIF(a.student_name, ''), st.student_full_name, a.student)) AS student_name
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        LEFT JOIN `tabStudent` st ON st.name = a.student
+        WHERE {where_clause}
+            AND COALESCE(a.student, '') != ''
+        GROUP BY a.student
+        ORDER BY student_name ASC
+        LIMIT 500
+        """,
         params,
         as_dict=True,
     )
@@ -1842,23 +1842,23 @@ def _get_my_groups_payload(ctx: dict[str, Any], *, thresholds: dict[str, float])
 
     group_rows = frappe.db.sql(
         f"""
-		SELECT
-			a.student_group,
-			MAX(sg.student_group_abbreviation) AS student_group_abbreviation,
-			MAX(sg.student_group_name) AS student_group_name,
-			MAX(sg.group_based_on) AS group_based_on,
-			COUNT(*) AS expected,
-			SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present,
-			SUM(CASE WHEN c.count_as_present = 0 THEN 1 ELSE 0 END) AS absent,
-			SUM(CASE WHEN {LATE_SQL} THEN 1 ELSE 0 END) AS late
-		FROM `tabStudent Attendance` a
-		INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-		LEFT JOIN `tabStudent Group` sg ON sg.name = a.student_group
-		WHERE {where_clause}
-		GROUP BY a.student_group
-		ORDER BY student_group_name ASC
-		LIMIT 200
-		""",
+        SELECT
+            a.student_group,
+            MAX(sg.student_group_abbreviation) AS student_group_abbreviation,
+            MAX(sg.student_group_name) AS student_group_name,
+            MAX(sg.group_based_on) AS group_based_on,
+            COUNT(*) AS expected,
+            SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present,
+            SUM(CASE WHEN c.count_as_present = 0 THEN 1 ELSE 0 END) AS absent,
+            SUM(CASE WHEN {LATE_SQL} THEN 1 ELSE 0 END) AS late
+        FROM `tabStudent Attendance` a
+        INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+        LEFT JOIN `tabStudent Group` sg ON sg.name = a.student_group
+        WHERE {where_clause}
+        GROUP BY a.student_group
+        ORDER BY student_group_name ASC
+        LIMIT 200
+        """,
         params,
         as_dict=True,
     )
@@ -1978,42 +1978,42 @@ def _compute_teacher_exceptions(ctx: dict[str, Any]) -> list[dict[str, Any]]:
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			sgs.parent AS student_group,
-			MAX(sg.student_group_abbreviation) AS student_group_abbreviation,
-			sgs.student,
-			MAX(sgs.student_name) AS student_name,
-			CASE
-				WHEN agg.total_rows IS NULL THEN 'No record'
-				WHEN agg.absent_rows > 0 AND agg.present_rows = 0 THEN 'Absent'
-				WHEN agg.late_rows > 0 THEN 'Late'
-				ELSE 'Present'
-			END AS status
-		FROM `tabStudent Group Student` sgs
-		INNER JOIN `tabStudent Group` sg ON sg.name = sgs.parent
-		LEFT JOIN (
-			SELECT
-				a.student_group,
-				a.student,
-				COUNT(*) AS total_rows,
-				SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present_rows,
-				SUM(CASE WHEN c.count_as_present = 0 THEN 1 ELSE 0 END) AS absent_rows,
-				SUM(CASE WHEN {LATE_SQL} THEN 1 ELSE 0 END) AS late_rows
-			FROM `tabStudent Attendance` a
-			INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
-			WHERE a.student_group IN %(group_scope)s
-				AND a.school IN %(school_scope)s
-				AND a.attendance_date = %(exception_date)s
-				AND a.whole_day = %(whole_day)s
-			GROUP BY a.student_group, a.student
-		) agg ON agg.student_group = sgs.parent AND agg.student = sgs.student
-		WHERE sgs.parent IN %(group_scope)s
-			AND COALESCE(sgs.active, 0) = 1
-			{" ".join(optional_conditions)}
-		GROUP BY sgs.parent, sgs.student
-		ORDER BY sg.student_group_name ASC, student_name ASC
-		LIMIT 200
-		""",
+        SELECT
+            sgs.parent AS student_group,
+            MAX(sg.student_group_abbreviation) AS student_group_abbreviation,
+            sgs.student,
+            MAX(sgs.student_name) AS student_name,
+            CASE
+                WHEN agg.total_rows IS NULL THEN 'No record'
+                WHEN agg.absent_rows > 0 AND agg.present_rows = 0 THEN 'Absent'
+                WHEN agg.late_rows > 0 THEN 'Late'
+                ELSE 'Present'
+            END AS status
+        FROM `tabStudent Group Student` sgs
+        INNER JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+        LEFT JOIN (
+            SELECT
+                a.student_group,
+                a.student,
+                COUNT(*) AS total_rows,
+                SUM(CASE WHEN c.count_as_present = 1 THEN 1 ELSE 0 END) AS present_rows,
+                SUM(CASE WHEN c.count_as_present = 0 THEN 1 ELSE 0 END) AS absent_rows,
+                SUM(CASE WHEN {LATE_SQL} THEN 1 ELSE 0 END) AS late_rows
+            FROM `tabStudent Attendance` a
+            INNER JOIN `tabStudent Attendance Code` c ON c.name = a.attendance_code
+            WHERE a.student_group IN %(group_scope)s
+                AND a.school IN %(school_scope)s
+                AND a.attendance_date = %(exception_date)s
+                AND a.whole_day = %(whole_day)s
+            GROUP BY a.student_group, a.student
+        ) agg ON agg.student_group = sgs.parent AND agg.student = sgs.student
+        WHERE sgs.parent IN %(group_scope)s
+            AND COALESCE(sgs.active, 0) = 1
+            {" ".join(optional_conditions)}
+        GROUP BY sgs.parent, sgs.student
+        ORDER BY sg.student_group_name ASC, student_name ASC
+        LIMIT 200
+        """,
         params,
         as_dict=True,
     )

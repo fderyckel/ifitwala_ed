@@ -33,12 +33,12 @@ def _offering_course_map(offering: str) -> dict:
         return {}
     rows = frappe.db.sql(
         """
-		SELECT poc.course, poc.elective_group, poc.required,
-		       poc.start_academic_year, poc.end_academic_year,
-		       poc.start_academic_term, poc.end_academic_term
-		FROM `tabProgram Offering Course` poc
-		WHERE poc.parent = %s
-	""",
+        SELECT poc.course, poc.elective_group, poc.required,
+               poc.start_academic_year, poc.end_academic_year,
+               poc.start_academic_term, poc.end_academic_term
+        FROM `tabProgram Offering Course` poc
+        WHERE poc.parent = %s
+    """,
         (offering,),
         as_dict=True,
     )
@@ -49,10 +49,10 @@ def _offering_ay_set(offering: str) -> set[str]:
     """Set of allowed Academic Years for this Program Offering."""
     rows = frappe.db.sql(
         """
-		SELECT poay.academic_year
-		FROM `tabProgram Offering Academic Year` poay
-		WHERE poay.parent = %s
-	""",
+        SELECT poay.academic_year
+        FROM `tabProgram Offering Academic Year` poay
+        WHERE poay.parent = %s
+    """,
         (offering,),
         as_list=True,
     )
@@ -67,14 +67,14 @@ def _pe_by_student_offering_ay(students: list[str], offering: str, ay: str) -> d
     params = tuple(students) + (offering, ay)
     res = frappe.db.sql(
         f"""
-		SELECT pe.name, pe.student, pe.school
-		FROM `tabProgram Enrollment` pe
-		WHERE pe.student IN ({placeholders})
-		  AND pe.program_offering = %s
-		  AND pe.academic_year = %s
-		  AND pe.archived = 0
-		  AND pe.docstatus < 2
-	""",
+        SELECT pe.name, pe.student, pe.school
+        FROM `tabProgram Enrollment` pe
+        WHERE pe.student IN ({placeholders})
+          AND pe.program_offering = %s
+          AND pe.academic_year = %s
+          AND pe.archived = 0
+          AND pe.docstatus < 2
+    """,
         params,
         as_dict=True,
     )
@@ -99,10 +99,10 @@ def _warn_if_elective_conflict(pe_name: str, course: str, offering_course_meta: 
     # find all existing courses in the same elective group (using current offering map)
     existing = frappe.db.sql(
         """
-		SELECT pec.course
-		FROM `tabProgram Enrollment Course` pec
-		WHERE pec.parent = %s
-	""",
+        SELECT pec.course
+        FROM `tabProgram Enrollment Course` pec
+        WHERE pec.parent = %s
+    """,
         (pe_name,),
         as_list=True,
     )
@@ -271,23 +271,23 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
         values += [f"%{txt}%", f"%{txt}%"]
 
     query = f"""
-		SELECT DISTINCT s.name AS student, s.student_full_name, pe.name AS program_enrollment
-		FROM `tabProgram Enrollment` pe
-		JOIN `tabStudent` s ON s.name = pe.student
-		WHERE pe.program_offering = %s
-		  AND pe.academic_year = %s
-		  AND pe.archived = 0
-		  AND pe.docstatus < 2
-		  AND s.enabled = 1
-		  AND pe.name NOT IN (
-				SELECT parent
-				FROM `tabProgram Enrollment Course`
-				WHERE course = %s
-		  )
-		  {txt_filter}
-		ORDER BY s.student_full_name, s.name
-		LIMIT {start}, {page_len}
-	"""
+        SELECT DISTINCT s.name AS student, s.student_full_name, pe.name AS program_enrollment
+        FROM `tabProgram Enrollment` pe
+        JOIN `tabStudent` s ON s.name = pe.student
+        WHERE pe.program_offering = %s
+          AND pe.academic_year = %s
+          AND pe.archived = 0
+          AND pe.docstatus < 2
+          AND s.enabled = 1
+          AND pe.name NOT IN (
+                SELECT parent
+                FROM `tabProgram Enrollment Course`
+                WHERE course = %s
+          )
+          {txt_filter}
+        ORDER BY s.student_full_name, s.name
+        LIMIT {start}, {page_len}
+    """
     results = frappe.db.sql(query, values, as_dict=True)
     return [[r["student"], r["student_full_name"], r["program_enrollment"]] for r in results]
 
@@ -323,14 +323,14 @@ def get_courses_for_offering(doctype, txt, searchfield, start, page_len, filters
     # If AY is chosen, include rows whose AY range covers it (or has no bounds)
     if academic_year:
         conds.append("""
-			(
-				(poc.start_academic_year IS NULL AND poc.end_academic_year IS NULL)
-				OR (
-					%s BETWEEN IFNULL(poc.start_academic_year, %s)
-					AND IFNULL(poc.end_academic_year, %s)
-				)
-			)
-		""")
+            (
+                (poc.start_academic_year IS NULL AND poc.end_academic_year IS NULL)
+                OR (
+                    %s BETWEEN IFNULL(poc.start_academic_year, %s)
+                    AND IFNULL(poc.end_academic_year, %s)
+                )
+            )
+        """)
         values.extend([academic_year, academic_year, academic_year])
 
     # Text filter (id or title)
@@ -342,13 +342,13 @@ def get_courses_for_offering(doctype, txt, searchfield, start, page_len, filters
 
     rows = frappe.db.sql(
         f"""
-		SELECT c.name, c.course_name, poc.required
-		FROM `tabProgram Offering Course` poc
-		JOIN `tabCourse` c ON c.name = poc.course
-		WHERE {where_clause}
-		ORDER BY c.name
-		LIMIT {start}, {page_len}
-	""",
+        SELECT c.name, c.course_name, poc.required
+        FROM `tabProgram Offering Course` poc
+        JOIN `tabCourse` c ON c.name = poc.course
+        WHERE {where_clause}
+        ORDER BY c.name
+        LIMIT {start}, {page_len}
+    """,
         tuple(values),
         as_dict=True,
     )
@@ -377,12 +377,12 @@ def list_offering_academic_years_desc(doctype, txt, searchfield, start, page_len
     if program_offering:
         rows = frappe.db.sql(
             """
-			SELECT ay.name
-			FROM `tabProgram Offering Academic Year` poay
-			JOIN `tabAcademic Year` ay ON ay.name = poay.academic_year
-			WHERE poay.parent = %s
-			ORDER BY ay.year_end_date DESC
-		""",
+            SELECT ay.name
+            FROM `tabProgram Offering Academic Year` poay
+            JOIN `tabAcademic Year` ay ON ay.name = poay.academic_year
+            WHERE poay.parent = %s
+            ORDER BY ay.year_end_date DESC
+        """,
             (program_offering,),
             as_list=True,
         )
@@ -391,10 +391,10 @@ def list_offering_academic_years_desc(doctype, txt, searchfield, start, page_len
     # fallback (kept from your original util)
     return frappe.db.sql(
         """
-		SELECT name
-		FROM `tabAcademic Year`
-		WHERE year_end_date IS NOT NULL
-		ORDER BY year_end_date DESC
-	""",
+        SELECT name
+        FROM `tabAcademic Year`
+        WHERE year_end_date IS NOT NULL
+        ORDER BY year_end_date DESC
+    """,
         as_list=True,
     )

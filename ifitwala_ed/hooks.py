@@ -1,12 +1,12 @@
 # ifitwala_ed/hooks.py
+from ifitwala_ed.routing.policy import WEBSITE_REDIRECTS, WEBSITE_ROUTE_RULES
+
 app_name = "ifitwala_ed"
 app_title = "Ifitwala"
 app_publisher = "François de Ryckel"
 app_description = "School management System"
 app_email = "f.deryckel@gmail.com"
 app_license = "MIT"
-
-from ifitwala_ed.routing.policy import WEBSITE_REDIRECTS, WEBSITE_ROUTE_RULES
 
 # Apps
 # ------------------

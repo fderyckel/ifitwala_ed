@@ -123,70 +123,70 @@ def check_sla_breaches():
         # 1) Mark Overdue
         frappe.db.sql(
             f"""
-			UPDATE `tab{doctype}`
-			   SET sla_status = '🔴 Overdue'
-			 WHERE docstatus = 0
-			   AND (
-			     (workflow_state NOT IN {contacted_states}
-			      AND first_contact_due_on IS NOT NULL
-			      AND first_contact_due_on < %(today)s)
-			     OR
-			     (workflow_state = 'Assigned'
-			      AND followup_due_on IS NOT NULL
-			      AND followup_due_on < %(today)s)
-			   )
-			   AND sla_status != '🔴 Overdue'
-		""",
+            UPDATE `tab{doctype}`
+               SET sla_status = '🔴 Overdue'
+             WHERE docstatus = 0
+               AND (
+                 (workflow_state NOT IN {contacted_states}
+                  AND first_contact_due_on IS NOT NULL
+                  AND first_contact_due_on < %(today)s)
+                 OR
+                 (workflow_state = 'Assigned'
+                  AND followup_due_on IS NOT NULL
+                  AND followup_due_on < %(today)s)
+               )
+               AND sla_status != '🔴 Overdue'
+        """,
             params,
         )
 
         # 2) Mark Due Today
         frappe.db.sql(
             f"""
-			UPDATE `tab{doctype}`
-			   SET sla_status = '🟡 Due Today'
-			 WHERE docstatus = 0
-			   AND (
-			     (workflow_state NOT IN {contacted_states}
-			      AND first_contact_due_on = %(today)s)
-			     OR
-			     (workflow_state = 'Assigned'
-			      AND followup_due_on = %(today)s)
-			   )
-			   AND sla_status != '🟡 Due Today'
-		""",
+            UPDATE `tab{doctype}`
+               SET sla_status = '🟡 Due Today'
+             WHERE docstatus = 0
+               AND (
+                 (workflow_state NOT IN {contacted_states}
+                  AND first_contact_due_on = %(today)s)
+                 OR
+                 (workflow_state = 'Assigned'
+                  AND followup_due_on = %(today)s)
+               )
+               AND sla_status != '🟡 Due Today'
+        """,
             params,
         )
 
         # 3) Mark Upcoming
         frappe.db.sql(
             f"""
-			UPDATE `tab{doctype}`
-			   SET sla_status = '⚪ Upcoming'
-			 WHERE docstatus = 0
-			   AND (
-			     (workflow_state NOT IN {contacted_states}
-			      AND first_contact_due_on > %(today)s)
-			     OR
-			     (workflow_state = 'Assigned'
-			      AND followup_due_on > %(today)s)
-			   )
-			   AND sla_status != '⚪ Upcoming'
-		""",
+            UPDATE `tab{doctype}`
+               SET sla_status = '⚪ Upcoming'
+             WHERE docstatus = 0
+               AND (
+                 (workflow_state NOT IN {contacted_states}
+                  AND first_contact_due_on > %(today)s)
+                 OR
+                 (workflow_state = 'Assigned'
+                  AND followup_due_on > %(today)s)
+               )
+               AND sla_status != '⚪ Upcoming'
+        """,
             params,
         )
 
         # 4) Everything else = On Track
         frappe.db.sql(f"""
-			UPDATE `tab{doctype}`
-			   SET sla_status = '✅ On Track'
-			 WHERE docstatus = 0
-			   AND (
-			     workflow_state IN {contacted_states}
-			     OR (first_contact_due_on IS NULL AND followup_due_on IS NULL)
-			   )
-			   AND sla_status != '✅ On Track'
-		""")
+            UPDATE `tab{doctype}`
+               SET sla_status = '✅ On Track'
+             WHERE docstatus = 0
+               AND (
+                 workflow_state IN {contacted_states}
+                 OR (first_contact_due_on IS NULL AND followup_due_on IS NULL)
+               )
+               AND sla_status != '✅ On Track'
+        """)
 
     frappe.db.commit()
     logger.info("SLA sweep done.")
@@ -422,15 +422,15 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 def get_admission_officers(doctype, txt, searchfield, start, page_len, filters):
     return frappe.db.sql(
         """
-		SELECT u.name
-		FROM `tabUser` u
-		JOIN `tabHas Role` r ON r.parent = u.name
-		WHERE r.role = 'Admission Officer'
-			AND u.enabled = 1
-			AND u.name LIKE %s
-		ORDER BY u.name ASC
-		LIMIT %s OFFSET %s
-	""",
+        SELECT u.name
+        FROM `tabUser` u
+        JOIN `tabHas Role` r ON r.parent = u.name
+        WHERE r.role = 'Admission Officer'
+            AND u.enabled = 1
+            AND u.name LIKE %s
+        ORDER BY u.name ASC
+        LIMIT %s OFFSET %s
+    """,
         (f"%{txt}%", page_len, start),
     )
 

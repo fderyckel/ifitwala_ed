@@ -64,30 +64,30 @@ def _fetch_student_course_groups(student: str) -> List[frappe._dict]:
     """
     return frappe.db.sql(
         """
-		SELECT
-			sg.name                               AS student_group,
-			sg.student_group_name                 AS student_group_name,
-			sg.group_based_on                     AS group_based_on,
-			sg.status                             AS status,
-			sg.course                             AS course,
-			sg.program                            AS program,
-			sg.program_offering                   AS program_offering,
-			sg.school                             AS school,
-			sg.school_schedule                    AS school_schedule,
-			sg.academic_year                      AS academic_year,
-			sg.term                               AS term,
-			c.course_name                         AS course_name,
-			c.course_group                        AS course_group,
-			c.course_image                        AS course_image
-		FROM `tabStudent Group Student` sgs
-		INNER JOIN `tabStudent Group` sg ON sg.name = sgs.parent
-		LEFT JOIN `tabCourse` c ON c.name = sg.course
-		WHERE sgs.student = %(student)s
-		  AND COALESCE(sgs.active, 1) = 1
-		  AND sg.status = 'Active'
-		  AND sg.course IS NOT NULL
-		  AND sg.group_based_on = 'Course'
-		""",
+        SELECT
+            sg.name                               AS student_group,
+            sg.student_group_name                 AS student_group_name,
+            sg.group_based_on                     AS group_based_on,
+            sg.status                             AS status,
+            sg.course                             AS course,
+            sg.program                            AS program,
+            sg.program_offering                   AS program_offering,
+            sg.school                             AS school,
+            sg.school_schedule                    AS school_schedule,
+            sg.academic_year                      AS academic_year,
+            sg.term                               AS term,
+            c.course_name                         AS course_name,
+            c.course_group                        AS course_group,
+            c.course_image                        AS course_image
+        FROM `tabStudent Group Student` sgs
+        INNER JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+        LEFT JOIN `tabCourse` c ON c.name = sg.course
+        WHERE sgs.student = %(student)s
+          AND COALESCE(sgs.active, 1) = 1
+          AND sg.status = 'Active'
+          AND sg.course IS NOT NULL
+          AND sg.group_based_on = 'Course'
+        """,
         {"student": student},
         as_dict=True,
     )

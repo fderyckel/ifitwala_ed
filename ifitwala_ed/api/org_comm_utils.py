@@ -186,11 +186,11 @@ def check_audience_match(
         if conds:
             rows = frappe.db.sql(
                 f"""
-				SELECT DISTINCT tm.parent
-				FROM `tabTeam Member` tm
-				WHERE tm.parent IN %(teams)s
-				  AND ({" OR ".join(conds)})
-				""",
+                SELECT DISTINCT tm.parent
+                FROM `tabTeam Member` tm
+                WHERE tm.parent IN %(teams)s
+                  AND ({" OR ".join(conds)})
+                """,
                 params,
                 as_dict=True,
             )

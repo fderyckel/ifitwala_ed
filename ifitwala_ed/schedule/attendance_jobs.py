@@ -27,14 +27,14 @@ def _rotation_days_by_group(names: List[str]) -> Dict[str, Set[int]]:
 def _groups_with_schedule_in_ay(ay: str) -> List[dict]:
     return frappe.db.sql(
         """
-		SELECT sg.name, sg.school_schedule, sg.academic_year
-		FROM `tabStudent Group` sg
-		WHERE sg.academic_year = %(ay)s
-		  AND sg.school_schedule IS NOT NULL
-		  AND EXISTS (
-				SELECT 1 FROM `tabStudent Group Schedule` sgs WHERE sgs.parent = sg.name
-		  )
-		""",
+        SELECT sg.name, sg.school_schedule, sg.academic_year
+        FROM `tabStudent Group` sg
+        WHERE sg.academic_year = %(ay)s
+          AND sg.school_schedule IS NOT NULL
+          AND EXISTS (
+                SELECT 1 FROM `tabStudent Group Schedule` sgs WHERE sgs.parent = sg.name
+          )
+        """,
         {"ay": ay},
         as_dict=True,
     )

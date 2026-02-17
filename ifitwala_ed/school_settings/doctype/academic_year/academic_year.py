@@ -149,23 +149,23 @@ class AcademicYear(Document):
         # 1. Retire all active Terms linked to this Academic Year
         frappe.db.sql(
             """
-			UPDATE `tabTerm`
-			SET archived = 1
-			WHERE academic_year = %s
-			AND archived = 0
-		""",
+            UPDATE `tabTerm`
+            SET archived = 1
+            WHERE academic_year = %s
+            AND archived = 0
+        """,
             (self.name,),
         )
 
         # 2. Retire all active Program Enrollments for this Academic Year
         frappe.db.sql(
             """
-			UPDATE `tabProgram Enrollment`
-			   SET archived = 1
-			 WHERE academic_year = %(academic_year)s
-			   AND school IN %(schools)s
-			   AND archived = 0
-			""",
+            UPDATE `tabProgram Enrollment`
+               SET archived = 1
+             WHERE academic_year = %(academic_year)s
+               AND school IN %(schools)s
+               AND archived = 0
+            """,
             {"schools": tuple(school_scope), "academic_year": self.name},
         )
 

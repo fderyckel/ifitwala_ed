@@ -402,22 +402,22 @@ def _get_teachers_of_record(student: str, ay: str) -> list[str]:
     rows = (
         frappe.db.sql(
             """
-		SELECT DISTINCT u.name AS user_id
-		FROM `tabStudent Group Student` sgs
-		JOIN `tabStudent Group` sg
-		  ON sg.name = sgs.parent
-		JOIN `tabStudent Group Instructor` sgi
-		  ON sgi.parent = sg.name
-		LEFT JOIN `tabInstructor` ins
-		  ON ins.name = sgi.instructor
-		JOIN `tabUser` u
-		  ON u.name = COALESCE(NULLIF(sgi.user_id, ''), NULLIF(ins.linked_user_id, ''))
-		 AND u.enabled = 1
-		WHERE sgs.student = %(student)s
-		  AND sg.academic_year = %(ay)s
-		  AND IFNULL(sg.status, 'Active') = 'Active'
-		  AND IFNULL(sgs.active, 1) = 1
-		""",
+        SELECT DISTINCT u.name AS user_id
+        FROM `tabStudent Group Student` sgs
+        JOIN `tabStudent Group` sg
+          ON sg.name = sgs.parent
+        JOIN `tabStudent Group Instructor` sgi
+          ON sgi.parent = sg.name
+        LEFT JOIN `tabInstructor` ins
+          ON ins.name = sgi.instructor
+        JOIN `tabUser` u
+          ON u.name = COALESCE(NULLIF(sgi.user_id, ''), NULLIF(ins.linked_user_id, ''))
+         AND u.enabled = 1
+        WHERE sgs.student = %(student)s
+          AND sg.academic_year = %(ay)s
+          AND IFNULL(sg.status, 'Active') = 'Active'
+          AND IFNULL(sgs.active, 1) = 1
+        """,
             {"student": student, "ay": ay},
         )
         or []
@@ -438,17 +438,17 @@ def users_with_role(doctype, txt, searchfield, start, page_len, filters):
 
     return frappe.db.sql(
         """
-		SELECT u.name, u.full_name
-		FROM `tabUser` u
-		WHERE u.enabled = 1
-		  AND EXISTS (
-		      SELECT 1 FROM `tabHas Role` hr
-		      WHERE hr.parent = u.name AND hr.role IN %(roles)s
-		  )
-		  AND (u.name LIKE %(txt)s OR u.full_name LIKE %(txt)s)
-		ORDER BY u.full_name, u.name
-		LIMIT %(page_len)s OFFSET %(start)s
-	""",
+        SELECT u.name, u.full_name
+        FROM `tabUser` u
+        WHERE u.enabled = 1
+          AND EXISTS (
+              SELECT 1 FROM `tabHas Role` hr
+              WHERE hr.parent = u.name AND hr.role IN %(roles)s
+          )
+          AND (u.name LIKE %(txt)s OR u.full_name LIKE %(txt)s)
+        ORDER BY u.full_name, u.name
+        LIMIT %(page_len)s OFFSET %(start)s
+    """,
         {"roles": tuple(roles), "txt": f"%{txt or ''}%", "page_len": page_len, "start": start},
     )
 
@@ -465,11 +465,11 @@ def get_student_support_guidance(student: str) -> list[dict]:
     if not ({"Counselor", "Academic Admin", "System Manager"} & user_roles):
         open_case_ays = frappe.db.sql(
             """
-			SELECT DISTINCT IFNULL(rc.academic_year, '')
-			FROM `tabReferral Case` rc
-			WHERE rc.student = %(student)s
-			  AND IFNULL(rc.case_status, 'Open') != 'Closed'
-			""",
+            SELECT DISTINCT IFNULL(rc.academic_year, '')
+            FROM `tabReferral Case` rc
+            WHERE rc.student = %(student)s
+              AND IFNULL(rc.case_status, 'Open') != 'Closed'
+            """,
             {"student": student},
         )
         ays = [row[0] for row in (open_case_ays or []) if row and row[0]]
@@ -480,16 +480,16 @@ def get_student_support_guidance(student: str) -> list[dict]:
     # --- include both Open & In Progress ---
     rows = frappe.db.sql(
         """
-		SELECT e.name, e.entry_datetime, e.summary, e.assignee, e.status, e.author, rc.name AS case_name
-		FROM `tabReferral Case Entry` e
-		JOIN `tabReferral Case` rc ON rc.name = e.parent
-		WHERE rc.student = %(student)s
-		  AND e.entry_type = 'Student Support Guidance'
-		  AND IFNULL(e.is_published, 0) = 1
-		  AND IFNULL(e.status, 'Open') IN ('Open','In Progress')
-		  AND IFNULL(rc.case_status, 'Open') != 'Closed'
-		ORDER BY e.entry_datetime DESC
-		""",
+        SELECT e.name, e.entry_datetime, e.summary, e.assignee, e.status, e.author, rc.name AS case_name
+        FROM `tabReferral Case Entry` e
+        JOIN `tabReferral Case` rc ON rc.name = e.parent
+        WHERE rc.student = %(student)s
+          AND e.entry_type = 'Student Support Guidance'
+          AND IFNULL(e.is_published, 0) = 1
+          AND IFNULL(e.status, 'Open') IN ('Open','In Progress')
+          AND IFNULL(rc.case_status, 'Open') != 'Closed'
+        ORDER BY e.entry_datetime DESC
+        """,
         {"student": student},
         as_dict=True,
     )

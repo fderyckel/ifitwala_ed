@@ -583,19 +583,19 @@ class ProgramEnrollment(Document):
         # Single, tight SQL — faster than get_all for this hot path
         rows = frappe.db.sql(
             """
-			SELECT
-				course,
-				status,
-				term_start,
-				term_end,
-				dropped_date,
-				dropped_reason,
-				idx
-			FROM `tabProgram Enrollment Course`
-			WHERE parent = %s
-				AND parenttype = 'Program Enrollment'
-				AND IFNULL(course, '') != ''
-			""",
+            SELECT
+                course,
+                status,
+                term_start,
+                term_end,
+                dropped_date,
+                dropped_reason,
+                idx
+            FROM `tabProgram Enrollment Course`
+            WHERE parent = %s
+                AND parenttype = 'Program Enrollment'
+                AND IFNULL(course, '') != ''
+            """,
             (self.name,),
             as_dict=True,
         )
@@ -855,18 +855,18 @@ def get_students(doctype, txt, searchfield, start, page_len, filters):
 
     # Build SQL
     sql = f"""
-		SELECT name, student_full_name
-		FROM tabStudent
-		WHERE
-			enabled = 1
-			AND name NOT IN ({", ".join(["%s"] * len(excluded_students))})
-			AND (
-			  name LIKE %s
+        SELECT name, student_full_name
+        FROM tabStudent
+        WHERE
+            enabled = 1
+            AND name NOT IN ({", ".join(["%s"] * len(excluded_students))})
+            AND (
+              name LIKE %s
         OR student_full_name LIKE %s
-			)
-		ORDER BY idx DESC, name
-		LIMIT %s, %s
-	"""
+            )
+        ORDER BY idx DESC, name
+        LIMIT %s, %s
+    """
 
     # Params: excluded list + search text + pagination
     # params = excluded_students + [f"%{txt}%", start, page_len]
@@ -913,12 +913,12 @@ def get_academic_years(doctype, txt, searchfield, start, page_len, filters):
 
     return frappe.db.sql(
         f"""
-		SELECT name
-		FROM `tabAcademic Year`
-		{where_clause}
-		ORDER BY year_start_date DESC
-		LIMIT %(start)s, %(page_len)s
-	""",
+        SELECT name
+        FROM `tabAcademic Year`
+        {where_clause}
+        ORDER BY year_start_date DESC
+        LIMIT %(start)s, %(page_len)s
+    """,
         {**values, "start": start, "page_len": page_len},
     )
 

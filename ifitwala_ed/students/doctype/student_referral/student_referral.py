@@ -173,31 +173,31 @@ class StudentReferral(Document):
 
         on_date = getdate(on_date) if on_date else getdate(self.get("date") or nowdate())
         q = """
-			SELECT
-				pe.name,
-				pe.student,
-				pe.program,
-				pe.academic_year,
-				COALESCE(pe.school, p.school) AS school,
-				CASE WHEN ay.year_start_date IS NOT NULL
-						AND ay.year_start_date <= %(on_date)s
-						AND ay.year_end_date   >= %(on_date)s
-						THEN 1 ELSE 0 END AS within_ay,
-				IFNULL(pe.archived, 0) AS archived_flag,
-				ay.year_start_date,
-				pe.creation
-			FROM `tabProgram Enrollment` pe
-			LEFT JOIN `tabProgram` p ON p.name = pe.program
-			LEFT JOIN `tabAcademic Year` ay ON ay.name = pe.academic_year
-			WHERE pe.student = %(student)s
-				AND pe.docstatus < 2
-			ORDER BY
-				within_ay DESC,
-				archived_flag ASC,
-				COALESCE(ay.year_start_date, '1900-01-01') DESC,
-				pe.creation DESC
-			LIMIT 5
-		"""
+            SELECT
+                pe.name,
+                pe.student,
+                pe.program,
+                pe.academic_year,
+                COALESCE(pe.school, p.school) AS school,
+                CASE WHEN ay.year_start_date IS NOT NULL
+                        AND ay.year_start_date <= %(on_date)s
+                        AND ay.year_end_date   >= %(on_date)s
+                        THEN 1 ELSE 0 END AS within_ay,
+                IFNULL(pe.archived, 0) AS archived_flag,
+                ay.year_start_date,
+                pe.creation
+            FROM `tabProgram Enrollment` pe
+            LEFT JOIN `tabProgram` p ON p.name = pe.program
+            LEFT JOIN `tabAcademic Year` ay ON ay.name = pe.academic_year
+            WHERE pe.student = %(student)s
+                AND pe.docstatus < 2
+            ORDER BY
+                within_ay DESC,
+                archived_flag ASC,
+                COALESCE(ay.year_start_date, '1900-01-01') DESC,
+                pe.creation DESC
+            LIMIT 5
+        """
         rows = frappe.db.sql(q, {"student": student, "on_date": on_date}, as_dict=True) or []
         if not rows:
             return []
@@ -505,13 +505,13 @@ def pick_user_from_role_pool(role: str) -> str:
         open_todos = (
             frappe.db.sql(
                 """
-			SELECT allocated_to, COUNT(*) AS n
-			FROM `tabToDo`
-			WHERE reference_type='Referral Case'
-			  AND status='Open'
-			  AND allocated_to IN %(users)s
-			GROUP BY allocated_to
-			""",
+            SELECT allocated_to, COUNT(*) AS n
+            FROM `tabToDo`
+            WHERE reference_type='Referral Case'
+              AND status='Open'
+              AND allocated_to IN %(users)s
+            GROUP BY allocated_to
+            """,
                 {"users": tuple(enabled)},
                 as_dict=True,
             )

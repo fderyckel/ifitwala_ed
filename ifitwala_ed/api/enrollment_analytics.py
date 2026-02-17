@@ -109,15 +109,15 @@ def _get_access_context(user: str | None = None) -> dict:
     if roles & INSTRUCTOR_ROLES:
         has_students = frappe.db.sql(
             """
-			SELECT 1
-			FROM `tabStudent Group Instructor` sgi
-			JOIN `tabStudent Group Student` sgs ON sgi.parent = sgs.parent
-			JOIN `tabStudent Group` sg ON sg.name = sgs.parent
-			WHERE sgi.user_id = %(user)s
-				AND COALESCE(sgs.active, 0) = 1
-				AND IFNULL(sg.status, 'Active') = 'Active'
-			LIMIT 1
-			""",
+            SELECT 1
+            FROM `tabStudent Group Instructor` sgi
+            JOIN `tabStudent Group Student` sgs ON sgi.parent = sgs.parent
+            JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+            WHERE sgi.user_id = %(user)s
+                AND COALESCE(sgs.active, 0) = 1
+                AND IFNULL(sg.status, 'Active') = 'Active'
+            LIMIT 1
+            """,
             {"user": user},
         )
         if has_students:
@@ -195,18 +195,18 @@ def _load_academic_year_options(school_scope: list[str]) -> list[dict]:
 
     rows = frappe.db.sql(
         """
-		SELECT
-			ay.name AS academic_year,
-			ay.academic_year_name,
-			ay.year_start_date,
-			ay.year_end_date,
-			ay.school,
-			s.school_name
-		FROM `tabAcademic Year` ay
-		LEFT JOIN `tabSchool` s ON s.name = ay.school
-		WHERE ay.school IN %(schools)s
-		ORDER BY ay.year_start_date DESC, ay.name DESC, ay.school ASC
-		""",
+        SELECT
+            ay.name AS academic_year,
+            ay.academic_year_name,
+            ay.year_start_date,
+            ay.year_end_date,
+            ay.school,
+            s.school_name
+        FROM `tabAcademic Year` ay
+        LEFT JOIN `tabSchool` s ON s.name = ay.school
+        WHERE ay.school IN %(schools)s
+        ORDER BY ay.year_start_date DESC, ay.name DESC, ay.school ASC
+        """,
         {"schools": tuple(school_scope)},
         as_dict=True,
     )
@@ -326,10 +326,10 @@ def _base_query_parts(filters: dict, ctx: dict, *, include_as_of: bool = False, 
     if ctx.get("mode") == "instructor":
         joins.append(
             """
-			JOIN `tabStudent Group Student` sgs ON sgs.student = pe.student
-			JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sgs.parent
-			JOIN `tabStudent Group` sg ON sg.name = sgs.parent
-			"""
+            JOIN `tabStudent Group Student` sgs ON sgs.student = pe.student
+            JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sgs.parent
+            JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+            """
         )
         conditions.append("sgi.user_id = %(user)s")
         conditions.append("COALESCE(sgs.active, 0) = 1")
@@ -389,17 +389,17 @@ def _stacked_snapshot(filters: dict, ctx: dict) -> dict:
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			pe.academic_year AS category,
-			{bucket_col} AS bucket,
-			{label_col} AS bucket_label,
-			COUNT(*) AS value
-		FROM `tabProgram Enrollment` pe
-		{join_clause}
-		{label_join}
-		WHERE {where_clause}
-		GROUP BY pe.academic_year, bucket, bucket_label
-		""",
+        SELECT
+            pe.academic_year AS category,
+            {bucket_col} AS bucket,
+            {label_col} AS bucket_label,
+            COUNT(*) AS value
+        FROM `tabProgram Enrollment` pe
+        {join_clause}
+        {label_join}
+        WHERE {where_clause}
+        GROUP BY pe.academic_year, bucket, bucket_label
+        """,
         params,
         as_dict=True,
     )
@@ -465,20 +465,20 @@ def _topn_items(filters: dict, ctx: dict, *, dimension: str, total_active: int) 
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			{bucket_col} AS bucket,
-			{label_col} AS label,
-			COUNT(*) AS value
-		FROM `tabProgram Enrollment` pe
-		{join_clause}
-		{label_join}
-		WHERE {where_clause}
-		  AND {bucket_col} IS NOT NULL
-		  AND {bucket_col} != ''
-		GROUP BY bucket, label
-		ORDER BY value DESC
-		LIMIT %(limit)s
-		""",
+        SELECT
+            {bucket_col} AS bucket,
+            {label_col} AS label,
+            COUNT(*) AS value
+        FROM `tabProgram Enrollment` pe
+        {join_clause}
+        {label_join}
+        WHERE {where_clause}
+          AND {bucket_col} IS NOT NULL
+          AND {bucket_col} != ''
+        GROUP BY bucket, label
+        ORDER BY value DESC
+        LIMIT %(limit)s
+        """,
         params,
         as_dict=True,
     )
@@ -579,17 +579,17 @@ def get_enrollment_dashboard(payload=None):
 
     kpi_row = frappe.db.sql(
         f"""
-		SELECT
-			SUM(CASE WHEN pe.archived = 0 THEN 1 ELSE 0 END) AS active,
-			SUM(CASE WHEN pe.archived = 1 THEN 1 ELSE 0 END) AS archived,
-			SUM(
-				CASE WHEN pe.enrollment_date >= %(period_from)s
-				 AND pe.enrollment_date <= %(period_to)s THEN 1 ELSE 0 END
-			) AS new_in_period
-		FROM `tabProgram Enrollment` pe
-		{join_clause}
-		WHERE {where_clause}
-		""",
+        SELECT
+            SUM(CASE WHEN pe.archived = 0 THEN 1 ELSE 0 END) AS active,
+            SUM(CASE WHEN pe.archived = 1 THEN 1 ELSE 0 END) AS archived,
+            SUM(
+                CASE WHEN pe.enrollment_date >= %(period_from)s
+                 AND pe.enrollment_date <= %(period_to)s THEN 1 ELSE 0 END
+            ) AS new_in_period
+        FROM `tabProgram Enrollment` pe
+        {join_clause}
+        WHERE {where_clause}
+        """,
         params,
         as_dict=True,
     )
@@ -597,16 +597,16 @@ def get_enrollment_dashboard(payload=None):
 
     drops_row = frappe.db.sql(
         f"""
-		SELECT COUNT(*) AS drops_in_period
-		FROM `tabProgram Enrollment Course` pec
-		JOIN `tabProgram Enrollment` pe ON pe.name = pec.parent
-		{join_clause}
-		WHERE {where_clause}
-		  AND pec.parenttype = 'Program Enrollment'
-		  AND pec.status = 'Dropped'
-		  AND pec.dropped_date >= %(period_from)s
-		  AND pec.dropped_date <= %(period_to)s
-		""",
+        SELECT COUNT(*) AS drops_in_period
+        FROM `tabProgram Enrollment Course` pec
+        JOIN `tabProgram Enrollment` pe ON pe.name = pec.parent
+        {join_clause}
+        WHERE {where_clause}
+          AND pec.parenttype = 'Program Enrollment'
+          AND pec.status = 'Dropped'
+          AND pec.dropped_date >= %(period_from)s
+          AND pec.dropped_date <= %(period_to)s
+        """,
         params,
         as_dict=True,
     )
@@ -708,23 +708,23 @@ def _drilldown_rows(
     distinct_clause = "DISTINCT" if distinct else ""
     rows = frappe.db.sql(
         f"""
-		SELECT {distinct_clause}
-			pe.name AS id,
-			pe.student_name,
-			pe.cohort,
-			pe.program,
-			COALESCE(p.program_name, pe.program) AS program_label,
-			pe.school,
-			COALESCE(s.school_name, pe.school) AS school_label,
-			pe.enrollment_date
-		FROM `tabProgram Enrollment` pe
-		LEFT JOIN `tabSchool` s ON s.name = pe.school
-		LEFT JOIN `tabProgram` p ON p.name = pe.program
-		{joins}
-		WHERE {where_clause}
-		ORDER BY pe.enrollment_date DESC, pe.name DESC
-		LIMIT %(start)s, %(page_length)s
-		""",
+        SELECT {distinct_clause}
+            pe.name AS id,
+            pe.student_name,
+            pe.cohort,
+            pe.program,
+            COALESCE(p.program_name, pe.program) AS program_label,
+            pe.school,
+            COALESCE(s.school_name, pe.school) AS school_label,
+            pe.enrollment_date
+        FROM `tabProgram Enrollment` pe
+        LEFT JOIN `tabSchool` s ON s.name = pe.school
+        LEFT JOIN `tabProgram` p ON p.name = pe.program
+        {joins}
+        WHERE {where_clause}
+        ORDER BY pe.enrollment_date DESC, pe.name DESC
+        LIMIT %(start)s, %(page_length)s
+        """,
         {**params, "start": start, "page_length": page_length},
         as_dict=True,
     )
@@ -732,11 +732,11 @@ def _drilldown_rows(
     count_expr = "COUNT(DISTINCT pe.name)" if distinct else "COUNT(*)"
     total_count = frappe.db.sql(
         f"""
-		SELECT {count_expr}
-		FROM `tabProgram Enrollment` pe
-		{joins}
-		WHERE {where_clause}
-		""",
+        SELECT {count_expr}
+        FROM `tabProgram Enrollment` pe
+        {joins}
+        WHERE {where_clause}
+        """,
         params,
     )[0][0]
 

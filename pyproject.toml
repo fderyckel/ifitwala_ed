@@ -28,7 +28,7 @@ target-version = "py310"
 [tool.ruff.lint]
 # F = Pyflakes, E = pycodestyle errors, W = warnings, I = isort (imports)
 select = ["F", "E", "W", "I"]
-ignore = []
+ignore = ["E501"]
 
 [tool.ruff.format]
 quote-style = "double"

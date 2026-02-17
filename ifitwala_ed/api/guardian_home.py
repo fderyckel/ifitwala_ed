@@ -659,22 +659,22 @@ def _build_school_event_blocks(
     student_school = {child.get("student"): (child.get("school") or "") for child in children if child.get("student")}
     event_rows = frappe.db.sql(
         """
-		SELECT
-			name,
-			subject,
-			event_category,
-			school,
-			starts_on,
-			ends_on,
-			all_day,
-			location,
-			description
-		FROM `tabSchool Event`
-		WHERE docstatus < 2
-		  AND DATE(starts_on) <= %(end_date)s
-		  AND DATE(COALESCE(ends_on, starts_on)) >= %(start_date)s
-		ORDER BY starts_on asc, creation asc
-		""",
+        SELECT
+            name,
+            subject,
+            event_category,
+            school,
+            starts_on,
+            ends_on,
+            all_day,
+            location,
+            description
+        FROM `tabSchool Event`
+        WHERE docstatus < 2
+          AND DATE(starts_on) <= %(end_date)s
+          AND DATE(COALESCE(ends_on, starts_on)) >= %(start_date)s
+        ORDER BY starts_on asc, creation asc
+        """,
         {"start_date": start_date, "end_date": end_date},
         as_dict=True,
     )
@@ -970,23 +970,23 @@ def _build_communication_bundle(
 
     candidates = frappe.db.sql(
         """
-		SELECT
-			name,
-			title,
-			publish_from,
-			publish_to,
-			creation,
-			activity_program_offering,
-			activity_booking,
-			activity_student_group
-		FROM `tabOrg Communication`
-		WHERE status = 'Published'
-		  AND IFNULL(portal_surface, 'Everywhere') IN ('Everywhere', 'Portal Feed', 'Guardian Portal')
-		  AND (publish_from IS NULL OR publish_from <= %(candidate_end)s)
-		  AND (publish_to IS NULL OR publish_to >= %(candidate_start)s)
-		ORDER BY publish_from DESC, creation DESC
-		LIMIT 200
-		""",
+        SELECT
+            name,
+            title,
+            publish_from,
+            publish_to,
+            creation,
+            activity_program_offering,
+            activity_booking,
+            activity_student_group
+        FROM `tabOrg Communication`
+        WHERE status = 'Published'
+          AND IFNULL(portal_surface, 'Everywhere') IN ('Everywhere', 'Portal Feed', 'Guardian Portal')
+          AND (publish_from IS NULL OR publish_from <= %(candidate_end)s)
+          AND (publish_to IS NULL OR publish_to >= %(candidate_start)s)
+        ORDER BY publish_from DESC, creation DESC
+        LIMIT 200
+        """,
         {"candidate_start": candidate_start, "candidate_end": candidate_end},
         as_dict=True,
     )

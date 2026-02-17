@@ -158,11 +158,11 @@ def attendance_recorded_dates(student_group: str | None = None) -> List[str]:
 
     rows = frappe.db.sql(
         """
-		SELECT DISTINCT attendance_date
-		FROM `tabStudent Attendance`
-		WHERE student_group = %(student_group)s
-		ORDER BY attendance_date ASC
-		""",
+        SELECT DISTINCT attendance_date
+        FROM `tabStudent Attendance`
+        WHERE student_group = %(student_group)s
+        ORDER BY attendance_date ASC
+        """,
         {"student_group": student_group},
     )
     return [row[0].isoformat() for row in rows if row and row[0]]
@@ -366,18 +366,18 @@ def bulk_upsert_attendance(payload=None):
             params = [v for tup in chunk for v in tup]
             rows = frappe.db.sql(
                 f"""
-				SELECT
-					name,
-					student,
-					attendance_date,
-					student_group,
-					COALESCE(block_number, {SENTINEL}) AS block_number,
-					attendance_code,
-					IFNULL(remark, '') AS remark
-				FROM `tabStudent Attendance`
-				WHERE (student, attendance_date, student_group, COALESCE(block_number, {SENTINEL}))
-				      IN ({placeholders})
-				""",
+                SELECT
+                    name,
+                    student,
+                    attendance_date,
+                    student_group,
+                    COALESCE(block_number, {SENTINEL}) AS block_number,
+                    attendance_code,
+                    IFNULL(remark, '') AS remark
+                FROM `tabStudent Attendance`
+                WHERE (student, attendance_date, student_group, COALESCE(block_number, {SENTINEL}))
+                      IN ({placeholders})
+                """,
                 params,
                 as_dict=True,
             )

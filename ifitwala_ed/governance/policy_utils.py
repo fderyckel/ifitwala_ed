@@ -133,19 +133,19 @@ def has_applicant_policy_acknowledgement(
     org_placeholders = ", ".join(["%s"] * len(ancestor_orgs))
     rows = frappe.db.sql(
         f"""
-		SELECT pv.name AS policy_version
-		     , ip.policy_key AS policy_key
-		     , ip.organization AS policy_organization
-		  FROM `tabInstitutional Policy` ip
-		  JOIN `tabPolicy Version` pv
-		    ON pv.institutional_policy = ip.name
-		 WHERE ip.is_active = 1
-		   AND pv.is_active = 1
-		   AND ip.organization IN ({org_placeholders})
-		   AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
-		   AND ip.policy_key = %s
-		   AND ip.applies_to LIKE %s
-		""",
+        SELECT pv.name AS policy_version
+             , ip.policy_key AS policy_key
+             , ip.organization AS policy_organization
+          FROM `tabInstitutional Policy` ip
+          JOIN `tabPolicy Version` pv
+            ON pv.institutional_policy = ip.name
+         WHERE ip.is_active = 1
+           AND pv.is_active = 1
+           AND ip.organization IN ({org_placeholders})
+           AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
+           AND ip.policy_key = %s
+           AND ip.applies_to LIKE %s
+        """,
         (*ancestor_orgs, school, policy_key, "%Applicant%"),
         as_dict=True,
     )

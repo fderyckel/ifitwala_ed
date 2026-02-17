@@ -317,17 +317,17 @@ class StudentGroup(Document):
                 # 🔍 Check if already assigned to another Course-based group (same course, year, term)
                 conflict_group = frappe.db.sql(
                     """
-					SELECT sg.name
-					FROM `tabStudent Group` sg
-					INNER JOIN `tabStudent Group Student` sgs ON sg.name = sgs.parent
-					WHERE sg.name != %(current_group)s
-						AND sgs.student = %(student)s
-						AND sg.group_based_on = 'Course'
-						AND sg.academic_year = %(academic_year)s
-						AND sg.course = %(course)s
-						AND sg.term = %(term)s
-					LIMIT 1
-				""",
+                    SELECT sg.name
+                    FROM `tabStudent Group` sg
+                    INNER JOIN `tabStudent Group Student` sgs ON sg.name = sgs.parent
+                    WHERE sg.name != %(current_group)s
+                        AND sgs.student = %(student)s
+                        AND sg.group_based_on = 'Course'
+                        AND sg.academic_year = %(academic_year)s
+                        AND sg.course = %(course)s
+                        AND sg.term = %(term)s
+                    LIMIT 1
+                """,
                     {
                         "current_group": self.name,
                         "student": student.student,
@@ -364,16 +364,16 @@ class StudentGroup(Document):
 
                 valid_enrollment = frappe.db.sql(
                     f"""
-					SELECT 1
-					FROM `tabProgram Enrollment` pe
-					INNER JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name
-					WHERE pe.student = %(student)s
-						AND pe.academic_year = %(academic_year)s
-						{program_clause}
-						AND pec.course = %(course)s
-						AND pec.term_start = %(term)s
-					LIMIT 1
-				""",
+                    SELECT 1
+                    FROM `tabProgram Enrollment` pe
+                    INNER JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name
+                    WHERE pe.student = %(student)s
+                        AND pe.academic_year = %(academic_year)s
+                        {program_clause}
+                        AND pec.course = %(course)s
+                        AND pec.term_start = %(term)s
+                    LIMIT 1
+                """,
                     params,
                 )
 
@@ -643,14 +643,14 @@ class StudentGroup(Document):
 
         row = frappe.db.sql(
             """
-			SELECT ss.name
-			FROM `tabSchool Schedule` ss
-			INNER JOIN `tabSchool Calendar` sc ON sc.name = ss.school_calendar
-			WHERE ss.school IN %(schools)s
-				AND sc.academic_year = %(ay)s
-			ORDER BY ss.idx, ss.name
-			LIMIT 1
-		""",
+            SELECT ss.name
+            FROM `tabSchool Schedule` ss
+            INNER JOIN `tabSchool Calendar` sc ON sc.name = ss.school_calendar
+            WHERE ss.school IN %(schools)s
+                AND sc.academic_year = %(ay)s
+            ORDER BY ss.idx, ss.name
+            LIMIT 1
+        """,
             {"schools": allowed, "ay": self.academic_year},
         )
 
@@ -982,25 +982,25 @@ class StudentGroup(Document):
         #    - If both are set         → require (ay_end >= from_date) AND (ay_start <= to_date)
         row = frappe.db.sql(
             """
-					SELECT 1
-					FROM `tabProgram Offering Course` poc
-					LEFT JOIN `tabAcademic Year` ay_start ON ay_start.name = poc.start_academic_year
-					LEFT JOIN `tabAcademic Year` ay_enday ON ay_enday.name = poc.end_academic_year
-					WHERE poc.parenttype = 'Program Offering'
-						AND poc.parent = %(offering)s
-						AND poc.course = %(course)s
-						AND (
-									-- AY-range satisfied (if provided)
-									(ay_start.year_start_date IS NULL OR %(sel_ay_start)s >= ay_start.year_start_date)
-							AND (ay_enday.year_start_date IS NULL OR %(sel_ay_start)s <= ay_enday.year_start_date)
-						)
-						AND (
-									-- DATE-range overlap (if provided)
-									(poc.from_date IS NULL OR %(sel_ay_end)s   >= poc.from_date)
-							AND (poc.to_date   IS NULL OR %(sel_ay_start)s <= poc.to_date)
-						)
-					LIMIT 1
-					""",
+                    SELECT 1
+                    FROM `tabProgram Offering Course` poc
+                    LEFT JOIN `tabAcademic Year` ay_start ON ay_start.name = poc.start_academic_year
+                    LEFT JOIN `tabAcademic Year` ay_enday ON ay_enday.name = poc.end_academic_year
+                    WHERE poc.parenttype = 'Program Offering'
+                        AND poc.parent = %(offering)s
+                        AND poc.course = %(course)s
+                        AND (
+                                    -- AY-range satisfied (if provided)
+                                    (ay_start.year_start_date IS NULL OR %(sel_ay_start)s >= ay_start.year_start_date)
+                            AND (ay_enday.year_start_date IS NULL OR %(sel_ay_start)s <= ay_enday.year_start_date)
+                        )
+                        AND (
+                                    -- DATE-range overlap (if provided)
+                                    (poc.from_date IS NULL OR %(sel_ay_end)s   >= poc.from_date)
+                            AND (poc.to_date   IS NULL OR %(sel_ay_start)s <= poc.to_date)
+                        )
+                    LIMIT 1
+                    """,
             params,
         )
 
@@ -1081,18 +1081,18 @@ def get_students(
             return []  # no course selected → nothing to fetch yet
 
         join = """
-			INNER JOIN `tabProgram Enrollment Course` pec
-				ON pec.parenttype = 'Program Enrollment'
-				AND pec.parent = pe.name
-				AND pec.course = %(course)s
-				AND (pec.dropped_date IS NULL)
-		"""
+            INNER JOIN `tabProgram Enrollment Course` pec
+                ON pec.parenttype = 'Program Enrollment'
+                AND pec.parent = pe.name
+                AND pec.course = %(course)s
+                AND (pec.dropped_date IS NULL)
+        """
         params["course"] = course
 
         # If 'status' exists and you use a 'Dropped' value, exclude it defensively
         post_where = """
-			AND (pec.status IS NULL OR pec.status NOT IN ('Dropped'))
-		"""
+            AND (pec.status IS NULL OR pec.status NOT IN ('Dropped'))
+        """
 
     # Cohort-based
     elif group_based_on == "Cohort":
@@ -1105,18 +1105,18 @@ def get_students(
     # but since you explicitly gate types, leaving as-is is fine.
 
     sql = f"""
-		SELECT
-			pe.student        AS student,
-			COALESCE(pe.student_name, st.student_full_name) AS student_name,
-			1 AS active
-		FROM `tabProgram Enrollment` pe
-		LEFT JOIN `tabStudent` st ON st.name = pe.student
-		{join}
-		WHERE {" AND ".join(where)}
-		{post_where}
-		ORDER BY COALESCE(st.student_full_name, pe.student_name) ASC, pe.student ASC
-		LIMIT %(limit)s OFFSET %(start)s
-	"""
+        SELECT
+            pe.student        AS student,
+            COALESCE(pe.student_name, st.student_full_name) AS student_name,
+            1 AS active
+        FROM `tabProgram Enrollment` pe
+        LEFT JOIN `tabStudent` st ON st.name = pe.student
+        {join}
+        WHERE {" AND ".join(where)}
+        {post_where}
+        ORDER BY COALESCE(st.student_full_name, pe.student_name) ASC, pe.student ASC
+        LIMIT %(limit)s OFFSET %(start)s
+    """
 
     rows = frappe.db.sql(sql, params, as_dict=True)
 
@@ -1168,13 +1168,13 @@ def allowed_school_query(doctype, txt, searchfield, start, page_len, filters):
 
     return frappe.db.sql(
         """
-		SELECT sc.name
-		FROM `tabSchool` sc
-		WHERE sc.lft >= %s AND sc.rgt <= %s
-		  AND sc.name LIKE %s
-		ORDER BY sc.lft ASC
-		LIMIT %s OFFSET %s
-		""",
+        SELECT sc.name
+        FROM `tabSchool` sc
+        WHERE sc.lft >= %s AND sc.rgt <= %s
+          AND sc.name LIKE %s
+        ORDER BY sc.lft ASC
+        LIMIT %s OFFSET %s
+        """,
         (min_lft, max_rgt, f"%{txt}%", page_len, start),
     )
 
@@ -1196,13 +1196,13 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
     if gb in {"Other", "Activity"}:
         return frappe.db.sql(
             f"""
-			SELECT name, student_full_name
-			FROM `tabStudent`
-			WHERE enabled = 1
-			  AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
-			ORDER BY idx DESC, name
-			LIMIT %s, %s
-			""",
+            SELECT name, student_full_name
+            FROM `tabStudent`
+            WHERE enabled = 1
+              AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
+            ORDER BY idx DESC, name
+            LIMIT %s, %s
+            """,
             (like_txt, like_txt, start, page_len),
         )
 
@@ -1230,13 +1230,13 @@ def fetch_students(doctype, txt, searchfield, start, page_len, filters):
 
     return frappe.db.sql(
         f"""
-		SELECT name, student_full_name
-		FROM `tabStudent`
-		WHERE name IN ({placeholders})
-		  AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
-		ORDER BY idx DESC, name
-		LIMIT %s, %s
-		""",
+        SELECT name, student_full_name
+        FROM `tabStudent`
+        WHERE name IN ({placeholders})
+          AND (`{searchfield}` LIKE %s OR student_full_name LIKE %s)
+        ORDER BY idx DESC, name
+        LIMIT %s, %s
+        """,
         args,
     )
 
@@ -1272,28 +1272,28 @@ def get_program_enrollment_offering_first(
 
     if exclude_in_group and course and term:
         conditions.append("""
-			pe.student NOT IN (
-				SELECT sgs.student
-				FROM `tabStudent Group` sg
-				INNER JOIN `tabStudent Group Student` sgs ON sgs.parent = sg.name
-				WHERE sg.name != %(exclude_group)s
-				  AND sg.group_based_on = 'Course'
-				  AND sg.course = %(course)s
-				  AND sg.academic_year = %(ay)s
-				  AND sg.term = %(term)s
-			)
-		""")
+            pe.student NOT IN (
+                SELECT sgs.student
+                FROM `tabStudent Group` sg
+                INNER JOIN `tabStudent Group Student` sgs ON sgs.parent = sg.name
+                WHERE sg.name != %(exclude_group)s
+                  AND sg.group_based_on = 'Course'
+                  AND sg.course = %(course)s
+                  AND sg.academic_year = %(ay)s
+                  AND sg.term = %(term)s
+            )
+        """)
         params["exclude_group"] = exclude_in_group
 
     return frappe.db.sql(
         f"""
-		SELECT pe.student, COALESCE(pe.student_name, st.student_full_name) AS student_name
-		FROM `tabProgram Enrollment` pe
-		LEFT JOIN `tabStudent` st ON st.name = pe.student
-		{joins}
-		WHERE {" AND ".join(conditions)}
-		ORDER BY COALESCE(st.student_full_name, pe.student_name) ASC, pe.student ASC
-		""",
+        SELECT pe.student, COALESCE(pe.student_name, st.student_full_name) AS student_name
+        FROM `tabProgram Enrollment` pe
+        LEFT JOIN `tabStudent` st ON st.name = pe.student
+        {joins}
+        WHERE {" AND ".join(conditions)}
+        ORDER BY COALESCE(st.student_full_name, pe.student_name) ASC, pe.student ASC
+        """,
         params,
         as_dict=1,
     )
@@ -1332,15 +1332,15 @@ def schedule_picker_query(doctype, txt, searchfield, start, page_len, filters):
     like = f"%{txt}%"
     rows = frappe.db.sql(
         """
-		SELECT
-			name,
-			rotation_days
-		FROM `tabSchool Schedule`
-		WHERE school_calendar IN %(cals)s
-			AND (name LIKE %(like)s OR schedule_name LIKE %(like)s)
-		ORDER BY idx, name
-		LIMIT %(start)s, %(len)s
-		""",
+        SELECT
+            name,
+            rotation_days
+        FROM `tabSchool Schedule`
+        WHERE school_calendar IN %(cals)s
+            AND (name LIKE %(like)s OR schedule_name LIKE %(like)s)
+        ORDER BY idx, name
+        LIMIT %(start)s, %(len)s
+        """,
         dict(cals=tuple(cal_ids), like=like, start=start, len=page_len),
     )
     return rows
@@ -1370,26 +1370,26 @@ def get_program_enrollment(academic_year, term=None, program=None, cohort=None, 
     # Exclude students already assigned to another group for same course+term+year
     if exclude_in_group and course and term:
         conditions.append("""
-			pe.student NOT IN (
-				SELECT sgs.student
-				FROM `tabStudent Group` sg
-				INNER JOIN `tabStudent Group Student` sgs ON sgs.parent = sg.name
-				WHERE sg.name != %(exclude_group)s
-					AND sg.group_based_on = 'Course'
-					AND sg.course = %(course)s
-					AND sg.academic_year = %(academic_year)s
-					AND sg.term = %(term)s
-			)
-		""")
+            pe.student NOT IN (
+                SELECT sgs.student
+                FROM `tabStudent Group` sg
+                INNER JOIN `tabStudent Group Student` sgs ON sgs.parent = sg.name
+                WHERE sg.name != %(exclude_group)s
+                    AND sg.group_based_on = 'Course'
+                    AND sg.course = %(course)s
+                    AND sg.academic_year = %(academic_year)s
+                    AND sg.term = %(term)s
+            )
+        """)
         params["exclude_group"] = exclude_in_group
 
     query = f"""
-		SELECT pe.student, pe.student_name
-		FROM `tabProgram Enrollment` pe
-		{joins}
-		WHERE {" AND ".join(conditions)}
-		ORDER BY pe.student_name ASC
-	"""
+        SELECT pe.student, pe.student_name
+        FROM `tabProgram Enrollment` pe
+        {joins}
+        WHERE {" AND ".join(conditions)}
+        ORDER BY pe.student_name ASC
+    """
 
     return frappe.db.sql(query, params, as_dict=1)
 
@@ -1398,8 +1398,8 @@ def get_existing_students(student_group: str) -> list[str]:
     """Returns a list of student IDs already in the student group"""
     return frappe.db.sql_list(
         """
-		SELECT student FROM `tabStudent Group Student` WHERE parent = %s
-	""",
+        SELECT student FROM `tabStudent Group Student` WHERE parent = %s
+    """,
         (student_group,),
     )
 
@@ -1440,10 +1440,10 @@ def descendants_inclusive(school: str) -> set[str]:
         return set()
     rows = frappe.db.sql(
         """
-		SELECT name
-		FROM `tabSchool`
-		WHERE lft >= %s AND rgt <= %s
-		""",
+        SELECT name
+        FROM `tabSchool`
+        WHERE lft >= %s AND rgt <= %s
+        """,
         (lft, rgt),
         as_dict=True,
     )
@@ -1459,14 +1459,14 @@ def offering_ay_query(doctype, txt, searchfield, start, page_len, filters):
         return []
     return frappe.db.sql(
         """
-		SELECT ay.name
-		FROM `tabProgram Offering Academic Year` poay
-		INNER JOIN `tabAcademic Year` ay ON ay.name = poay.academic_year
-		WHERE poay.parenttype='Program Offering' AND poay.parent=%s
-		  AND ay.name LIKE %s
-		ORDER BY ay.name DESC
-		LIMIT %s OFFSET %s
-		""",
+        SELECT ay.name
+        FROM `tabProgram Offering Academic Year` poay
+        INNER JOIN `tabAcademic Year` ay ON ay.name = poay.academic_year
+        WHERE poay.parenttype='Program Offering' AND poay.parent=%s
+          AND ay.name LIKE %s
+        ORDER BY ay.name DESC
+        LIMIT %s OFFSET %s
+        """,
         (offering, f"%{txt}%", page_len, start),
     )
 

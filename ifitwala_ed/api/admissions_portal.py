@@ -457,21 +457,21 @@ def get_applicant_policies(student_applicant: str | None = None):
         org_placeholders = ", ".join(["%s"] * len(ancestor_orgs))
         policies_source = frappe.db.sql(
             f"""
-			SELECT ip.name AS policy_name,
-			       ip.policy_key AS policy_key,
-			       ip.policy_title AS policy_title,
-			       ip.organization AS policy_organization,
-			       pv.name AS policy_version,
-			       pv.policy_text AS policy_text
-			  FROM `tabInstitutional Policy` ip
-			  JOIN `tabPolicy Version` pv
-			    ON pv.institutional_policy = ip.name
-			 WHERE ip.is_active = 1
-			   AND pv.is_active = 1
-			   AND ip.organization IN ({org_placeholders})
-			   AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
-			   AND ip.applies_to LIKE %s
-			""",
+            SELECT ip.name AS policy_name,
+                   ip.policy_key AS policy_key,
+                   ip.policy_title AS policy_title,
+                   ip.organization AS policy_organization,
+                   pv.name AS policy_version,
+                   pv.policy_text AS policy_text
+              FROM `tabInstitutional Policy` ip
+              JOIN `tabPolicy Version` pv
+                ON pv.institutional_policy = ip.name
+             WHERE ip.is_active = 1
+               AND pv.is_active = 1
+               AND ip.organization IN ({org_placeholders})
+               AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
+               AND ip.applies_to LIKE %s
+            """,
             (*ancestor_orgs, school, "%Applicant%"),
             as_dict=True,
         )

@@ -364,19 +364,19 @@ def _load_item_tags(item_names: list[str]) -> Dict[str, list[Dict[str, Any]]]:
         return {}
     rows = frappe.db.sql(
         """
-		SELECT
-			et.name,
-			et.target_name,
-			et.tag_taxonomy,
-			tt.title AS tag_title,
-			et.tagged_by_type,
-			et.tagged_by_id
-		FROM `tabEvidence Tag` et
-		LEFT JOIN `tabTag Taxonomy` tt ON tt.name = et.tag_taxonomy
-		WHERE et.target_doctype = 'Student Portfolio Item'
-		  AND et.target_name IN %(item_names)s
-		ORDER BY et.creation ASC
-		""",
+        SELECT
+            et.name,
+            et.target_name,
+            et.tag_taxonomy,
+            tt.title AS tag_title,
+            et.tagged_by_type,
+            et.tagged_by_id
+        FROM `tabEvidence Tag` et
+        LEFT JOIN `tabTag Taxonomy` tt ON tt.name = et.tag_taxonomy
+        WHERE et.target_doctype = 'Student Portfolio Item'
+          AND et.target_name IN %(item_names)s
+        ORDER BY et.creation ASC
+        """,
         {"item_names": tuple(item_names)},
         as_dict=True,
     )
@@ -527,14 +527,14 @@ def _build_portfolio_feed(data: Dict[str, Any]) -> Dict[str, Any]:
     if tag_ids:
         conditions.append(
             """
-			EXISTS (
-				SELECT 1
-				FROM `tabEvidence Tag` et
-				WHERE et.target_doctype = 'Student Portfolio Item'
-				  AND et.target_name = pi.name
-				  AND et.tag_taxonomy IN %(tag_ids)s
-			)
-			"""
+            EXISTS (
+                SELECT 1
+                FROM `tabEvidence Tag` et
+                WHERE et.target_doctype = 'Student Portfolio Item'
+                  AND et.target_name = pi.name
+                  AND et.tag_taxonomy IN %(tag_ids)s
+            )
+            """
         )
         params["tag_ids"] = tuple(tag_ids)
 
@@ -542,10 +542,10 @@ def _build_portfolio_feed(data: Dict[str, Any]) -> Dict[str, Any]:
 
     count_row = frappe.db.sql(
         f"""
-		SELECT COUNT(*) AS total
-		FROM `tabStudent Portfolio Item` pi
-		JOIN `tabStudent Portfolio` p ON {where_clause}
-		""",
+        SELECT COUNT(*) AS total
+        FROM `tabStudent Portfolio Item` pi
+        JOIN `tabStudent Portfolio` p ON {where_clause}
+        """,
         params,
         as_dict=True,
     )
@@ -553,30 +553,30 @@ def _build_portfolio_feed(data: Dict[str, Any]) -> Dict[str, Any]:
 
     rows = frappe.db.sql(
         f"""
-		SELECT
-			pi.name AS item_name,
-			pi.parent AS portfolio,
-			p.student,
-			s.student_full_name,
-			p.academic_year,
-			p.school,
-			pi.item_type,
-			pi.task_submission,
-			pi.student_reflection_entry,
-			pi.artefact_file,
-			pi.evidence_date,
-			pi.program_enrollment,
-			pi.caption,
-			pi.reflection_summary,
-			pi.display_order,
-			pi.is_showcase,
-			pi.moderation_state
-		FROM `tabStudent Portfolio Item` pi
-		JOIN `tabStudent Portfolio` p ON {where_clause}
-		LEFT JOIN `tabStudent` s ON s.name = p.student
-		ORDER BY IFNULL(pi.evidence_date, DATE(pi.modified)) DESC, pi.modified DESC
-		LIMIT %(page_length)s OFFSET %(offset)s
-		""",
+        SELECT
+            pi.name AS item_name,
+            pi.parent AS portfolio,
+            p.student,
+            s.student_full_name,
+            p.academic_year,
+            p.school,
+            pi.item_type,
+            pi.task_submission,
+            pi.student_reflection_entry,
+            pi.artefact_file,
+            pi.evidence_date,
+            pi.program_enrollment,
+            pi.caption,
+            pi.reflection_summary,
+            pi.display_order,
+            pi.is_showcase,
+            pi.moderation_state
+        FROM `tabStudent Portfolio Item` pi
+        JOIN `tabStudent Portfolio` p ON {where_clause}
+        LEFT JOIN `tabStudent` s ON s.name = p.student
+        ORDER BY IFNULL(pi.evidence_date, DATE(pi.modified)) DESC, pi.modified DESC
+        LIMIT %(page_length)s OFFSET %(offset)s
+        """,
         {
             **params,
             "page_length": page_length,
@@ -938,14 +938,14 @@ def moderate_portfolio_items(payload=None, **kwargs):
 
     rows = frappe.db.sql(
         """
-		SELECT
-			pi.name AS item_name,
-			p.student,
-			p.school
-		FROM `tabStudent Portfolio Item` pi
-		JOIN `tabStudent Portfolio` p ON p.name = pi.parent
-		WHERE pi.name IN %(item_names)s
-		""",
+        SELECT
+            pi.name AS item_name,
+            p.student,
+            p.school
+        FROM `tabStudent Portfolio Item` pi
+        JOIN `tabStudent Portfolio` p ON p.name = pi.parent
+        WHERE pi.name IN %(item_names)s
+        """,
         {"item_names": tuple(item_names)},
         as_dict=True,
     )
@@ -1343,24 +1343,24 @@ def _render_portfolio_pdf_html(feed: Dict[str, Any], title: str) -> str:
         preview = evidence.get("text_preview") or ""
         rows.append(
             f"""
-			<section style=\"margin-bottom:18px;padding:12px;border:1px solid #ddd;border-radius:8px;\">
-				<h3 style=\"margin:0 0 6px 0;\">{frappe.utils.escape_html(item.get("caption") or item.get("item_type") or "Portfolio Item")}</h3>
-				<p style=\"margin:0 0 6px 0;color:#444;\">Date: {item.get("evidence_date") or ""}</p>
-				<p style=\"margin:0 0 6px 0;color:#444;\">{frappe.utils.escape_html(item.get("reflection_summary") or "")}</p>
-				<p style=\"margin:0 0 6px 0;color:#666;\">{frappe.utils.escape_html(preview)}</p>
-				<p style=\"margin:0;color:#666;font-size:12px;\">Tags: {frappe.utils.escape_html(tags)}</p>
-			</section>
-			"""
+            <section style=\"margin-bottom:18px;padding:12px;border:1px solid #ddd;border-radius:8px;\">
+                <h3 style=\"margin:0 0 6px 0;\">{frappe.utils.escape_html(item.get("caption") or item.get("item_type") or "Portfolio Item")}</h3>
+                <p style=\"margin:0 0 6px 0;color:#444;\">Date: {item.get("evidence_date") or ""}</p>
+                <p style=\"margin:0 0 6px 0;color:#444;\">{frappe.utils.escape_html(item.get("reflection_summary") or "")}</p>
+                <p style=\"margin:0 0 6px 0;color:#666;\">{frappe.utils.escape_html(preview)}</p>
+                <p style=\"margin:0;color:#666;font-size:12px;\">Tags: {frappe.utils.escape_html(tags)}</p>
+            </section>
+            """
         )
     content = "".join(rows) or "<p>No items matched the current filters.</p>"
     return f"""
-	<html>
-		<body style=\"font-family: Helvetica, Arial, sans-serif;\">
-			<h1>{frappe.utils.escape_html(title)}</h1>
-			{content}
-		</body>
-	</html>
-	"""
+    <html>
+        <body style=\"font-family: Helvetica, Arial, sans-serif;\">
+            <h1>{frappe.utils.escape_html(title)}</h1>
+            {content}
+        </body>
+    </html>
+    """
 
 
 def _render_reflection_pdf_html(rows: List[Dict[str, Any]], title: str) -> str:
@@ -1368,22 +1368,22 @@ def _render_reflection_pdf_html(rows: List[Dict[str, Any]], title: str) -> str:
     for row in rows:
         sections.append(
             f"""
-			<section style=\"margin-bottom:18px;padding:12px;border:1px solid #ddd;border-radius:8px;\">
-				<h3 style=\"margin:0 0 6px 0;\">{frappe.utils.escape_html(row.get("entry_type") or "Reflection")}</h3>
-				<p style=\"margin:0 0 6px 0;color:#444;\">Date: {row.get("entry_date") or ""}</p>
-				<div style=\"color:#222;\">{row.get("body") or ""}</div>
-			</section>
-			"""
+            <section style=\"margin-bottom:18px;padding:12px;border:1px solid #ddd;border-radius:8px;\">
+                <h3 style=\"margin:0 0 6px 0;\">{frappe.utils.escape_html(row.get("entry_type") or "Reflection")}</h3>
+                <p style=\"margin:0 0 6px 0;color:#444;\">Date: {row.get("entry_date") or ""}</p>
+                <div style=\"color:#222;\">{row.get("body") or ""}</div>
+            </section>
+            """
         )
     content = "".join(sections) or "<p>No reflections matched the current filters.</p>"
     return f"""
-	<html>
-		<body style=\"font-family: Helvetica, Arial, sans-serif;\">
-			<h1>{frappe.utils.escape_html(title)}</h1>
-			{content}
-		</body>
-	</html>
-	"""
+    <html>
+        <body style=\"font-family: Helvetica, Arial, sans-serif;\">
+            <h1>{frappe.utils.escape_html(title)}</h1>
+            {content}
+        </body>
+    </html>
+    """
 
 
 def _dispatch_export_file(

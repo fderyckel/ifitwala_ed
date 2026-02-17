@@ -297,13 +297,13 @@ def _validate_student_age(offering, student: str) -> None:
 def _lock_student_offering(student: str, program_offering: str) -> list[dict]:
     return frappe.db.sql(
         """
-		SELECT name, status
-		FROM `tabActivity Booking`
-		WHERE student = %s
-		  AND program_offering = %s
-		  AND status IN ('Submitted', 'Waitlisted', 'Offered', 'Confirmed')
-		FOR UPDATE
-		""",
+        SELECT name, status
+        FROM `tabActivity Booking`
+        WHERE student = %s
+          AND program_offering = %s
+          AND status IN ('Submitted', 'Waitlisted', 'Offered', 'Confirmed')
+        FOR UPDATE
+        """,
         (student, program_offering),
         as_dict=True,
     )
@@ -312,13 +312,13 @@ def _lock_student_offering(student: str, program_offering: str) -> list[dict]:
 def _lock_reserved_section_rows(program_offering: str, student_group: str) -> list[dict]:
     return frappe.db.sql(
         """
-		SELECT name
-		FROM `tabActivity Booking`
-		WHERE program_offering = %s
-		  AND allocated_student_group = %s
-		  AND status IN ('Offered', 'Confirmed')
-		FOR UPDATE
-		""",
+        SELECT name
+        FROM `tabActivity Booking`
+        WHERE program_offering = %s
+          AND allocated_student_group = %s
+          AND status IN ('Offered', 'Confirmed')
+        FOR UPDATE
+        """,
         (program_offering, student_group),
         as_dict=True,
     )
@@ -327,13 +327,13 @@ def _lock_reserved_section_rows(program_offering: str, student_group: str) -> li
 def _waitlist_position(program_offering: str, student_group: str) -> int:
     rows = frappe.db.sql(
         """
-		SELECT COALESCE(MAX(waitlist_position), 0) AS max_pos
-		FROM `tabActivity Booking`
-		WHERE program_offering = %s
-		  AND allocated_student_group = %s
-		  AND status IN ('Waitlisted', 'Offered')
-		FOR UPDATE
-		""",
+        SELECT COALESCE(MAX(waitlist_position), 0) AS max_pos
+        FROM `tabActivity Booking`
+        WHERE program_offering = %s
+          AND allocated_student_group = %s
+          AND status IN ('Waitlisted', 'Offered')
+        FOR UPDATE
+        """,
         (program_offering, student_group),
         as_dict=True,
     )
@@ -1285,28 +1285,28 @@ def _activity_context_maps(program_names: list[str]) -> dict:
 
     rows = frappe.db.sql(
         """
-		SELECT
-			a.name AS activity,
-			a.school,
-			ap.program,
-			a.descriptions,
-			a.logistics_location_label,
-			a.logistics_pickup_instructions,
-			a.logistics_dropoff_instructions,
-			a.logistics_map_url,
-			a.logistics_notes,
-			a.media_cover_image,
-			a.media_gallery_link,
-			a.media_notes
-		FROM `tabActivity` a
-		INNER JOIN `tabActivity Program` ap
-			ON ap.parent = a.name
-			AND ap.parenttype = 'Activity'
-			AND ap.parentfield = 'program_allowed'
-		WHERE ap.program IN %(programs)s
-		  AND a.status = 1
-		ORDER BY a.modified DESC
-		""",
+        SELECT
+            a.name AS activity,
+            a.school,
+            ap.program,
+            a.descriptions,
+            a.logistics_location_label,
+            a.logistics_pickup_instructions,
+            a.logistics_dropoff_instructions,
+            a.logistics_map_url,
+            a.logistics_notes,
+            a.media_cover_image,
+            a.media_gallery_link,
+            a.media_notes
+        FROM `tabActivity` a
+        INNER JOIN `tabActivity Program` ap
+            ON ap.parent = a.name
+            AND ap.parenttype = 'Activity'
+            AND ap.parentfield = 'program_allowed'
+        WHERE ap.program IN %(programs)s
+          AND a.status = 1
+        ORDER BY a.modified DESC
+        """,
         {"programs": tuple(programs)},
         as_dict=True,
     )
@@ -1513,12 +1513,12 @@ def get_activity_portal_board(students=None, include_inactive: int = 0):
         sg_map = {sg.get("name"): sg for sg in sg_rows}
         reserved_rows = frappe.db.sql(
             """
-			SELECT allocated_student_group AS section_name, COUNT(*) AS reserved_count
-			FROM `tabActivity Booking`
-			WHERE program_offering = %(program_offering)s
-			  AND status IN ('Offered', 'Confirmed')
-			GROUP BY allocated_student_group
-			""",
+            SELECT allocated_student_group AS section_name, COUNT(*) AS reserved_count
+            FROM `tabActivity Booking`
+            WHERE program_offering = %(program_offering)s
+              AND status IN ('Offered', 'Confirmed')
+            GROUP BY allocated_student_group
+            """,
             {"program_offering": name},
             as_dict=True,
         )

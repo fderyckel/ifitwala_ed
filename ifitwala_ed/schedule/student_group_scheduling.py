@@ -257,17 +257,17 @@ def check_slot_conflicts(group_doc):
         params.update(slot_params)
         rows = frappe.db.sql(
             f"""
-			SELECT coalesce(gi.employee, gi.instructor) AS entity,
-				   gs.rotation_day,
-				   gs.block_number,
-				   gs.parent AS student_group
-			FROM `tabStudent Group Instructor` gi
-			JOIN `tabStudent Group Schedule`  gs ON gs.parent = gi.parent
-			WHERE coalesce(gi.employee, gi.instructor) IN %(ids)s
-				AND gs.parent != %(grp)s
-				AND gs.docstatus < 2
-				AND ({slot_clause})
-			""",
+            SELECT coalesce(gi.employee, gi.instructor) AS entity,
+                   gs.rotation_day,
+                   gs.block_number,
+                   gs.parent AS student_group
+            FROM `tabStudent Group Instructor` gi
+            JOIN `tabStudent Group Schedule`  gs ON gs.parent = gi.parent
+            WHERE coalesce(gi.employee, gi.instructor) IN %(ids)s
+                AND gs.parent != %(grp)s
+                AND gs.docstatus < 2
+                AND ({slot_clause})
+            """,
             params,
             as_dict=True,
         )
@@ -278,17 +278,17 @@ def check_slot_conflicts(group_doc):
         params.update(slot_params)
         rows = frappe.db.sql(
             f"""
-			SELECT st.student AS entity,
-				   gs.rotation_day,
-				   gs.block_number,
-				   gs.parent AS student_group
-			FROM `tabStudent Group Student` st
-			JOIN `tabStudent Group Schedule` gs ON gs.parent = st.parent
-			WHERE st.student IN %(ids)s
-				AND gs.parent != %(grp)s
-				AND gs.docstatus < 2
-				AND ({slot_clause})
-			""",
+            SELECT st.student AS entity,
+                   gs.rotation_day,
+                   gs.block_number,
+                   gs.parent AS student_group
+            FROM `tabStudent Group Student` st
+            JOIN `tabStudent Group Schedule` gs ON gs.parent = st.parent
+            WHERE st.student IN %(ids)s
+                AND gs.parent != %(grp)s
+                AND gs.docstatus < 2
+                AND ({slot_clause})
+            """,
             params,
             as_dict=True,
         )

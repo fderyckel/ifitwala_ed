@@ -28,19 +28,19 @@ def _get_academic_years(student_name: str) -> list[str]:
 def _get_courses_for_year(student_name: str, academic_year: str) -> list[dict]:
     rows = frappe.db.sql(
         """
-		SELECT
-			pec.course,
-			COALESCE(pec.course_name, c.course_name) AS course_name,
-			c.course_group,
-			c.course_image
-		FROM `tabProgram Enrollment Course` pec
-		JOIN `tabProgram Enrollment` pe ON pec.parent = pe.name
-		LEFT JOIN `tabCourse` c ON c.name = pec.course
-		WHERE pe.student = %s
-		  AND pe.academic_year = %s
-		  AND COALESCE(pec.status, 'Enrolled') <> 'Dropped'
-		ORDER BY COALESCE(pec.course_name, pec.course)
-		""",
+        SELECT
+            pec.course,
+            COALESCE(pec.course_name, c.course_name) AS course_name,
+            c.course_group,
+            c.course_image
+        FROM `tabProgram Enrollment Course` pec
+        JOIN `tabProgram Enrollment` pe ON pec.parent = pe.name
+        LEFT JOIN `tabCourse` c ON c.name = pec.course
+        WHERE pe.student = %s
+          AND pe.academic_year = %s
+          AND COALESCE(pec.status, 'Enrolled') <> 'Dropped'
+        ORDER BY COALESCE(pec.course_name, pec.course)
+        """,
         (student_name, academic_year),
         as_dict=True,
     )
