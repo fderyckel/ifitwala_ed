@@ -78,4 +78,3 @@ frappe.treeview_settings["Organization"] = {
 		treeview.make_tree();
 	},
 };
-

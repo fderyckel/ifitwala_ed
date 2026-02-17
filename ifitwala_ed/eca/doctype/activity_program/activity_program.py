@@ -6,4 +6,4 @@ from frappe.model.document import Document
 
 
 class ActivityProgram(Document):
-	pass
+    pass

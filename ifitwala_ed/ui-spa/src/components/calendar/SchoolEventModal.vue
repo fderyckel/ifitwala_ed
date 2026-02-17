@@ -7,11 +7,7 @@
   - ScheduleCalendar.vue
 -->
 <template>
-	<TransitionRoot
-		as="template"
-		:show="open"
-		@after-leave="emitAfterLeave"
-	>
+	<TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
 		<Dialog
 			as="div"
 			class="if-overlay if-overlay--school"
@@ -92,7 +88,9 @@
 
 							<div v-else-if="resolvedError" class="meeting-modal__error">
 								<p class="type-body">{{ resolvedError }}</p>
-								<button class="meeting-modal__cta" @click="emitClose('programmatic')">Close</button>
+								<button class="meeting-modal__cta" @click="emitClose('programmatic')">
+									Close
+								</button>
 							</div>
 
 							<div v-else-if="resolvedEvent">
@@ -210,7 +208,9 @@ const localError = ref<string | null>(null);
 let reqSeq = 0;
 
 function isEventPayload(value: unknown): value is SchoolEventDetails {
-	return Boolean(value && typeof value === 'object' && 'subject' in (value as Record<string, unknown>));
+	return Boolean(
+		value && typeof value === 'object' && 'subject' in (value as Record<string, unknown>)
+	);
 }
 
 async function fetchSchoolEventDetails(eventName: string) {
@@ -229,7 +229,8 @@ async function fetchSchoolEventDetails(eventName: string) {
 		}
 	} catch (err) {
 		if (seq === reqSeq) {
-			localError.value = err instanceof Error ? err.message : 'Unable to load school event details right now.';
+			localError.value =
+				err instanceof Error ? err.message : 'Unable to load school event details right now.';
 		}
 	} finally {
 		if (seq === reqSeq) {
@@ -261,7 +262,8 @@ watch(
 
 		reqSeq += 1;
 		localLoading.value = false;
-		localError.value = 'Could not determine which school event was clicked. Please refresh and try again.';
+		localError.value =
+			'Could not determine which school event was clicked. Please refresh and try again.';
 		resolvedEvent.value = null;
 	},
 	{ immediate: true }
@@ -333,7 +335,7 @@ function onKeydown(e: KeyboardEvent) {
 
 watch(
 	() => props.open,
-	(v) => {
+	v => {
 		if (v) document.addEventListener('keydown', onKeydown, true);
 		else document.removeEventListener('keydown', onKeydown, true);
 	},

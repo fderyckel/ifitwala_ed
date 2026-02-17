@@ -3,21 +3,13 @@
 
 from frappe import _
 
-def get_data(): 
-  return {
-    "fieldname": "student",
-    "transactions": [
-      {
-        "label": _("Academic"),
-        "items": ["Program Enrollment", "Course Enrollment", "Student Group"]
-      }, 
-      {
-        "label": _("Communication"),
-        "items": ["Student Log"]
-       }, 
-      {
-        "label": _("Health"),
-        "items": ["Student Patient"]
-      }
-    ]
-  }
+
+def get_data():
+    return {
+        "fieldname": "student",
+        "transactions": [
+            {"label": _("Academic"), "items": ["Program Enrollment", "Course Enrollment", "Student Group"]},
+            {"label": _("Communication"), "items": ["Student Log"]},
+            {"label": _("Health"), "items": ["Student Patient"]},
+        ],
+    }

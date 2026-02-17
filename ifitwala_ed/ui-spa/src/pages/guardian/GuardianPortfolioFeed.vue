@@ -13,6 +13,6 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
-import PortfolioFeedSurface from '@/components/portfolio/PortfolioFeedSurface.vue'
+import { RouterLink } from 'vue-router';
+import PortfolioFeedSurface from '@/components/portfolio/PortfolioFeedSurface.vue';
 </script>

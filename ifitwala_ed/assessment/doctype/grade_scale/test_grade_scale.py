@@ -6,4 +6,4 @@ from frappe.tests.utils import FrappeTestCase
 
 
 class TestGradeScale(FrappeTestCase):
-	pass
+    pass

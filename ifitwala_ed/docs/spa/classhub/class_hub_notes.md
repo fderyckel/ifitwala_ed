@@ -277,4 +277,3 @@ When teacher adds evidence:
   No grading required.
 
 ---
-

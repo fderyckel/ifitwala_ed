@@ -10,14 +10,14 @@ from frappe.model.document import Document
 
 
 class CourseTermResult(Document):
-	def validate(self):
-		# Keep override flag in sync
-		self.is_override = 1 if self.override_grade_value else 0
+    def validate(self):
+        # Keep override flag in sync
+        self.is_override = 1 if self.override_grade_value else 0
 
 
 def on_doctype_update():
-	# Optimise the common lookups used by term_reporting
-	frappe.db.add_index("Course Term Result", ["reporting_cycle", "student"])
-	frappe.db.add_index("Course Term Result", ["reporting_cycle", "program_enrollment", "course"])
-	frappe.db.add_index("Course Term Result", ["reporting_cycle", "course"])
-	frappe.db.add_index("Course Term Result", ["reporting_cycle", "program"])
+    # Optimise the common lookups used by term_reporting
+    frappe.db.add_index("Course Term Result", ["reporting_cycle", "student"])
+    frappe.db.add_index("Course Term Result", ["reporting_cycle", "program_enrollment", "course"])
+    frappe.db.add_index("Course Term Result", ["reporting_cycle", "course"])
+    frappe.db.add_index("Course Term Result", ["reporting_cycle", "program"])

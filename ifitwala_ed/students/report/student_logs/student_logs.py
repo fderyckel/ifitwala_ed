@@ -4,101 +4,122 @@
 # Ifitwala Ed - Student Log + Follow-ups (Script Report)
 
 import frappe
-from frappe.utils import getdate, add_days, strip_html_tags
+from frappe.utils import add_days, getdate, strip_html_tags
+
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 
 def execute(filters=None):
-	filters = _normalize_filters(filters or {})
-	columns = _get_columns()
-	data = _get_data(filters)
-	return columns, data
+    filters = _normalize_filters(filters or {})
+    columns = _get_columns()
+    data = _get_data(filters)
+    return columns, data
+
 
 def _normalize_filters(f):
-	# Default: last 30 days (inclusive)
-	if not f.get("from_date") or not f.get("to_date"):
-		today = getdate()
-		f.setdefault("to_date", today)
-		f.setdefault("from_date", add_days(today, -30))
+    # Default: last 30 days (inclusive)
+    if not f.get("from_date") or not f.get("to_date"):
+        today = getdate()
+        f.setdefault("to_date", today)
+        f.setdefault("from_date", add_days(today, -30))
 
-	# Coerce strings → dates
-	f["from_date"] = getdate(f["from_date"])
-	f["to_date"] = getdate(f["to_date"])
+    # Coerce strings → dates
+    f["from_date"] = getdate(f["from_date"])
+    f["to_date"] = getdate(f["to_date"])
 
-	# Limit statuses to the canonical set
-	if f.get("follow_up_status") and f["follow_up_status"] not in {"Open", "In Progress", "Completed"}:
-		f["follow_up_status"] = None
+    # Limit statuses to the canonical set
+    if f.get("follow_up_status") and f["follow_up_status"] not in {"Open", "In Progress", "Completed"}:
+        f["follow_up_status"] = None
 
-	# Optional booleans
-	for k in ("requires_follow_up",):
-		if k in f:
-			try:
-				f[k] = 1 if str(f[k]).lower() in {"1", "true", "yes"} else 0
-			except Exception:
-				f[k] = None
+    # Optional booleans
+    for k in ("requires_follow_up",):
+        if k in f:
+            try:
+                f[k] = 1 if str(f[k]).lower() in {"1", "true", "yes"} else 0
+            except Exception:
+                f[k] = None
 
-	# Current user for permission guard
-	f["_user"] = frappe.session.user
+    # Current user for permission guard
+    f["_user"] = frappe.session.user
 
-	return f
+    return f
+
 
 def _get_columns():
-	# Parent (Student Log) + Child (Follow-up) columns
-	return [
-		{"label": "Log ID", "fieldname": "log_id", "fieldtype": "Link", "options": "Student Log", "width": 140},
-		{"label": "Log Date", "fieldname": "log_date", "fieldtype": "Date", "width": 100},
-		{"label": "Time", "fieldname": "log_time", "fieldtype": "Data", "width": 90},
-		{"label": "Student", "fieldname": "student", "fieldtype": "Link", "options": "Student", "width": 120},
-		{"label": "Student Name", "fieldname": "student_name", "fieldtype": "Data", "width": 180},
-		{"label": "Program", "fieldname": "program", "fieldtype": "Link", "options": "Program", "width": 140},
-		{"label": "School", "fieldname": "school", "fieldtype": "Link", "options": "School", "width": 140},
-		{"label": "Academic Year", "fieldname": "academic_year", "fieldtype": "Link", "options": "Academic Year", "width": 120},
-		{"label": "Log Type", "fieldname": "log_type", "fieldtype": "Link", "options": "Student Log Type", "width": 140},
-		{"label": "Requires Follow-up", "fieldname": "requires_follow_up", "fieldtype": "Check", "width": 70},
-		{"label": "Follow-up Status", "fieldname": "follow_up_status", "fieldtype": "Data", "width": 120},
-		{"label": "Author", "fieldname": "author_name", "fieldtype": "Data", "width": 160},
-		{"label": "Visibility", "fieldname": "visibility", "fieldtype": "Data", "width": 90},
-		{"label": "Log Snippet", "fieldname": "log_snippet", "fieldtype": "Data", "width": 360},
-		{"label": "Follow-ups", "fieldname": "follow_up_count", "fieldtype": "Int", "width": 90},
-		{"label": "Last Follow-up On", "fieldname": "last_follow_up_on", "fieldtype": "Date", "width": 120},
-		# Child
-		{"label": "Follow-up ID", "fieldname": "follow_up_id", "fieldtype": "Link", "options": "Student Log Follow Up", "width": 160},
-		{"label": "FU Date", "fieldname": "fu_date", "fieldtype": "Date", "width": 100},
-		{"label": "FU Author", "fieldname": "fu_author", "fieldtype": "Data", "width": 160},
-		{"label": "Follow-up Snippet", "fieldname": "follow_up_snippet", "fieldtype": "Data", "width": 360},
-	]
+    # Parent (Student Log) + Child (Follow-up) columns
+    return [
+        {"label": "Log ID", "fieldname": "log_id", "fieldtype": "Link", "options": "Student Log", "width": 140},
+        {"label": "Log Date", "fieldname": "log_date", "fieldtype": "Date", "width": 100},
+        {"label": "Time", "fieldname": "log_time", "fieldtype": "Data", "width": 90},
+        {"label": "Student", "fieldname": "student", "fieldtype": "Link", "options": "Student", "width": 120},
+        {"label": "Student Name", "fieldname": "student_name", "fieldtype": "Data", "width": 180},
+        {"label": "Program", "fieldname": "program", "fieldtype": "Link", "options": "Program", "width": 140},
+        {"label": "School", "fieldname": "school", "fieldtype": "Link", "options": "School", "width": 140},
+        {
+            "label": "Academic Year",
+            "fieldname": "academic_year",
+            "fieldtype": "Link",
+            "options": "Academic Year",
+            "width": 120,
+        },
+        {
+            "label": "Log Type",
+            "fieldname": "log_type",
+            "fieldtype": "Link",
+            "options": "Student Log Type",
+            "width": 140,
+        },
+        {"label": "Requires Follow-up", "fieldname": "requires_follow_up", "fieldtype": "Check", "width": 70},
+        {"label": "Follow-up Status", "fieldname": "follow_up_status", "fieldtype": "Data", "width": 120},
+        {"label": "Author", "fieldname": "author_name", "fieldtype": "Data", "width": 160},
+        {"label": "Visibility", "fieldname": "visibility", "fieldtype": "Data", "width": 90},
+        {"label": "Log Snippet", "fieldname": "log_snippet", "fieldtype": "Data", "width": 360},
+        {"label": "Follow-ups", "fieldname": "follow_up_count", "fieldtype": "Int", "width": 90},
+        {"label": "Last Follow-up On", "fieldname": "last_follow_up_on", "fieldtype": "Date", "width": 120},
+        # Child
+        {
+            "label": "Follow-up ID",
+            "fieldname": "follow_up_id",
+            "fieldtype": "Link",
+            "options": "Student Log Follow Up",
+            "width": 160,
+        },
+        {"label": "FU Date", "fieldname": "fu_date", "fieldtype": "Date", "width": 100},
+        {"label": "FU Author", "fieldname": "fu_author", "fieldtype": "Data", "width": 160},
+        {"label": "Follow-up Snippet", "fieldname": "follow_up_snippet", "fieldtype": "Data", "width": 360},
+    ]
+
 
 def _get_data(f):
-	params = {
-		"from_date": f["from_date"],
-		"to_date": f["to_date"],
-		"student": f.get("student"),
-		"program": f.get("program"),
-		"school": f.get("school"),
-		"academic_year": f.get("academic_year"),
-		"log_type": f.get("log_type"),
-		"follow_up_status": f.get("follow_up_status"),
-		"requires_follow_up": f.get("requires_follow_up"),
-		"author": f.get("author"),
-		"fu_author": f.get("fu_author"),
-		"user": f["_user"],
-	}
+    params = {
+        "from_date": f["from_date"],
+        "to_date": f["to_date"],
+        "student": f.get("student"),
+        "program": f.get("program"),
+        "school": f.get("school"),
+        "academic_year": f.get("academic_year"),
+        "log_type": f.get("log_type"),
+        "follow_up_status": f.get("follow_up_status"),
+        "requires_follow_up": f.get("requires_follow_up"),
+        "author": f.get("author"),
+        "fu_author": f.get("fu_author"),
+        "user": f["_user"],
+    }
 
-	school_name = params.get("school")
-	if school_name:
-			try:
-					desc = get_descendant_schools(school_name)
-					schools = desc or [school_name]
-			except Exception:
-					schools = [school_name]
-			# convert to tuple for SQL
-			params["school_list"] = tuple(schools)
-	else:
-			params["school_list"] = None
+    school_name = params.get("school")
+    if school_name:
+        try:
+            desc = get_descendant_schools(school_name)
+            schools = desc or [school_name]
+        except Exception:
+            schools = [school_name]
+        # convert to tuple for SQL
+        params["school_list"] = tuple(schools)
+    else:
+        params["school_list"] = None
 
-
-	# Aggregation: count + last follow-up per log (no extra filters)
-	agg_sql = """
+    # Aggregation: count + last follow-up per log (no extra filters)
+    agg_sql = """
 		select
 			student_log,
 			count(*) as cnt,
@@ -107,8 +128,8 @@ def _get_data(f):
 		group by student_log
 	"""
 
-	# Main query (select a computed latest_activity_on, then order by it DESC)
-	sql = f"""
+    # Main query (select a computed latest_activity_on, then order by it DESC)
+    sql = f"""
 		select
 			sl.name as log_id,
 			sl.date as log_date,
@@ -167,88 +188,103 @@ def _get_data(f):
 			slfu.name desc
 	"""
 
-	rows = frappe.db.sql(sql, params, as_dict=True)
+    rows = frappe.db.sql(sql, params, as_dict=True)
 
-	# Normalize to HH:MM defensively
-	for r in rows:
-			t = r.get("log_time")
-			if t:
-					r["log_time"] = str(t)[:5]
+    # Normalize to HH:MM defensively
+    for r in rows:
+        t = r.get("log_time")
+        if t:
+            r["log_time"] = str(t)[:5]
 
-	# Group + indent: one group header per log, then child rows per follow-up (newest → oldest)
-	seen = set()
-	data = []
-	for r in rows:
-		if r["log_id"] not in seen:
-			seen.add(r["log_id"])
+    # Group + indent: one group header per log, then child rows per follow-up (newest → oldest)
+    seen = set()
+    data = []
+    for r in rows:
+        if r["log_id"] not in seen:
+            seen.add(r["log_id"])
 
-			log_snip = _snippet(strip_html_tags(r.get("log_html") or ""), 220)
-			visibility = _visibility_icons(r.get("visible_to_student"), r.get("visible_to_guardians"))
+            log_snip = _snippet(strip_html_tags(r.get("log_html") or ""), 220)
+            visibility = _visibility_icons(r.get("visible_to_student"), r.get("visible_to_guardians"))
 
-			data.append({
-				# parent (group header)
-				"is_group": 1,
-				"indent": 0,
-				"log_id": r["log_id"],
-				"log_date": r["log_date"],
-				"log_time": r.get("log_time"),
-				"student": r.get("student"),
-				"student_name": r.get("student_name"),
-				"program": r.get("program"),
-				"school": r.get("school"),
-				"academic_year": r.get("academic_year"),
-				"log_type": r.get("log_type"),
-				"requires_follow_up": r.get("requires_follow_up"),
-				"follow_up_status": r.get("follow_up_status"),
-				"author_name": r.get("author_name"),
-				"visibility": visibility,
-				"log_snippet": log_snip,
-				"follow_up_count": r.get("follow_up_count") or 0,
-				"last_follow_up_on": r.get("last_follow_up_on"),
-				# child columns blank at header level
-				"follow_up_id": None,
-				"fu_date": None,
-				"fu_author": None,
-				"follow_up_snippet": None,
-			})
+            data.append(
+                {
+                    # parent (group header)
+                    "is_group": 1,
+                    "indent": 0,
+                    "log_id": r["log_id"],
+                    "log_date": r["log_date"],
+                    "log_time": r.get("log_time"),
+                    "student": r.get("student"),
+                    "student_name": r.get("student_name"),
+                    "program": r.get("program"),
+                    "school": r.get("school"),
+                    "academic_year": r.get("academic_year"),
+                    "log_type": r.get("log_type"),
+                    "requires_follow_up": r.get("requires_follow_up"),
+                    "follow_up_status": r.get("follow_up_status"),
+                    "author_name": r.get("author_name"),
+                    "visibility": visibility,
+                    "log_snippet": log_snip,
+                    "follow_up_count": r.get("follow_up_count") or 0,
+                    "last_follow_up_on": r.get("last_follow_up_on"),
+                    # child columns blank at header level
+                    "follow_up_id": None,
+                    "fu_date": None,
+                    "fu_author": None,
+                    "follow_up_snippet": None,
+                }
+            )
 
-		# child rows (only when there is a follow-up)
-		if r.get("follow_up_id"):
-			fu_snip = _snippet(strip_html_tags(r.get("follow_up_html") or ""), 200)
-			data.append({
-				"indent": 1,
-				# parent columns intentionally left empty for readability
-				"log_id": "", "log_date": None, "log_time": None,
-				"student": None, "student_name": None,
-				"program": None, "school": None, "academic_year": None,
-				"log_type": None, "requires_follow_up": None,
-				"follow_up_status": None, "author_name": None,
-				"visibility": "", "log_snippet": "", "follow_up_count": None,
-				"last_follow_up_on": None,
-				# child fields:
-				"follow_up_id": r["follow_up_id"],
-				"fu_date": r["fu_date"],
-				"fu_author": r["fu_author"],
-				"follow_up_snippet": fu_snip,
-			})
+        # child rows (only when there is a follow-up)
+        if r.get("follow_up_id"):
+            fu_snip = _snippet(strip_html_tags(r.get("follow_up_html") or ""), 200)
+            data.append(
+                {
+                    "indent": 1,
+                    # parent columns intentionally left empty for readability
+                    "log_id": "",
+                    "log_date": None,
+                    "log_time": None,
+                    "student": None,
+                    "student_name": None,
+                    "program": None,
+                    "school": None,
+                    "academic_year": None,
+                    "log_type": None,
+                    "requires_follow_up": None,
+                    "follow_up_status": None,
+                    "author_name": None,
+                    "visibility": "",
+                    "log_snippet": "",
+                    "follow_up_count": None,
+                    "last_follow_up_on": None,
+                    # child fields:
+                    "follow_up_id": r["follow_up_id"],
+                    "fu_date": r["fu_date"],
+                    "fu_author": r["fu_author"],
+                    "follow_up_snippet": fu_snip,
+                }
+            )
 
-	return data
+    return data
 
 
 def _opt(clause, params, key):
-	# Return "and <clause>" only if params[key] has a non-null value
-	return f"\n\t\t\tand {clause}" if params.get(key) not in (None, "", []) else ""
+    # Return "and <clause>" only if params[key] has a non-null value
+    return f"\n\t\t\tand {clause}" if params.get(key) not in (None, "", []) else ""
+
 
 def _snippet(text: str, length: int) -> str:
-	if not text:
-		return ""
-	text = " ".join(text.split())  # collapse whitespace
-	return text if len(text) <= length else f"{text[:length].rstrip()}…"
+    if not text:
+        return ""
+    text = " ".join(text.split())  # collapse whitespace
+    return text if len(text) <= length else f"{text[:length].rstrip()}…"
+
 
 def _visibility_icons(visible_to_student: int | None, visible_to_guardians: int | None) -> str:
-	icons = []
-	if int(visible_to_student or 0):
-		icons.append("👤")
-	if int(visible_to_guardians or 0):
-		icons.append("👪")
-	return "".join(icons)
+    icons = []
+    if int(visible_to_student or 0):
+        icons.append("👤")
+    if int(visible_to_guardians or 0):
+        icons.append("👪")
+    return "".join(icons)

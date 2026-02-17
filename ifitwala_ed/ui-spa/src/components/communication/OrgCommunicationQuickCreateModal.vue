@@ -7,11 +7,7 @@
   - ClassEventModal.vue (via OverlayHost usually)
 -->
 <template>
-	<TransitionRoot
-		as="template"
-		:show="open"
-		@after-leave="emitAfterLeave"
-	>
+	<TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
 		<Dialog
 			as="div"
 			class="if-overlay if-overlay--class"
@@ -56,16 +52,14 @@
 							<div class="meeting-modal__headline">
 								<p class="meeting-modal__eyebrow type-overline">Class announcement</p>
 								<DialogTitle as="h3" class="type-h3">Create announcement</DialogTitle>
-								<p class="meeting-modal__time type-meta">
-									Student group: {{ groupLabel }}
-								</p>
+								<p class="meeting-modal__time type-meta">Student group: {{ groupLabel }}</p>
 							</div>
 
 							<button
 								class="if-overlay__icon-button"
 								aria-label="Close modal"
-									@click="handleClose('programmatic')"
-								>
+								@click="handleClose('programmatic')"
+							>
 								<FeatherIcon name="x" class="h-5 w-5" />
 							</button>
 						</div>
@@ -96,11 +90,15 @@
 									</div>
 								</section>
 
-								<aside class="space-y-4 rounded-xl border border-border/80 bg-surface-soft p-4 shadow-sm">
+								<aside
+									class="space-y-4 rounded-xl border border-border/80 bg-surface-soft p-4 shadow-sm"
+								>
 									<div>
 										<div class="flex items-center justify-between">
 											<p class="type-label">Audience</p>
-											<label class="flex cursor-pointer items-center gap-2 type-body text-ink/80 hover:text-ink">
+											<label
+												class="flex cursor-pointer items-center gap-2 type-body text-ink/80 hover:text-ink"
+											>
 												<input
 													v-model="form.to_guardians"
 													type="checkbox"
@@ -163,7 +161,9 @@
 										</div>
 									</div>
 
-									<div class="rounded-lg border border-dashed border-border/80 bg-white/70 px-3 py-2 type-caption text-slate-token/70">
+									<div
+										class="rounded-lg border border-dashed border-border/80 bg-white/70 px-3 py-2 type-caption text-slate-token/70"
+									>
 										Course: <span class="font-semibold text-ink">{{ courseLabel }}</span>
 										<span v-if="sessionDateLabel"> · Date: {{ sessionDateLabel }}</span>
 									</div>
@@ -273,9 +273,7 @@ const groupLabel = computed(
 	() => props.event?.title || props.event?.student_group || 'Student group'
 );
 const schoolLabel = computed(() => props.event?.school || 'School');
-const courseLabel = computed(
-	() => props.event?.course_name || props.event?.course || 'Course'
-);
+const courseLabel = computed(() => props.event?.course_name || props.event?.course || 'Course');
 const sessionDateLabel = computed(() => formatDateLabel(props.event?.session_date));
 
 const fallbackTitle = computed(() => {
@@ -284,10 +282,7 @@ const fallbackTitle = computed(() => {
 });
 
 const canSubmit = computed(
-	() =>
-		!!props.event?.student_group &&
-		!!props.event?.school &&
-		!submitting.value
+	() => !!props.event?.student_group && !!props.event?.school && !submitting.value
 );
 
 watch(
@@ -295,12 +290,12 @@ watch(
 	([open]) => {
 		if (!open) return;
 		initializeForm();
-	},
+	}
 );
 
 watch(
 	() => props.open,
-	(v) => {
+	v => {
 		if (v) document.addEventListener('keydown', onKeydown, true);
 		else document.removeEventListener('keydown', onKeydown, true);
 	},
@@ -399,19 +394,15 @@ async function submit() {
 	};
 
 	try {
-		const doc = (await api('frappe.client.insert', { doc: payload })) as Record<
-			string,
-			unknown
-		>;
-			toast({
-				appearance: 'success',
-				message: 'Announcement created.',
-			});
-			emit('created', doc);
-			handleClose('programmatic');
+		const doc = (await api('frappe.client.insert', { doc: payload })) as Record<string, unknown>;
+		toast({
+			appearance: 'success',
+			message: 'Announcement created.',
+		});
+		emit('created', doc);
+		handleClose('programmatic');
 	} catch (error) {
-		const message =
-			error instanceof Error ? error.message : 'Unable to create announcement.';
+		const message = error instanceof Error ? error.message : 'Unable to create announcement.';
 		toast({
 			appearance: 'danger',
 			message,

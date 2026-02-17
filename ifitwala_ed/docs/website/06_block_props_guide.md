@@ -1,8 +1,8 @@
 <!-- ifitwala_ed/docs/website/06_block_props_guide.md -->
 # Block Props Guide (Complete)
 
-**Audience:** Website editors, implementers  
-**Scope:** Builder‑lite v1 + Phase‑02 blocks  
+**Audience:** Website editors, implementers
+**Scope:** Builder‑lite v1 + Phase‑02 blocks
 **Goal:** Exact props, types, rules, and examples for every block
 **Canonical implementation source:** `ifitwala_ed/website/block_registry.py`
 **Status (February 12, 2026):** Synced with implemented A1/A2/B1/B2/C1/C2/D1/D2 baseline
@@ -95,7 +95,7 @@ If a block type is outside the allowed set for the current context, save is bloc
 
 **Validation note**
 
-`hero` props are strictly validated. Only the fields listed above are allowed.  
+`hero` props are strictly validated. Only the fields listed above are allowed.
 Legacy shapes like `primary_cta` are rejected and will throw a render error.
 
 ### Example: carousel with images

@@ -30,5 +30,3 @@ frappe.ui.form.on('Picture Management', {
     }, 100);
   }
 });
-
-

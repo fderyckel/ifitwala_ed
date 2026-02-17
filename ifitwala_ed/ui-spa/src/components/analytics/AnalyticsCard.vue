@@ -40,21 +40,21 @@
 <script setup lang="ts">
 const props = withDefaults(
 	defineProps<{
-		title: string
-		interactive?: boolean
-		dense?: boolean
+		title: string;
+		interactive?: boolean;
+		dense?: boolean;
 	}>(),
 	{
 		interactive: true,
 	}
-)
+);
 
 const emit = defineEmits<{
-	(e: 'expand'): void
-}>()
+	(e: 'expand'): void;
+}>();
 
 function handleExpand() {
-	if (!props.interactive) return
-	emit('expand')
+	if (!props.interactive) return;
+	emit('expand');
 }
 </script>

@@ -52,4 +52,3 @@ frappe.listview_settings["Student"] = {
 		},
 	},
 };
-

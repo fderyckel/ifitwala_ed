@@ -19,7 +19,7 @@ frappe.ui.form.on('School Schedule', {
 				return {};
 			});
 		}
-	}, 
+	},
 
 	school_calendar: async function(frm) {
 		// blank out child fields when calendar changes

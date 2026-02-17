@@ -4,4 +4,4 @@ from frappe.model.document import Document
 
 
 class FileClassificationSubject(Document):
-	pass
+    pass

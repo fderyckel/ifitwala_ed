@@ -21,22 +21,15 @@
 				class="flex flex-col gap-4 border-b border-[rgb(var(--border-rgb)/0.9)] pb-4 md:flex-row md:items-center md:justify-between"
 			>
 				<div>
-					<h2 class="type-h2">
-						Your upcoming commitments
-					</h2>
+					<h2 class="type-h2">Your upcoming commitments</h2>
 					<p class="type-meta">
 						{{ subtitle }}
 					</p>
 				</div>
 
 				<div class="flex items-center gap-3 type-caption">
-					<span v-if="lastUpdatedLabel">
-						Updated {{ lastUpdatedLabel }}
-					</span>
-					<button
-						class="if-action type-button-label"
-						@click="handleRefresh"
-					>
+					<span v-if="lastUpdatedLabel"> Updated {{ lastUpdatedLabel }} </span>
+					<button class="if-action type-button-label" @click="handleRefresh">
 						<FeatherIcon name="refresh-cw" class="h-4 w-4" />
 						Refresh
 					</button>
@@ -49,9 +42,7 @@
 				<div class="mr-auto flex items-center gap-3">
 					<button
 						class="if-pill type-button-label"
-						:class="
-							showWeekends ? 'if-pill--off' : 'if-pill--on'
-						"
+						:class="showWeekends ? 'if-pill--off' : 'if-pill--on'"
 						@click="showWeekends = !showWeekends"
 					>
 						<FeatherIcon name="calendar" class="h-4 w-4" />
@@ -59,9 +50,7 @@
 					</button>
 					<button
 						class="if-pill type-button-label"
-						:class="
-							showFullDay ? 'if-pill--off' : 'if-pill--on'
-						"
+						:class="showFullDay ? 'if-pill--off' : 'if-pill--on'"
 						@click="showFullDay = !showFullDay"
 					>
 						<FeatherIcon name="clock" class="h-4 w-4" />
@@ -78,14 +67,9 @@
 					:class="chip.active ? chip.activeClass : 'if-pill--off'"
 					@click="toggleChip(chip.id)"
 				>
-					<span
-						class="if-pill__dot"
-						:class="chip.dotClass"
-					></span>
+					<span class="if-pill__dot" :class="chip.dotClass"></span>
 					{{ chip.label }}
-					<span
-						class="if-pill__count type-badge-label"
-					>
+					<span class="if-pill__count type-badge-label">
 						{{ chip.count }}
 					</span>
 				</button>
@@ -93,14 +77,9 @@
 
 			<!-- Calendar shell with rounded corners + clipping and breathing room -->
 			<div
-				class="relative mt-6 overflow-hidden rounded-2xl border border-[rgb(var(--border-rgb)/0.95)]
-				       bg-white shadow-soft p-3 sm:p-4"
+				class="relative mt-6 overflow-hidden rounded-2xl border border-[rgb(var(--border-rgb)/0.95)] bg-white shadow-soft p-3 sm:p-4"
 			>
-				<FullCalendar
-					ref="calendarRef"
-					:options="calendarOptions"
-					class="calendar-shell"
-				/>
+				<FullCalendar ref="calendarRef" :options="calendarOptions" class="calendar-shell" />
 
 				<!-- Loading veil -->
 				<div
@@ -117,15 +96,13 @@
 			<!-- Empty / error messages -->
 			<div
 				v-if="error"
-				class="mt-4 rounded-2xl border border-[rgb(var(--flame-rgb)/0.25)]
-				       bg-[rgb(var(--flame-rgb)/0.05)] px-4 py-3 type-body text-flame"
+				class="mt-4 rounded-2xl border border-[rgb(var(--flame-rgb)/0.25)] bg-[rgb(var(--flame-rgb)/0.05)] px-4 py-3 type-body text-flame"
 			>
 				{{ error }}
 			</div>
 			<div
 				v-else-if="isEmpty"
-				class="mt-4 rounded-2xl border border-dashed border-[rgb(var(--border-rgb)/0.9)]
-				       bg-[rgb(var(--sky-rgb)/0.45)] px-4 py-6 text-center type-body text-ink/70"
+				class="mt-4 rounded-2xl border border-dashed border-[rgb(var(--border-rgb)/0.9)] bg-[rgb(var(--sky-rgb)/0.45)] px-4 py-6 text-center type-body text-ink/70"
 			>
 				Nothing scheduled for this range. Enjoy the calm or adjust the view to a different week.
 			</div>
@@ -231,7 +208,9 @@ const slotMax = ref<string>('17:00:00');
 
 const subtitle = computed(() => {
 	const total = events.value.length;
-	return total ? `${total} event${total === 1 ? '' : 's'} in view` : 'Nothing scheduled in this range';
+	return total
+		? `${total} event${total === 1 ? '' : 's'} in view`
+		: 'Nothing scheduled in this range';
 });
 
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null);
@@ -241,7 +220,9 @@ const prefersCompact =
 		? window.matchMedia('(max-width: 768px)').matches
 		: false;
 
-const preferredView = ref<'timeGridWeek' | 'listWeek'>(prefersCompact ? 'listWeek' : 'timeGridWeek');
+const preferredView = ref<'timeGridWeek' | 'listWeek'>(
+	prefersCompact ? 'listWeek' : 'timeGridWeek'
+);
 const calendarHeight = ref<number>(computeCalendarHeight());
 
 const calendarOptions = ref({
@@ -269,11 +250,11 @@ const calendarOptions = ref({
 	eventClick: (info: EventClickArg) => handleEventClick(info),
 });
 
-watch(events, (val) => {
+watch(events, val => {
 	calendarOptions.value.events = val;
 });
 
-watch(timezone, (tz) => {
+watch(timezone, tz => {
 	systemTimezone.value = tz || resolveSystemTimezone();
 	syncCalendarTimezone();
 });
@@ -282,11 +263,11 @@ watch(systemTimezone, () => {
 	syncCalendarTimezone();
 });
 
-watch(showWeekends, (val) => {
+watch(showWeekends, val => {
 	calendarOptions.value.hiddenDays = val ? [] : hiddenDays.value;
 });
 
-watch(showFullDay, (val) => {
+watch(showFullDay, val => {
 	calendarOptions.value.slotMinTime = val ? '00:00:00' : slotMin.value;
 	calendarOptions.value.slotMaxTime = val ? '24:00:00' : slotMax.value;
 });
@@ -442,7 +423,7 @@ function handleOrgCommCreated() {
 
 watch(
 	() => orgCommModal.open,
-	(open) => {
+	open => {
 		if (!open) orgCommModal.event = null;
 	}
 );
@@ -544,7 +525,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	cleanupFns.forEach((fn) => fn());
+	cleanupFns.forEach(fn => fn());
 	if (intervalHandle) clearInterval(intervalHandle);
 });
 </script>

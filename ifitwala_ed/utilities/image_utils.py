@@ -6,9 +6,11 @@
 import io
 import os
 import re
+
 import frappe
 from frappe import _
 from PIL import Image
+
 
 # ────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -144,8 +146,6 @@ def _generate_employee_derivatives(file_doc):
         )
 
 
-
-
 def resize_and_save(
     doc,
     original_path,
@@ -168,7 +168,7 @@ def resize_and_save(
     try:
         with Image.open(original_path) as img:
             if img.width <= width:
-                return                       # nothing to downscale
+                return  # nothing to downscale
             img.thumbnail((width, width))
             os.makedirs(os.path.dirname(resized_path), exist_ok=True)
             img.save(resized_path, "WEBP", optimize=True, quality=quality)
@@ -189,9 +189,7 @@ def resize_and_save(
                     "folder": "Home/gallery_resized",
                 },
             ):
-                if not frappe.db.exists(
-                    "File", {"file_name": "gallery_resized", "is_folder": 1, "folder": "Home"}
-                ):
+                if not frappe.db.exists("File", {"file_name": "gallery_resized", "is_folder": 1, "folder": "Home"}):
                     frappe.get_doc(
                         {
                             "doctype": "File",
@@ -303,9 +301,7 @@ def rebuild_resized_images(doctype):
         fields=["name", "file_url", "attached_to_doctype"],
         filters={"attached_to_doctype": doctype, "is_private": 0},
     ):
-        if not file.file_url or not any(
-            file.file_url.lower().endswith(ext) for ext in (".jpg", ".jpeg", ".png")
-        ):
+        if not file.file_url or not any(file.file_url.lower().endswith(ext) for ext in (".jpg", ".jpeg", ".png")):
             continue
         if os.path.basename(file.file_url).startswith(("hero_", "medium_", "card_", "thumb_")):
             continue

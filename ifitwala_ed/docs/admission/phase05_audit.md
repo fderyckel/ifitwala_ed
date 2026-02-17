@@ -38,7 +38,7 @@ Referenced in `AdmissionsSession` and `ApplicantSnapshot`.
 **Ambiguity**: The UI needs to know the exact string values to render status badges and gate logic.
 **Required Definition**:
 ```ts
-export type ApplicantStatus = 
+export type ApplicantStatus =
   | 'Draft'
   | 'In Review'
   | 'Action Required'

@@ -19,4 +19,3 @@ frappe.ui.form.on("Instructor", {
 	},
 
 });
-

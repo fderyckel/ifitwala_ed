@@ -10,15 +10,8 @@
 			</div>
 
 			<div class="flex items-center gap-2">
-				<Badge
-					:variant="statusVariant"
-					:label="toolbarStatus"
-				/>
-				<Button
-					appearance="primary"
-					:disabled="!canApplyDefault"
-					@click="applyDefaultCode"
-				>
+				<Badge :variant="statusVariant" :label="toolbarStatus" />
+				<Button appearance="primary" :disabled="!canApplyDefault" @click="applyDefaultCode">
 					{{ __('Apply Default') }}
 				</Button>
 			</div>
@@ -47,7 +40,9 @@
 		</div>
 
 		<!-- Filters -->
-		<section class="rounded-2xl border border-border/70 bg-[rgb(var(--surface-rgb)/0.7)] p-4 shadow-soft">
+		<section
+			class="rounded-2xl border border-border/70 bg-[rgb(var(--surface-rgb)/0.7)] p-4 shadow-soft"
+		>
 			<div class="grid gap-3 md:grid-cols-4">
 				<FormControl
 					type="select"
@@ -92,11 +87,7 @@
 				</div>
 
 				<div class="flex items-center gap-2">
-					<Button
-						appearance="minimal"
-						:disabled="!canReload"
-						@click="reloadRoster"
-					>
+					<Button appearance="minimal" :disabled="!canReload" @click="reloadRoster">
 						{{ __('Reload') }}
 					</Button>
 
@@ -114,7 +105,9 @@
 		<!-- Main layout -->
 		<section class="grid gap-4 lg:grid-cols-[420px_minmax(0,1fr)]">
 			<!-- Calendar -->
-			<div class="rounded-2xl border border-border/70 bg-[rgb(var(--surface-rgb)/0.7)] shadow-soft">
+			<div
+				class="rounded-2xl border border-border/70 bg-[rgb(var(--surface-rgb)/0.7)] shadow-soft"
+			>
 				<AttendanceCalendar
 					:month="calendarMonth"
 					:meeting-dates="meetingDates"
@@ -123,13 +116,15 @@
 					:available-months="availableMonths"
 					:loading="calendarLoading"
 					:weekend-days="weekendDays"
-					@update:month="(d) => (calendarMonth = d)"
+					@update:month="d => (calendarMonth = d)"
 					@select="onPickDate"
 				/>
 			</div>
 
 			<!-- Roster -->
-			<div class="rounded-2xl border border-border/70 bg-[rgb(var(--surface-rgb)/0.7)] shadow-soft">
+			<div
+				class="rounded-2xl border border-border/70 bg-[rgb(var(--surface-rgb)/0.7)] shadow-soft"
+			>
 				<div class="flex items-center justify-between border-b border-border/60 px-5 py-4">
 					<div class="min-w-0">
 						<h2 class="text-base font-semibold text-ink">
@@ -152,15 +147,16 @@
 					</div>
 				</div>
 
-				<div
-					v-if="remarkTipsOpen"
-					class="border-b border-border/60 px-5 py-4 text-xs text-ink/70"
-				>
-					<div class="rounded-2xl border border-border/70 bg-[rgb(var(--surface-strong-rgb)/0.7)] p-4">
+				<div v-if="remarkTipsOpen" class="border-b border-border/60 px-5 py-4 text-xs text-ink/70">
+					<div
+						class="rounded-2xl border border-border/70 bg-[rgb(var(--surface-strong-rgb)/0.7)] p-4"
+					>
 						<p class="font-semibold text-ink">{{ __('Remark guidelines') }}</p>
 						<ul class="mt-2 list-disc space-y-1 pl-4">
 							<li>{{ __('Keep remarks factual and short.') }}</li>
-							<li>{{ __('Avoid sensitive medical details; use the health note workflow instead.') }}</li>
+							<li>
+								{{ __('Avoid sensitive medical details; use the health note workflow instead.') }}
+							</li>
 							<li>{{ __("Stick to today's context (date + block).") }}</li>
 						</ul>
 					</div>
@@ -206,389 +202,414 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { Button, FormControl, Badge, FeatherIcon, Spinner } from 'frappe-ui'
+import { computed, reactive, ref, onMounted, onBeforeUnmount, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { Button, FormControl, Badge, FeatherIcon, Spinner } from 'frappe-ui';
 
-import { __ } from '@/lib/i18n'
-import AttendanceCalendar from './student-attendance-tool/components/AttendanceCalendar.vue'
-import AttendanceGrid from './student-attendance-tool/components/AttendanceGrid.vue'
+import { __ } from '@/lib/i18n';
+import AttendanceCalendar from './student-attendance-tool/components/AttendanceCalendar.vue';
+import AttendanceGrid from './student-attendance-tool/components/AttendanceGrid.vue';
 
-import { createStudentAttendanceService } from '@/lib/services/studentAttendance/studentAttendanceService'
-import { useOverlayStack } from '@/composables/useOverlayStack'
+import { createStudentAttendanceService } from '@/lib/services/studentAttendance/studentAttendanceService';
+import { useOverlayStack } from '@/composables/useOverlayStack';
 
 // UI view-model types (page-owned)
-import type { StudentRosterEntry, BlockKey } from './student-attendance-tool/types'
+import type { StudentRosterEntry, BlockKey } from './student-attendance-tool/types';
 
 // Backend-owned contracts (service + page may use contract DTOs; services MUST use them)
-import type { StudentAttendanceCodeRow, BulkUpsertAttendanceRow } from '@/types/contracts/studentAttendance'
+import type {
+	StudentAttendanceCodeRow,
+	BulkUpsertAttendanceRow,
+} from '@/types/contracts/studentAttendance';
 
 // A+ invalidation bus (page is a refresh owner)
-import { uiSignals, SIGNAL_ATTENDANCE_INVALIDATE } from '@/lib/uiSignals'
+import { uiSignals, SIGNAL_ATTENDANCE_INVALIDATE } from '@/lib/uiSignals';
 
-const SAVE_DEBOUNCE_MS = 900
+const SAVE_DEBOUNCE_MS = 900;
 
-const service = createStudentAttendanceService()
-const overlay = useOverlayStack()
+const service = createStudentAttendanceService();
+const overlay = useOverlayStack();
 
-const route = useRoute()
-const router = useRouter()
+const route = useRoute();
+const router = useRouter();
 
-const errorBanner = ref<string | null>(null)
+const errorBanner = ref<string | null>(null);
 
-const bootLoading = ref(true)
-const groupsLoading = ref(false)
-const codesLoading = ref(false)
-const calendarLoading = ref(false)
-const rosterLoading = ref(false)
-const saving = ref(false)
-const submitting = ref(false)
-const justSaved = ref(false)
+const bootLoading = ref(true);
+const groupsLoading = ref(false);
+const codesLoading = ref(false);
+const calendarLoading = ref(false);
+const rosterLoading = ref(false);
+const saving = ref(false);
+const submitting = ref(false);
+const justSaved = ref(false);
 
-let saveTimer: number | null = null
+let saveTimer: number | null = null;
 
 const filters = reactive({
 	school: null as string | null,
 	program: null as string | null,
 	student_group: null as string | null,
 	default_code: null as string | null,
-})
+});
 
-const defaultSchool = ref<string | null>(null)
+const defaultSchool = ref<string | null>(null);
 
-const schoolOptions = ref<Array<{ label: string; value: string }>>([])
-const programOptions = ref<Array<{ label: string; value: string }>>([])
-const groupOptions = ref<Array<{ label: string; value: string }>>([])
+const schoolOptions = ref<Array<{ label: string; value: string }>>([]);
+const programOptions = ref<Array<{ label: string; value: string }>>([]);
+const groupOptions = ref<Array<{ label: string; value: string }>>([]);
 
-const attendanceCodes = ref<StudentAttendanceCodeRow[]>([])
+const attendanceCodes = ref<StudentAttendanceCodeRow[]>([]);
 const codeColors = computed(() => {
-	const colors: Record<string, string> = {}
+	const colors: Record<string, string> = {};
 	for (const c of attendanceCodes.value) {
-		colors[c.name] = c.color || '#2563eb'
+		colors[c.name] = c.color || '#2563eb';
 	}
-	return colors
-})
+	return colors;
+});
 const codeOptions = computed(() =>
-	attendanceCodes.value.map((c) => ({
+	attendanceCodes.value.map(c => ({
 		label: c.attendance_code_name || c.attendance_code || c.name,
 		value: c.name,
 	}))
-)
+);
 
-const meetingDates = ref<string[]>([])
-const recordedDates = ref<string[]>([])
+const meetingDates = ref<string[]>([]);
+const recordedDates = ref<string[]>([]);
 const availableMonths = computed(() => {
-	const set = new Set<string>()
+	const set = new Set<string>();
 	for (const iso of meetingDates.value) {
-		if (typeof iso === 'string' && iso.length >= 7) set.add(iso.slice(0, 7))
+		if (typeof iso === 'string' && iso.length >= 7) set.add(iso.slice(0, 7));
 	}
-	return [...set].sort()
-})
-const weekendDays = ref<number[]>([6, 0])
+	return [...set].sort();
+});
+const weekendDays = ref<number[]>([6, 0]);
 
-const selectedDate = ref<string | null>(null)
-const calendarMonth = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+const selectedDate = ref<string | null>(null);
+const calendarMonth = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
-const students = ref<StudentRosterEntry[]>([])
-const blocks = ref<BlockKey[]>([])
-const groupInfo = ref<{ name?: string | null; program?: string | null; course?: string | null; cohort?: string | null }>({})
+const students = ref<StudentRosterEntry[]>([]);
+const blocks = ref<BlockKey[]>([]);
+const groupInfo = ref<{
+	name?: string | null;
+	program?: string | null;
+	course?: string | null;
+	cohort?: string | null;
+}>({});
 
-const lastSaved = ref<Record<string, Record<BlockKey, { code: string; remark: string }>>>({})
-const dirty = ref<Set<string>>(new Set())
+const lastSaved = ref<Record<string, Record<BlockKey, { code: string; remark: string }>>>({});
+const dirty = ref<Set<string>>(new Set());
 
-const searchTerm = ref('')
-const remarkTipsOpen = ref(false)
+const searchTerm = ref('');
+const remarkTipsOpen = ref(false);
 
 const filteredStudents = computed(() => {
-	const q = (searchTerm.value || '').trim().toLowerCase()
-	if (!q) return students.value
-	return students.value.filter((s) => {
-		const name = (s.preferred_name || s.student_name || s.student).toLowerCase()
-		return name.includes(q) || String(s.student).toLowerCase().includes(q)
-	})
-})
+	const q = (searchTerm.value || '').trim().toLowerCase();
+	if (!q) return students.value;
+	return students.value.filter(s => {
+		const name = (s.preferred_name || s.student_name || s.student).toLowerCase();
+		return name.includes(q) || String(s.student).toLowerCase().includes(q);
+	});
+});
 
-const groupLabel = computed(() => groupInfo.value?.name || '')
+const groupLabel = computed(() => groupInfo.value?.name || '');
 const subtitleText = computed(() => {
-	const bits: string[] = []
-	if (groupInfo.value?.program) bits.push(groupInfo.value.program)
-	if (groupInfo.value?.course) bits.push(groupInfo.value.course)
-	if (groupInfo.value?.cohort) bits.push(groupInfo.value.cohort)
-	return bits.join(' • ')
-})
+	const bits: string[] = [];
+	if (groupInfo.value?.program) bits.push(groupInfo.value.program);
+	if (groupInfo.value?.course) bits.push(groupInfo.value.course);
+	if (groupInfo.value?.cohort) bits.push(groupInfo.value.cohort);
+	return bits.join(' • ');
+});
 
-const canReload = computed(() => !!filters.student_group && !!selectedDate.value && !rosterLoading.value && !bootLoading.value)
-const canApplyDefault = computed(() => !!filters.default_code && !!filters.student_group && students.value.length > 0 && !rosterLoading.value)
+const canReload = computed(
+	() =>
+		!!filters.student_group && !!selectedDate.value && !rosterLoading.value && !bootLoading.value
+);
+const canApplyDefault = computed(
+	() =>
+		!!filters.default_code &&
+		!!filters.student_group &&
+		students.value.length > 0 &&
+		!rosterLoading.value
+);
 
 const toolbarStatus = computed(() => {
-	if (bootLoading.value) return __('Loading…')
-	if (!filters.student_group) return __('Select a group')
-	if (!selectedDate.value) return __('Select a meeting day')
-	if (rosterLoading.value) return __('Loading roster…')
-	if (saving.value) return __('Saving…')
-	if (justSaved.value) return __('Saved')
-	return __('Ready')
-})
+	if (bootLoading.value) return __('Loading…');
+	if (!filters.student_group) return __('Select a group');
+	if (!selectedDate.value) return __('Select a meeting day');
+	if (rosterLoading.value) return __('Loading roster…');
+	if (saving.value) return __('Saving…');
+	if (justSaved.value) return __('Saved');
+	return __('Ready');
+});
 
 const statusVariant = computed(() => {
-	if (bootLoading.value || rosterLoading.value || saving.value) return 'gray'
-	if (justSaved.value) return 'green'
-	if (!filters.student_group || !selectedDate.value) return 'orange'
-	return 'blue'
-})
+	if (bootLoading.value || rosterLoading.value || saving.value) return 'gray';
+	if (justSaved.value) return 'green';
+	if (!filters.student_group || !selectedDate.value) return 'orange';
+	return 'blue';
+});
 
 const rosterHint = computed(() => {
-	if (!filters.student_group) return __('Choose a student group first.')
-	if (!selectedDate.value) return __('Pick a meeting day to load the roster.')
-	if (rosterLoading.value) return __('Loading…')
-	return __('Click a code chip to mark attendance. Use the remark icon for notes.')
-})
+	if (!filters.student_group) return __('Choose a student group first.');
+	if (!selectedDate.value) return __('Pick a meeting day to load the roster.');
+	if (rosterLoading.value) return __('Loading…');
+	return __('Click a code chip to mark attendance. Use the remark icon for notes.');
+});
 
 function safeSetError(message: unknown) {
-	errorBanner.value = typeof message === 'string' && message ? message : __('Unexpected error')
+	errorBanner.value = typeof message === 'string' && message ? message : __('Unexpected error');
 }
 
 function parseFrappeServerMessages(value: unknown): string | null {
-	if (typeof value !== 'string' || !value.trim()) return null
+	if (typeof value !== 'string' || !value.trim()) return null;
 	try {
-		const parsed = JSON.parse(value)
-		if (!Array.isArray(parsed)) return null
+		const parsed = JSON.parse(value);
+		if (!Array.isArray(parsed)) return null;
 		const lines = parsed
-			.map((entry) => {
-				if (typeof entry !== 'string') return ''
+			.map(entry => {
+				if (typeof entry !== 'string') return '';
 				try {
-					const decoded = JSON.parse(entry)
+					const decoded = JSON.parse(entry);
 					if (decoded && typeof decoded === 'object' && typeof decoded.message === 'string') {
-						return decoded.message
+						return decoded.message;
 					}
 				} catch {
 					// keep raw entry when nested JSON parsing fails
 				}
-				return entry
+				return entry;
 			})
-			.filter((line) => typeof line === 'string' && line.trim())
-		return lines.length ? lines.join('\n') : null
+			.filter(line => typeof line === 'string' && line.trim());
+		return lines.length ? lines.join('\n') : null;
 	} catch {
-		return null
+		return null;
 	}
 }
 
 function resolveErrorMessage(error: unknown): string {
-	if (!error) return __('Unexpected error')
-	if (typeof error === 'string') return error
+	if (!error) return __('Unexpected error');
+	if (typeof error === 'string') return error;
 
 	const maybe = error as {
-		message?: string
-		_server_messages?: string
-		_messages?: string
-		exception?: string
-		exc?: string
-	}
+		message?: string;
+		_server_messages?: string;
+		_messages?: string;
+		exception?: string;
+		exc?: string;
+	};
 
 	const serverMessage =
-		parseFrappeServerMessages(maybe._server_messages)
-		|| parseFrappeServerMessages(maybe._messages)
-	if (serverMessage) return serverMessage
+		parseFrappeServerMessages(maybe._server_messages) ||
+		parseFrappeServerMessages(maybe._messages);
+	if (serverMessage) return serverMessage;
 
-	if (typeof maybe.message === 'string' && maybe.message.trim()) return maybe.message
-	if (typeof maybe.exception === 'string' && maybe.exception.trim()) return maybe.exception
-	if (typeof maybe.exc === 'string' && maybe.exc.trim()) return maybe.exc
-	return __('Unexpected error')
+	if (typeof maybe.message === 'string' && maybe.message.trim()) return maybe.message;
+	if (typeof maybe.exception === 'string' && maybe.exception.trim()) return maybe.exception;
+	if (typeof maybe.exc === 'string' && maybe.exc.trim()) return maybe.exc;
+	return __('Unexpected error');
 }
 
 function pickInitialStudentGroupFromRoute(groups: Array<{ value: string }>) {
-	const v = route.query.student_group
-	const id = typeof v === 'string' && v ? v : null
-	if (!id) return
-	const exists = groups.some((g) => g.value === id)
-	if (exists) filters.student_group = id
+	const v = route.query.student_group;
+	const id = typeof v === 'string' && v ? v : null;
+	if (!id) return;
+	const exists = groups.some(g => g.value === id);
+	if (exists) filters.student_group = id;
 }
 
 function consumeStudentGroupQueryParam() {
-	if (!route.query.student_group) return
-	const q = { ...route.query }
-	delete (q as any).student_group
-	void router.replace({ query: q })
+	if (!route.query.student_group) return;
+	const q = { ...route.query };
+	delete (q as any).student_group;
+	void router.replace({ query: q });
 }
 
 async function syncSelectedGroupContext() {
-	if (!filters.student_group) return
-	consumeStudentGroupQueryParam()
-	await loadCalendarContext()
+	if (!filters.student_group) return;
+	consumeStudentGroupQueryParam();
+	await loadCalendarContext();
 	if (selectedDate.value) {
-		await loadRoster()
+		await loadRoster();
 	}
 }
 
 function pickDefaultDate(dates: string[]): string | null {
-	if (!dates.length) return null
+	if (!dates.length) return null;
 
-	const today = new Date()
-	today.setHours(0, 0, 0, 0)
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
 
 	const parsed = dates
-		.map((iso) => ({ iso, date: new Date(`${iso}T00:00:00`) }))
-		.filter((x) => !Number.isNaN(x.date.getTime()))
-		.sort((a, b) => a.date.getTime() - b.date.getTime())
+		.map(iso => ({ iso, date: new Date(`${iso}T00:00:00`) }))
+		.filter(x => !Number.isNaN(x.date.getTime()))
+		.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-	const pastOrToday = parsed.filter((x) => x.date.getTime() <= today.getTime())
-	return (pastOrToday[pastOrToday.length - 1] || parsed[0])?.iso ?? null
+	const pastOrToday = parsed.filter(x => x.date.getTime() <= today.getTime());
+	return (pastOrToday[pastOrToday.length - 1] || parsed[0])?.iso ?? null;
 }
 
 async function bootstrap() {
-	bootLoading.value = true
-	errorBanner.value = null
+	bootLoading.value = true;
+	errorBanner.value = null;
 
 	try {
 		const [ctx, programs, codes] = await Promise.all([
 			service.fetchSchoolContext(),
 			service.fetchPrograms(),
 			service.listAttendanceCodes(),
-		])
+		]);
 
-		defaultSchool.value = ctx.default_school
-		schoolOptions.value = ctx.schools.map((s) => ({
+		defaultSchool.value = ctx.default_school;
+		schoolOptions.value = ctx.schools.map(s => ({
 			label: s.school_name || s.name,
 			value: s.name,
-		}))
+		}));
 
 		// Default school selection
-		filters.school = ctx.default_school || ctx.schools[0]?.name || null
+		filters.school = ctx.default_school || ctx.schools[0]?.name || null;
 
-		programOptions.value = (programs || []).map((p) => ({
+		programOptions.value = (programs || []).map(p => ({
 			label: p.program_name || p.name,
 			value: p.name,
-		}))
+		}));
 
-		attendanceCodes.value = (codes || []).slice().sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
-		filters.default_code = attendanceCodes.value[0]?.name || null
+		attendanceCodes.value = (codes || [])
+			.slice()
+			.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+		filters.default_code = attendanceCodes.value[0]?.name || null;
 
-		await reloadGroups()
+		await reloadGroups();
 	} catch (err: any) {
-		console.error('Attendance tool bootstrap failed', err)
-		safeSetError(resolveErrorMessage(err))
+		console.error('Attendance tool bootstrap failed', err);
+		safeSetError(resolveErrorMessage(err));
 	} finally {
-		bootLoading.value = false
+		bootLoading.value = false;
 	}
 
 	// If the group was prefilled during boot (route param / auto-pick), watcher was gated by bootLoading.
 	// Sync explicitly once boot completes.
 	if (!errorBanner.value && filters.student_group) {
-		await syncSelectedGroupContext()
+		await syncSelectedGroupContext();
 	}
 }
 
 async function reloadGroups() {
-	groupsLoading.value = true
-	errorBanner.value = null
+	groupsLoading.value = true;
+	errorBanner.value = null;
 
 	// Reset group-dependent state
-	groupOptions.value = []
-	filters.student_group = null
-	selectedDate.value = null
-	meetingDates.value = []
-	recordedDates.value = []
-	students.value = []
-	blocks.value = []
-	groupInfo.value = {}
+	groupOptions.value = [];
+	filters.student_group = null;
+	selectedDate.value = null;
+	meetingDates.value = [];
+	recordedDates.value = [];
+	students.value = [];
+	blocks.value = [];
+	groupInfo.value = {};
 
 	try {
 		const rows = await service.fetchStudentGroups({
 			school: filters.school || defaultSchool.value,
 			program: filters.program,
-		})
+		});
 
-		groupOptions.value = (rows || []).map((g) => ({
+		groupOptions.value = (rows || []).map(g => ({
 			label: g.student_group_name || g.name,
 			value: g.name,
-		}))
+		}));
 
-		pickInitialStudentGroupFromRoute(groupOptions.value)
+		pickInitialStudentGroupFromRoute(groupOptions.value);
 
 		// Auto-pick if only one
 		if (!filters.student_group && groupOptions.value.length === 1) {
-			filters.student_group = groupOptions.value[0].value
+			filters.student_group = groupOptions.value[0].value;
 		}
 	} catch (err: any) {
-		console.error('Failed to load student groups', err)
-		safeSetError(resolveErrorMessage(err))
+		console.error('Failed to load student groups', err);
+		safeSetError(resolveErrorMessage(err));
 	} finally {
-		groupsLoading.value = false
+		groupsLoading.value = false;
 	}
 }
 
 async function refreshRecordedDatesForCurrentGroup() {
-	if (!filters.student_group) return
+	if (!filters.student_group) return;
 	try {
-		const recorded = await service.getRecordedDates({ student_group: filters.student_group })
-		recordedDates.value = Array.isArray(recorded) ? recorded : []
+		const recorded = await service.getRecordedDates({ student_group: filters.student_group });
+		recordedDates.value = Array.isArray(recorded) ? recorded : [];
 	} catch (err: any) {
 		// Silent fail: this is a best-effort refresh hook; page still shows inline errors for core flows.
-		console.error('Failed to refresh recorded dates', err)
+		console.error('Failed to refresh recorded dates', err);
 	}
 }
 
 async function loadCalendarContext() {
-	if (!filters.student_group) return
+	if (!filters.student_group) return;
 
-	calendarLoading.value = true
-	errorBanner.value = null
-	meetingDates.value = []
-	recordedDates.value = []
-	selectedDate.value = null
+	calendarLoading.value = true;
+	errorBanner.value = null;
+	meetingDates.value = [];
+	recordedDates.value = [];
+	selectedDate.value = null;
 
 	try {
-		const group = filters.student_group
+		const group = filters.student_group;
 		const [weekend, meetings, recorded] = await Promise.all([
 			service.getWeekendDays({ student_group: group }),
 			service.getMeetingDates({ student_group: group }),
 			service.getRecordedDates({ student_group: group }),
-		])
+		]);
 
-		weekendDays.value = Array.isArray(weekend) && weekend.length ? weekend : [6, 0]
-		meetingDates.value = Array.isArray(meetings) ? meetings : []
-		recordedDates.value = Array.isArray(recorded) ? recorded : []
+		weekendDays.value = Array.isArray(weekend) && weekend.length ? weekend : [6, 0];
+		meetingDates.value = Array.isArray(meetings) ? meetings : [];
+		recordedDates.value = Array.isArray(recorded) ? recorded : [];
 
-		selectedDate.value = pickDefaultDate(meetingDates.value)
+		selectedDate.value = pickDefaultDate(meetingDates.value);
 		if (selectedDate.value) {
-			calendarMonth.value = new Date(`${selectedDate.value}T00:00:00`)
+			calendarMonth.value = new Date(`${selectedDate.value}T00:00:00`);
 		}
 	} catch (err: any) {
-		console.error('Failed to load calendar context', err)
-		safeSetError(resolveErrorMessage(err))
+		console.error('Failed to load calendar context', err);
+		safeSetError(resolveErrorMessage(err));
 	} finally {
-		calendarLoading.value = false
+		calendarLoading.value = false;
 	}
 }
 
 async function loadRoster() {
-	if (!filters.student_group || !selectedDate.value) return
+	if (!filters.student_group || !selectedDate.value) return;
 
-	rosterLoading.value = true
-	errorBanner.value = null
-	students.value = []
-	blocks.value = []
-	groupInfo.value = {}
+	rosterLoading.value = true;
+	errorBanner.value = null;
+	students.value = [];
+	blocks.value = [];
+	groupInfo.value = {};
 
 	try {
-		const { roster, prevMap, existingMap, blocks: blockKeys } = await service.fetchRosterContext({
+		const {
+			roster,
+			prevMap,
+			existingMap,
+			blocks: blockKeys,
+		} = await service.fetchRosterContext({
 			student_group: filters.student_group,
 			attendance_date: selectedDate.value,
-		})
+		});
 
-		groupInfo.value = roster.group_info || {}
-		blocks.value = Array.isArray(blockKeys) && blockKeys.length ? blockKeys : [-1]
+		groupInfo.value = roster.group_info || {};
+		blocks.value = Array.isArray(blockKeys) && blockKeys.length ? blockKeys : [-1];
 
 		// Build student rows
-		const built: StudentRosterEntry[] = (roster.students || []).map((s) => {
-			const attendance: Record<BlockKey, string> = {}
-			const remarks: Record<BlockKey, string> = {}
+		const built: StudentRosterEntry[] = (roster.students || []).map(s => {
+			const attendance: Record<BlockKey, string> = {};
+			const remarks: Record<BlockKey, string> = {};
 
 			for (const b of blocks.value) {
-				const existing = existingMap?.[s.student]?.[b]
-				const code = existing?.code || prevMap?.[`${s.student}|${b}`] || (filters.default_code || '')
-				attendance[b] = code
-				remarks[b] = existing?.remark || ''
+				const existing = existingMap?.[s.student]?.[b];
+				const code =
+					existing?.code || prevMap?.[`${s.student}|${b}`] || filters.default_code || '';
+				attendance[b] = code;
+				remarks[b] = existing?.remark || '';
 			}
 
 			return {
@@ -601,64 +622,66 @@ async function loadRoster() {
 				blocks: blocks.value,
 				attendance,
 				remarks,
-			}
-		})
+			};
+		});
 
-		students.value = built
+		students.value = built;
 
 		// Prime lastSaved snapshot
-		const snapshot: Record<string, Record<BlockKey, { code: string; remark: string }>> = {}
+		const snapshot: Record<string, Record<BlockKey, { code: string; remark: string }>> = {};
 		for (const s of built) {
-			snapshot[s.student] = {}
+			snapshot[s.student] = {};
 			for (const b of blocks.value) {
-				snapshot[s.student][b] = { code: s.attendance[b], remark: s.remarks[b] }
+				snapshot[s.student][b] = { code: s.attendance[b], remark: s.remarks[b] };
 			}
 		}
-		lastSaved.value = snapshot
-		dirty.value = new Set()
+		lastSaved.value = snapshot;
+		dirty.value = new Set();
 	} catch (err: any) {
-		console.error('Failed to load roster', err)
-		safeSetError(resolveErrorMessage(err))
+		console.error('Failed to load roster', err);
+		safeSetError(resolveErrorMessage(err));
 	} finally {
-		rosterLoading.value = false
+		rosterLoading.value = false;
 	}
 }
 
 function onPickDate(iso: string) {
-	if (!iso || iso === selectedDate.value) return
-	selectedDate.value = iso
-	void loadRoster()
+	if (!iso || iso === selectedDate.value) return;
+	selectedDate.value = iso;
+	void loadRoster();
 }
 
 function reloadRoster() {
-	if (!canReload.value) return
-	void loadRoster()
+	if (!canReload.value) return;
+	void loadRoster();
 }
 
 function markDirty(studentId: string, block: BlockKey) {
-	dirty.value.add(`${studentId}|${block}`)
-	queueAutosave()
+	dirty.value.add(`${studentId}|${block}`);
+	queueAutosave();
 }
 
 function onChangeCode(payload: { studentId: string; block: BlockKey; code: string }) {
-	const s = students.value.find((x) => x.student === payload.studentId)
-	if (!s) return
-	s.attendance[payload.block] = payload.code
-	markDirty(payload.studentId, payload.block)
+	const s = students.value.find(x => x.student === payload.studentId);
+	if (!s) return;
+	s.attendance[payload.block] = payload.code;
+	markDirty(payload.studentId, payload.block);
 }
 
 function openRemark(payload: { student: StudentRosterEntry; block: BlockKey }) {
 	if (!payload?.student || payload.block === null || payload.block === undefined) {
-		safeSetError(__('Select a student and block before adding a remark.'))
-		return
+		safeSetError(__('Select a student and block before adding a remark.'));
+		return;
 	}
 
-	const studentId = payload.student.student
-	const block = payload.block
-	const existing = payload.student.remarks?.[block] || ''
+	const studentId = payload.student.student;
+	const block = payload.block;
+	const existing = payload.student.remarks?.[block] || '';
 	const studentLabel =
-		payload.student.preferred_name || payload.student.student_name || payload.student.student
-	const studentSecondaryLabel = payload.student.preferred_name ? payload.student.student_name : null
+		payload.student.preferred_name || payload.student.student_name || payload.student.student;
+	const studentSecondaryLabel = payload.student.preferred_name
+		? payload.student.student_name
+		: null;
 
 	overlay.open('attendance-remark', {
 		studentId,
@@ -668,53 +691,53 @@ function openRemark(payload: { student: StudentRosterEntry; block: BlockKey }) {
 		value: existing,
 		maxLength: 255,
 		onSave: (nextValue: string) => applyRemarkValue(studentId, block, nextValue),
-	})
+	});
 }
 
 function applyRemarkValue(studentId: string, block: BlockKey, value: string) {
-	const s = students.value.find((x) => x.student === studentId)
-	if (!s) return
-	const current = s.remarks?.[block] || ''
-	if (current === value) return
-	s.remarks[block] = value
-	markDirty(studentId, block)
+	const s = students.value.find(x => x.student === studentId);
+	if (!s) return;
+	const current = s.remarks?.[block] || '';
+	if (current === value) return;
+	s.remarks[block] = value;
+	markDirty(studentId, block);
 }
 
 function applyDefaultCode() {
-	if (!filters.default_code) return
+	if (!filters.default_code) return;
 	for (const s of students.value) {
 		for (const b of blocks.value) {
-			s.attendance[b] = filters.default_code
-			markDirty(s.student, b)
+			s.attendance[b] = filters.default_code;
+			markDirty(s.student, b);
 		}
 	}
 }
 
 function queueAutosave() {
-	if (saveTimer) window.clearTimeout(saveTimer)
+	if (saveTimer) window.clearTimeout(saveTimer);
 	saveTimer = window.setTimeout(() => {
-		void persistChanges()
-	}, SAVE_DEBOUNCE_MS)
+		void persistChanges();
+	}, SAVE_DEBOUNCE_MS);
 }
 
 async function persistChanges() {
-	if (!filters.student_group || !selectedDate.value) return
-	if (dirty.value.size === 0) return
-	if (saving.value) return
+	if (!filters.student_group || !selectedDate.value) return;
+	if (dirty.value.size === 0) return;
+	if (saving.value) return;
 
-	saving.value = true
-	justSaved.value = false
-	errorBanner.value = null
+	saving.value = true;
+	justSaved.value = false;
+	errorBanner.value = null;
 
 	try {
-		const rows: BulkUpsertAttendanceRow[] = []
+		const rows: BulkUpsertAttendanceRow[] = [];
 
 		for (const key of dirty.value) {
-			const [studentId, blockStr] = key.split('|')
-			const block = Number(blockStr)
+			const [studentId, blockStr] = key.split('|');
+			const block = Number(blockStr);
 
-			const s = students.value.find((x) => x.student === studentId)
-			if (!s) continue
+			const s = students.value.find(x => x.student === studentId);
+			if (!s) continue;
 
 			rows.push({
 				student: studentId,
@@ -723,98 +746,101 @@ async function persistChanges() {
 				block_number: Number.isFinite(block) ? block : -1,
 				attendance_code: s.attendance[block as BlockKey] || '',
 				remark: s.remarks[block as BlockKey] || '',
-			})
+			});
 		}
 
-		await service.bulkUpsertAttendance({ payload: rows })
+		await service.bulkUpsertAttendance({ payload: rows });
 
 		// Commit local snapshot
 		for (const r of rows) {
-			lastSaved.value[r.student] = lastSaved.value[r.student] || {}
-			lastSaved.value[r.student][r.block_number as BlockKey] = { code: r.attendance_code, remark: r.remark }
+			lastSaved.value[r.student] = lastSaved.value[r.student] || {};
+			lastSaved.value[r.student][r.block_number as BlockKey] = {
+				code: r.attendance_code,
+				remark: r.remark,
+			};
 		}
 
-		dirty.value = new Set()
-		justSaved.value = true
-		window.setTimeout(() => (justSaved.value = false), 1200)
+		dirty.value = new Set();
+		justSaved.value = true;
+		window.setTimeout(() => (justSaved.value = false), 1200);
 	} catch (err: any) {
-		console.error('Attendance autosave failed', err)
-		safeSetError(resolveErrorMessage(err))
+		console.error('Attendance autosave failed', err);
+		safeSetError(resolveErrorMessage(err));
 	} finally {
-		saving.value = false
+		saving.value = false;
 	}
 }
 
 function beforeUnloadGuard(e: BeforeUnloadEvent) {
-	if (dirty.value.size === 0) return
-	e.preventDefault()
-	e.returnValue = ''
+	if (dirty.value.size === 0) return;
+	e.preventDefault();
+	e.returnValue = '';
 }
 
 function toggleRemarkTips() {
-	remarkTipsOpen.value = !remarkTipsOpen.value
+	remarkTipsOpen.value = !remarkTipsOpen.value;
 }
 
 /* -------------------- Watchers (A+ filter discipline) -------------------- */
 
-let groupReloadTimer: number | null = null
+let groupReloadTimer: number | null = null;
 
 watch(
 	() => ({ school: filters.school, program: filters.program }),
 	() => {
-		if (bootLoading.value) return
-		if (groupReloadTimer) window.clearTimeout(groupReloadTimer)
+		if (bootLoading.value) return;
+		if (groupReloadTimer) window.clearTimeout(groupReloadTimer);
 		groupReloadTimer = window.setTimeout(() => {
-			void reloadGroups()
-		}, 250)
+			void reloadGroups();
+		}, 250);
 	},
 	{ deep: true }
-)
+);
 
 watch(
 	() => filters.student_group,
 	async () => {
-		if (bootLoading.value) return
+		if (bootLoading.value) return;
 
-		await syncSelectedGroupContext()
+		await syncSelectedGroupContext();
 	}
-)
+);
 
 /* -------------------- A+ uiSignals subscription (refresh-owner) -------------------- */
 
-let unsubscribeAttendanceInvalidate: null | (() => void) = null
-let attendanceInvalidateTimer: number | null = null
+let unsubscribeAttendanceInvalidate: null | (() => void) = null;
+let attendanceInvalidateTimer: number | null = null;
 
 function onAttendanceInvalidated() {
 	// Coalesce rapid emits (autosave can emit multiple times)
-	if (attendanceInvalidateTimer) window.clearTimeout(attendanceInvalidateTimer)
+	if (attendanceInvalidateTimer) window.clearTimeout(attendanceInvalidateTimer);
 	attendanceInvalidateTimer = window.setTimeout(() => {
-		attendanceInvalidateTimer = null
+		attendanceInvalidateTimer = null;
 		// Best-effort: only update the calendar badges (recorded days)
-		void refreshRecordedDatesForCurrentGroup()
-	}, 150)
+		void refreshRecordedDatesForCurrentGroup();
+	}, 150);
 }
 
 onMounted(() => {
-	window.addEventListener('beforeunload', beforeUnloadGuard)
+	window.addEventListener('beforeunload', beforeUnloadGuard);
 
 	unsubscribeAttendanceInvalidate = uiSignals.subscribe(
 		SIGNAL_ATTENDANCE_INVALIDATE,
-		onAttendanceInvalidated,
-	)
+		onAttendanceInvalidated
+	);
 
-	void bootstrap()
-})
+	void bootstrap();
+});
 
 onBeforeUnmount(() => {
-	if (saveTimer) window.clearTimeout(saveTimer)
-	if (attendanceInvalidateTimer) window.clearTimeout(attendanceInvalidateTimer)
+	if (saveTimer) window.clearTimeout(saveTimer);
+	if (attendanceInvalidateTimer) window.clearTimeout(attendanceInvalidateTimer);
 
 	if (unsubscribeAttendanceInvalidate) {
-		unsubscribeAttendanceInvalidate()
-		unsubscribeAttendanceInvalidate = null
+		unsubscribeAttendanceInvalidate();
+		unsubscribeAttendanceInvalidate = null;
 	}
 
-	window.removeEventListener('beforeunload', beforeUnloadGuard)
-})
+	window.removeEventListener('beforeunload', beforeUnloadGuard);
+});
 </script>

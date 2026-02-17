@@ -76,7 +76,7 @@ frappe.query_reports["Student Logs"] = {
 			fieldtype: "Select",
 			options: ["Compact", "Full"],
 			default: "Compact"
-		}, 
+		},
 		{
 			fieldname: "requires_follow_up",
 			label: __("Requires Follow-up"),
@@ -177,7 +177,7 @@ frappe.query_reports["Student Logs"] = {
 		}
 
 		return val;
-	}, 
+	},
 };
 
 

@@ -59,7 +59,7 @@ The most critical failure point in schools is the "black hole" where notes disap
 
 *   **Explicit Routing:** If a note requires action, the author *must* select a **Next Step** and an **Assignee**.
 *   **Immutable History:** Once follow-up work begins, the original note locks. Integrating follow-up preserves the integrity of the original observation.
-*   **Focus Integration:** 
+*   **Focus Integration:**
     *   The assignee receives a task in their **Focus** inbox.
     *   When they complete the work, the task loops back to the author to **Review Intent**.
     *   **Result:** No loose ends. Every "Follow-up Required" note tracks through to completion.

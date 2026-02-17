@@ -4,4 +4,4 @@ from frappe.model.document import Document
 
 
 class ApplicantDocumentType(Document):
-	pass
+    pass

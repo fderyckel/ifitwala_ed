@@ -1,5 +1,5 @@
 <template>
-<!--
+	<!--
   MeetingEventModal.vue
   A dialog displaying details for a scheduled meeting.
   Shows participants, agenda, and location links.
@@ -7,14 +7,14 @@
   Used by:
   - ScheduleCalendar.vue
 -->
-		<TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
-			<Dialog
-				as="div"
-				class="if-overlay if-overlay--meeting"
-				:style="{ zIndex: zIndex }"
-				:initialFocus="initialFocus"
-				@close="onDialogClose"
-			>
+	<TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
+		<Dialog
+			as="div"
+			class="if-overlay if-overlay--meeting"
+			:style="{ zIndex: zIndex }"
+			:initialFocus="initialFocus"
+			@close="onDialogClose"
+		>
 			<TransitionChild
 				as="template"
 				enter="if-overlay__fade-enter"
@@ -24,8 +24,8 @@
 				leave-from="if-overlay__fade-to"
 				leave-to="if-overlay__fade-from"
 			>
-					<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
-				</TransitionChild>
+				<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
+			</TransitionChild>
 
 			<div class="if-overlay__wrap">
 				<TransitionChild
@@ -44,9 +44,9 @@
 							class="sr-only"
 							aria-hidden="true"
 							tabindex="0"
-								@click="emitClose('programmatic')"
-							>
-								Close
+							@click="emitClose('programmatic')"
+						>
+							Close
 						</button>
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline">
@@ -56,7 +56,9 @@
 								</DialogTitle>
 								<p class="meeting-modal__time type-meta" v-if="windowLabel">
 									{{ windowLabel }}
-									<span v-if="meeting?.timezone" class="meeting-modal__timezone">({{ meeting.timezone }})</span>
+									<span v-if="meeting?.timezone" class="meeting-modal__timezone"
+										>({{ meeting.timezone }})</span
+									>
 								</p>
 							</div>
 							<div class="meeting-modal__header-actions">
@@ -73,9 +75,13 @@
 									<FeatherIcon name="external-link" class="h-4 w-4" />
 									View in Desk
 								</a>
-									<button class="if-overlay__icon-button" aria-label="Close meeting modal" @click="emitClose('programmatic')">
-										<FeatherIcon name="x" class="h-5 w-5" />
-									</button>
+								<button
+									class="if-overlay__icon-button"
+									aria-label="Close meeting modal"
+									@click="emitClose('programmatic')"
+								>
+									<FeatherIcon name="x" class="h-5 w-5" />
+								</button>
 							</div>
 						</div>
 
@@ -89,8 +95,10 @@
 
 							<div v-else-if="error" class="meeting-modal__error">
 								<p class="type-body">{{ error }}</p>
-									<button class="meeting-modal__cta" @click="emitClose('programmatic')">Close</button>
-								</div>
+								<button class="meeting-modal__cta" @click="emitClose('programmatic')">
+									Close
+								</button>
+							</div>
 
 							<div v-else-if="meeting">
 								<section class="meeting-modal__meta-grid">
@@ -151,7 +159,10 @@
 										</div>
 									</div>
 									<ul class="meeting-modal__chip-list">
-										<li v-for="row in visibleParticipants" :key="row.participant + row.participant_name">
+										<li
+											v-for="row in visibleParticipants"
+											:key="row.participant + row.participant_name"
+										>
 											<span class="meeting-modal__chip">
 												{{ row.participant_name || row.participant || 'Participant' }}
 												<span v-if="row.role_in_meeting" class="meeting-modal__chip-role">
@@ -230,7 +241,8 @@ async function fetchMeetingDetails() {
 		}
 	} catch (err) {
 		if (seq === reqSeq) {
-			error.value = err instanceof Error ? err.message : 'Unable to load meeting details right now.';
+			error.value =
+				err instanceof Error ? err.message : 'Unable to load meeting details right now.';
 		}
 	} finally {
 		if (seq === reqSeq) {
@@ -274,7 +286,8 @@ const windowLabel = computed(() => {
 	if (!end) return `${dateLabel} · ${timeFormatter.format(start)}`;
 
 	const sameDay = start.toDateString() === end.toDateString();
-	if (sameDay) return `${dateLabel} · ${timeFormatter.format(start)} – ${timeFormatter.format(end)}`;
+	if (sameDay)
+		return `${dateLabel} · ${timeFormatter.format(start)} – ${timeFormatter.format(end)}`;
 
 	return `${dateLabel} · ${timeFormatter.format(start)} → ${dateFormatter.format(end)} · ${timeFormatter.format(end)}`;
 });
@@ -321,7 +334,7 @@ function onKeydown(e: KeyboardEvent) {
 
 watch(
 	() => props.open,
-	(v) => {
+	v => {
 		if (v) document.addEventListener('keydown', onKeydown, true);
 		else document.removeEventListener('keydown', onKeydown, true);
 	},

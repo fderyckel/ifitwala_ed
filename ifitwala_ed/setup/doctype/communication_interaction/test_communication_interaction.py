@@ -6,4 +6,4 @@ from frappe.tests.utils import FrappeTestCase
 
 
 class TestCommunicationInteraction(FrappeTestCase):
-	pass
+    pass

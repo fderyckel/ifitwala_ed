@@ -8,9 +8,9 @@ from frappe.model.document import Document
 
 
 class InventoryLedgerEntry(Document):
-	def validate(self):
-		if not self.is_new():
-			frappe.throw(_("Inventory Ledger Entries are append-only. Edits are not permitted."))
+    def validate(self):
+        if not self.is_new():
+            frappe.throw(_("Inventory Ledger Entries are append-only. Edits are not permitted."))
 
-	def on_trash(self):
-		frappe.throw(_("Inventory Ledger Entries cannot be deleted."))
+    def on_trash(self):
+        frappe.throw(_("Inventory Ledger Entries cannot be deleted."))

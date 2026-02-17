@@ -2,11 +2,11 @@
 // For license information, please see license.txt
 
 // searches for enabled users
-frappe.provide("ifitwala_ed.queries");
+frappe.provide('ifitwala_ed.queries');
 
 $.extend(ifitwala_ed.queries, {
 	user: function () {
-		return { query: "frappe.core.doctype.user.user.user_query" };
+		return { query: 'frappe.core.doctype.user.user.user_query' };
 	},
 
 	//task: function () {
@@ -18,15 +18,15 @@ $.extend(ifitwala_ed.queries, {
 			if (!doc[frappe.dynamic_link.fieldname]) {
 				cur_frm.scroll_to_field(frappe.dynamic_link.fieldname);
 				frappe.show_alert({
-					message: __("Please set {0} first.", [
+					message: __('Please set {0} first.', [
 						__(frappe.meta.get_label(doc.doctype, frappe.dynamic_link.fieldname, doc.name)),
 					]),
-					indicator: "orange",
+					indicator: 'orange',
 				});
 			}
 
 			return {
-				query: "frappe.contacts.doctype.contact.contact.contact_query",
+				query: 'frappe.contacts.doctype.contact.contact.contact_query',
 				filters: {
 					link_doctype: frappe.dynamic_link.doctype,
 					link_name: doc[frappe.dynamic_link.fieldname],
@@ -37,12 +37,14 @@ $.extend(ifitwala_ed.queries, {
 
 	organization_contact_query: function (doc) {
 		if (!doc.organization) {
-			frappe.throw(__("Please set {0}", [__(frappe.meta.get_label(doc.doctype, "organization", doc.name))]));
+			frappe.throw(
+				__('Please set {0}', [__(frappe.meta.get_label(doc.doctype, 'organization', doc.name))])
+			);
 		}
 
 		return {
-			query: "frappe.contacts.doctype.contact.contact.contact_query",
-			filters: { link_doctype: "Organization", link_name: doc.organization },
+			query: 'frappe.contacts.doctype.contact.contact.contact_query',
+			filters: { link_doctype: 'Organization', link_name: doc.organization },
 		};
 	},
 
@@ -51,15 +53,15 @@ $.extend(ifitwala_ed.queries, {
 			if (!doc[frappe.dynamic_link.fieldname]) {
 				cur_frm.scroll_to_field(frappe.dynamic_link.fieldname);
 				frappe.show_alert({
-					message: __("Please set {0} first.", [
+					message: __('Please set {0} first.', [
 						__(frappe.meta.get_label(doc.doctype, frappe.dynamic_link.fieldname, doc.name)),
 					]),
-					indicator: "orange",
+					indicator: 'orange',
 				});
 			}
 
 			return {
-				query: "frappe.contacts.doctype.address.address.address_query",
+				query: 'frappe.contacts.doctype.address.address.address_query',
 				filters: {
 					link_doctype: frappe.dynamic_link.doctype,
 					link_name: doc[frappe.dynamic_link.fieldname],
@@ -70,18 +72,18 @@ $.extend(ifitwala_ed.queries, {
 
 	organization_address_query: function (doc) {
 		if (!doc.organization) {
-			cur_frm.scroll_to_field("organization");
+			cur_frm.scroll_to_field('organization');
 			frappe.show_alert({
-				message: __("Please set {0} first.", [
-					__(frappe.meta.get_label(doc.doctype, "organization", doc.name)),
+				message: __('Please set {0} first.', [
+					__(frappe.meta.get_label(doc.doctype, 'organization', doc.name)),
 				]),
-				indicator: "orange",
+				indicator: 'orange',
 			});
 		}
 
 		return {
-			query: "frappe.contacts.doctype.address.address.address_query",
-			filters: { link_doctype: "Organization", link_name: doc.organization },
+			query: 'frappe.contacts.doctype.address.address.address_query',
+			filters: { link_doctype: 'Organization', link_name: doc.organization },
 		};
 	},
 
@@ -90,14 +92,14 @@ $.extend(ifitwala_ed.queries, {
 	},
 
 	employee: function () {
-		return { query: "ifitwala_ed.controllers.queries.employee_query" };
+		return { query: 'ifitwala_ed.controllers.queries.employee_query' };
 	},
 
 	location: function (doc) {
 		return {
 			filters: [
-				["Location", "organization", "in", ["", cstr(doc.organization)]],
-				["Location", "is_group", "=", 0],
+				['Location', 'organization', 'in', ['', cstr(doc.organization)]],
+				['Location', 'is_group', '=', 0],
 			],
 		};
 	},
@@ -107,7 +109,7 @@ ifitwala_ed.queries.setup_queries = function (frm, options, query_fn) {
 	var me = this;
 	var set_query = function (doctype, parentfield) {
 		var link_fields = frappe.meta.get_docfields(doctype, frm.doc.name, {
-			fieldtype: "Link",
+			fieldtype: 'Link',
 			options: options,
 		});
 		$.each(link_fields, function (i, df) {
@@ -123,10 +125,9 @@ ifitwala_ed.queries.setup_queries = function (frm, options, query_fn) {
 
 	// warehouse field in tables
 	$.each(
-		frappe.meta.get_docfields(frm.doc.doctype, frm.doc.name, { fieldtype: "Table" }),
+		frappe.meta.get_docfields(frm.doc.doctype, frm.doc.name, { fieldtype: 'Table' }),
 		function (i, df) {
 			set_query(df.options, df.fieldname);
 		}
 	);
 };
-

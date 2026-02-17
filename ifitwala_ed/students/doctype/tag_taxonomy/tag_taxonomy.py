@@ -9,8 +9,8 @@ from frappe.model.document import Document
 
 
 class TagTaxonomy(Document):
-	def validate(self):
-		if self.school and not self.organization:
-			self.organization = frappe.db.get_value("School", self.school, "organization")
-		if self.school and not self.organization:
-			frappe.throw(_("Organization is required when school is set."))
+    def validate(self):
+        if self.school and not self.organization:
+            self.organization = frappe.db.get_value("School", self.school, "organization")
+        if self.school and not self.organization:
+            frappe.throw(_("Organization is required when school is set."))

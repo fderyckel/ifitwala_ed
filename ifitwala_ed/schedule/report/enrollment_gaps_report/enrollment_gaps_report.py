@@ -5,37 +5,38 @@
 
 import frappe
 from frappe import _
-from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_ancestor_schools
+
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters):
-	"""
-	Allow picking Academic Years whose `school` is the selected school
-	or any of its **ancestors** (covers IIS parent AY when ISS is selected).
-	"""
-	school = (filters or {}).get("school")
-	params = {"txt": f"%{txt}%", "start": start, "page_len": page_len}
+    """
+    Allow picking Academic Years whose `school` is the selected school
+    or any of its **ancestors** (covers IIS parent AY when ISS is selected).
+    """
+    school = (filters or {}).get("school")
+    params = {"txt": f"%{txt}%", "start": start, "page_len": page_len}
 
-	if not school:
-		# permissive before School is chosen
-		return frappe.db.sql(
-			"""
+    if not school:
+        # permissive before School is chosen
+        return frappe.db.sql(
+            """
 			SELECT name
 			FROM `tabAcademic Year`
 			WHERE name LIKE %(txt)s
 			ORDER BY COALESCE(year_start_date, '0001-01-01') DESC, name DESC
 			LIMIT %(start)s, %(page_len)s
 			""",
-			params,
-		)
+            params,
+        )
 
-	# Ancestors list already includes self per your util
-	scope_schools = tuple(get_ancestor_schools(school) or [school])
+    # Ancestors list already includes self per your util
+    scope_schools = tuple(get_ancestor_schools(school) or [school])
 
-	return frappe.db.sql(
-		"""
+    return frappe.db.sql(
+        """
 		SELECT name
 		FROM `tabAcademic Year`
 		WHERE school IN %(schools)s
@@ -43,46 +44,44 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
 		ORDER BY COALESCE(year_start_date, '0001-01-01') DESC, name DESC
 		LIMIT %(start)s, %(page_len)s
 		""",
-		{**params, "schools": scope_schools},
-	)
+        {**params, "schools": scope_schools},
+    )
 
 
 def execute(filters=None):
-	filters = filters or {}
-	ay = (filters.get("academic_year") or "").strip()
-	school = (filters.get("school") or "").strip()
-	if not school:
-		frappe.throw(_("Please select a School."))
-	if not ay:
-		frappe.throw(_("Please select an Academic Year."))
+    filters = filters or {}
+    ay = (filters.get("academic_year") or "").strip()
+    school = (filters.get("school") or "").strip()
+    if not school:
+        frappe.throw(_("Please select a School."))
+    if not ay:
+        frappe.throw(_("Please select an Academic Year."))
 
-	ay_row = frappe.db.get_value(
-		"Academic Year",
-		ay,
-		["year_start_date", "year_end_date"],
-		as_dict=True,
-	)
-	if not ay_row:
-		frappe.throw(_("Academic Year {0} was not found.").format(ay))
-	if not (ay_row.year_start_date and ay_row.year_end_date):
-		frappe.throw(
-			_("Academic Year {0} must have both a start date and an end date.").format(ay)
-		)
+    ay_row = frappe.db.get_value(
+        "Academic Year",
+        ay,
+        ["year_start_date", "year_end_date"],
+        as_dict=True,
+    )
+    if not ay_row:
+        frappe.throw(_("Academic Year {0} was not found.").format(ay))
+    if not (ay_row.year_start_date and ay_row.year_end_date):
+        frappe.throw(_("Academic Year {0} must have both a start date and an end date.").format(ay))
 
-	schools = tuple(get_descendant_schools(school) or [school])
+    schools = tuple(get_descendant_schools(school) or [school])
 
-	columns = [
-		{"label": _("Type"),         "fieldname": "type",         "fieldtype": "Data",   "width": 170},
-		{"label": _("Student"),      "fieldname": "student",      "fieldtype": "Link",   "options": "Student", "width": 130},
-		{"label": _("Student Name"), "fieldname": "student_name", "fieldtype": "Data",   "width": 220},
-		{"label": _("Program"),      "fieldname": "program",      "fieldtype": "Link",   "options": "Program", "width": 160},
-		{"label": _("Course"),       "fieldname": "course",       "fieldtype": "Link",   "options": "Course",  "width": 220},
-		{"label": _("Term Start"),   "fieldname": "term",         "fieldtype": "Link",   "options": "Term",    "width": 150},
-		{"label": _("Missing"),      "fieldname": "missing",      "fieldtype": "Data",   "width": 180},
-	]
+    columns = [
+        {"label": _("Type"), "fieldname": "type", "fieldtype": "Data", "width": 170},
+        {"label": _("Student"), "fieldname": "student", "fieldtype": "Link", "options": "Student", "width": 130},
+        {"label": _("Student Name"), "fieldname": "student_name", "fieldtype": "Data", "width": 220},
+        {"label": _("Program"), "fieldname": "program", "fieldtype": "Link", "options": "Program", "width": 160},
+        {"label": _("Course"), "fieldname": "course", "fieldtype": "Link", "options": "Course", "width": 220},
+        {"label": _("Term Start"), "fieldname": "term", "fieldtype": "Link", "options": "Term", "width": 150},
+        {"label": _("Missing"), "fieldname": "missing", "fieldtype": "Data", "width": 180},
+    ]
 
-	data = frappe.db.sql(
-		"""
+    data = frappe.db.sql(
+        """
 		WITH enrollments AS (
 			SELECT
 				pe.student,
@@ -179,13 +178,13 @@ def execute(filters=None):
 		WHERE cg.student IS NULL
 		ORDER BY 1, 2
 		""",
-		{
-			"ay": ay,
-			"schools": schools,
-			"ay_start": ay_row.year_start_date,
-			"ay_end": ay_row.year_end_date,
-		},
-		as_dict=True,
-	)
+        {
+            "ay": ay,
+            "schools": schools,
+            "ay_start": ay_row.year_start_date,
+            "ay_end": ay_row.year_end_date,
+        },
+        as_dict=True,
+    )
 
-	return columns, data
+    return columns, data

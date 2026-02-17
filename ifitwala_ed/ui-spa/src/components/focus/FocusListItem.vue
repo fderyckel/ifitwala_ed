@@ -37,10 +37,7 @@
 				<p class="mt-1 type-caption text-ink/70 leading-snug line-clamp-2">
 					{{ item.subtitle }}
 				</p>
-				<p
-					v-if="assignedByName"
-					class="mt-1 type-caption text-ink/60 leading-snug truncate"
-				>
+				<p v-if="assignedByName" class="mt-1 type-caption text-ink/60 leading-snug truncate">
 					Assigned by {{ assignedByName }}
 				</p>
 			</template>
@@ -53,10 +50,7 @@
 			</template>
 
 			<template v-else>
-				<span
-					v-if="item.badge"
-					class="if-pill type-badge-label border-ink/10 bg-surface-soft"
-				>
+				<span v-if="item.badge" class="if-pill type-badge-label border-ink/10 bg-surface-soft">
 					{{ item.badge }}
 				</span>
 			</template>
@@ -71,33 +65,33 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { FeatherIcon } from 'frappe-ui'
-import type { FocusItem } from '@/types/focusItem'
+import { computed } from 'vue';
+import { FeatherIcon } from 'frappe-ui';
+import type { FocusItem } from '@/types/focusItem';
 
 const props = defineProps<{
-	item: FocusItem
-	loading?: boolean
-	disabled?: boolean
-}>()
+	item: FocusItem;
+	loading?: boolean;
+	disabled?: boolean;
+}>();
 
 const assignedByName = computed(() => {
-	const p = props.item.payload
-	const name = (p?.assigned_by_name || '').trim()
-	return name || null
-})
+	const p = props.item.payload;
+	const name = (p?.assigned_by_name || '').trim();
+	return name || null;
+});
 
 const emit = defineEmits<{
-	(e: 'open', item: FocusItem): void
-}>()
+	(e: 'open', item: FocusItem): void;
+}>();
 
 const dotClass = computed(() => {
-	if (props.loading) return 'if-dot--muted'
-	return props.item.kind === 'review' ? 'if-dot--review' : 'if-dot--action'
-})
+	if (props.loading) return 'if-dot--muted';
+	return props.item.kind === 'review' ? 'if-dot--review' : 'if-dot--action';
+});
 
 function onClick() {
-	if (props.loading || props.disabled) return
-	emit('open', props.item)
+	if (props.loading || props.disabled) return;
+	emit('open', props.item);
 }
 </script>

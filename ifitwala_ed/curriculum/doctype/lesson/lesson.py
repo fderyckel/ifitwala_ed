@@ -5,5 +5,6 @@
 
 from frappe.model.document import Document
 
+
 class Lesson(Document):
-	pass
+    pass

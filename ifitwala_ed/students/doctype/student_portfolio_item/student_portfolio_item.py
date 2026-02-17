@@ -7,5 +7,5 @@ from frappe.model.document import Document
 
 
 class StudentPortfolioItem(Document):
-	# Child table controllers must stay UI-only.
-	pass
+    # Child table controllers must stay UI-only.
+    pass

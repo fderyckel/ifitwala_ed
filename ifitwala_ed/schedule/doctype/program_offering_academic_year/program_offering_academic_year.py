@@ -6,4 +6,4 @@ from frappe.model.document import Document
 
 
 class ProgramOfferingAcademicYear(Document):
-	pass
+    pass

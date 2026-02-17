@@ -4,12 +4,8 @@
 		<!-- HEADER -->
 		<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 			<div>
-				<h1 class="type-h1">
-					Morning Briefing
-				</h1>
-				<p class="type-meta mt-1 text-slate-token/80">
-					Daily Operational &amp; Academic Pulse
-				</p>
+				<h1 class="type-h1">Morning Briefing</h1>
+				<p class="type-meta mt-1 text-slate-token/80">Daily Operational &amp; Academic Pulse</p>
 			</div>
 
 			<div class="flex items-center gap-3">
@@ -19,10 +15,7 @@
 						{{ formattedDate }}
 					</span>
 				</div>
-				<button
-					@click="widgets.reload()"
-					class="remark-btn ml-2 flex items-center justify-center"
-				>
+				<button @click="widgets.reload()" class="remark-btn ml-2 flex items-center justify-center">
 					<FeatherIcon
 						name="refresh-cw"
 						class="h-4 w-4"
@@ -48,10 +41,10 @@
 				<!-- Header strip -->
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div class="flex items-center gap-2">
-						<h2 class="section-header text-slate-token/80">
-							Organizational Announcements
-						</h2>
-						<span class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-slate-token/80">
+						<h2 class="section-header text-slate-token/80">Organizational Announcements</h2>
+						<span
+							class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-slate-token/80"
+						>
 							{{ widgets.data.announcements.length }} today
 						</span>
 					</div>
@@ -61,9 +54,11 @@
 							v-for="mode in viewModes"
 							:key="mode.value"
 							class="rounded-full border px-3 py-1 text-xs font-semibold transition-all"
-							:class="viewMode === mode.value
-								? 'border-jacaranda bg-jacaranda/5 text-jacaranda shadow-sm'
-								: 'border-border/60 text-slate-token/80 hover:bg-surface-soft'"
+							:class="
+								viewMode === mode.value
+									? 'border-jacaranda bg-jacaranda/5 text-jacaranda shadow-sm'
+									: 'border-border/60 text-slate-token/80 hover:bg-surface-soft'
+							"
 							@click="viewMode = mode.value"
 						>
 							{{ mode.label }}
@@ -163,15 +158,13 @@
 									v-if="getInteractionFor(currentSpotlight).self"
 									class="hidden text-[10px] text-jacaranda md:block"
 								>
-									You responded: {{ getInteractionFor(currentSpotlight).self.intent_type || 'Commented' }}
+									You responded:
+									{{ getInteractionFor(currentSpotlight).self.intent_type || 'Commented' }}
 								</div>
 							</div>
 						</div>
 
-						<div
-							v-if="spotlightAnnouncements.length > 1"
-							class="flex flex-col items-center gap-2"
-						>
+						<div v-if="spotlightAnnouncements.length > 1" class="flex flex-col items-center gap-2">
 							<button
 								class="rounded-full p-1 text-slate-token/60 transition-colors hover:bg-surface-soft hover:text-ink"
 								@click="prevSpotlight"
@@ -183,9 +176,7 @@
 									v-for="(a, idx) in spotlightAnnouncements"
 									:key="idx"
 									class="h-1.5 w-1.5 rounded-full"
-									:class="idx === spotlightIndex
-										? 'bg-jacaranda'
-										: 'bg-border'"
+									:class="idx === spotlightIndex ? 'bg-jacaranda' : 'bg-border'"
 								></span>
 							</div>
 							<button
@@ -222,11 +213,13 @@
 						>
 							<div
 								class="mt-1 h-2 w-2 flex-shrink-0 rounded-full"
-								:class="item.priority === 'Critical'
-									? 'bg-flame'
-									: item.priority === 'High'
-										? 'bg-jacaranda'
-										: 'bg-border'"
+								:class="
+									item.priority === 'Critical'
+										? 'bg-flame'
+										: item.priority === 'High'
+											? 'bg-jacaranda'
+											: 'bg-border'
+								"
 							></div>
 
 							<div class="min-w-0 flex-1">
@@ -239,9 +232,9 @@
 									</span>
 								</div>
 								<p
-							class="mt-1 text-xs text-slate-token/80 line-clamp-4 md:line-clamp-5"
-							v-html="item.content"
-						></p>
+									class="mt-1 text-xs text-slate-token/80 line-clamp-4 md:line-clamp-5"
+									v-html="item.content"
+								></p>
 
 								<!-- Interaction summary for each announcement (staff comments only) -->
 								<div
@@ -300,9 +293,7 @@
 							class="paper-card cursor-pointer border-l-4 border-l-flame p-5 transition-shadow hover:shadow-md"
 							@click="openCriticalIncidents"
 						>
-							<h3 class="section-header mb-1 text-flame/80">
-								Critical Incidents
-							</h3>
+							<h3 class="section-header mb-1 text-flame/80">Critical Incidents</h3>
 							<div class="text-3xl font-bold text-ink">
 								{{ widgets.data.critical_incidents }}
 							</div>
@@ -314,7 +305,7 @@
 
 						<!-- Clinic Volume -->
 						<div
-						v-if="hasArrayData('clinic_volume')"
+							v-if="hasArrayData('clinic_volume')"
 							class="paper-card cursor-pointer p-5 transition-shadow hover:shadow-md"
 							@click="showClinicHistory = true"
 						>
@@ -324,9 +315,7 @@
 								>
 									<FeatherIcon name="thermometer" class="h-4 w-4" />
 								</div>
-								<h3 class="text-sm font-semibold text-canopy">
-									Clinic Volume
-								</h3>
+								<h3 class="text-sm font-semibold text-canopy">Clinic Volume</h3>
 							</div>
 							<div class="space-y-2">
 								<div
@@ -357,9 +346,7 @@
 								>
 									<FeatherIcon name="users" class="h-4 w-4" />
 								</div>
-								<h3 class="text-sm font-semibold text-canopy">
-									Admissions (Last 7 Days)
-								</h3>
+								<h3 class="text-sm font-semibold text-canopy">Admissions (Last 7 Days)</h3>
 							</div>
 							<span class="text-2xl font-bold text-ink">
 								{{ widgets.data.admissions_pulse.total_new_weekly }}
@@ -457,9 +444,7 @@
 			</div>
 
 			<!-- COMMUNITY PULSE: BIRTHDAYS -->
-			<section
-				v-if="hasArrayData('staff_birthdays') || hasArrayData('my_student_birthdays')"
-			>
+			<section v-if="hasArrayData('staff_birthdays') || hasArrayData('my_student_birthdays')">
 				<div class="border-t border-border/60 pt-6">
 					<!-- Section header -->
 					<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -486,7 +471,9 @@
 									<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
 										Staff Birthdays
 									</h3>
-									<span class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-slate-token/70">
+									<span
+										class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-slate-token/70"
+									>
 										{{ widgets.data.staff_birthdays.length }} this week
 									</span>
 								</div>
@@ -497,12 +484,10 @@
 										:key="emp.name"
 										class="flex items-center gap-3 rounded-xl bg-surface-soft/60 px-3 py-2"
 									>
-										<div class="h-9 w-9 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)]">
-											<img
-												v-if="emp.image"
-												:src="emp.image"
-												class="h-full w-full object-cover"
-											/>
+										<div
+											class="h-9 w-9 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)]"
+										>
+											<img v-if="emp.image" :src="emp.image" class="h-full w-full object-cover" />
 											<div
 												v-else
 												class="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-token/70"
@@ -528,7 +513,9 @@
 									<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
 										Student Birthdays (My Groups)
 									</h3>
-									<span class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-slate-token/70">
+									<span
+										class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[10px] font-medium text-slate-token/70"
+									>
 										{{ widgets.data.my_student_birthdays.length }} this week
 									</span>
 								</div>
@@ -539,12 +526,10 @@
 										:key="stu.first_name + stu.last_name"
 										class="flex items-center gap-3 rounded-xl bg-surface-soft/60 px-3 py-2"
 									>
-										<div class="h-9 w-9 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)]">
-											<img
-												v-if="stu.image"
-												:src="stu.image"
-												class="h-full w-full object-cover"
-											/>
+										<div
+											class="h-9 w-9 overflow-hidden rounded-full bg-white shadow-[var(--shadow-soft)]"
+										>
+											<img v-if="stu.image" :src="stu.image" class="h-full w-full object-cover" />
 											<div
 												v-else
 												class="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-token/70"
@@ -581,8 +566,6 @@
 					</div>
 				</div>
 			</section>
-
-
 		</div>
 
 		<!-- CONTENT DIALOG -->
@@ -594,7 +577,9 @@
 			:image-fallback="dialogContent.imageFallback"
 			:badge="dialogContent.badge"
 			:show-interactions="showInteractionsForActive"
-			:interaction="activeCommunication ? getInteractionFor(activeCommunication) : { counts: {}, self: null }"
+			:interaction="
+				activeCommunication ? getInteractionFor(activeCommunication) : { counts: {}, self: null }
+			"
 			@acknowledge="activeCommunication && acknowledgeAnnouncement(activeCommunication)"
 			@open-comments="activeCommunication && openInteractionThread(activeCommunication)"
 			@react="activeCommunication && reactToAnnouncement(activeCommunication, $event)"
@@ -611,11 +596,13 @@
 				<div class="flex gap-3 p-4">
 					<div
 						class="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full"
-						:class="item.priority === 'Critical'
-							? 'bg-flame ring-2 ring-flame/30'
-							: item.priority === 'High'
-								? 'bg-jacaranda ring-2 ring-jacaranda/30'
-								: 'bg-border'"
+						:class="
+							item.priority === 'Critical'
+								? 'bg-flame ring-2 ring-flame/30'
+								: item.priority === 'High'
+									? 'bg-jacaranda ring-2 ring-jacaranda/30'
+									: 'bg-border'
+						"
 					></div>
 					<div class="min-w-0 flex-1">
 						<div class="flex items-start justify-between gap-2">
@@ -623,7 +610,9 @@
 								<p class="text-sm font-semibold text-ink">
 									{{ item.title }}
 								</p>
-								<span class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[11px] font-semibold text-slate-token/80">
+								<span
+									class="inline-flex items-center rounded-full bg-surface-soft px-2 py-0.5 text-[11px] font-semibold text-slate-token/80"
+								>
 									{{ item.type }}
 								</span>
 								<span
@@ -719,16 +708,15 @@
 	</div>
 </template>
 
-
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { createResource, FeatherIcon, call, toast } from 'frappe-ui'
-import ContentDialog from '@/components/ContentDialog.vue'
-import GenericListDialog from '@/components/analytics/GenericListDialog.vue'
-import HistoryDialog from '@/components/analytics/HistoryDialog.vue'
-import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue'
-import AttendanceTrend from './components/AttendanceTrend.vue'
-import AbsentStudentList from './components/AbsentStudentList.vue'
+import { computed, ref, watch } from 'vue';
+import { createResource, FeatherIcon, call, toast } from 'frappe-ui';
+import ContentDialog from '@/components/ContentDialog.vue';
+import GenericListDialog from '@/components/analytics/GenericListDialog.vue';
+import HistoryDialog from '@/components/analytics/HistoryDialog.vue';
+import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
+import AttendanceTrend from './components/AttendanceTrend.vue';
+import AbsentStudentList from './components/AbsentStudentList.vue';
 import {
 	ORG_SURFACES,
 	type Announcement,
@@ -737,24 +725,24 @@ import {
 	type InteractionThreadRow,
 	type StudentLogItem,
 	type OrgPriority,
-	type StudentLogDetail
-} from '@/types/morning_brief'
+	type StudentLogDetail,
+} from '@/types/morning_brief';
 import type {
-  InteractionSummary,
-  InteractionIntentType,
-  ReactionCode,
-} from '@/types/morning_brief'
-import { canShowPublicInteractions } from '@/utils/orgCommunication'
-import type { OrgCommunicationListItem } from '@/types/orgCommunication'
-import { getInteractionStats } from '@/utils/interactionStats'
+	InteractionSummary,
+	InteractionIntentType,
+	ReactionCode,
+} from '@/types/morning_brief';
+import { canShowPublicInteractions } from '@/utils/orgCommunication';
+import type { OrgCommunicationListItem } from '@/types/orgCommunication';
+import { getInteractionStats } from '@/utils/interactionStats';
 
 interface DialogContent {
-	title: string
-	subtitle: string
-	content: string
-	image: string
-	imageFallback: string
-	badge: string
+	title: string;
+	subtitle: string;
+	content: string;
+	image: string;
+	imageFallback: string;
+	badge: string;
 }
 
 type ArrayWidgetKey =
@@ -764,199 +752,191 @@ type ArrayWidgetKey =
 	| 'my_student_birthdays'
 	| 'student_logs'
 	| 'attendance_trend'
-	| 'my_absent_students'
+	| 'my_absent_students';
 
 // State for Dialog
-const isContentDialogOpen = ref<boolean>(false)
+const isContentDialogOpen = ref<boolean>(false);
 const dialogContent = ref<DialogContent>({
 	title: '',
 	subtitle: '',
 	content: '',
 	image: '',
 	imageFallback: '',
-	badge: ''
-})
+	badge: '',
+});
 
 // State for new dialogs
-const showAnnouncementCenter = ref<boolean>(false)
-const showCriticalIncidents = ref<boolean>(false)
-const showClinicHistory = ref<boolean>(false)
-const showInteractionDrawer = ref<boolean>(false)
-const activeCommunication = ref<Announcement | null>(null)
-const showInteractionsForActive = computed(() =>
-	canShowInteractions(activeCommunication.value)
-)
-const newComment = ref<string>('')
+const showAnnouncementCenter = ref<boolean>(false);
+const showCriticalIncidents = ref<boolean>(false);
+const showClinicHistory = ref<boolean>(false);
+const showInteractionDrawer = ref<boolean>(false);
+const activeCommunication = ref<Announcement | null>(null);
+const showInteractionsForActive = computed(() => canShowInteractions(activeCommunication.value));
+const newComment = ref<string>('');
 
 const criticalIncidentsList = createResource<StudentLogDetail[]>({
 	url: 'ifitwala_ed.api.morning_brief.get_critical_incidents_details',
-	auto: false
-})
+	auto: false,
+});
 
 const widgets = createResource<WidgetsPayload>({
 	url: 'ifitwala_ed.api.morning_brief.get_briefing_widgets',
-	auto: true
-})
+	auto: true,
+});
 
 const interactionSummary = createResource<InteractionSummaryMap>({
 	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_org_comm_interaction_summary',
 	method: 'POST',
-	auto: false
-})
+	auto: false,
+});
 
 const interactionThread = createResource<InteractionThreadRow[]>({
 	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_communication_thread',
 	method: 'POST',
-	auto: false
-})
+	auto: false,
+});
 
 const viewModes = [
 	{ value: 'focus', label: 'Focus' },
-	{ value: 'all', label: 'All' }
-] as const
-type ViewMode = (typeof viewModes)[number]['value']
-const viewMode = ref<ViewMode>('all')
-const spotlightIndex = ref(0)
+	{ value: 'all', label: 'All' },
+] as const;
+type ViewMode = (typeof viewModes)[number]['value'];
+const viewMode = ref<ViewMode>('all');
+const spotlightIndex = ref(0);
 const spotlightAnnouncements = computed<Announcement[]>(() =>
-	(widgets.data?.announcements || []).filter((a) =>
-		['Critical', 'High'].includes(a.priority ?? '')
-	)
-)
+	(widgets.data?.announcements || []).filter(a => ['Critical', 'High'].includes(a.priority ?? ''))
+);
 const currentSpotlight = computed<Announcement | null>(
 	() => spotlightAnnouncements.value[spotlightIndex.value] || null
-)
+);
 
 watch(spotlightAnnouncements, (list: Announcement[]) => {
 	if (!list.length) {
-		spotlightIndex.value = 0
-		return
+		spotlightIndex.value = 0;
+		return;
 	}
 	if (spotlightIndex.value >= list.length) {
-		spotlightIndex.value = 0
+		spotlightIndex.value = 0;
 	}
-})
+});
 
 const criticalCount = computed(
-	() => (widgets.data?.announcements || []).filter((a) => a.priority === 'Critical').length
-)
+	() => (widgets.data?.announcements || []).filter(a => a.priority === 'Critical').length
+);
 const highCount = computed(
-	() => (widgets.data?.announcements || []).filter((a) => a.priority === 'High').length
-)
+	() => (widgets.data?.announcements || []).filter(a => a.priority === 'High').length
+);
 
 const filteredAnnouncements = computed<Announcement[]>(() => {
-	const all = widgets.data?.announcements || []
+	const all = widgets.data?.announcements || [];
 
 	if (viewMode.value === 'focus') {
-		return all.filter(
-			(a) =>
-				a.priority === 'Critical' ||
-				a.priority === 'High'
-		)
+		return all.filter(a => a.priority === 'Critical' || a.priority === 'High');
 	}
 
-	return all
-})
+	return all;
+});
 
-const limitedAnnouncements = computed<Announcement[]>(() => filteredAnnouncements.value)
+const limitedAnnouncements = computed<Announcement[]>(() => filteredAnnouncements.value);
 
 // Adapter because the shared helper is typed for org communication list items
 function canShowInteractions(item: Announcement | null | undefined): boolean {
-	return canShowPublicInteractions(item as unknown as OrgCommunicationListItem | null | undefined)
+	return canShowPublicInteractions(item as unknown as OrgCommunicationListItem | null | undefined);
 }
 
 watch(
 	() => widgets.data?.announcements,
 	(list: Announcement[] | undefined) => {
-		if (!list || !list.length) return
+		if (!list || !list.length) return;
 
-		const comm_names = list.map((a) => a.name).filter(Boolean)
-		if (!comm_names.length) return
+		const comm_names = list.map(a => a.name).filter(Boolean);
+		if (!comm_names.length) return;
 
-		interactionSummary.submit({ comm_names })
+		interactionSummary.submit({ comm_names });
 	},
 	{ immediate: true }
-)
+);
 
 function nextSpotlight(): void {
-	if (!spotlightAnnouncements.value.length) return
-	spotlightIndex.value = (spotlightIndex.value + 1) % spotlightAnnouncements.value.length
+	if (!spotlightAnnouncements.value.length) return;
+	spotlightIndex.value = (spotlightIndex.value + 1) % spotlightAnnouncements.value.length;
 }
 
 function prevSpotlight(): void {
-	if (!spotlightAnnouncements.value.length) return
+	if (!spotlightAnnouncements.value.length) return;
 	spotlightIndex.value =
 		(spotlightIndex.value - 1 + spotlightAnnouncements.value.length) %
-		spotlightAnnouncements.value.length
+		spotlightAnnouncements.value.length;
 }
 
 function hasArrayData(key: ArrayWidgetKey): boolean {
-	const list = widgets.data?.[key]
-	return Array.isArray(list) && list.length > 0
+	const list = widgets.data?.[key];
+	return Array.isArray(list) && list.length > 0;
 }
 
 function openLog(log: StudentLogItem): void {
-	activeCommunication.value = null
+	activeCommunication.value = null;
 	dialogContent.value = {
 		title: log.student_name,
 		subtitle: log.date_display,
 		content: log.full_content,
 		image: log.student_image || '',
 		imageFallback: log.student_name.substring(0, 2),
-		badge: log.log_type
-	}
-	isContentDialogOpen.value = true
+		badge: log.log_type,
+	};
+	isContentDialogOpen.value = true;
 }
 
 function openAnnouncement(news: Announcement): void {
-	activeCommunication.value = news
+	activeCommunication.value = news;
 	dialogContent.value = {
 		title: news.title,
 		subtitle: formattedDate.value,
 		content: news.content,
 		image: '',
 		imageFallback: '',
-		badge: news.type
-	}
-	isContentDialogOpen.value = true
+		badge: news.type,
+	};
+	isContentDialogOpen.value = true;
 }
 
 function getInteractionFor(item: Announcement): InteractionSummary {
-	const summary = interactionSummary.data?.[item.name]
+	const summary = interactionSummary.data?.[item.name];
 	if (!summary) {
 		return {
 			counts: {},
-			self: null
-		}
+			self: null,
+		};
 	}
-	return summary
+	return summary;
 }
 
 function getInteractionStatsFor(item: Announcement) {
-	return getInteractionStats(getInteractionFor(item))
+	return getInteractionStats(getInteractionFor(item));
 }
 
 function openInteractionThread(item: Announcement): void {
 	if (!canShowInteractions(item)) {
 		toast({
 			appearance: 'warning',
-			message: 'Comments are disabled for this announcement.'
-		})
-		return
+			message: 'Comments are disabled for this announcement.',
+		});
+		return;
 	}
-	activeCommunication.value = item
-	showInteractionDrawer.value = true
+	activeCommunication.value = item;
+	showInteractionDrawer.value = true;
 
 	interactionThread.submit({
 		org_communication: item.name,
 		limit_start: 0,
-		limit_page_length: 30
-	})
+		limit_page_length: 30,
+	});
 }
 
 function formatThreadTimestamp(value?: string | null): string {
-	if (!value) return ''
-	const d = new Date(value)
-	if (isNaN(d.getTime())) return value
+	if (!value) return '';
+	const d = new Date(value);
+	if (isNaN(d.getTime())) return value;
 
 	return d.toLocaleDateString('en-GB', {
 		day: '2-digit',
@@ -964,59 +944,64 @@ function formatThreadTimestamp(value?: string | null): string {
 		hour: '2-digit',
 		minute: '2-digit',
 		hour12: false,
-	})
+	});
 }
 
 function acknowledgeAnnouncement(item: Announcement): void {
-	if (!item?.name || !canShowInteractions(item)) return
+	if (!item?.name || !canShowInteractions(item)) return;
 
-	call('ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction', {
-		org_communication: item.name,
-		intent_type: 'Acknowledged',
-		surface: ORG_SURFACES.MORNING_BRIEF
-	}).then(() => {
-		const list = widgets.data?.announcements || []
-		const comm_names = list.map((a) => a.name).filter(Boolean)
-		if (comm_names.length) {
-			interactionSummary.submit({ comm_names })
+	call(
+		'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
+		{
+			org_communication: item.name,
+			intent_type: 'Acknowledged',
+			surface: ORG_SURFACES.MORNING_BRIEF,
 		}
-	})
+	).then(() => {
+		const list = widgets.data?.announcements || [];
+		const comm_names = list.map(a => a.name).filter(Boolean);
+		if (comm_names.length) {
+			interactionSummary.submit({ comm_names });
+		}
+	});
 }
 
 function submitComment(): void {
-	if (!activeCommunication.value || !canShowInteractions(activeCommunication.value)) return
-	if (!newComment.value.trim()) return
+	if (!activeCommunication.value || !canShowInteractions(activeCommunication.value)) return;
+	if (!newComment.value.trim()) return;
 
-	const note = newComment.value.trim()
+	const note = newComment.value.trim();
 
-	call('ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction', {
-		org_communication: activeCommunication.value.name,
-		note,
-		intent_type: 'Comment',
-		surface: ORG_SURFACES.MORNING_BRIEF
-	}).then(() => {
-		newComment.value = ''
+	call(
+		'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
+		{
+			org_communication: activeCommunication.value.name,
+			note,
+			intent_type: 'Comment',
+			surface: ORG_SURFACES.MORNING_BRIEF,
+		}
+	).then(() => {
+		newComment.value = '';
 		interactionThread.submit({
 			org_communication: activeCommunication.value.name,
 			limit_start: 0,
-			limit_page_length: 30
-		})
+			limit_page_length: 30,
+		});
 
-		const list = widgets.data?.announcements || []
-		const comm_names = list.map((a) => a.name).filter(Boolean)
+		const list = widgets.data?.announcements || [];
+		const comm_names = list.map(a => a.name).filter(Boolean);
 		if (comm_names.length) {
-			interactionSummary.submit({ comm_names })
+			interactionSummary.submit({ comm_names });
 		}
-	})
+	});
 }
 
-
 function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
-	if (!item?.name || !canShowInteractions(item)) return
+	if (!item?.name || !canShowInteractions(item)) return;
 
 	if (reaction === 'question') {
-		openInteractionThread(item)
-		return
+		openInteractionThread(item);
+		return;
 	}
 
 	const reactionIntentMap: Record<ReactionCode, InteractionIntentType> = {
@@ -1027,76 +1012,76 @@ function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
 		applause: 'Celebration',
 		question: 'Question',
 		concern: 'Concern',
-		other: 'Other'
-	}
+		other: 'Other',
+	};
 
-	const intent_type = reactionIntentMap[reaction] || 'Other'
+	const intent_type = reactionIntentMap[reaction] || 'Other';
 
-	call('ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction', {
-		org_communication: item.name,
-		reaction_code: reaction,
-		intent_type,
-		surface: ORG_SURFACES.MORNING_BRIEF
-	}).then(() => {
-		const list = widgets.data?.announcements || []
-		const comm_names = list.map((a) => a.name).filter(Boolean)
-		if (comm_names.length) {
-			interactionSummary.submit({ comm_names })
+	call(
+		'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
+		{
+			org_communication: item.name,
+			reaction_code: reaction,
+			intent_type,
+			surface: ORG_SURFACES.MORNING_BRIEF,
 		}
-	})
+	).then(() => {
+		const list = widgets.data?.announcements || [];
+		const comm_names = list.map(a => a.name).filter(Boolean);
+		if (comm_names.length) {
+			interactionSummary.submit({ comm_names });
+		}
+	});
 }
 
 function openAnnouncementsDialog(): void {
-	showAnnouncementCenter.value = true
+	showAnnouncementCenter.value = true;
 }
 
 function openCriticalIncidents(): void {
-	showCriticalIncidents.value = true
-	criticalIncidentsList.fetch()
+	showCriticalIncidents.value = true;
+	criticalIncidentsList.fetch();
 }
 
-const formattedDate = computed<string>(() => widgets.data?.today_label ?? '')
-
+const formattedDate = computed<string>(() => widgets.data?.today_label ?? '');
 
 function getPriorityClasses(priority: OrgPriority): string {
 	switch (priority) {
 		case 'Critical':
-			return 'bg-flame text-white ring-2 ring-flame/30'
+			return 'bg-flame text-white ring-2 ring-flame/30';
 		case 'High':
-			return 'bg-jacaranda/5 ring-1 ring-jacaranda/30'
+			return 'bg-jacaranda/5 ring-1 ring-jacaranda/30';
 		case 'Low':
-			return 'bg-surface-soft text-slate-token/80'
+			return 'bg-surface-soft text-slate-token/80';
 		default:
-			return 'bg-surface-soft text-ink'
+			return 'bg-surface-soft text-ink';
 	}
 }
 
 function formatBirthday(dateStr: string | null | undefined): string {
-	if (!dateStr) return ''
+	if (!dateStr) return '';
 
 	// Parsed in local time; we only care about day + month, not year
-	const date = new Date(dateStr)
-	const day = date.getDate()
+	const date = new Date(dateStr);
+	const day = date.getDate();
 
 	// Force Gregorian month names, ignore Thai/Buddhist locale
-	const month = date.toLocaleString('en-US', { month: 'long' })
+	const month = date.toLocaleString('en-US', { month: 'long' });
 
 	const suffix = (value: number) => {
-		if (value > 3 && value < 21) return 'th'
+		if (value > 3 && value < 21) return 'th';
 		switch (value % 10) {
 			case 1:
-				return 'st'
+				return 'st';
 			case 2:
-				return 'nd'
+				return 'nd';
 			case 3:
-				return 'rd'
+				return 'rd';
 			default:
-				return 'th'
+				return 'th';
 		}
-	}
+	};
 
-	return `${day}${suffix(day)} ${month}`
+	return `${day}${suffix(day)} ${month}`;
 }
-
-
 </script>

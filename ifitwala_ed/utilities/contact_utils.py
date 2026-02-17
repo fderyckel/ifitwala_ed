@@ -5,18 +5,19 @@ import frappe
 
 ### THis creates quite a bit of issues in when we call the html card contact.
 ### Contact should be the primary way to deal with all contact information (tel, email, address)
-## the doctype have link to doctype so it should be straight forward. 
+## the doctype have link to doctype so it should be straight forward.
+
 
 def update_profile_from_contact(doc, method=None):
     """Update the main doctype if changes made on Contact DocType.
-		Called by hooks.py"""
-    
+    Called by hooks.py"""
+
     if frappe.flags.get("skip_contact_to_guardian_sync"):
         return
 
-    #student = next((link.link_name for link in doc.links if link.link_doctype == "Student"), None)
+    # student = next((link.link_name for link in doc.links if link.link_doctype == "Student"), None)
     guardian = next((link.link_name for link in doc.links if link.link_doctype == "Guardian"), None)
-    #employee = next((link.link_name for link in doc.links if link.link_doctype == "Employee"), None)
+    # employee = next((link.link_name for link in doc.links if link.link_doctype == "Employee"), None)
     primary_mobile = next((p.phone for p in doc.phone_nos if p.is_primary_mobile_no), None)
 
     if guardian:
@@ -26,7 +27,9 @@ def update_profile_from_contact(doc, method=None):
         guardian_doc.guardian_mobile_phone = primary_mobile
         guardian_doc.save()
 
+
 from frappe.contacts.address_and_contact import has_permission as _core_has_permission  # noqa: E402
+
 
 # ------------------------------------------------------------------ #
 #  Doc‑level gate
@@ -43,9 +46,8 @@ def contact_has_permission(doc, ptype, user):
 
     if "Academic Admin" in frappe.get_roles(user):
         for link in doc.links:
-            if (
-                link.link_doctype == "Student"
-                and frappe.has_permission("Student", "read", user=user, doc=link.link_name)
+            if link.link_doctype == "Student" and frappe.has_permission(
+                "Student", "read", user=user, doc=link.link_name
             ):
                 return True
 
@@ -59,7 +61,7 @@ def contact_has_permission(doc, ptype, user):
 def contact_permission_query_conditions(user):
     """Academic Admin sees only contacts that reference a Student."""
     if "Academic Admin" not in frappe.get_roles(user):
-        return ""   # everyone else — no extra condition
+        return ""  # everyone else — no extra condition
 
     return """
         EXISTS (

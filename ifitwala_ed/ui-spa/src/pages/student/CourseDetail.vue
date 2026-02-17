@@ -10,9 +10,7 @@
 			</RouterLink>
 		</div>
 
-		<h1 class="text-2xl font-bold text-gray-900 mb-2">
-			Course Detail
-		</h1>
+		<h1 class="text-2xl font-bold text-gray-900 mb-2">Course Detail</h1>
 		<p class="text-gray-600 mb-6">
 			Course ID: <span class="font-mono">{{ course_id }}</span>
 		</p>
@@ -26,10 +24,10 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import { RouterLink } from 'vue-router';
 
 // typed props via generic (requires lang="ts")
 const { course_id } = defineProps<{
-	course_id: string
-}>()
+	course_id: string;
+}>();
 </script>

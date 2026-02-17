@@ -64,15 +64,11 @@
 									:option="chartOption"
 									class="analytics-chart--expanded"
 								/>
-								<div v-else class="type-empty">
-									No data to display.
-								</div>
+								<div v-else class="type-empty">No data to display.</div>
 							</div>
 
 							<div v-else class="space-y-3">
-								<div v-if="!rows.length" class="type-empty">
-									No rows to display.
-								</div>
+								<div v-if="!rows.length" class="type-empty">No rows to display.</div>
 
 								<div v-else class="overflow-auto rounded-xl border border-slate-200">
 									<!-- Expanded/zoom view: body text should NOT be caption-sized -->
@@ -158,82 +154,92 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
-import { FeatherIcon } from 'frappe-ui'
+import { computed, ref } from 'vue';
+import {
+	Dialog,
+	DialogPanel,
+	DialogTitle,
+	TransitionChild,
+	TransitionRoot,
+} from '@headlessui/vue';
+import { FeatherIcon } from 'frappe-ui';
 
-import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
-import type { StudentLogRecentRow, StudentLogStudentRow } from '@/types/studentLogDashboard'
+import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
+import type { StudentLogRecentRow, StudentLogStudentRow } from '@/types/studentLogDashboard';
 
-type ChartOption = Record<string, unknown>
-type TableRow = StudentLogRecentRow | StudentLogStudentRow
+type ChartOption = Record<string, unknown>;
+type TableRow = StudentLogRecentRow | StudentLogStudentRow;
 
 const props = defineProps<{
-	open: boolean
-	zIndex?: number
-	overlayId?: string | null
-	title: string
-	chartOption: ChartOption
-	kind: 'chart' | 'table'
-	rows?: TableRow[]
-	subtitle?: string | null
-}>()
+	open: boolean;
+	zIndex?: number;
+	overlayId?: string | null;
+	title: string;
+	chartOption: ChartOption;
+	kind: 'chart' | 'table';
+	rows?: TableRow[];
+	subtitle?: string | null;
+}>();
 
-type CloseReason = 'backdrop' | 'esc' | 'programmatic'
+type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
 const emit = defineEmits<{
-  (e: 'close', reason: CloseReason): void
-  (e: 'after-leave'): void
-}>()
+	(e: 'close', reason: CloseReason): void;
+	(e: 'after-leave'): void;
+}>();
 
-const initialFocus = ref<HTMLElement | null>(null)
-const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }))
-const rows = computed(() => props.rows ?? [])
+const initialFocus = ref<HTMLElement | null>(null);
+const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }));
+const rows = computed(() => props.rows ?? []);
 const hasChartSeries = computed(() => {
-	const option = props.chartOption
-	const series = option && typeof option === 'object' ? (option as { series?: unknown }).series : null
-	return Array.isArray(series) && series.length > 0
-})
+	const option = props.chartOption;
+	const series =
+		option && typeof option === 'object' ? (option as { series?: unknown }).series : null;
+	return Array.isArray(series) && series.length > 0;
+});
 
 const isRecentRows = computed(() => {
-	const first = rows.value[0]
-	return !!first && isRecentRow(first)
-})
+	const first = rows.value[0];
+	return !!first && isRecentRow(first);
+});
 
 function onDialogClose(_payload: unknown) {
-  // no-op by design (A+)
+	// no-op by design (A+)
 }
 
 function emitClose(reason: CloseReason = 'programmatic') {
-  emit('close', reason)
+	emit('close', reason);
 }
 
 function emitAfterLeave() {
-	emit('after-leave')
+	emit('after-leave');
 }
 
 function isRecentRow(row: TableRow): row is StudentLogRecentRow {
-	return 'student' in row
+	return 'student' in row;
 }
 
 function rowKey(row: TableRow) {
 	if (isRecentRow(row)) {
-		return `${row.date}-${row.student}-${row.log_type}-${row.author}`
+		return `${row.date}-${row.student}-${row.log_type}-${row.author}`;
 	}
-	return `${row.date}-${row.log_type}-${row.author}`
+	return `${row.date}-${row.log_type}-${row.author}`;
 }
 
 function formatDate(value: string | null | undefined) {
-	return value || ''
+	return value || '';
 }
 
 function stripHtml(html: string) {
-	if (!html) return ''
-	return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+	if (!html) return '';
+	return html
+		.replace(/<[^>]+>/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
 }
 
 function truncate(text: string, max = 140) {
-	if (!text) return ''
-	return text.length > max ? `${text.slice(0, max)}...` : text
+	if (!text) return '';
+	return text.length > max ? `${text.slice(0, max)}...` : text;
 }
 </script>

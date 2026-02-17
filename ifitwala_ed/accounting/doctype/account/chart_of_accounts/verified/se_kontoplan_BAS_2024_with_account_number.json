@@ -1484,7 +1484,7 @@
                         "account_type": "Equity"
                     }
                 }
-            },        
+            },
             "23 Långfristiga skulder": {
                 "is_group": 1,
                 "231 Obligations- och förlagslån": {
@@ -2054,7 +2054,7 @@
                     "Avräkning för annans räkning": {
                         "account_number": "2830"
                     }
-                },    
+                },
                 "284 Kortfristiga låneskulder": {
                     "is_group": 1,
                     "Kortfristiga låneskulder": {
@@ -3288,7 +3288,7 @@
                     },
                     "Leasing av inventarier och verktyg": {
                         "account_number": "5222"
-                    }                    
+                    }
                 },
                 "525 Hyra av datorer": {
                     "is_group": 1,

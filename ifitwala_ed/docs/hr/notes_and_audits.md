@@ -1,6 +1,6 @@
 # Incident Postmortem: Governed Employee Image Uploads
 
-**Date:** 2026-01-25  
+**Date:** 2026-01-25
 **Scope:** Desk (Employee), governed uploads, file routing, derivative generation, UI avatar display
 
 ## Summary
@@ -44,7 +44,7 @@ Employee profile images uploaded via governed flow were saved, but the left colu
 
 # HR Leave Domain Integration Audit
 
-**Date:** 2026-02-11  
+**Date:** 2026-02-11
 **Scope:** HR leave domain import from HRMS develop into Ifitwala HR (backend + desk)
 
 ## Change Summary

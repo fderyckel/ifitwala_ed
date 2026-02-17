@@ -3,17 +3,12 @@
 
 from frappe import _
 
-def get_data(): 
-  return {
-    "fieldname": "academic_year",
-    "transactions": [
-      {
-        "label": _("Academic"),
-        "items": ["Term", "School Calendar", "Student Log"]
-      }, 
-      {
-        "label": _("Schedule"),
-        "items": ["Program Enrollment", "Student Group"]
-       }     
-    ]
-  }
+
+def get_data():
+    return {
+        "fieldname": "academic_year",
+        "transactions": [
+            {"label": _("Academic"), "items": ["Term", "School Calendar", "Student Log"]},
+            {"label": _("Schedule"), "items": ["Program Enrollment", "Student Group"]},
+        ],
+    }

@@ -17,23 +17,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { VChart, type ComposeOption } from '@/lib/echarts'
+import { computed } from 'vue';
+import { VChart, type ComposeOption } from '@/lib/echarts';
 
 // Example: base option type; you can refine later with your imported option types.
-type BaseChartOption = ComposeOption<unknown>
+type BaseChartOption = ComposeOption<unknown>;
 
 const props = defineProps<{
-	option: BaseChartOption
-}>()
+	option: BaseChartOption;
+}>();
 
 const emit = defineEmits<{
-	(event: 'click', payload: unknown): void
-}>()
+	(event: 'click', payload: unknown): void;
+}>();
 
-const option = computed(() => props.option)
+const option = computed(() => props.option);
 
 function onClick(payload: unknown) {
-	emit('click', payload)
+	emit('click', payload);
 }
 </script>

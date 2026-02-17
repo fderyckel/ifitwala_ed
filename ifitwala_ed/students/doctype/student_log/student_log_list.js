@@ -23,5 +23,5 @@ frappe.listview_settings['Student Log'] = {
 
 		// Default: In Progress → orange
 		return [__("In Progress"), "orange", "follow_up_status,=,In Progress"];
-	}, 
+	},
 };

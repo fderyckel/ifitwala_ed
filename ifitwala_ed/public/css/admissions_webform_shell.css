@@ -13,10 +13,15 @@ body.ifitwala-public-webform {
 	min-height: 100vh;
 	background:
 		radial-gradient(circle at 0% 0%, rgb(var(--if-sky-rgb) / 0.92), transparent 52%),
-		radial-gradient(circle at 100% 0%, rgb(var(--if-sand-rgb) / 0.75), transparent 52%),
-		#f8fafc;
+		radial-gradient(circle at 100% 0%, rgb(var(--if-sand-rgb) / 0.75), transparent 52%), #f8fafc;
 	color: rgb(var(--if-ink-rgb) / 1);
-	font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-family:
+		'Plus Jakarta Sans',
+		system-ui,
+		-apple-system,
+		BlinkMacSystemFont,
+		'Segoe UI',
+		sans-serif;
 }
 
 body.ifitwala-public-webform .navbar,
@@ -67,7 +72,10 @@ body.ifitwala-public-webform .web-footer {
 	color: rgb(var(--if-slate-rgb) / 0.95);
 	border: 1px solid transparent;
 	text-decoration: none;
-	transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+	transition:
+		background-color 140ms ease,
+		border-color 140ms ease,
+		color 140ms ease;
 }
 
 .if-webform-shell-link:hover {
@@ -76,7 +84,7 @@ body.ifitwala-public-webform .web-footer {
 }
 
 .if-webform-shell-link.is-active {
-	background: rgb(var(--if-canopy-rgb) / 0.10);
+	background: rgb(var(--if-canopy-rgb) / 0.1);
 	border-color: rgb(var(--if-canopy-rgb) / 0.25);
 	color: rgb(var(--if-canopy-rgb) / 1);
 }
@@ -109,7 +117,7 @@ body.ifitwala-public-webform .web-footer {
 	background: rgb(255 255 255 / 0.96);
 	border: 1px solid rgb(var(--if-border-rgb) / 0.95);
 	border-radius: 1.1rem;
-	box-shadow: 0 14px 36px -26px rgb(var(--if-ink-rgb) / 0.20);
+	box-shadow: 0 14px 36px -26px rgb(var(--if-ink-rgb) / 0.2);
 	padding: 1.5rem 1.5rem 1.25rem;
 }
 
@@ -146,7 +154,7 @@ body.ifitwala-public-webform .web-footer {
 
 .ifitwala-public-webform .web-form-head .indicator.blue,
 .ifitwala-public-webform .web-form-head .indicator.orange {
-	background: rgb(var(--if-canopy-rgb) / 0.10);
+	background: rgb(var(--if-canopy-rgb) / 0.1);
 	border-color: rgb(var(--if-canopy-rgb) / 0.24);
 	color: rgb(var(--if-canopy-rgb) / 1);
 }
@@ -200,10 +208,10 @@ body.ifitwala-public-webform .web-footer {
 }
 
 .ifitwala-public-webform .form-control,
-.ifitwala-public-webform input[type="text"],
-.ifitwala-public-webform input[type="email"],
-.ifitwala-public-webform input[type="tel"],
-.ifitwala-public-webform input[type="number"],
+.ifitwala-public-webform input[type='text'],
+.ifitwala-public-webform input[type='email'],
+.ifitwala-public-webform input[type='tel'],
+.ifitwala-public-webform input[type='number'],
 .ifitwala-public-webform textarea,
 .ifitwala-public-webform select,
 .ifitwala-public-webform .awesomplete input {
@@ -218,7 +226,10 @@ body.ifitwala-public-webform .web-footer {
 	border: 1px solid rgb(var(--if-border-rgb) / 0.94);
 	border-radius: 0.75rem;
 	box-shadow: none;
-	transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+	transition:
+		border-color 140ms ease,
+		box-shadow 140ms ease,
+		background-color 140ms ease;
 }
 
 .ifitwala-public-webform select {
@@ -319,7 +330,11 @@ body.ifitwala-public-webform .web-footer {
 	background: #fff;
 	color: rgb(var(--if-slate-rgb) / 0.98);
 	text-decoration: none;
-	transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background-color 120ms ease;
+	transition:
+		transform 120ms ease,
+		box-shadow 120ms ease,
+		border-color 120ms ease,
+		background-color 120ms ease;
 }
 
 .ifitwala-public-webform .web-form-actions .btn.btn-default:hover {

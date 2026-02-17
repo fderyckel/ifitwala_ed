@@ -4,51 +4,51 @@
    LAYOUT LAYER - STRUCTURAL SHELLS ONLY
    ===================================================================== */
 @layer components {
-  /* ============================================================
+	/* ============================================================
      PORTAL SHELLS
      ============================================================ */
-  .ifitwala-theme,
-  .staff-layout {
-    @apply min-h-screen flex flex-col;
-    background: var(--portal-gradient-bg) !important;
-    background-attachment: fixed;
-    color: rgb(var(--ink-rgb) / 1);
-    font-family: var(--font-sans);
-  }
+	.ifitwala-theme,
+	.staff-layout {
+		@apply min-h-screen flex flex-col;
+		background: var(--portal-gradient-bg) !important;
+		background-attachment: fixed;
+		color: rgb(var(--ink-rgb) / 1);
+		font-family: var(--font-sans);
+	}
 
-  .staff-layout__header {
-    @apply w-full border-b backdrop-blur-xl;
-    background-color: rgb(var(--surface-strong-rgb) / 0.9);
-    border-color: rgb(var(--border-rgb) / 0.85);
-  }
+	.staff-layout__header {
+		@apply w-full border-b backdrop-blur-xl;
+		background-color: rgb(var(--surface-strong-rgb) / 0.9);
+		border-color: rgb(var(--border-rgb) / 0.85);
+	}
 
-  .staff-layout__header-inner {
-    @apply mx-auto max-w-6xl flex items-center justify-between gap-3
+	.staff-layout__header-inner {
+		@apply mx-auto max-w-6xl flex items-center justify-between gap-3
            px-5 py-3 sm:px-6;
-  }
+	}
 
-  .staff-layout__main {
-    @apply flex-1 w-full flex justify-center;
-  }
+	.staff-layout__main {
+		@apply flex-1 w-full flex justify-center;
+	}
 
-  .staff-shell {
-    @apply w-full max-w-6xl mx-auto flex flex-col gap-10
+	.staff-shell {
+		@apply w-full max-w-6xl mx-auto flex flex-col gap-10
            px-5 py-9 sm:px-6;
-  }
+	}
 
-  /* ============================================================
+	/* ============================================================
      LEGACY CANDIDATES - moved for audit (do not delete yet)
      Delete only after runtime coverage / user confirmation.
      ============================================================ */
-  .staff-layout__footer {
-    @apply w-full border-t;
-    background-color: rgb(var(--surface-strong-rgb) / 0.9);
-    border-color: rgb(var(--border-rgb) / 0.85);
-  }
+	.staff-layout__footer {
+		@apply w-full border-t;
+		background-color: rgb(var(--surface-strong-rgb) / 0.9);
+		border-color: rgb(var(--border-rgb) / 0.85);
+	}
 
-  .staff-layout__footer-inner {
-    @apply mx-auto max-w-6xl px-5 py-3 sm:px-6
+	.staff-layout__footer-inner {
+		@apply mx-auto max-w-6xl px-5 py-3 sm:px-6
            text-[0.7rem];
-    color: rgb(var(--slate-rgb) / 0.70);
-  }
+		color: rgb(var(--slate-rgb) / 0.7);
+	}
 }

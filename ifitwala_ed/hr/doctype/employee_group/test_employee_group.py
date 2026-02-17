@@ -6,4 +6,4 @@ from frappe.tests.utils import FrappeTestCase
 
 
 class TestEmployeeGroup(FrappeTestCase):
-	pass
+    pass

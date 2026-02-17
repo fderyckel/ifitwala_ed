@@ -1,29 +1,29 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentLogAnalytics.vue -->
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue';
 
-import AnalyticsCard from '@/components/analytics/AnalyticsCard.vue'
-import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
-import StatsTile from '@/components/analytics/StatsTile.vue'
-import FiltersBar from '@/components/filters/FiltersBar.vue'
-import { useOverlayStack } from '@/composables/useOverlayStack'
+import AnalyticsCard from '@/components/analytics/AnalyticsCard.vue';
+import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
+import StatsTile from '@/components/analytics/StatsTile.vue';
+import FiltersBar from '@/components/filters/FiltersBar.vue';
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import {
 	createDebouncedRunner,
 	useStudentLogDashboard,
 	useStudentLogFilterMeta,
 	useStudentLogRecentLogs,
 	type StudentLogRecentPaging,
-} from '@/lib/services/studentLogDashboardService'
+} from '@/lib/services/studentLogDashboardService';
 import type {
 	StudentLogChartSeries,
 	StudentLogDashboardFilters,
 	StudentLogRecentRow,
 	StudentLogStudentRow,
-} from '@/types/studentLogDashboard'
+} from '@/types/studentLogDashboard';
 
-type ChartOption = Record<string, unknown>
+type ChartOption = Record<string, unknown>;
 
-type TableRow = StudentLogRecentRow | StudentLogStudentRow
+type TableRow = StudentLogRecentRow | StudentLogStudentRow;
 
 const filters = ref<StudentLogDashboardFilters>({
 	school: null,
@@ -33,64 +33,64 @@ const filters = ref<StudentLogDashboardFilters>({
 	from_date: null,
 	to_date: null,
 	student: null,
-})
+});
 
-const selectedStudentLabel = ref('')
+const selectedStudentLabel = ref('');
 
-const overlay = useOverlayStack()
+const overlay = useOverlayStack();
 
-const filterMetaState = useStudentLogFilterMeta()
-const dashboardState = useStudentLogDashboard(filters)
-const recentPaging = ref<StudentLogRecentPaging>({ start: 0, pageLength: 25 })
-const recentState = useStudentLogRecentLogs(filters, recentPaging)
+const filterMetaState = useStudentLogFilterMeta();
+const dashboardState = useStudentLogDashboard(filters);
+const recentPaging = ref<StudentLogRecentPaging>({ start: 0, pageLength: 25 });
+const recentState = useStudentLogRecentLogs(filters, recentPaging);
 
-const filterMeta = filterMetaState.meta
-const filterMetaLoading = filterMetaState.loading
+const filterMeta = filterMetaState.meta;
+const filterMetaLoading = filterMetaState.loading;
 
-const schools = computed(() => filterMeta.value.schools)
-const academicYears = computed(() => filterMeta.value.academic_years)
-const allPrograms = computed(() => filterMeta.value.programs)
-const authors = computed(() => filterMeta.value.authors)
+const schools = computed(() => filterMeta.value.schools);
+const academicYears = computed(() => filterMeta.value.academic_years);
+const allPrograms = computed(() => filterMeta.value.programs);
+const authors = computed(() => filterMeta.value.authors);
 
 const programsForSchool = computed(() => {
-	return allPrograms.value
-})
+	return allPrograms.value;
+});
 
 watch(
 	filterMeta,
-	(data) => {
-		if (!data) return
+	data => {
+		if (!data) return;
 		if (data.default_school && !filters.value.school) {
-			filters.value.school = data.default_school
+			filters.value.school = data.default_school;
 		}
 	},
 	{ immediate: true }
-)
+);
 
-const dashboard = dashboardState.dashboard
-const recentRows = recentState.rows
-const recentLoading = recentState.loading
-const recentHasMore = recentState.hasMore
+const dashboard = dashboardState.dashboard;
+const recentRows = recentState.rows;
+const recentLoading = recentState.loading;
+const recentHasMore = recentState.hasMore;
 
-const openFollowUps = computed(() => dashboard.value.openFollowUps)
-const logTypeCount = computed(() => dashboard.value.logTypeCount)
-const logsByCohort = computed(() => dashboard.value.logsByCohort)
-const logsByProgram = computed(() => dashboard.value.logsByProgram)
-const logsByAuthor = computed(() => dashboard.value.logsByAuthor)
-const nextStepTypes = computed(() => dashboard.value.nextStepTypes)
-const incidentsOverTime = computed(() => dashboard.value.incidentsOverTime)
-const studentLogs = computed(() => dashboard.value.studentLogs)
+const openFollowUps = computed(() => dashboard.value.openFollowUps);
+const logTypeCount = computed(() => dashboard.value.logTypeCount);
+const logsByCohort = computed(() => dashboard.value.logsByCohort);
+const logsByProgram = computed(() => dashboard.value.logsByProgram);
+const logsByAuthor = computed(() => dashboard.value.logsByAuthor);
+const nextStepTypes = computed(() => dashboard.value.nextStepTypes);
+const incidentsOverTime = computed(() => dashboard.value.incidentsOverTime);
+const studentLogs = computed(() => dashboard.value.studentLogs);
 
 const incidentsOption = computed<ChartOption>(() => {
-	const data = incidentsOverTime.value
-	if (!data.length) return {}
+	const data = incidentsOverTime.value;
+	if (!data.length) return {};
 
 	return {
 		tooltip: { trigger: 'axis' },
 		grid: { left: '4%', right: '4%', bottom: '8%', containLabel: true },
 		xAxis: {
 			type: 'category',
-			data: data.map((d) => d.label),
+			data: data.map(d => d.label),
 			axisLabel: { fontSize: 10 },
 		},
 		yAxis: { type: 'value' },
@@ -98,70 +98,70 @@ const incidentsOption = computed<ChartOption>(() => {
 			{
 				type: 'line',
 				smooth: true,
-				data: data.map((d) => d.value),
+				data: data.map(d => d.value),
 			},
 		],
-	}
-})
+	};
+});
 
 function buildBarOption(data: StudentLogChartSeries[], rotate = 30): ChartOption {
-	if (!data.length) return {}
+	if (!data.length) return {};
 	return {
 		tooltip: { trigger: 'item' },
 		grid: { left: '4%', right: '4%', bottom: '8%', containLabel: true },
 		xAxis: {
 			type: 'category',
-			data: data.map((d) => d.label),
+			data: data.map(d => d.label),
 			axisLabel: { fontSize: 10, interval: 0, rotate },
 		},
 		yAxis: { type: 'value' },
 		series: [
 			{
 				type: 'bar',
-				data: data.map((d) => d.value),
+				data: data.map(d => d.value),
 			},
 		],
-	}
+	};
 }
 
-const logTypeOption = computed(() => buildBarOption(logTypeCount.value))
-const nextStepTypesOption = computed(() => buildBarOption(nextStepTypes.value))
-const logsByCohortOption = computed(() => buildBarOption(logsByCohort.value))
-const logsByProgramOption = computed(() => buildBarOption(logsByProgram.value))
-const logsByAuthorOption = computed(() => buildBarOption(logsByAuthor.value))
+const logTypeOption = computed(() => buildBarOption(logTypeCount.value));
+const nextStepTypesOption = computed(() => buildBarOption(nextStepTypes.value));
+const logsByCohortOption = computed(() => buildBarOption(logsByCohort.value));
+const logsByProgramOption = computed(() => buildBarOption(logsByProgram.value));
+const logsByAuthorOption = computed(() => buildBarOption(logsByAuthor.value));
 
-const scheduleRefresh = createDebouncedRunner(400)
+const scheduleRefresh = createDebouncedRunner(400);
 
 watch(
 	filters,
 	() => {
 		scheduleRefresh(() => {
-			dashboardState.reload()
-			recentState.reload({ reset: true })
-		})
+			dashboardState.reload();
+			recentState.reload({ reset: true });
+		});
 	},
 	{ deep: true }
-)
+);
 
 watch(
 	() => filters.value.student,
-	(value) => {
-		if (!value) selectedStudentLabel.value = ''
+	value => {
+		if (!value) selectedStudentLabel.value = '';
 	}
-)
+);
 
 onMounted(() => {
-	filterMetaState.reload()
-	dashboardState.reload()
-	recentState.reload({ reset: true })
-})
+	filterMetaState.reload();
+	dashboardState.reload();
+	recentState.reload({ reset: true });
+});
 
 function openChartOverlay(title: string, option: ChartOption) {
 	overlay.open('student-log-analytics-expand', {
 		title,
 		chartOption: option,
 		kind: 'chart',
-	})
+	});
 }
 
 function openTableOverlay(title: string, rows: TableRow[], subtitle?: string | null) {
@@ -171,26 +171,29 @@ function openTableOverlay(title: string, rows: TableRow[], subtitle?: string | n
 		kind: 'table',
 		rows,
 		subtitle: subtitle ?? null,
-	})
+	});
 }
 
 function selectStudentFromRecent(row: StudentLogRecentRow) {
-	filters.value.student = row.student
-	selectedStudentLabel.value = row.student_full_name || row.student
+	filters.value.student = row.student;
+	selectedStudentLabel.value = row.student_full_name || row.student;
 }
 
 function formatDate(value: string | null | undefined) {
-	return value || ''
+	return value || '';
 }
 
 function stripHtml(html: string) {
-	if (!html) return ''
-	return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+	if (!html) return '';
+	return html
+		.replace(/<[^>]+>/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
 }
 
 function truncate(text: string, max = 140) {
-	if (!text) return ''
-	return text.length > max ? `${text.slice(0, max)}...` : text
+	if (!text) return '';
+	return text.length > max ? `${text.slice(0, max)}...` : text;
 }
 </script>
 
@@ -204,11 +207,7 @@ function truncate(text: string, max = 140) {
 				</p>
 			</div>
 
-			<StatsTile
-				:value="openFollowUps"
-				label="Open follow-ups"
-				tone="warning"
-			/>
+			<StatsTile :value="openFollowUps" label="Open follow-ups" tone="warning" />
 		</header>
 
 		<FiltersBar>
@@ -241,10 +240,7 @@ function truncate(text: string, max = 140) {
 
 			<div class="flex flex-col gap-1 w-48">
 				<label class="type-label">Program</label>
-				<select
-					v-model="filters.program"
-					class="h-9 rounded-md border border-slate-200 px-2"
-				>
+				<select v-model="filters.program" class="h-9 rounded-md border border-slate-200 px-2">
 					<option value="">All</option>
 					<option v-for="p in programsForSchool" :key="p.name" :value="p.name">
 						{{ p.label || p.name }}
@@ -293,10 +289,7 @@ function truncate(text: string, max = 140) {
 				</template>
 			</AnalyticsCard>
 
-			<AnalyticsCard
-				title="Log Types"
-				@expand="openChartOverlay('Log Types', logTypeOption)"
-			>
+			<AnalyticsCard title="Log Types" @expand="openChartOverlay('Log Types', logTypeOption)">
 				<template #body>
 					<AnalyticsChart v-if="logTypeCount.length" :option="logTypeOption" />
 					<div v-else class="analytics-empty">No logs found.</div>
@@ -429,7 +422,13 @@ function truncate(text: string, max = 140) {
 			   ============================================================ -->
 			<AnalyticsCard
 				title="Selected Student Logs"
-				@expand="openTableOverlay('Selected Student Logs', studentLogs, selectedStudentLabel || filters.student)"
+				@expand="
+					openTableOverlay(
+						'Selected Student Logs',
+						studentLogs,
+						selectedStudentLabel || filters.student
+					)
+				"
 			>
 				<template #subtitle>
 					<span v-if="filters.student" class="type-caption text-slate-token/70">

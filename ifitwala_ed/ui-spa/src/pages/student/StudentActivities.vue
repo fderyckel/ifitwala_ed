@@ -12,7 +12,9 @@
 				</div>
 				<div class="flex items-center gap-2">
 					<RouterLink class="if-action" :to="{ name: 'student-home' }">Back to Home</RouterLink>
-					<button type="button" class="if-action" :disabled="loading" @click="loadBoard">Refresh</button>
+					<button type="button" class="if-action" :disabled="loading" @click="loadBoard">
+						Refresh
+					</button>
 				</div>
 			</div>
 		</header>
@@ -61,7 +63,9 @@
 					>
 						<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 							<div>
-								<p class="type-body-strong text-ink">{{ offeringTitle(booking.program_offering) }}</p>
+								<p class="type-body-strong text-ink">
+									{{ offeringTitle(booking.program_offering) }}
+								</p>
 								<p class="type-caption text-ink/70">
 									Section: {{ booking.allocated_student_group || 'Pending assignment' }}
 								</p>
@@ -113,7 +117,9 @@
 			<section class="space-y-4">
 				<div class="flex items-center justify-between gap-3">
 					<h2 class="type-h3 text-ink">Available Activities</h2>
-					<p class="type-caption text-ink/60">Transparent allocation and section capacity are shown.</p>
+					<p class="type-caption text-ink/60">
+						Transparent allocation and section capacity are shown.
+					</p>
 				</div>
 
 				<p v-if="!offerings.length" class="card-surface p-5 type-body text-ink/70">
@@ -134,7 +140,11 @@
 										class="if-action"
 										@click="toggleEmbeddedComms(offering.program_offering)"
 									>
-										{{ embeddedCommsOffering === offering.program_offering ? 'Hide updates' : 'Show updates' }}
+										{{
+											embeddedCommsOffering === offering.program_offering
+												? 'Hide updates'
+												: 'Show updates'
+										}}
 									</button>
 									<p class="type-caption text-ink/70">Max ranked choices: {{ maxChoices }}</p>
 								</div>
@@ -177,7 +187,9 @@
 									<button
 										type="button"
 										class="if-action"
-										:disabled="submitLoading[offering.program_offering] || !canBookOffering(offering)"
+										:disabled="
+											submitLoading[offering.program_offering] || !canBookOffering(offering)
+										"
 										@click="submitBooking(offering.program_offering)"
 									>
 										Submit booking
@@ -204,7 +216,11 @@
 						v-model="centerOffering"
 						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 					>
-						<option v-for="offering in offerings" :key="`center-${offering.program_offering}`" :value="offering.program_offering">
+						<option
+							v-for="offering in offerings"
+							:key="`center-${offering.program_offering}`"
+							:value="offering.program_offering"
+						>
 							{{ offering.title }}
 						</option>
 					</select>
@@ -216,149 +232,172 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
-import { toast } from 'frappe-ui'
+import { computed, ref } from 'vue';
+import { RouterLink } from 'vue-router';
+import { toast } from 'frappe-ui';
 
-import ActivityCommunicationPanel from '@/components/activity/ActivityCommunicationPanel.vue'
-import ActivityOfferingCard from '@/components/activity/ActivityOfferingCard.vue'
-import ActivityStatusBadge from '@/components/activity/ActivityStatusBadge.vue'
+import ActivityCommunicationPanel from '@/components/activity/ActivityCommunicationPanel.vue';
+import ActivityOfferingCard from '@/components/activity/ActivityOfferingCard.vue';
+import ActivityStatusBadge from '@/components/activity/ActivityStatusBadge.vue';
 
 import {
 	cancelActivityBooking,
 	confirmActivityBookingOffer,
 	getActivityPortalBoard,
 	submitActivityBooking,
-} from '@/lib/services/activityBooking/activityBookingService'
+} from '@/lib/services/activityBooking/activityBookingService';
 
-import type { ActivityBookingRow, ActivityOffering, ActivityStudentBoard } from '@/types/contracts/activity_booking/get_activity_portal_board'
+import type {
+	ActivityBookingRow,
+	ActivityOffering,
+	ActivityStudentBoard,
+} from '@/types/contracts/activity_booking/get_activity_portal_board';
 
-const loading = ref<boolean>(true)
-const errorMessage = ref<string>('')
+const loading = ref<boolean>(true);
+const errorMessage = ref<string>('');
 const board = ref<{
-	settings: { default_max_choices: number; default_show_waitlist_position: 0 | 1; default_offer_banner_hours: number }
-	students: ActivityStudentBoard[]
-	offerings: ActivityOffering[]
-} | null>(null)
+	settings: {
+		default_max_choices: number;
+		default_show_waitlist_position: 0 | 1;
+		default_offer_banner_hours: number;
+	};
+	students: ActivityStudentBoard[];
+	offerings: ActivityOffering[];
+} | null>(null);
 
-const choiceState = ref<Record<string, string[]>>({})
-const submitLoading = ref<Record<string, boolean>>({})
-const submitError = ref<Record<string, string>>({})
-const actionLoading = ref<Record<string, boolean>>({})
-const embeddedCommsOffering = ref<string>('')
-const centerOffering = ref<string>('')
+const choiceState = ref<Record<string, string[]>>({});
+const submitLoading = ref<Record<string, boolean>>({});
+const submitError = ref<Record<string, string>>({});
+const actionLoading = ref<Record<string, boolean>>({});
+const embeddedCommsOffering = ref<string>('');
+const centerOffering = ref<string>('');
 
-const studentRecord = computed<ActivityStudentBoard | null>(() => board.value?.students?.[0] || null)
-const studentBookings = computed<ActivityBookingRow[]>(() => studentRecord.value?.bookings || [])
-const offerings = computed<ActivityOffering[]>(() => board.value?.offerings || [])
-const maxChoices = computed<number>(() => Math.max(1, board.value?.settings?.default_max_choices || 3))
-const showWaitlistPosition = computed<boolean>(() => Boolean(board.value?.settings?.default_show_waitlist_position))
-const offerBannerHours = computed<number>(() => Math.max(1, board.value?.settings?.default_offer_banner_hours || 24))
+const studentRecord = computed<ActivityStudentBoard | null>(
+	() => board.value?.students?.[0] || null
+);
+const studentBookings = computed<ActivityBookingRow[]>(() => studentRecord.value?.bookings || []);
+const offerings = computed<ActivityOffering[]>(() => board.value?.offerings || []);
+const maxChoices = computed<number>(() =>
+	Math.max(1, board.value?.settings?.default_max_choices || 3)
+);
+const showWaitlistPosition = computed<boolean>(() =>
+	Boolean(board.value?.settings?.default_show_waitlist_position)
+);
+const offerBannerHours = computed<number>(() =>
+	Math.max(1, board.value?.settings?.default_offer_banner_hours || 24)
+);
 
-const openNowCount = computed<number>(() => offerings.value.filter((row) => row.booking_window.is_open_now).length)
-const activeBookingCount = computed<number>(() =>
-	studentBookings.value.filter((row) => ['Submitted', 'Waitlisted', 'Offered', 'Confirmed'].includes(row.status)).length
-)
-const waitlistCount = computed<number>(() => studentBookings.value.filter((row) => row.status === 'Waitlisted').length)
-const expiringOfferCount = computed<number>(() =>
-	studentBookings.value.filter((row) => row.status === 'Offered' && offerHint(row)).length
-)
+const openNowCount = computed<number>(
+	() => offerings.value.filter(row => row.booking_window.is_open_now).length
+);
+const activeBookingCount = computed<number>(
+	() =>
+		studentBookings.value.filter(row =>
+			['Submitted', 'Waitlisted', 'Offered', 'Confirmed'].includes(row.status)
+		).length
+);
+const waitlistCount = computed<number>(
+	() => studentBookings.value.filter(row => row.status === 'Waitlisted').length
+);
+const expiringOfferCount = computed<number>(
+	() => studentBookings.value.filter(row => row.status === 'Offered' && offerHint(row)).length
+);
 
 function normalizeChoices(values: string[]): string[] {
-	const out: string[] = []
+	const out: string[] = [];
 	for (const value of values) {
-		const section = (value || '').trim()
-		if (!section || out.includes(section)) continue
-		out.push(section)
+		const section = (value || '').trim();
+		if (!section || out.includes(section)) continue;
+		out.push(section);
 	}
-	return out
+	return out;
 }
 
 function ensureChoiceState(offeringKey: string, sectionNames: string[]) {
 	if (!choiceState.value[offeringKey]) {
-		choiceState.value[offeringKey] = sectionNames.slice(0, maxChoices.value)
-		return
+		choiceState.value[offeringKey] = sectionNames.slice(0, maxChoices.value);
+		return;
 	}
 	if (!choiceState.value[offeringKey].length) {
-		choiceState.value[offeringKey] = sectionNames.slice(0, maxChoices.value)
+		choiceState.value[offeringKey] = sectionNames.slice(0, maxChoices.value);
 	}
 }
 
 function rankSlots(offeringKey: string): string[] {
-	const rows = offerings.value.find((row) => row.program_offering === offeringKey)?.sections || []
-	const sectionNames = rows.map((row) => row.student_group)
-	ensureChoiceState(offeringKey, sectionNames)
-	const total = Math.min(maxChoices.value, Math.max(sectionNames.length, 1))
-	const values = choiceState.value[offeringKey] || []
-	while (values.length < total) values.push('')
-	choiceState.value[offeringKey] = values.slice(0, total)
-	return choiceState.value[offeringKey]
+	const rows = offerings.value.find(row => row.program_offering === offeringKey)?.sections || [];
+	const sectionNames = rows.map(row => row.student_group);
+	ensureChoiceState(offeringKey, sectionNames);
+	const total = Math.min(maxChoices.value, Math.max(sectionNames.length, 1));
+	const values = choiceState.value[offeringKey] || [];
+	while (values.length < total) values.push('');
+	choiceState.value[offeringKey] = values.slice(0, total);
+	return choiceState.value[offeringKey];
 }
 
 function offeringTitle(programOffering: string): string {
-	const found = offerings.value.find((row) => row.program_offering === programOffering)
-	return found?.title || programOffering
+	const found = offerings.value.find(row => row.program_offering === programOffering);
+	return found?.title || programOffering;
 }
 
 function canCancel(status: string): boolean {
-	return ['Submitted', 'Waitlisted', 'Offered', 'Confirmed'].includes(status)
+	return ['Submitted', 'Waitlisted', 'Offered', 'Confirmed'].includes(status);
 }
 
 function canBookOffering(offering: ActivityOffering): boolean {
-	return Boolean(offering.booking_window.is_open_now && offering.booking_roles.allow_student)
+	return Boolean(offering.booking_window.is_open_now && offering.booking_roles.allow_student);
 }
 
 function offerHint(booking: ActivityBookingRow): string {
-	if (booking.status !== 'Offered' || !booking.offer_expires_on) return ''
-	const expiry = new Date(booking.offer_expires_on)
-	if (Number.isNaN(expiry.getTime())) return ''
-	const hours = Math.floor((expiry.getTime() - Date.now()) / (1000 * 60 * 60))
-	if (hours < 0) return 'Offer expired; refresh for latest status.'
+	if (booking.status !== 'Offered' || !booking.offer_expires_on) return '';
+	const expiry = new Date(booking.offer_expires_on);
+	if (Number.isNaN(expiry.getTime())) return '';
+	const hours = Math.floor((expiry.getTime() - Date.now()) / (1000 * 60 * 60));
+	if (hours < 0) return 'Offer expired; refresh for latest status.';
 	if (hours <= offerBannerHours.value) {
-		return `Offer expires in about ${hours}h.`
+		return `Offer expires in about ${hours}h.`;
 	}
-	return `Offer valid until ${expiry.toLocaleString()}.`
+	return `Offer valid until ${expiry.toLocaleString()}.`;
 }
 
 async function loadBoard() {
-	loading.value = true
-	errorMessage.value = ''
+	loading.value = true;
+	errorMessage.value = '';
 	try {
-		const payload = await getActivityPortalBoard({})
+		const payload = await getActivityPortalBoard({});
 		board.value = {
 			settings: payload.settings,
 			students: payload.students,
 			offerings: payload.offerings,
-		}
+		};
 		if (!centerOffering.value && payload.offerings.length) {
-			centerOffering.value = payload.offerings[0].program_offering
+			centerOffering.value = payload.offerings[0].program_offering;
 		}
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error || '')
-		errorMessage.value = message || 'Could not load activities.'
+		const message = error instanceof Error ? error.message : String(error || '');
+		errorMessage.value = message || 'Could not load activities.';
 	} finally {
-		loading.value = false
+		loading.value = false;
 	}
 }
 
 function makeIdempotencyKey(student: string, programOffering: string): string {
-	const randomPart = Math.random().toString(36).slice(2, 9)
-	return `${student}:${programOffering}:${Date.now()}:${randomPart}`
+	const randomPart = Math.random().toString(36).slice(2, 9);
+	return `${student}:${programOffering}:${Date.now()}:${randomPart}`;
 }
 
 async function submitBooking(programOffering: string) {
-	const student = studentRecord.value?.student
+	const student = studentRecord.value?.student;
 	if (!student) {
-		submitError.value[programOffering] = 'Student context is missing.'
-		return
+		submitError.value[programOffering] = 'Student context is missing.';
+		return;
 	}
-	const choices = normalizeChoices(choiceState.value[programOffering] || [])
+	const choices = normalizeChoices(choiceState.value[programOffering] || []);
 	if (!choices.length) {
-		submitError.value[programOffering] = 'Select at least one section choice before submitting.'
-		return
+		submitError.value[programOffering] = 'Select at least one section choice before submitting.';
+		return;
 	}
-	submitLoading.value[programOffering] = true
-	submitError.value[programOffering] = ''
+	submitLoading.value[programOffering] = true;
+	submitError.value[programOffering] = '';
 	try {
 		await submitActivityBooking({
 			program_offering: programOffering,
@@ -366,48 +405,48 @@ async function submitBooking(programOffering: string) {
 			choices,
 			idempotency_key: makeIdempotencyKey(student, programOffering),
 			request_surface: 'Student Portal',
-		})
-		toast.success('Activity booking submitted.')
-		await loadBoard()
+		});
+		toast.success('Activity booking submitted.');
+		await loadBoard();
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error || '')
-		submitError.value[programOffering] = message || 'Could not submit booking.'
+		const message = error instanceof Error ? error.message : String(error || '');
+		submitError.value[programOffering] = message || 'Could not submit booking.';
 	} finally {
-		submitLoading.value[programOffering] = false
+		submitLoading.value[programOffering] = false;
 	}
 }
 
 async function confirmOffer(bookingName: string) {
-	actionLoading.value[bookingName] = true
+	actionLoading.value[bookingName] = true;
 	try {
-		await confirmActivityBookingOffer({ activity_booking: bookingName })
-		toast.success('Spot accepted.')
-		await loadBoard()
+		await confirmActivityBookingOffer({ activity_booking: bookingName });
+		toast.success('Spot accepted.');
+		await loadBoard();
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error || '')
-		toast.error(message || 'Could not accept this offer.')
+		const message = error instanceof Error ? error.message : String(error || '');
+		toast.error(message || 'Could not accept this offer.');
 	} finally {
-		actionLoading.value[bookingName] = false
+		actionLoading.value[bookingName] = false;
 	}
 }
 
 async function cancelBooking(bookingName: string) {
-	actionLoading.value[bookingName] = true
+	actionLoading.value[bookingName] = true;
 	try {
-		await cancelActivityBooking({ activity_booking: bookingName })
-		toast.success('Booking cancelled.')
-		await loadBoard()
+		await cancelActivityBooking({ activity_booking: bookingName });
+		toast.success('Booking cancelled.');
+		await loadBoard();
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error || '')
-		toast.error(message || 'Could not cancel booking.')
+		const message = error instanceof Error ? error.message : String(error || '');
+		toast.error(message || 'Could not cancel booking.');
 	} finally {
-		actionLoading.value[bookingName] = false
+		actionLoading.value[bookingName] = false;
 	}
 }
 
 function toggleEmbeddedComms(offeringName: string) {
-	embeddedCommsOffering.value = embeddedCommsOffering.value === offeringName ? '' : offeringName
+	embeddedCommsOffering.value = embeddedCommsOffering.value === offeringName ? '' : offeringName;
 }
 
-void loadBoard()
+void loadBoard();
 </script>
