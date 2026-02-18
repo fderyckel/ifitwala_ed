@@ -61,7 +61,7 @@ The implementation of Phase 03 (Admissions Decision & Promotion) has been audite
 2. Applicant terminal transitions (`Rejected`, `Withdrawn`, `Promoted`) disable linked applicant portal users unless non-portal roles are present.
 3. Promotion now copies approved Applicant Document files via classified `File` creation with `source_file` linkage preserved.
 4. `submitted_at` and `decision_at` timestamps are now set by lifecycle transitions.
-5. Remaining open hardening: direct Student creation still permits explicit `allow_direct_creation` bypass and must remain tightly controlled.
+5. Hardening completed: direct Student creation now permits only applicant promotion or explicit import/migration/patch contexts.
 
 ## ⚠️ Notes for Future Phases
 

@@ -13,9 +13,9 @@
   * `Applicant Health Profile`
   * `Policy Acknowledgement`
 
-### Still open
+### Status note
 
-* DTO contract formalization in SPA (`NextAction`, `CompletionState`, `ApplicantPolicy`) remains documentation-level and not yet enforced in typed frontend models.
+* DTO contract formalization in SPA (`NextAction`, `CompletionState`, `ApplicantPolicy`) is now implemented in typed admissions contracts.
 
 ## 1. DTO Definitions & Type Safety
 The following DTOs are referenced but not fully defined in `phase050_admission_portal.md`. A coding agent would need these specific structures to implement the frontend correctly without guessing.

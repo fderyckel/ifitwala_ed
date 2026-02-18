@@ -6,6 +6,7 @@
 > - `/mnt/data/phase030.md`
 
 > Purpose: lock Applicant semantics and the Promotion boundary (server truth). Phases/steps removed; contracts preserved.
+> Note: historical phase checklists in this file are retained for audit and marked complete.
 
 
 ---
@@ -768,7 +769,7 @@ Enable document intake **without polluting Student records**.
 
 ### Hard rules
 
-* ❌ No automatic copying to Student
+* ❌ No copying before explicit promotion
 * ❌ Rejected documents stay rejected
 * ❌ No file moves yet (Phase 3)
 
@@ -864,13 +865,13 @@ Minimal Desk affordances to **review**, not decide.
 
 Phase 02 is **done** only if:
 
-* [ ] Interviews exist and are staff-only
-* [ ] Health data is staged pre-Student
-* [ ] Policies are versioned and explicit
-* [ ] Documents are reviewable without pollution
-* [ ] Applicant readiness is *observable*, not enforced
-* [ ] No promotion logic changed
-* [ ] No UX weakened contracts
+* [x] Interviews exist and are staff-only
+* [x] Health data is staged pre-Student
+* [x] Policies are versioned and explicit
+* [x] Documents are reviewable without pollution
+* [x] Applicant readiness is *observable*, not enforced
+* [x] No promotion logic changed
+* [x] No UX weakened contracts
 
 If any box fails → Phase 02 is incomplete.
 
@@ -1492,14 +1493,14 @@ No additional audit table needed.
 
 PR-02.3 is **acceptable only if**:
 
-* [ ] Uses `Policy Acknowledgement` exactly
-* [ ] Links to `Policy Version`, not Policy
-* [ ] Admissions Applicant-only acknowledgement enforced server-side
-* [ ] Context bound to `Student Applicant`
-* [ ] Append-only, immutable
-* [ ] No lifecycle or promotion logic touched
-* [ ] No admissions-specific policy hacks
-* [ ] Read-only readiness indicators only
+* [x] Uses `Policy Acknowledgement` exactly
+* [x] Links to `Policy Version`, not Policy
+* [x] Admissions Applicant-only acknowledgement enforced server-side
+* [x] Context bound to `Student Applicant`
+* [x] Append-only, immutable
+* [x] No lifecycle or promotion logic touched
+* [x] No admissions-specific policy hacks
+* [x] Read-only readiness indicators only
 
 If any box fails → **PR must be rejected or split**.
 
@@ -1785,13 +1786,13 @@ These are all premature authority leaks.
 
 PR-02.5 passes **only if**:
 
-* [ ] All logic is read-only
-* [ ] Helpers live on Student Applicant
-* [ ] Missing reasons are explicit
-* [ ] No lifecycle logic touched
-* [ ] No school rules encoded
-* [ ] No promotion coupling
-* [ ] No persistent readiness fields
+* [x] All logic is read-only
+* [x] Helpers live on Student Applicant
+* [x] Missing reasons are explicit
+* [x] No lifecycle logic touched
+* [x] No school rules encoded
+* [x] No promotion coupling
+* [x] No persistent readiness fields
 
 Fail one → reject or split.
 
@@ -2090,7 +2091,7 @@ Administrative Record
 
 ### Hard rules
 
-* ❌ No automatic copying to Student
+* ❌ No copying before explicit promotion
 * ❌ Rejected documents stay rejected
 * ❌ No file moves yet
 
@@ -2170,13 +2171,13 @@ get_readiness_snapshot()
 
 Phase 02 is **done only if**:
 
-* [ ] Interviews exist and are staff-only
-* [ ] Health data is staged pre-Student
-* [ ] Policies are versioned and explicit
-* [ ] Documents are reviewable without pollution
-* [ ] Readiness is observable, not enforced
-* [ ] No promotion logic changed
-* [ ] No UX weakened contracts
+* [x] Interviews exist and are staff-only
+* [x] Health data is staged pre-Student
+* [x] Policies are versioned and explicit
+* [x] Documents are reviewable without pollution
+* [x] Readiness is observable, not enforced
+* [x] No promotion logic changed
+* [x] No UX weakened contracts
 
 ---
 
@@ -2470,8 +2471,9 @@ Prevent **any other path** to Student creation.
 
 ### Flags respected
 
+* `frappe.flags.in_import`
 * `frappe.flags.in_migration`
-* `frappe.flags.allow_direct_student_create`
+* `frappe.flags.in_patch`
 
 ### Hard rules
 
@@ -2520,7 +2522,7 @@ Phase 03 is **DONE** only if:
 * [x] Approval is blocked unless ready
 * [x] Rejection is terminal
 * [x] Promotion is explicit + irreversible
-* [ ] No other Student creation paths exist
+* [x] No other Student creation paths exist
 * [x] Files are preserved correctly
 * [x] All authority is server-enforced
 
@@ -2841,8 +2843,9 @@ In `students/doctype/student/student.py`:
 ```python
 def before_insert(self):
     if not (
-        frappe.flags.in_migration
-        or self.allow_direct_creation
+        frappe.flags.in_import
+        or frappe.flags.in_migration
+        or frappe.flags.in_patch
     ):
         frappe.throw(_("Students must be created via Applicant promotion."))
 ```
@@ -2851,9 +2854,9 @@ def before_insert(self):
 
 `promote_applicant()` must:
 
-* set `allow_direct_creation = 1`
 * create Student
-* never expose this flag elsewhere
+* set `student_applicant`
+* rely on the canonical promotion path (not bypass flags)
 
 ---
 

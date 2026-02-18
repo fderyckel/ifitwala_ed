@@ -7,7 +7,7 @@ Part A
 * Implemented: Admissions Applicant doctype permissions (Student Applicant, Applicant Document, Applicant Health Profile, Policy Acknowledgement).
 * Implemented: Portal status mapping includes `Withdrawn` with read-only reason support.
 * Implemented: admissions applicants are redirected to `/admissions` and blocked from staff/student/guardian portal surfaces by route policy.
-* Pending: formalized DTO/type contracts in SPA code (`NextAction`, `CompletionState`, `ApplicantPolicy`).
+* Implemented: formalized DTO/type contracts in SPA code (`NextAction`, `CompletionState`, `ApplicantPolicy`).
 
 **Scope:** Applicant & Staff Admissions UX
 **Authority:** Subordinate to Admissions Governance Contracts and Phase 1–3 server logic

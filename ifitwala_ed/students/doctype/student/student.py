@@ -9,7 +9,7 @@ Student DocType — Creation Modes & Invariants
 ---------------------------------------------
 
 A Student record represents a canonical, operational learner.
-Students may be created through THREE explicit, supported pathways:
+Students may be created through TWO explicit, supported pathways:
 
 1) Applicant Promotion (default, steady-state)
    - Created via StudentApplicant.promote_to_student()
@@ -24,7 +24,6 @@ Students may be created through THREE explicit, supported pathways:
        - frappe.flags.in_import
        - frappe.flags.in_migration
        - frappe.flags.in_patch
-       - frappe.flags.allow_direct_student_create
    - `student_applicant` is NOT required
    - All standard Student behaviors DO execute:
        - User creation
@@ -32,11 +31,6 @@ Students may be created through THREE explicit, supported pathways:
        - Contact linking
        - Image renaming & syncing
        - Sibling synchronization
-
-3) Manual Back-office Creation (exceptional)
-   - Allowed only for privileged staff
-   - Requires explicit bypass flag
-   - Intended for rare operational corrections, not admissions
 
 Invariant:
 -----------
@@ -114,15 +108,13 @@ class Student(Document):
             return
         if getattr(frappe.flags, "in_import", False):
             return
-        if getattr(frappe.flags, "allow_direct_student_create", False):
-            return
-        if self.allow_direct_creation:
+        if getattr(frappe.flags, "in_patch", False):
             return
 
         frappe.throw(
             _(
                 "Students must be created via Applicant promotion. "
-                "Set an explicit migration/import bypass flag to create directly."
+                "Set an explicit import/migration/patch context to create directly."
             )
         )
 
@@ -157,7 +149,7 @@ class Student(Document):
         """
         Phase-1 gating:
         - If created via Applicant promotion: NO side effects (no user, no patient, no contact).
-        - For imported/onboarded/direct Students: keep existing behavior.
+        - For imported/onboarded Students: keep existing behavior.
         """
         if getattr(frappe.flags, "from_applicant_promotion", False):
             return

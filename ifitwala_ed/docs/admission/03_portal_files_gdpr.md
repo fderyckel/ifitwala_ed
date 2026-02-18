@@ -2301,7 +2301,7 @@ Admissions files MUST NOT:
 - be owned by Student
 - be owned by Guardian
 - be re-linked or moved on promotion
-- be duplicated during promotion
+- be duplicated implicitly; only approved promotable documents are copied as new Student-owned records
 
 ### Rationale
 
@@ -2313,7 +2313,8 @@ Admissions files MUST NOT:
 ### Promotion Boundary
 
 Promotion from Applicant → Student:
-- does **not** move, copy, or reassign files
+- does **not** move or re-link Applicant files
+- copies only approved promotable Applicant Documents into new Student File records
 - freezes Applicant files as historical admissions artefacts
 - operational records must never depend on admissions file ownership
 

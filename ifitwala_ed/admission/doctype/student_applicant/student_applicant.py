@@ -528,7 +528,6 @@ class StudentApplicant(Document):
                     "student_last_name": self.last_name,
                     "student_email": fallback_email,
                     "student_applicant": self.name,
-                    "allow_direct_creation": 1,
                 }
             )
             student.insert(ignore_permissions=True)

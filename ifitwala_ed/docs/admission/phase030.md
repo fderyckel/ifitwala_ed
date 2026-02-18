@@ -273,8 +273,9 @@ Prevent **any other path** to Student creation.
 
 ### Flags respected
 
+* `frappe.flags.in_import`
 * `frappe.flags.in_migration`
-* `frappe.flags.allow_direct_student_create`
+* `frappe.flags.in_patch`
 
 ### Hard rules
 
@@ -323,7 +324,7 @@ Phase 03 is **DONE** only if:
 * [x] Approval is blocked unless ready
 * [x] Rejection is terminal
 * [x] Promotion is explicit + irreversible
-* [ ] No other Student creation paths exist
+* [x] No other Student creation paths exist
 * [x] Files are preserved correctly
 * [x] All authority is server-enforced
 
@@ -644,8 +645,9 @@ In `students/doctype/student/student.py`:
 ```python
 def before_insert(self):
     if not (
-        frappe.flags.in_migration
-        or self.allow_direct_creation
+        frappe.flags.in_import
+        or frappe.flags.in_migration
+        or frappe.flags.in_patch
     ):
         frappe.throw(_("Students must be created via Applicant promotion."))
 ```
@@ -654,9 +656,9 @@ def before_insert(self):
 
 `promote_applicant()` must:
 
-* set `allow_direct_creation = 1`
 * create Student
-* never expose this flag elsewhere
+* set `student_applicant`
+* rely on the canonical promotion path (not bypass flags)
 
 ---
 

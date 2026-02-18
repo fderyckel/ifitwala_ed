@@ -190,15 +190,19 @@ class TestEndofYearChecklist(FrappeTestCase):
 
     def _create_student(self, label):
         seed = frappe.generate_hash(length=6)
-        doc = frappe.get_doc(
-            {
-                "doctype": "Student",
-                "student_first_name": label,
-                "student_last_name": f"Student{seed}",
-                "student_email": f"{label.lower()}{seed}@example.com",
-                "allow_direct_creation": 1,
-            }
-        ).insert(ignore_permissions=True)
+        prev_import = getattr(frappe.flags, "in_import", False)
+        frappe.flags.in_import = True
+        try:
+            doc = frappe.get_doc(
+                {
+                    "doctype": "Student",
+                    "student_first_name": label,
+                    "student_last_name": f"Student{seed}",
+                    "student_email": f"{label.lower()}{seed}@example.com",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.flags.in_import = prev_import
         self._created.append(("Student", doc.name))
         return doc.name
 
