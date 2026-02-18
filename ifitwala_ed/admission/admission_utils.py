@@ -425,7 +425,7 @@ def get_admission_officers(doctype, txt, searchfield, start, page_len, filters):
         SELECT u.name
         FROM `tabUser` u
         JOIN `tabHas Role` r ON r.parent = u.name
-        WHERE r.role = 'Admission Officer'
+        WHERE r.role in ('Admission Officer', "Admission Manager")
             AND u.enabled = 1
             AND u.name LIKE %s
         ORDER BY u.name ASC
