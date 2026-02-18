@@ -149,20 +149,27 @@ def translate_legacy_portal_path(path: str | None, *, default_section: str) -> s
     return f"{base}/{remaining}" if remaining else base
 
 
+def _linked_employee_status(*, user: str) -> tuple[bool, str]:
+    row = frappe.db.get_value("Employee", {"user_id": user}, ["name", "employment_status"], as_dict=True)
+    if not row:
+        return False, ""
+    status = str(row.get("employment_status") or "").strip().lower()
+    return True, status
+
+
 def has_active_employee_profile(*, user: str, roles: set[str]) -> bool:
     _ = roles
-    return bool(
-        frappe.db.exists(
-            "Employee",
-            {"user_id": user, "employment_status": "Active"},
-        )
-    )
+    has_employee, status = _linked_employee_status(user=user)
+    if not has_employee:
+        return False
+    return status == "active"
 
 
 def has_staff_portal_access(*, user: str, roles: set[str]) -> bool:
-    if roles & STAFF_PORTAL_ROLES:
-        return True
-    return has_active_employee_profile(user=user, roles=roles)
+    has_employee, status = _linked_employee_status(user=user)
+    if has_employee:
+        return status == "active"
+    return bool(roles & STAFF_PORTAL_ROLES)
 
 
 def resolve_portal_sections(*, user: str, roles: set[str]) -> set[str]:

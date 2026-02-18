@@ -1,7 +1,7 @@
 # Copyright (c) 2024, fdR and Contributors
 # See license.txt
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -81,3 +81,50 @@ class TestEmployee(FrappeTestCase):
         designation_defaults.assert_not_called()
         self.assertEqual(roles, set())
         self.assertIsNone(workspace)
+
+    def test_sync_user_access_disables_non_active_employee_user(self):
+        emp = frappe._dict(
+            user_id="nonactive.employee@example.com",
+            employment_status="Temporary Leave",
+            employee_history=[],
+        )
+        user_doc = frappe._dict(default_workspace=None, user_type="System User", enabled=1)
+        user_doc.save = Mock()
+
+        with (
+            patch(
+                "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
+                return_value=(set(), None),
+            ) as compute_access,
+            patch("ifitwala_ed.hr.employee_access._diff_user_roles", return_value=(set(), [])) as diff_roles,
+            patch("ifitwala_ed.hr.employee_access.frappe.get_doc", return_value=user_doc),
+        ):
+            employee_access.sync_user_access_from_employee(emp)
+
+        compute_access.assert_not_called()
+        diff_roles.assert_not_called()
+        self.assertEqual(user_doc.enabled, 0)
+        user_doc.save.assert_called_once_with(ignore_permissions=True)
+
+    def test_sync_user_access_enables_active_employee_user(self):
+        emp = frappe._dict(
+            user_id="active.employee@example.com",
+            employment_status="Active",
+            employee_history=[],
+        )
+        user_doc = frappe._dict(default_workspace=None, user_type="System User", enabled=0)
+        user_doc.save = Mock()
+
+        with (
+            patch(
+                "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
+                return_value=(set(), None),
+            ) as compute_access,
+            patch("ifitwala_ed.hr.employee_access._diff_user_roles", return_value=(set(), [])),
+            patch("ifitwala_ed.hr.employee_access.frappe.get_doc", return_value=user_doc),
+        ):
+            employee_access.sync_user_access_from_employee(emp)
+
+        compute_access.assert_called_once_with(emp)
+        self.assertEqual(user_doc.enabled, 1)
+        user_doc.save.assert_called_once_with(ignore_permissions=True)

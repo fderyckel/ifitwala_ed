@@ -117,19 +117,32 @@
 	}
 
 	function normalizeSelectControls() {
-		var selectNodes = document.querySelectorAll('.web-form select:not([multiple])');
+		var selectNodes = document.querySelectorAll('.web-form select');
 
 		for (var i = 0; i < selectNodes.length; i++) {
 			var select = selectNodes[i];
 			var rawSize = select.getAttribute('size');
 			var parsedSize = parseInt(rawSize || '0', 10);
+			var allowMultiple = select.classList.contains('if-webform-allow-multiple');
 
-			if (!Number.isNaN(parsedSize) && parsedSize > 1) {
+			select.classList.add('if-webform-single-select');
+
+			if (!allowMultiple && !Number.isNaN(parsedSize) && parsedSize > 1) {
 				select.setAttribute('size', '1');
 			}
-			select.removeAttribute('multiple');
+			if (!allowMultiple) {
+				select.removeAttribute('multiple');
+				select.setAttribute('size', '1');
+			}
 			select.style.overflowY = 'hidden';
+			if (select.classList.contains('bs-select-hidden')) {
+				select.classList.add('if-webform-hidden-meta');
+			}
 		}
+	}
+
+	function isTechnicalFieldToken(text) {
+		return /^[a-z][a-z0-9_]*$/.test(text) && text.indexOf('_') !== -1;
 	}
 
 	function hideRedundantFieldnameHints() {
@@ -146,8 +159,30 @@
 			var node = helperNodes[j];
 			var text = (node.textContent || '').trim();
 
-			if (/^[a-z][a-z0-9_]*$/.test(text)) {
+			if (isTechnicalFieldToken(text)) {
 				node.classList.add('if-webform-hidden-meta');
+			}
+		}
+
+		var leafNodes = document.querySelectorAll(
+			'.web-form .web-form-body p, .web-form .web-form-body span, .web-form .web-form-body div, .web-form .web-form-body small'
+		);
+		for (var k = 0; k < leafNodes.length; k++) {
+			var candidate = leafNodes[k];
+			if (!candidate || candidate.children.length > 0) {
+				continue;
+			}
+			if (
+				candidate.closest(
+					'label, .control-label, .btn, .dropdown-menu, .awesomplete, select, textarea, input'
+				)
+			) {
+				continue;
+			}
+
+			var candidateText = (candidate.textContent || '').trim();
+			if (isTechnicalFieldToken(candidateText) || candidateText === '▲' || candidateText === '▼') {
+				candidate.classList.add('if-webform-hidden-meta');
 			}
 		}
 	}

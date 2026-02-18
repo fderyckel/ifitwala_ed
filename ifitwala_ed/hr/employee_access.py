@@ -10,6 +10,10 @@ from frappe.utils.caching import redis_cache
 MANAGED_FLAG = "managed_by_ifitwala"  # provenance flag on User.roles children
 
 
+def _is_active_employee_status(status: str | None) -> bool:
+    return str(status or "").strip().lower() == "active"
+
+
 @redis_cache(ttl=86400)
 def _roles_from_role_name(role_name: str) -> set[str]:
     if not role_name:
@@ -128,8 +132,17 @@ def sync_user_access_from_employee(emp):
     if not emp.user_id:
         return
 
-    target_roles, target_ws = compute_effective_access_from_employee(emp)
     user = frappe.get_doc("User", emp.user_id)
+    is_active_employee = _is_active_employee_status(getattr(emp, "employment_status", None))
+
+    # Non-active employees are hard-disabled, but roles stay untouched.
+    if not is_active_employee:
+        if int(user.enabled or 0) != 0:
+            user.enabled = 0
+            user.save(ignore_permissions=True)
+        return
+
+    target_roles, target_ws = compute_effective_access_from_employee(emp)
 
     to_add, to_remove = _diff_user_roles(user, target_roles)
     for role in to_add:
@@ -138,13 +151,21 @@ def sync_user_access_from_employee(emp):
         user.remove(ch)
 
     changed = bool(to_add or to_remove)
+    workspace_changed = False
     if target_ws and user.default_workspace != target_ws and user.user_type == "System User":
         user.default_workspace = target_ws
+        changed = True
+        workspace_changed = True
+
+    desired_enabled = 1
+    current_enabled = int(user.enabled or 0)
+    if current_enabled != desired_enabled:
+        user.enabled = desired_enabled
         changed = True
 
     if changed:
         user.save(ignore_permissions=True)
-        if target_ws:
+        if workspace_changed and target_ws:
             try:
                 from ifitwala_ed.hr.workspace_utils import send_workspace_notification
 

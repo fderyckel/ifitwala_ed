@@ -3,6 +3,15 @@
 
 // ifitwala_ed/admission/doctype/student_applicant/student_applicant.js
 
+function blurActiveModalFocus() {
+	const active = document.activeElement;
+	if (!(active instanceof HTMLElement)) {
+		return;
+	}
+	if (active.closest(".modal")) {
+		active.blur();
+	}
+}
 
 frappe.ui.form.on("Student Applicant", {
 
@@ -238,6 +247,7 @@ function add_decision_actions(frm) {
 	if (status === "Submitted") {
 		frm.add_custom_button("Start Review", () => {
 			frappe.confirm("Move this applicant to Under Review?", () => {
+				blurActiveModalFocus();
 				frm.call("mark_under_review")
 					.then(() => frm.reload_doc())
 					.catch((err) => {
@@ -250,6 +260,7 @@ function add_decision_actions(frm) {
 	if (status === "Under Review") {
 		frm.add_custom_button("Approve", () => {
 			frappe.confirm("Approve this applicant?", () => {
+				blurActiveModalFocus();
 				frm.call("approve_application")
 					.then(() => frm.reload_doc())
 					.catch((err) => {
@@ -267,6 +278,7 @@ function add_decision_actions(frm) {
 					reqd: 1,
 				},
 				(values) => {
+					blurActiveModalFocus();
 					frm.call("reject_application", { reason: values.reason })
 						.then(() => frm.reload_doc())
 						.catch((err) => {
@@ -282,6 +294,7 @@ function add_decision_actions(frm) {
 	if (status === "Approved") {
 		frm.add_custom_button("Promote", () => {
 			frappe.confirm("Promote this applicant to Student?", () => {
+				blurActiveModalFocus();
 				frm.call("promote_to_student")
 					.then(() => frm.reload_doc())
 					.catch((err) => {

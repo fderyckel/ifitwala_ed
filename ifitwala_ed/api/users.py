@@ -32,7 +32,7 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
 
     Priority order (locked):
     1. Admissions Applicant -> /admissions
-    2. Active Employee -> /portal/staff
+    2. Active Employee profile or staff role -> /portal/staff
     3. Student -> /portal/student
     4. Guardian -> /portal/guardian
     5. Fallback -> /portal/student
@@ -46,7 +46,7 @@ def redirect_user_to_entry_portal():
 
     Policy:
     - Admissions Applicants -> /admissions
-    - Active Employees -> /portal/staff
+    - Active employees and staff-role users -> /portal/staff
     - Students -> /portal/student
     - Guardians -> /portal/guardian
     - Fallback -> /portal/student

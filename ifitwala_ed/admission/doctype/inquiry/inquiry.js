@@ -3,6 +3,16 @@
 
 // ifitwala_ed/admission/doctype/inquiry/inquiry.js
 
+function blurActiveModalFocus() {
+	const active = document.activeElement;
+	if (!(active instanceof HTMLElement)) {
+		return;
+	}
+	if (active.closest(".modal")) {
+		active.blur();
+	}
+}
+
 frappe.ui.form.on("Inquiry", {
 	refresh(frm) {
 		frm.page.clear_actions_menu();
@@ -142,6 +152,7 @@ frappe.ui.form.on("Inquiry", {
 					.then((r) => {
 						if (r && r.message) {
 							frappe.show_alert(__('Applicant created'));
+							blurActiveModalFocus();
 							dialog.hide();
 							frappe.set_route('Form', 'Student Applicant', r.message);
 							return;
@@ -186,6 +197,7 @@ frappe.ui.form.on("Inquiry", {
 				}
 			],
 			(values) => {
+				blurActiveModalFocus();
 				frappe.call({
 					method: 'ifitwala_ed.admission.admission_utils.assign_inquiry',
 					args: {
@@ -221,6 +233,7 @@ frappe.ui.form.on("Inquiry", {
 				}
 			],
 			(values) => {
+				blurActiveModalFocus();
 				frappe.call({
 					method: 'ifitwala_ed.admission.admission_utils.reassign_inquiry',
 					args: {
@@ -245,6 +258,7 @@ frappe.ui.form.on("Inquiry", {
 		frappe.confirm(
 			__("Do you also want to mark the related task as completed?"),
 			() => {
+				blurActiveModalFocus();
 				frappe.call({
 					doc: frm.doc,
 					method: "mark_contacted",
@@ -257,6 +271,7 @@ frappe.ui.form.on("Inquiry", {
 				});
 			},
 			() => {
+				blurActiveModalFocus();
 				frappe.call({
 					doc: frm.doc,
 					method: "mark_contacted",
@@ -287,6 +302,7 @@ frappe.ui.form.on("Inquiry", {
 		frappe.confirm(
 			__("Archive this inquiry?"),
 			() => {
+				blurActiveModalFocus();
 				frappe.call({
 					doc: frm.doc,
 					method: "archive",
