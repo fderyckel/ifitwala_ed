@@ -59,6 +59,13 @@ def redirect_user_to_entry_portal():
 
     roles = set(frappe.get_roles(user))
     path = _resolve_login_redirect_path(user=user, roles=roles)
+
+    # Force canonical portal redirect even when login was initiated with an external
+    # redirect target (for example /app). Portal routing policy owns post-login landing.
+    if hasattr(frappe, "form_dict"):
+        frappe.form_dict["redirect_to"] = path
+        frappe.form_dict["redirect-to"] = path
+
     frappe.local.response["home_page"] = path
     frappe.local.response["redirect_to"] = path
 

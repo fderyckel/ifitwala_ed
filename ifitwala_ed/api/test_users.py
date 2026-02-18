@@ -94,6 +94,38 @@ class TestUserRedirect(FrappeTestCase):
         frappe.set_user("Administrator")
         frappe.delete_doc("User", user.email, force=True)
 
+    def test_login_redirect_overrides_incoming_redirect_to_param(self):
+        """Role-based redirect must win over incoming redirect_to values like /app."""
+        user = frappe.new_doc("User")
+        user.email = "test_override_redirect_param@example.com"
+        user.first_name = "Override"
+        user.last_name = "Redirect"
+        user.enabled = 1
+        user.add_roles("Employee")
+        user.save()
+
+        employee = frappe.new_doc("Employee")
+        employee.first_name = "Override"
+        employee.last_name = "Redirect"
+        employee.user_id = user.email
+        employee.employment_status = "Active"
+        employee.save()
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+        frappe.form_dict = frappe._dict({"redirect_to": "/app"})
+
+        redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
+        self.assertEqual(frappe.form_dict.get("redirect_to"), "/portal/staff")
+        self.assertEqual(frappe.form_dict.get("redirect-to"), "/portal/staff")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
     def test_guardian_redirects_to_guardian_portal(self):
         """Guardians should be redirected to /portal/guardian."""
         # Create test user with Guardian role

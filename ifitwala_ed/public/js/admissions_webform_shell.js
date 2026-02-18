@@ -117,7 +117,7 @@
 	}
 
 	function normalizeSelectControls() {
-		var selectNodes = document.querySelectorAll('.web-form select.form-control:not([multiple])');
+		var selectNodes = document.querySelectorAll('.web-form select:not([multiple])');
 
 		for (var i = 0; i < selectNodes.length; i++) {
 			var select = selectNodes[i];
@@ -127,7 +127,51 @@
 			if (!Number.isNaN(parsedSize) && parsedSize > 1) {
 				select.setAttribute('size', '1');
 			}
+			select.removeAttribute('multiple');
+			select.style.overflowY = 'hidden';
 		}
+	}
+
+	function hideRedundantFieldnameHints() {
+		var fieldnameNodes = document.querySelectorAll('.web-form .fieldname, .web-form .field-name');
+
+		for (var i = 0; i < fieldnameNodes.length; i++) {
+			fieldnameNodes[i].classList.add('if-webform-hidden-meta');
+		}
+
+		var helperNodes = document.querySelectorAll(
+			'.web-form .form-group .help-box, .web-form .form-group .text-muted, .web-form .form-group .small'
+		);
+		for (var j = 0; j < helperNodes.length; j++) {
+			var node = helperNodes[j];
+			var text = (node.textContent || '').trim();
+
+			if (/^[a-z][a-z0-9_]*$/.test(text)) {
+				node.classList.add('if-webform-hidden-meta');
+			}
+		}
+	}
+
+	function syncSubmissionState() {
+		var formNode = document.querySelector('.web-form');
+		var successNode = document.querySelector('.success-page');
+
+		if (!successNode) {
+			document.body.classList.remove('if-webform-submitted');
+			return;
+		}
+
+		if (!formNode) {
+			document.body.classList.add('if-webform-submitted');
+			return;
+		}
+
+		var hiddenByClass =
+			formNode.classList.contains('hide') || formNode.classList.contains('hidden');
+		var hiddenByAttr = formNode.getAttribute('aria-hidden') === 'true';
+		var hiddenByStyle = window.getComputedStyle(formNode).display === 'none';
+		var isSubmitted = hiddenByClass || hiddenByAttr || hiddenByStyle;
+		document.body.classList.toggle('if-webform-submitted', isSubmitted);
 	}
 
 	function injectShell() {
@@ -151,6 +195,8 @@
 		document.body.classList.add('ifitwala-public-webform');
 		markFormContainer();
 		normalizeSelectControls();
+		hideRedundantFieldnameHints();
+		syncSubmissionState();
 
 		if (!document.getElementById(SHELL_ROOT_ID)) {
 			var header = buildShellHeader();
