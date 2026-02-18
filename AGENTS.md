@@ -80,6 +80,12 @@ Drift is a bug.
 
 Agents MUST NOT invent fieldnames.
 
+Mapping contract (hard rule):
+
+* Never map or copy a field unless that field exists in the source DocType schema.
+* Forbidden pattern in business flows: reading non-existent fields via defensive access (e.g., `doc.get("missing_field")`) just to avoid runtime errors.
+* If a target requires data that the source DocType does not have, STOP and require an explicit architecture/schema decision.
+
 Allowed sources:
 
 * JSON schema files explicitly provided

@@ -93,6 +93,30 @@ class TestInquiry(FrappeTestCase):
                     organization=sibling_org,
                 )
 
+    def test_from_inquiry_invite_handles_inquiry_without_middle_name_field(self):
+        parent_org = self._make_organization("Invite Root", is_group=1)
+        child_org = self._make_organization("Invite Child Ok", parent=parent_org)
+        school = self._make_school(child_org, "Invite School Ok")
+        inquiry = self._make_inquiry()
+
+        with patch("ifitwala_ed.admission.admission_utils.ensure_admissions_permission", return_value="Administrator"):
+            applicant_name = from_inquiry_invite(
+                inquiry_name=inquiry.name,
+                school=school,
+                organization=parent_org,
+            )
+
+        self.assertTrue(applicant_name)
+        linked = frappe.db.get_value(
+            "Student Applicant",
+            applicant_name,
+            ["inquiry", "school", "organization"],
+            as_dict=True,
+        )
+        self.assertEqual(linked.inquiry, inquiry.name)
+        self.assertEqual(linked.school, school)
+        self.assertEqual(linked.organization, parent_org)
+
     def _make_organization(self, prefix: str, parent: str | None = None, is_group: int = 0) -> str:
         doc = frappe.get_doc(
             {

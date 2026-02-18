@@ -44,7 +44,7 @@ def _redirect(to: str):
 
 def get_context(context):
     user = frappe.session.user
-    path = frappe.request.path if hasattr(frappe, "request") else "/student"
+    path = frappe.request.path if hasattr(frappe, "request") else canonical_path_for_section("student")
     log_legacy_portal_hit(path=path, user=user)
 
     if not user or user == "Guest":

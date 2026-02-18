@@ -86,7 +86,7 @@ class Guardian(Document):
                 )
 
         guardian_home = canonical_path_for_section("guardian")
-        # Set home_page for portal routing if not already set to guardian portal
+        # Set home_page for portal routing if not already set to guardian portal path
         current_home_page = frappe.db.get_value("User", user_email, "home_page")
         if current_home_page != guardian_home:
             try:
@@ -193,7 +193,7 @@ class Guardian(Document):
                 user.add_roles("Guardian")
 
             guardian_home = canonical_path_for_section("guardian")
-            # Set home_page so guardian is routed to /guardian on login
+            # Set home_page so guardian is routed to the guardian portal on login
             if user.home_page != guardian_home:
                 frappe.db.set_value("User", user.name, "home_page", guardian_home, update_modified=False)
 
@@ -232,7 +232,7 @@ class Guardian(Document):
             user.save()
 
             guardian_home = canonical_path_for_section("guardian")
-            # Set home_page so guardian is routed to /guardian on login
+            # Set home_page so guardian is routed to the guardian portal on login
             frappe.db.set_value("User", user.name, "home_page", guardian_home, update_modified=False)
 
         except Exception as e:

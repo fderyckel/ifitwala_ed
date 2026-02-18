@@ -10,7 +10,7 @@ class TestPortalRoute(FrappeTestCase):
     def test_guest_redirects_to_login_for_canonical_student_route(self):
         frappe.set_user("Guest")
         original_path = getattr(frappe.request, "path", None)
-        frappe.request.path = "/student/activities"
+        frappe.request.path = "/portal/student/activities"
 
         try:
             with self.assertRaises(frappe.Redirect):
@@ -18,14 +18,14 @@ class TestPortalRoute(FrappeTestCase):
 
             self.assertEqual(
                 frappe.local.flags.redirect_location,
-                "/login?redirect-to=/student/activities",
+                "/login?redirect-to=/portal/student/activities",
             )
         finally:
             frappe.set_user("Administrator")
             if original_path is not None:
                 frappe.request.path = original_path
 
-    def test_legacy_portal_student_route_redirects_to_canonical_namespace(self):
+    def test_legacy_top_level_student_route_redirects_to_canonical_namespace(self):
         user = frappe.new_doc("User")
         user.email = "test_portal_legacy_student@example.com"
         user.first_name = "Legacy"
@@ -42,7 +42,7 @@ class TestPortalRoute(FrappeTestCase):
         student.save()
 
         original_path = getattr(frappe.request, "path", None)
-        frappe.request.path = "/portal/student/activities"
+        frappe.request.path = "/student/activities"
         frappe.set_user(user.email)
 
         try:
@@ -51,7 +51,7 @@ class TestPortalRoute(FrappeTestCase):
 
             self.assertEqual(
                 frappe.local.flags.redirect_location,
-                "/student/activities",
+                "/portal/student/activities",
             )
         finally:
             frappe.set_user("Administrator")
@@ -77,7 +77,7 @@ class TestPortalRoute(FrappeTestCase):
         employee.save()
 
         original_path = getattr(frappe.request, "path", None)
-        frappe.request.path = "/student"
+        frappe.request.path = "/portal/student"
         frappe.set_user(user.email)
 
         try:
@@ -86,7 +86,7 @@ class TestPortalRoute(FrappeTestCase):
 
             self.assertEqual(
                 frappe.local.flags.redirect_location,
-                "/staff",
+                "/portal/staff",
             )
         finally:
             frappe.set_user("Administrator")

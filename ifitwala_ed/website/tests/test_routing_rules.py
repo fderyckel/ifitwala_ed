@@ -68,18 +68,16 @@ class TestRoutingRules(FrappeTestCase):
         self.assertEqual(lookup["/inquiry"].get("redirect_http_status"), 301)
         self.assertEqual(lookup["/registration-of-interest"].get("redirect_http_status"), 301)
 
-    def test_legacy_portal_paths_redirect_to_canonical_portal_namespaces(self):
+    def test_legacy_top_level_paths_redirect_to_canonical_portal_namespace(self):
         redirects = getattr(hooks, "website_redirects", []) or []
         pairs = {(row.get("source"), row.get("target")) for row in redirects if isinstance(row, dict)}
         lookup = {row.get("source"): row for row in redirects if isinstance(row, dict) and row.get("source")}
-        self.assertIn(("/portal", "/student"), pairs)
-        self.assertIn(("/portal/student", "/student"), pairs)
-        self.assertIn(("/portal/staff", "/staff"), pairs)
-        self.assertIn(("/portal/guardian", "/guardian"), pairs)
-        self.assertEqual(lookup["/portal"].get("redirect_http_status"), 301)
-        self.assertEqual(lookup["/portal/student"].get("redirect_http_status"), 301)
-        self.assertEqual(lookup["/portal/staff"].get("redirect_http_status"), 301)
-        self.assertEqual(lookup["/portal/guardian"].get("redirect_http_status"), 301)
+        self.assertIn(("/student", "/portal/student"), pairs)
+        self.assertIn(("/staff", "/portal/staff"), pairs)
+        self.assertIn(("/guardian", "/portal/guardian"), pairs)
+        self.assertEqual(lookup["/student"].get("redirect_http_status"), 301)
+        self.assertEqual(lookup["/staff"].get("redirect_http_status"), 301)
+        self.assertEqual(lookup["/guardian"].get("redirect_http_status"), 301)
 
     def test_apply_namespace_is_not_owned_by_custom_website_router(self):
         rules = hooks.website_route_rules

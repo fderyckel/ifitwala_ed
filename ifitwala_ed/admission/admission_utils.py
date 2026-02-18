@@ -610,16 +610,15 @@ def from_inquiry_invite(
         {
             "doctype": "Student Applicant",
             # Identity (best-effort, editable later)
-            "first_name": inquiry.first_name,
-            "middle_name": inquiry.middle_name,
-            "last_name": inquiry.last_name,
+            "first_name": inquiry.get("first_name"),
+            "last_name": inquiry.get("last_name"),
             # Institutional anchoring (IMMUTABLE after creation)
             "school": school,
             "organization": organization,
             # Admissions intent (NOT enrollment)
-            "program": inquiry.program,
-            "academic_year": inquiry.academic_year,
-            "term": inquiry.term,
+            "program": inquiry.get("program"),
+            "academic_year": inquiry.get("academic_year"),
+            "term": inquiry.get("term"),
             # Traceability
             "inquiry": inquiry.name,
             # Lifecycle

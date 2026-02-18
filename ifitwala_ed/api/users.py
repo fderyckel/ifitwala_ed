@@ -17,7 +17,7 @@ STAFF_ROLES = STAFF_PORTAL_ROLES
 
 
 def _has_active_employee_profile(*, user: str, roles: set) -> bool:
-    """Return True when user has Employee role and an active Employee record."""
+    """Return True when user has an active Employee record."""
     return has_active_employee_profile(user=user, roles=roles)
 
 
@@ -32,10 +32,10 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
 
     Priority order (locked):
     1. Admissions Applicant -> /admissions
-    2. Active Employee -> /staff
-    3. Student -> /student
-    4. Guardian -> /guardian
-    5. Fallback -> /student
+    2. Active Employee -> /portal/staff
+    3. Student -> /portal/student
+    4. Guardian -> /portal/guardian
+    5. Fallback -> /portal/student
     """
     return resolve_login_redirect_path(user=user, roles=roles)
 
@@ -46,10 +46,10 @@ def redirect_user_to_entry_portal():
 
     Policy:
     - Admissions Applicants -> /admissions
-    - Active Employees -> /staff
-    - Students -> /student
-    - Guardians -> /guardian
-    - Fallback -> /student
+    - Active Employees -> /portal/staff
+    - Students -> /portal/student
+    - Guardians -> /portal/guardian
+    - Fallback -> /portal/student
 
     Login redirect is response-only (no User.home_page write in the login flow).
     """

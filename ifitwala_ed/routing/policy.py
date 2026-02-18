@@ -7,6 +7,12 @@ from urllib.parse import quote
 import frappe
 
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
+CANONICAL_PORTAL_PREFIX = "/portal"
+LEGACY_TOP_LEVEL_SECTION_PATHS = {
+    "staff": "/staff",
+    "student": "/student",
+    "guardian": "/guardian",
+}
 
 PORTAL_SECTION_PRIORITY = ("staff", "student", "guardian")
 PORTAL_SECTION_LABELS = {
@@ -15,9 +21,9 @@ PORTAL_SECTION_LABELS = {
     "guardian": "Guardian",
 }
 PORTAL_SECTION_PATHS = {
-    "staff": "/staff",
-    "student": "/student",
-    "guardian": "/guardian",
+    "staff": f"{CANONICAL_PORTAL_PREFIX}/staff",
+    "student": f"{CANONICAL_PORTAL_PREFIX}/student",
+    "guardian": f"{CANONICAL_PORTAL_PREFIX}/guardian",
 }
 
 STAFF_PORTAL_ROLES = frozenset(
@@ -32,8 +38,7 @@ STAFF_PORTAL_ROLES = frozenset(
     }
 )
 
-LEGACY_PORTAL_PREFIX = "/portal"
-LEGACY_PORTAL_ROOT_REDIRECT = "/student"
+LEGACY_PORTAL_ROOT_REDIRECT = f"{CANONICAL_PORTAL_PREFIX}/student"
 RESERVED_WEBSITE_PREFIXES = frozenset(
     {
         "admissions",
@@ -55,13 +60,14 @@ WEBSITE_ROUTE_RULES = [
     {"from_route": "/", "to_route": "index"},
     {"from_route": "/admissions", "to_route": "admissions"},
     {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
+    # Legacy top-level compatibility ingress. Controller redirects to canonical /portal/* routes.
     {"from_route": "/student", "to_route": "portal"},
     {"from_route": "/student/<path:subpath>", "to_route": "portal"},
     {"from_route": "/staff", "to_route": "portal"},
     {"from_route": "/staff/<path:subpath>", "to_route": "portal"},
     {"from_route": "/guardian", "to_route": "portal"},
     {"from_route": "/guardian/<path:subpath>", "to_route": "portal"},
-    # Temporary compatibility ingress only. Controller redirects to canonical routes.
+    # Canonical portal namespace ingress.
     {"from_route": "/portal", "to_route": "portal"},
     {"from_route": "/portal/<path:subpath>", "to_route": "portal"},
     {"from_route": "/portfolio/share/<path:token>", "to_route": "portfolio/share"},
@@ -78,10 +84,9 @@ WEBSITE_REDIRECTS = [
         "target": "/apply/registration-of-interest",
         "redirect_http_status": 301,
     },
-    {"source": "/portal", "target": "/student", "redirect_http_status": 301},
-    {"source": "/portal/student", "target": "/student", "redirect_http_status": 301},
-    {"source": "/portal/staff", "target": "/staff", "redirect_http_status": 301},
-    {"source": "/portal/guardian", "target": "/guardian", "redirect_http_status": 301},
+    {"source": "/student", "target": "/portal/student", "redirect_http_status": 301},
+    {"source": "/staff", "target": "/portal/staff", "redirect_http_status": 301},
+    {"source": "/guardian", "target": "/portal/guardian", "redirect_http_status": 301},
 ]
 
 
@@ -109,7 +114,7 @@ def resolve_section_from_path(path: str | None) -> str | None:
         return None
 
     first = segments[0]
-    if first in PORTAL_SECTION_PATHS:
+    if first in LEGACY_TOP_LEVEL_SECTION_PATHS:
         return first
 
     if first != "portal":
@@ -125,25 +130,27 @@ def resolve_section_from_path(path: str | None) -> str | None:
 
 
 def translate_legacy_portal_path(path: str | None, *, default_section: str) -> str | None:
+    # Keep signature stable for existing callers/tests.
+    _ = default_section
     normalized = normalize_path(path)
-    if not normalized.startswith(LEGACY_PORTAL_PREFIX):
+    if normalized.startswith(CANONICAL_PORTAL_PREFIX):
         return None
 
     segments = _split_path(normalized)
-    if len(segments) == 1:
-        return canonical_path_for_section(default_section)
+    if not segments:
+        return None
 
-    if len(segments) >= 2 and segments[1] in PORTAL_SECTION_PATHS:
-        base = canonical_path_for_section(segments[1])
-        remaining = "/".join(segments[2:])
-        return f"{base}/{remaining}" if remaining else base
+    section = segments[0]
+    if section not in LEGACY_TOP_LEVEL_SECTION_PATHS:
+        return None
 
-    return canonical_path_for_section(default_section)
+    base = canonical_path_for_section(section)
+    remaining = "/".join(segments[1:])
+    return f"{base}/{remaining}" if remaining else base
 
 
 def has_active_employee_profile(*, user: str, roles: set[str]) -> bool:
-    if "Employee" not in roles:
-        return False
+    _ = roles
     return bool(
         frappe.db.exists(
             "Employee",
@@ -194,9 +201,9 @@ def portal_roles_for_client(sections: set[str]) -> list[str]:
 
 def is_portal_home_page(path: str | None) -> bool:
     normalized = normalize_path(path, default="")
-    if normalized.startswith("/portal/"):
+    if normalized.startswith(f"{CANONICAL_PORTAL_PREFIX}/"):
         return True
-    return normalized in PORTAL_SECTION_PATHS.values()
+    return normalized in PORTAL_SECTION_PATHS.values() or normalized in LEGACY_TOP_LEVEL_SECTION_PATHS.values()
 
 
 def build_login_redirect(path: str) -> str:
@@ -210,8 +217,13 @@ def build_logout_then_login_redirect(path: str) -> str:
 
 def log_legacy_portal_hit(*, path: str | None, user: str | None):
     normalized = normalize_path(path)
-    if not normalized.startswith(LEGACY_PORTAL_PREFIX):
+    if normalized.startswith(CANONICAL_PORTAL_PREFIX):
         return
+
+    segments = _split_path(normalized)
+    if not segments or segments[0] not in LEGACY_TOP_LEVEL_SECTION_PATHS:
+        return
+
     frappe.logger("ifitwala_ed.routing").info(
         "legacy_portal_path_hit path=%s user=%s",
         normalized,

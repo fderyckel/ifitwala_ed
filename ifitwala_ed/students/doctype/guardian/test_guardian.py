@@ -13,7 +13,7 @@ class TestGuardianUserCreation(FrappeTestCase):
     """Test guardian user creation and portal routing."""
 
     def test_create_guardian_user_sets_home_page(self):
-        """Creating a guardian user should set their home_page to /guardian."""
+        """Creating a guardian user should set their home_page to /portal/guardian."""
         # Create a guardian without a user first
         guardian = frappe.new_doc("Guardian")
         guardian.guardian_first_name = "Test"
@@ -36,8 +36,8 @@ class TestGuardianUserCreation(FrappeTestCase):
         roles = [r.role for r in user.roles]
         self.assertIn("Guardian", roles)
 
-        # MOST IMPORTANT: Verify home_page is set to /guardian for automatic portal routing
-        self.assertEqual(user.home_page, "/guardian")
+        # MOST IMPORTANT: Verify home_page is set to /portal/guardian for automatic portal routing
+        self.assertEqual(user.home_page, "/portal/guardian")
 
         # Verify guardian record was updated with user link
         guardian.reload()
@@ -94,7 +94,7 @@ class TestGuardianUserCreation(FrappeTestCase):
         # Verify initial state
         user_roles = [r.role for r in user.roles]
         self.assertNotIn("Guardian", user_roles)
-        self.assertNotEqual(user.home_page, "/guardian")
+        self.assertNotEqual(user.home_page, "/portal/guardian")
 
         # Create guardian and link to existing user
         guardian = frappe.new_doc("Guardian")
@@ -115,7 +115,7 @@ class TestGuardianUserCreation(FrappeTestCase):
         self.assertIn("Guardian", user_roles)
 
         # MOST IMPORTANT: Verify home_page is set for automatic portal routing
-        self.assertEqual(user.home_page, "/guardian")
+        self.assertEqual(user.home_page, "/portal/guardian")
 
         # Cleanup
         guardian.reload()
@@ -129,7 +129,7 @@ class TestGuardianPortalRouting(FrappeTestCase):
     def test_guardian_created_with_existing_user_sets_home_page(self):
         """
         When a Guardian is created with an existing user already linked,
-        the user's home_page should be set to /guardian automatically.
+        the user's home_page should be set to /portal/guardian automatically.
         """
         # Create a user first (without Guardian role or home_page)
         user_email = "guardian_with_user_link@example.com"
@@ -158,7 +158,7 @@ class TestGuardianPortalRouting(FrappeTestCase):
         self.assertIn("Guardian", user_roles)
 
         # MOST IMPORTANT: Verify home_page was set automatically
-        self.assertEqual(user.home_page, "/guardian")
+        self.assertEqual(user.home_page, "/portal/guardian")
 
         # Cleanup
         frappe.delete_doc("Guardian", guardian.name, force=True)
@@ -167,7 +167,7 @@ class TestGuardianPortalRouting(FrappeTestCase):
     def test_guardian_user_field_update_sets_home_page(self):
         """
         When a Guardian's user field is updated to link a new user,
-        the new user's home_page should be set to /guardian.
+        the new user's home_page should be set to /portal/guardian.
         """
         # Create guardian WITHOUT user first
         guardian = frappe.new_doc("Guardian")
@@ -191,7 +191,7 @@ class TestGuardianPortalRouting(FrappeTestCase):
         user.save()
 
         # Verify initial state - no home_page
-        self.assertNotEqual(user.home_page, "/guardian")
+        self.assertNotEqual(user.home_page, "/portal/guardian")
 
         # Now update the guardian to link the user
         guardian.user = user_email
@@ -205,7 +205,7 @@ class TestGuardianPortalRouting(FrappeTestCase):
         self.assertIn("Guardian", user_roles)
 
         # MOST IMPORTANT: Verify home_page was set on user field update
-        self.assertEqual(user.home_page, "/guardian")
+        self.assertEqual(user.home_page, "/portal/guardian")
 
         # Cleanup
         frappe.delete_doc("Guardian", guardian.name, force=True)
