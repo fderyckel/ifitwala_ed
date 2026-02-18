@@ -92,10 +92,12 @@ Legacy compatibility note: persisted `New Inquiry` values are normalized to cano
 - **Conversion nuance**:
   - document method `invite_to_apply` enforces `Qualified` state
   - Desk quick action currently uses `from_inquiry_invite`, available from `Contacted` and `Qualified` in client logic
+  - Invite payload validation enforces selected School belongs to selected Organization (Organization NestedSet ancestry)
 - **Utility endpoints** (`ifitwala_ed/admission/admission_utils.py`):
   - `assign_inquiry`
   - `reassign_inquiry`
   - `get_admission_officers`
+  - `school_by_organization_scope_query`
   - `from_inquiry_invite`
 - **Analytics API endpoints** (`ifitwala_ed/api/inquiry.py`):
   - `get_dashboard_data`

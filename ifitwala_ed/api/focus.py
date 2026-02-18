@@ -949,19 +949,10 @@ def mark_inquiry_contacted(
     if not inquiry_name:
         frappe.throw(_("Invalid focus item reference name."), frappe.ValidationError)
 
-    inquiry_doc = frappe.get_doc(INQUIRY_DOCTYPE, inquiry_name)
-
-    if not frappe.has_permission(INQUIRY_DOCTYPE, ptype="read", doc=inquiry_doc):
-        frappe.throw(_("You are not permitted to view this inquiry."), frappe.PermissionError)
-
-    if (inquiry_doc.assigned_to or "").strip() != user:
-        frappe.throw(_("Only the assigned user can complete this inquiry follow-up."), frappe.PermissionError)
-
-    if (inquiry_doc.workflow_state or "").strip() != "Assigned":
-        frappe.throw(_("This Inquiry is not in Assigned state."))
-
     cache = _cache()
 
+    # Idempotency must short-circuit before state/assignee checks because
+    # a successful first call mutates both workflow_state and assigned_to.
     if client_request_id:
         key = _idempotency_key(user, focus_item_id, client_request_id, "inquiry_mark_contacted")
         existing = cache.get_value(key)
@@ -973,6 +964,17 @@ def mark_inquiry_contacted(
                 "inquiry_name": inquiry_name,
                 "result": existing,
             }
+
+    inquiry_doc = frappe.get_doc(INQUIRY_DOCTYPE, inquiry_name)
+
+    if not frappe.has_permission(INQUIRY_DOCTYPE, ptype="read", doc=inquiry_doc):
+        frappe.throw(_("You are not permitted to view this inquiry."), frappe.PermissionError)
+
+    if (inquiry_doc.assigned_to or "").strip() != user:
+        frappe.throw(_("Only the assigned user can complete this inquiry follow-up."), frappe.PermissionError)
+
+    if (inquiry_doc.workflow_state or "").strip() != "Assigned":
+        frappe.throw(_("This Inquiry is not in Assigned state."))
 
     lock_name = _lock_key(user, focus_item_id, "inquiry_mark_contacted")
     with cache.lock(lock_name, timeout=10):

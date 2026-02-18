@@ -81,48 +81,90 @@ frappe.ui.form.on("Inquiry", {
 	// Invite to Apply
 	// --------------------------------------------------
 	invite_to_apply(frm) {
-		frappe.prompt(
-			[
-				{
-					label: __('School'),
-					fieldname: 'school',
-					fieldtype: 'Link',
-					options: 'School',
-					reqd: 1
-				},
+		let dialog = null;
+		const schoolQuery = () => {
+			const organization = String((dialog && dialog.get_value('organization')) || '').trim();
+			if (!organization) {
+				return { filters: { name: '' } };
+			}
+			return {
+				query: 'ifitwala_ed.admission.admission_utils.school_by_organization_scope_query',
+				filters: { organization }
+			};
+		};
+
+		dialog = new frappe.ui.Dialog({
+			title: __('Invite to Apply'),
+			fields: [
 				{
 					label: __('Organization'),
 					fieldname: 'organization',
 					fieldtype: 'Link',
 					options: 'Organization',
-					reqd: 0,
-					description: __('Optional override; normally inferred from School')
+					reqd: 1,
+					get_query: () => ({
+						query: 'ifitwala_ed.api.inquiry.inquiry_organization_link_query'
+					})
+				},
+				{
+					label: __('School'),
+					fieldname: 'school',
+					fieldtype: 'Link',
+					options: 'School',
+					reqd: 1,
+					get_query: schoolQuery
 				}
 			],
-			(values) => {
+			primary_action_label: __('Invite'),
+			primary_action: (values) => {
+				const organization = String(values.organization || '').trim();
+				const school = String(values.school || '').trim();
+
+				if (!organization) {
+					frappe.msgprint(__('Please select an Organization.'));
+					return;
+				}
+				if (!school) {
+					frappe.msgprint(__('Please select a School.'));
+					return;
+				}
+
+				dialog.disable_primary_action();
 				frappe.call({
 					method: 'ifitwala_ed.admission.admission_utils.from_inquiry_invite',
 					args: {
 						inquiry_name: frm.doc.name,
-						school: values.school,
-						organization: values.organization || null
+						school,
+						organization
 					},
-					freeze: true,
-					callback: (r) => {
-						if (!r.exc && r.message) {
+					freeze: true
+				})
+					.then((r) => {
+						if (r && r.message) {
 							frappe.show_alert(__('Applicant created'));
+							dialog.hide();
 							frappe.set_route('Form', 'Student Applicant', r.message);
+							return;
 						}
-					},
-					error: (err) => {
+						frappe.msgprint(__('Failed to invite applicant.'));
+					})
+					.catch((err) => {
 						console.error(err);
-						frappe.msgprint(__('Failed to invite applicant'));
-					}
-				});
-			},
-			__('Invite to Apply'),
-			__('Invite')
-		);
+						frappe.msgprint(__('Failed to invite applicant. Ensure School belongs to the selected Organization.'));
+					})
+					.then(() => {
+						dialog.enable_primary_action();
+					});
+			}
+		});
+
+		const organizationField = dialog.get_field('organization');
+		if (organizationField) {
+			organizationField.df.onchange = () => {
+				dialog.set_value('school', null);
+			};
+		}
+		dialog.show();
 	},
 
 	// --------------------------------------------------

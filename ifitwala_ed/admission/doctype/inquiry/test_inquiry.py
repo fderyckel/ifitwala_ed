@@ -2,10 +2,16 @@
 # Copyright (c) 2025, François de Ryckel and Contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.admission.admission_utils import _validate_admissions_assignee
+from ifitwala_ed.admission.admission_utils import (
+    _school_belongs_to_organization_scope,
+    _validate_admissions_assignee,
+    from_inquiry_invite,
+)
 from ifitwala_ed.admission.doctype.inquiry.inquiry import _normalize_inquiry_state
 from ifitwala_ed.tests.factories.users import make_user
 
@@ -61,3 +67,64 @@ class TestInquiry(FrappeTestCase):
         frappe.db.set_value("User", disabled.name, "enabled", 0)
         with self.assertRaises(frappe.ValidationError):
             _validate_admissions_assignee(disabled.name)
+
+    def test_school_belongs_to_organization_scope_respects_nestedset(self):
+        parent_org = self._make_organization("Org Parent", is_group=1)
+        child_org = self._make_organization("Org Child", parent=parent_org)
+        sibling_org = self._make_organization("Org Sibling", parent=parent_org)
+        school = self._make_school(child_org, "Scope School")
+
+        self.assertTrue(_school_belongs_to_organization_scope(school, child_org))
+        self.assertTrue(_school_belongs_to_organization_scope(school, parent_org))
+        self.assertFalse(_school_belongs_to_organization_scope(school, sibling_org))
+
+    def test_from_inquiry_invite_rejects_mismatched_school_organization(self):
+        parent_org = self._make_organization("Invite Parent", is_group=1)
+        child_org = self._make_organization("Invite Child", parent=parent_org)
+        sibling_org = self._make_organization("Invite Sibling", parent=parent_org)
+        school = self._make_school(child_org, "Invite School")
+        inquiry = self._make_inquiry()
+
+        with patch("ifitwala_ed.admission.admission_utils.ensure_admissions_permission", return_value="Administrator"):
+            with self.assertRaises(frappe.ValidationError):
+                from_inquiry_invite(
+                    inquiry_name=inquiry.name,
+                    school=school,
+                    organization=sibling_org,
+                )
+
+    def _make_organization(self, prefix: str, parent: str | None = None, is_group: int = 0) -> str:
+        doc = frappe.get_doc(
+            {
+                "doctype": "Organization",
+                "organization_name": f"{prefix} {frappe.generate_hash(length=6)}",
+                "abbr": f"ORG{frappe.generate_hash(length=4)}",
+                "is_group": is_group,
+                "parent_organization": parent,
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        return doc.name
+
+    def _make_school(self, organization: str, prefix: str) -> str:
+        doc = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": f"{prefix} {frappe.generate_hash(length=6)}",
+                "abbr": f"SCH{frappe.generate_hash(length=4)}",
+                "organization": organization,
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        return doc.name
+
+    def _make_inquiry(self):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Inquiry",
+                "first_name": "Invite",
+                "last_name": "Check",
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        return doc

@@ -9,6 +9,7 @@ from frappe import _
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.desk.form.assign_to import remove as remove_assignment
 from frappe.utils import add_days, getdate, now, nowdate
+from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
 
 ADMISSIONS_ROLES = {"Admission Manager", "Admission Officer"}
 
@@ -245,6 +246,34 @@ def _validate_admissions_assignee(user: str) -> None:
         frappe.throw(_("Assignee must be an active user with the 'Admission Officer' or 'Admission Manager' role."))
 
 
+def _get_organization_scope(organization: str | None) -> list[str]:
+    organization = (organization or "").strip()
+    if not organization:
+        return []
+
+    if not frappe.db.exists("Organization", organization):
+        return []
+
+    descendants = get_descendants_of("Organization", organization) or []
+    return [organization, *[org for org in descendants if org and org != organization]]
+
+
+def _school_belongs_to_organization_scope(school: str | None, organization: str | None) -> bool:
+    school = (school or "").strip()
+    organization = (organization or "").strip()
+    if not school or not organization:
+        return False
+
+    school_org = (frappe.db.get_value("School", school, "organization") or "").strip()
+    if not school_org:
+        return False
+
+    if school_org == organization:
+        return True
+
+    return organization in (get_ancestors_of("Organization", school_org) or [])
+
+
 def _get_first_contact_sla_days_default():
     return frappe.get_cached_value("Admission Settings", None, "first_contact_sla_days") or 7
 
@@ -445,6 +474,33 @@ def get_admission_officers(doctype, txt, searchfield, start, page_len, filters):
     )
 
 
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def school_by_organization_scope_query(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
+    ensure_admissions_permission()
+    filters = filters or {}
+    organization = (filters.get("organization") or "").strip()
+    if not organization:
+        return []
+
+    organization_scope = _get_organization_scope(organization)
+    if not organization_scope:
+        return []
+
+    schools = frappe.get_all(
+        "School",
+        filters={
+            "organization": ["in", organization_scope],
+            "name": ["like", f"%{txt or ''}%"],
+        },
+        pluck="name",
+        order_by="lft asc, name asc",
+        limit_start=int(start or 0),
+        limit_page_length=int(page_len or 20),
+    )
+    return [(school,) for school in schools]
+
+
 def on_todo_update_close_marks_contacted(doc, method=None):
     # Only when ToDo is Closed
     if doc.status != "Closed":
@@ -510,6 +566,10 @@ def from_inquiry_invite(
     if not frappe.db.exists("School", school):
         frappe.throw(_("Invalid School: {0}").format(school))
 
+    school_org = (frappe.db.get_value("School", school, "organization") or "").strip()
+    if not school_org:
+        frappe.throw(_("Selected School does not have an Organization."))
+
     # ------------------------------------------------------------------
     # Load Inquiry (READ-ONLY usage)
     # ------------------------------------------------------------------
@@ -530,10 +590,18 @@ def from_inquiry_invite(
     # Resolve organization (explicit or derived)
     # ------------------------------------------------------------------
     if not organization:
-        organization = frappe.db.get_value("School", school, "organization")
+        organization = school_org
+
+    organization = (organization or "").strip()
 
     if not organization:
         frappe.throw(_("Organization must be provided or derivable from the selected School."))
+
+    if not frappe.db.exists("Organization", organization):
+        frappe.throw(_("Invalid Organization: {0}").format(organization))
+
+    if not _school_belongs_to_organization_scope(school, organization):
+        frappe.throw(_("Selected School does not belong to the selected Organization."))
 
     # ------------------------------------------------------------------
     # Create Student Applicant (institutional commitment point)
