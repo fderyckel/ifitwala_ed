@@ -28,6 +28,7 @@ PORTAL_SECTION_PATHS = {
 
 STAFF_PORTAL_ROLES = frozenset(
     {
+        "Employee",
         "Academic User",
         "System Manager",
         "Teacher",
@@ -226,7 +227,7 @@ def resolve_default_portal_section(*, allowed_sections: set[str], requested_sect
     for section in PORTAL_SECTION_PRIORITY:
         if section in allowed_sections:
             return section
-    return "student"
+    return "staff"
 
 
 def resolve_login_redirect_path(*, user: str, roles: set[str]) -> str:

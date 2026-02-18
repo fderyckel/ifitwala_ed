@@ -79,9 +79,14 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
     2. Active Employee profile or staff role -> /portal/staff
     3. Student -> /portal/student
     4. Guardian -> /portal/guardian
-    5. Fallback -> /portal/student
+    5. Fallback -> /portal/staff
     """
     return resolve_login_redirect_path(user=user, roles=roles)
+
+
+def _can_force_login_redirect() -> bool:
+    request = getattr(frappe, "request", None)
+    return bool(request and not bool(getattr(frappe.flags, "in_test", False)))
 
 
 def redirect_user_to_entry_portal():
@@ -93,9 +98,10 @@ def redirect_user_to_entry_portal():
     - Active employees and staff-role users -> /portal/staff
     - Students -> /portal/student
     - Guardians -> /portal/guardian
-    - Fallback -> /portal/student
+    - Fallback -> /portal/staff
 
-    Login redirect is response-only (no User.home_page write in the login flow).
+    Login redirect is response-only (no User.home_page write in the login flow)
+    and enforces a hard redirect target for browser login requests.
     """
     user = frappe.session.user
     if not user or user == "Guest":
@@ -114,6 +120,11 @@ def redirect_user_to_entry_portal():
 
     frappe.local.response["home_page"] = path
     frappe.local.response["redirect_to"] = path
+
+    # Browser login flows should hard-redirect to prevent Desk home routing from winning.
+    if _can_force_login_redirect():
+        frappe.local.flags.redirect_location = path
+        raise frappe.Redirect
 
 
 @frappe.whitelist()

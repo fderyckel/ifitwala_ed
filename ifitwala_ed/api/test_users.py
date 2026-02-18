@@ -12,8 +12,8 @@ from ifitwala_ed.api.users import STAFF_ROLES, redirect_user_to_entry_portal
 class TestUserRedirect(FrappeTestCase):
     """Test unified login redirect logic."""
 
-    def test_all_users_redirect_to_student_entry(self):
-        """Standard users should be redirected to /portal/student on login."""
+    def test_all_users_redirect_to_staff_entry(self):
+        """Standard users should be redirected to /portal/staff on login."""
         # Create test user
         user = frappe.new_doc("User")
         user.email = "test_user_portal@example.com"
@@ -29,9 +29,9 @@ class TestUserRedirect(FrappeTestCase):
         # Call redirect function
         redirect_user_to_entry_portal()
 
-        # Assert redirect to /portal/student
-        self.assertEqual(frappe.local.response.get("home_page"), "/portal/student")
-        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/student")
+        # Assert redirect to /portal/staff
+        self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
 
         # Cleanup
         frappe.set_user("Administrator")
@@ -85,8 +85,8 @@ class TestUserRedirect(FrappeTestCase):
         frappe.local.response = {}
         redirect_user_to_entry_portal()
 
-        self.assertEqual(frappe.local.response.get("home_page"), "/portal/student")
-        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/student")
+        self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
 
         user.reload()
         self.assertEqual(user.home_page, "/app")
@@ -231,8 +231,8 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("Employee", employee.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
-    def test_employee_role_without_employee_profile_redirects_to_student(self):
-        """Employee role alone should not route to /portal/staff without Employee profile."""
+    def test_employee_role_without_employee_profile_redirects_to_staff(self):
+        """Employee role alone should route to /portal/staff."""
         user = frappe.new_doc("User")
         user.email = "test_employee_role_only_portal@example.com"
         user.first_name = "Employee"
@@ -246,8 +246,8 @@ class TestUserRedirect(FrappeTestCase):
 
         redirect_user_to_entry_portal()
 
-        self.assertEqual(frappe.local.response.get("home_page"), "/portal/student")
-        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/student")
+        self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
 
         frappe.set_user("Administrator")
         frappe.delete_doc("User", user.email, force=True)
@@ -302,8 +302,8 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("Employee", employee.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
-    def test_non_active_employee_profile_redirects_to_student(self):
-        """Non-Active employee profile must not route to /portal/staff."""
+    def test_non_active_employee_profile_falls_back_to_staff(self):
+        """Non-Active employee profile without student/guardian roles falls back to /portal/staff."""
         user = frappe.new_doc("User")
         user.email = "test_temp_leave_employee_profile_redirect@example.com"
         user.first_name = "Temporary"
@@ -323,8 +323,8 @@ class TestUserRedirect(FrappeTestCase):
 
         redirect_user_to_entry_portal()
 
-        self.assertEqual(frappe.local.response.get("home_page"), "/portal/student")
-        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/student")
+        self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
 
         frappe.set_user("Administrator")
         frappe.delete_doc("Employee", employee.name, force=True)
@@ -407,6 +407,7 @@ class TestUserRedirect(FrappeTestCase):
     def test_staff_roles_constant(self):
         """Verify STAFF_ROLES contains expected roles."""
         expected_roles = {
+            "Employee",
             "Academic User",
             "System Manager",
             "Teacher",
