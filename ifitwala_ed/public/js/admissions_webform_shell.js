@@ -145,8 +145,34 @@
 		return /^[a-z][a-z0-9_]*$/.test(text) && text.indexOf('_') !== -1;
 	}
 
+	function collectRenderedFieldTokens() {
+		var tokens = Object.create(null);
+		var fieldHolders = document.querySelectorAll('.web-form [data-fieldname]');
+		for (var i = 0; i < fieldHolders.length; i++) {
+			var holderToken = (fieldHolders[i].getAttribute('data-fieldname') || '')
+				.trim()
+				.toLowerCase();
+			if (holderToken) {
+				tokens[holderToken] = true;
+			}
+		}
+
+		var namedFields = document.querySelectorAll(
+			'.web-form input[name], .web-form select[name], .web-form textarea[name]'
+		);
+		for (var j = 0; j < namedFields.length; j++) {
+			var namedToken = (namedFields[j].getAttribute('name') || '').trim().toLowerCase();
+			if (namedToken) {
+				tokens[namedToken] = true;
+			}
+		}
+
+		return tokens;
+	}
+
 	function hideRedundantFieldnameHints() {
 		var fieldnameNodes = document.querySelectorAll('.web-form .fieldname, .web-form .field-name');
+		var fieldTokens = collectRenderedFieldTokens();
 
 		for (var i = 0; i < fieldnameNodes.length; i++) {
 			fieldnameNodes[i].classList.add('if-webform-hidden-meta');
@@ -181,7 +207,13 @@
 			}
 
 			var candidateText = (candidate.textContent || '').trim();
-			if (isTechnicalFieldToken(candidateText) || candidateText === '▲' || candidateText === '▼') {
+			var normalized = candidateText.toLowerCase();
+			if (
+				isTechnicalFieldToken(candidateText) ||
+				fieldTokens[normalized] ||
+				candidateText === '▲' ||
+				candidateText === '▼'
+			) {
 				candidate.classList.add('if-webform-hidden-meta');
 			}
 		}
