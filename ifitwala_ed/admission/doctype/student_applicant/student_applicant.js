@@ -233,7 +233,19 @@ function map_health_status(status) {
 
 function add_decision_actions(frm) {
 	const status = frm.doc.application_status;
-	["Approve", "Reject", "Promote"].forEach((label) => frm.remove_custom_button(label));
+	["Start Review", "Approve", "Reject", "Promote"].forEach((label) => frm.remove_custom_button(label));
+
+	if (status === "Submitted") {
+		frm.add_custom_button("Start Review", () => {
+			frappe.confirm("Move this applicant to Under Review?", () => {
+				frm.call("mark_under_review")
+					.then(() => frm.reload_doc())
+					.catch((err) => {
+						frappe.msgprint(err.message || "Unable to move applicant to Under Review.");
+					});
+			});
+		});
+	}
 
 	if (status === "Under Review") {
 		frm.add_custom_button("Approve", () => {

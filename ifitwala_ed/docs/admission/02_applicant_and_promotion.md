@@ -116,6 +116,7 @@ Under Review
 Missing Info
 Approved
 Rejected
+Withdrawn
 Promoted
 ```
 
@@ -135,6 +136,7 @@ Any other value is invalid.
 | Missing Info | ✅ (scoped)  | ✅          | Limited family edits requested     |
 | Approved     | ❌           | ✅          | Decision made; promotion allowed   |
 | Rejected     | ❌           | ❌          | Terminal, read-only                |
+| Withdrawn    | ❌           | ❌          | Terminal, read-only                |
 | Promoted     | ❌           | ❌          | Terminal; Student exists           |
 
 **Rules**
@@ -165,7 +167,7 @@ This prevents:
 
 **System Manager override (exception)**
 
-In terminal states (`Rejected`, `Promoted`), edits are blocked unless a System Manager
+In terminal states (`Rejected`, `Withdrawn`, `Promoted`), edits are blocked unless a System Manager
 performs an explicit override. Overrides must be intentional, audited, and include a
 reason. This is a legal escape hatch, not a normal workflow.
 
@@ -2515,12 +2517,12 @@ Expose **authority**, not logic, in UI.
 
 Phase 03 is **DONE** only if:
 
-* [ ] Approval is blocked unless ready
-* [ ] Rejection is terminal
-* [ ] Promotion is explicit + irreversible
+* [x] Approval is blocked unless ready
+* [x] Rejection is terminal
+* [x] Promotion is explicit + irreversible
 * [ ] No other Student creation paths exist
-* [ ] Files are preserved correctly
-* [ ] All authority is server-enforced
+* [x] Files are preserved correctly
+* [x] All authority is server-enforced
 
 Fail one → Phase 03 rejected.
 

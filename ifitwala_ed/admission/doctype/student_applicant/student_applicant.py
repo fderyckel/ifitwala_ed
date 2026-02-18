@@ -11,7 +11,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 
-from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES, ensure_admissions_permission
+from ifitwala_ed.admission.admission_utils import (
+    ADMISSIONS_ROLES,
+    ensure_admissions_permission,
+    get_applicant_document_slot_spec,
+)
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     select_nearest_policy_rows_by_key,
@@ -28,6 +32,7 @@ FAMILY_ROLES = {"Guardian"}
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
 SYSTEM_MANAGER_ROLE = "System Manager"
 DECISION_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
+TERMINAL_STATUSES = {"Rejected", "Withdrawn", "Promoted"}
 
 STATUS_SET = {
     "Draft",
@@ -38,15 +43,16 @@ STATUS_SET = {
     "Missing Info",
     "Approved",
     "Rejected",
+    "Withdrawn",
     "Promoted",
 }
 
 STATUS_TRANSITIONS = {
     "Draft": {"Invited"},
-    "Invited": {"In Progress"},
-    "In Progress": {"Submitted"},
-    "Submitted": {"Under Review"},
-    "Under Review": {"Missing Info", "Approved", "Rejected"},
+    "Invited": {"In Progress", "Withdrawn"},
+    "In Progress": {"Submitted", "Withdrawn"},
+    "Submitted": {"Under Review", "Withdrawn"},
+    "Under Review": {"Missing Info", "Approved", "Rejected", "Withdrawn"},
     "Missing Info": {"In Progress"},
     "Approved": {"Promoted"},
 }
@@ -60,6 +66,7 @@ EDIT_RULES = {
     "Missing Info": {"family": True, "staff": True},
     "Approved": {"family": False, "staff": True},
     "Rejected": {"family": False, "staff": False},
+    "Withdrawn": {"family": False, "staff": False},
     "Promoted": {"family": False, "staff": False},
 }
 
@@ -67,6 +74,9 @@ EDIT_RULES = {
 class StudentApplicant(Document):
     def before_save(self):
         self._set_title_if_missing()
+
+    def on_update(self):
+        self._sync_applicant_user_lifecycle()
 
     # ---------------------------------------------------------------------
     # Core validation
@@ -221,7 +231,7 @@ class StudentApplicant(Document):
         if not rules:
             frappe.throw(_("Invalid Application Status: {0}.").format(status_for_edit))
 
-        if status_for_edit in {"Rejected", "Promoted"}:
+        if status_for_edit in TERMINAL_STATUSES:
             if is_system_manager and getattr(self.flags, "system_manager_override", False):
                 return
             if self._has_changes(before):
@@ -349,6 +359,7 @@ class StudentApplicant(Document):
         self.flags.allow_status_change = True
         self.flags.status_change_source = "lifecycle_method"
         self.application_status = new_status
+        self._apply_status_timestamps(previous_status=previous, new_status=new_status)
         self.save(ignore_permissions=True)
 
         comment_text = _("{0} by {1} on {2}. Status: {3} → {4}.").format(
@@ -367,6 +378,70 @@ class StudentApplicant(Document):
         )
         return {"ok": True, "changed": True}
 
+    def _apply_status_timestamps(self, *, previous_status: str, new_status: str):
+        if previous_status == new_status:
+            return
+
+        now_ts = now_datetime()
+        if new_status == "Submitted" and not self.get("submitted_at"):
+            self.submitted_at = now_ts
+        if new_status in {"Approved", "Rejected", "Withdrawn"}:
+            self.decision_at = now_ts
+
+    def _ensure_applicant_actor(self):
+        user = frappe.session.user
+        roles = set(frappe.get_roles(user))
+        if ADMISSIONS_APPLICANT_ROLE not in roles:
+            frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
+        if self.applicant_user != user:
+            frappe.throw(_("You do not have permission to modify this Applicant."), frappe.PermissionError)
+        return user
+
+    def _sync_applicant_user_lifecycle(self):
+        if not self.applicant_user:
+            return
+
+        before = self.get_doc_before_save()
+        previous_status = before.application_status if before else self.get_db_value("application_status")
+        if previous_status == self.application_status:
+            return
+        if self.application_status not in TERMINAL_STATUSES:
+            return
+
+        user_row = frappe.db.get_value("User", self.applicant_user, ["name", "enabled"], as_dict=True)
+        if not user_row or not user_row.get("enabled"):
+            return
+
+        role_rows = frappe.get_all(
+            "Has Role",
+            filters={"parent": self.applicant_user},
+            fields=["role"],
+        )
+        user_roles = {row.get("role") for row in role_rows if row.get("role")}
+        non_portal_roles = user_roles - {ADMISSIONS_APPLICANT_ROLE, "All", "Guest"}
+        if non_portal_roles:
+            frappe.log_error(
+                frappe.as_json(
+                    {
+                        "student_applicant": self.name,
+                        "applicant_user": self.applicant_user,
+                        "status": self.application_status,
+                        "non_portal_roles": sorted(non_portal_roles),
+                    },
+                    indent=2,
+                ),
+                "Applicant User Disable Skipped",
+            )
+            return
+
+        frappe.db.set_value("User", self.applicant_user, "enabled", 0, update_modified=False)
+        self.add_comment(
+            "Comment",
+            text=_("Applicant portal user {0} disabled after status changed to {1}.").format(
+                frappe.bold(self.applicant_user), frappe.bold(self.application_status)
+            ),
+        )
+
     @frappe.whitelist()
     def mark_in_progress(self):
         return self._set_status("In Progress", "Marked In Progress")
@@ -376,8 +451,24 @@ class StudentApplicant(Document):
         return self._set_status("Submitted", "Application submitted")
 
     @frappe.whitelist()
+    def mark_under_review(self):
+        return self._set_status("Under Review", "Marked Under Review")
+
+    @frappe.whitelist()
     def mark_missing_info(self):
         return self._set_status("Missing Info", "Marked Missing Info")
+
+    @frappe.whitelist()
+    def withdraw_application(self, reason=None):
+        suffix = None
+        if reason:
+            suffix = _("Reason: {0}.").format(reason)
+        return self._set_status(
+            "Withdrawn",
+            "Application withdrawn",
+            permission_checker=self._ensure_applicant_actor,
+            comment_suffix=suffix,
+        )
 
     @frappe.whitelist()
     def approve_application(self):
@@ -428,12 +519,14 @@ class StudentApplicant(Document):
         prev_flag = getattr(frappe.flags, "from_applicant_promotion", False)
         frappe.flags.from_applicant_promotion = True
         try:
+            fallback_email = self.applicant_user or f"{frappe.scrub(self.name)}@applicant.local"
             student = frappe.get_doc(
                 {
                     "doctype": "Student",
                     "student_first_name": self.first_name,
                     "student_middle_name": self.middle_name,
                     "student_last_name": self.last_name,
+                    "student_email": fallback_email,
                     "student_applicant": self.name,
                     "allow_direct_creation": 1,
                 }
@@ -441,6 +534,8 @@ class StudentApplicant(Document):
             student.insert(ignore_permissions=True)
         finally:
             frappe.flags.from_applicant_promotion = prev_flag
+
+        copied_docs = self._copy_promotable_documents_to_student(student)
 
         file_doc = self._copy_applicant_image_to_student(student)
         if file_doc and self._has_media_consent():
@@ -457,6 +552,10 @@ class StudentApplicant(Document):
         self.student = student.name
         self.save(ignore_permissions=True)
         self._set_status("Promoted", "Applicant promoted")
+        self.add_comment(
+            "Comment",
+            text=_("Promoted file transfer completed: {0} Applicant Document file(s) copied.").format(copied_docs),
+        )
 
         return student.name
 
@@ -531,6 +630,7 @@ class StudentApplicant(Document):
                 "slot": "profile_image",
                 "organization": self.organization,
                 "school": self.school,
+                "source_file": file_row.get("name"),
                 "upload_source": "Promotion",
             },
         )
@@ -543,6 +643,105 @@ class StudentApplicant(Document):
             update_modified=False,
         )
         return file_doc
+
+    def _copy_promotable_documents_to_student(self, student) -> int:
+        docs = frappe.get_all(
+            "Applicant Document",
+            filters={
+                "student_applicant": self.name,
+                "review_status": "Approved",
+            },
+            fields=[
+                "name",
+                "document_type",
+                "promotion_target",
+            ],
+        )
+        if not docs:
+            return 0
+
+        doc_names = [row.get("name") for row in docs if row.get("name")]
+        file_rows = frappe.get_all(
+            "File",
+            filters={
+                "attached_to_doctype": "Applicant Document",
+                "attached_to_name": ["in", doc_names],
+            },
+            fields=["name", "attached_to_name", "file_url", "file_name", "is_private", "creation"],
+            order_by="creation desc",
+        )
+        latest_file_by_doc = {}
+        for file_row in file_rows:
+            parent = file_row.get("attached_to_name")
+            if parent and parent not in latest_file_by_doc:
+                latest_file_by_doc[parent] = file_row
+
+        document_type_names = sorted({row.get("document_type") for row in docs if row.get("document_type")})
+        document_type_map = {}
+        if document_type_names:
+            type_rows = frappe.get_all(
+                "Applicant Document Type",
+                filters={"name": ["in", document_type_names]},
+                fields=["name", "code"],
+            )
+            document_type_map = {row.get("name"): (row.get("code") or row.get("name")) for row in type_rows}
+
+        copied_count = 0
+        copy_errors = []
+        for doc_row in docs:
+            if doc_row.get("promotion_target") and doc_row.get("promotion_target") != "Student":
+                continue
+
+            source = latest_file_by_doc.get(doc_row.get("name"))
+            if not source:
+                copy_errors.append(_("Missing file for Applicant Document {0}.").format(doc_row.get("name")))
+                continue
+
+            content = self._read_file_bytes(source)
+            if not content:
+                copy_errors.append(_("Could not read file for Applicant Document {0}.").format(doc_row.get("name")))
+                continue
+
+            doc_type_code = document_type_map.get(doc_row.get("document_type")) or doc_row.get("document_type")
+            slot_spec = get_applicant_document_slot_spec(doc_type_code) or {
+                "data_class": "administrative",
+                "purpose": "administrative",
+                "retention_policy": "until_program_end_plus_1y",
+            }
+            slot_key = f"admissions_{frappe.scrub(doc_type_code or 'document')}"
+            filename = source.get("file_name") or os.path.basename(source.get("file_url") or "document")
+
+            try:
+                file_dispatcher.create_and_classify_file(
+                    file_kwargs={
+                        "attached_to_doctype": "Student",
+                        "attached_to_name": student.name,
+                        "file_name": filename,
+                        "content": content,
+                        "is_private": 1 if source.get("is_private") else 0,
+                    },
+                    classification={
+                        "primary_subject_type": "Student",
+                        "primary_subject_id": student.name,
+                        "data_class": slot_spec["data_class"],
+                        "purpose": slot_spec["purpose"],
+                        "retention_policy": slot_spec["retention_policy"],
+                        "slot": slot_key,
+                        "organization": self.organization,
+                        "school": self.school,
+                        "source_file": source.get("name"),
+                        "upload_source": "Promotion",
+                    },
+                )
+                copied_count += 1
+            except Exception:
+                copy_errors.append(_("Could not copy Applicant Document {0}.").format(doc_row.get("name")))
+                frappe.log_error(frappe.get_traceback(), "Applicant Document Promotion Copy Failed")
+
+        if copy_errors:
+            frappe.throw("\n".join(copy_errors))
+
+        return copied_count
 
     def _read_file_bytes(self, file_row):
         file_url = (file_row.get("file_url") or "").strip()
@@ -574,7 +773,7 @@ class StudentApplicant(Document):
         if SYSTEM_MANAGER_ROLE not in roles:
             frappe.throw(_("Only System Managers can override terminal state locks."))
 
-        if self.application_status not in {"Rejected", "Promoted"}:
+        if self.application_status not in TERMINAL_STATUSES:
             frappe.throw(_("System Manager override is only allowed for terminal states."))
 
         if not reason:

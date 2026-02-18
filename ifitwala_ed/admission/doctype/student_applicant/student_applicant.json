@@ -15,6 +15,8 @@
   "student",
   "applicant_image",
   "application_status",
+  "submitted_at",
+  "decision_at",
   "applicant_user",
   "column_break_frwx",
   "organization",
@@ -136,7 +138,19 @@
    "fieldname": "application_status",
    "fieldtype": "Select",
    "label": "Application Status",
-   "options": "Draft\nInvited\nIn Progress\nSubmitted\nUnder Review\nMissing Info\nApproved\nRejected\nPromoted",
+   "options": "Draft\nInvited\nIn Progress\nSubmitted\nUnder Review\nMissing Info\nApproved\nRejected\nWithdrawn\nPromoted",
+   "read_only": 1
+  },
+  {
+   "fieldname": "submitted_at",
+   "fieldtype": "Datetime",
+   "label": "Submitted At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "decision_at",
+   "fieldtype": "Datetime",
+   "label": "Decision At",
    "read_only": 1
   },
   {
@@ -277,6 +291,11 @@
    "report": 1,
    "role": "Academic Admin",
    "share": 1
+  },
+  {
+   "read": 1,
+   "role": "Admissions Applicant",
+   "write": 1
   }
  ],
  "row_format": "Dynamic",

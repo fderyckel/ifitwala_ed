@@ -133,7 +133,7 @@ frappe.ui.form.on("Inquiry", {
 		frappe.prompt(
 			[
 				{
-					label: 'Assign To (Admission Officer)',
+					label: 'Assign To (Admission Officer/Manager)',
 					fieldname: 'assigned_to',
 					fieldtype: 'Link',
 					options: 'User',
@@ -168,7 +168,7 @@ frappe.ui.form.on("Inquiry", {
 		frappe.prompt(
 			[
 				{
-					label: 'Reassign To (Admission Officer)',
+					label: 'Reassign To (Admission Officer/Manager)',
 					fieldname: 'new_assigned_to',
 					fieldtype: 'Link',
 					options: 'User',

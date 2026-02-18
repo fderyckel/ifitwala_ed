@@ -24,6 +24,7 @@ PORTAL_STATUS_MAP = {
     "Under Review": "In Review",
     "Approved": "Accepted",
     "Rejected": "Rejected",
+    "Withdrawn": "Withdrawn",
     "Promoted": "Completed",
 }
 
@@ -35,6 +36,7 @@ READ_ONLY_REASON_MAP = {
     "Under Review": _("Application under review."),
     "Approved": _("Application accepted."),
     "Rejected": _("Application rejected."),
+    "Withdrawn": _("Application withdrawn."),
     "Promoted": _("Application completed."),
 }
 
@@ -82,7 +84,7 @@ def _portal_status_for(application_status: str) -> str:
 def _read_only_for(application_status: str) -> tuple[bool, str | None]:
     if application_status in PORTAL_EDITABLE_STATUSES:
         return False, None
-    return True, READ_ONLY_REASON_MAP.get(application_status)
+    return True, READ_ONLY_REASON_MAP.get(application_status) or _("Application is read-only.")
 
 
 def _completion_state_for_requirement(required: list, missing: list, unapproved: list | None = None) -> str:
@@ -565,6 +567,20 @@ def submit_application(student_applicant: str | None = None):
 
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
     result = applicant._set_status("Submitted", "Application submitted", permission_checker=None)
+    return {"ok": True, "changed": result.get("changed")}
+
+
+@frappe.whitelist()
+def withdraw_application(
+    *,
+    student_applicant: str | None = None,
+    reason: str | None = None,
+):
+    user = _require_admissions_applicant()
+    row = _ensure_applicant_match(student_applicant, user)
+
+    applicant = frappe.get_doc("Student Applicant", row.get("name"))
+    result = applicant.withdraw_application(reason=reason)
     return {"ok": True, "changed": result.get("changed")}
 
 

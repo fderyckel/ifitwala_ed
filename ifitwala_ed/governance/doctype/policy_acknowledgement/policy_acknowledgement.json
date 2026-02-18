@@ -97,6 +97,11 @@
   {
    "read": 1,
    "role": "Admission Manager"
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Admissions Applicant"
   }
  ],
  "sort_field": "modified",

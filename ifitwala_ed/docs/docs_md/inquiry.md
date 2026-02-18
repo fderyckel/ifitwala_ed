@@ -13,7 +13,7 @@ Every admission cycle starts with a first question. The `Inquiry` DocType turns 
 ## What It Solves
 
 - Centralizes inbound interest from web forms and staff-created records.
-- Assigns ownership to admissions officers.
+- Assigns ownership to admissions officers and managers.
 - Tracks first-contact and follow-up deadlines with SLA status.
 - Converts contacted/qualified interest to [**Student Applicant**](/docs/en/student-applicant/).
 

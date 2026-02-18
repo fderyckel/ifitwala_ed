@@ -232,6 +232,19 @@ def notify_user(user, message, doc):
     )
 
 
+def _validate_admissions_assignee(user: str) -> None:
+    if not user:
+        frappe.throw(_("Assignee is required."))
+
+    enabled = frappe.db.get_value("User", user, "enabled")
+    if not enabled:
+        frappe.throw(_("Assignee must be an active user with the 'Admission Officer' or 'Admission Manager' role."))
+
+    has_allowed_role = frappe.db.exists("Has Role", {"parent": user, "role": ["in", list(ADMISSIONS_ROLES)]})
+    if not has_allowed_role:
+        frappe.throw(_("Assignee must be an active user with the 'Admission Officer' or 'Admission Manager' role."))
+
+
 def _get_first_contact_sla_days_default():
     return frappe.get_cached_value("Admission Settings", None, "first_contact_sla_days") or 7
 
@@ -269,9 +282,7 @@ def assign_inquiry(doctype, docname, assigned_to):
     ensure_admissions_permission()
     doc = frappe.get_doc(doctype, docname)
 
-    # Validate role
-    if not frappe.db.exists("Has Role", {"parent": assigned_to, "role": "Admission Officer"}):
-        frappe.throw(f"{assigned_to} must be an active user with the 'Admission Officer' role.")
+    _validate_admissions_assignee(assigned_to)
 
     # Prevent double-assign in our custom field
     if doc.assigned_to:
@@ -344,9 +355,7 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
     if doc.assigned_to == new_assigned_to:
         frappe.throw("This inquiry is already assigned to this user.")
 
-    # Validate role
-    if not frappe.db.exists("Has Role", {"parent": new_assigned_to, "role": "Admission Officer"}):
-        frappe.throw(f"{new_assigned_to} must be an active user with the 'Admission Officer' role.")
+    _validate_admissions_assignee(new_assigned_to)
 
     settings = frappe.get_cached_doc("Admission Settings")
     prev_assigned = doc.assigned_to
@@ -419,13 +428,14 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
 
 
 @frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
 def get_admission_officers(doctype, txt, searchfield, start, page_len, filters):
     return frappe.db.sql(
         """
-        SELECT u.name
+        SELECT DISTINCT u.name
         FROM `tabUser` u
         JOIN `tabHas Role` r ON r.parent = u.name
-        WHERE r.role in ('Admission Officer', "Admission Manager")
+        WHERE r.role IN ('Admission Officer', 'Admission Manager')
             AND u.enabled = 1
             AND u.name LIKE %s
         ORDER BY u.name ASC

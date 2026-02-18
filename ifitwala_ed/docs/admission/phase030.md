@@ -320,12 +320,12 @@ Expose **authority**, not logic, in UI.
 
 Phase 03 is **DONE** only if:
 
-* [ ] Approval is blocked unless ready
-* [ ] Rejection is terminal
-* [ ] Promotion is explicit + irreversible
+* [x] Approval is blocked unless ready
+* [x] Rejection is terminal
+* [x] Promotion is explicit + irreversible
 * [ ] No other Student creation paths exist
-* [ ] Files are preserved correctly
-* [ ] All authority is server-enforced
+* [x] Files are preserved correctly
+* [x] All authority is server-enforced
 
 Fail one → Phase 03 rejected.
 

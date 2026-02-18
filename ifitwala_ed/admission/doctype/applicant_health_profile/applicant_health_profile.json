@@ -131,6 +131,12 @@
    "read": 1,
    "role": "Guardian",
    "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Admissions Applicant",
+   "write": 1
   }
  ],
  "sort_field": "modified",

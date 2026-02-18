@@ -105,6 +105,94 @@ class TestStudentApplicant(FrappeTestCase):
         )
         self.assertEqual(applicant.title, "Captain Hopper")
 
+    def test_submitted_to_under_review_transition(self):
+        applicant = self._create_student_applicant()
+        applicant.mark_in_progress()
+        applicant.submit_application()
+        applicant.reload()
+        self.assertEqual(applicant.application_status, "Submitted")
+        self.assertTrue(bool(applicant.submitted_at))
+
+        applicant.mark_under_review()
+        applicant.reload()
+        self.assertEqual(applicant.application_status, "Under Review")
+
+    def test_reject_disables_portal_user(self):
+        user = self._create_user("Applicant", "Portal", add_role="Admissions Applicant")
+        applicant = self._create_student_applicant()
+        applicant.flags.from_applicant_invite = True
+        applicant.applicant_user = user.name
+        applicant.save(ignore_permissions=True)
+
+        applicant.mark_in_progress()
+        applicant.submit_application()
+        applicant.mark_under_review()
+        applicant.reject_application("Not eligible")
+
+        user.reload()
+        self.assertEqual(user.enabled, 0)
+
+    def test_promotion_copies_approved_applicant_document_files(self):
+        doc_type = self._create_applicant_document_type(code=f"promotable-{frappe.generate_hash(length=6)}")
+        applicant = self._create_student_applicant()
+
+        applicant_doc = frappe.get_doc(
+            {
+                "doctype": "Applicant Document",
+                "student_applicant": applicant.name,
+                "document_type": doc_type,
+                "review_status": "Approved",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document", applicant_doc.name))
+
+        source_file = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document",
+                "attached_to_name": applicant_doc.name,
+                "file_name": "supporting.txt",
+                "is_private": 1,
+                "content": b"promote-me",
+            }
+        )
+        source_file.insert(ignore_permissions=True)
+        self._created.append(("File", source_file.name))
+
+        applicant.mark_in_progress()
+        applicant.submit_application()
+        applicant.mark_under_review()
+        applicant._set_status("Approved", "Approval seeded for promotion test", permission_checker=None)
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+        applicant.reload()
+        self.assertEqual(applicant.application_status, "Promoted")
+
+        copied_files = frappe.get_all(
+            "File",
+            filters={"attached_to_doctype": "Student", "attached_to_name": student_name},
+            fields=["name"],
+        )
+        copied_file_names = [row["name"] for row in copied_files]
+        self.assertTrue(copied_file_names)
+        for name in copied_file_names:
+            self._created.append(("File", name))
+
+        copied_classifications = frappe.get_all(
+            "File Classification",
+            filters={
+                "primary_subject_type": "Student",
+                "primary_subject_id": student_name,
+                "source_file": source_file.name,
+            },
+            fields=["name"],
+        )
+        copied_classification_names = [row["name"] for row in copied_classifications]
+        self.assertTrue(copied_classification_names)
+        for name in copied_classification_names:
+            self._created.append(("File Classification", name))
+
     def _ensure_admissions_role(self, user, role):
         if not frappe.db.exists("Role", role):
             return
@@ -172,3 +260,37 @@ class TestStudentApplicant(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Student Applicant", doc.name))
         return doc
+
+    def _create_user(self, first_name, last_name, add_role=None):
+        user = frappe.get_doc(
+            {
+                "doctype": "User",
+                "email": f"user-{frappe.generate_hash(length=8)}@example.com",
+                "first_name": first_name,
+                "last_name": last_name,
+                "enabled": 1,
+            }
+        )
+        if add_role:
+            if not frappe.db.exists("Role", add_role):
+                frappe.get_doc({"doctype": "Role", "role_name": add_role}).insert(ignore_permissions=True)
+                self._created.append(("Role", add_role))
+            user.append("roles", {"role": add_role})
+        user.insert(ignore_permissions=True)
+        self._created.append(("User", user.name))
+        return user
+
+    def _create_applicant_document_type(self, *, code):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Type",
+                "code": code,
+                "document_type_name": f"Type {code}",
+                "organization": self.org,
+                "school": self.leaf_school,
+                "is_active": 1,
+                "is_required": 0,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Type", doc.name))
+        return doc.name

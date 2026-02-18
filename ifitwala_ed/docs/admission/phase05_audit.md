@@ -1,5 +1,22 @@
 # Phase 5 Audit Report
 
+## Update (2026-02-18)
+
+### Resolved in current implementation
+
+* `ApplicantStatus` mapping now includes `Withdrawn`.
+* Portal read-only handling now returns a fallback `read_only_reason`.
+* `invite_applicant(...)` server method exists and links applicant user provisioning.
+* Admissions Applicant minimal doctype permissions were added for:
+  * `Student Applicant`
+  * `Applicant Document`
+  * `Applicant Health Profile`
+  * `Policy Acknowledgement`
+
+### Still open
+
+* DTO contract formalization in SPA (`NextAction`, `CompletionState`, `ApplicantPolicy`) remains documentation-level and not yet enforced in typed frontend models.
+
 ## 1. DTO Definitions & Type Safety
 The following DTOs are referenced but not fully defined in `phase050_admission_portal.md`. A coding agent would need these specific structures to implement the frontend correctly without guessing.
 

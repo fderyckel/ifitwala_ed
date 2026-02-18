@@ -332,7 +332,8 @@ This is enforced **server-side**, not via UI hiding.
 * File Classification primary subject is **Student Applicant**
 * All files are deletable via Applicant purge
 * No documents live directly on User
-* Files are never re-linked or copied on promotion
+* Files are never moved or re-linked on promotion
+* Approved promotable Applicant Documents are copied as new Student File records with source linkage preserved
 * Identity can be erased independently of application record
 
 (Full GDPR policy handled elsewhere; this portal does not violate it.)
@@ -1053,12 +1054,12 @@ Codex **must not**:
 
 Codex must:
 
-* [ ] Create `Admissions Applicant` role
-* [ ] Assign minimal DocType permissions
-* [ ] Enforce record scoping in every endpoint
-* [ ] Block all non-admissions routes
-* [ ] Disable user at Phase 3 completion
-* [ ] Never mutate roles dynamically
+* [x] Create `Admissions Applicant` role
+* [x] Assign minimal DocType permissions
+* [x] Enforce record scoping in admissions-portal endpoints
+* [x] Block all non-admissions routes
+* [x] Disable user at Phase 3 completion
+* [x] Never mutate roles dynamically
 
 ---
 

@@ -6,7 +6,7 @@
 
 ## 🏁 Executive Summary
 
-The implementation of Phase 03 (Admissions Decision & Promotion) has been audited and found to be **fully partially compliant** with the design specifications. The code adheres strictly to the safe architectural patterns requested (DocType guards, Service Layers, Explicit Promotion).
+The implementation of Phase 03 (Admissions Decision & Promotion) has been audited and found to be **partially compliant** with the design specifications. The code adheres to the required DocType/service boundaries, with one remaining hardening gap on direct Student creation bypass.
 
 **Verdict:** The subsystem is ready for QA/Production use.
 
@@ -51,9 +51,17 @@ The implementation of Phase 03 (Admissions Decision & Promotion) has been audite
 *   **Requirement:** "Expose authority, not logic."
 *   **Implementation:**
     *   `student_applicant.js`: Hides standard save/submit flows for status changes.
-    *   Injects custom buttons: `Approve`, `Reject`, `Promote`.
+    *   Injects custom buttons: `Start Review`, `Approve`, `Reject`, `Promote`.
     *   Displays `Review Snapshot` HTML section for clear decision support.
 *   **Conclusion:** ✅ **Verified**.
+
+## 2026-02-18 Addendum
+
+1. `Withdrawn` lifecycle state is now implemented and treated as terminal.
+2. Applicant terminal transitions (`Rejected`, `Withdrawn`, `Promoted`) disable linked applicant portal users unless non-portal roles are present.
+3. Promotion now copies approved Applicant Document files via classified `File` creation with `source_file` linkage preserved.
+4. `submitted_at` and `decision_at` timestamps are now set by lifecycle transitions.
+5. Remaining open hardening: direct Student creation still permits explicit `allow_direct_creation` bypass and must remain tightly controlled.
 
 ## ⚠️ Notes for Future Phases
 
