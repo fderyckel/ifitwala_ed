@@ -150,6 +150,9 @@ def translate_legacy_portal_path(path: str | None, *, default_section: str) -> s
 
 
 def _linked_employee_status(*, user: str) -> tuple[bool, str]:
+    if frappe.db.exists("Employee", {"user_id": user, "employment_status": "Active"}):
+        return True, "active"
+
     row = frappe.db.get_value("Employee", {"user_id": user}, ["name", "employment_status"], as_dict=True)
     if not row:
         return False, ""
