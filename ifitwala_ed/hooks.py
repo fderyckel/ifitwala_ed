@@ -86,9 +86,12 @@ on_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
 # home_page = "login"
 
 # website user home page (by Role)
-# role_home_page = {
-# 	"Role": "home_page"
-# }
+role_home_page = {
+    "Desk User": "/portal/staff",
+    "Employee": "/portal/staff",
+    "Student": "/portal/student",
+    "Guardian": "/portal/guardian",
+}
 
 # Generators
 # ----------
