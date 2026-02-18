@@ -149,15 +149,49 @@ def translate_legacy_portal_path(path: str | None, *, default_section: str) -> s
     return f"{base}/{remaining}" if remaining else base
 
 
+def _active_employee_status_from_login_email(*, user: str) -> tuple[bool, str]:
+    login_email = (frappe.db.get_value("User", user, "email") or user or "").strip()
+    if not login_email:
+        return False, ""
+
+    matches = frappe.get_all(
+        "Employee",
+        filters={
+            "employment_status": "Active",
+            "employee_professional_email": login_email,
+        },
+        fields=["name", "user_id"],
+        limit_page_length=2,
+    )
+    if len(matches) != 1:
+        return False, ""
+
+    current_user_id = str(matches[0].get("user_id") or "").strip()
+    if current_user_id and current_user_id != user:
+        return False, ""
+
+    return True, "active"
+
+
 def _linked_employee_status(*, user: str) -> tuple[bool, str]:
     if frappe.db.exists("Employee", {"user_id": user, "employment_status": "Active"}):
         return True, "active"
 
     row = frappe.db.get_value("Employee", {"user_id": user}, ["name", "employment_status"], as_dict=True)
-    if not row:
-        return False, ""
-    status = str(row.get("employment_status") or "").strip().lower()
-    return True, status
+    if row:
+        status = str(row.get("employment_status") or "").strip().lower()
+        if status == "active":
+            return True, "active"
+
+        has_unlinked_active, unlinked_active_status = _active_employee_status_from_login_email(user=user)
+        if has_unlinked_active:
+            return True, unlinked_active_status
+        return True, status
+
+    has_unlinked_active, unlinked_active_status = _active_employee_status_from_login_email(user=user)
+    if has_unlinked_active:
+        return True, unlinked_active_status
+    return False, ""
 
 
 def has_active_employee_profile(*, user: str, roles: set[str]) -> bool:

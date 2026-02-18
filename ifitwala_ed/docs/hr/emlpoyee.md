@@ -70,6 +70,7 @@ Role handling now follows managed sync:
   - `Active` -> `enabled = 1`
   - any other status (`Temporary Leave`, `Suspended`, `Left`, or blank) -> `enabled = 0`
 - role rows are preserved; status gating is enforced via user enable/disable state (no role stripping for non-active employees).
+- routing policy resolves active employee status using `Employee.user_id` first, then an unambiguous active match on `employee_professional_email` to avoid false-negative staff routing when legacy user links are missing.
 - at login, if a staff user has no active `Employee.user_id` link but exactly one active `Employee` row matches `employee_professional_email`, the system self-heals `user_id` and re-runs access sync.
 - designation-trigger path in `Employee._apply_designation_role()` now also handles first-time user linkage (`user_id` newly set), not only designation changes.
 - role-management authorization includes `HR User`, `HR Manager`, `System Manager`, and `Administrator`.

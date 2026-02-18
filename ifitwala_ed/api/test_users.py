@@ -361,6 +361,34 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("Employee", employee.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
+    def test_unlinked_active_employee_email_match_routes_to_staff(self):
+        """Active employee email match should resolve staff portal even when user_id link is missing."""
+        user = frappe.new_doc("User")
+        user.email = "test_unlinked_active_employee_email_match@example.com"
+        user.first_name = "Unlinked"
+        user.last_name = "Active"
+        user.enabled = 1
+        user.save()
+
+        employee = frappe.new_doc("Employee")
+        employee.first_name = "Unlinked"
+        employee.last_name = "Active"
+        employee.employee_professional_email = user.email
+        employee.employment_status = "Active"
+        employee.save()
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
     def test_guest_user_ignored(self):
         """Guest users should not trigger redirect."""
         frappe.set_user("Guest")
