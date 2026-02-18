@@ -160,10 +160,10 @@ Example action types:
 
 * `student_log.follow_up.act.submit` → mounts `StudentLogFollowUpAction.vue` (assignee mode)
 * `student_log.follow_up.review.decide` → mounts `StudentLogReviewOutcome.vue` (author mode)
+* `inquiry.follow_up.act.first_contact` → mounts `InquiryFollowUpAction.vue` (assignee mode)
 
 Later:
 
-* `inquiry.follow_up.act.first_contact`
 * `referral.triage.act.start`
 * `meeting.minutes.act.submit`
 
@@ -240,6 +240,12 @@ For Student Log:
 * Author sees review items for logs they created
 * Admin roles see only if explicitly allowed (future setting)
 
+For Inquiry:
+
+* Assignee sees only Inquiry items assigned to them with open Follow-up ToDo
+* Focus action execution requires assignee match and Inquiry read permission
+* Completion is workflow-owned (`Inquiry.mark_contacted`) and not done in client logic
+
 Never leak sibling school data through focus items.
 
 ---
@@ -300,7 +306,7 @@ Behavior:
 
 ## 9) Phase plan (do one workflow at a time)
 
-### Phase 1 — Student Log only (deliverable)
+### Phase 1 — Student Log (delivered)
 
 1. Build `FocusListCard.vue` for StaffHome “Your Focus”
 2. Implement `focus.list` returning Student Log follow-up items only
@@ -309,11 +315,12 @@ Behavior:
 5. Wire click → `overlay.open('focus-router', { focus_item_id })`
 6. Ensure workflow endpoints drive completion; Focus list refreshes after workflow action
 
-### Phase 2 — Inquiry
+### Phase 2 — Inquiry (delivered)
 
-* Add `action_type` for inquiry flow
-* Add inquiry action components
-* Extend focus endpoints without changing SPA contract
+* Added `action_type` `inquiry.follow_up.act.first_contact`
+* Added `InquiryFollowUpAction.vue` routed by `FocusRouterOverlay.vue`
+* Extended `focus.list` and `focus.get_context` with Inquiry while preserving contract shape
+* Added named endpoint `focus.mark_inquiry_contacted` with assignee + permission + idempotency guards
 
 ### Phase 3 — Student Referral / Meetings
 

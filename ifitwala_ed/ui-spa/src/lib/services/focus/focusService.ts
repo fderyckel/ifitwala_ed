@@ -21,6 +21,10 @@ import type {
 	Request as ReviewStudentLogOutcomeRequest,
 	Response as ReviewStudentLogOutcomeResponse,
 } from '@/types/contracts/focus/review_student_log_outcome'
+import type {
+	Request as MarkInquiryContactedRequest,
+	Response as MarkInquiryContactedResponse,
+} from '@/types/contracts/focus/mark_inquiry_contacted'
 
 /**
  * Focus Service (A+ — LOCKED)
@@ -52,6 +56,12 @@ export function createFocusService() {
 
 	const reviewOutcomeResource = createResource<ReviewStudentLogOutcomeResponse>({
 		url: 'ifitwala_ed.api.focus.review_student_log_outcome',
+		method: 'POST',
+		auto: false,
+	})
+
+	const markInquiryContactedResource = createResource<MarkInquiryContactedResponse>({
+		url: 'ifitwala_ed.api.focus.mark_inquiry_contacted',
 		method: 'POST',
 		auto: false,
 	})
@@ -94,9 +104,22 @@ export function createFocusService() {
 		return response
 	}
 
+	async function markInquiryContacted(
+		payload: MarkInquiryContactedRequest
+	): Promise<MarkInquiryContactedResponse> {
+		const response = await markInquiryContactedResource.submit(payload)
+
+		if (response.status === 'processed') {
+			uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+		}
+
+		return response
+	}
+
 	return {
 		getFocusContext,
 		submitStudentLogFollowUp,
 		reviewStudentLogOutcome,
+		markInquiryContacted,
 	}
 }

@@ -100,6 +100,14 @@ Used by:
 									@done="onWorkflowDone"
 									@request-refresh="reload"
 								/>
+								<InquiryFollowUpAction
+									v-else-if="isInquiryFocusFollowUp && ctx"
+									:focus-item-id="resolvedFocusItemId"
+									:context="ctx"
+									@close="requestClose"
+									@done="onWorkflowDone"
+									@request-refresh="reload"
+								/>
 
 								<!-- Not implemented -->
 								<div v-else class="card-panel p-5">
@@ -149,6 +157,7 @@ import {
 import { Button, FeatherIcon } from 'frappe-ui';
 
 import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue';
+import InquiryFollowUpAction from '@/components/focus/InquiryFollowUpAction.vue';
 import { createFocusService } from '@/lib/services/focus/focusService';
 
 import type {
@@ -225,6 +234,9 @@ const headerTitle = computed(() => {
 	if (referenceDoctype.value === 'Student Log') {
 		return studentLogMode.value === 'assignee' ? 'Follow up' : 'Review outcome';
 	}
+	if (referenceDoctype.value === 'Inquiry') {
+		return 'Inquiry follow-up';
+	}
 	return 'Focus';
 });
 
@@ -237,6 +249,7 @@ const headerSubtitle = computed(() => {
 
 const headerKicker = computed(() => {
 	if (referenceDoctype.value === 'Student Log') return 'Student wellbeing';
+	if (referenceDoctype.value === 'Inquiry') return 'Admissions';
 	return 'Focus';
 });
 
@@ -248,6 +261,12 @@ const isStudentLogFollowUp = computed(() => {
 		actionType.value === 'student_log.follow_up.act.submit' ||
 		actionType.value === 'student_log.follow_up.review.decide'
 	);
+});
+
+const isInquiryFocusFollowUp = computed(() => {
+	if (referenceDoctype.value !== 'Inquiry') return false;
+	if (!actionType.value) return false;
+	return actionType.value === 'inquiry.follow_up.act.first_contact';
 });
 
 /* API ---------------------------------------------------------- */

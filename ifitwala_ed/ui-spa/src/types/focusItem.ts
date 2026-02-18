@@ -19,6 +19,9 @@ export type StudentLogFocusPayload = {
 	// Assignee items (from ToDo)
 	assigned_by?: string | null
 	assigned_by_name?: string | null
+	subject_name?: string | null
+	school?: string | null
+	organization?: string | null
 
 	// Allow future enrichment without TS fights
 	[k: string]: any

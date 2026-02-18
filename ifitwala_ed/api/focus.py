@@ -8,11 +8,17 @@ from frappe import _
 
 STUDENT_LOG_DOCTYPE = "Student Log"
 FOLLOW_UP_DOCTYPE = "Student Log Follow Up"
+INQUIRY_DOCTYPE = "Inquiry"
+
+ACTION_STUDENT_LOG_SUBMIT = "student_log.follow_up.act.submit"
+ACTION_STUDENT_LOG_REVIEW = "student_log.follow_up.review.decide"
+ACTION_INQUIRY_FIRST_CONTACT = "inquiry.follow_up.act.first_contact"
 
 # Focus action types (v1)
 ACTION_MODE = {
-    "student_log.follow_up.act.submit": "assignee",
-    "student_log.follow_up.review.decide": "author",
+    ACTION_STUDENT_LOG_SUBMIT: "assignee",
+    ACTION_STUDENT_LOG_REVIEW: "author",
+    ACTION_INQUIRY_FIRST_CONTACT: "assignee",
 }
 
 
@@ -81,7 +87,7 @@ def _parse_focus_item_id(focus_item_id: str) -> dict:
     }
 
 
-def _resolve_mode(action_type: str | None, log_doc) -> str:
+def _resolve_mode(action_type: str | None, reference_doctype: str, doc) -> str:
     """
     Server remains authoritative for mode.
     - If action_type is provided, it must be known and maps to the mode.
@@ -90,18 +96,20 @@ def _resolve_mode(action_type: str | None, log_doc) -> str:
     if action_type:
         mode = ACTION_MODE.get(action_type)
         if not mode:
-            frappe.throw(_("Unknown Student Log action type."), frappe.ValidationError)
+            frappe.throw(_("Unknown focus action type."), frappe.ValidationError)
         return mode
 
     # fallback: infer from doc context
-    if log_doc.follow_up_person and log_doc.follow_up_person == frappe.session.user:
+    if reference_doctype == STUDENT_LOG_DOCTYPE and doc.follow_up_person == frappe.session.user:
+        return "assignee"
+    if reference_doctype == INQUIRY_DOCTYPE and doc.assigned_to == frappe.session.user:
         return "assignee"
 
     return "author"
 
 
 # ---------------------------------------------------------------------
-# Focus list (Phase 1: Student Log only)
+# Focus list (Phase 1+: Student Log + Inquiry)
 # ---------------------------------------------------------------------
 def _badge_from_due_date(due_date: str | None) -> str | None:
     if not due_date:
@@ -143,12 +151,28 @@ def _can_read_student_log(name: str) -> bool:
         return False
 
 
+def _can_read_inquiry(name: str) -> bool:
+    try:
+        if not name:
+            return False
+
+        rows = frappe.get_list(
+            INQUIRY_DOCTYPE,
+            filters={"name": name},
+            fields=["name"],
+            limit_page_length=1,
+        )
+        return bool(rows)
+    except Exception:
+        return False
+
+
 @frappe.whitelist()
 def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
     """
     Return FocusItem[] for the current user.
 
-    V1: Student Log only.
+    V1: Student Log + Inquiry.
     - "action" items: ToDo allocated to user for Student Log follow-up work
     - "review" items: log owner, submitted follow-up exists, log not completed
 
@@ -283,7 +307,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
         if not assigned_by_name and assigned_by:
             assigned_by_name = assigner_name_by_id.get(assigned_by) or assigned_by
 
-        action_type = "student_log.follow_up.act.submit"
+        action_type = ACTION_STUDENT_LOG_SUBMIT
         items.append(
             {
                 "id": build_focus_item_id("student_log", STUDENT_LOG_DOCTYPE, log_name, action_type, user),
@@ -307,7 +331,117 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
         )
 
     # ------------------------------------------------------------
-    # B) Author review items
+    # B) Assignee action items (ToDo -> Inquiry)
+    # ------------------------------------------------------------
+    inquiry_rows = frappe.db.sql(
+        """
+        select
+            t.reference_name as inquiry_name,
+            t.date as todo_due_date,
+
+            nullif(trim(ifnull(t.assigned_by, '')), '') as todo_assigned_by,
+            nullif(trim(ifnull(t.assigned_by_full_name, '')), '') as todo_assigned_by_full_name,
+            nullif(trim(ifnull(t.owner, '')), '') as todo_owner,
+
+            i.first_name,
+            i.last_name,
+            i.school,
+            i.organization,
+            i.workflow_state,
+            i.assigned_to,
+            i.followup_due_on
+        from `tabToDo` t
+        join `tabInquiry` i
+          on i.name = t.reference_name
+        where t.allocated_to = %(user)s
+          and t.reference_type = %(ref_type)s
+          and (%(open_only)s = 0 or t.status = 'Open')
+          and ifnull(i.assigned_to, '') = %(user)s
+          and ifnull(i.workflow_state, '') = 'Assigned'
+        order by ifnull(i.followup_due_on, t.date) asc, t.modified desc
+        limit %(limit)s offset %(offset)s
+        """,
+        {
+            "user": user,
+            "ref_type": INQUIRY_DOCTYPE,
+            "open_only": open_only,
+            "limit": limit,
+            "offset": offset,
+        },
+        as_dict=True,
+    )
+
+    inquiry_assigner_ids_to_resolve: set[str] = set()
+    for r in inquiry_rows:
+        if r.get("todo_assigned_by_full_name"):
+            continue
+        assigner = r.get("todo_assigned_by") or r.get("todo_owner")
+        if assigner:
+            inquiry_assigner_ids_to_resolve.add(assigner)
+
+    inquiry_assigner_name_by_id = _get_user_full_names(sorted(inquiry_assigner_ids_to_resolve))
+
+    for r in inquiry_rows:
+        inquiry_name = r.get("inquiry_name")
+        if not inquiry_name:
+            continue
+
+        if not _can_read_inquiry(inquiry_name):
+            continue
+
+        due_source = r.get("followup_due_on") or r.get("todo_due_date")
+        due = str(due_source) if due_source else None
+        badge = _badge_from_due_date(due)
+
+        subject_name = " ".join(
+            filter(
+                None,
+                [
+                    (r.get("first_name") or "").strip(),
+                    (r.get("last_name") or "").strip(),
+                ],
+            )
+        )
+        subject_name = subject_name or inquiry_name
+
+        subtitle_parts = [subject_name]
+        if r.get("school"):
+            subtitle_parts.append(f"School: {r.get('school')}")
+        elif r.get("organization"):
+            subtitle_parts.append(f"Org: {r.get('organization')}")
+        subtitle = " • ".join(subtitle_parts)
+
+        assigned_by = (r.get("todo_assigned_by") or r.get("todo_owner") or "").strip() or None
+        assigned_by_name = (r.get("todo_assigned_by_full_name") or "").strip() or None
+        if not assigned_by_name and assigned_by:
+            assigned_by_name = inquiry_assigner_name_by_id.get(assigned_by) or assigned_by
+
+        action_type = ACTION_INQUIRY_FIRST_CONTACT
+        items.append(
+            {
+                "id": build_focus_item_id("inquiry", INQUIRY_DOCTYPE, inquiry_name, action_type, user),
+                "kind": "action",
+                "title": "First contact",
+                "subtitle": subtitle,
+                "badge": badge,
+                "priority": 75,
+                "due_date": due,
+                "action_type": action_type,
+                "reference_doctype": INQUIRY_DOCTYPE,
+                "reference_name": inquiry_name,
+                "payload": {
+                    "subject_name": subject_name,
+                    "assigned_by": assigned_by,
+                    "assigned_by_name": assigned_by_name,
+                    "school": r.get("school"),
+                    "organization": r.get("organization"),
+                },
+                "permissions": {"can_open": True},
+            }
+        )
+
+    # ------------------------------------------------------------
+    # C) Author review items
     # ------------------------------------------------------------
     review_rows = frappe.db.sql(
         """
@@ -339,7 +473,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
         if not _can_read_student_log(log_name):
             continue
 
-        action_type = "student_log.follow_up.review.decide"
+        action_type = ACTION_STUDENT_LOG_REVIEW
         items.append(
             {
                 "id": build_focus_item_id("student_log", STUDENT_LOG_DOCTYPE, log_name, action_type, user),
@@ -411,76 +545,119 @@ def get_focus_context(
     if not reference_doctype or not reference_name:
         frappe.throw(_("Missing reference information."), frappe.ValidationError)
 
-    if reference_doctype != STUDENT_LOG_DOCTYPE:
-        frappe.throw(_("Only Student Log focus items are supported."), frappe.ValidationError)
+    if reference_doctype == STUDENT_LOG_DOCTYPE:
+        # ------------------------------------------------------------
+        # 3) Load document ONCE (permission + payload)
+        # ------------------------------------------------------------
+        log_doc = frappe.get_doc(STUDENT_LOG_DOCTYPE, reference_name)
 
-    # ------------------------------------------------------------
-    # 3) Load document ONCE (permission + payload)
-    # ------------------------------------------------------------
-    log_doc = frappe.get_doc(STUDENT_LOG_DOCTYPE, reference_name)
+        # ------------------------------------------------------------
+        # 4) Enforce doc-level permission (authoritative)
+        # ------------------------------------------------------------
+        if not frappe.has_permission(STUDENT_LOG_DOCTYPE, ptype="read", doc=log_doc):
+            frappe.throw(_("You are not permitted to view this log."), frappe.PermissionError)
 
-    # ------------------------------------------------------------
-    # 4) Enforce doc-level permission (authoritative)
-    # ------------------------------------------------------------
-    if not frappe.has_permission(STUDENT_LOG_DOCTYPE, ptype="read", doc=log_doc):
-        frappe.throw(_("You are not permitted to view this log."), frappe.PermissionError)
+        # ------------------------------------------------------------
+        # 5) Resolve workflow mode (author vs assignee)
+        # ------------------------------------------------------------
+        mode = _resolve_mode(action_type, STUDENT_LOG_DOCTYPE, log_doc)
 
-    # ------------------------------------------------------------
-    # 5) Resolve workflow mode (author vs assignee)
-    # ------------------------------------------------------------
-    mode = _resolve_mode(action_type, log_doc)
+        # ------------------------------------------------------------
+        # 5b) Resolve original log author (Student Log.owner) name
+        # ------------------------------------------------------------
+        log_author = (log_doc.owner or "").strip() or None
+        log_author_name_by_id = _get_user_full_names([log_author] if log_author else [])
 
-    # ------------------------------------------------------------
-    # 5b) Resolve original log author (Student Log.owner) name
-    # ------------------------------------------------------------
-    log_author = (log_doc.owner or "").strip() or None
-    log_author_name_by_id = _get_user_full_names([log_author] if log_author else [])
+        # ------------------------------------------------------------
+        # 6) Fetch recent follow-ups (bounded)
+        # ------------------------------------------------------------
+        follow_up_rows = frappe.get_all(
+            FOLLOW_UP_DOCTYPE,
+            filters={"student_log": reference_name},
+            fields=["name", "date", "follow_up_author", "follow_up", "docstatus"],
+            order_by="modified desc",
+            limit_page_length=20,
+        )
 
-    # ------------------------------------------------------------
-    # 6) Fetch recent follow-ups (bounded)
-    # ------------------------------------------------------------
-    follow_up_rows = frappe.get_all(
-        FOLLOW_UP_DOCTYPE,
-        filters={"student_log": reference_name},
-        fields=["name", "date", "follow_up_author", "follow_up", "docstatus"],
-        order_by="modified desc",
-        limit_page_length=20,
-    )
+        follow_ups = [
+            {
+                "name": row.get("name"),
+                "date": str(row.get("date")) if row.get("date") else None,
+                "follow_up_author": row.get("follow_up_author"),
+                "follow_up_html": row.get("follow_up") or "",
+                "docstatus": row.get("docstatus"),
+            }
+            for row in follow_up_rows
+        ]
 
-    follow_ups = [
-        {
-            "name": row.get("name"),
-            "date": str(row.get("date")) if row.get("date") else None,
-            "follow_up_author": row.get("follow_up_author"),
-            "follow_up_html": row.get("follow_up") or "",
-            "docstatus": row.get("docstatus"),
+        return {
+            "focus_item_id": focus_item_id,
+            "action_type": action_type,
+            "reference_doctype": STUDENT_LOG_DOCTYPE,
+            "reference_name": reference_name,
+            "mode": mode,
+            "log": {
+                "name": log_doc.name,
+                "student": log_doc.student,
+                "student_name": log_doc.student_name,
+                "school": log_doc.school,
+                "log_type": log_doc.log_type,
+                "next_step": log_doc.next_step,
+                "follow_up_person": log_doc.follow_up_person,
+                "follow_up_role": log_doc.follow_up_role,
+                "date": str(log_doc.date) if log_doc.date else None,
+                "follow_up_status": log_doc.follow_up_status,
+                "log_html": log_doc.log or "",
+                "log_author": log_author,
+                "log_author_name": log_author_name_by_id.get(log_author) if log_author else None,
+            },
+            "inquiry": None,
+            "follow_ups": follow_ups,
         }
-        for row in follow_up_rows
-    ]
 
-    return {
-        "focus_item_id": focus_item_id,
-        "action_type": action_type,
-        "reference_doctype": STUDENT_LOG_DOCTYPE,
-        "reference_name": reference_name,
-        "mode": mode,
-        "log": {
-            "name": log_doc.name,
-            "student": log_doc.student,
-            "student_name": log_doc.student_name,
-            "school": log_doc.school,
-            "log_type": log_doc.log_type,
-            "next_step": log_doc.next_step,
-            "follow_up_person": log_doc.follow_up_person,
-            "follow_up_role": log_doc.follow_up_role,
-            "date": str(log_doc.date) if log_doc.date else None,
-            "follow_up_status": log_doc.follow_up_status,
-            "log_html": log_doc.log or "",
-            "log_author": log_author,
-            "log_author_name": log_author_name_by_id.get(log_author) if log_author else None,
-        },
-        "follow_ups": follow_ups,
-    }
+    if reference_doctype == INQUIRY_DOCTYPE:
+        inquiry_doc = frappe.get_doc(INQUIRY_DOCTYPE, reference_name)
+
+        if not frappe.has_permission(INQUIRY_DOCTYPE, ptype="read", doc=inquiry_doc):
+            frappe.throw(_("You are not permitted to view this inquiry."), frappe.PermissionError)
+
+        mode = _resolve_mode(action_type, INQUIRY_DOCTYPE, inquiry_doc)
+        subject_name = " ".join(
+            filter(
+                None,
+                [
+                    (inquiry_doc.first_name or "").strip(),
+                    (inquiry_doc.last_name or "").strip(),
+                ],
+            )
+        )
+
+        return {
+            "focus_item_id": focus_item_id,
+            "action_type": action_type,
+            "reference_doctype": INQUIRY_DOCTYPE,
+            "reference_name": reference_name,
+            "mode": mode,
+            "log": None,
+            "inquiry": {
+                "name": inquiry_doc.name,
+                "subject_name": subject_name or inquiry_doc.name,
+                "first_name": inquiry_doc.first_name,
+                "last_name": inquiry_doc.last_name,
+                "email": inquiry_doc.email,
+                "phone_number": inquiry_doc.phone_number,
+                "school": inquiry_doc.school,
+                "organization": inquiry_doc.organization,
+                "type_of_inquiry": inquiry_doc.type_of_inquiry,
+                "workflow_state": inquiry_doc.workflow_state,
+                "assigned_to": inquiry_doc.assigned_to,
+                "followup_due_on": str(inquiry_doc.followup_due_on) if inquiry_doc.followup_due_on else None,
+                "sla_status": inquiry_doc.sla_status,
+            },
+            "follow_ups": [],
+        }
+
+    frappe.throw(_("Only Student Log and Inquiry focus items are supported."), frappe.ValidationError)
 
 
 # ---------------------------------------------------------------------
@@ -499,12 +676,12 @@ def _cache():
 
 def _idempotency_key(user: str, focus_item_id: str, client_request_id: str, suffix: str | None = None) -> str:
     sfx = f":{suffix}" if suffix else ""
-    return f"ifitwala_ed:focus:student_log:{user}:{focus_item_id}:{client_request_id}{sfx}"
+    return f"ifitwala_ed:focus:{user}:{focus_item_id}:{client_request_id}{sfx}"
 
 
 def _lock_key(user: str, focus_item_id: str, suffix: str | None = None) -> str:
     sfx = f":{suffix}" if suffix else ""
-    return f"ifitwala_ed:lock:focus:student_log:{user}:{focus_item_id}{sfx}"
+    return f"ifitwala_ed:lock:focus:{user}:{focus_item_id}{sfx}"
 
 
 @frappe.whitelist()
@@ -551,7 +728,7 @@ def submit_student_log_follow_up(
         frappe.throw(_("Invalid focus item reference."), frappe.ValidationError)
 
     action_type = parsed.get("action_type")
-    if action_type != "student_log.follow_up.act.submit":
+    if action_type != ACTION_STUDENT_LOG_SUBMIT:
         frappe.throw(_("This focus item is not a follow-up submission action."), frappe.PermissionError)
 
     log_name = parsed.get("reference_name")
@@ -664,7 +841,7 @@ def review_student_log_outcome(
         frappe.throw(_("Invalid focus item reference."), frappe.ValidationError)
 
     action_type = parsed.get("action_type")
-    if action_type != "student_log.follow_up.review.decide":
+    if action_type != ACTION_STUDENT_LOG_REVIEW:
         frappe.throw(_("This focus item is not a review action."), frappe.PermissionError)
 
     log_name = parsed.get("reference_name")
@@ -737,5 +914,90 @@ def review_student_log_outcome(
             "idempotent": False,
             "status": "processed",
             "log_name": log_name,
+            "result": result,
+        }
+
+
+@frappe.whitelist()
+def mark_inquiry_contacted(
+    focus_item_id: str,
+    complete_todo: int = 1,
+    client_request_id: str | None = None,
+):
+    user = _require_login()
+
+    focus_item_id = (focus_item_id or "").strip()
+    client_request_id = (client_request_id or "").strip() or None
+    complete_todo = frappe.utils.cint(complete_todo)
+
+    if not focus_item_id:
+        frappe.throw(_("Missing focus_item_id."))
+
+    parsed = _parse_focus_item_id(focus_item_id)
+
+    if parsed.get("user") != user:
+        frappe.throw(_("Invalid focus item id (user mismatch)."), frappe.PermissionError)
+
+    if parsed.get("reference_doctype") != INQUIRY_DOCTYPE:
+        frappe.throw(_("Invalid focus item reference."), frappe.ValidationError)
+
+    action_type = parsed.get("action_type")
+    if action_type != ACTION_INQUIRY_FIRST_CONTACT:
+        frappe.throw(_("This focus item is not an inquiry follow-up action."), frappe.PermissionError)
+
+    inquiry_name = parsed.get("reference_name")
+    if not inquiry_name:
+        frappe.throw(_("Invalid focus item reference name."), frappe.ValidationError)
+
+    inquiry_doc = frappe.get_doc(INQUIRY_DOCTYPE, inquiry_name)
+
+    if not frappe.has_permission(INQUIRY_DOCTYPE, ptype="read", doc=inquiry_doc):
+        frappe.throw(_("You are not permitted to view this inquiry."), frappe.PermissionError)
+
+    if (inquiry_doc.assigned_to or "").strip() != user:
+        frappe.throw(_("Only the assigned user can complete this inquiry follow-up."), frappe.PermissionError)
+
+    if (inquiry_doc.workflow_state or "").strip() != "Assigned":
+        frappe.throw(_("This Inquiry is not in Assigned state."))
+
+    cache = _cache()
+
+    if client_request_id:
+        key = _idempotency_key(user, focus_item_id, client_request_id, "inquiry_mark_contacted")
+        existing = cache.get_value(key)
+        if existing:
+            return {
+                "ok": True,
+                "idempotent": True,
+                "status": "already_processed",
+                "inquiry_name": inquiry_name,
+                "result": existing,
+            }
+
+    lock_name = _lock_key(user, focus_item_id, "inquiry_mark_contacted")
+    with cache.lock(lock_name, timeout=10):
+        if client_request_id:
+            key = _idempotency_key(user, focus_item_id, client_request_id, "inquiry_mark_contacted")
+            existing = cache.get_value(key)
+            if existing:
+                return {
+                    "ok": True,
+                    "idempotent": True,
+                    "status": "already_processed",
+                    "inquiry_name": inquiry_name,
+                    "result": existing,
+                }
+
+        inquiry_doc.mark_contacted(complete_todo=1 if complete_todo else 0)
+        result = "contacted"
+
+        if client_request_id:
+            cache.set_value(key, result, expires_in_sec=60 * 10)
+
+        return {
+            "ok": True,
+            "idempotent": False,
+            "status": "processed",
+            "inquiry_name": inquiry_name,
             "result": result,
         }

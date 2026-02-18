@@ -2,7 +2,7 @@
 
 export type Request = {
   focus_item_id?: string | null
-  reference_doctype?: 'Student Log' | null
+  reference_doctype?: 'Student Log' | 'Inquiry' | null
   reference_name?: string | null
   action_type?: string | null
 }
@@ -10,7 +10,7 @@ export type Request = {
 export type Response = {
   focus_item_id?: string | null
   action_type?: string | null
-  reference_doctype: 'Student Log'
+  reference_doctype: 'Student Log' | 'Inquiry'
   reference_name: string
   mode: 'assignee' | 'author'
   log: {
@@ -27,7 +27,22 @@ export type Response = {
     log_html?: string | null
     log_author?: string | null
     log_author_name?: string | null
-  }
+  } | null
+  inquiry: {
+    name: string
+    subject_name?: string | null
+    first_name?: string | null
+    last_name?: string | null
+    email?: string | null
+    phone_number?: string | null
+    school?: string | null
+    organization?: string | null
+    type_of_inquiry?: string | null
+    workflow_state?: string | null
+    assigned_to?: string | null
+    followup_due_on?: string | null
+    sla_status?: string | null
+  } | null
   follow_ups: Array<{
     name: string
     date?: string | null

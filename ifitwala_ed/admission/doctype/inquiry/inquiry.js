@@ -30,7 +30,7 @@ frappe.ui.form.on("Inquiry", {
 			frm.add_custom_button('Reassign', () => frm.trigger('reassign'));
 		}
 
-		if (s === 'Assigned' && is_officer) {
+		if (s === 'Assigned' && (is_officer || is_manager)) {
 			frm.add_custom_button('Mark Contacted', () => frm.trigger('mark_contacted'));
 		}
 

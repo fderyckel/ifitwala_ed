@@ -37,6 +37,7 @@ Legacy compatibility note: persisted `New Inquiry` values are normalized to cano
 
 - **Desk form + list view**:
   - custom action buttons (`Assign`, `Reassign`, `Mark Contacted`, `Qualify`, `Archive`, `Invite to Apply`)
+  - `Mark Contacted` is available in `Assigned` state for both `Admission Officer` and `Admission Manager`
   - colored list indicators for workflow and SLA status
 - **Public web form**: `/apply/inquiry` creates Inquiry records.
 - **Notifications**:
@@ -45,6 +46,9 @@ Legacy compatibility note: persisted `New Inquiry` values are normalized to cano
 - **ToDo integration**:
   - assignment/reassignment creates native ToDo tasks
   - closing the related ToDo can auto-mark Inquiry as contacted
+- **Staff focus overlay (SPA)**:
+  - assigned inquiries appear in Staff Home "Your Focus"
+  - action type `inquiry.follow_up.act.first_contact` routes to the inquiry follow-up focus action
 - **CRM linkage**: `create_contact_from_inquiry` links/creates `Contact`.
 - **Admissions conversion**:
   - links to [**Student Applicant**](/docs/en/student-applicant/)
@@ -100,6 +104,10 @@ Legacy compatibility note: persisted `New Inquiry` values are normalized to cano
   - `get_inquiry_schools`
   - `academic_year_link_query`
   - `admission_user_link_query`
+- **Focus API endpoints** (`ifitwala_ed/api/focus.py`):
+  - `list_focus_items` (includes Inquiry action items assigned to current user)
+  - `get_focus_context` (returns Inquiry context payload for focus routing)
+  - `mark_inquiry_contacted` (named focus action endpoint delegating to `Inquiry.mark_contacted`)
 
 ### Permission Matrix
 
