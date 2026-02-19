@@ -135,36 +135,25 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
 
 
 def redirect_user_to_entry_portal(login_manager=None):
-    """
-    Login redirect handler: sets LoginManager.home_page only.
-
-    Bound to both:
-        - on_login
-        - on_session_creation
-
-    We rely exclusively on LoginManager.home_page so Desk login
-    respects the redirect target instead of falling back to /app.
-    """
-
     user = frappe.session.user
     if not user or user == "Guest":
         return
 
-    roles = set(frappe.get_roles(user))
+    request = getattr(frappe, "request", None)
+    path_info = str(getattr(request, "path", "") or "").lower()
+    form_dict = getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()
+    cmd = str(form_dict.get("cmd") or "").lower()
 
-    # Heal link before resolving final roles
+    roles = set(frappe.get_roles(user))
     _self_heal_employee_user_link(user=user, roles=roles)
     roles = set(frappe.get_roles(user))
 
-    path = _resolve_login_redirect_path(user=user, roles=roles)
+    target = _resolve_login_redirect_path(user=user, roles=roles)
 
-    # Diagnostic (optional — remove once stable)
-    stage = "on_session_creation" if login_manager else "on_login"
-    _emit_login_redirect_trace(user=user, roles=roles, path=path, stage=stage)
-
-    # The only thing that matters for Desk login:
-    if login_manager:
-        login_manager.home_page = path
+    # Only override real login flows
+    if path_info == "/login" and cmd == "login":
+        frappe.local.flags.redirect_location = target
+        raise frappe.Redirect
 
 
 @frappe.whitelist()
