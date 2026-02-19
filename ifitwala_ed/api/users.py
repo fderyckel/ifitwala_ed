@@ -135,25 +135,31 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
 
 
 def redirect_user_to_entry_portal(login_manager=None):
+    """
+    Role-based login redirect.
+    Only influences Frappe's home_page response.
+    Does NOT mutate LoginManager.
+    Does NOT raise redirect.
+    """
+
     user = frappe.session.user
     if not user or user == "Guest":
         return
 
-    request = getattr(frappe, "request", None)
-    path_info = str(getattr(request, "path", "") or "").lower()
-    form_dict = getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()
-    cmd = str(form_dict.get("cmd") or "").lower()
-
-    roles = set(frappe.get_roles(user))
-    _self_heal_employee_user_link(user=user, roles=roles)
     roles = set(frappe.get_roles(user))
 
-    target = _resolve_login_redirect_path(user=user, roles=roles)
+    # Determine target
+    if "Admissions Applicant" in roles:
+        path = "/admissions"
+    elif "Student" in roles:
+        path = "/portal/student"
+    elif "Guardian" in roles:
+        path = "/portal/guardian"
+    else:
+        path = "/portal/staff"
 
-    # Only override real login flows
-    if path_info == "/login" and cmd == "login":
-        frappe.local.flags.redirect_location = target
-        raise frappe.Redirect
+    # Only set response home_page
+    frappe.local.response["home_page"] = path
 
 
 @frappe.whitelist()
