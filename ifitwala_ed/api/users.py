@@ -16,6 +16,24 @@ from ifitwala_ed.routing.policy import (
 STAFF_ROLES = STAFF_PORTAL_ROLES
 
 
+def _normalize_invalid_user_home_page(*, user: str, path: str) -> None:
+    """
+    Repair invalid User.home_page values that are not absolute paths.
+
+    Canonical routes are absolute (start with '/'). Any non-empty relative value
+    can produce broken login redirects and is normalized to the resolved path.
+    """
+    current_raw = frappe.db.get_value("User", user, "home_page")
+    current = str(current_raw or "").strip()
+    if not current:
+        return
+    if current.startswith("/"):
+        return
+    target = path
+    if target != current:
+        frappe.db.set_value("User", user, "home_page", target, update_modified=False)
+
+
 def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: str) -> None:
     """Temporary diagnostics for login redirect debugging."""
     request = getattr(frappe, "request", None)
@@ -31,6 +49,7 @@ def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: 
         "has_staff_portal_access": _has_staff_portal_access(user=user, roles=roles),
         "request_path": request_path,
         "cmd": cmd,
+        "user_home_page": frappe.db.get_value("User", user, "home_page"),
     }
     frappe.log_error(
         title="LOGIN REDIRECT TRACE",
@@ -45,6 +64,9 @@ def _set_login_redirect_state(*, path: str, login_manager=None) -> None:
     This avoids reliance on exception-based redirects and keeps behavior stable
     across login handler phases (on_login + on_session_creation).
     """
+    if not hasattr(frappe.local, "response") or frappe.local.response is None:
+        frappe.local.response = frappe._dict()
+
     if hasattr(frappe, "form_dict"):
         frappe.form_dict["redirect_to"] = path
         frappe.form_dict["redirect-to"] = path
@@ -136,30 +158,36 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
 
 def redirect_user_to_entry_portal(login_manager=None):
     """
-    Role-based login redirect.
-    Only influences Frappe's home_page response.
-    Does NOT mutate LoginManager.
-    Does NOT raise redirect.
-    """
+    Login redirect handler: Routes users to role-appropriate portal entry point.
 
+    Policy:
+    - Admissions Applicants -> /admissions
+    - Active employees and staff-role users -> /portal/staff
+    - Students -> /portal/student
+    - Guardians -> /portal/guardian
+    - Fallback -> /portal/staff
+
+    Login redirect is response-only (no broad User.home_page writes in login flow).
+    The same handler is bound to both on_login and on_session_creation so the
+    target survives downstream Desk home-page resolution.
+    """
     user = frappe.session.user
     if not user or user == "Guest":
         return
 
     roles = set(frappe.get_roles(user))
+    _self_heal_employee_user_link(user=user, roles=roles)
+    roles = set(frappe.get_roles(user))
+    path = _resolve_login_redirect_path(user=user, roles=roles)
 
-    # Determine target
-    if "Admissions Applicant" in roles:
-        path = "/admissions"
-    elif "Student" in roles:
-        path = "/portal/student"
-    elif "Guardian" in roles:
-        path = "/portal/guardian"
-    else:
-        path = "/portal/staff"
+    # Self-heal malformed runtime values that can hijack login redirects.
+    _normalize_invalid_user_home_page(user=user, path=path)
 
-    # Only set response home_page
-    frappe.local.response["home_page"] = path
+    stage = "on_session_creation" if login_manager is not None else "on_login"
+    _emit_login_redirect_trace(user=user, roles=roles, path=path, stage=stage)
+
+    # Force canonical portal target even when login was initiated with /app.
+    _set_login_redirect_state(path=path, login_manager=login_manager)
 
 
 @frappe.whitelist()

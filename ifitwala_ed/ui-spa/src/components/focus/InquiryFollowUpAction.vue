@@ -28,7 +28,7 @@
 						v-if="inquiry?.name"
 						type="button"
 						class="btn btn-quiet"
-						@click="openInDesk('Inquiry', inquiry.name)"
+						@click="openInDesk(inquiry.name)"
 					>
 						Open in Desk
 					</button>
@@ -121,15 +121,10 @@ function requestRefresh() {
 	emit('request-refresh');
 }
 
-function openInDesk(doctype: string, name: string) {
-	const safeDoctype = String(doctype || '').trim();
+function openInDesk(name: string) {
 	const safeName = String(name || '').trim();
-	if (!safeDoctype || !safeName) return;
-	window.open(
-		`/app/${encodeURIComponent(safeDoctype)}/${encodeURIComponent(safeName)}`,
-		'_blank',
-		'noopener'
-	);
+	if (!safeName) return;
+	window.open(`/app/inquiry/${encodeURIComponent(safeName)}`, '_blank', 'noopener');
 }
 
 function requireFocusItemId(): string | null {

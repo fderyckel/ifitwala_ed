@@ -94,6 +94,30 @@ class TestUserRedirect(FrappeTestCase):
         frappe.set_user("Administrator")
         frappe.delete_doc("User", user.email, force=True)
 
+    def test_login_redirect_normalizes_invalid_relative_home_page(self):
+        """Invalid relative User.home_page values should be repaired to canonical portal routes."""
+        user = frappe.new_doc("User")
+        user.email = "test_normalize_relative_home_page@example.com"
+        user.first_name = "Relative"
+        user.last_name = "Home"
+        user.enabled = 1
+        user.home_page = "portal/student"
+        user.add_roles("Student")
+        user.save()
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+        redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/portal/student")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/student")
+
+        user.reload()
+        self.assertEqual(user.home_page, "/portal/student")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("User", user.email, force=True)
+
     def test_login_redirect_overrides_incoming_redirect_to_param(self):
         """Role-based redirect must win over incoming redirect_to values like /app."""
         user = frappe.new_doc("User")
