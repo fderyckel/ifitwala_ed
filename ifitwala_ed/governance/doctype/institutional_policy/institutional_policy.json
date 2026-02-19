@@ -2,7 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "hash",
- "creation": "2026-02-01 00:00:00.000000",
+ "creation": "2026-02-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -19,25 +19,32 @@
   {
    "fieldname": "policy_key",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Policy Key",
    "reqd": 1
   },
   {
    "fieldname": "policy_title",
    "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Policy Title",
    "reqd": 1
   },
   {
    "fieldname": "policy_category",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Policy Category",
    "options": "Safeguarding\nPrivacy & Data Protection\nAdmissions\nAcademic\nConduct & Behaviour\nHealth & Safety\nOperations\nHandbooks\nEmployment",
    "reqd": 1
   },
   {
    "fieldname": "applies_to",
-   "fieldtype": "MultiSelect",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Applies To",
    "options": "Applicant\nStudent\nGuardian\nStaff",
    "reqd": 1
@@ -45,6 +52,7 @@
   {
    "fieldname": "organization",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Organization",
    "options": "Organization",
    "reqd": 1
@@ -52,6 +60,8 @@
   {
    "fieldname": "school",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "School",
    "options": "School"
   },
@@ -70,10 +80,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-07 00:00:07",
+ "modified": "2026-02-19 15:30:15.800447",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Institutional Policy",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {
@@ -99,9 +110,48 @@
    "role": "Organization Admin",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "search_fields": "policy_title, policy_category",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "policy_title"
 }
