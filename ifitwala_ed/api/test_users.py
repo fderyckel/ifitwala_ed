@@ -404,6 +404,50 @@ class TestUserRedirect(FrappeTestCase):
         # Cleanup
         frappe.set_user("Administrator")
 
+    def test_logout_flow_does_not_force_redirect_exception(self):
+        """Logout-triggered on_login must not raise Redirect."""
+        user = frappe.new_doc("User")
+        user.email = "test_logout_no_redirect_exception@example.com"
+        user.first_name = "Logout"
+        user.last_name = "Safe"
+        user.enabled = 1
+        user.add_roles("Employee")
+        user.save()
+
+        employee = frappe.new_doc("Employee")
+        employee.first_name = "Logout"
+        employee.last_name = "Safe"
+        employee.user_id = user.email
+        employee.employment_status = "Active"
+        employee.save()
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        original_path = getattr(frappe.request, "path", None)
+        original_form_dict = getattr(frappe, "form_dict", None)
+        original_in_test = bool(getattr(frappe.flags, "in_test", False))
+        try:
+            frappe.request.path = "/api/method/logout"
+            frappe.form_dict = frappe._dict({"cmd": "logout"})
+            frappe.flags.in_test = False
+
+            redirect_user_to_entry_portal()
+
+            self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
+            self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
+        finally:
+            frappe.flags.in_test = original_in_test
+            if original_form_dict is None:
+                frappe.form_dict = frappe._dict()
+            else:
+                frappe.form_dict = original_form_dict
+            if original_path is not None:
+                frappe.request.path = original_path
+            frappe.set_user("Administrator")
+            frappe.delete_doc("Employee", employee.name, force=True)
+            frappe.delete_doc("User", user.email, force=True)
+
     def test_staff_roles_constant(self):
         """Verify STAFF_ROLES contains expected roles."""
         expected_roles = {

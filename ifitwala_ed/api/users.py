@@ -86,7 +86,22 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
 
 def _can_force_login_redirect() -> bool:
     request = getattr(frappe, "request", None)
-    return bool(request and not bool(getattr(frappe.flags, "in_test", False)))
+    if not request:
+        return False
+    if bool(getattr(frappe.flags, "in_test", False)):
+        return False
+
+    path = str(getattr(request, "path", "") or "").strip().lower()
+    cmd = str((getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()).get("cmd") or "").strip().lower()
+
+    # on_login also runs during logout -> login_as_guest; never redirect there.
+    if "logout" in path or cmd == "logout":
+        return False
+
+    # Force only explicit login flows.
+    if path == "/login" or path.endswith("/api/method/login") or cmd == "login":
+        return True
+    return False
 
 
 def redirect_user_to_entry_portal():
