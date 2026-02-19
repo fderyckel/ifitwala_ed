@@ -24,6 +24,30 @@ def _user_has_home_page_field() -> bool:
         return False
 
 
+def _get_user_home_page_safe(user: str) -> str | None:
+    """Best-effort read for User.home_page that never breaks auth flow."""
+    if not _user_has_home_page_field():
+        return None
+    try:
+        return frappe.db.get_value("User", user, "home_page")
+    except Exception as exc:
+        if hasattr(frappe.db, "is_missing_column") and frappe.db.is_missing_column(exc):
+            return None
+        return None
+
+
+def _set_user_home_page_safe(*, user: str, path: str) -> None:
+    """Best-effort write for User.home_page that never breaks auth flow."""
+    if not _user_has_home_page_field():
+        return
+    try:
+        frappe.db.set_value("User", user, "home_page", path, update_modified=False)
+    except Exception as exc:
+        if hasattr(frappe.db, "is_missing_column") and frappe.db.is_missing_column(exc):
+            return
+        return
+
+
 def _normalize_invalid_user_home_page(*, user: str, path: str) -> None:
     """
     Repair invalid User.home_page values that are not absolute paths.
@@ -31,10 +55,7 @@ def _normalize_invalid_user_home_page(*, user: str, path: str) -> None:
     Canonical routes are absolute (start with '/'). Any non-empty relative value
     can produce broken login redirects and is normalized to the resolved path.
     """
-    if not _user_has_home_page_field():
-        return
-
-    current_raw = frappe.db.get_value("User", user, "home_page")
+    current_raw = _get_user_home_page_safe(user)
     current = str(current_raw or "").strip()
     if not current:
         return
@@ -42,7 +63,7 @@ def _normalize_invalid_user_home_page(*, user: str, path: str) -> None:
         return
     target = path
     if target != current:
-        frappe.db.set_value("User", user, "home_page", target, update_modified=False)
+        _set_user_home_page_safe(user=user, path=target)
 
 
 def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: str) -> None:
@@ -51,9 +72,7 @@ def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: 
     request_path = str(getattr(request, "path", "") or "")
     cmd = str((getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()).get("cmd") or "")
 
-    user_home_page = None
-    if _user_has_home_page_field():
-        user_home_page = frappe.db.get_value("User", user, "home_page")
+    user_home_page = _get_user_home_page_safe(user)
 
     payload = {
         "stage": stage,
