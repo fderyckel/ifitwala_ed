@@ -46,6 +46,40 @@ Current implementation is an explicit acknowledge action with timestamped audit 
 | `Rejected` | Terminal rejected |
 | `Promoted` | Converted to Student |
 
+## What `Invited` Means in Practice
+
+`Invited` means admissions has opened the application lifecycle for the applicant. In current code, this status can be reached through two server-owned paths:
+
+- **Staff invite flow** (`ifitwala_ed/api/admissions_portal.py::invite_applicant`):
+  - creates or reuses `User`
+  - assigns role `Admissions Applicant`
+  - links `Student Applicant.applicant_user`
+  - moves status `Draft -> Invited` (when currently `Draft`)
+  - sends welcome/password email using framework-supported email methods
+- **Inquiry conversion flow** (`invite_to_apply` / `from_inquiry_invite`):
+  - creates `Student Applicant` directly in `Invited`
+  - pre-fills identity and inquiry intent fields
+  - does **not** by itself guarantee portal login access until an applicant `User` is linked
+
+### How Applicant Login Works
+
+- Applicant opens `/admissions`.
+- Server gate (`ifitwala_ed/www/admissions/index.py`) requires:
+  - authenticated user (not Guest)
+  - role `Admissions Applicant`
+  - exactly one linked `Student Applicant` via `applicant_user`
+- If checks fail, user is redirected to login/logout-login flow.
+
+### How Applicant Uploads Documents
+
+- After login, applicant uses the admissions SPA documents page.
+- Upload goes through `ifitwala_ed/api/admissions_portal.py::upload_applicant_document`.
+- Edits/uploads are allowed only when applicant status is one of:
+  - `Invited`
+  - `In Progress`
+  - `Missing Info`
+- Upload creates/updates governed `Applicant Document` records and routes files through classification/governance services.
+
 ## Child Table (Included in Parent)
 
 `guardians` uses child table **Student Applicant Guardian**:
@@ -170,6 +204,32 @@ This is deterministic server-side mapping in `from_inquiry_invite`, so teams avo
   - overlay component: `ui-spa/src/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue`
   - acknowledgement submit: `admissionsService.acknowledgePolicy` -> `ifitwala_ed.api.admissions_portal.acknowledge_policy`
   - behavior is explicit acknowledge + timestamped row insert; no signature artifact capture
+
+### Troubleshooting: `Policy schema mismatch` (`missing_column: applies_to`)
+
+If you see an error log like:
+
+- title: `Policy schema mismatch`
+- caller: `StudentApplicant.has_required_policies`
+- doctype: `Institutional Policy`
+- missing_column: `applies_to`
+
+it means code expects `Institutional Policy.applies_to`, but your site database table does not have that column.
+
+Current implementation impact:
+
+- `StudentApplicant.has_required_policies()` cannot evaluate required policies and marks readiness as not OK with a schema-error issue.
+- `ifitwala_ed/api/admissions_portal.py::get_applicant_policies` throws a blocking error (`throw=True`) and policy UI cannot load.
+
+What to do (site operations):
+
+1. Run migrations for the affected site:
+   - `bench --site <site-name> migrate`
+2. If the column is still missing, reload the DocType schema:
+   - `bench --site <site-name> reload-doc governance doctype institutional_policy`
+3. Verify column presence:
+   - `bench --site <site-name> mariadb -e "SHOW COLUMNS FROM \`tabInstitutional Policy\` LIKE 'applies_to';"`
+4. Re-test applicant policy readiness/API and confirm no new `Policy schema mismatch` logs are created.
 
 ### Permission Matrix
 
