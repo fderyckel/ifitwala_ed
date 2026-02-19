@@ -12,9 +12,9 @@ seo_description: "Manage applicant lifecycle from invitation to promotion, with 
 
 ## Before You Start (Prerequisites)
 
-- Create `Organization` and `School` first (required anchors).
-- If you intend to require applicant consent, configure active applicant-scoped policies first (`Institutional Policy` + active `Policy Version`).
-- Define required document types and health/interview review workflow before approval/promotion decisions.
+- Create [**Organization**](/docs/en/organization/) and [**School**](/docs/en/school/) first (required anchors).
+- If you intend to require applicant consent, configure active applicant-scoped policies first ([**Institutional Policy**](/docs/en/institutional-policy/) + active [**Policy Version**](/docs/en/policy-version/)).
+- Define required [**Applicant Document Type**](/docs/en/applicant-document-type/) records and [**Applicant Health Profile**](/docs/en/applicant-health-profile/) / [**Applicant Interview**](/docs/en/applicant-interview/) review workflow before approval/promotion decisions.
 
 ### How Policy Acknowledgement Becomes Mandatory
 
