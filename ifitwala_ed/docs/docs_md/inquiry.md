@@ -3,6 +3,8 @@ title: "Inquiry: Managing First Contact with Prospective Families"
 slug: inquiry
 category: Admission
 doc_order: 2
+version: "1.0.0"
+last_change_date: "2026-02-19"
 summary: "Capture, assign, and track inquiry follow-up with SLA visibility, assignment ownership, and conversion into Student Applicant."
 seo_title: "Inquiry: Managing First Contact with Prospective Families"
 seo_description: "Capture, assign, and track inquiry follow-up with SLA visibility, assignment ownership, and conversion into Student Applicant."

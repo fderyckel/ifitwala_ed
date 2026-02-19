@@ -499,6 +499,15 @@ When architecture changes are made (if approved), agents MUST update correspondi
 
 Docs must reflect **reality**, not aspiration.
 
+Front matter rule for markdown docs under `ifitwala_ed/docs/docs_md/`:
+
+* Every doc MUST include YAML fields:
+  * `version`
+  * `last_change_date`
+* Any time a doc is changed, agent MUST:
+  * increment/update `version`
+  * set `last_change_date` to the actual change date (`YYYY-MM-DD`)
+
 ---
 
 ## 17. Final Safety Rule
