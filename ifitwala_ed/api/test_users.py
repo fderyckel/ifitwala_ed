@@ -6,11 +6,21 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.api.users import STAFF_ROLES, get_website_user_home_page, redirect_user_to_entry_portal
+from ifitwala_ed.api.users import (
+    STAFF_ROLES,
+    _strip_redirect_query,
+    get_website_user_home_page,
+    redirect_user_to_entry_portal,
+)
 
 
 class TestUserRedirect(FrappeTestCase):
     """Test unified login redirect logic."""
+
+    def test_strip_redirect_query_removes_redirect_to_params(self):
+        raw = "/login?redirect-to=%2Fapp&foo=bar&redirect_to=%2Fapp#frag"
+        cleaned = _strip_redirect_query(raw)
+        self.assertEqual(cleaned, "/login?foo=bar#frag")
 
     def test_all_users_redirect_to_staff_entry(self):
         """Standard users should be redirected to /portal/staff on login."""

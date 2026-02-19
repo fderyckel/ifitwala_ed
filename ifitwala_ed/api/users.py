@@ -3,6 +3,8 @@
 
 # ifitwala_ed/api/users.py
 
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
 import frappe
 
 from ifitwala_ed.routing.policy import (
@@ -14,6 +16,72 @@ from ifitwala_ed.routing.policy import (
 
 # Backwards-compatible export used by existing modules/tests.
 STAFF_ROLES = STAFF_PORTAL_ROLES
+
+
+def _incoming_redirect_target() -> str:
+    request = getattr(frappe, "request", None)
+    args = getattr(request, "args", None) or {}
+    from_args = args.get("redirect-to") or args.get("redirect_to")
+    if from_args:
+        return str(from_args).strip()
+
+    form = getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()
+    from_form = form.get("redirect-to") or form.get("redirect_to")
+    return str(from_form or "").strip()
+
+
+def _strip_redirect_query(url: str) -> str:
+    parts = urlsplit(url)
+    kept = [
+        (k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k not in {"redirect-to", "redirect_to"}
+    ]
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(kept, doseq=True), parts.fragment))
+
+
+def sanitize_login_redirect_param() -> None:
+    """
+    Guard against sticky Desk redirects (?redirect-to=/app) on /login.
+
+    Frappe's login frontend can prioritize this query parameter over backend
+    home-page resolution. We strip only this one value to preserve explicit
+    non-Desk redirects.
+    """
+    request = getattr(frappe, "request", None)
+    if not request:
+        return
+
+    path = str(getattr(request, "path", "") or "").strip()
+    method = str(getattr(request, "method", "") or "").upper()
+    incoming = _incoming_redirect_target()
+
+    # Only neutralize sticky Desk redirects.
+    if incoming != "/app":
+        return
+
+    # Always clear request-side redirect hints so downstream handlers don't reuse them.
+    if hasattr(frappe, "form_dict"):
+        frappe.form_dict["redirect_to"] = ""
+        frappe.form_dict["redirect-to"] = ""
+
+    # For login page GET requests, redirect to the same URL without redirect-to.
+    if path == "/login" and method == "GET":
+        full_path = str(getattr(request, "full_path", "") or "").strip()
+        target = _strip_redirect_query(full_path or "/login")
+        if target in {"/login?", "login?"}:
+            target = "/login"
+        frappe.log_error(
+            title="LOGIN REDIRECT SANITIZED",
+            message=frappe.as_json(
+                {
+                    "path": path,
+                    "method": method,
+                    "incoming_redirect_to": incoming,
+                    "redirect_to": target,
+                }
+            ),
+        )
+        frappe.local.flags.redirect_location = target
+        raise frappe.Redirect
 
 
 def _user_has_home_page_field() -> bool:
@@ -83,6 +151,7 @@ def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: 
         "has_staff_portal_access": _has_staff_portal_access(user=user, roles=roles),
         "request_path": request_path,
         "cmd": cmd,
+        "incoming_redirect_to": _incoming_redirect_target(),
         "user_home_page": user_home_page,
     }
     frappe.log_error(

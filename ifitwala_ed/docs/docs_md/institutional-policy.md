@@ -12,9 +12,9 @@ seo_description: "Define policy identity, organization/school scope, and target 
 
 ## Before You Start (Prerequisites)
 
-- Create the target `Organization` first (policy scope anchor).
+- Create the target [**Organization**](/docs/en/organization/) first (policy scope anchor).
 - Decide `policy_key`, category, and applies-to audience model before insertion.
-- Create policy identity records before creating any `Policy Version` rows.
+- Create [**Institutional Policy**](/docs/en/institutional-policy/) identity records before creating any [**Policy Version**](/docs/en/policy-version/) rows.
 
 ### What `policy_key` Is
 
@@ -31,10 +31,10 @@ Example used in current code: `media_consent` (image publish consent flow).
 
 There is no separate "policy key catalog" DocType in the current model. Existing keys are found in policy records:
 
-1. Desk list view: `Institutional Policy` -> `policy_key` column.
-2. Desk form: `Institutional Policy` -> `policy_key` field on each record.
+1. Desk list view: [**Institutional Policy**](/docs/en/institutional-policy/) -> `policy_key` column.
+2. Desk form: [**Institutional Policy**](/docs/en/institutional-policy/) -> `policy_key` field on each record.
 3. Admissions readiness/policy payloads:
-   - `Student Applicant` readiness (`has_required_policies`) returns missing/required labels from policy key/name chain.
+   - [**Student Applicant**](/docs/en/student-applicant/) readiness (`has_required_policies`) returns missing/required labels from policy key/name chain.
    - Admissions portal policy list (`get_applicant_policies`) labels policies by `policy_key` first, then title/name fallback.
 4. Code-level constants for specific product behavior (example): `ifitwala_ed/governance/policy_utils.py` -> `MEDIA_CONSENT_POLICY_KEY`.
 
@@ -60,7 +60,7 @@ There is no separate "policy key catalog" DocType in the current model. Existing
 - `school` blank (`NULL`/empty) means the policy is org-wide for the selected `organization` scope.
 - When `school` is set to a parent school, the policy applies to that school and all descendant schools.
 - School matching uses applicant school lineage (`self -> parent -> ...`) plus org-wide blank fallback.
-- Final policy selection remains nearest-only by `policy_key` on the Organization ancestor chain.
+- Final policy selection remains nearest-only by `policy_key` on the [**Organization**](/docs/en/organization/) ancestor chain.
 
 ## Where It Is Used Across the ERP
 
@@ -73,21 +73,21 @@ There is no separate "policy key catalog" DocType in the current model. Existing
   - `policy_key = media_consent`
   - read by `has_applicant_policy_acknowledgement` during applicant promotion image publish logic.
 - Nearest-only organization override:
-  - policy candidates are filtered using `select_nearest_policy_rows_by_key` against Organization ancestor chain.
+  - policy candidates are filtered using `select_nearest_policy_rows_by_key` against [**Organization**](/docs/en/organization/) ancestor chain.
 
 ## Lifecycle and Linked Documents
 
 1. Create policy identity (`policy_key`) and audience/scope under the correct organization.
-2. Create one or more `Policy Version` rows as legal text snapshots under this policy.
+2. Create one or more [**Policy Version**](/docs/en/policy-version/) rows as legal text snapshots under this policy.
 3. Activate/deactivate policy identity based on institutional policy lifecycle.
-4. Collect acknowledgements through `Policy Acknowledgement` using active versions only.
+4. Collect acknowledgements through [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) using active versions only.
 
 <Callout type="warning" title="Scope integrity">
 Policy scope is organization-sensitive. Wrong scope setup causes downstream acknowledgement and readiness mismatches.
 </Callout>
 
 <Callout type="tip" title="Lifecycle approach">
-Treat this record as long-lived identity. Version the legal text in `Policy Version` instead of replacing policy roots.
+Treat this record as long-lived identity. Version the legal text in [**Policy Version**](/docs/en/policy-version/) instead of replacing policy roots.
 </Callout>
 
 ## Technical Notes (IT)
@@ -101,7 +101,7 @@ Treat this record as long-lived identity. Version the legal text in `Policy Vers
   - `policy_title` (`Data`)
   - `policy_category` (`Select`)
   - `applies_to` (`MultiSelect`)
-  - `organization` (`Link` -> `Organization`)
+  - `organization` (`Link` -> [**Organization**](/docs/en/organization/))
   - `is_active` (`Check`)
 - **Lifecycle hooks in controller**: `before_insert`, `before_save`, `before_delete`
 - **Operational/public methods**: none beyond standard document behavior.
@@ -113,7 +113,7 @@ Treat this record as long-lived identity. Version the legal text in `Policy Vers
   - `policy_title` (Data, required)
   - `policy_category` (Select, required)
   - `applies_to` (MultiSelect, required): `Applicant`, `Student`, `Guardian`, `Staff`
-  - `organization` (Link -> Organization, required)
+  - `organization` (Link -> [**Organization**](/docs/en/organization/), required)
   - `school` (Link -> School, optional)
   - `description` (Small Text)
   - `is_active` (Check, required, default `1`)

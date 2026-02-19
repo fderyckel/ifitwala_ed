@@ -80,6 +80,8 @@ website_redirects = WEBSITE_REDIRECTS
 
 # Home Pages
 # ----------
+# Neutralize sticky login redirect-to=/app before login page/scripts execute.
+before_request = ["ifitwala_ed.api.users.sanitize_login_redirect_param"]
 # Force role-based entry path immediately after successful login.
 on_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
 # Re-apply redirect target after session creation so Desk default path cannot override it.
