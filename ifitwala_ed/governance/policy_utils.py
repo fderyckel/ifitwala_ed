@@ -5,6 +5,7 @@ from frappe import _
 
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
+    get_school_ancestors_including_self,
     select_nearest_policy_rows_by_key,
 )
 
@@ -123,6 +124,7 @@ def has_applicant_policy_acknowledgement(
     ancestor_orgs = get_organization_ancestors_including_self(organization)
     if not ancestor_orgs:
         return False
+    school_ancestors = get_school_ancestors_including_self(school)
 
     schema_check = ensure_policy_applies_to_column(
         caller="has_applicant_policy_acknowledgement",
@@ -131,30 +133,39 @@ def has_applicant_policy_acknowledgement(
         return False
 
     org_placeholders = ", ".join(["%s"] * len(ancestor_orgs))
+    school_scope_sql = ""
+    school_params: tuple[str, ...] = ()
+    if school_ancestors:
+        school_placeholders = ", ".join(["%s"] * len(school_ancestors))
+        school_scope_sql = f" OR ip.school IN ({school_placeholders})"
+        school_params = tuple(school_ancestors)
     rows = frappe.db.sql(
         f"""
         SELECT pv.name AS policy_version
              , ip.policy_key AS policy_key
              , ip.organization AS policy_organization
+             , ip.school AS policy_school
           FROM `tabInstitutional Policy` ip
           JOIN `tabPolicy Version` pv
             ON pv.institutional_policy = ip.name
          WHERE ip.is_active = 1
            AND pv.is_active = 1
            AND ip.organization IN ({org_placeholders})
-           AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
+           AND (ip.school IS NULL OR ip.school = ''{school_scope_sql})
            AND ip.policy_key = %s
            AND ip.applies_to LIKE %s
         """,
-        (*ancestor_orgs, school, policy_key, "%Applicant%"),
+        (*ancestor_orgs, *school_params, policy_key, "%Applicant%"),
         as_dict=True,
     )
 
     candidate_rows = select_nearest_policy_rows_by_key(
         rows=rows,
         context_organization=organization,
+        context_school=school,
         policy_key_field="policy_key",
         policy_organization_field="policy_organization",
+        policy_school_field="policy_school",
     )
     if not candidate_rows:
         return False

@@ -20,6 +20,7 @@ class InstitutionalPolicy(Document):
     def before_save(self):
         ensure_policy_admin()
         self._validate_policy_category()
+        self._validate_school_organization()
         if self.is_new():
             return
         before = self.get_doc_before_save()
@@ -64,9 +65,14 @@ class InstitutionalPolicy(Document):
         )
 
     def _enforce_immutability(self, before):
-        for field in ("policy_key", "organization", "school"):
+        for field in ("policy_key", "organization"):
             if before.get(field) != self.get(field):
                 frappe.throw(_("{0} is immutable once set.").format(field.replace("_", " ").title()))
+
+        before_school = (before.get("school") or "").strip()
+        current_school = (self.get("school") or "").strip()
+        if before_school and before_school != current_school:
+            frappe.throw(_("School is immutable once set."))
 
     def _validate_policy_category(self):
         if not self.policy_category or self.policy_category not in POLICY_CATEGORIES:

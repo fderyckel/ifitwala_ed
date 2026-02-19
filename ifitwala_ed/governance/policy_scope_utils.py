@@ -7,11 +7,17 @@ from collections.abc import Sequence
 import frappe
 from frappe.utils.nestedset import get_ancestors_of
 
+from ifitwala_ed.utilities.school_tree import get_school_lineage
+
 CACHE_TTL = 600  # seconds
 
 
 def _cache_key(kind: str, organization: str) -> str:
     return f"policy_scope:{kind}:{organization}"
+
+
+def _school_cache_key(kind: str, school: str) -> str:
+    return f"policy_scope:{kind}:{school}"
 
 
 def get_organization_ancestors_including_self(organization: str | None) -> list[str]:
@@ -49,6 +55,46 @@ def get_organization_ancestors_including_self(organization: str | None) -> list[
             continue
         seen.add(org)
         ordered_chain.append(org)
+
+    cache.set_value(key, frappe.as_json(ordered_chain), expires_in_sec=CACHE_TTL)
+    return ordered_chain
+
+
+def get_school_ancestors_including_self(school: str | None) -> list[str]:
+    """
+    Return [school, parent, ..., root] using School NestedSet ancestry.
+    Order is nearest-first for nearest school scope matching.
+    """
+    school = (school or "").strip()
+    if not school:
+        return []
+
+    cache = frappe.cache()
+    key = _school_cache_key("ancestors", school)
+    cached = cache.get_value(key)
+    if cached is not None:
+        try:
+            parsed = frappe.parse_json(cached)
+            if isinstance(parsed, list):
+                return parsed
+        except Exception:
+            if isinstance(cached, (list, tuple)):
+                return list(cached)
+        return []
+
+    if not frappe.db.exists("School", school):
+        cache.set_value(key, "[]", expires_in_sec=CACHE_TTL)
+        return []
+
+    chain = get_school_lineage(school) or [school]
+    seen = set()
+    ordered_chain: list[str] = []
+    for row_school in chain:
+        row_school = (row_school or "").strip()
+        if not row_school or row_school in seen:
+            continue
+        seen.add(row_school)
+        ordered_chain.append(row_school)
 
     cache.set_value(key, frappe.as_json(ordered_chain), expires_in_sec=CACHE_TTL)
     return ordered_chain
@@ -92,8 +138,10 @@ def select_nearest_policy_rows_by_key(
     *,
     rows: Sequence[dict],
     context_organization: str | None,
+    context_school: str | None = None,
     policy_key_field: str = "policy_key",
     policy_organization_field: str = "policy_organization",
+    policy_school_field: str = "policy_school",
 ) -> list[dict]:
     """
     Nearest-only override by policy_key across ancestor policy candidates.
@@ -106,7 +154,11 @@ def select_nearest_policy_rows_by_key(
         return []
 
     rank = {org: idx for idx, org in enumerate(ancestors)}
-    selected: dict[str, tuple[int, int, dict]] = {}
+    school_chain = get_school_ancestors_including_self(context_school)
+    school_rank = {school: idx for idx, school in enumerate(school_chain)}
+    has_school_context = bool(school_rank)
+    global_school_rank = len(school_rank) if has_school_context else 0
+    selected: dict[str, tuple[int, int, int, dict]] = {}
 
     for idx, row in enumerate(rows):
         key = (row.get(policy_key_field) or "").strip()
@@ -115,8 +167,20 @@ def select_nearest_policy_rows_by_key(
             continue
 
         current_rank = rank[org]
-        existing = selected.get(key)
-        if not existing or current_rank < existing[0]:
-            selected[key] = (current_rank, idx, row)
+        current_school_rank = global_school_rank
+        if has_school_context:
+            row_school = (row.get(policy_school_field) or "").strip()
+            if row_school:
+                if row_school not in school_rank:
+                    continue
+                current_school_rank = school_rank[row_school]
 
-    return [entry[2] for entry in sorted(selected.values(), key=lambda item: (item[0], item[1]))]
+        existing = selected.get(key)
+        if not existing or (current_rank, current_school_rank, idx) < (
+            existing[0],
+            existing[1],
+            existing[2],
+        ):
+            selected[key] = (current_rank, current_school_rank, idx, row)
+
+    return [entry[3] for entry in sorted(selected.values(), key=lambda item: (item[0], item[1], item[2]))]

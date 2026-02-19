@@ -116,6 +116,61 @@ class TestPolicyScopeInheritance(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             self._acknowledge(applicant_name=applicant.name, policy_version=unrelated_version.name)
 
+    def test_school_can_be_set_once_when_initially_blank(self):
+        org = self._make_organization("Org")
+        first_school = self._make_school(org, "First School")
+        second_school = self._make_school(org, "Second School")
+
+        policy = self._make_policy(
+            organization=org,
+            policy_key=self._policy_key("one_time_school"),
+            school=None,
+        )
+        self.assertFalse(policy.school)
+
+        policy.school = first_school
+        policy.save(ignore_permissions=True)
+        self.assertEqual(policy.school, first_school)
+
+        policy.school = second_school
+        with self.assertRaises(frappe.ValidationError):
+            policy.save(ignore_permissions=True)
+
+    def test_parent_school_policy_applies_to_descendant_school_applicant(self):
+        org = self._make_organization("Org")
+        parent_school = self._make_school(org, "Parent School", is_group=1)
+        child_school = self._make_school(org, "Child School", parent_school=parent_school)
+        applicant = self._make_applicant(org, child_school)
+        policy_key = self._policy_key("school_descendant_scope")
+
+        self._make_active_policy_with_version(
+            organization=org,
+            policy_key=policy_key,
+            school=parent_school,
+            version_label="v1-parent-school",
+        )
+
+        status = applicant.has_required_policies()
+        self.assertIn(policy_key, status["required"])
+
+    def test_school_scoped_policy_does_not_apply_outside_school_lineage(self):
+        org = self._make_organization("Org")
+        root_school = self._make_school(org, "Root School", is_group=1)
+        sibling_a = self._make_school(org, "Sibling A", parent_school=root_school)
+        sibling_b = self._make_school(org, "Sibling B", parent_school=root_school)
+        applicant = self._make_applicant(org, sibling_b)
+        policy_key = self._policy_key("school_lineage_only")
+
+        self._make_active_policy_with_version(
+            organization=org,
+            policy_key=policy_key,
+            school=sibling_a,
+            version_label="v1-sibling-a",
+        )
+
+        status = applicant.has_required_policies()
+        self.assertNotIn(policy_key, status["required"])
+
     def _policy_key(self, prefix: str) -> str:
         return f"{prefix}_{frappe.generate_hash(length=8)}"
 
@@ -132,13 +187,21 @@ class TestPolicyScopeInheritance(FrappeTestCase):
         doc.insert(ignore_permissions=True)
         return doc.name
 
-    def _make_school(self, organization: str, name_prefix: str) -> str:
+    def _make_school(
+        self,
+        organization: str,
+        name_prefix: str,
+        parent_school: str | None = None,
+        is_group: int = 0,
+    ) -> str:
         doc = frappe.get_doc(
             {
                 "doctype": "School",
                 "school_name": f"{name_prefix}-{frappe.generate_hash(length=6)}",
                 "abbr": f"S{frappe.generate_hash(length=4)}",
                 "organization": organization,
+                "parent_school": parent_school,
+                "is_group": int(is_group),
             }
         )
         doc.insert(ignore_permissions=True)

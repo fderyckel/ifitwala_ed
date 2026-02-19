@@ -26,7 +26,7 @@ Policy acknowledgement is mandatory for an applicant when at least one active po
 2. `Policy Version.is_active = 1` for that policy
 3. `Institutional Policy.applies_to` includes `Applicant`
 4. Policy organization applies to the applicant organization scope (nearest ancestor policy per `policy_key` is selected)
-5. Policy school scope matches (`school` blank/global or equals applicant `school`)
+5. Policy school scope matches (`school` blank/global, or in applicant school lineage: applicant school or any ancestor/parent school)
 
 If no policy rows match those rules, policy acknowledgement is not required for that applicant.
 

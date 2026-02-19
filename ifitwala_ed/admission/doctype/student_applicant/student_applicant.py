@@ -18,6 +18,7 @@ from ifitwala_ed.admission.admission_utils import (
 )
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
+    get_school_ancestors_including_self,
     select_nearest_policy_rows_by_key,
 )
 from ifitwala_ed.governance.policy_utils import (
@@ -815,6 +816,7 @@ class StudentApplicant(Document):
         ancestor_orgs = get_organization_ancestors_including_self(self.organization)
         if not ancestor_orgs:
             return {"ok": True, "missing": [], "required": []}
+        school_ancestors = get_school_ancestors_including_self(self.school)
 
         schema_check = ensure_policy_applies_to_column(caller="StudentApplicant.has_required_policies")
         if not schema_check.get("ok"):
@@ -826,11 +828,18 @@ class StudentApplicant(Document):
             }
 
         org_placeholders = ", ".join(["%s"] * len(ancestor_orgs))
+        school_scope_sql = ""
+        school_params: tuple[str, ...] = ()
+        if school_ancestors:
+            school_placeholders = ", ".join(["%s"] * len(school_ancestors))
+            school_scope_sql = f" OR ip.school IN ({school_placeholders})"
+            school_params = tuple(school_ancestors)
         rows = frappe.db.sql(
             f"""
             SELECT ip.name AS policy_name,
                    ip.policy_key AS policy_key,
                    ip.organization AS policy_organization,
+                   ip.school AS policy_school,
                    pv.name AS policy_version
               FROM `tabInstitutional Policy` ip
               JOIN `tabPolicy Version` pv
@@ -838,17 +847,19 @@ class StudentApplicant(Document):
              WHERE ip.is_active = 1
                AND pv.is_active = 1
                AND ip.organization IN ({org_placeholders})
-               AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
+               AND (ip.school IS NULL OR ip.school = ''{school_scope_sql})
                AND ip.applies_to LIKE %s
             """,
-            (*ancestor_orgs, self.school, "%Applicant%"),
+            (*ancestor_orgs, *school_params, "%Applicant%"),
             as_dict=True,
         )
         rows = select_nearest_policy_rows_by_key(
             rows=rows,
             context_organization=self.organization,
+            context_school=self.school,
             policy_key_field="policy_key",
             policy_organization_field="policy_organization",
+            policy_school_field="policy_school",
         )
 
         if not rows:

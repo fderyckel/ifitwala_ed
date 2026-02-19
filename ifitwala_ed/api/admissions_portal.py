@@ -9,6 +9,7 @@ from ifitwala_ed.admission import admissions_portal as admission_api
 from ifitwala_ed.admission.admission_utils import ensure_admissions_permission
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
+    get_school_ancestors_including_self,
     select_nearest_policy_rows_by_key,
 )
 from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
@@ -439,6 +440,7 @@ def get_applicant_policies(student_applicant: str | None = None):
     ancestor_orgs = get_organization_ancestors_including_self(organization)
     if not ancestor_orgs:
         return {"policies": []}
+    school_ancestors = get_school_ancestors_including_self(school)
 
     ensure_policy_applies_to_column(
         caller="admissions_portal.get_applicant_policies",
@@ -457,12 +459,19 @@ def get_applicant_policies(student_applicant: str | None = None):
 
     if policies_source is None:
         org_placeholders = ", ".join(["%s"] * len(ancestor_orgs))
+        school_scope_sql = ""
+        school_params: tuple[str, ...] = ()
+        if school_ancestors:
+            school_placeholders = ", ".join(["%s"] * len(school_ancestors))
+            school_scope_sql = f" OR ip.school IN ({school_placeholders})"
+            school_params = tuple(school_ancestors)
         policies_source = frappe.db.sql(
             f"""
             SELECT ip.name AS policy_name,
                    ip.policy_key AS policy_key,
                    ip.policy_title AS policy_title,
                    ip.organization AS policy_organization,
+                   ip.school AS policy_school,
                    pv.name AS policy_version,
                    pv.policy_text AS policy_text
               FROM `tabInstitutional Policy` ip
@@ -471,17 +480,19 @@ def get_applicant_policies(student_applicant: str | None = None):
              WHERE ip.is_active = 1
                AND pv.is_active = 1
                AND ip.organization IN ({org_placeholders})
-               AND (ip.school IS NULL OR ip.school = '' OR ip.school = %s)
+               AND (ip.school IS NULL OR ip.school = ''{school_scope_sql})
                AND ip.applies_to LIKE %s
             """,
-            (*ancestor_orgs, school, "%Applicant%"),
+            (*ancestor_orgs, *school_params, "%Applicant%"),
             as_dict=True,
         )
         policies_source = select_nearest_policy_rows_by_key(
             rows=policies_source,
             context_organization=organization,
+            context_school=school,
             policy_key_field="policy_key",
             policy_organization_field="policy_organization",
+            policy_school_field="policy_school",
         )
         cache.set_value(cache_key, frappe.as_json(policies_source), expires_in_sec=600)
 
