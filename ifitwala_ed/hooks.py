@@ -85,15 +85,10 @@ on_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
 # Re-apply redirect target after session creation so Desk default path cannot override it.
 on_session_creation = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
 # application home page (will override Website Settings)
-# home_page = "login"
+home_page = "/portal"
 
 # website user home page (by Role)
-role_home_page = {
-    "Desk User": "/portal/staff",
-    "Employee": "/portal/staff",
-    "Student": "/portal/student",
-    "Guardian": "/portal/guardian",
-}
+# role_home_page = {}
 
 # Generators
 # ----------
