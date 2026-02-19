@@ -132,6 +132,25 @@ class TestStudentApplicant(FrappeTestCase):
         user.reload()
         self.assertEqual(user.enabled, 0)
 
+    def test_has_required_interviews_returns_recent_items(self):
+        applicant = self._create_student_applicant()
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": applicant.name,
+                "interview_date": frappe.utils.nowdate(),
+                "interview_type": "Student",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        payload = applicant.has_required_interviews()
+        self.assertEqual(payload.get("count"), 1)
+        self.assertTrue(payload.get("ok"))
+        items = payload.get("items") or []
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].get("name"), interview.name)
+
     def test_promotion_copies_approved_applicant_document_files(self):
         doc_type = self._create_applicant_document_type(code=f"promotable-{frappe.generate_hash(length=6)}")
         applicant = self._create_student_applicant()

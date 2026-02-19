@@ -3,7 +3,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import now_datetime
+from frappe.utils import get_link_to_form, now_datetime
 
 from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
 
@@ -37,7 +37,13 @@ class ApplicantInterview(Document):
         if not self.student_applicant:
             return
         applicant = frappe.get_doc("Student Applicant", self.student_applicant)
+        interview_link = get_link_to_form("Applicant Interview", self.name)
         applicant.add_comment(
             "Comment",
-            text=_("{0} by {1} on {2}.").format(label, frappe.bold(frappe.session.user), now_datetime()),
+            text=_("{0}: {1} by {2} on {3}.").format(
+                label,
+                interview_link,
+                frappe.bold(frappe.session.user),
+                now_datetime(),
+            ),
         )

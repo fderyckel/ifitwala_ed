@@ -38,7 +38,7 @@ Controller logic remains on the parent doctype; child table controller is intent
 
 - [**Student Applicant**](/docs/en/student-applicant/):
   - interview count contributes to readiness snapshot
-  - create/update events add audit comments on applicant timeline
+  - create/update events add audit comments on applicant timeline with a direct link to the interview record
 - Admission workspace: direct access card under Student Applicant operations.
 
 ## Lifecycle and Linked Documents
@@ -75,7 +75,7 @@ Interviewers are child rows for structure only; workflow logic and validations a
   - child table `Applicant Interviewer` embedded in parent
 - **Student Applicant integration**:
   - readiness snapshot uses `has_required_interviews()`
-  - create/update posts audit comments onto applicant timeline
+  - create/update posts audit comments onto applicant timeline with clickable interview links
 - **Key hooks**:
   - `validate`: permission + applicant-state guard
   - `after_insert`: audit comment "Interview recorded"

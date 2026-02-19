@@ -61,6 +61,7 @@ Legacy compatibility note: persisted `New Inquiry` values are normalized to cano
 - **Admissions conversion**:
   - links to [**Student Applicant**](/docs/en/student-applicant/)
   - Desk invite action calls `ifitwala_ed.admission.admission_utils.from_inquiry_invite`
+  - this conversion step does not collect applicant portal email credentials
 - **Analytics surface**:
   - staff SPA route: `/staff/analytics/inquiry`
   - API: `ifitwala_ed.api.inquiry.get_dashboard_data` and related filter endpoints
@@ -76,6 +77,10 @@ Legacy compatibility note: persisted `New Inquiry` values are normalized to cano
 
 <Callout type="info" title="Transition guardrails">
 Workflow transitions are server-validated. Teams should follow the canonical state path instead of manually editing status fields.
+</Callout>
+
+<Callout type="warning" title="Two different invite actions">
+`Invite to Apply` on Inquiry creates the `Student Applicant` record in `Invited`, but it does not provision applicant portal login credentials. After conversion, open the applicant and use `Actions` -> `Invite Applicant Portal` (or `Resend Portal Invite`) to trigger `invite_applicant(student_applicant, email)`.
 </Callout>
 
 ## Technical Notes (IT)

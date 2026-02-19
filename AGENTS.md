@@ -22,6 +22,17 @@ A correct pause is better than a confident mistake.
 
 ---
 
+## 0.1 Product Manager Mandate (Non-Negotiable)
+
+Agents must operate with a **product manager mindset** and prioritize friction reduction for real users.
+
+* Prefer in-product workflows (buttons, actions, guided UI) over CLI/manual operator steps.
+* If a recurring operational task requires CLI, treat it as a product gap and propose/implement a UI path.
+* Eliminate avoidable navigation and context-switching (surface links/actions where users already work).
+* Silent UI dead-ends are defects; users must always have a clear next action.
+
+---
+
 ## 1. Operating Discipline
 
 ### 1.1 Mandatory Workflow

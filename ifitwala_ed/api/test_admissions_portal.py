@@ -2,9 +2,12 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # See license.txt
 
+from unittest.mock import patch
+
+import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.api.admissions_portal import _portal_status_for, _read_only_for
+from ifitwala_ed.api.admissions_portal import _portal_status_for, _read_only_for, invite_applicant
 
 
 class TestAdmissionsPortalContracts(FrappeTestCase):
@@ -15,3 +18,109 @@ class TestAdmissionsPortalContracts(FrappeTestCase):
         is_read_only, reason = _read_only_for("Withdrawn")
         self.assertTrue(is_read_only)
         self.assertTrue(bool(reason))
+
+
+class TestInviteApplicant(FrappeTestCase):
+    def setUp(self):
+        frappe.set_user("Administrator")
+        self._created: list[tuple[str, str]] = []
+        self.organization = self._create_organization()
+        self.school = self._create_school(self.organization)
+        self.applicant = self._create_applicant(self.organization, self.school)
+
+    def tearDown(self):
+        for doctype, name in reversed(self._created):
+            if frappe.db.exists(doctype, name):
+                frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+
+    def test_invite_applicant_creates_portal_user_and_marks_invited(self):
+        email = f"applicant-{frappe.generate_hash(length=8)}@example.com"
+
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                return_value="Administrator",
+            ),
+            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email") as send_invite,
+        ):
+            payload = invite_applicant(student_applicant=self.applicant.name, email=email)
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("user"), email)
+        self.assertFalse(payload.get("resent"))
+        self.assertEqual(send_invite.call_count, 1)
+
+        self.applicant.reload()
+        self.assertEqual(self.applicant.applicant_user, email)
+        self.assertEqual(self.applicant.application_status, "Invited")
+
+        user_row = frappe.db.get_value("User", email, ["name", "enabled"], as_dict=True)
+        self.assertTrue(bool(user_row))
+        self.assertEqual(user_row.get("enabled"), 1)
+        self._created.append(("User", email))
+
+    def test_invite_applicant_resends_email_for_same_linked_user(self):
+        email = f"applicant-{frappe.generate_hash(length=8)}@example.com"
+
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                return_value="Administrator",
+            ),
+            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email"),
+        ):
+            invite_applicant(student_applicant=self.applicant.name, email=email)
+        self._created.append(("User", email))
+
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                return_value="Administrator",
+            ),
+            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email") as send_invite,
+        ):
+            payload = invite_applicant(student_applicant=self.applicant.name, email=email)
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("user"), email)
+        self.assertTrue(payload.get("resent"))
+        self.assertEqual(send_invite.call_count, 1)
+
+    def _create_organization(self) -> str:
+        organization_name = f"Org {frappe.generate_hash(length=6)}"
+        doc = frappe.get_doc(
+            {
+                "doctype": "Organization",
+                "organization_name": organization_name,
+                "abbr": f"ORG{frappe.generate_hash(length=4)}",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Organization", doc.name))
+        return doc.name
+
+    def _create_school(self, organization: str) -> str:
+        school_name = f"School {frappe.generate_hash(length=6)}"
+        doc = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": school_name,
+                "abbr": f"SCH{frappe.generate_hash(length=4)}",
+                "organization": organization,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("School", doc.name))
+        return doc.name
+
+    def _create_applicant(self, organization: str, school: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                "first_name": "Portal",
+                "last_name": f"Invite-{frappe.generate_hash(length=6)}",
+                "organization": organization,
+                "school": school,
+                "application_status": "Draft",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Student Applicant", doc.name))
+        return doc

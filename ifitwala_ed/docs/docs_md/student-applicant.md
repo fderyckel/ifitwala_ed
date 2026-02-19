@@ -96,6 +96,35 @@ Current implementation is an explicit acknowledge action with timestamped audit 
   - pre-fills identity and inquiry intent fields
   - does **not** by itself guarantee portal login access until an applicant `User` is linked
 
+### How Admissions Invites the Applicant (Portal Login Invite)
+
+Portal login invite is done directly from Desk on the `Student Applicant` form:
+
+1. Open the applicant record.
+2. Click `Actions` -> `Invite Applicant Portal` (or `Resend Portal Invite` if already linked).
+3. Enter applicant email and submit.
+
+This triggers the server flow `invite_applicant` and requires:
+
+1. `student_applicant` (the Student Applicant document name)
+2. `email` (the applicant login email to invite)
+
+Behavior in code:
+
+- email is normalized to lower-case and trimmed before processing
+- if user does not exist, a `User` is created with that email
+- role `Admissions Applicant` is ensured on that user
+- `Student Applicant.applicant_user` is set to that user identity
+- if applicant is already linked to a different email/user, invite is blocked
+
+<Callout type="warning" title="Login identity source of truth">
+The applicant username/email is exactly the `email` used in `invite_applicant`. This is the identity used to sign in to the admissions portal.
+</Callout>
+
+<Callout type="info" title="If applicant did not receive the invite email">
+Use `Actions` -> `Resend Portal Invite` on the same applicant and submit the same email again. This re-sends the portal invite email for the linked applicant user.
+</Callout>
+
 ### How Applicant Login Works
 
 - Applicant opens `/admissions`.
@@ -104,6 +133,15 @@ Current implementation is an explicit acknowledge action with timestamped audit 
   - role `Admissions Applicant`
   - exactly one linked `Student Applicant` via `applicant_user`
 - If checks fail, user is redirected to login/logout-login flow.
+
+### Applicant Credentials and URL
+
+- Portal URL: `/admissions` (for example `https://<your-domain>/admissions`)
+- Document upload URL: `/admissions/documents`
+- Username/email: the exact email used by admissions in `invite_applicant`
+- Password:
+  - new invited user: set via welcome/reset email sent during invite
+  - existing user: use existing password (or reset via forgot password)
 
 ### How Applicant Uploads Documents
 
@@ -265,6 +303,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - `has_required_documents()` -> blocking
   - `health_review_complete()` -> blocking
   - `has_required_interviews()` -> tracked; not currently part of blocking `ready` boolean
+  - interview summary shows recent interview links for direct navigation from applicant review section
 - **Promotion side-effects (`promote_to_student`)**:
   - creates/links `Student`, writes `Student.student_applicant`, then sets applicant status to `Promoted`
   - copies applicant image through governed file dispatcher into Student profile image slot

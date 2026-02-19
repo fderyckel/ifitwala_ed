@@ -944,8 +944,15 @@ class StudentApplicant(Document):
         return {"ok": False, "status": "missing"}
 
     def has_required_interviews(self):
+        rows = frappe.get_all(
+            "Applicant Interview",
+            filters={"student_applicant": self.name},
+            fields=["name", "interview_date", "interview_type"],
+            order_by="interview_date desc, modified desc",
+            limit_page_length=5,
+        )
         count = frappe.db.count("Applicant Interview", {"student_applicant": self.name})
-        return {"ok": count >= 1, "count": count}
+        return {"ok": count >= 1, "count": count, "items": rows}
 
     @frappe.whitelist()
     def get_readiness_snapshot(self):

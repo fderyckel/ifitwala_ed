@@ -595,6 +595,30 @@ def withdraw_application(
     return {"ok": True, "changed": result.get("changed")}
 
 
+def _ensure_admissions_applicant_role(user_doc) -> None:
+    if ADMISSIONS_ROLE in {r.role for r in user_doc.roles}:
+        return
+    user_doc.append("roles", {"role": ADMISSIONS_ROLE})
+    user_doc.save(ignore_permissions=True)
+
+
+def _send_applicant_invite_email(user_doc, recipient: str) -> None:
+    try:
+        if hasattr(user_doc, "send_welcome_email"):
+            user_doc.send_welcome_email()
+        elif hasattr(user_doc, "send_password_notification"):
+            user_doc.send_password_notification()
+        else:
+            frappe.sendmail(
+                recipients=[recipient],
+                subject=_("Admissions Portal Access"),
+                message=_("Your admissions portal access is ready."),
+            )
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Admissions applicant invite email failed")
+        frappe.throw(_("Unable to send invite email."))
+
+
 @frappe.whitelist()
 def invite_applicant(*, student_applicant: str | None = None, email: str | None = None) -> dict:
     ensure_admissions_permission()
@@ -611,14 +635,23 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
 
     if applicant.applicant_user:
-        if applicant.applicant_user != email:
+        linked_user = (applicant.applicant_user or "").strip()
+        if linked_user.lower() != email:
             frappe.throw(_("Applicant already linked to a different user."))
-        # Idempotent: ensure role exists and return
-        user_doc = frappe.get_doc("User", applicant.applicant_user)
-        if ADMISSIONS_ROLE not in {r.role for r in user_doc.roles}:
-            user_doc.append("roles", {"role": ADMISSIONS_ROLE})
-            user_doc.save(ignore_permissions=True)
-        return {"ok": True, "user": user_doc.name}
+        user_doc = frappe.get_doc("User", linked_user)
+        _ensure_admissions_applicant_role(user_doc)
+
+        if applicant.application_status == "Draft":
+            applicant._set_status("Invited", "Applicant invited", permission_checker=None)
+
+        _send_applicant_invite_email(user_doc, email)
+        applicant.add_comment(
+            "Comment",
+            text=_("Applicant portal invite email re-sent for {0} by {1}.").format(
+                frappe.bold(applicant.name), frappe.bold(frappe.session.user)
+            ),
+        )
+        return {"ok": True, "user": user_doc.name, "resent": True}
 
     user_doc = None
     if frappe.db.exists("User", email):
@@ -640,9 +673,7 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         user_doc.append("roles", {"role": ADMISSIONS_ROLE})
         user_doc.insert(ignore_permissions=True)
 
-    if ADMISSIONS_ROLE not in {r.role for r in user_doc.roles}:
-        user_doc.append("roles", {"role": ADMISSIONS_ROLE})
-        user_doc.save(ignore_permissions=True)
+    _ensure_admissions_applicant_role(user_doc)
 
     existing_link = frappe.db.get_value(
         "Student Applicant",
@@ -674,20 +705,6 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         ),
     )
 
-    # Send welcome/invite email if supported
-    try:
-        if hasattr(user_doc, "send_welcome_email"):
-            user_doc.send_welcome_email()
-        elif hasattr(user_doc, "send_password_notification"):
-            user_doc.send_password_notification()
-        else:
-            frappe.sendmail(
-                recipients=[email],
-                subject=_("Admissions Portal Access"),
-                message=_("Your admissions portal access is ready."),
-            )
-    except Exception:
-        frappe.log_error(frappe.get_traceback(), "Admissions applicant invite email failed")
-        frappe.throw(_("Unable to send invite email."))
+    _send_applicant_invite_email(user_doc, email)
 
-    return {"ok": True, "user": user_doc.name}
+    return {"ok": True, "user": user_doc.name, "resent": False}

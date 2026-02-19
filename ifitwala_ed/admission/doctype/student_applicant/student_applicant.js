@@ -40,6 +40,7 @@ frappe.ui.form.on("Student Applicant", {
 		frm.trigger("setup_governed_image_upload");
 		render_review_sections(frm);
 		add_decision_actions(frm);
+		add_portal_invite_action(frm);
 	},
 
 	setup_governed_image_upload(frm) {
@@ -122,6 +123,80 @@ frappe.ui.form.on("Student Applicant", {
 	},
 });
 
+const TERMINAL_PORTAL_INVITE_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
+
+function add_portal_invite_action(frm) {
+	frm.remove_custom_button(__("Invite Applicant Portal"), __("Actions"));
+	frm.remove_custom_button(__("Resend Portal Invite"), __("Actions"));
+	frm.remove_custom_button(__("Invite Applicant Portal"));
+	frm.remove_custom_button(__("Resend Portal Invite"));
+
+	if (!frm.doc || frm.is_new()) {
+		return;
+	}
+
+	const status = String(frm.doc.application_status || "").trim();
+	if (TERMINAL_PORTAL_INVITE_STATUSES.has(status)) {
+		return;
+	}
+
+	const hasLinkedUser = Boolean(String(frm.doc.applicant_user || "").trim());
+	const label = hasLinkedUser ? __("Resend Portal Invite") : __("Invite Applicant Portal");
+	frm.add_custom_button(label, () => prompt_portal_invite(frm), __("Actions"));
+}
+
+function prompt_portal_invite(frm) {
+	const linkedEmail = String(frm.doc.applicant_user || "").trim().toLowerCase();
+	const hasLinkedUser = Boolean(linkedEmail);
+
+	frappe.prompt(
+		[
+			{
+				label: __("Applicant Email"),
+				fieldname: "email",
+				fieldtype: "Data",
+				options: "Email",
+				reqd: 1,
+				default: linkedEmail,
+				description: __("This email becomes the applicant portal username."),
+			},
+		],
+		(values) => {
+			const email = String(values.email || "").trim().toLowerCase();
+			if (!email) {
+				frappe.msgprint(__("Please enter an applicant email."));
+				return;
+			}
+
+			frappe.call({
+				method: "ifitwala_ed.api.admissions_portal.invite_applicant",
+				args: {
+					student_applicant: frm.doc.name,
+					email,
+				},
+				freeze: true,
+				freeze_message: hasLinkedUser
+					? __("Re-sending applicant portal invite...")
+					: __("Inviting applicant to portal..."),
+			})
+				.then((res) => {
+					const message = res?.message || {};
+					const resent = Boolean(message.resent);
+					frappe.show_alert({
+						message: resent ? __("Portal invite email re-sent.") : __("Portal invite email sent."),
+						indicator: "green",
+					});
+					frm.reload_doc();
+				})
+				.catch((err) => {
+					frappe.msgprint(err?.message || __("Unable to send applicant portal invite."));
+				});
+		},
+		hasLinkedUser ? __("Resend Portal Invite") : __("Invite Applicant Portal"),
+		hasLinkedUser ? __("Resend") : __("Invite")
+	);
+}
+
 function render_review_sections(frm) {
 	frm.call("get_readiness_snapshot")
 		.then((res) => {
@@ -166,9 +241,43 @@ function render_interviews(interviews) {
 		return render_empty("No interview data.");
 	}
 	const count = Number(interviews.count || 0);
+	const items = Array.isArray(interviews.items) ? interviews.items : [];
 	return [
 		render_line("Interview count", escape_html(String(count))),
+		render_line("Recent interviews", render_interview_links(items)),
 	].join("");
+}
+
+function render_interview_links(items) {
+	if (!items.length) {
+		return escape_html("None");
+	}
+
+	const links = items
+		.map((row) => {
+			const name = String(row?.name || "").trim();
+			if (!name) {
+				return "";
+			}
+			const date = String(row?.interview_date || "").trim();
+			const type = String(row?.interview_type || "").trim();
+			const pieces = [name];
+			if (date) {
+				pieces.push(date);
+			}
+			if (type) {
+				pieces.push(type);
+			}
+			const label = escape_html(pieces.join(" · "));
+			const href = `/app/applicant-interview/${encodeURIComponent(name)}`;
+			return `<a href="${href}">${label}</a>`;
+		})
+		.filter(Boolean);
+
+	if (!links.length) {
+		return escape_html("None");
+	}
+	return links.join(", ");
 }
 
 function render_health(health) {
