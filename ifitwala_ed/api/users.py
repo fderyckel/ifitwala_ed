@@ -205,6 +205,22 @@ def redirect_user_to_entry_portal(login_manager=None):
     _set_login_redirect_state(path=path, login_manager=login_manager)
 
 
+def get_website_user_home_page(user=None) -> str:
+    """
+    Canonical website home-page resolver used by Frappe /login flows.
+
+    This prevents stale site defaults from sending users to non-canonical routes.
+    """
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return "/login"
+
+    roles = set(frappe.get_roles(user))
+    _self_heal_employee_user_link(user=user, roles=roles)
+    roles = set(frappe.get_roles(user))
+    return _resolve_login_redirect_path(user=user, roles=roles)
+
+
 @frappe.whitelist()
 def get_users_with_role(doctype, txt, searchfield, start, page_len, filters):
     """Return enabled users matching the provided role for link-field queries."""

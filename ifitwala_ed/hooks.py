@@ -84,6 +84,8 @@ website_redirects = WEBSITE_REDIRECTS
 on_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
 # Re-apply redirect target after session creation so Desk default path cannot override it.
 on_session_creation = "ifitwala_ed.api.users.redirect_user_to_entry_portal"
+# Resolve website home directly from the same canonical role policy.
+get_website_user_home_page = "ifitwala_ed.api.users.get_website_user_home_page"
 # application home page (will override Website Settings)
 # home_page = "/portal"
 

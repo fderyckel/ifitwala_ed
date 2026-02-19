@@ -21,6 +21,10 @@ class TestRoutingRules(FrappeTestCase):
             hooks.on_session_creation,
             "ifitwala_ed.api.users.redirect_user_to_entry_portal",
         )
+        self.assertEqual(
+            hooks.get_website_user_home_page,
+            "ifitwala_ed.api.users.get_website_user_home_page",
+        )
         self.assertFalse(hasattr(hooks, "before_request"))
 
     def test_website_routes_are_scoped(self):

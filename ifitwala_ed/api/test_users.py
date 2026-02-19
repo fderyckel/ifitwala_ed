@@ -6,7 +6,7 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.api.users import STAFF_ROLES, redirect_user_to_entry_portal
+from ifitwala_ed.api.users import STAFF_ROLES, get_website_user_home_page, redirect_user_to_entry_portal
 
 
 class TestUserRedirect(FrappeTestCase):
@@ -464,6 +464,30 @@ class TestUserRedirect(FrappeTestCase):
 
         # Cleanup
         frappe.set_user("Administrator")
+
+    def test_get_website_user_home_page_uses_canonical_policy(self):
+        """Website home hook should resolve to canonical portal/staff for active staff users."""
+        user = frappe.new_doc("User")
+        user.email = "test_website_home_policy@example.com"
+        user.first_name = "Web"
+        user.last_name = "Home"
+        user.enabled = 1
+        user.add_roles("Employee")
+        user.save()
+
+        employee = frappe.new_doc("Employee")
+        employee.first_name = "Web"
+        employee.last_name = "Home"
+        employee.user_id = user.email
+        employee.employment_status = "Active"
+        employee.save()
+
+        frappe.set_user(user.email)
+        self.assertEqual(get_website_user_home_page(), "/portal/staff")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
 
     def test_logout_flow_does_not_force_redirect_exception(self):
         """Logout-triggered on_login must not raise Redirect."""
