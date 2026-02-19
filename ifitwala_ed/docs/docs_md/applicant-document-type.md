@@ -39,7 +39,28 @@ seo_description: "Define document taxonomy by organization/school and drive read
 If a document type code is not mapped for file classification, governed upload will reject that upload request.
 </Callout>
 
+## Lifecycle and Linked Documents
+
+1. Define your full evidence catalog (`code`, label, and scope) before opening applications.
+2. Staff and portal uploads create `Applicant Document` records against this controlled list.
+3. Applicant readiness checks in `Student Applicant` evaluate required and active document types by scope.
+4. Retire obsolete types by deactivating them instead of changing historical document meaning.
+
+<Callout type="warning" title="Code governance">
+Document type `code` values are used by governed file routing. Changing codes without updating mappings will break uploads.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_document_type/applicant_document_type.json`
+- **Controller file**: `ifitwala_ed/admission/doctype/applicant_document_type/applicant_document_type.py`
+- **Required fields (`reqd=1`)**:
+  - `code` (`Data`)
+  - `document_type_name` (`Data`)
+- **Lifecycle hooks in controller**: none (reference/master behavior, or handled by framework defaults).
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Applicant Document Type` (`ifitwala_ed/admission/doctype/applicant_document_type/`)
 - **Autoname**: `field:code`

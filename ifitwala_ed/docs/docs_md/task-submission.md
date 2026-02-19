@@ -37,7 +37,30 @@ Existing submission evidence cannot be overwritten. New evidence must be added a
   - custom upload action in `task_submission.js`
   - server endpoint `ifitwala_ed.utilities.governed_uploads.upload_task_submission_attachment`
 
+## Lifecycle and Linked Documents
+
+1. Create evidence against a valid `Task Outcome`.
+2. Each resubmission creates a new version rather than mutating past evidence.
+3. Contributions resolve against the appropriate/latest submission version for grading integrity.
+4. Portfolio and reflection features may reuse this governed evidence stream.
+
+<Callout type="tip" title="Version discipline">
+Keep submission notes and attachments complete per version. This improves moderation, parent communication, and auditability.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/task_submission/task_submission.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/task_submission/task_submission.py`
+- **Required fields (`reqd=1`)**:
+  - `task_outcome` (`Link` -> `Task Outcome`)
+  - `version` (`Int`)
+  - `submitted_by` (`Link` -> `User`)
+  - `submitted_on` (`Datetime`)
+- **Lifecycle hooks in controller**: `before_validate`, `validate`, `after_insert`, `on_doctype_update`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Task Submission` (`ifitwala_ed/assessment/doctype/task_submission/`)
 - **Autoname**: `TSU-{YYYY}-{#####}`

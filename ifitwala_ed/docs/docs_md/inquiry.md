@@ -67,7 +67,26 @@ Legacy compatibility note: persisted `New Inquiry` values are normalized to cano
 - **Scheduler**: hourly SLA recomputation.
 - **File routing fallback**: attachments routed under Admissions inquiry context in file management utilities.
 
+## Lifecycle and Linked Documents
+
+1. Capture lead as `New`, then assign ownership (`Assigned`) with SLA deadlines.
+2. Mark as `Contacted` when first outreach is completed and metrics are stamped.
+3. Move to `Qualified` only when the family is ready for application.
+4. Create/invite `Student Applicant`, then close inactive paths through `Archived`.
+
+<Callout type="info" title="Transition guardrails">
+Workflow transitions are server-validated. Teams should follow the canonical state path instead of manually editing status fields.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`
+- **Controller file**: `ifitwala_ed/admission/doctype/inquiry/inquiry.py`
+- **Required fields (`reqd=1`)**: none at schema level; controller/workflow rules enforce operational completeness where applicable.
+- **Lifecycle hooks in controller**: `validate`, `before_insert`, `after_insert`, `before_save`
+- **Operational/public methods**: `mark_assigned`, `mark_qualified`, `archive`, `invite_to_apply`, `set_contact_metrics`, `create_contact_from_inquiry`, `mark_contacted`
 
 - **DocType**: `Inquiry` (`ifitwala_ed/admission/doctype/inquiry/`)
 - **Autoname**: `INQ-{YYYY}-{MM}-{DD}-{##}`

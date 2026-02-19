@@ -29,7 +29,29 @@ Without snapshots, later edits to task criteria would silently rewrite grading h
 - Read by official outcome computation in `assessment/task_outcome_service.py` to apply criterion weighting correctly.
 - Linked back to grade-scale policy via [**Grade Scale**](/docs/en/grade-scale/).
 
+## Lifecycle and Linked Documents
+
+1. Prepare criteria on the parent `Task` before delivery launch.
+2. At delivery submit (criteria mode), create a rubric snapshot row and child criteria snapshot entries.
+3. Use that frozen rubric for contribution and outcome computations.
+4. Preserve historical grading meaning even when the base task rubric is later edited.
+
+<Callout type="info" title="Historical integrity">
+Rubric versions exist to prevent hidden historical rewrites. Keep snapshot behavior enabled for criteria-based grading.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/task_rubric_version/task_rubric_version.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/task_rubric_version/task_rubric_version.py`
+- **Required fields (`reqd=1`)**:
+  - `task` (`Link` -> `Task`)
+  - `task_delivery` (`Link` -> `Task Delivery`)
+  - `grading_mode` (`Select`)
+- **Lifecycle hooks in controller**: none (reference/master behavior, or handled by framework defaults).
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Task Rubric Version` (`ifitwala_ed/assessment/doctype/task_rubric_version/`)
 - **Autoname**: `TRV-{YYYY}-{#####}`

@@ -34,7 +34,26 @@ A reporting cycle is where mutable grading activity becomes institutional record
 - Student reporting models:
   - `Student Term Report` links to Reporting Cycle.
 
+## Lifecycle and Linked Documents
+
+1. Define cycle scope (`school`, `academic_year`, `term`, optional `program`) first.
+2. Set cutoff and teacher edit-close windows before opening operational reporting steps.
+3. Run course-result recalculation and generate student reports through named cycle actions.
+4. Lock/publish when governance sign-off is complete and term outcomes are final.
+
+<Callout type="info" title="Governance checkpoint">
+Treat status changes in reporting cycles as governance events with clear owners, not routine UI clicks.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/reporting_cycle/reporting_cycle.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/reporting_cycle/reporting_cycle.py`
+- **Required fields (`reqd=1`)**: none at schema level; controller/workflow rules enforce operational completeness where applicable.
+- **Lifecycle hooks in controller**: `validate`, `on_doctype_update`
+- **Operational/public methods**: `recalculate_course_results`, `generate_student_reports`
 
 - **DocType**: `Reporting Cycle` (`ifitwala_ed/assessment/doctype/reporting_cycle/`)
 - **Scope links**: `school`, `academic_year`, `term`, optional `program`

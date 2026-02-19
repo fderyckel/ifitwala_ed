@@ -47,7 +47,28 @@ seo_description: "Track each applicant document type, review status, and promoti
 Changing an uploaded document's type or applicant after submission is blocked. Replace with a new governed upload instead.
 </Callout>
 
+## Lifecycle and Linked Documents
+
+1. Create/select the applicant and choose the exact required document type.
+2. Upload through governed flows so one canonical row is maintained per applicant and document type.
+3. Admissions reviewers update review fields and promotion relevance as evidence is assessed.
+4. On promotion, only approved/promotable evidence is carried into student-facing records.
+
+<Callout type="info" title="Why this is strict">
+This doctype is the legal/operational evidence anchor for admissions. Use replacement uploads, not field mutation, when evidence changes.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.json`
+- **Controller file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.py`
+- **Required fields (`reqd=1`)**:
+  - `student_applicant` (`Link` -> `Student Applicant`)
+  - `document_type` (`Link` -> `Applicant Document Type`)
+- **Lifecycle hooks in controller**: `validate`, `before_delete`
+- **Operational/public methods**: `get_file_routing_context`
 
 - **DocType**: `Applicant Document` (`ifitwala_ed/admission/doctype/applicant_document/`)
 - **Autoname**: `hash`

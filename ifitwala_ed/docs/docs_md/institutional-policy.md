@@ -39,7 +39,36 @@ seo_description: "Define policy identity, organization/school scope, and target 
 - Nearest-only organization override:
   - policy candidates are filtered using `select_nearest_policy_rows_by_key` against Organization ancestor chain.
 
+## Lifecycle and Linked Documents
+
+1. Create policy identity (`policy_key`) and audience/scope under the correct organization.
+2. Create one or more `Policy Version` rows as legal text snapshots under this policy.
+3. Activate/deactivate policy identity based on institutional policy lifecycle.
+4. Collect acknowledgements through `Policy Acknowledgement` using active versions only.
+
+<Callout type="warning" title="Scope integrity">
+Policy scope is organization-sensitive. Wrong scope setup causes downstream acknowledgement and readiness mismatches.
+</Callout>
+
+<Callout type="tip" title="Lifecycle approach">
+Treat this record as long-lived identity. Version the legal text in `Policy Version` instead of replacing policy roots.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.json`
+- **Controller file**: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.py`
+- **Required fields (`reqd=1`)**:
+  - `policy_key` (`Data`)
+  - `policy_title` (`Data`)
+  - `policy_category` (`Select`)
+  - `applies_to` (`MultiSelect`)
+  - `organization` (`Link` -> `Organization`)
+  - `is_active` (`Check`)
+- **Lifecycle hooks in controller**: `before_insert`, `before_save`, `before_delete`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Institutional Policy` (`ifitwala_ed/governance/doctype/institutional_policy/`)
 - **Autoname**: `hash`

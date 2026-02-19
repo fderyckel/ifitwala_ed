@@ -42,7 +42,26 @@ When these settings are correct, your team sees at-risk records early instead of
 - **Write**: `System Manager`, `Admission Manager`
 - **Read-only**: `Admission Officer`, `Academic Admin`
 
+## Lifecycle and Linked Documents
+
+1. Set SLA and assignment settings before admitting your first inquiry batch.
+2. Run daily intake in `Inquiry` and `Registration of Interest`; each record uses this configuration.
+3. Review breached/at-risk records and adjust team workload from assignment and ToDo indicators.
+4. Revisit SLA values at term boundaries so new admissions periods reflect real team capacity.
+
+<Callout type="info" title="When to change settings">
+Treat SLA updates as operational policy changes. Confirm with admissions leadership before changing values mid-cycle.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/admission/doctype/admission_settings/admission_settings.json`
+- **Controller file**: `ifitwala_ed/admission/doctype/admission_settings/admission_settings.py`
+- **Required fields (`reqd=1`)**: none at schema level; controller/workflow rules enforce operational completeness where applicable.
+- **Lifecycle hooks in controller**: none (reference/master behavior, or handled by framework defaults).
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Admission Settings` (`ifitwala_ed/admission/doctype/admission_settings/`)
 - **Type**: `issingle = 1`

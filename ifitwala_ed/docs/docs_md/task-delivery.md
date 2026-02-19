@@ -36,7 +36,29 @@ Once a delivery has outcomes/evidence, grading configuration is intentionally lo
 - Student reflections and portfolio linkage:
   - `Student Reflection Entry` can reference Task Delivery.
 
+## Lifecycle and Linked Documents
+
+1. Create delivery from reusable `Task` + target `Student Group` context.
+2. Submit delivery to generate student-level `Task Outcome` records.
+3. Collect submissions/contributions under this delivery context during teaching and grading.
+4. Protect historical integrity by keeping grading configuration stable after evidence exists.
+
+<Callout type="info" title="Fresh-site sequencing">
+Do not create deliveries before roster and course context are stable. Rework later is expensive once outcomes exist.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`
+- **Required fields (`reqd=1`)**:
+  - `task` (`Link` -> `Task`)
+  - `student_group` (`Link` -> `Student Group`)
+  - `delivery_mode` (`Select`)
+- **Lifecycle hooks in controller**: `before_validate`, `validate`, `on_submit`, `on_cancel`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Task Delivery` (`ifitwala_ed/assessment/doctype/task_delivery/`)
 - **Autoname**: `TDL-{YYYY}-{#####}`

@@ -34,7 +34,30 @@ Contributions are professional inputs. Official student truth is still written t
 - Staleness updates triggered when student evidence changes (`mark_contributions_stale`).
 - Criteria-mode grading stores row-level marks in child table `Task Contribution Criterion`.
 
+## Lifecycle and Linked Documents
+
+1. Start from an existing `Task Outcome` and, where required, linked `Task Submission` evidence.
+2. Teachers/reviewers create contribution entries (draft, submit, moderate, or override flows).
+3. Contribution services recompute official outcome data without destroying historical contribution rows.
+4. Use moderation and staleness flags to keep official outcomes aligned with latest evidence.
+
+<Callout type="warning" title="Do not bypass outcome services">
+Directly editing official outcome fields without contribution/service flow can break moderation traceability.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/task_contribution/task_contribution.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/task_contribution/task_contribution.py`
+- **Required fields (`reqd=1`)**:
+  - `task_outcome` (`Link` -> `Task Outcome`)
+  - `contributor` (`Link` -> `User`)
+  - `contribution_type` (`Select`)
+  - `submitted_on` (`Datetime`)
+- **Lifecycle hooks in controller**: `before_validate`, `validate`, `after_insert`, `on_doctype_update`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Task Contribution` (`ifitwala_ed/assessment/doctype/task_contribution/`)
 - **Autoname**: `TCO-{YYYY}-{#####}`

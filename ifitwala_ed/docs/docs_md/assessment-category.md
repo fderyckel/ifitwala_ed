@@ -31,7 +31,27 @@ When categories are clean, your curriculum team can compare like-for-like eviden
   - `Curriculum` workspace shortcut (`ifitwala_ed/curriculum/workspace/curriculum/curriculum.json`)
   - `Admin` workspace shortcut (`ifitwala_ed/school_settings/workspace/admin/admin.json`)
 
+## Lifecycle and Linked Documents
+
+1. Define categories first as shared language for assessment design.
+2. Attach categories in curriculum setup (`Course` and `Program`) before task rollout.
+3. Classify each `Task` using the same vocabulary to keep gradebook and analytics comparable.
+4. Review category usage periodically to avoid overlap and duplicate semantics.
+
+<Callout type="info" title="Governance tip">
+Treat category names as policy vocabulary, not teacher-specific labels, so reporting remains consistent across years.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/assessment_category/assessment_category.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/assessment_category/assessment_category.py`
+- **Required fields (`reqd=1`)**:
+  - `category_name` (`Data`)
+- **Lifecycle hooks in controller**: none (reference/master behavior, or handled by framework defaults).
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Assessment Category` (`ifitwala_ed/assessment/doctype/assessment_category/`)
 - **Autoname**: `field:category_name`

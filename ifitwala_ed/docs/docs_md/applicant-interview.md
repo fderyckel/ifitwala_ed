@@ -41,7 +41,32 @@ Controller logic remains on the parent doctype; child table controller is intent
   - create/update events add audit comments on applicant timeline
 - Admission workspace: direct access card under Student Applicant operations.
 
+## Lifecycle and Linked Documents
+
+1. Create one interview record per interview event for the applicant.
+2. Capture date, mode, participants, confidentiality level, and structured notes/outcome.
+3. Update interview records as evidence evolves; timeline comments keep a visible audit trail.
+4. Interview completion contributes to applicant readiness and admissions decision confidence.
+
+<Callout type="tip" title="Operational pattern">
+Use separate interview rows for separate interactions instead of continuously overwriting one row.
+</Callout>
+
+<Callout type="info" title="Architecture rule">
+Interviewers are child rows for structure only; workflow logic and validations are enforced in the parent doctype.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.json`
+- **Controller file**: `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.py`
+- **Required fields (`reqd=1`)**:
+  - `student_applicant` (`Link` -> `Student Applicant`)
+  - `interview_date` (`Date`)
+- **Lifecycle hooks in controller**: `validate`, `after_insert`, `on_update`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Applicant Interview` (`ifitwala_ed/admission/doctype/applicant_interview/`)
 - **Autoname**: `hash`

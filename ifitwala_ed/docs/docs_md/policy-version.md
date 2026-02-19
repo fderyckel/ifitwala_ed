@@ -40,7 +40,34 @@ seo_description: "Store immutable policy text versions, enforce one active versi
   - `get_applicant_policies`
   - `acknowledge_policy`
 
+## Lifecycle and Linked Documents
+
+1. Draft legal text under the parent `Institutional Policy`.
+2. Activate one version at a time for live acknowledgement collection.
+3. Collect acknowledgements through portal/flows tied to this active version.
+4. When acknowledgements exist, treat core legal fields as lock-protected history.
+
+<Callout type="warning" title="Lock after adoption">
+After first acknowledgement, legal text mutation is restricted by controller guards to preserve consent integrity.
+</Callout>
+
+<Callout type="tip" title="Versioning strategy">
+Use a new version row for policy changes. Keep old versions for audit continuity instead of editing accepted text.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/governance/doctype/policy_version/policy_version.json`
+- **Controller file**: `ifitwala_ed/governance/doctype/policy_version/policy_version.py`
+- **Required fields (`reqd=1`)**:
+  - `institutional_policy` (`Link` -> `Institutional Policy`)
+  - `version_label` (`Data`)
+  - `policy_text` (`Text Editor`)
+  - `is_active` (`Check`)
+- **Lifecycle hooks in controller**: `before_insert`, `before_save`, `before_delete`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Policy Version` (`ifitwala_ed/governance/doctype/policy_version/`)
 - **Autoname**: `hash`

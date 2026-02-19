@@ -203,7 +203,26 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 1. Media consent policy chain (`policy_key = media_consent` + active version + acknowledgement), if you expect applicant image publish behavior during promotion.
 2. Applicant portal invite flow (`invite_applicant`) so families can acknowledge policies in `/admissions`.
 
+## Lifecycle and Linked Documents
+
+1. Create applicant identity and institutional anchor (`organization`, `school`).
+2. Progress through lifecycle states while collecting policies, documents, health, and interview evidence.
+3. Use readiness snapshot checks before approval or rejection decisions.
+4. Promote approved applicants to `Student` records and copy governed artifacts forward.
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.json`
+- **Controller file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
+- **Required fields (`reqd=1`)**:
+  - `first_name` (`Data`)
+  - `last_name` (`Data`)
+  - `organization` (`Link` -> `Organization`)
+  - `school` (`Link` -> `School`)
+- **Lifecycle hooks in controller**: `before_save`, `on_update`, `validate`
+- **Operational/public methods**: `mark_in_progress`, `submit_application`, `mark_under_review`, `mark_missing_info`, `withdraw_application`, `approve_application`, `reject_application`, `promote_to_student`, `apply_system_manager_override`, `has_required_policies`, `has_required_documents`, `health_review_complete`, `has_required_interviews`, `get_readiness_snapshot`, `academic_year_intent_query`, `school_by_organization_query`
 
 - **DocType**: `Student Applicant` (`ifitwala_ed/admission/doctype/student_applicant/`)
 - **Naming series**: `format:APPL-{MM}-{YYYY}-{###}` (for example `APPL-02-2026-001`)

@@ -45,7 +45,27 @@ seo_description: "Capture health details, control family/staff editing by applic
 Families can provide health details in portal phases where edits are allowed, then staff can move review status to `Cleared` or `Needs Follow-Up`.
 </Callout>
 
+## Lifecycle and Linked Documents
+
+1. Create health profile context as soon as an applicant enters active review.
+2. Capture family-provided health details and keep entries current through the review window.
+3. Staff reviewers move the profile through review outcomes (`Pending`, `Needs Follow-Up`, `Cleared`).
+4. Applicant approval readiness depends on the health review state being complete.
+
+<Callout type="warning" title="Admissions decision impact">
+Do not move applicants to final approval while health review remains unresolved; readiness checks are designed to prevent this.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_health_profile/applicant_health_profile.json`
+- **Controller file**: `ifitwala_ed/admission/doctype/applicant_health_profile/applicant_health_profile.py`
+- **Required fields (`reqd=1`)**:
+  - `student_applicant` (`Link` -> `Student Applicant`)
+- **Lifecycle hooks in controller**: `validate`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Applicant Health Profile` (`ifitwala_ed/admission/doctype/applicant_health_profile/`)
 - **Autoname**: `hash`

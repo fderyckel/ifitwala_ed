@@ -60,7 +60,36 @@ seo_description: "Record immutable who/what/when acknowledgement evidence with s
 - Policy-version immutability chain:
   - existence of any acknowledgement activates lock behavior in [**Policy Version**](/docs/en/policy-version/).
 
+## Lifecycle and Linked Documents
+
+1. Resolve the active policy version for the user and business context.
+2. Insert acknowledgement for the current session user against explicit context fields.
+3. Prevent duplicates for the same version/user/context tuple.
+4. Keep the record append-only as durable consent evidence.
+
+<Callout type="warning" title="Identity rule">
+`acknowledged_by` must match the current user session; proxy acknowledgements are blocked except governed override paths.
+</Callout>
+
+<Callout type="info" title="Evidence model">
+Acknowledgements are immutable records. Corrections should be handled by new policy versions or governance-approved flows.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.json`
+- **Controller file**: `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`
+- **Required fields (`reqd=1`)**:
+  - `policy_version` (`Link` -> `Policy Version`)
+  - `acknowledged_by` (`Link` -> `User`)
+  - `acknowledged_for` (`Select`)
+  - `context_doctype` (`Data`)
+  - `context_name` (`Data`)
+  - `acknowledged_at` (`Datetime`)
+- **Lifecycle hooks in controller**: `before_insert`, `before_save`, `before_delete`, `after_insert`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Policy Acknowledgement` (`ifitwala_ed/governance/doctype/policy_acknowledgement/`)
 - **Autoname**: `hash`
