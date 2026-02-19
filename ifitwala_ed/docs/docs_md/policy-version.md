@@ -91,9 +91,13 @@ Use a new version row for policy changes. Keep old versions for audit continuity
 |---|---|---|---|---|---|
 | `System Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
 | `Organization Admin` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
+| `Accounts Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
+| `HR Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
 
 Runtime controller rules:
-- Policy version management requires policy-admin roles.
+- Policy version management requires policy-admin roles (`System Manager`, `Organization Admin`, `Accounts Manager`, `Admission Manager`, `Academic Admin`, `HR Manager`).
 - Acknowledgement lock makes legal text effectively append-only after first acknowledgement, except explicit System Manager override flow.
 
 ## Related Docs

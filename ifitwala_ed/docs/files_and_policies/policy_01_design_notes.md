@@ -23,6 +23,10 @@ These roles already exist conceptually in your system; this matrix assumes them.
 | ---------------------- | ----------------------------------- |
 | **System Manager**     | Global, technical + legal superuser |
 | **Organization Admin** | Organization-wide governance        |
+| **Accounts Manager**   | Finance governance                  |
+| **Admission Manager**  | Admissions governance               |
+| **Academic Admin**     | Academics governance                |
+| **HR Manager**         | HR governance                       |
 | **School Admin**       | School-scoped governance            |
 | **Admissions Officer** | Admissions-only scope               |
 | **Academic Staff**     | Teachers, counselors                |
@@ -41,12 +45,14 @@ These roles already exist conceptually in your system; this matrix assumes them.
 
 ### Allowed actions
 
-| Action                                      | System Manager | Org Admin | School Admin | Others |
-| ------------------------------------------- | -------------- | --------- | ------------ | ------ |
-| Create policy                               | ✅              | ✅         | ❌            | ❌      |
-| Edit metadata (title, category, applies_to) | ✅              | ✅         | ❌            | ❌      |
-| Deactivate policy                           | ✅              | ✅         | ❌            | ❌      |
-| Delete policy                               | ❌              | ❌         | ❌            | ❌      |
+| Action                                      | System Manager | Org Admin | Policy Admin Managers* | School Admin | Others |
+| ------------------------------------------- | -------------- | --------- | ---------------------- | ------------ | ------ |
+| Create policy                               | ✅              | ✅         | ✅                      | ❌            | ❌      |
+| Edit metadata (title, category, applies_to) | ✅              | ✅         | ✅                      | ❌            | ❌      |
+| Deactivate policy                           | ✅              | ✅         | ✅                      | ❌            | ❌      |
+| Delete policy                               | ❌              | ❌         | ❌                      | ❌            | ❌      |
+
+\* Policy Admin Managers: `Accounts Manager`, `Admission Manager`, `Academic Admin`, `HR Manager` (and only when DocType permissions also grant access).
 
 ### Hard rules
 
@@ -72,14 +78,14 @@ These roles already exist conceptually in your system; this matrix assumes them.
 
 ### Allowed actions
 
-| Action                            | System Manager   | Org Admin | School Admin | Others |
-| --------------------------------- | ---------------- | --------- | ------------ | ------ |
-| Create new version                | ✅                | ✅         | ❌            | ❌      |
-| Edit text (pre-acknowledgement)   | ✅                | ✅         | ❌            | ❌      |
-| Activate version                  | ✅                | ✅         | ❌            | ❌      |
-| Supersede version                 | ✅                | ✅         | ❌            | ❌      |
-| Edit after acknowledgement exists | ⚠️ Override only | ❌         | ❌            | ❌      |
-| Delete version                    | ❌                | ❌         | ❌            | ❌      |
+| Action                            | System Manager   | Org Admin | Policy Admin Managers* | School Admin | Others |
+| --------------------------------- | ---------------- | --------- | ---------------------- | ------------ | ------ |
+| Create new version                | ✅                | ✅         | ✅                      | ❌            | ❌      |
+| Edit text (pre-acknowledgement)   | ✅                | ✅         | ✅                      | ❌            | ❌      |
+| Activate version                  | ✅                | ✅         | ✅                      | ❌            | ❌      |
+| Supersede version                 | ✅                | ✅         | ✅                      | ❌            | ❌      |
+| Edit after acknowledgement exists | ⚠️ Override only | ❌         | ❌                      | ❌            | ❌      |
+| Delete version                    | ❌                | ❌         | ❌                      | ❌            | ❌      |
 
 ### Immutability rule (LOCKED)
 

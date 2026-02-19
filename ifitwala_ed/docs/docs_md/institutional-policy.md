@@ -130,9 +130,13 @@ Treat this record as long-lived identity. Version the legal text in [**Policy Ve
 |---|---|---|---|---|---|
 | `System Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
 | `Organization Admin` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
+| `HR Manager` | Yes | Yes | Yes | Yes | Doctype permission allows delete; controller blocks delete |
 
 Runtime controller rule:
-- Policy management is restricted to policy admins (`System Manager` or `Organization Admin`), regardless of Desk form visibility.
+- Policy management is restricted to policy admins (`System Manager`, `Organization Admin`, `Accounts Manager`, `Admission Manager`, `Academic Admin`, `HR Manager`), regardless of Desk form visibility.
+- Controller role pass is necessary but not sufficient: user must also have DocType create/write permission for `Institutional Policy`.
 
 ## Related Docs
 

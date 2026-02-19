@@ -11,6 +11,9 @@ from ifitwala_ed.governance.policy_scope_utils import (
 
 SYSTEM_MANAGER_ROLE = "System Manager"
 ORG_ADMIN_ROLE = "Organization Admin"
+ACCOUNTS_MANAGER_ROLE = "Accounts Manager"
+ADMISSION_MANAGER_ROLE = "Admission Manager"
+HR_MANAGER_ROLE = "HR Manager"
 SCHOOL_ADMIN_ROLE = "School Admin"
 ACADEMIC_ADMIN_ROLE = "Academic Admin"
 ACADEMIC_STAFF_ROLE = "Academic Staff"
@@ -29,6 +32,16 @@ POLICY_CATEGORIES = (
     "Handbooks",
     "Employment",
 )
+POLICY_ADMIN_ROLES = frozenset(
+    {
+        SYSTEM_MANAGER_ROLE,
+        ORG_ADMIN_ROLE,
+        ACCOUNTS_MANAGER_ROLE,
+        ADMISSION_MANAGER_ROLE,
+        ACADEMIC_ADMIN_ROLE,
+        HR_MANAGER_ROLE,
+    }
+)
 
 
 def _user_roles(user: str | None = None) -> set[str]:
@@ -42,14 +55,14 @@ def is_system_manager(user: str | None = None) -> bool:
 
 def ensure_policy_admin(user: str | None = None) -> None:
     roles = _user_roles(user)
-    if SYSTEM_MANAGER_ROLE in roles or ORG_ADMIN_ROLE in roles:
+    if roles & POLICY_ADMIN_ROLES:
         return
     frappe.throw(_("You do not have permission to manage policies."), frappe.PermissionError)
 
 
 def is_policy_admin(user: str | None = None) -> bool:
     roles = _user_roles(user)
-    return SYSTEM_MANAGER_ROLE in roles or ORG_ADMIN_ROLE in roles
+    return bool(roles & POLICY_ADMIN_ROLES)
 
 
 def is_academic_admin(user: str | None = None) -> bool:

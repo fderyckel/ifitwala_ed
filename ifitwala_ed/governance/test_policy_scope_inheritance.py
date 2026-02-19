@@ -1,8 +1,11 @@
 # ifitwala_ed/governance/test_policy_scope_inheritance.py
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.governance import policy_utils
 from ifitwala_ed.governance.policy_utils import has_applicant_policy_acknowledgement
 
 
@@ -170,6 +173,19 @@ class TestPolicyScopeInheritance(FrappeTestCase):
 
         status = applicant.has_required_policies()
         self.assertNotIn(policy_key, status["required"])
+
+    def test_policy_admin_roles_include_manager_roles(self):
+        roles_to_allow = (
+            "System Manager",
+            "Organization Admin",
+            "Accounts Manager",
+            "Admission Manager",
+            "Academic Admin",
+            "HR Manager",
+        )
+        for role in roles_to_allow:
+            with patch.object(policy_utils.frappe, "get_roles", return_value=[role]):
+                self.assertTrue(policy_utils.is_policy_admin("user@example.com"))
 
     def _policy_key(self, prefix: str) -> str:
         return f"{prefix}_{frappe.generate_hash(length=8)}"
