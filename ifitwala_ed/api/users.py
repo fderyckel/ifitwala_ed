@@ -16,6 +16,14 @@ from ifitwala_ed.routing.policy import (
 STAFF_ROLES = STAFF_PORTAL_ROLES
 
 
+def _user_has_home_page_field() -> bool:
+    """Return True when User.home_page exists on this site schema."""
+    try:
+        return bool(frappe.get_meta("User").has_field("home_page"))
+    except Exception:
+        return False
+
+
 def _normalize_invalid_user_home_page(*, user: str, path: str) -> None:
     """
     Repair invalid User.home_page values that are not absolute paths.
@@ -23,6 +31,9 @@ def _normalize_invalid_user_home_page(*, user: str, path: str) -> None:
     Canonical routes are absolute (start with '/'). Any non-empty relative value
     can produce broken login redirects and is normalized to the resolved path.
     """
+    if not _user_has_home_page_field():
+        return
+
     current_raw = frappe.db.get_value("User", user, "home_page")
     current = str(current_raw or "").strip()
     if not current:
@@ -40,6 +51,10 @@ def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: 
     request_path = str(getattr(request, "path", "") or "")
     cmd = str((getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()).get("cmd") or "")
 
+    user_home_page = None
+    if _user_has_home_page_field():
+        user_home_page = frappe.db.get_value("User", user, "home_page")
+
     payload = {
         "stage": stage,
         "user": user,
@@ -49,7 +64,7 @@ def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: 
         "has_staff_portal_access": _has_staff_portal_access(user=user, roles=roles),
         "request_path": request_path,
         "cmd": cmd,
-        "user_home_page": frappe.db.get_value("User", user, "home_page"),
+        "user_home_page": user_home_page,
     }
     frappe.log_error(
         title="LOGIN REDIRECT TRACE",
