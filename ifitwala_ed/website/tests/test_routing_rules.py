@@ -12,12 +12,15 @@ from ifitwala_ed import hooks
 class TestRoutingRules(FrappeTestCase):
     """Lock website routing contracts to avoid regressions."""
 
-    def test_login_redirect_uses_single_hook(self):
+    def test_login_redirect_hooks_share_single_owner(self):
         self.assertEqual(
             hooks.on_login,
             "ifitwala_ed.api.users.redirect_user_to_entry_portal",
         )
-        self.assertFalse(hasattr(hooks, "on_session_creation"))
+        self.assertEqual(
+            hooks.on_session_creation,
+            "ifitwala_ed.api.users.redirect_user_to_entry_portal",
+        )
         self.assertFalse(hasattr(hooks, "before_request"))
 
     def test_website_routes_are_scoped(self):

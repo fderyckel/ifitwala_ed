@@ -126,6 +126,43 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("Employee", employee.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
+    def test_login_redirect_sets_login_manager_home_page(self):
+        """Login hook must set login_manager.home_page to canonical portal target."""
+        user = frappe.new_doc("User")
+        user.email = "test_login_manager_home_page@example.com"
+        user.first_name = "Home"
+        user.last_name = "Page"
+        user.enabled = 1
+        user.add_roles("Employee")
+        user.save()
+
+        employee = frappe.new_doc("Employee")
+        employee.first_name = "Home"
+        employee.last_name = "Page"
+        employee.user_id = user.email
+        employee.employment_status = "Active"
+        employee.save()
+
+        class _LoginManager:
+            def __init__(self):
+                self.home_page = "/app"
+
+        login_manager = _LoginManager()
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+        frappe.form_dict = frappe._dict({"redirect_to": "/app"})
+
+        redirect_user_to_entry_portal(login_manager=login_manager)
+
+        self.assertEqual(login_manager.home_page, "/portal/staff")
+        self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
     def test_guardian_redirects_to_guardian_portal(self):
         """Guardians should be redirected to /portal/guardian."""
         # Create test user with Guardian role

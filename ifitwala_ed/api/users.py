@@ -16,6 +16,34 @@ from ifitwala_ed.routing.policy import (
 STAFF_ROLES = STAFF_PORTAL_ROLES
 
 
+def _set_login_redirect_state(*, path: str, login_manager=None) -> None:
+    """
+    Apply redirect state across all Frappe login response channels.
+
+    This avoids reliance on exception-based redirects and keeps behavior stable
+    across login handler phases (on_login + on_session_creation).
+    """
+    if hasattr(frappe, "form_dict"):
+        frappe.form_dict["redirect_to"] = path
+        frappe.form_dict["redirect-to"] = path
+
+    if login_manager is not None:
+        try:
+            login_manager.home_page = path
+        except Exception:
+            pass
+
+    local_login_manager = getattr(frappe.local, "login_manager", None)
+    if local_login_manager is not None:
+        try:
+            local_login_manager.home_page = path
+        except Exception:
+            pass
+
+    frappe.local.response["home_page"] = path
+    frappe.local.response["redirect_to"] = path
+
+
 def _self_heal_employee_user_link(*, user: str, roles: set[str]) -> None:
     """
     Backfill missing Employee.user_id links during login when there is exactly one
@@ -84,27 +112,7 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
     return resolve_login_redirect_path(user=user, roles=roles)
 
 
-def _can_force_login_redirect() -> bool:
-    request = getattr(frappe, "request", None)
-    if not request:
-        return False
-    if bool(getattr(frappe.flags, "in_test", False)):
-        return False
-
-    path = str(getattr(request, "path", "") or "").strip().lower()
-    cmd = str((getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()).get("cmd") or "").strip().lower()
-
-    # on_login also runs during logout -> login_as_guest; never redirect there.
-    if "logout" in path or cmd == "logout":
-        return False
-
-    # Force only explicit login flows.
-    if path == "/login" or path.endswith("/api/method/login") or cmd == "login":
-        return True
-    return False
-
-
-def redirect_user_to_entry_portal():
+def redirect_user_to_entry_portal(login_manager=None):
     """
     Login redirect handler: Routes users to role-appropriate portal entry point.
 
@@ -115,8 +123,9 @@ def redirect_user_to_entry_portal():
     - Guardians -> /portal/guardian
     - Fallback -> /portal/staff
 
-    Login redirect is response-only (no User.home_page write in the login flow)
-    and enforces a hard redirect target for browser login requests.
+    Login redirect is response-only (no User.home_page write in the login flow).
+    The same handler is bound to both on_login and on_session_creation so the
+    target survives downstream Desk home-page resolution.
     """
     user = frappe.session.user
     if not user or user == "Guest":
@@ -127,19 +136,8 @@ def redirect_user_to_entry_portal():
     roles = set(frappe.get_roles(user))
     path = _resolve_login_redirect_path(user=user, roles=roles)
 
-    # Force canonical portal redirect even when login was initiated with an external
-    # redirect target (for example /app). Portal routing policy owns post-login landing.
-    if hasattr(frappe, "form_dict"):
-        frappe.form_dict["redirect_to"] = path
-        frappe.form_dict["redirect-to"] = path
-
-    frappe.local.response["home_page"] = path
-    frappe.local.response["redirect_to"] = path
-
-    # Browser login flows should hard-redirect to prevent Desk home routing from winning.
-    if _can_force_login_redirect():
-        frappe.local.flags.redirect_location = path
-        raise frappe.Redirect
+    # Force canonical portal target even when login was initiated with /app.
+    _set_login_redirect_state(path=path, login_manager=login_manager)
 
 
 @frappe.whitelist()
