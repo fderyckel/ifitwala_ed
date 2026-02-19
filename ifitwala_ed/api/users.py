@@ -16,6 +16,28 @@ from ifitwala_ed.routing.policy import (
 STAFF_ROLES = STAFF_PORTAL_ROLES
 
 
+def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: str) -> None:
+    """Temporary diagnostics for login redirect debugging."""
+    request = getattr(frappe, "request", None)
+    request_path = str(getattr(request, "path", "") or "")
+    cmd = str((getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()).get("cmd") or "")
+
+    payload = {
+        "stage": stage,
+        "user": user,
+        "roles": sorted(roles),
+        "resolved_path": path,
+        "has_active_employee_profile": _has_active_employee_profile(user=user, roles=roles),
+        "has_staff_portal_access": _has_staff_portal_access(user=user, roles=roles),
+        "request_path": request_path,
+        "cmd": cmd,
+    }
+    frappe.log_error(
+        title="LOGIN REDIRECT TRACE",
+        message=frappe.as_json(payload),
+    )
+
+
 def _set_login_redirect_state(*, path: str, login_manager=None) -> None:
     """
     Apply redirect state across all Frappe login response channels.
@@ -135,6 +157,8 @@ def redirect_user_to_entry_portal(login_manager=None):
     _self_heal_employee_user_link(user=user, roles=roles)
     roles = set(frappe.get_roles(user))
     path = _resolve_login_redirect_path(user=user, roles=roles)
+    stage = "on_session_creation" if login_manager is not None else "on_login"
+    _emit_login_redirect_trace(user=user, roles=roles, path=path, stage=stage)
 
     # Force canonical portal target even when login was initiated with /app.
     _set_login_redirect_state(path=path, login_manager=login_manager)
