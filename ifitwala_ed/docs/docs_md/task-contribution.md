@@ -4,9 +4,17 @@ slug: task-contribution
 category: Assessment
 doc_order: 9
 summary: "Store non-destructive grading contributions per submission version, then derive official outcomes through policy-aware services."
+seo_title: "Task Contribution: Teacher and Moderator Judgment Inputs"
+seo_description: "Store non-destructive grading contributions per submission version, then derive official outcomes through policy-aware services."
 ---
 
-# Task Contribution: Teacher and Moderator Judgment Inputs
+## Task Contribution: Teacher and Moderator Judgment Inputs
+
+## Before You Start (Prerequisites)
+
+- Create the target `Task Outcome` first.
+- Ensure contributor users and grading permissions are set for the delivery context.
+- If evidence-based grading is used, ensure at least one `Task Submission` version exists.
 
 `Task Contribution` captures who graded what, when, and against which submission version. It preserves collaboration history (self, review, moderation) without overwriting prior judgments.
 

@@ -4,9 +4,17 @@ slug: applicant-document
 category: Admission
 doc_order: 6
 summary: "Track each applicant document type, review status, and promotion relevance with strict immutability and governed file handling."
+seo_title: "Applicant Document: Governed Admission File Record"
+seo_description: "Track each applicant document type, review status, and promotion relevance with strict immutability and governed file handling."
 ---
 
-# Applicant Document: Governed Admission File Record
+## Applicant Document: Governed Admission File Record
+
+## Before You Start (Prerequisites)
+
+- Create the `Student Applicant` record first.
+- Create the relevant `Applicant Document Type` first.
+- Use governed upload/classification flows for attachments instead of direct ad-hoc file inserts.
 
 `Applicant Document` is the authoritative record for one document type submitted by one applicant. It is not just a file attachment row; it carries review and promotion semantics.
 

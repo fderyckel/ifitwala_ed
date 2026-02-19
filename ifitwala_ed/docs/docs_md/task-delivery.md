@@ -4,9 +4,17 @@ slug: task-delivery
 category: Assessment
 doc_order: 5
 summary: "Assign a task to a specific student group with dates, grading mode, and evidence rules, then generate student outcomes at scale."
+seo_title: "Task Delivery: Turning a Task into a Real Teaching Event"
+seo_description: "Assign a task to a specific student group with dates, grading mode, and evidence rules, then generate student outcomes at scale."
 ---
 
-# Task Delivery: Turning a Task into a Real Teaching Event
+## Task Delivery: Turning a Task into a Real Teaching Event
+
+## Before You Start (Prerequisites)
+
+- Create the `Task` first.
+- Create the `Student Group` first (with roster aligned to the teaching context).
+- Prepare grading setup first (`Grade Scale`, and criteria readiness if using criteria grading mode).
 
 `Task Delivery` is where a reusable task becomes real: for this group, in this context, on these dates, with these evidence and grading rules.
 

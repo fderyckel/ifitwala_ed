@@ -4,9 +4,17 @@ slug: applicant-document-type
 category: Admission
 doc_order: 5
 summary: "Define document taxonomy by organization/school and drive readiness checks, portal upload options, and file classification behavior."
+seo_title: "Applicant Document Type: Defining Required Admission Evidence"
+seo_description: "Define document taxonomy by organization/school and drive readiness checks, portal upload options, and file classification behavior."
 ---
 
-# Applicant Document Type: Defining Required Admission Evidence
+## Applicant Document Type: Defining Required Admission Evidence
+
+## Before You Start (Prerequisites)
+
+- Define your admissions document taxonomy and stable `code` values before go-live.
+- Create `Organization` first, and create `School` first if you plan school-scoped document types.
+- Confirm each document type `code` is mapped in governed upload slot logic; unmapped codes are rejected.
 
 `Applicant Document Type` is the admissions document catalog. It defines what applicants must provide and what staff reviews.
 

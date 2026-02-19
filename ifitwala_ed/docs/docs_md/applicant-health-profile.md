@@ -4,9 +4,17 @@ slug: applicant-health-profile
 category: Admission
 doc_order: 7
 summary: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
+seo_title: "Applicant Health Profile: Health Disclosure and Clearance"
+seo_description: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
 ---
 
-# Applicant Health Profile: Health Disclosure and Clearance
+## Applicant Health Profile: Health Disclosure and Clearance
+
+## Before You Start (Prerequisites)
+
+- Create the `Student Applicant` record first.
+- Decide your internal review process (`Pending`, `Needs Follow-Up`, `Cleared`) before staff start updating rows.
+- If family-side editing is used, ensure applicant portal access/linkage is already set up.
 
 `Applicant Health Profile` stores health and safeguarding information needed during admissions review.
 

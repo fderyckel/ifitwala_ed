@@ -4,9 +4,17 @@ slug: course-term-result
 category: Assessment
 doc_order: 11
 summary: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."
+seo_title: "Course Term Result: The Frozen Record of Term Performance"
+seo_description: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."
 ---
 
-# Course Term Result: The Frozen Record of Term Performance
+## Course Term Result: The Frozen Record of Term Performance
+
+## Before You Start (Prerequisites)
+
+- Create and configure the relevant `Reporting Cycle` first.
+- Ensure source grading truth exists (`Task Outcome` data in scope) before generation.
+- Generate/update results through reporting-cycle services; do not treat this as a hand-entered source doctype.
 
 `Course Term Result` is the durable term-level record generated from assessment outcomes. It is designed for reporting reliability, not live-grade experimentation.
 

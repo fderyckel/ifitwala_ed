@@ -4,9 +4,17 @@ slug: applicant-interview
 category: Admission
 doc_order: 8
 summary: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
+seo_title: "Applicant Interview: Structured Interview Evidence"
+seo_description: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
 ---
 
-# Applicant Interview: Structured Interview Evidence
+## Applicant Interview: Structured Interview Evidence
+
+## Before You Start (Prerequisites)
+
+- Create the `Student Applicant` record first.
+- Have interview date/time and participants prepared before creating the record.
+- Ensure interviewer users exist in the system for clean participant linkage.
 
 `Applicant Interview` captures interview evidence as part of admissions review. It formalizes interview context and leaves an audit trail on the applicant record.
 

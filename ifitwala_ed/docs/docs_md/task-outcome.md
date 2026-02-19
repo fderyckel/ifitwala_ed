@@ -4,9 +4,17 @@ slug: task-outcome
 category: Assessment
 doc_order: 7
 summary: "Maintain one authoritative outcome per student per delivery, with official scores/grades, criterion truth, statuses, and publication controls."
+seo_title: "Task Outcome: The Official Student-Level Assessment Record"
+seo_description: "Maintain one authoritative outcome per student per delivery, with official scores/grades, criterion truth, statuses, and publication controls."
 ---
 
-# Task Outcome: The Official Student-Level Assessment Record
+## Task Outcome: The Official Student-Level Assessment Record
+
+## Before You Start (Prerequisites)
+
+- Submit the parent `Task Delivery` first; outcomes are generated from delivery + student roster.
+- Ensure the student is part of the linked group at generation time.
+- Lock grading policy inputs at delivery level before active grading begins.
 
 `Task Outcome` is the institutional truth row for a student on a specific delivery. Submissions and contributions can evolve, but the outcome is where official status and released results live.
 

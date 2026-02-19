@@ -4,9 +4,17 @@ slug: task-submission
 category: Assessment
 doc_order: 8
 summary: "Capture append-only student evidence (files, text, links), enforce versioning, and keep outcomes and portfolio workflows synchronized."
+seo_title: "Task Submission: Versioned Student Evidence with Governance"
+seo_description: "Capture append-only student evidence (files, text, links), enforce versioning, and keep outcomes and portfolio workflows synchronized."
 ---
 
-# Task Submission: Versioned Student Evidence with Governance
+## Task Submission: Versioned Student Evidence with Governance
+
+## Before You Start (Prerequisites)
+
+- Create the target `Task Outcome` first.
+- Ensure submitter user identity is valid for the submission context.
+- If attachments are used, confirm governed upload handling is configured and used.
 
 `Task Submission` is the evidence layer. Students can submit and resubmit work over time, and every version is preserved so grading and moderation stay auditable.
 

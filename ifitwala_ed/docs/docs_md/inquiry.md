@@ -4,9 +4,17 @@ slug: inquiry
 category: Admission
 doc_order: 2
 summary: "Capture, assign, and track inquiry follow-up with SLA visibility, assignment ownership, and conversion into Student Applicant."
+seo_title: "Inquiry: Managing First Contact with Prospective Families"
+seo_description: "Capture, assign, and track inquiry follow-up with SLA visibility, assignment ownership, and conversion into Student Applicant."
 ---
 
-# Inquiry: Managing First Contact with Prospective Families
+## Inquiry: Managing First Contact with Prospective Families
+
+## Before You Start (Prerequisites)
+
+- Configure `Admission Settings` first so SLA and assignment behaviors are available.
+- Ensure `Organization`/`School` master data exists for scoped inquiries.
+- Ensure admissions users are set up before assignment/reassignment workflows begin.
 
 Every admission cycle starts with a first question. The `Inquiry` DocType turns that first message into a managed workflow instead of a loose email thread.
 

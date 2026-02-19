@@ -4,9 +4,17 @@ slug: assessment-criteria
 category: Assessment
 doc_order: 2
 summary: "Create reusable criteria and performance levels that power rubric-based grading across tasks, outcomes, moderation, and reporting."
+seo_title: "Assessment Criteria: Defining What Good Work Looks Like"
+seo_description: "Create reusable criteria and performance levels that power rubric-based grading across tasks, outcomes, moderation, and reporting."
 ---
 
-# Assessment Criteria: Defining What Good Work Looks Like
+## Assessment Criteria: Defining What Good Work Looks Like
+
+## Before You Start (Prerequisites)
+
+- Define rubric language and criterion naming standards first.
+- If you use course-group-aware naming, create `Course Group` records first.
+- Create reusable criteria before building `Task` templates that reference them.
 
 `Assessment Criteria` is where schools encode the quality standards behind grading. Instead of re-writing rubrics for every task, you define criteria once and reuse them across classes and years.
 

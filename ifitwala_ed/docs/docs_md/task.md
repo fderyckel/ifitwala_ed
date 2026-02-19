@@ -4,9 +4,17 @@ slug: task
 category: Assessment
 doc_order: 4
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
+seo_title: "Task: The Reusable Learning and Assessment Blueprint"
+seo_description: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
 ---
 
-# Task: The Reusable Learning and Assessment Blueprint
+## Task: The Reusable Learning and Assessment Blueprint
+
+## Before You Start (Prerequisites)
+
+- Create the default `Course` first (`default_course` is required).
+- Prepare supporting assessment masters first (`Assessment Category`, `Grade Scale`, reusable `Assessment Criteria`).
+- Stabilize task design before creating downstream `Task Delivery` records.
 
 `Task` is the design layer for learning work. It defines intent, instructions, and default assessment behavior, but it is not yet assigned to a class. That separation keeps teaching flexible and prevents accidental data duplication.
 

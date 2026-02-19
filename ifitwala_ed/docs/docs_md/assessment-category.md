@@ -4,9 +4,17 @@ slug: assessment-category
 category: Assessment
 doc_order: 1
 summary: "Define meaningful assessment buckets (Formative, Summative, Project, etc.) so teaching teams, analytics, and reporting speak the same language."
+seo_title: "Assessment Category: Classifying Learning Work Clearly"
+seo_description: "Define meaningful assessment buckets (Formative, Summative, Project, etc.) so teaching teams, analytics, and reporting speak the same language."
 ---
 
-# Assessment Category: Classifying Learning Work Clearly
+## Assessment Category: Classifying Learning Work Clearly
+
+## Before You Start (Prerequisites)
+
+- Agree the institution-wide assessment taxonomy (for example formative/summative/project) first.
+- Create categories before configuring `Course`, `Program`, and `Task` records that reference them.
+- Keep naming stable once categories are in active reporting use.
 
 Not every piece of student work should be treated the same. `Assessment Category` gives schools a shared vocabulary for classwork, projects, summatives, and other evidence types so decisions stay consistent across teams.
 

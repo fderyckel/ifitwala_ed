@@ -4,9 +4,44 @@ slug: student-applicant
 category: Admission
 doc_order: 4
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
+seo_title: "Student Applicant: The Admission Record of Truth"
+seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
 ---
 
-# Student Applicant: The Admission Record of Truth
+## Student Applicant: The Admission Record of Truth
+
+## Before You Start (Prerequisites)
+
+- Create `Organization` and `School` first (required anchors).
+- If you intend to require applicant consent, configure active applicant-scoped policies first (`Institutional Policy` + active `Policy Version`).
+- Define required document types and health/interview review workflow before approval/promotion decisions.
+
+### How Policy Acknowledgement Becomes Mandatory
+
+There is no manual toggle on `Student Applicant` for "policy required". It is computed automatically by server logic.
+
+Policy acknowledgement is mandatory for an applicant when at least one active policy candidate matches all of these conditions:
+
+1. `Institutional Policy.is_active = 1`
+2. `Policy Version.is_active = 1` for that policy
+3. `Institutional Policy.applies_to` includes `Applicant`
+4. Policy organization applies to the applicant organization scope (nearest ancestor policy per `policy_key` is selected)
+5. Policy school scope matches (`school` blank/global or equals applicant `school`)
+
+If no policy rows match those rules, policy acknowledgement is not required for that applicant.
+
+### How Admission Officer / Admission Manager Knows It Is Mandatory
+
+Use the applicant readiness outputs, not guesswork:
+
+1. Desk `Student Applicant` form:
+   - `Policies Summary` shows missing policy keys/titles when required acknowledgements are outstanding.
+   - `Review Snapshot` includes readiness issues from `get_readiness_snapshot`.
+2. Approval action:
+   - `Approve` is blocked by server guard (`approve_application` -> `_validate_ready_for_approval`) until required policy acknowledgements are complete.
+   - Error text includes missing policy acknowledgement details.
+3. Applicant portal:
+   - `/admissions` -> Policies page shows each required policy as `Pending acknowledgement` or `Acknowledged`.
 
 `Student Applicant` is the core admissions record in Ifitwala Ed. It is where intent becomes an application, review becomes decision, and decision becomes student promotion.
 
@@ -136,6 +171,38 @@ When admissions triggers invite-to-apply from an inquiry, the applicant is prefi
 
 This is deterministic server-side mapping in `from_inquiry_invite`, so teams avoid duplicate entry and keep source lineage.
 
+## Fresh Site / New School Prerequisites
+
+For a brand-new site or a newly onboarded school, this is what must exist before policy-aware applicant workflow behaves correctly.
+
+### Minimum to create the first Student Applicant
+
+1. Admissions staff user with admissions role (`Admission Officer` or `Admission Manager`), because server validation blocks non-admissions creation.
+2. A valid `Organization` and `School` pair, because `Student Applicant` requires both and locks them after insert.
+3. Applicant identity fields (`first_name`, `last_name`) from the doctype required fields.
+
+### Required for policy-governed admissions flow
+
+1. `Institutional Policy` rows scoped to the applicant organization/school:
+   - `is_active = 1`
+   - `applies_to` includes `Applicant`
+   - organization scope aligns with school organization ancestry
+2. At least one active `Policy Version` per policy that should be acknowledged:
+   - `institutional_policy` points to active policy
+   - `is_active = 1`
+3. Schema is migrated with `Institutional Policy.applies_to` present, or policy resolution/readiness fails (`Policy schema mismatch`).
+
+### Required for approval-readiness path
+
+1. Required `Applicant Document Type` records are configured (`is_required = 1`, `is_active = 1`) for the organization/school scope you expect.
+2. Applicant has corresponding `Applicant Document` rows and required ones reach `review_status = Approved`.
+3. `Applicant Health Profile.review_status = Cleared`.
+
+### Optional but commonly expected in production
+
+1. Media consent policy chain (`policy_key = media_consent` + active version + acknowledgement), if you expect applicant image publish behavior during promotion.
+2. Applicant portal invite flow (`invite_applicant`) so families can acknowledge policies in `/admissions`.
+
 ## Technical Notes (IT)
 
 - **DocType**: `Student Applicant` (`ifitwala_ed/admission/doctype/student_applicant/`)
@@ -261,4 +328,6 @@ Runtime controller rules (server):
 - [**Applicant Document**](/docs/en/applicant-document/) - governed admissions files
 - [**Applicant Health Profile**](/docs/en/applicant-health-profile/) - health review component
 - [**Applicant Interview**](/docs/en/applicant-interview/) - interview evidence component
-- **Institutional Policy / Policy Version / Policy Acknowledgement** - readiness policy source chain used by `has_required_policies()` and portal policy API
+- [**Institutional Policy**](/docs/en/institutional-policy/) - policy identity/scope used by applicant readiness
+- [**Policy Version**](/docs/en/policy-version/) - active legal text source for applicant policy cards
+- [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) - acknowledgement evidence rows tied to applicant context

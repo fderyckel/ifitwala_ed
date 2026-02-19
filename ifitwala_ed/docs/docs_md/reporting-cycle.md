@@ -4,9 +4,17 @@ slug: reporting-cycle
 category: Assessment
 doc_order: 10
 summary: "Define reporting scope and lifecycle, then generate/freeze term results with explicit cutoffs and governance controls."
+seo_title: "Reporting Cycle: Controlling When Grades Become Official Term Truth"
+seo_description: "Define reporting scope and lifecycle, then generate/freeze term results with explicit cutoffs and governance controls."
 ---
 
-# Reporting Cycle: Controlling When Grades Become Official Term Truth
+## Reporting Cycle: Controlling When Grades Become Official Term Truth
+
+## Before You Start (Prerequisites)
+
+- Create `School`, `Academic Year`, and `Term` records first for cycle scope.
+- Ensure grading activity exists in that scope (`Task Outcome` data) before recalculation/report generation.
+- Set cutoff and instructor-edit-close dates before locking or publishing a cycle.
 
 `Reporting Cycle` is the control point between live assessment activity and official term reporting. It determines scope, timing, and state transitions for term-grade production.
 

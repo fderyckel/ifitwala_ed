@@ -4,9 +4,17 @@ slug: grade-scale
 category: Assessment
 doc_order: 3
 summary: "Define grade boundaries once and apply them consistently across tasks, outcomes, moderation, and term reporting."
+seo_title: "Grade Scale: Converting Scores into Institutional Meaning"
+seo_description: "Define grade boundaries once and apply them consistently across tasks, outcomes, moderation, and term reporting."
 ---
 
-# Grade Scale: Converting Scores into Institutional Meaning
+## Grade Scale: Converting Scores into Institutional Meaning
+
+## Before You Start (Prerequisites)
+
+- Finalize institutional grading policy and band boundaries first.
+- Create scales and interval boundaries before running grading flows (`Task Delivery`, `Task Outcome`, reporting).
+- Set scale defaults on curriculum/scheduling masters (`Program`, `Course`) for consistent downstream prefill.
 
 A score by itself is not policy. `Grade Scale` turns raw numbers into grade symbols and descriptors your institution stands behind.
 

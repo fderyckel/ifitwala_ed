@@ -4,9 +4,17 @@ slug: registration-of-interest
 category: Admission
 doc_order: 3
 summary: "Capture family and student intent early, route it into admissions operations, and keep response timing visible."
+seo_title: "Registration of Interest: Early Lead Capture Before Full Application"
+seo_description: "Capture family and student intent early, route it into admissions operations, and keep response timing visible."
 ---
 
-# Registration of Interest: Early Lead Capture Before Full Application
+## Registration of Interest: Early Lead Capture Before Full Application
+
+## Before You Start (Prerequisites)
+
+- Configure `Admission Settings` first so SLA deadlines are set consistently.
+- Ensure lookup masters exist (`Organization`, `School`, and intended academic structures used on the form).
+- Ensure admissions team users are ready to own and follow up new submissions.
 
 `Registration of Interest` is the lightweight front door for families who are not ready for a full application but want to start the conversation.
 

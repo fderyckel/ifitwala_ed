@@ -4,9 +4,17 @@ slug: admission-settings
 category: Admission
 doc_order: 1
 summary: "Configure response SLAs, assignment colors, and background SLA checks for the full admissions pipeline."
+seo_title: "Admission Settings: SLA and Assignment Controls"
+seo_description: "Configure response SLAs, assignment colors, and background SLA checks for the full admissions pipeline."
 ---
 
-# Admission Settings: SLA and Assignment Controls
+## Admission Settings: SLA and Assignment Controls
+
+## Before You Start (Prerequisites)
+
+- Ensure your admissions team users and roles are in place (`Admission Manager` / `Admission Officer`).
+- Confirm you will run admissions through `Inquiry` and/or `Registration of Interest` so SLA settings are actually used.
+- Align SLA values and assignment color conventions with operations before enabling checks.
 
 Admission teams move fast, and missed follow-ups are expensive. `Admission Settings` is the control center that keeps Inquiry and Registration workflows time-bound and visible.
 
