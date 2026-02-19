@@ -136,32 +136,35 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
 
 def redirect_user_to_entry_portal(login_manager=None):
     """
-    Login redirect handler: Routes users to role-appropriate portal entry point.
+    Login redirect handler: sets LoginManager.home_page only.
 
-    Policy:
-    - Admissions Applicants -> /admissions
-    - Active employees and staff-role users -> /portal/staff
-    - Students -> /portal/student
-    - Guardians -> /portal/guardian
-    - Fallback -> /portal/staff
+    Bound to both:
+        - on_login
+        - on_session_creation
 
-    Login redirect is response-only (no User.home_page write in the login flow).
-    The same handler is bound to both on_login and on_session_creation so the
-    target survives downstream Desk home-page resolution.
+    We rely exclusively on LoginManager.home_page so Desk login
+    respects the redirect target instead of falling back to /app.
     """
+
     user = frappe.session.user
     if not user or user == "Guest":
         return
 
     roles = set(frappe.get_roles(user))
+
+    # Heal link before resolving final roles
     _self_heal_employee_user_link(user=user, roles=roles)
     roles = set(frappe.get_roles(user))
+
     path = _resolve_login_redirect_path(user=user, roles=roles)
-    stage = "on_session_creation" if login_manager is not None else "on_login"
+
+    # Diagnostic (optional — remove once stable)
+    stage = "on_session_creation" if login_manager else "on_login"
     _emit_login_redirect_trace(user=user, roles=roles, path=path, stage=stage)
 
-    # Force canonical portal target even when login was initiated with /app.
-    _set_login_redirect_state(path=path, login_manager=login_manager)
+    # The only thing that matters for Desk login:
+    if login_manager:
+        login_manager.home_page = path
 
 
 @frappe.whitelist()
