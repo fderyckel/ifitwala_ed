@@ -6,21 +6,17 @@
 import frappe
 from frappe import _, bold
 from frappe.model.document import Document
-from frappe.utils import flt, format_date, get_link_to_form, getdate
+from frappe.utils import flt, get_link_to_form, getdate
 
 from ifitwala_ed.accounting.ledger_utils import make_gl_entries as make_ifitwala_gl_entries
 from ifitwala_ed.hr.doctype.leave_application.leave_application import get_leaves_for_period
 from ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry import create_leave_ledger_entry
 from ifitwala_ed.hr.utils import set_employee_name, validate_active_employee
 
-try:
-    from hrms.payroll.doctype.salary_structure_assignment.salary_structure_assignment import (  # type: ignore
-        get_assigned_salary_structure,
-    )
-except Exception:
 
-    def get_assigned_salary_structure(*_args, **_kwargs):
-        return None
+def get_assigned_salary_structure(*_args, **_kwargs):
+    """Payroll is not part of ifitwala_ed yet."""
+    return None
 
 
 class LeaveEncashment(Document):
@@ -38,12 +34,6 @@ class LeaveEncashment(Document):
 
     def set_salary_structure(self):
         self._salary_structure = get_assigned_salary_structure(self.employee, self.encashment_date)
-        if not self._salary_structure:
-            frappe.throw(
-                _("No Salary Structure assigned to Employee {0} on the given date {1}").format(
-                    self.employee, frappe.bold(format_date(self.encashment_date))
-                )
-            )
 
     def before_submit(self):
         if not self.encashment_amount or self.encashment_amount <= 0:
@@ -62,7 +52,7 @@ class LeaveEncashment(Document):
         self.create_leave_ledger_entry()
 
     def on_cancel(self):
-        if self.additional_salary:
+        if self.additional_salary and frappe.db.exists("DocType", "Additional Salary"):
             frappe.get_doc("Additional Salary", self.additional_salary).cancel()
             self.db_set("additional_salary", "")
 
@@ -154,6 +144,10 @@ class LeaveEncashment(Document):
         self.leave_allocation = allocation.name
 
     def create_additional_salary(self):
+        if not frappe.db.exists("DocType", "Additional Salary"):
+            self.db_set("additional_salary", "")
+            return
+
         additional_salary = frappe.new_doc("Additional Salary")
         employee_org = frappe.get_value("Employee", self.employee, "organization")
         if additional_salary.meta.has_field("organization"):
@@ -164,7 +158,8 @@ class LeaveEncashment(Document):
         additional_salary.currency = self.currency
         earning_component = frappe.get_value("Leave Type", self.leave_type, "earning_component")
         if not earning_component:
-            frappe.throw(_("Please set Earning Component for Leave type: {0}.").format(self.leave_type))
+            self.db_set("additional_salary", "")
+            return
         additional_salary.salary_component = earning_component
         additional_salary.payroll_date = self.encashment_date
         additional_salary.amount = self.encashment_amount
@@ -185,6 +180,16 @@ class LeaveEncashment(Document):
     def set_encashment_amount(self):
         if not hasattr(self, "_salary_structure"):
             self.set_salary_structure()
+
+        if not self._salary_structure:
+            self.encashment_amount = 0
+            return
+
+        if not frappe.db.exists("DocType", "Salary Structure Assignment") or not frappe.db.exists(
+            "DocType", "Salary Structure"
+        ):
+            self.encashment_amount = 0
+            return
 
         per_day_encashment = frappe.get_value(
             "Salary Structure Assignment",

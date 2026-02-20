@@ -81,6 +81,7 @@ import { Spinner } from 'frappe-ui';
 import { createAdmissionsService } from '@/lib/services/admissions/admissionsService';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { useAdmissionsSession } from '@/composables/useAdmissionsSession';
+import { __ } from '@/lib/i18n';
 import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals';
 import type { Response as HealthResponse } from '@/types/contracts/admissions/get_applicant_health';
 

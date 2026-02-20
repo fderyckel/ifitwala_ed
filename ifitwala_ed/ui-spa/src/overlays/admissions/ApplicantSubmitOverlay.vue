@@ -121,6 +121,7 @@ import {
 import { FeatherIcon, Spinner } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { __ } from '@/lib/i18n';
 import { createAdmissionsService } from '@/lib/services/admissions/admissionsService';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';

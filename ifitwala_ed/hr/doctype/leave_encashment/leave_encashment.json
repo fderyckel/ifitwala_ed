@@ -131,10 +131,9 @@
   },
   {
    "fieldname": "additional_salary",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Additional Salary",
    "no_copy": 1,
-   "options": "Additional Salary",
    "read_only": 1
   },
   {

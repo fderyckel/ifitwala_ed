@@ -80,6 +80,7 @@ import { Spinner } from 'frappe-ui';
 import { createAdmissionsService } from '@/lib/services/admissions/admissionsService';
 import { useAdmissionsSession } from '@/composables/useAdmissionsSession';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { __ } from '@/lib/i18n';
 import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals';
 import type { Response as ApplicantSnapshot } from '@/types/contracts/admissions/get_applicant_snapshot';
 

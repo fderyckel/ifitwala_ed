@@ -23,6 +23,7 @@
 import { computed } from 'vue';
 
 import { useAdmissionsSession } from '@/composables/useAdmissionsSession';
+import { __ } from '@/lib/i18n';
 
 const { session } = useAdmissionsSession();
 

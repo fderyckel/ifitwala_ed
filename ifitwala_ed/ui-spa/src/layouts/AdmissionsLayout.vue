@@ -113,6 +113,7 @@ import { useRoute, RouterLink } from 'vue-router';
 import { Spinner } from 'frappe-ui';
 
 import { provideAdmissionsSession } from '@/composables/useAdmissionsSession';
+import { __ } from '@/lib/i18n';
 import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals';
 
 const route = useRoute();

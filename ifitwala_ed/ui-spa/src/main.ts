@@ -5,6 +5,7 @@ import App from './App.vue';
 import router from './router';
 import { FrappeUI, setConfig } from 'frappe-ui';
 import { setupFrappeUI } from './resources/frappe';
+import { installI18nBridge } from './lib/i18n';
 
 // Tailwind entry + portal styles
 import './style.css';
@@ -29,6 +30,8 @@ async function bootstrap() {
       connectSocket: false, // We manually configured 'realtime' above
     })
     .use(router)
+
+  installI18nBridge(app)
 
   await router.isReady()
 

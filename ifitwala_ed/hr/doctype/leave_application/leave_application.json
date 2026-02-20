@@ -222,9 +222,8 @@
   },
   {
    "fieldname": "salary_slip",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Salary Slip",
-   "options": "Salary Slip",
    "print_hide": 1
   },
   {

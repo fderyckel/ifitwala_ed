@@ -5,6 +5,7 @@ import AdmissionsApp from './AdmissionsApp.vue'
 import router from '@/router/admissions'
 import { FrappeUI, setConfig } from 'frappe-ui'
 import { setupFrappeUI } from '@/lib/frappe'
+import { installI18nBridge } from '@/lib/i18n'
 
 // Tailwind entry + shared app styles
 import '../style.css'
@@ -26,6 +27,8 @@ async function bootstrap() {
       connectSocket: false,
     })
     .use(router)
+
+  installI18nBridge(app)
 
   await router.isReady()
   app.mount('#app')

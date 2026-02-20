@@ -94,6 +94,7 @@ import { Spinner } from 'frappe-ui';
 import { createAdmissionsService } from '@/lib/services/admissions/admissionsService';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { useAdmissionsSession } from '@/composables/useAdmissionsSession';
+import { __ } from '@/lib/i18n';
 import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals';
 import type { ApplicantDocument } from '@/types/contracts/admissions/types';
 import type { Response as DocumentTypesResponse } from '@/types/contracts/admissions/list_applicant_document_types';
