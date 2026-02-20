@@ -8,6 +8,7 @@ import os
 import frappe
 
 from ifitwala_ed.routing.policy import (
+    ADMISSIONS_APPLICANT_ROLE,
     build_login_redirect,
     canonical_path_for_section,
     log_legacy_portal_hit,
@@ -52,6 +53,9 @@ def get_context(context):
         _redirect(build_login_redirect(target))
 
     roles = set(frappe.get_roles(user))
+    if ADMISSIONS_APPLICANT_ROLE in roles:
+        _redirect("/admissions")
+
     sections = resolve_portal_sections(user=user, roles=roles)
     requested_section = resolve_section_from_path(path)
     default_section = resolve_default_portal_section(

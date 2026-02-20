@@ -252,7 +252,7 @@ def _make_school(organization):
         {
             "doctype": "School",
             "school_name": f"School {frappe.generate_hash(length=6)}",
-            "abbr": f"SCH{frappe.generate_hash(length=4)}",
+            "abbr": f"S{frappe.generate_hash(length=4)}",
             "organization": organization.name,
         }
     )
@@ -296,7 +296,12 @@ def _make_student(prefix):
             "student_email": f"{frappe.generate_hash(length=8)}@example.com",
         }
     )
-    student.insert()
+    previous_in_migration = bool(getattr(frappe.flags, "in_migration", False))
+    frappe.flags.in_migration = True
+    try:
+        student.insert()
+    finally:
+        frappe.flags.in_migration = previous_in_migration
     return student
 
 

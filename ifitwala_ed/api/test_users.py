@@ -5,6 +5,7 @@
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from frappe.utils import nowdate
 
 from ifitwala_ed.api.users import (
     STAFF_ROLES,
@@ -58,13 +59,6 @@ class TestUserRedirect(FrappeTestCase):
         user.add_roles("Admissions Applicant")
         user.save()
 
-        # Create Student Applicant record linked to user
-        applicant = frappe.new_doc("Student Applicant")
-        applicant.first_name = "Test"
-        applicant.last_name = "Applicant"
-        applicant.applicant_user = user.email
-        applicant.save()
-
         # Simulate login
         frappe.set_user(user.email)
         frappe.local.response = {}
@@ -78,7 +72,6 @@ class TestUserRedirect(FrappeTestCase):
 
         # Cleanup
         frappe.set_user("Administrator")
-        frappe.delete_doc("Student Applicant", applicant.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
     def test_login_redirect_does_not_persist_user_home_page(self):
@@ -141,6 +134,7 @@ class TestUserRedirect(FrappeTestCase):
         employee = frappe.new_doc("Employee")
         employee.first_name = "Override"
         employee.last_name = "Redirect"
+        employee.date_of_joining = nowdate()
         employee.user_id = user.email
         employee.employment_status = "Active"
         employee.save()
@@ -173,6 +167,7 @@ class TestUserRedirect(FrappeTestCase):
         employee = frappe.new_doc("Employee")
         employee.first_name = "Home"
         employee.last_name = "Page"
+        employee.date_of_joining = nowdate()
         employee.user_id = user.email
         employee.employment_status = "Active"
         employee.save()
@@ -213,6 +208,7 @@ class TestUserRedirect(FrappeTestCase):
         guardian.guardian_first_name = "Test"
         guardian.guardian_last_name = "Guardian"
         guardian.guardian_email = user.email
+        guardian.guardian_mobile_phone = "5550000001"
         guardian.user = user.email
         guardian.save()
 
@@ -245,11 +241,16 @@ class TestUserRedirect(FrappeTestCase):
 
         # Create Student record linked to user
         student = frappe.new_doc("Student")
-        student.first_name = "Test"
-        student.last_name = "Student"
+        student.student_first_name = "Test"
+        student.student_last_name = "Student"
         student.student_email = user.email
         student.student_user_id = user.email
-        student.save()
+        previous_in_import = bool(getattr(frappe.flags, "in_import", False))
+        frappe.flags.in_import = True
+        try:
+            student.save()
+        finally:
+            frappe.flags.in_import = previous_in_import
 
         # Simulate login
         frappe.set_user(user.email)
@@ -282,6 +283,7 @@ class TestUserRedirect(FrappeTestCase):
         employee = frappe.new_doc("Employee")
         employee.first_name = "Test"
         employee.last_name = "Staff"
+        employee.date_of_joining = nowdate()
         employee.user_id = user.email
         employee.employment_status = "Active"
         employee.save()
@@ -356,6 +358,7 @@ class TestUserRedirect(FrappeTestCase):
         employee = frappe.new_doc("Employee")
         employee.first_name = "Active"
         employee.last_name = "Employee"
+        employee.date_of_joining = nowdate()
         employee.user_id = user.email
         employee.employment_status = "Active"
         employee.save()
@@ -385,6 +388,7 @@ class TestUserRedirect(FrappeTestCase):
         employee = frappe.new_doc("Employee")
         employee.first_name = "Temporary"
         employee.last_name = "Leave"
+        employee.date_of_joining = nowdate()
         employee.user_id = user.email
         employee.employment_status = "Temporary Leave"
         employee.save()
@@ -414,6 +418,7 @@ class TestUserRedirect(FrappeTestCase):
         employee = frappe.new_doc("Employee")
         employee.first_name = "Self"
         employee.last_name = "Heal"
+        employee.date_of_joining = nowdate()
         employee.employee_professional_email = user.email
         employee.employment_status = "Active"
         employee.save()
@@ -444,6 +449,7 @@ class TestUserRedirect(FrappeTestCase):
         employee = frappe.new_doc("Employee")
         employee.first_name = "Unlinked"
         employee.last_name = "Active"
+        employee.date_of_joining = nowdate()
         employee.employee_professional_email = user.email
         employee.employment_status = "Active"
         employee.save()
@@ -488,6 +494,7 @@ class TestUserRedirect(FrappeTestCase):
         employee = frappe.new_doc("Employee")
         employee.first_name = "Web"
         employee.last_name = "Home"
+        employee.date_of_joining = nowdate()
         employee.user_id = user.email
         employee.employment_status = "Active"
         employee.save()
@@ -512,6 +519,7 @@ class TestUserRedirect(FrappeTestCase):
         employee = frappe.new_doc("Employee")
         employee.first_name = "Logout"
         employee.last_name = "Safe"
+        employee.date_of_joining = nowdate()
         employee.user_id = user.email
         employee.employment_status = "Active"
         employee.save()
