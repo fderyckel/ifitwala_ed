@@ -3,15 +3,60 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.accounting.tests.factories import make_account, make_organization
-
 
 class TestAccount(FrappeTestCase):
-    def test_receivable_account_must_be_asset(self):
-        org = make_organization("Acct")
+    def make_organization(self, prefix="Org"):
+        org = frappe.get_doc(
+            {
+                "doctype": "Organization",
+                "organization_name": f"{prefix} {frappe.generate_hash(length=6)}",
+                "abbr": f"O{frappe.generate_hash(length=4)}",
+            }
+        )
+        org.insert()
+        return org
+
+    def make_account(
+        self,
+        organization,
+        root_type,
+        account_type=None,
+        is_group=0,
+        parent_account=None,
+        prefix="Account",
+    ):
+        doc = {
+            "doctype": "Account",
+            "organization": organization,
+            "account_name": f"{prefix} {frappe.generate_hash(length=6)}",
+            "root_type": root_type,
+            "is_group": 1 if is_group else 0,
+        }
+        if account_type:
+            doc["account_type"] = account_type
+        if parent_account:
+            doc["parent_account"] = parent_account
+
+        account = frappe.get_doc(doc)
+        account.insert()
+        return account
+
+    def test_tax_account_must_be_liability(self):
+        org = self.make_organization("Tax")
 
         with self.assertRaises(frappe.ValidationError):
-            make_account(
+            self.make_account(
+                organization=org.name,
+                root_type="Asset",
+                account_type="Tax",
+                prefix="Bad Tax",
+            )
+
+    def test_receivable_account_must_be_asset(self):
+        org = self.make_organization("Acct")
+
+        with self.assertRaises(frappe.ValidationError):
+            self.make_account(
                 organization=org.name,
                 root_type="Liability",
                 account_type="Receivable",
@@ -19,9 +64,9 @@ class TestAccount(FrappeTestCase):
             )
 
     def test_parent_account_must_match_organization(self):
-        org_a = make_organization("Parent")
-        org_b = make_organization("Child")
-        parent = make_account(
+        org_a = self.make_organization("Parent")
+        org_b = self.make_organization("Child")
+        parent = self.make_account(
             organization=org_a.name,
             root_type="Income",
             is_group=1,
@@ -29,7 +74,7 @@ class TestAccount(FrappeTestCase):
         )
 
         with self.assertRaises(frappe.ValidationError):
-            make_account(
+            self.make_account(
                 organization=org_b.name,
                 root_type="Income",
                 parent_account=parent.name,
@@ -37,8 +82,8 @@ class TestAccount(FrappeTestCase):
             )
 
     def test_parent_account_must_match_root_type(self):
-        org = make_organization("Root")
-        parent = make_account(
+        org = self.make_organization("Root")
+        parent = self.make_account(
             organization=org.name,
             root_type="Income",
             is_group=1,
@@ -46,7 +91,7 @@ class TestAccount(FrappeTestCase):
         )
 
         with self.assertRaises(frappe.ValidationError):
-            make_account(
+            self.make_account(
                 organization=org.name,
                 root_type="Expense",
                 parent_account=parent.name,
