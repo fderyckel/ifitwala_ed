@@ -9,10 +9,6 @@ $.extend(ifitwala_ed.queries, {
 		return { query: 'frappe.core.doctype.user.user.user_query' };
 	},
 
-	//task: function () {
-	//	return { query: "erpnext.projects.utils.query_task" };
-	//},
-
 	contact_query: function (doc) {
 		if (frappe.dynamic_link) {
 			if (!doc[frappe.dynamic_link.fieldname]) {
