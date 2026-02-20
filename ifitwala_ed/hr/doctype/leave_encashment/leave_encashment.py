@@ -1,3 +1,4 @@
+# ifitwala_ed/hr/doctype/leave_encashment/leave_encashment.py
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -7,19 +8,7 @@ from frappe import _, bold
 from frappe.model.document import Document
 from frappe.utils import flt, format_date, get_link_to_form, getdate
 
-try:
-    from erpnext.accounts.general_ledger import make_gl_entries
-except Exception:
-
-    def make_gl_entries(*_args, **_kwargs):
-        frappe.throw(_("Leave Encashment accounting requires ERPNext Accounts module."))
-
-
-try:
-    from erpnext.controllers.accounts_controller import AccountsController
-except Exception:
-    AccountsController = Document
-
+from ifitwala_ed.accounting.ledger_utils import make_gl_entries as make_ifitwala_gl_entries
 from ifitwala_ed.hr.doctype.leave_application.leave_application import get_leaves_for_period
 from ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry import create_leave_ledger_entry
 from ifitwala_ed.hr.utils import set_employee_name, validate_active_employee
@@ -34,7 +23,7 @@ except Exception:
         return None
 
 
-class LeaveEncashment(AccountsController):
+class LeaveEncashment(Document):
     def validate(self):
         if not frappe.db.get_single_value("HR Settings", "enable_leave_encashment"):
             frappe.throw(_("Leave Encashment is disabled in HR Settings."))
@@ -307,44 +296,36 @@ class LeaveEncashment(AccountsController):
 
     def create_gl_entries(self, cancel=False):
         gl_entries = self.get_gl_entries()
-        make_gl_entries(gl_entries, cancel)
+        make_ifitwala_gl_entries(gl_entries, self.doctype, self.name, cancel=cancel)
 
     def get_gl_entries(self):
-        gl_entry = []
+        posting_date = self.posting_date or self.encashment_date
+        remarks = self.get("remarks") or _("Leave Encashment")
 
-        # payable entry
-        gl_entry.append(
-            self.get_gl_dict(
-                {
-                    "account": self.payable_account,
-                    "credit": self.encashment_amount,
-                    "credit_in_account_currency": self.encashment_amount,
-                    "against": self.expense_account,
-                    "party_type": "Employee",
-                    "party": self.employee,
-                    "against_voucher_type": self.doctype,
-                    "against_voucher": self.name,
-                    "cost_center": self.cost_center,
-                },
-                item=self,
-            )
-        )
-
-        # expense entry
-        gl_entry.append(
-            self.get_gl_dict(
-                {
-                    "account": self.expense_account,
-                    "debit": self.encashment_amount,
-                    "debit_in_account_currency": self.encashment_amount,
-                    "against": self.payable_account,
-                    "cost_center": self.cost_center,
-                },
-                item=self,
-            )
-        )
-
-        return gl_entry
+        return [
+            {
+                "organization": self.organization,
+                "posting_date": posting_date,
+                "account": self.payable_account,
+                "party_type": "Employee",
+                "party": self.employee,
+                "against": self.expense_account,
+                "remarks": remarks,
+                "debit": 0,
+                "credit": self.encashment_amount,
+            },
+            {
+                "organization": self.organization,
+                "posting_date": posting_date,
+                "account": self.expense_account,
+                "party_type": None,
+                "party": None,
+                "against": self.payable_account,
+                "remarks": remarks,
+                "debit": self.encashment_amount,
+                "credit": 0,
+            },
+        ]
 
     def on_discard(self):
         self.db_set("status", "Cancelled")
