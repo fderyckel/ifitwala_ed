@@ -1,4 +1,4 @@
-<!-- ifitwala_ed/ifitwala_ed/ui-spa/src/App.vue -->
+<!-- ifitwala_ed/ui-spa/src/apps/portal/PortalApp.vue -->
 
 <template>
 	<!-- ✅ One canonical overlay root for the whole SPA -->
@@ -16,8 +16,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
-import PortalLayout from './layouts/PortalLayout.vue';
-import StaffPortalLayout from './layouts/StaffPortalLayout.vue';
+import PortalLayout from '@/layouts/PortalLayout.vue';
+import StaffPortalLayout from '@/layouts/StaffPortalLayout.vue';
 import OverlayHost from '@/overlays/OverlayHost.vue';
 
 const route = useRoute();

@@ -1,15 +1,15 @@
-// ifitwala_ed/ui-spa/src/main.ts
+// ifitwala_ed/ui-spa/src/apps/portal/main.ts
 
 import { createApp } from 'vue';
-import App from './App.vue';
-import router from './router';
+import PortalApp from './PortalApp.vue';
+import router from '@/router';
 import { FrappeUI, setConfig } from 'frappe-ui';
-import { setupFrappeUI } from './resources/frappe';
-import { installI18nBridge } from './lib/i18n';
+import { setupFrappeUI } from '@/resources/frappe';
+import { installI18nBridge } from '@/lib/i18n';
 
 // Tailwind entry + portal styles
-import './style.css';
-import './styles/app.css';
+import '@/style.css';
+import '@/styles/app.css';
 
 // PRODUCTION CONFIGURATION:
 // Point to the current origin (web server).
@@ -24,7 +24,7 @@ setConfig('realtime', {
 async function bootstrap() {
   await setupFrappeUI();
 
-  const app = createApp(App)
+  const app = createApp(PortalApp)
     .use(FrappeUI, {
       useSession: true,
       connectSocket: false, // We manually configured 'realtime' above

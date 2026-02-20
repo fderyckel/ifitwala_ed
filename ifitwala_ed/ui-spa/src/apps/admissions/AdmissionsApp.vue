@@ -1,4 +1,4 @@
-<!-- ifitwala_ed/ui-spa/src/admissions/AdmissionsApp.vue -->
+<!-- ifitwala_ed/ui-spa/src/apps/admissions/AdmissionsApp.vue -->
 
 <template>
 	<div id="overlay-root"></div>

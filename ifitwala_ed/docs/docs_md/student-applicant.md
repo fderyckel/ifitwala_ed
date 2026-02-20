@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.2.0"
+version: "1.2.1"
 last_change_date: "2026-02-20"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -284,7 +284,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - form logic/buttons/readiness widgets in `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`
   - workspace cards in `ifitwala_ed/admission/workspace/admission/admission.json`
 - **Admissions portal SPA surfaces**:
-  - entrypoint `ifitwala_ed/ui-spa/src/admissions/main.ts`
+  - entrypoint `ifitwala_ed/ui-spa/src/apps/admissions/main.ts`
   - router `ifitwala_ed/ui-spa/src/router/admissions.ts` (history base `/admissions`)
   - pages:
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantOverview.vue`

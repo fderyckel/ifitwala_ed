@@ -17,8 +17,8 @@ PUBLIC_BASE = f"/assets/{APP}/vite/"
 
 ADMISSIONS_ROLE = "Admissions Applicant"
 ADMISSIONS_ENTRY_KEYS = [
-    "src/admissions/main.ts",
-    "src/admissions/main.js",
+    "src/apps/admissions/main.ts",
+    "src/apps/admissions/main.js",
     "index.html",
 ]
 

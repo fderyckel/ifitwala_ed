@@ -24,8 +24,8 @@ export default defineConfig({
 		manifest: true,
 		rollupOptions: {
 			input: {
-				'src/main.ts': path.resolve(__dirname, 'src/main.ts'),
-				'src/admissions/main.ts': path.resolve(__dirname, 'src/admissions/main.ts'),
+				'src/apps/portal/main.ts': path.resolve(__dirname, 'src/apps/portal/main.ts'),
+				'src/apps/admissions/main.ts': path.resolve(__dirname, 'src/apps/admissions/main.ts'),
 			},
 			output: {
 				entryFileNames: 'assets/[name].[hash].js',

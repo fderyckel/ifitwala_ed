@@ -1,4 +1,4 @@
-// ifitwala_ed/ui-spa/src/admissions/main.ts
+// ifitwala_ed/ui-spa/src/apps/admissions/main.ts
 
 import { createApp } from 'vue'
 import AdmissionsApp from './AdmissionsApp.vue'
@@ -8,8 +8,8 @@ import { setupFrappeUI } from '@/lib/frappe'
 import { installI18nBridge } from '@/lib/i18n'
 
 // Tailwind entry + shared app styles
-import '../style.css'
-import '../styles/app.css'
+import '@/style.css'
+import '@/styles/app.css'
 
 setConfig('realtime', {
   url: window.location.origin,

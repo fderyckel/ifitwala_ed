@@ -34,7 +34,7 @@ def _load_assets():
         app_name=APP,
         manifest_paths=MANIFEST_PATHS,
         public_base=PUBLIC_BASE,
-        entry_keys=["index.html", "src/main.ts", "src/main.js"],
+        entry_keys=["index.html", "src/apps/portal/main.ts", "src/apps/portal/main.js"],
     )
 
 

@@ -28,7 +28,7 @@ def get_vite_assets(
     if not manifest:
         return (f"{public_base}main.js", [], [])
 
-    candidates = entry_keys or ["index.html", "src/main.ts", "src/main.js"]
+    candidates = entry_keys or ["index.html", "src/apps/portal/main.ts", "src/apps/portal/main.js"]
     entry = None
     for key in candidates:
         if key in manifest:
