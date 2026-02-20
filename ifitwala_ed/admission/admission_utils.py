@@ -8,7 +8,7 @@ import frappe
 from frappe import _
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.desk.form.assign_to import remove as remove_assignment
-from frappe.utils import add_days, getdate, now, nowdate
+from frappe.utils import add_days, getdate, now, nowdate, validate_email_address
 from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
 
 ADMISSIONS_ROLES = {"Admission Manager", "Admission Officer"}
@@ -256,6 +256,146 @@ def _get_organization_scope(organization: str | None) -> list[str]:
 
     descendants = get_descendants_of("Organization", organization) or []
     return [organization, *[org for org in descendants if org and org != organization]]
+
+
+def normalize_email_value(email: str | None) -> str:
+    return (email or "").strip().lower()
+
+
+def get_contact_email_options(contact_name: str | None) -> list[str]:
+    contact_name = (contact_name or "").strip()
+    if not contact_name:
+        return []
+
+    rows = frappe.get_all(
+        "Contact Email",
+        filters={"parent": contact_name},
+        fields=["email_id", "is_primary", "idx"],
+        order_by="is_primary desc, idx asc, creation asc",
+    )
+    emails: list[str] = []
+    seen: set[str] = set()
+    for row in rows:
+        normalized = normalize_email_value(row.get("email_id"))
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        emails.append(normalized)
+    return emails
+
+
+def get_contact_primary_email(contact_name: str | None) -> str | None:
+    options = get_contact_email_options(contact_name)
+    if not options:
+        return None
+    return options[0]
+
+
+def upsert_contact_email(contact_name: str, email: str, *, set_primary_if_missing: bool = True) -> str:
+    contact_name = (contact_name or "").strip()
+    if not contact_name:
+        frappe.throw(_("Contact is required."))
+
+    email = normalize_email_value(email)
+    if not email:
+        frappe.throw(_("Email is required."))
+    validate_email_address(email, True)
+
+    existing_parent = frappe.db.get_value("Contact Email", {"email_id": email}, "parent")
+    if existing_parent and existing_parent != contact_name:
+        frappe.throw(_("Email {0} is already linked to another Contact.").format(frappe.bold(email)))
+
+    contact = frappe.get_doc("Contact", contact_name)
+    has_primary = False
+    matching_row = None
+    for row in contact.get("email_ids") or []:
+        row_email = normalize_email_value(row.email_id)
+        if row_email == email:
+            matching_row = row
+        if int(row.is_primary or 0) == 1:
+            has_primary = True
+
+    changed = False
+    if matching_row:
+        if set_primary_if_missing and not has_primary and int(matching_row.is_primary or 0) != 1:
+            matching_row.is_primary = 1
+            changed = True
+    else:
+        contact.append(
+            "email_ids",
+            {
+                "email_id": email,
+                "is_primary": 1 if set_primary_if_missing and not has_primary else 0,
+            },
+        )
+        changed = True
+
+    if changed:
+        contact.save(ignore_permissions=True)
+
+    return email
+
+
+def ensure_contact_for_email(
+    *,
+    first_name: str | None,
+    last_name: str | None,
+    email: str | None,
+    phone: str | None = None,
+    preferred_contact: str | None = None,
+) -> str:
+    normalized_email = normalize_email_value(email)
+    if normalized_email:
+        validate_email_address(normalized_email, True)
+
+    preferred_contact = (preferred_contact or "").strip()
+    contact_name = ""
+
+    email_parent = ""
+    if normalized_email:
+        email_parent = frappe.db.get_value("Contact Email", {"email_id": normalized_email}, "parent") or ""
+
+    if preferred_contact:
+        if email_parent and email_parent != preferred_contact:
+            frappe.throw(_("Email {0} is already linked to another Contact.").format(frappe.bold(normalized_email)))
+        contact_name = preferred_contact
+    elif email_parent:
+        contact_name = email_parent
+    elif phone:
+        contact_name = frappe.db.get_value("Contact Phone", {"phone": phone, "is_primary_mobile_no": 1}, "parent") or ""
+
+    if not contact_name:
+        if not (first_name or "").strip() and not (last_name or "").strip():
+            frappe.throw(_("Contact name is required to create a Contact."))
+        contact = frappe.new_doc("Contact")
+        contact.first_name = (first_name or "").strip() or _("Applicant")
+        if (last_name or "").strip():
+            contact.last_name = (last_name or "").strip()
+        if phone:
+            contact.append("phone_nos", {"phone": phone, "is_primary_mobile_no": 1})
+        if normalized_email:
+            contact.append("email_ids", {"email_id": normalized_email, "is_primary": 1})
+        contact.insert(ignore_permissions=True)
+        return contact.name
+
+    if normalized_email:
+        upsert_contact_email(contact_name, normalized_email, set_primary_if_missing=True)
+
+    return contact_name
+
+
+def ensure_inquiry_contact(inquiry_doc) -> str | None:
+    contact_name = (inquiry_doc.get("contact") or "").strip()
+    if not contact_name:
+        inquiry_doc.create_contact_from_inquiry()
+        inquiry_doc.reload()
+        contact_name = (inquiry_doc.get("contact") or "").strip()
+
+    inquiry_email = normalize_email_value(inquiry_doc.get("email"))
+    if contact_name and inquiry_email:
+        upsert_contact_email(contact_name, inquiry_email, set_primary_if_missing=True)
+
+    return contact_name or None
 
 
 def _school_belongs_to_organization_scope(school: str | None, organization: str | None) -> bool:
@@ -574,6 +714,8 @@ def from_inquiry_invite(
     # Load Inquiry (READ-ONLY usage)
     # ------------------------------------------------------------------
     inquiry = frappe.get_doc("Inquiry", inquiry_name)
+    inquiry_contact = ensure_inquiry_contact(inquiry)
+    inquiry_email = get_contact_primary_email(inquiry_contact)
 
     # ------------------------------------------------------------------
     # Prevent duplicate Applicants per Inquiry
@@ -621,6 +763,9 @@ def from_inquiry_invite(
             "term": inquiry.get("term"),
             # Traceability
             "inquiry": inquiry.name,
+            # Contact anchor
+            "applicant_contact": inquiry_contact,
+            "applicant_email": inquiry_email,
             # Lifecycle
             "application_status": "Invited",
         }
@@ -630,6 +775,7 @@ def from_inquiry_invite(
     applicant.flags.from_inquiry_invite = True
     applicant.flags.allow_status_change = True
     applicant.flags.status_change_source = "from_inquiry_invite"
+    applicant.flags.from_contact_sync = True
 
     applicant.insert(ignore_permissions=True)
 

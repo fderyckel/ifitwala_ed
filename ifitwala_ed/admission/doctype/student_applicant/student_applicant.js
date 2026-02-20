@@ -149,52 +149,83 @@ function prompt_portal_invite(frm) {
 	const linkedEmail = String(frm.doc.applicant_user || "").trim().toLowerCase();
 	const hasLinkedUser = Boolean(linkedEmail);
 
-	frappe.prompt(
-		[
-			{
-				label: __("Applicant Email"),
-				fieldname: "email",
-				fieldtype: "Data",
-				options: "Email",
-				reqd: 1,
-				default: linkedEmail,
-				description: __("This email becomes the applicant portal username."),
-			},
-		],
-		(values) => {
-			const email = String(values.email || "").trim().toLowerCase();
-			if (!email) {
-				frappe.msgprint(__("Please enter an applicant email."));
-				return;
+	frappe.call({
+		method: "ifitwala_ed.api.admissions_portal.get_invite_email_options",
+		args: {
+			student_applicant: frm.doc.name,
+		},
+	})
+		.then((res) => {
+			const payload = res?.message || {};
+			const emails = Array.isArray(payload.emails) ? payload.emails : [];
+			const selectedEmail = String(payload.selected_email || "").trim().toLowerCase();
+
+			const fields = [];
+			if (emails.length) {
+				fields.push({
+					label: __("Contact Email"),
+					fieldname: "selected_email",
+					fieldtype: "Select",
+					reqd: 0,
+					options: emails.join("\n"),
+					default: selectedEmail || emails[0],
+					description: __("Select an existing Contact email."),
+				});
 			}
 
-			frappe.call({
-				method: "ifitwala_ed.api.admissions_portal.invite_applicant",
-				args: {
-					student_applicant: frm.doc.name,
-					email,
+			fields.push({
+				label: __("New Email"),
+				fieldname: "new_email",
+				fieldtype: "Data",
+				options: "Email",
+				reqd: !emails.length,
+				description: emails.length
+					? __("Optional: enter a new email to add to Contact and invite.")
+					: __("Enter applicant email to create/link Contact and invite."),
+			});
+
+			frappe.prompt(
+				fields,
+				(values) => {
+					const newEmail = String(values.new_email || "").trim().toLowerCase();
+					const pickedEmail = String(values.selected_email || "").trim().toLowerCase();
+					const email = newEmail || pickedEmail;
+					if (!email) {
+						frappe.msgprint(__("Please select or enter an applicant email."));
+						return;
+					}
+
+					frappe.call({
+						method: "ifitwala_ed.api.admissions_portal.invite_applicant",
+						args: {
+							student_applicant: frm.doc.name,
+							email,
+						},
+						freeze: true,
+						freeze_message: hasLinkedUser
+							? __("Re-sending applicant portal invite...")
+							: __("Inviting applicant to portal..."),
+					})
+						.then((inviteRes) => {
+							const message = inviteRes?.message || {};
+							const resent = Boolean(message.resent);
+							frappe.show_alert({
+								message: resent ? __("Portal invite email re-sent.") : __("Portal invite email sent."),
+								indicator: "green",
+							});
+							frm.reload_doc();
+						})
+						.catch((err) => {
+							frappe.msgprint(err?.message || __("Unable to send applicant portal invite."));
+						});
 				},
-				freeze: true,
-				freeze_message: hasLinkedUser
-					? __("Re-sending applicant portal invite...")
-					: __("Inviting applicant to portal..."),
-			})
-				.then((res) => {
-					const message = res?.message || {};
-					const resent = Boolean(message.resent);
-					frappe.show_alert({
-						message: resent ? __("Portal invite email re-sent.") : __("Portal invite email sent."),
-						indicator: "green",
-					});
-					frm.reload_doc();
-				})
-				.catch((err) => {
-					frappe.msgprint(err?.message || __("Unable to send applicant portal invite."));
-				});
-		},
-		hasLinkedUser ? __("Resend Portal Invite") : __("Invite Applicant Portal"),
-		hasLinkedUser ? __("Resend") : __("Invite")
-	);
+				hasLinkedUser ? __("Resend Portal Invite") : __("Invite Applicant Portal"),
+				hasLinkedUser ? __("Resend") : __("Invite")
+			);
+		})
+		.catch((err) => {
+			frappe.msgprint(err?.message || __("Unable to load applicant invite email options."));
+		});
 }
 
 function render_review_sections(frm) {

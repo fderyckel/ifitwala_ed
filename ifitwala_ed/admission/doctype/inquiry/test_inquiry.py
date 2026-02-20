@@ -97,7 +97,8 @@ class TestInquiry(FrappeTestCase):
         parent_org = self._make_organization("Invite Root", is_group=1)
         child_org = self._make_organization("Invite Child Ok", parent=parent_org)
         school = self._make_school(child_org, "Invite School Ok")
-        inquiry = self._make_inquiry()
+        inquiry_email = f"inquiry-{frappe.generate_hash(length=8)}@example.com"
+        inquiry = self._make_inquiry(email=inquiry_email)
 
         with patch("ifitwala_ed.admission.admission_utils.ensure_admissions_permission", return_value="Administrator"):
             applicant_name = from_inquiry_invite(
@@ -110,12 +111,15 @@ class TestInquiry(FrappeTestCase):
         linked = frappe.db.get_value(
             "Student Applicant",
             applicant_name,
-            ["inquiry", "school", "organization"],
+            ["inquiry", "school", "organization", "applicant_contact", "applicant_email"],
             as_dict=True,
         )
         self.assertEqual(linked.inquiry, inquiry.name)
         self.assertEqual(linked.school, school)
         self.assertEqual(linked.organization, parent_org)
+        self.assertTrue(bool(linked.applicant_contact))
+        self.assertEqual(linked.applicant_email, inquiry_email)
+        self.assertEqual(frappe.db.get_value("Inquiry", inquiry.name, "contact"), linked.applicant_contact)
 
     def _make_organization(self, prefix: str, parent: str | None = None, is_group: int = 0) -> str:
         doc = frappe.get_doc(
@@ -142,12 +146,13 @@ class TestInquiry(FrappeTestCase):
         doc.insert(ignore_permissions=True)
         return doc.name
 
-    def _make_inquiry(self):
+    def _make_inquiry(self, *, email: str | None = None):
         doc = frappe.get_doc(
             {
                 "doctype": "Inquiry",
                 "first_name": "Invite",
                 "last_name": "Check",
+                "email": email,
             }
         )
         doc.insert(ignore_permissions=True)

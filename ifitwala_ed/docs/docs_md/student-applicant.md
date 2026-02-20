@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.0.0"
-last_change_date: "2026-02-19"
+version: "1.1.0"
+last_change_date: "2026-02-20"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
@@ -90,12 +90,17 @@ Current implementation is an explicit acknowledge action with timestamped audit 
 - **Staff invite flow** (`ifitwala_ed/api/admissions_portal.py::invite_applicant`):
   - creates or reuses `User`
   - assigns role `Admissions Applicant`
+  - anchors to `Student Applicant.applicant_contact` (Contact)
+  - stores chosen login email in `Student Applicant.portal_account_email`
+  - derives `Student Applicant.applicant_email` from Contact primary email
   - links `Student Applicant.applicant_user`
   - moves status `Draft -> Invited` (when currently `Draft`)
   - sends welcome/password email using framework-supported email methods
 - **Inquiry conversion flow** (`invite_to_apply` / `from_inquiry_invite`):
   - creates `Student Applicant` directly in `Invited`
   - pre-fills identity and inquiry intent fields
+  - ensures Inquiry has a linked `Contact` and carries it to `Student Applicant.applicant_contact`
+  - derives `Student Applicant.applicant_email` from Contact email rows
   - does **not** by itself guarantee portal login access until an applicant `User` is linked
 
 ### How Admissions Invites the Applicant (Portal Login Invite)
@@ -104,27 +109,30 @@ Portal login invite is done directly from Desk on the `Student Applicant` form:
 
 1. Open the applicant record.
 2. Click `Actions` -> `Invite Applicant Portal` (or `Resend Portal Invite` if already linked).
-3. Enter applicant email and submit.
+3. Pick an email from Contact email options, or enter a new one in the same dialog.
 
 This triggers the server flow `invite_applicant` and requires:
 
 1. `student_applicant` (the Student Applicant document name)
-2. `email` (the applicant login email to invite)
+2. `email` (the applicant login email to invite; always upserted to Contact Email)
 
 Behavior in code:
 
 - email is normalized to lower-case and trimmed before processing
+- invite email is validated against applicant contact ownership (cross-contact drift is blocked)
+- invite email is upserted into `Contact Email` for the applicant contact
 - if user does not exist, a `User` is created with that email
 - role `Admissions Applicant` is ensured on that user
 - `Student Applicant.applicant_user` is set to that user identity
+- `Student Applicant.portal_account_email` is set to the chosen invite email
 - if applicant is already linked to a different email/user, invite is blocked
 
 <Callout type="warning" title="Login identity source of truth">
-The applicant username/email is exactly the `email` used in `invite_applicant`. This is the identity used to sign in to the admissions portal.
+The applicant username/email is `Student Applicant.portal_account_email` (set by `invite_applicant` from the selected Contact email). This is the identity used to sign in to the admissions portal.
 </Callout>
 
 <Callout type="info" title="If applicant did not receive the invite email">
-Use `Actions` -> `Resend Portal Invite` on the same applicant and submit the same email again. This re-sends the portal invite email for the linked applicant user.
+Use `Actions` -> `Resend Portal Invite` on the same applicant and submit the same email again. This re-sends the portal invite email for the linked applicant user and keeps the same portal identity.
 </Callout>
 
 ### How Applicant Login Works
@@ -140,7 +148,7 @@ Use `Actions` -> `Resend Portal Invite` on the same applicant and submit the sam
 
 - Portal URL: `/admissions` (for example `https://<your-domain>/admissions`)
 - Document upload URL: `/admissions/documents`
-- Username/email: the exact email used by admissions in `invite_applicant`
+- Username/email: `Student Applicant.portal_account_email` (chosen by admissions from Contact emails during invite)
 - Password:
   - new invited user: set via welcome/reset email sent during invite
   - existing user: use existing password (or reset via forgot password)
@@ -203,11 +211,12 @@ Program Enrollment Tool currently implements fetch logic for `Cohort` and `Progr
 
 When admissions triggers invite-to-apply from an inquiry, the applicant is prefilled with:
 
-- Identity: `first_name`, `middle_name`, `last_name`
+- Identity: `first_name`, `last_name`
 - Intent: `program`, `academic_year`, `term`
 - Traceability: `inquiry`
 - Lifecycle start: `application_status = Invited`
 - Institutional anchor at invite time: `school` (required) and `organization` (provided or derived)
+- Contact anchor: `applicant_contact` from Inquiry contact linkage, with `applicant_email` derived from Contact email rows
 
 This is deterministic server-side mapping in `from_inquiry_invite`, so teams avoid duplicate entry and keep source lineage.
 
@@ -373,7 +382,7 @@ Runtime controller rules (server):
 - Status changes must use lifecycle methods (direct writes are blocked).
 - Family/applicant editability depends on current status (`Invited/In Progress/Missing Info`).
 - Terminal states (`Rejected`, `Promoted`) are locked except explicit System Manager override flow.
-- `inquiry`, `student`, and `applicant_user` links are immutable and only set through named flows.
+- `inquiry`, `student`, `applicant_user`, `applicant_contact`, and `portal_account_email` are immutable and only set through named flows.
 - Direct `File` clutter is blocked on this doctype except `applicant_image`; admissions evidence belongs on [**Applicant Document**](/docs/en/applicant-document/).
 
 ## Reporting and Analytics

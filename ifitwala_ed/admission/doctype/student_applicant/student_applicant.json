@@ -18,6 +18,9 @@
   "submitted_at",
   "decision_at",
   "applicant_user",
+  "applicant_contact",
+  "applicant_email",
+  "portal_account_email",
   "column_break_frwx",
   "organization",
   "school",
@@ -83,6 +86,27 @@
    "fieldtype": "Link",
    "label": "Applicant User",
    "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applicant_contact",
+   "fieldtype": "Link",
+   "label": "Applicant Contact",
+   "options": "Contact",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applicant_email",
+   "fieldtype": "Data",
+   "label": "Applicant Email",
+   "options": "Email",
+   "read_only": 1
+  },
+  {
+   "fieldname": "portal_account_email",
+   "fieldtype": "Data",
+   "label": "Portal Account Email",
+   "options": "Email",
    "read_only": 1
   },
   {
@@ -231,7 +255,7 @@
  "image_field": "applicant_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-13 10:31:51",
+ "modified": "2026-02-13 10:31:57",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",

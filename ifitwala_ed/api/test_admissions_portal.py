@@ -7,7 +7,12 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.api.admissions_portal import _portal_status_for, _read_only_for, invite_applicant
+from ifitwala_ed.api.admissions_portal import (
+    _portal_status_for,
+    _read_only_for,
+    get_invite_email_options,
+    invite_applicant,
+)
 
 
 class TestAdmissionsPortalContracts(FrappeTestCase):
@@ -53,6 +58,9 @@ class TestInviteApplicant(FrappeTestCase):
         self.applicant.reload()
         self.assertEqual(self.applicant.applicant_user, email)
         self.assertEqual(self.applicant.application_status, "Invited")
+        self.assertTrue(bool(self.applicant.applicant_contact))
+        self.assertEqual(self.applicant.portal_account_email, email)
+        self.assertEqual(self.applicant.applicant_email, email)
 
         user_row = frappe.db.get_value("User", email, ["name", "enabled"], as_dict=True)
         self.assertTrue(bool(user_row))
@@ -71,6 +79,9 @@ class TestInviteApplicant(FrappeTestCase):
         ):
             invite_applicant(student_applicant=self.applicant.name, email=email)
         self._created.append(("User", email))
+        self.applicant.reload()
+        self.assertTrue(bool(self.applicant.applicant_contact))
+        self.assertEqual(self.applicant.portal_account_email, email)
 
         with (
             patch(
@@ -85,6 +96,48 @@ class TestInviteApplicant(FrappeTestCase):
         self.assertEqual(payload.get("user"), email)
         self.assertTrue(payload.get("resent"))
         self.assertEqual(send_invite.call_count, 1)
+
+    def test_get_invite_email_options_includes_contact_emails(self):
+        email = f"existing-{frappe.generate_hash(length=8)}@example.com"
+        alt_email = f"alt-{frappe.generate_hash(length=8)}@example.com"
+        contact = self._create_contact(primary_email=email, other_email=alt_email)
+
+        self.applicant.flags.from_contact_sync = True
+        self.applicant.applicant_contact = contact.name
+        self.applicant.applicant_email = email
+        self.applicant.save(ignore_permissions=True)
+
+        with patch(
+            "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+            return_value="Administrator",
+        ):
+            payload = get_invite_email_options(student_applicant=self.applicant.name)
+
+        self.assertEqual(payload.get("contact"), contact.name)
+        self.assertIn(email, payload.get("emails") or [])
+        self.assertIn(alt_email, payload.get("emails") or [])
+
+    def test_invite_applicant_rejects_email_linked_to_different_contact(self):
+        applicant_contact = self._create_contact(primary_email=f"app-{frappe.generate_hash(length=8)}@example.com")
+        other_contact_email = f"other-{frappe.generate_hash(length=8)}@example.com"
+        self._create_contact(primary_email=other_contact_email)
+
+        self.applicant.flags.from_contact_sync = True
+        self.applicant.applicant_contact = applicant_contact.name
+        self.applicant.applicant_email = frappe.db.get_value(
+            "Contact Email", {"parent": applicant_contact.name, "is_primary": 1}, "email_id"
+        )
+        self.applicant.save(ignore_permissions=True)
+
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                return_value="Administrator",
+            ),
+            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email"),
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                invite_applicant(student_applicant=self.applicant.name, email=other_contact_email)
 
     def _create_organization(self) -> str:
         organization_name = f"Org {frappe.generate_hash(length=6)}"
@@ -123,4 +176,19 @@ class TestInviteApplicant(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Student Applicant", doc.name))
+        return doc
+
+    def _create_contact(self, *, primary_email: str, other_email: str | None = None):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Contact",
+                "first_name": "Portal",
+                "last_name": f"Contact-{frappe.generate_hash(length=6)}",
+                "email_ids": [{"email_id": primary_email, "is_primary": 1}],
+            }
+        )
+        if other_email:
+            doc.append("email_ids", {"email_id": other_email, "is_primary": 0})
+        doc.insert(ignore_permissions=True)
+        self._created.append(("Contact", doc.name))
         return doc

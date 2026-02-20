@@ -6,7 +6,15 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.admission import admissions_portal as admission_api
-from ifitwala_ed.admission.admission_utils import ensure_admissions_permission
+from ifitwala_ed.admission.admission_utils import (
+    ensure_admissions_permission,
+    ensure_contact_for_email,
+    ensure_inquiry_contact,
+    get_contact_email_options,
+    get_contact_primary_email,
+    normalize_email_value,
+    upsert_contact_email,
+)
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
@@ -619,6 +627,80 @@ def _send_applicant_invite_email(user_doc, recipient: str) -> None:
         frappe.throw(_("Unable to send invite email."))
 
 
+def _get_inquiry_contact_for_applicant(applicant_doc) -> str | None:
+    inquiry_name = (applicant_doc.get("inquiry") or "").strip()
+    if not inquiry_name:
+        return None
+    inquiry = frappe.get_doc("Inquiry", inquiry_name)
+    return ensure_inquiry_contact(inquiry)
+
+
+def _resolve_applicant_contact(
+    applicant_doc, invite_email: str | None = None, *, allow_create: bool = False
+) -> str | None:
+    contact_name = (applicant_doc.get("applicant_contact") or "").strip()
+    if not contact_name:
+        contact_name = _get_inquiry_contact_for_applicant(applicant_doc) or ""
+
+    invite_email = normalize_email_value(invite_email)
+    if invite_email:
+        existing_parent = frappe.db.get_value("Contact Email", {"email_id": invite_email}, "parent")
+        if existing_parent and contact_name and existing_parent != contact_name:
+            frappe.throw(_("Invite email is linked to a different Contact."))
+
+        if not contact_name and allow_create:
+            contact_name = ensure_contact_for_email(
+                first_name=applicant_doc.get("first_name"),
+                last_name=applicant_doc.get("last_name"),
+                email=invite_email,
+            )
+
+        if contact_name:
+            upsert_contact_email(contact_name, invite_email, set_primary_if_missing=True)
+
+    return contact_name or None
+
+
+@frappe.whitelist()
+def get_invite_email_options(*, student_applicant: str | None = None) -> dict:
+    ensure_admissions_permission()
+
+    if not student_applicant:
+        frappe.throw(_("student_applicant is required."))
+
+    applicant = frappe.get_doc("Student Applicant", student_applicant)
+    contact_name = _resolve_applicant_contact(applicant, allow_create=False)
+
+    emails: list[str] = []
+    seen: set[str] = set()
+    for value in (
+        normalize_email_value(applicant.get("portal_account_email")),
+        normalize_email_value(applicant.get("applicant_email")),
+        normalize_email_value(applicant.get("applicant_user")),
+    ):
+        if value and value not in seen:
+            seen.add(value)
+            emails.append(value)
+
+    for value in get_contact_email_options(contact_name):
+        if value and value not in seen:
+            seen.add(value)
+            emails.append(value)
+
+    selected = (
+        normalize_email_value(applicant.get("portal_account_email"))
+        or normalize_email_value(applicant.get("applicant_user"))
+        or normalize_email_value(applicant.get("applicant_email"))
+        or (emails[0] if emails else None)
+    )
+
+    return {
+        "contact": contact_name,
+        "emails": emails,
+        "selected_email": selected,
+    }
+
+
 @frappe.whitelist()
 def invite_applicant(*, student_applicant: str | None = None, email: str | None = None) -> dict:
     ensure_admissions_permission()
@@ -628,21 +710,36 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
     if not email:
         frappe.throw(_("email is required."))
 
-    email = email.strip().lower()
+    email = normalize_email_value(email)
     if not email:
         frappe.throw(_("email is required."))
 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
 
     if applicant.applicant_user:
-        linked_user = (applicant.applicant_user or "").strip()
-        if linked_user.lower() != email:
+        linked_user = normalize_email_value(applicant.applicant_user)
+        if linked_user != email:
             frappe.throw(_("Applicant already linked to a different user."))
+
+    contact_name = _resolve_applicant_contact(applicant, invite_email=email, allow_create=True)
+    if not contact_name:
+        frappe.throw(_("Unable to resolve Applicant Contact for this invite."))
+    primary_contact_email = get_contact_primary_email(contact_name) or email
+
+    if applicant.applicant_user:
         user_doc = frappe.get_doc("User", linked_user)
         _ensure_admissions_applicant_role(user_doc)
 
+        applicant.flags.from_applicant_invite = True
+        applicant.flags.from_contact_sync = True
+        applicant.applicant_contact = contact_name
+        applicant.applicant_email = primary_contact_email
+        applicant.portal_account_email = email
+
         if applicant.application_status == "Draft":
             applicant._set_status("Invited", "Applicant invited", permission_checker=None)
+        else:
+            applicant.save(ignore_permissions=True)
 
         _send_applicant_invite_email(user_doc, email)
         applicant.add_comment(
@@ -691,7 +788,11 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         frappe.throw(_("User is already linked to an Employee."))
 
     applicant.flags.from_applicant_invite = True
+    applicant.flags.from_contact_sync = True
     applicant.applicant_user = user_doc.name
+    applicant.applicant_contact = contact_name
+    applicant.applicant_email = primary_contact_email
+    applicant.portal_account_email = email
 
     if applicant.application_status == "Draft":
         applicant._set_status("Invited", "Applicant invited", permission_checker=None)

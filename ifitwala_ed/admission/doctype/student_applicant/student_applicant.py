@@ -15,6 +15,8 @@ from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     ensure_admissions_permission,
     get_applicant_document_slot_spec,
+    get_contact_primary_email,
+    normalize_email_value,
 )
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
@@ -84,12 +86,15 @@ class StudentApplicant(Document):
     # ---------------------------------------------------------------------
 
     def validate(self):
+        self._normalize_contact_identity_fields()
         before = self.get_doc_before_save() if not self.is_new() else None
         self._validate_institutional_anchor(before)
         self._validate_inquiry_link(before)
         self._validate_academic_year()
         self._validate_student_link(before)
         self._validate_applicant_user_link(before)
+        self._validate_applicant_contact_link(before)
+        self._validate_applicant_email_fields(before)
         self._validate_application_status(before)
         self._validate_edit_permissions(before)
         self._validate_attachment_guard()
@@ -168,6 +173,46 @@ class StudentApplicant(Document):
 
         if not previous and not getattr(self.flags, "from_applicant_invite", False):
             frappe.throw(_("Applicant User can only be set via invite_applicant."))
+
+    def _validate_applicant_contact_link(self, before):
+        if not self.applicant_contact:
+            return
+        if not frappe.db.exists("Contact", self.applicant_contact):
+            frappe.throw(_("Invalid Applicant Contact: {0}.").format(self.applicant_contact))
+
+        previous = before.applicant_contact if before else self.get_db_value("applicant_contact")
+        if previous and previous != self.applicant_contact:
+            frappe.throw(_("Applicant Contact is immutable once set."))
+
+        if not previous and not (
+            getattr(self.flags, "from_inquiry_invite", False)
+            or getattr(self.flags, "from_applicant_invite", False)
+            or getattr(self.flags, "from_contact_sync", False)
+        ):
+            frappe.throw(_("Applicant Contact can only be set via invite flows."))
+
+    def _validate_applicant_email_fields(self, before):
+        if self.portal_account_email:
+            previous = before.portal_account_email if before else self.get_db_value("portal_account_email")
+            if previous and previous != self.portal_account_email:
+                frappe.throw(_("Portal Account Email is immutable once set."))
+            if not previous and not getattr(self.flags, "from_applicant_invite", False):
+                frappe.throw(_("Portal Account Email can only be set via invite_applicant."))
+
+        if self.applicant_email:
+            previous = before.applicant_email if before else self.get_db_value("applicant_email")
+            if previous and previous != self.applicant_email and not getattr(self.flags, "from_contact_sync", False):
+                frappe.throw(_("Applicant Email is managed from Applicant Contact."))
+            if not previous and not (
+                getattr(self.flags, "from_inquiry_invite", False)
+                or getattr(self.flags, "from_applicant_invite", False)
+                or getattr(self.flags, "from_contact_sync", False)
+            ):
+                frappe.throw(_("Applicant Email can only be set via invite flows."))
+
+        if self.applicant_user and self.portal_account_email:
+            if normalize_email_value(self.applicant_user) != normalize_email_value(self.portal_account_email):
+                frappe.throw(_("Portal Account Email must match Applicant User."))
 
     # ---------------------------------------------------------------------
     # Application status lifecycle
@@ -330,6 +375,17 @@ class StudentApplicant(Document):
             return
 
         self.title = " ".join(normalized_parts)
+
+    def _normalize_contact_identity_fields(self):
+        self.applicant_contact = (self.applicant_contact or "").strip() or None
+        self.applicant_email = normalize_email_value(self.applicant_email) or None
+        self.portal_account_email = normalize_email_value(self.portal_account_email) or None
+
+        if self.applicant_contact:
+            primary_email = get_contact_primary_email(self.applicant_contact)
+            if primary_email and primary_email != self.applicant_email:
+                self.flags.from_contact_sync = True
+                self.applicant_email = primary_email
 
     # ---------------------------------------------------------------------
     # Lifecycle helpers

@@ -3,8 +3,8 @@ title: "Inquiry: Managing First Contact with Prospective Families"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.0.0"
-last_change_date: "2026-02-19"
+version: "1.1.0"
+last_change_date: "2026-02-20"
 summary: "Capture, assign, and track inquiry follow-up with SLA visibility, assignment ownership, and conversion into Student Applicant."
 seo_title: "Inquiry: Managing First Contact with Prospective Families"
 seo_description: "Capture, assign, and track inquiry follow-up with SLA visibility, assignment ownership, and conversion into Student Applicant."
@@ -63,7 +63,9 @@ Legacy compatibility note: persisted `New Inquiry` values are normalized to cano
 - **Admissions conversion**:
   - links to [**Student Applicant**](/docs/en/student-applicant/)
   - Desk invite action calls `ifitwala_ed.admission.admission_utils.from_inquiry_invite`
-  - this conversion step does not collect applicant portal email credentials
+  - conversion ensures Inquiry has a `Contact` anchor and carries it into `Student Applicant.applicant_contact`
+  - derived applicant email on Student Applicant comes from Contact email rows
+  - this conversion step still does not create the portal `User`; portal invite is a separate button on Student Applicant
 - **Analytics surface**:
   - staff SPA route: `/staff/analytics/inquiry`
   - API: `ifitwala_ed.api.inquiry.get_dashboard_data` and related filter endpoints
@@ -82,7 +84,7 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
 </Callout>
 
 <Callout type="warning" title="Two different invite actions">
-`Invite to Apply` on Inquiry creates the `Student Applicant` record in `Invited`, but it does not provision applicant portal login credentials. After conversion, open the applicant and use `Actions` -> `Invite Applicant Portal` (or `Resend Portal Invite`) to trigger `invite_applicant(student_applicant, email)`.
+`Invite to Apply` on Inquiry creates the `Student Applicant` record in `Invited` and links Contact anchor fields, but it does not provision applicant portal login credentials. After conversion, open the applicant and use `Actions` -> `Invite Applicant Portal` (or `Resend Portal Invite`) to pick/add a Contact email and trigger `invite_applicant(student_applicant, email)`.
 </Callout>
 
 ## Technical Notes (IT)
