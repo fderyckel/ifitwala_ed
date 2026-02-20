@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.1.0"
+version: "1.2.0"
 last_change_date: "2026-02-20"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -123,6 +123,7 @@ Behavior in code:
 - invite email is upserted into `Contact Email` for the applicant contact
 - if user does not exist, a `User` is created with that email
 - role `Admissions Applicant` is ensured on that user
+- invited user is forced `enabled = 1` so login is not blocked by disabled account state
 - `Student Applicant.applicant_user` is set to that user identity
 - `Student Applicant.portal_account_email` is set to the chosen invite email
 - if applicant is already linked to a different email/user, invite is blocked
@@ -133,6 +134,10 @@ The applicant username/email is `Student Applicant.portal_account_email` (set by
 
 <Callout type="info" title="If applicant did not receive the invite email">
 Use `Actions` -> `Resend Portal Invite` on the same applicant and submit the same email again. This re-sends the portal invite email for the linked applicant user and keeps the same portal identity.
+</Callout>
+
+<Callout type="warning" title="Invite email failure handling">
+If email delivery fails, portal linkage still succeeds (`User` + role + applicant link). Family can use `Forgot Password` on `/login` and sign in with `portal_account_email`.
 </Callout>
 
 ### How Applicant Login Works

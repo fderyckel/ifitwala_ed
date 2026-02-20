@@ -209,10 +209,16 @@ function prompt_portal_invite(frm) {
 						.then((inviteRes) => {
 							const message = inviteRes?.message || {};
 							const resent = Boolean(message.resent);
+							const emailSent = message.email_sent !== false;
 							frappe.show_alert({
-								message: resent ? __("Portal invite email re-sent.") : __("Portal invite email sent."),
+								message: emailSent
+									? (resent ? __("Portal invite email re-sent.") : __("Portal invite email sent."))
+									: __("Portal access linked, but invite email could not be sent."),
 								indicator: "green",
 							});
+							if (!emailSent) {
+								frappe.msgprint(__("Applicant user and role were created/linked, but email sending failed. Ask family to use Forgot Password on /login or click Resend Portal Invite later."));
+							}
 							frm.reload_doc();
 						})
 						.catch((err) => {

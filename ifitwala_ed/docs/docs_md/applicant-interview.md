@@ -3,8 +3,8 @@ title: "Applicant Interview: Structured Interview Evidence"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.0.0"
-last_change_date: "2026-02-19"
+version: "1.1.0"
+last_change_date: "2026-02-20"
 summary: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
 seo_title: "Applicant Interview: Structured Interview Evidence"
 seo_description: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
@@ -81,7 +81,7 @@ Interviewers are child rows for structure only; workflow logic and validations a
 - **Key hooks**:
   - `validate`: permission + applicant-state guard
   - `after_insert`: audit comment "Interview recorded"
-  - `on_update`: audit comment "Interview updated"
+  - `on_update`: audit comment "Interview updated" (only on saves after insert)
 - **Readiness nuance**:
   - `StudentApplicant.has_required_interviews()` tracks count and snapshot section
   - current `ready` boolean blocks on policies/documents/health, not interview count

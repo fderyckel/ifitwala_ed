@@ -19,6 +19,11 @@ class ApplicantInterview(Document):
         self._add_audit_comment("Interview recorded")
 
     def on_update(self):
+        # Frappe calls on_update during insert as well; avoid duplicate insert-time audit rows.
+        if getattr(self.flags, "in_insert", False):
+            return
+        if not self.get_doc_before_save():
+            return
         self._add_audit_comment("Interview updated")
 
     def _validate_permissions(self):

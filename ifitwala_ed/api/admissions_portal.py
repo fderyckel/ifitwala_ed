@@ -604,27 +604,43 @@ def withdraw_application(
 
 
 def _ensure_admissions_applicant_role(user_doc) -> None:
-    if ADMISSIONS_ROLE in {r.role for r in user_doc.roles}:
-        return
-    user_doc.append("roles", {"role": ADMISSIONS_ROLE})
-    user_doc.save(ignore_permissions=True)
+    changed = False
+    if ADMISSIONS_ROLE not in {r.role for r in user_doc.roles}:
+        user_doc.append("roles", {"role": ADMISSIONS_ROLE})
+        changed = True
+    if not int(user_doc.enabled or 0):
+        user_doc.enabled = 1
+        changed = True
+    if changed:
+        user_doc.save(ignore_permissions=True)
 
 
-def _send_applicant_invite_email(user_doc, recipient: str) -> None:
+def _call_user_method_if_available(user_doc, method_name: str) -> bool:
+    target = getattr(user_doc, method_name, None)
+    if not callable(target):
+        return False
     try:
-        if hasattr(user_doc, "send_welcome_email"):
-            user_doc.send_welcome_email()
-        elif hasattr(user_doc, "send_password_notification"):
-            user_doc.send_password_notification()
-        else:
-            frappe.sendmail(
-                recipients=[recipient],
-                subject=_("Admissions Portal Access"),
-                message=_("Your admissions portal access is ready."),
-            )
+        target()
+        return True
+    except TypeError:
+        return False
+
+
+def _send_applicant_invite_email(user_doc, recipient: str) -> bool:
+    try:
+        if _call_user_method_if_available(user_doc, "send_welcome_email"):
+            return True
+        if _call_user_method_if_available(user_doc, "send_password_notification"):
+            return True
+        frappe.sendmail(
+            recipients=[recipient],
+            subject=_("Admissions Portal Access"),
+            message=_("Your admissions portal access is ready. Use Forgot Password if needed."),
+        )
+        return True
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Admissions applicant invite email failed")
-        frappe.throw(_("Unable to send invite email."))
+        return False
 
 
 def _get_inquiry_contact_for_applicant(applicant_doc) -> str | None:
@@ -741,14 +757,14 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         else:
             applicant.save(ignore_permissions=True)
 
-        _send_applicant_invite_email(user_doc, email)
+        email_sent = _send_applicant_invite_email(user_doc, email)
         applicant.add_comment(
             "Comment",
             text=_("Applicant portal invite email re-sent for {0} by {1}.").format(
                 frappe.bold(applicant.name), frappe.bold(frappe.session.user)
             ),
         )
-        return {"ok": True, "user": user_doc.name, "resent": True}
+        return {"ok": True, "user": user_doc.name, "resent": True, "email_sent": email_sent}
 
     user_doc = None
     if frappe.db.exists("User", email):
@@ -806,6 +822,6 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         ),
     )
 
-    _send_applicant_invite_email(user_doc, email)
+    email_sent = _send_applicant_invite_email(user_doc, email)
 
-    return {"ok": True, "user": user_doc.name, "resent": False}
+    return {"ok": True, "user": user_doc.name, "resent": False, "email_sent": email_sent}

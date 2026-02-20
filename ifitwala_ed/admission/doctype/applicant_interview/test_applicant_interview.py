@@ -55,6 +55,62 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertIn(interview.name, payload)
         self.assertIn("/app/applicant-interview/", payload)
 
+    def test_insert_creates_only_recorded_comment(self):
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": frappe.utils.nowdate(),
+                "interview_type": "Student",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        comments = self._comments_for_interview(interview.name)
+        recorded = [row for row in comments if "Interview recorded:" in (row.get("content") or "")]
+        updated = [row for row in comments if "Interview updated:" in (row.get("content") or "")]
+
+        self.assertEqual(len(recorded), 1)
+        self.assertEqual(len(updated), 0)
+
+    def test_save_after_insert_creates_updated_comment(self):
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": frappe.utils.nowdate(),
+                "interview_type": "Student",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        comments_before = self._comments_for_interview(interview.name)
+        self.assertEqual(
+            len([row for row in comments_before if "Interview recorded:" in (row.get("content") or "")]), 1
+        )
+        self.assertEqual(len([row for row in comments_before if "Interview updated:" in (row.get("content") or "")]), 0)
+
+        interview.notes = "Updated notes"
+        interview.save(ignore_permissions=True)
+
+        comments_after = self._comments_for_interview(interview.name)
+        self.assertEqual(len([row for row in comments_after if "Interview recorded:" in (row.get("content") or "")]), 1)
+        self.assertEqual(len([row for row in comments_after if "Interview updated:" in (row.get("content") or "")]), 1)
+
+    def _comments_for_interview(self, interview_name: str):
+        comments = frappe.get_all(
+            "Comment",
+            filters={
+                "reference_doctype": "Student Applicant",
+                "reference_name": self.applicant.name,
+            },
+            fields=["content"],
+            order_by="creation asc",
+            limit_page_length=50,
+        )
+        marker = f"/app/applicant-interview/{interview_name}"
+        return [row for row in comments if marker in (row.get("content") or "")]
+
     def _create_organization(self) -> str:
         doc = frappe.get_doc(
             {

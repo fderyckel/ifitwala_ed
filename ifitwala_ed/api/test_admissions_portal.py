@@ -10,6 +10,7 @@ from frappe.tests.utils import FrappeTestCase
 from ifitwala_ed.api.admissions_portal import (
     _portal_status_for,
     _read_only_for,
+    _send_applicant_invite_email,
     get_invite_email_options,
     invite_applicant,
 )
@@ -53,6 +54,7 @@ class TestInviteApplicant(FrappeTestCase):
         self.assertTrue(payload.get("ok"))
         self.assertEqual(payload.get("user"), email)
         self.assertFalse(payload.get("resent"))
+        self.assertTrue(payload.get("email_sent"))
         self.assertEqual(send_invite.call_count, 1)
 
         self.applicant.reload()
@@ -95,7 +97,50 @@ class TestInviteApplicant(FrappeTestCase):
         self.assertTrue(payload.get("ok"))
         self.assertEqual(payload.get("user"), email)
         self.assertTrue(payload.get("resent"))
+        self.assertTrue(payload.get("email_sent"))
         self.assertEqual(send_invite.call_count, 1)
+
+    def test_invite_applicant_reenables_existing_user_and_assigns_role(self):
+        email = f"disabled-{frappe.generate_hash(length=8)}@example.com"
+        user = frappe.get_doc(
+            {
+                "doctype": "User",
+                "email": email,
+                "first_name": "Disabled",
+                "last_name": "Applicant",
+                "enabled": 0,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("User", user.name))
+
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                return_value="Administrator",
+            ),
+            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True),
+        ):
+            payload = invite_applicant(student_applicant=self.applicant.name, email=email)
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("user"), email)
+        self.assertTrue(payload.get("email_sent"))
+
+        user.reload()
+        self.assertEqual(user.enabled, 1)
+        roles = {row.role for row in user.roles or []}
+        self.assertIn("Admissions Applicant", roles)
+
+    def test_send_invite_email_handles_non_callable_user_flags(self):
+        class DummyUser:
+            send_welcome_email = 1
+            send_password_notification = 1
+
+        with patch("ifitwala_ed.api.admissions_portal.frappe.sendmail") as mocked_sendmail:
+            result = _send_applicant_invite_email(DummyUser(), "dummy@example.com")
+
+        self.assertTrue(result)
+        self.assertEqual(mocked_sendmail.call_count, 1)
 
     def test_get_invite_email_options_includes_contact_emails(self):
         email = f"existing-{frappe.generate_hash(length=8)}@example.com"
