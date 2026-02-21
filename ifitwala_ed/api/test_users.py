@@ -114,6 +114,32 @@ class TestUserRedirect(FrappeTestCase):
             frappe.set_user("Administrator")
             frappe.delete_doc("User", user.email, force=True)
 
+    def test_staff_role_with_admissions_role_is_not_redirected_from_desk(self):
+        user = frappe.new_doc("User")
+        user.email = f"test_staff_plus_admissions_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Mixed"
+        user.last_name = "Roles"
+        user.enabled = 1
+        _append_role(user, "Administrator")
+        _append_role(user, "Admissions Applicant")
+        user.insert(ignore_permissions=True)
+
+        original_request = getattr(frappe.local, "request", None)
+        try:
+            frappe.set_user(user.email)
+            frappe.local.flags.redirect_location = None
+            frappe.local.request = frappe._dict(path="/app/eca", method="GET")
+            redirect_non_staff_away_from_desk()
+            self.assertIsNone(frappe.local.flags.redirect_location)
+        finally:
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
+            frappe.set_user("Administrator")
+            frappe.delete_doc("User", user.email, force=True)
+
     def test_staff_desk_request_is_not_redirected(self):
         user = frappe.new_doc("User")
         user.email = f"test_staff_desk_allow_{frappe.generate_hash(length=6)}@example.com"
@@ -198,6 +224,28 @@ class TestUserRedirect(FrappeTestCase):
         self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
 
         # Cleanup
+        frappe.set_user("Administrator")
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_staff_and_admissions_roles_redirect_to_staff(self):
+        """Mixed staff+admissions roles must prefer staff routing."""
+        user = frappe.new_doc("User")
+        user.email = f"test_staff_admissions_precedence_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Staff"
+        user.last_name = "Admissions"
+        user.enabled = 1
+        _append_role(user, "Administrator")
+        _append_role(user, "Admissions Applicant")
+        user.insert(ignore_permissions=True)
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
+
         frappe.set_user("Administrator")
         frappe.delete_doc("User", user.email, force=True)
 

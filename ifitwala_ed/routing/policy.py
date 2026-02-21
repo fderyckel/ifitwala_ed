@@ -239,6 +239,10 @@ def resolve_default_portal_section(*, allowed_sections: set[str], requested_sect
 
 
 def resolve_login_redirect_path(*, user: str, roles: set[str]) -> str:
+    # Staff access always wins to avoid Desk lockouts for mixed-role users.
+    if has_staff_portal_access(user=user, roles=roles):
+        return canonical_path_for_section("staff")
+
     if ADMISSIONS_APPLICANT_ROLE in roles:
         return "/admissions"
 

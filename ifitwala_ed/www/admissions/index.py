@@ -4,7 +4,12 @@ import os
 
 import frappe
 
-from ifitwala_ed.routing.policy import build_login_redirect, build_logout_then_login_redirect
+from ifitwala_ed.routing.policy import (
+    build_login_redirect,
+    build_logout_then_login_redirect,
+    canonical_path_for_section,
+    has_staff_portal_access,
+)
 from ifitwala_ed.website.vite_utils import get_vite_assets
 
 APP = "ifitwala_ed"
@@ -60,6 +65,8 @@ def get_context(context):
 
     roles = set(frappe.get_roles(user))
     if ADMISSIONS_ROLE not in roles:
+        if has_staff_portal_access(user=user, roles=roles):
+            _redirect(canonical_path_for_section("staff"))
         _redirect_to_login(path, clear_session=True)
 
     applicant = frappe.db.get_value(
@@ -68,6 +75,8 @@ def get_context(context):
         "name",
     )
     if not applicant:
+        if has_staff_portal_access(user=user, roles=roles):
+            _redirect(canonical_path_for_section("staff"))
         _redirect_to_login(path, clear_session=True)
 
     context.title = "Admissions Portal"

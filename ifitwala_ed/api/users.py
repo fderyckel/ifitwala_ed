@@ -165,13 +165,16 @@ def redirect_non_staff_away_from_desk() -> None:
         return
 
     roles = set(frappe.get_roles(user))
+
+    # Staff-privileged users must never be forced into portal-only routes,
+    # even if they also carry a portal-only role.
+    if _has_staff_portal_access(user=user, roles=roles):
+        return
+
     has_active_employee = _has_active_employee_profile(user=user, roles=roles)
 
     if roles & PORTAL_ONLY_ROLES and not has_active_employee:
         _raise_request_redirect(_resolve_portal_only_redirect_path(roles=roles))
-
-    if _has_staff_portal_access(user=user, roles=roles):
-        return
 
     target = _resolve_login_redirect_path(user=user, roles=roles)
     if target == "/portal/staff":

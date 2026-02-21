@@ -62,6 +62,30 @@ class TestAdmissionsPortalRoute(FrappeTestCase):
             frappe.set_user("Administrator")
             self._restore_request(original_request)
 
+    def test_staff_user_hitting_admissions_is_redirected_to_staff_portal(self):
+        user = self._create_user("staff-only", roles=["Administrator"])
+        original_request = self._set_request_path("/admissions")
+        frappe.set_user(user.name)
+        try:
+            with self.assertRaises(frappe.Redirect):
+                get_context(frappe._dict())
+            self.assertEqual(frappe.local.flags.redirect_location, "/portal/staff")
+        finally:
+            frappe.set_user("Administrator")
+            self._restore_request(original_request)
+
+    def test_staff_with_admissions_role_without_applicant_redirects_to_staff_portal(self):
+        user = self._create_user("staff-admissions", roles=["Administrator", "Admissions Applicant"])
+        original_request = self._set_request_path("/admissions")
+        frappe.set_user(user.name)
+        try:
+            with self.assertRaises(frappe.Redirect):
+                get_context(frappe._dict())
+            self.assertEqual(frappe.local.flags.redirect_location, "/portal/staff")
+        finally:
+            frappe.set_user("Administrator")
+            self._restore_request(original_request)
+
     def test_linked_admissions_user_loads_admissions_context(self):
         user = self._create_user("linked", roles=["Admissions Applicant"])
         applicant = self._create_student_applicant(user.name)
