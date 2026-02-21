@@ -22,6 +22,7 @@
 | `/admissions/...` | SPA | Authenticated admissions applicant portal |
 | `/student/...`, `/staff/...`, `/guardian/...` | Portal SPA | Canonical authenticated portals |
 | `/portal/...` | Legacy redirect | Compatibility redirects to canonical portal namespaces |
+| `/logout` | Website route (`www/logout`) | Canonical logout endpoint; clears session then redirects |
 | `/app` | Desk | ERP/desk surface |
 
 Rules:

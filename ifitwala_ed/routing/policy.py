@@ -59,6 +59,7 @@ RESERVED_WEBSITE_PREFIXES = frozenset(
 
 WEBSITE_ROUTE_RULES = [
     {"from_route": "/", "to_route": "index"},
+    {"from_route": "/logout", "to_route": "logout"},
     {"from_route": "/admissions", "to_route": "admissions"},
     {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
     # Legacy top-level compatibility ingress. Controller redirects to canonical /portal/* routes.

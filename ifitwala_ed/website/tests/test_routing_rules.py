@@ -39,6 +39,7 @@ class TestRoutingRules(FrappeTestCase):
         from_routes = {pair[0] for pair in pairs}
 
         self.assertIn(("/schools", "index"), pairs)
+        self.assertIn(("/logout", "logout"), pairs)
         self.assertIn(("/schools/<path:route>", "website"), pairs)
         self.assertIn(("/", "index"), pairs)
         self.assertIn(("/admissions", "admissions"), pairs)
