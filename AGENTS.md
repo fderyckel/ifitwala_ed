@@ -75,6 +75,12 @@ Agents MUST follow:
 
 Drift is a bug.
 
+### 2.1 Legacy Code Policy (Development)
+
+* During development, do NOT introduce compatibility shims, duplicate flows, or fallback routes for legacy behavior unless explicitly approved for a production cutover.
+* Remove non-working, obsolete, or superseded code paths as changes are made.
+* Keep one canonical implementation path per workflow to keep the codebase clean and reviewable.
+
 ---
 
 ## 3. Doctype & Data Model Invariants (Hard Rules)

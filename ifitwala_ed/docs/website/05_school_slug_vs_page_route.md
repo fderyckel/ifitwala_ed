@@ -136,8 +136,7 @@ For admissions/public form requests:
 
 For authenticated portal requests:
 
-1. Canonical portal namespaces are `/student/*`, `/staff/*`, and `/guardian/*`.
-2. Legacy `/portal/*` paths are compatibility redirects to the canonical namespaces.
+1. Canonical authenticated portal namespace is `/portal/*`.
 
 ---
 

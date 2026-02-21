@@ -12,12 +12,10 @@ from ifitwala_ed.routing.policy import (
     build_login_redirect,
     canonical_path_for_section,
     has_staff_portal_access,
-    log_legacy_portal_hit,
     portal_roles_for_client,
     resolve_default_portal_section,
     resolve_portal_sections,
     resolve_section_from_path,
-    translate_legacy_portal_path,
 )
 from ifitwala_ed.website.vite_utils import get_vite_assets
 
@@ -55,11 +53,9 @@ def _request_path(default: str) -> str:
 def get_context(context):
     user = frappe.session.user
     path = _request_path(canonical_path_for_section("student"))
-    log_legacy_portal_hit(path=path, user=user)
 
     if not user or user == "Guest":
-        target = translate_legacy_portal_path(path, default_section="student") or path
-        _redirect(build_login_redirect(target))
+        _redirect(build_login_redirect(path))
 
     roles = set(frappe.get_roles(user))
     if ADMISSIONS_APPLICANT_ROLE in roles and not has_staff_portal_access(user=user, roles=roles):
@@ -71,10 +67,6 @@ def get_context(context):
         allowed_sections=sections,
         requested_section=requested_section,
     )
-
-    legacy_target = translate_legacy_portal_path(path, default_section=default_section)
-    if legacy_target and legacy_target != path:
-        _redirect(legacy_target)
 
     if not sections:
         _redirect(build_login_redirect(canonical_path_for_section(default_section)))

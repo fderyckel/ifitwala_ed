@@ -42,19 +42,6 @@ class TestPortalRoute(FrappeTestCase):
             frappe.set_user("Administrator")
             self._restore_request(original_request)
 
-    def test_legacy_top_level_student_route_redirects_to_canonical_namespace(self):
-        user = self._create_user("legacy-student", roles=["Student"])
-        self._create_student(user.name)
-        original_request = self._set_request_path("/student/activities")
-        frappe.set_user(user.name)
-        try:
-            with self.assertRaises(frappe.Redirect):
-                get_context(frappe._dict())
-            self.assertEqual(frappe.local.flags.redirect_location, "/portal/student/activities")
-        finally:
-            frappe.set_user("Administrator")
-            self._restore_request(original_request)
-
     def test_staff_hitting_student_namespace_redirects_to_staff_home(self):
         user = self._create_user("staff", roles=["Employee"])
         self._create_employee(user.name)
@@ -126,24 +113,6 @@ class TestPortalRoute(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Organization", org.name))
         return org
-
-    def _create_student(self, user_email: str):
-        previous_in_migration = bool(getattr(frappe.flags, "in_migration", False))
-        frappe.flags.in_migration = True
-        try:
-            student = frappe.get_doc(
-                {
-                    "doctype": "Student",
-                    "student_first_name": "Legacy",
-                    "student_last_name": f"Student {frappe.generate_hash(length=5)}",
-                    "student_email": user_email,
-                    "student_user_id": user_email,
-                }
-            ).insert(ignore_permissions=True)
-        finally:
-            frappe.flags.in_migration = previous_in_migration
-        self._created.append(("Student", student.name))
-        return student
 
     def _create_employee(self, user_email: str, *, employment_status: str = "Active"):
         employee = frappe.get_doc(

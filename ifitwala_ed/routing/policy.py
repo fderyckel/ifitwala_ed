@@ -8,11 +8,6 @@ import frappe
 
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
 CANONICAL_PORTAL_PREFIX = "/portal"
-LEGACY_TOP_LEVEL_SECTION_PATHS = {
-    "staff": "/staff",
-    "student": "/student",
-    "guardian": "/guardian",
-}
 
 PORTAL_SECTION_PRIORITY = ("staff", "student", "guardian")
 PORTAL_SECTION_LABELS = {
@@ -39,36 +34,11 @@ STAFF_PORTAL_ROLES = frozenset(
     }
 )
 
-LEGACY_PORTAL_ROOT_REDIRECT = f"{CANONICAL_PORTAL_PREFIX}/student"
-RESERVED_WEBSITE_PREFIXES = frozenset(
-    {
-        "admissions",
-        "apply",
-        "schools",
-        "student",
-        "staff",
-        "guardian",
-        "portal",
-        "app",
-        "api",
-        "files",
-        "login",
-        "logout",
-    }
-)
-
 WEBSITE_ROUTE_RULES = [
     {"from_route": "/", "to_route": "index"},
     {"from_route": "/logout", "to_route": "logout"},
     {"from_route": "/admissions", "to_route": "admissions"},
     {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
-    # Legacy top-level compatibility ingress. Controller redirects to canonical /portal/* routes.
-    {"from_route": "/student", "to_route": "portal"},
-    {"from_route": "/student/<path:subpath>", "to_route": "portal"},
-    {"from_route": "/staff", "to_route": "portal"},
-    {"from_route": "/staff/<path:subpath>", "to_route": "portal"},
-    {"from_route": "/guardian", "to_route": "portal"},
-    {"from_route": "/guardian/<path:subpath>", "to_route": "portal"},
     # Canonical portal namespace ingress.
     {"from_route": "/portal", "to_route": "portal"},
     {"from_route": "/portal/<path:subpath>", "to_route": "portal"},
@@ -86,14 +56,11 @@ WEBSITE_REDIRECTS = [
         "target": "/apply/registration-of-interest",
         "redirect_http_status": 301,
     },
-    {"source": "/student", "target": "/portal/student", "redirect_http_status": 301},
-    {"source": "/staff", "target": "/portal/staff", "redirect_http_status": 301},
-    {"source": "/guardian", "target": "/portal/guardian", "redirect_http_status": 301},
 ]
 
 
 def canonical_path_for_section(section: str) -> str:
-    return PORTAL_SECTION_PATHS.get(section, LEGACY_PORTAL_ROOT_REDIRECT)
+    return PORTAL_SECTION_PATHS.get(section, f"{CANONICAL_PORTAL_PREFIX}/student")
 
 
 def normalize_path(path: str | None, *, default: str = "/") -> str:
@@ -112,43 +79,16 @@ def _split_path(path: str | None) -> list[str]:
 
 def resolve_section_from_path(path: str | None) -> str | None:
     segments = _split_path(path)
-    if not segments:
-        return None
-
-    first = segments[0]
-    if first in LEGACY_TOP_LEVEL_SECTION_PATHS:
-        return first
-
-    if first != "portal":
-        return None
-
     if len(segments) < 2:
         return None
 
-    second = segments[1]
-    if second in PORTAL_SECTION_PATHS:
-        return second
+    if segments[0] != "portal":
+        return None
+
+    section = segments[1]
+    if section in PORTAL_SECTION_PATHS:
+        return section
     return None
-
-
-def translate_legacy_portal_path(path: str | None, *, default_section: str) -> str | None:
-    # Keep signature stable for existing callers/tests.
-    _ = default_section
-    normalized = normalize_path(path)
-    if normalized.startswith(CANONICAL_PORTAL_PREFIX):
-        return None
-
-    segments = _split_path(normalized)
-    if not segments:
-        return None
-
-    section = segments[0]
-    if section not in LEGACY_TOP_LEVEL_SECTION_PATHS:
-        return None
-
-    base = canonical_path_for_section(section)
-    remaining = "/".join(segments[1:])
-    return f"{base}/{remaining}" if remaining else base
 
 
 def _active_employee_status_from_login_email(*, user: str) -> tuple[bool, str]:
@@ -260,7 +200,7 @@ def is_portal_home_page(path: str | None) -> bool:
     normalized = normalize_path(path, default="")
     if normalized.startswith(f"{CANONICAL_PORTAL_PREFIX}/"):
         return True
-    return normalized in PORTAL_SECTION_PATHS.values() or normalized in LEGACY_TOP_LEVEL_SECTION_PATHS.values()
+    return normalized in PORTAL_SECTION_PATHS.values()
 
 
 def build_login_redirect(path: str) -> str:
@@ -270,19 +210,3 @@ def build_login_redirect(path: str) -> str:
 def build_logout_then_login_redirect(path: str) -> str:
     login_path = build_login_redirect(path)
     return f"/logout?redirect-to={quote(login_path, safe='')}"
-
-
-def log_legacy_portal_hit(*, path: str | None, user: str | None):
-    normalized = normalize_path(path)
-    if normalized.startswith(CANONICAL_PORTAL_PREFIX):
-        return
-
-    segments = _split_path(normalized)
-    if not segments or segments[0] not in LEGACY_TOP_LEVEL_SECTION_PATHS:
-        return
-
-    frappe.logger("ifitwala_ed.routing").info(
-        "legacy_portal_path_hit path=%s user=%s",
-        normalized,
-        user or "Guest",
-    )

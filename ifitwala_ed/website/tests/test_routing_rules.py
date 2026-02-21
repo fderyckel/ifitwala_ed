@@ -44,14 +44,14 @@ class TestRoutingRules(FrappeTestCase):
         self.assertIn(("/", "index"), pairs)
         self.assertIn(("/admissions", "admissions"), pairs)
         self.assertIn(("/admissions/<path:subpath>", "admissions"), pairs)
-        self.assertIn(("/student", "portal"), pairs)
-        self.assertIn(("/student/<path:subpath>", "portal"), pairs)
-        self.assertIn(("/staff", "portal"), pairs)
-        self.assertIn(("/staff/<path:subpath>", "portal"), pairs)
-        self.assertIn(("/guardian", "portal"), pairs)
-        self.assertIn(("/guardian/<path:subpath>", "portal"), pairs)
         self.assertIn(("/portal", "portal"), pairs)
         self.assertIn(("/portal/<path:subpath>", "portal"), pairs)
+        self.assertNotIn("/student", from_routes)
+        self.assertNotIn("/student/<path:subpath>", from_routes)
+        self.assertNotIn("/staff", from_routes)
+        self.assertNotIn("/staff/<path:subpath>", from_routes)
+        self.assertNotIn("/guardian", from_routes)
+        self.assertNotIn("/guardian/<path:subpath>", from_routes)
         self.assertNotIn("/inquiry", from_routes)
         self.assertNotIn("/registration-of-interest", from_routes)
         self.assertNotIn("/<path:route>", from_routes)
@@ -82,16 +82,12 @@ class TestRoutingRules(FrappeTestCase):
         self.assertEqual(lookup["/inquiry"].get("redirect_http_status"), 301)
         self.assertEqual(lookup["/registration-of-interest"].get("redirect_http_status"), 301)
 
-    def test_legacy_top_level_paths_redirect_to_canonical_portal_namespace(self):
+    def test_top_level_section_aliases_are_not_redirected(self):
         redirects = getattr(hooks, "website_redirects", []) or []
-        pairs = {(row.get("source"), row.get("target")) for row in redirects if isinstance(row, dict)}
-        lookup = {row.get("source"): row for row in redirects if isinstance(row, dict) and row.get("source")}
-        self.assertIn(("/student", "/portal/student"), pairs)
-        self.assertIn(("/staff", "/portal/staff"), pairs)
-        self.assertIn(("/guardian", "/portal/guardian"), pairs)
-        self.assertEqual(lookup["/student"].get("redirect_http_status"), 301)
-        self.assertEqual(lookup["/staff"].get("redirect_http_status"), 301)
-        self.assertEqual(lookup["/guardian"].get("redirect_http_status"), 301)
+        sources = {row.get("source") for row in redirects if isinstance(row, dict)}
+        self.assertNotIn("/student", sources)
+        self.assertNotIn("/staff", sources)
+        self.assertNotIn("/guardian", sources)
 
     def test_apply_namespace_is_not_owned_by_custom_website_router(self):
         rules = hooks.website_route_rules
