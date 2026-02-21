@@ -291,8 +291,7 @@ def _self_heal_employee_user_link(*, user: str, roles: set[str]) -> None:
     Backfill missing Employee.user_id links during login when there is exactly one
     Active Employee row matching the login email.
     """
-    if "Employee" not in roles and not (roles & STAFF_PORTAL_ROLES):
-        return
+    _ = roles
     if frappe.db.exists("Employee", {"user_id": user, "employment_status": "Active"}):
         return
 

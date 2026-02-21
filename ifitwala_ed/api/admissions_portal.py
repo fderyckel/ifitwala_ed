@@ -955,16 +955,31 @@ def withdraw_application(
 
 def _ensure_admissions_applicant_role(user_doc) -> None:
     changed = False
-    roles = {row.role for row in (user_doc.roles or []) if row.role}
+    role_names = []
+    seen = set()
+    had_desk_user = False
 
-    if ADMISSIONS_ROLE not in roles:
-        user_doc.append("roles", {"role": ADMISSIONS_ROLE})
-        changed = True
-        roles.add(ADMISSIONS_ROLE)
+    for row in user_doc.roles or []:
+        role = (row.role or "").strip()
+        if not role:
+            continue
+        if role == "Desk User":
+            had_desk_user = True
+            continue
+        if role in seen:
+            continue
+        seen.add(role)
+        role_names.append(role)
 
-    if "Desk User" in roles:
-        user_doc.remove_roles("Desk User")
+    if ADMISSIONS_ROLE not in seen:
+        role_names.append(ADMISSIONS_ROLE)
         changed = True
+
+    if had_desk_user:
+        changed = True
+
+    if changed:
+        user_doc.set("roles", [{"role": role} for role in role_names])
 
     if (user_doc.user_type or "").strip() != "Website User":
         user_doc.user_type = "Website User"

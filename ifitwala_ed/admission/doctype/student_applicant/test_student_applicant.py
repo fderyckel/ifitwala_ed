@@ -164,14 +164,18 @@ class TestStudentApplicant(FrappeTestCase):
         applicant = self._create_student_applicant()
         self._create_applicant_health_profile(applicant.name)
 
-        applicant_doc = frappe.get_doc(
-            {
-                "doctype": "Applicant Document",
-                "student_applicant": applicant.name,
-                "document_type": doc_type,
-                "review_status": "Approved",
-            }
-        ).insert(ignore_permissions=True)
+        frappe.set_user("Administrator")
+        try:
+            applicant_doc = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document",
+                    "student_applicant": applicant.name,
+                    "document_type": doc_type,
+                    "review_status": "Approved",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.set_user(self.staff_user.name)
         self._created.append(("Applicant Document", applicant_doc.name))
 
         source_file = frappe.get_doc(

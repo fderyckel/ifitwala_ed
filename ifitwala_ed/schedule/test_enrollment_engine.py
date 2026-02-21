@@ -347,6 +347,8 @@ def _make_program(grade_scale, target_course, required_course, repeatable=1, con
                     "apply_to_course": target_course.name,
                     "required_course": required_course.name,
                     "min_grade": "B-",
+                    "grade_scale_used": grade_scale.name,
+                    "min_numeric_score": 70,
                     "concurrency_ok": concurrency_ok,
                 }
             ],
@@ -375,6 +377,7 @@ def _make_offering(program, school, academic_year, target_course, required_cours
                 {
                     "course": required_course.name,
                     "course_name": required_course.course_name,
+                    "required": 0,
                     "start_academic_year": academic_year.name,
                     "end_academic_year": academic_year.name,
                 },

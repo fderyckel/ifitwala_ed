@@ -10,6 +10,17 @@ from frappe import _
 from frappe.utils import now_datetime
 
 
+def _map_offering_seat_policy_to_capacity_policy(seat_policy: str | None) -> str:
+    policy = (seat_policy or "").strip()
+    if policy == "Committed Only":
+        return "committed_only"
+    if policy == "Approved Requests Hold Seats":
+        return "approved_requests"
+    if policy == "Submitted Holds Seats":
+        return "submitted_holds"
+    return "committed_only"
+
+
 @frappe.whitelist()
 def validate_program_enrollment_request(request_name, force=0):
     if not request_name:
@@ -45,13 +56,16 @@ def validate_program_enrollment_request(request_name, force=0):
     # Single source of truth: enrollment_engine.evaluate_enrollment_request
     from ifitwala_ed.schedule.enrollment_engine import evaluate_enrollment_request
 
+    seat_policy = frappe.db.get_value("Program Offering", doc.program_offering, "seat_policy")
+    capacity_policy = _map_offering_seat_policy_to_capacity_policy(seat_policy)
+
     engine_payload = evaluate_enrollment_request(
         {
             "student": doc.student,
             "program_offering": doc.program_offering,
             "requested_courses": requested,
             "request_id": doc.name,
-            # keep default policy unless you later expose it on the doctype
+            "capacity_policy": capacity_policy,
         }
     )
 

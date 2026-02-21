@@ -11,6 +11,7 @@ SUPPORTED_CAPACITY_POLICIES = {
     "committed_only",
     "approved_requests",
     "approved_plus_review",
+    "submitted_holds",
 }
 
 
@@ -625,6 +626,8 @@ def _get_capacity_counts(program_offering, policy, request_id=None):
         statuses = ["Approved"]
     elif policy == "approved_plus_review":
         statuses = ["Approved", "Under Review"]
+    elif policy == "submitted_holds":
+        statuses = ["Submitted", "Under Review", "Approved"]
 
     if not _request_status_supported(statuses):
         return committed, "committed_only", True
