@@ -12,15 +12,11 @@ from ifitwala_ed.admission.admission_utils import (
     _validate_admissions_assignee,
     from_inquiry_invite,
 )
-from ifitwala_ed.admission.doctype.inquiry.inquiry import _normalize_inquiry_state
 from ifitwala_ed.tests.factories.users import make_user
 
 
 class TestInquiry(FrappeTestCase):
-    def test_normalize_legacy_new_inquiry_state(self):
-        self.assertEqual(_normalize_inquiry_state("New Inquiry"), "New")
-
-    def test_insert_legacy_new_inquiry_state_is_canonicalized(self):
+    def test_insert_legacy_new_inquiry_state_is_rejected(self):
         doc = frappe.get_doc(
             {
                 "doctype": "Inquiry",
@@ -28,10 +24,8 @@ class TestInquiry(FrappeTestCase):
                 "workflow_state": "New Inquiry",
             }
         )
-        doc.insert(ignore_permissions=True)
-
-        self.assertEqual(doc.workflow_state, "New")
-        self.assertEqual(frappe.db.get_value("Inquiry", doc.name, "workflow_state"), "New")
+        with self.assertRaises(frappe.ValidationError):
+            doc.insert(ignore_permissions=True)
 
     def _ensure_role(self, user: str, role: str) -> None:
         if not frappe.db.exists("Role", role):

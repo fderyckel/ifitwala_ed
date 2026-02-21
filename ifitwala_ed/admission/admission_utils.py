@@ -83,25 +83,34 @@ def ensure_admissions_permission(user: str | None = None) -> str:
 
 def notify_admission_manager(doc):
     """Realtime notify Admission Managers of a new inquiry (from webform)."""
-    if frappe.flags.in_web_form and doc.workflow_state in ("New", "New Inquiry"):
-        user_ids = frappe.db.get_values("Has Role", {"role": "Admission Manager"}, "parent", as_dict=False)
-        if not user_ids:
-            return
-        enabled = frappe.db.get_values(
-            "User", {"name": ["in", [u[0] for u in user_ids]], "enabled": 1}, "name", as_dict=False
+    if not frappe.flags.in_web_form:
+        return
+
+    state = (doc.workflow_state or "").strip()
+    is_new_submission = (doc.doctype == "Inquiry" and state == "New") or (
+        doc.doctype == "Registration of Interest" and state == "New Inquiry"
+    )
+    if not is_new_submission:
+        return
+
+    user_ids = frappe.db.get_values("Has Role", {"role": "Admission Manager"}, "parent", as_dict=False)
+    if not user_ids:
+        return
+    enabled = frappe.db.get_values(
+        "User", {"name": ["in", [u[0] for u in user_ids]], "enabled": 1}, "name", as_dict=False
+    )
+    for (user,) in enabled:
+        frappe.publish_realtime(
+            event="inbox_notification",
+            message={
+                "type": "Alert",
+                "subject": "New Inquiry Submitted",
+                "message": f"Inquiry {doc.name} has been submitted.",
+                "reference_doctype": doc.doctype,
+                "reference_name": doc.name,
+            },
+            user=user,
         )
-        for (user,) in enabled:
-            frappe.publish_realtime(
-                event="inbox_notification",
-                message={
-                    "type": "Alert",
-                    "subject": "New Inquiry Submitted",
-                    "message": f"Inquiry {doc.name} has been submitted.",
-                    "reference_doctype": doc.doctype,
-                    "reference_name": doc.name,
-                },
-                user=user,
-            )
 
 
 def check_sla_breaches():
@@ -657,8 +666,13 @@ def on_todo_update_close_marks_contacted(doc, method=None):
         return
 
     state = (ref.workflow_state or "New").strip()
+    if ref.doctype == "Inquiry":
+        pre_contact_states = {"New", "Assigned"}
+    else:
+        pre_contact_states = {"New Inquiry", "New", "Assigned"}
+
     # Only flip from pre-contact states
-    if state not in ("New", "New Inquiry", "Assigned"):
+    if state not in pre_contact_states:
         return
 
     # Only if the closing user is the current assignee on the document

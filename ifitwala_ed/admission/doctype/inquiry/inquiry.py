@@ -20,18 +20,11 @@ from ifitwala_ed.admission.admission_utils import (
 )
 
 CANONICAL_INQUIRY_STATES = {"New", "Assigned", "Contacted", "Qualified", "Archived"}
-LEGACY_INQUIRY_STATE_ALIASES = {
-    "New Inquiry": "New",
-}
 
 
 def _normalize_inquiry_state(state: str | None) -> str:
-    if not state:
-        return "New"
-    normalized = str(state).strip()
-    if not normalized:
-        return "New"
-    return LEGACY_INQUIRY_STATE_ALIASES.get(normalized, normalized)
+    normalized = str(state or "").strip()
+    return normalized or "New"
 
 
 class Inquiry(Document):
@@ -75,7 +68,7 @@ class Inquiry(Document):
         if current not in CANONICAL_INQUIRY_STATES:
             frappe.throw(_("Invalid workflow state: {0}.").format(current_raw or current))
 
-        # Backfill legacy values to canonical state on first save.
+        # Keep stored value canonical (trimmed/defaulted).
         if current_raw != current:
             self.workflow_state = current
 

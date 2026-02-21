@@ -205,10 +205,17 @@ def has_active_employee_profile(*, user: str, roles: set[str]) -> bool:
 
 
 def has_staff_portal_access(*, user: str, roles: set[str]) -> bool:
+    # Never block the framework superuser from Desk/Staff portal entry.
+    if user == "Administrator":
+        return True
+
+    # Explicit staff roles must stay authoritative even if a linked Employee
+    # profile exists with a non-active status.
+    if roles & STAFF_PORTAL_ROLES:
+        return True
+
     has_employee, status = _linked_employee_status(user=user)
-    if has_employee:
-        return status == "active"
-    return bool(roles & STAFF_PORTAL_ROLES)
+    return has_employee and status == "active"
 
 
 def resolve_portal_sections(*, user: str, roles: set[str]) -> set[str]:

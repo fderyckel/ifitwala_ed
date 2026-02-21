@@ -68,6 +68,19 @@ class TestPortalRoute(FrappeTestCase):
             frappe.set_user("Administrator")
             self._restore_request(original_request)
 
+    def test_administrator_role_with_inactive_employee_still_routes_to_staff_home(self):
+        user = self._create_user("admin-inactive", roles=["Administrator"])
+        self._create_employee(user.name, employment_status="Temporary Leave")
+        original_request = self._set_request_path("/portal/student")
+        frappe.set_user(user.name)
+        try:
+            with self.assertRaises(frappe.Redirect):
+                get_context(frappe._dict())
+            self.assertEqual(frappe.local.flags.redirect_location, "/portal/staff")
+        finally:
+            frappe.set_user("Administrator")
+            self._restore_request(original_request)
+
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):
             return
@@ -120,7 +133,7 @@ class TestPortalRoute(FrappeTestCase):
         self._created.append(("Student", student.name))
         return student
 
-    def _create_employee(self, user_email: str):
+    def _create_employee(self, user_email: str, *, employment_status: str = "Active"):
         employee = frappe.get_doc(
             {
                 "doctype": "Employee",
@@ -130,7 +143,7 @@ class TestPortalRoute(FrappeTestCase):
                 "employee_professional_email": user_email,
                 "organization": self.organization,
                 "date_of_joining": nowdate(),
-                "employment_status": "Active",
+                "employment_status": employment_status,
                 "user_id": user_email,
             }
         ).insert(ignore_permissions=True)
