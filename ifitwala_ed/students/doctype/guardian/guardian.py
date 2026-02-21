@@ -37,6 +37,23 @@ def _set_user_home_page(user: str, path: str):
         return
 
 
+def _ensure_user_role(user: str, role: str):
+    if not user or not role:
+        return
+    if frappe.db.exists("Has Role", {"parent": user, "role": role}):
+        return
+    frappe.get_doc(
+        {
+            "doctype": "Has Role",
+            "parent": user,
+            "parenttype": "User",
+            "parentfield": "roles",
+            "role": role,
+        }
+    ).insert(ignore_permissions=True)
+    frappe.clear_cache(user=user)
+
+
 class Guardian(Document):
     def validate(self):
         # 1) Keep validate pure: compute title only
@@ -102,8 +119,7 @@ class Guardian(Document):
         # Add Guardian role if missing
         if "Guardian" not in user_roles:
             try:
-                user = frappe.get_doc("User", user_email)
-                user.add_roles("Guardian")
+                _ensure_user_role(user_email, "Guardian")
             except Exception:
                 frappe.log_error(
                     frappe.get_traceback(),
@@ -145,7 +161,7 @@ class Guardian(Document):
             contact.salutation = self.salutation
         if getattr(self, "user", None):
             contact.user = self.user
-        if getattr(self, "guardian_gender", None):
+        if getattr(self, "guardian_gender", None) and frappe.db.exists("Gender", self.guardian_gender):
             contact.gender = self.guardian_gender
         if getattr(self, "guardian_email", None):
             contact.append("email_ids", {"email_id": self.guardian_email, "is_primary": 1})
@@ -215,7 +231,7 @@ class Guardian(Document):
             user = frappe.get_doc("User", self.guardian_email)
             roles = [r.role for r in user.roles]
             if "Guardian" not in roles:
-                user.add_roles("Guardian")
+                _ensure_user_role(user.name, "Guardian")
 
             guardian_home = canonical_path_for_section("guardian")
             # Set home_page so guardian is routed to the guardian portal on login
@@ -245,6 +261,7 @@ class Guardian(Document):
                     "mobile_no": self.guardian_mobile_phone or "",
                     "user_type": "Website User",
                     "send_welcome_email": 1,  # invite-style (flip to 0 if you prefer silent)
+                    "roles": [{"role": "Guardian"}],
                 }
             )
             user.flags.ignore_permissions = True
@@ -252,9 +269,7 @@ class Guardian(Document):
             # Prevent Contact→Guardian sync loop during this controlled create
             frappe.flags.skip_contact_to_guardian_sync = True
 
-            # Mirror your Student flow: add role then save
-            user.add_roles("Guardian")
-            user.save()
+            user.insert(ignore_permissions=True)
 
             guardian_home = canonical_path_for_section("guardian")
             # Set home_page so guardian is routed to the guardian portal on login

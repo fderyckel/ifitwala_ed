@@ -13,6 +13,7 @@ class TestStudentApplicant(FrappeTestCase):
         frappe.set_user("Administrator")
         self._created = []
         self._ensure_admissions_role("Administrator", "Admission Manager")
+        frappe.clear_cache(user="Administrator")
         self.org = self._create_org()
         self.parent_school = self._create_school("Admissions Root", "AR", self.org, is_group=1)
         self.leaf_school = self._create_school("Admissions Leaf", "AL", self.org, parent=self.parent_school, is_group=0)
@@ -107,7 +108,8 @@ class TestStudentApplicant(FrappeTestCase):
 
     def test_submitted_to_under_review_transition(self):
         applicant = self._create_student_applicant()
-        applicant._set_status("Invited", "Invited for lifecycle test", permission_checker=None)
+        applicant.db_set("application_status", "Invited", update_modified=False)
+        applicant.reload()
         applicant.mark_in_progress()
         applicant.submit_application()
         applicant.reload()
@@ -125,7 +127,8 @@ class TestStudentApplicant(FrappeTestCase):
         applicant.applicant_user = user.name
         applicant.save(ignore_permissions=True)
 
-        applicant._set_status("Invited", "Invited for rejection test", permission_checker=None)
+        applicant.db_set("application_status", "Invited", update_modified=False)
+        applicant.reload()
         applicant.mark_in_progress()
         applicant.submit_application()
         applicant.mark_under_review()
@@ -181,11 +184,13 @@ class TestStudentApplicant(FrappeTestCase):
         source_file.insert(ignore_permissions=True)
         self._created.append(("File", source_file.name))
 
-        applicant._set_status("Invited", "Invited for promotion test", permission_checker=None)
+        applicant.db_set("application_status", "Invited", update_modified=False)
+        applicant.reload()
         applicant.mark_in_progress()
         applicant.submit_application()
         applicant.mark_under_review()
-        applicant._set_status("Approved", "Approval seeded for promotion test", permission_checker=None)
+        applicant.db_set("application_status", "Approved", update_modified=False)
+        applicant.reload()
 
         student_name = applicant.promote_to_student()
         self._created.append(("Student", student_name))
@@ -234,11 +239,13 @@ class TestStudentApplicant(FrappeTestCase):
             ],
         )
 
-        applicant._set_status("Invited", "Invited for health promotion test", permission_checker=None)
+        applicant.db_set("application_status", "Invited", update_modified=False)
+        applicant.reload()
         applicant.mark_in_progress()
         applicant.submit_application()
         applicant.mark_under_review()
-        applicant._set_status("Approved", "Approval seeded for health promotion copy test", permission_checker=None)
+        applicant.db_set("application_status", "Approved", update_modified=False)
+        applicant.reload()
 
         student_name = applicant.promote_to_student()
         self._created.append(("Student", student_name))
@@ -270,6 +277,7 @@ class TestStudentApplicant(FrappeTestCase):
                     "role": role,
                 }
             ).insert(ignore_permissions=True)
+        frappe.clear_cache(user=user)
 
     def _create_org(self):
         name = f"Org-{frappe.generate_hash(length=6)}"

@@ -111,6 +111,7 @@ class TestAdmissionsPortalRoute(FrappeTestCase):
                     "role": "Admission Manager",
                 }
             ).insert(ignore_permissions=True)
+        frappe.clear_cache(user="Administrator")
 
         org = frappe.get_doc(
             {
@@ -140,9 +141,8 @@ class TestAdmissionsPortalRoute(FrappeTestCase):
                 "application_status": "Draft",
             }
         ).insert(ignore_permissions=True)
-        applicant.flags.from_applicant_invite = True
-        applicant.applicant_user = applicant_user
-        applicant.save(ignore_permissions=True)
+        applicant.db_set("applicant_user", applicant_user, update_modified=False)
+        applicant.reload()
         self._created.append(("Student Applicant", applicant.name))
         return applicant
 

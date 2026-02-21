@@ -31,6 +31,7 @@ class TestInviteApplicant(FrappeTestCase):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._ensure_admin_admissions_role("Admission Manager")
+        frappe.clear_cache(user="Administrator")
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
         self.applicant = self._create_applicant(self.organization, self.school)
@@ -190,10 +191,9 @@ class TestInviteApplicant(FrappeTestCase):
         alt_email = f"alt-{frappe.generate_hash(length=8)}@example.com"
         contact = self._create_contact(primary_email=email, other_email=alt_email)
 
-        self.applicant.flags.from_contact_sync = True
-        self.applicant.applicant_contact = contact.name
-        self.applicant.applicant_email = email
-        self.applicant.save(ignore_permissions=True)
+        self.applicant.db_set("applicant_contact", contact.name, update_modified=False)
+        self.applicant.db_set("applicant_email", email, update_modified=False)
+        self.applicant.reload()
 
         with patch(
             "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
@@ -210,12 +210,13 @@ class TestInviteApplicant(FrappeTestCase):
         other_contact_email = f"other-{frappe.generate_hash(length=8)}@example.com"
         self._create_contact(primary_email=other_contact_email)
 
-        self.applicant.flags.from_contact_sync = True
-        self.applicant.applicant_contact = applicant_contact.name
-        self.applicant.applicant_email = frappe.db.get_value(
-            "Contact Email", {"parent": applicant_contact.name, "is_primary": 1}, "email_id"
+        self.applicant.db_set("applicant_contact", applicant_contact.name, update_modified=False)
+        self.applicant.db_set(
+            "applicant_email",
+            frappe.db.get_value("Contact Email", {"parent": applicant_contact.name, "is_primary": 1}, "email_id"),
+            update_modified=False,
         )
-        self.applicant.save(ignore_permissions=True)
+        self.applicant.reload()
 
         with (
             patch(
@@ -295,3 +296,4 @@ class TestInviteApplicant(FrappeTestCase):
                     "role": role_name,
                 }
             ).insert(ignore_permissions=True)
+        frappe.clear_cache(user="Administrator")

@@ -7,6 +7,11 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
 
+try:
+    from werkzeug.routing import RequestRedirect
+except Exception:
+    from werkzeug.routing.exceptions import RequestRedirect
+
 from ifitwala_ed.api.users import (
     STAFF_ROLES,
     _strip_redirect_query,
@@ -17,8 +22,39 @@ from ifitwala_ed.api.users import (
 )
 
 
+def _ensure_test_organization() -> str:
+    name = frappe.db.get_value("Organization", {"organization_name": "Redirect Test Org"}, "name")
+    if name:
+        return name
+    doc = frappe.get_doc(
+        {
+            "doctype": "Organization",
+            "organization_name": "Redirect Test Org",
+            "abbr": f"R{frappe.generate_hash(length=4)}",
+        }
+    ).insert(ignore_permissions=True)
+    return doc.name
+
+
+def _ensure_role(role: str) -> None:
+    if frappe.db.exists("Role", role):
+        return
+    frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)
+
+
+def _append_role(user_doc, role: str) -> None:
+    _ensure_role(role)
+    user_doc.append("roles", {"role": role})
+
+
 class TestUserRedirect(FrappeTestCase):
     """Test unified login redirect logic."""
+
+    def _user_has_home_page_field(self) -> bool:
+        try:
+            return bool(frappe.get_meta("User").has_field("home_page"))
+        except Exception:
+            return False
 
     def test_strip_redirect_query_removes_redirect_to_params(self):
         raw = "/login?redirect-to=%2Fapp&foo=bar&redirect_to=%2Fapp#frag"
@@ -36,9 +72,9 @@ class TestUserRedirect(FrappeTestCase):
                 args={"redirect-to": "/app/eca"},
             )
             frappe.form_dict = frappe._dict({"redirect_to": "/app/eca"})
-            with self.assertRaises(frappe.Redirect):
+            with self.assertRaises(RequestRedirect) as ctx:
                 sanitize_login_redirect_param()
-            self.assertEqual(frappe.local.flags.redirect_location, "/login?foo=bar")
+            self.assertEqual(getattr(ctx.exception, "new_url", None), "/login?foo=bar")
             self.assertEqual(frappe.form_dict.get("redirect_to"), "")
             self.assertEqual(frappe.form_dict.get("redirect-to"), "")
         finally:
@@ -59,16 +95,16 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Admissions"
         user.last_name = "Applicant"
         user.enabled = 1
-        user.add_roles("Admissions Applicant")
-        user.save()
+        _append_role(user, "Admissions Applicant")
+        user.insert(ignore_permissions=True)
 
         original_request = getattr(frappe.local, "request", None)
         try:
             frappe.set_user(user.email)
             frappe.local.request = frappe._dict(path="/app/eca", method="GET")
-            with self.assertRaises(frappe.Redirect):
+            with self.assertRaises(RequestRedirect) as ctx:
                 redirect_non_staff_away_from_desk()
-            self.assertEqual(frappe.local.flags.redirect_location, "/admissions")
+            self.assertEqual(getattr(ctx.exception, "new_url", None), "/admissions")
         finally:
             if original_request is None:
                 if hasattr(frappe.local, "request"):
@@ -84,16 +120,18 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Desk"
         user.last_name = "Staff"
         user.enabled = 1
-        user.add_roles("Employee")
-        user.save()
+        _append_role(user, "Employee")
+        user.insert(ignore_permissions=True)
 
         employee = frappe.new_doc("Employee")
-        employee.first_name = "Desk"
-        employee.last_name = "Staff"
+        employee.employee_first_name = "Desk"
+        employee.employee_last_name = "Staff"
         employee.date_of_joining = nowdate()
         employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
         employee.employment_status = "Active"
-        employee.save()
+        employee.insert(ignore_permissions=True)
 
         original_request = getattr(frappe.local, "request", None)
         try:
@@ -120,7 +158,7 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Test"
         user.last_name = "User"
         user.enabled = 1
-        user.save()
+        user.insert(ignore_permissions=True)
 
         # Simulate login
         frappe.set_user(user.email)
@@ -145,8 +183,8 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Test"
         user.last_name = "Admissions Applicant"
         user.enabled = 1
-        user.add_roles("Admissions Applicant")
-        user.save()
+        _append_role(user, "Admissions Applicant")
+        user.insert(ignore_permissions=True)
 
         # Simulate login
         frappe.set_user(user.email)
@@ -170,8 +208,9 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "No"
         user.last_name = "Persist"
         user.enabled = 1
-        user.home_page = "/app"
-        user.save()
+        if self._user_has_home_page_field():
+            user.home_page = "/app"
+        user.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
@@ -180,8 +219,9 @@ class TestUserRedirect(FrappeTestCase):
         self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
         self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
 
-        user.reload()
-        self.assertEqual(user.home_page, "/app")
+        if self._user_has_home_page_field():
+            user.reload()
+            self.assertEqual(user.home_page, "/app")
 
         frappe.set_user("Administrator")
         frappe.delete_doc("User", user.email, force=True)
@@ -193,9 +233,10 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Relative"
         user.last_name = "Home"
         user.enabled = 1
-        user.home_page = "portal/student"
-        user.add_roles("Student")
-        user.save()
+        if self._user_has_home_page_field():
+            user.home_page = "portal/student"
+        _append_role(user, "Student")
+        user.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
@@ -204,8 +245,9 @@ class TestUserRedirect(FrappeTestCase):
         self.assertEqual(frappe.local.response.get("home_page"), "/portal/student")
         self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/student")
 
-        user.reload()
-        self.assertEqual(user.home_page, "/portal/student")
+        if self._user_has_home_page_field():
+            user.reload()
+            self.assertEqual(user.home_page, "/portal/student")
 
         frappe.set_user("Administrator")
         frappe.delete_doc("User", user.email, force=True)
@@ -217,16 +259,18 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Override"
         user.last_name = "Redirect"
         user.enabled = 1
-        user.add_roles("Employee")
-        user.save()
+        _append_role(user, "Employee")
+        user.insert(ignore_permissions=True)
 
         employee = frappe.new_doc("Employee")
-        employee.first_name = "Override"
-        employee.last_name = "Redirect"
+        employee.employee_first_name = "Override"
+        employee.employee_last_name = "Redirect"
         employee.date_of_joining = nowdate()
         employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
         employee.employment_status = "Active"
-        employee.save()
+        employee.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
@@ -250,16 +294,18 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Home"
         user.last_name = "Page"
         user.enabled = 1
-        user.add_roles("Employee")
-        user.save()
+        _append_role(user, "Employee")
+        user.insert(ignore_permissions=True)
 
         employee = frappe.new_doc("Employee")
-        employee.first_name = "Home"
-        employee.last_name = "Page"
+        employee.employee_first_name = "Home"
+        employee.employee_last_name = "Page"
         employee.date_of_joining = nowdate()
         employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
         employee.employment_status = "Active"
-        employee.save()
+        employee.insert(ignore_permissions=True)
 
         class _LoginManager:
             def __init__(self):
@@ -289,8 +335,8 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Test"
         user.last_name = "Guardian"
         user.enabled = 1
-        user.add_roles("Guardian")
-        user.save()
+        _append_role(user, "Guardian")
+        user.insert(ignore_permissions=True)
 
         # Create Guardian record linked to user
         guardian = frappe.new_doc("Guardian")
@@ -325,8 +371,8 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Test"
         user.last_name = "Student"
         user.enabled = 1
-        user.add_roles("Student")
-        user.save()
+        _append_role(user, "Student")
+        user.insert(ignore_permissions=True)
 
         # Create Student record linked to user
         student = frappe.new_doc("Student")
@@ -365,17 +411,19 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Test"
         user.last_name = "Staff"
         user.enabled = 1
-        user.add_roles("Employee")
-        user.save()
+        _append_role(user, "Employee")
+        user.insert(ignore_permissions=True)
 
         # Create Employee record linked to user
         employee = frappe.new_doc("Employee")
-        employee.first_name = "Test"
-        employee.last_name = "Staff"
+        employee.employee_first_name = "Test"
+        employee.employee_last_name = "Staff"
         employee.date_of_joining = nowdate()
         employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
         employee.employment_status = "Active"
-        employee.save()
+        employee.insert(ignore_permissions=True)
 
         # Simulate login
         frappe.set_user(user.email)
@@ -400,8 +448,8 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Employee"
         user.last_name = "RoleOnly"
         user.enabled = 1
-        user.add_roles("Employee")
-        user.save()
+        _append_role(user, "Employee")
+        user.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
@@ -421,8 +469,8 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Teacher"
         user.last_name = "RoleOnly"
         user.enabled = 1
-        user.add_roles("Teacher")
-        user.save()
+        _append_role(user, "Teacher")
+        user.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
@@ -442,15 +490,17 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Active"
         user.last_name = "Employee"
         user.enabled = 1
-        user.save()
+        user.insert(ignore_permissions=True)
 
         employee = frappe.new_doc("Employee")
-        employee.first_name = "Active"
-        employee.last_name = "Employee"
+        employee.employee_first_name = "Active"
+        employee.employee_last_name = "Employee"
         employee.date_of_joining = nowdate()
         employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
         employee.employment_status = "Active"
-        employee.save()
+        employee.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
@@ -472,15 +522,17 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Temporary"
         user.last_name = "Leave"
         user.enabled = 1
-        user.save()
+        user.insert(ignore_permissions=True)
 
         employee = frappe.new_doc("Employee")
-        employee.first_name = "Temporary"
-        employee.last_name = "Leave"
+        employee.employee_first_name = "Temporary"
+        employee.employee_last_name = "Leave"
         employee.date_of_joining = nowdate()
         employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
         employee.employment_status = "Temporary Leave"
-        employee.save()
+        employee.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
@@ -501,16 +553,17 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Self"
         user.last_name = "Heal"
         user.enabled = 1
-        user.add_roles("Employee")
-        user.save()
+        _append_role(user, "Employee")
+        user.insert(ignore_permissions=True)
 
         employee = frappe.new_doc("Employee")
-        employee.first_name = "Self"
-        employee.last_name = "Heal"
+        employee.employee_first_name = "Self"
+        employee.employee_last_name = "Heal"
         employee.date_of_joining = nowdate()
         employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
         employee.employment_status = "Active"
-        employee.save()
+        employee.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
@@ -533,15 +586,16 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Unlinked"
         user.last_name = "Active"
         user.enabled = 1
-        user.save()
+        user.insert(ignore_permissions=True)
 
         employee = frappe.new_doc("Employee")
-        employee.first_name = "Unlinked"
-        employee.last_name = "Active"
+        employee.employee_first_name = "Unlinked"
+        employee.employee_last_name = "Active"
         employee.date_of_joining = nowdate()
         employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
         employee.employment_status = "Active"
-        employee.save()
+        employee.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
@@ -577,16 +631,18 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Web"
         user.last_name = "Home"
         user.enabled = 1
-        user.add_roles("Employee")
-        user.save()
+        _append_role(user, "Employee")
+        user.insert(ignore_permissions=True)
 
         employee = frappe.new_doc("Employee")
-        employee.first_name = "Web"
-        employee.last_name = "Home"
+        employee.employee_first_name = "Web"
+        employee.employee_last_name = "Home"
         employee.date_of_joining = nowdate()
         employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
         employee.employment_status = "Active"
-        employee.save()
+        employee.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         self.assertEqual(get_website_user_home_page(), "/portal/staff")
@@ -602,25 +658,27 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Logout"
         user.last_name = "Safe"
         user.enabled = 1
-        user.add_roles("Employee")
-        user.save()
+        _append_role(user, "Employee")
+        user.insert(ignore_permissions=True)
 
         employee = frappe.new_doc("Employee")
-        employee.first_name = "Logout"
-        employee.last_name = "Safe"
+        employee.employee_first_name = "Logout"
+        employee.employee_last_name = "Safe"
         employee.date_of_joining = nowdate()
         employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
         employee.employment_status = "Active"
-        employee.save()
+        employee.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
 
-        original_path = getattr(frappe.request, "path", None)
+        original_request = getattr(frappe.local, "request", None)
         original_form_dict = getattr(frappe, "form_dict", None)
         original_in_test = bool(getattr(frappe.flags, "in_test", False))
         try:
-            frappe.request.path = "/api/method/logout"
+            frappe.local.request = frappe._dict(path="/api/method/logout", method="POST")
             frappe.form_dict = frappe._dict({"cmd": "logout"})
             frappe.flags.in_test = False
 
@@ -634,8 +692,11 @@ class TestUserRedirect(FrappeTestCase):
                 frappe.form_dict = frappe._dict()
             else:
                 frappe.form_dict = original_form_dict
-            if original_path is not None:
-                frappe.request.path = original_path
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
             frappe.set_user("Administrator")
             frappe.delete_doc("Employee", employee.name, force=True)
             frappe.delete_doc("User", user.email, force=True)

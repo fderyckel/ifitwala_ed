@@ -13,20 +13,20 @@ class TestEndofYearChecklist(FrappeTestCase):
         self._created = []
         seed = frappe.generate_hash(length=4).upper()
         self.org = self._create_org()
-        self.root_school = self._create_school(f"Root School {seed}", "RS", self.org, is_group=1)
+        self.root_school = self._create_school(f"Root School {seed}", f"R{seed}", self.org, is_group=1)
         self.child_school = self._create_school(
             f"Child School {seed}",
-            "CS",
+            f"C{seed}",
             self.org,
             parent=self.root_school,
             is_group=1,
         )
         self.leaf_school = self._create_school(
-            f"Leaf School {seed}", "LS", self.org, parent=self.child_school, is_group=0
+            f"Leaf School {seed}", f"L{seed}", self.org, parent=self.child_school, is_group=0
         )
         self.sibling_school = self._create_school(
             f"Sibling School {seed}",
-            "SS",
+            f"S{seed}",
             self.org,
             parent=self.root_school,
             is_group=0,
@@ -230,6 +230,7 @@ class TestEndofYearChecklist(FrappeTestCase):
                 "academic_year": academic_year,
                 "enrollment_date": "2025-09-01",
                 "enrollment_source": "Admin",
+                "enrollment_override_reason": "EOY checklist test setup",
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Program Enrollment", doc.name))

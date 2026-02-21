@@ -168,7 +168,11 @@ def _setup_enrollment_context(
                     "course": target_course.name,
                     "level": program_course_level or "None",
                     "category": program_course_category,
-                }
+                },
+                {
+                    "course": required_course.name,
+                    "level": "None",
+                },
             ],
             "prerequisites": [
                 {
@@ -193,14 +197,21 @@ def _setup_enrollment_context(
         "school": school.name,
         "offering_title": f"Offering {frappe.generate_hash(length=6)}",
         "offering_academic_years": [{"academic_year": academic_year.name}],
-        "offering_courses": [offering_course],
+        "offering_courses": [
+            offering_course,
+            {
+                "course": required_course.name,
+                "course_name": required_course.course_name,
+                "start_academic_year": academic_year.name,
+                "end_academic_year": academic_year.name,
+            },
+        ],
     }
     if seat_policy:
         data["seat_policy"] = seat_policy
     if enrollment_rules:
         data["enrollment_rules"] = enrollment_rules
-    if data:
-        offering = frappe.get_doc(data).insert()
+    offering = frappe.get_doc(data).insert()
 
     enrollment = frappe.get_doc(
         {
@@ -248,7 +259,7 @@ def _make_enrollment_request(context, student, course, status="Draft"):
             "student": student.name,
             "program_offering": context["offering"].name,
             "academic_year": context["academic_year"].name,
-            "status": status,
+            "status": "Draft",
             "courses": [
                 {
                     "course": course.name,
@@ -258,6 +269,10 @@ def _make_enrollment_request(context, student, course, status="Draft"):
         }
     )
     request.insert()
+    if status != "Draft":
+        validate_enrollment_request(request.name)
+        request.db_set("status", status, update_modified=False)
+        request.reload()
     return request
 
 

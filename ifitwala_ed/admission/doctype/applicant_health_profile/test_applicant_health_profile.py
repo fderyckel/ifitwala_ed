@@ -9,6 +9,7 @@ class TestApplicantHealthProfile(FrappeTestCase):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._ensure_admin_admissions_role("Admission Manager")
+        frappe.clear_cache(user="Administrator")
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
         self.user = self._create_user_with_role("Admissions Applicant")
@@ -85,7 +86,8 @@ class TestApplicantHealthProfile(FrappeTestCase):
                 "application_status": "Draft",
             }
         ).insert(ignore_permissions=True)
-        doc._set_status("Invited", "Invited for health profile test", permission_checker=None)
+        doc.db_set("application_status", "Invited", update_modified=False)
+        doc.reload()
         self._created.append(("Student Applicant", doc.name))
         return doc.name
 
@@ -103,3 +105,4 @@ class TestApplicantHealthProfile(FrappeTestCase):
                     "role": role_name,
                 }
             ).insert(ignore_permissions=True)
+        frappe.clear_cache(user="Administrator")

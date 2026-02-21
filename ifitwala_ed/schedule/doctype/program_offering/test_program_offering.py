@@ -163,6 +163,13 @@ def _make_course(label):
 
 
 def _make_offering(program, school, academic_year, offering_courses, grade_scale=None):
+    normalized_courses = []
+    for row in offering_courses or []:
+        row_data = dict(row)
+        row_data.setdefault("start_academic_year", academic_year.name)
+        row_data.setdefault("end_academic_year", academic_year.name)
+        normalized_courses.append(row_data)
+
     offering = frappe.get_doc(
         {
             "doctype": "Program Offering",
@@ -171,7 +178,7 @@ def _make_offering(program, school, academic_year, offering_courses, grade_scale
             "offering_title": f"Offering {frappe.generate_hash(length=6)}",
             "grade_scale": grade_scale,
             "offering_academic_years": [{"academic_year": academic_year.name}],
-            "offering_courses": offering_courses,
+            "offering_courses": normalized_courses,
         }
     )
     offering.insert()

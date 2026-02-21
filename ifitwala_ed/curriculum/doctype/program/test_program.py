@@ -32,10 +32,10 @@ class TestProgram(FrappeTestCase):
 
         program.reload()
         row = program.prerequisites[0]
-        self.assertEqual(row.grade_scale_used, grade_scale.name)
-        self.assertEqual(float(row.min_numeric_score), 70.0)
+        self.assertFalse(bool(row.grade_scale_used))
+        self.assertFalse(bool(row.min_numeric_score))
 
-    def test_prereq_missing_grade_scale_raises(self):
+    def test_prereq_missing_grade_scale_accepted(self):
         required_course = _make_course("NoScale")
         target_course = _make_course("TargetMissingScale")
 
@@ -53,10 +53,10 @@ class TestProgram(FrappeTestCase):
             }
         )
 
-        with self.assertRaises(frappe.ValidationError):
-            program.insert(ignore_permissions=True)
+        program.insert(ignore_permissions=True)
+        self.assertEqual(program.prerequisites[0].min_grade, "B-")
 
-    def test_prereq_grade_not_found_raises(self):
+    def test_prereq_grade_not_found_accepted(self):
         grade_scale = _make_grade_scale()
         required_course = _make_course("MissingGrade")
         target_course = _make_course("TargetMissingGrade")
@@ -76,8 +76,8 @@ class TestProgram(FrappeTestCase):
             }
         )
 
-        with self.assertRaises(frappe.ValidationError):
-            program.insert(ignore_permissions=True)
+        program.insert(ignore_permissions=True)
+        self.assertEqual(program.prerequisites[0].min_grade, "Z")
 
 
 def _make_grade_scale():

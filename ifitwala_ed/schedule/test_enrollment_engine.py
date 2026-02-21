@@ -187,7 +187,7 @@ def _setup_context(
         repeatable=repeatable,
         concurrency_ok=concurrency_ok,
     )
-    offering = _make_offering(program, school, academic_year, target_course, capacity=capacity)
+    offering = _make_offering(program, school, academic_year, target_course, required_course, capacity=capacity)
 
     if include_history:
         _make_enrollment(
@@ -336,6 +336,11 @@ def _make_program(grade_scale, target_course, required_course, repeatable=1, con
                     "level": "None",
                     "repeatable": repeatable,
                 },
+                {
+                    "course": required_course.name,
+                    "level": "None",
+                    "repeatable": 1,
+                },
             ],
             "prerequisites": [
                 {
@@ -350,7 +355,7 @@ def _make_program(grade_scale, target_course, required_course, repeatable=1, con
     return program
 
 
-def _make_offering(program, school, academic_year, target_course, capacity=None):
+def _make_offering(program, school, academic_year, target_course, required_course, capacity=None):
     offering = frappe.get_doc(
         {
             "doctype": "Program Offering",
@@ -365,6 +370,12 @@ def _make_offering(program, school, academic_year, target_course, capacity=None)
                     "start_academic_year": academic_year.name,
                     "end_academic_year": academic_year.name,
                     "capacity": capacity,
+                },
+                {
+                    "course": required_course.name,
+                    "course_name": required_course.course_name,
+                    "start_academic_year": academic_year.name,
+                    "end_academic_year": academic_year.name,
                 },
             ],
         }
@@ -415,9 +426,17 @@ def _make_enrollment_request(context, status="Approved"):
             "student": context["student"].name,
             "program_offering": context["offering"].name,
             "academic_year": context["academic_year"].name,
-            "status": status,
+            "status": "Draft",
             "courses": [{"course": context["target_course"].name}],
         }
     )
     request.insert()
+    if status != "Draft":
+        from ifitwala_ed.schedule.doctype.program_enrollment_request.program_enrollment_request import (
+            validate_enrollment_request,
+        )
+
+        validate_enrollment_request(request.name)
+        request.db_set("status", status, update_modified=False)
+        request.reload()
     return request

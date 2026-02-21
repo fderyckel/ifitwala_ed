@@ -21,10 +21,27 @@ PORTAL_ONLY_ROLES = frozenset({"Student", "Guardian", ADMISSIONS_APPLICANT_ROLE}
 
 
 def _get_request_safe():
+    request = getattr(frappe.local, "request", None)
+    if request is None:
+        try:
+            request = getattr(frappe, "request", None)
+        except RuntimeError:
+            return None
+
+    if hasattr(request, "_get_current_object"):
+        try:
+            request = request._get_current_object()
+        except RuntimeError:
+            return None
+
+    if request is None:
+        return None
+
     try:
-        return getattr(frappe, "request", None)
+        getattr(request, "path", None)
     except RuntimeError:
         return None
+    return request
 
 
 def _incoming_redirect_target() -> str:
@@ -54,6 +71,22 @@ def _is_desk_path(path_or_url: str | None) -> bool:
     parsed = urlsplit(raw)
     path = str(parsed.path or raw).strip()
     return path == "/app" or path.startswith("/app/")
+
+
+def _raise_request_redirect(target: str) -> None:
+    """
+    Raise a real HTTP redirect during init_request hooks.
+
+    before_request hooks run inside frappe.app.init_request, where
+    frappe.Redirect is treated as an unhandled app exception. Use Werkzeug's
+    redirect exception so frappe.app.application returns a redirect response.
+    """
+    try:
+        from werkzeug.routing import RequestRedirect
+    except Exception:
+        from werkzeug.routing.exceptions import RequestRedirect
+
+    raise RequestRedirect(target)
 
 
 def sanitize_login_redirect_param() -> None:
@@ -98,8 +131,7 @@ def sanitize_login_redirect_param() -> None:
                 }
             ),
         )
-        frappe.local.flags.redirect_location = target
-        raise frappe.Redirect
+        _raise_request_redirect(target)
 
 
 def _resolve_portal_only_redirect_path(*, roles: set[str]) -> str:
@@ -135,8 +167,7 @@ def redirect_non_staff_away_from_desk() -> None:
     has_active_employee = _has_active_employee_profile(user=user, roles=roles)
 
     if roles & PORTAL_ONLY_ROLES and not has_active_employee:
-        frappe.local.flags.redirect_location = _resolve_portal_only_redirect_path(roles=roles)
-        raise frappe.Redirect
+        _raise_request_redirect(_resolve_portal_only_redirect_path(roles=roles))
 
     if _has_staff_portal_access(user=user, roles=roles):
         return
@@ -144,8 +175,7 @@ def redirect_non_staff_away_from_desk() -> None:
     target = _resolve_login_redirect_path(user=user, roles=roles)
     if target == "/portal/staff":
         target = "/portal/student"
-    frappe.local.flags.redirect_location = target
-    raise frappe.Redirect
+    _raise_request_redirect(target)
 
 
 def _user_has_home_page_field() -> bool:
@@ -200,7 +230,7 @@ def _normalize_invalid_user_home_page(*, user: str, path: str) -> None:
 
 def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: str) -> None:
     """Temporary diagnostics for login redirect debugging."""
-    request = getattr(frappe, "request", None)
+    request = _get_request_safe()
     request_path = str(getattr(request, "path", "") or "")
     cmd = str((getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()).get("cmd") or "")
 

@@ -124,6 +124,19 @@ class TestSalesInvoice(FrappeTestCase):
 
     def make_program_offering(self, organization, school=None):
         school_name = school or self.make_school(organization).name
+        academic_year = frappe.get_doc(
+            {
+                "doctype": "Academic Year",
+                "academic_year_name": f"AY {frappe.generate_hash(length=6)}",
+                "school": school_name,
+                "year_start_date": "2025-08-01",
+                "year_end_date": "2026-06-30",
+                "archived": 0,
+                "visible_to_admission": 1,
+            }
+        )
+        academic_year.insert()
+
         program = frappe.get_doc(
             {
                 "doctype": "Program",
@@ -138,6 +151,7 @@ class TestSalesInvoice(FrappeTestCase):
                 "program": program.name,
                 "school": school_name,
                 "offering_title": f"Offering {frappe.generate_hash(length=6)}",
+                "offering_academic_years": [{"academic_year": academic_year.name}],
             }
         )
         offering.insert()

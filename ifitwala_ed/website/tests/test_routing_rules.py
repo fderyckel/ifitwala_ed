@@ -27,7 +27,10 @@ class TestRoutingRules(FrappeTestCase):
         )
         self.assertEqual(
             hooks.before_request,
-            ["ifitwala_ed.api.users.sanitize_login_redirect_param"],
+            [
+                "ifitwala_ed.api.users.sanitize_login_redirect_param",
+                "ifitwala_ed.api.users.redirect_non_staff_away_from_desk",
+            ],
         )
 
     def test_website_routes_are_scoped(self):
