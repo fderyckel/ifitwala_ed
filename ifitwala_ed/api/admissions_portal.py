@@ -90,6 +90,13 @@ APPLICANT_HEALTH_VACCINATION_FIELDS = (
 )
 
 
+def _has_health_declaration_column() -> bool:
+    try:
+        return bool(frappe.db.has_column("Applicant Health Profile", "applicant_health_declared_complete"))
+    except Exception:
+        return False
+
+
 def _default_health_payload() -> dict:
     payload = {field: "" for field in APPLICANT_HEALTH_FIELDS}
     payload["allergies"] = 0
@@ -145,15 +152,31 @@ def _build_applicant_display_name(row: dict) -> str:
 
 
 def _portal_health_state(student_applicant: str) -> dict:
-    health_row = frappe.db.get_value(
+    health_name = frappe.db.get_value(
         "Applicant Health Profile",
         {"student_applicant": student_applicant},
-        ["name", "applicant_health_declared_complete"],
-        as_dict=True,
+        "name",
     )
-    if not health_row:
+    if not health_name:
         return {"ok": False, "status": "missing"}
-    if cint(health_row.get("applicant_health_declared_complete")):
+
+    if _has_health_declaration_column():
+        declared = frappe.db.get_value(
+            "Applicant Health Profile",
+            health_name,
+            "applicant_health_declared_complete",
+        )
+        if cint(declared):
+            return {"ok": True, "status": "complete"}
+        return {"ok": False, "status": "in_progress"}
+
+    # Backward-compatible fallback for pre-migration sites.
+    legacy_review_status = frappe.db.get_value(
+        "Applicant Health Profile",
+        health_name,
+        "review_status",
+    )
+    if legacy_review_status == "Cleared":
         return {"ok": True, "status": "complete"}
     return {"ok": False, "status": "in_progress"}
 
@@ -246,9 +269,14 @@ def _serialize_health_doc(doc) -> dict:
         {fieldname: _as_text(row.get(fieldname)) for fieldname in APPLICANT_HEALTH_VACCINATION_FIELDS}
         for row in (doc.get("vaccinations") or [])
     ]
-    payload["applicant_health_declared_complete"] = _as_check(doc.get("applicant_health_declared_complete"))
-    payload["applicant_health_declared_by"] = _as_text(doc.get("applicant_health_declared_by"))
-    payload["applicant_health_declared_on"] = _as_text(doc.get("applicant_health_declared_on"))
+    if _has_health_declaration_column():
+        payload["applicant_health_declared_complete"] = _as_check(doc.get("applicant_health_declared_complete"))
+        payload["applicant_health_declared_by"] = _as_text(doc.get("applicant_health_declared_by"))
+        payload["applicant_health_declared_on"] = _as_text(doc.get("applicant_health_declared_on"))
+    else:
+        payload["applicant_health_declared_complete"] = 1 if _as_text(doc.get("review_status")) == "Cleared" else 0
+        payload["applicant_health_declared_by"] = ""
+        payload["applicant_health_declared_on"] = ""
     return payload
 
 
@@ -561,6 +589,7 @@ def update_applicant_health(
         normalized_vaccinations = _normalize_vaccinations(vaccinations)
     declaration_provided = applicant_health_declared_complete is not None
     declaration_confirmed = _as_bool(applicant_health_declared_complete)
+    has_declaration_column = _has_health_declaration_column()
 
     doc.update(updates)
     if doc.is_new():
@@ -590,7 +619,7 @@ def update_applicant_health(
             },
         )
 
-    if declaration_provided:
+    if declaration_provided and has_declaration_column:
         if declaration_confirmed:
             doc.applicant_health_declared_complete = 1
             doc.applicant_health_declared_by = user
@@ -602,9 +631,14 @@ def update_applicant_health(
 
     doc.save(ignore_permissions=True)
 
+    if has_declaration_column:
+        declared_complete = bool(cint(doc.get("applicant_health_declared_complete")))
+    else:
+        declared_complete = bool(_portal_health_state(row.get("name")).get("ok"))
+
     return {
         "ok": True,
-        "applicant_health_declared_complete": bool(cint(doc.get("applicant_health_declared_complete"))),
+        "applicant_health_declared_complete": declared_complete,
     }
 
 
