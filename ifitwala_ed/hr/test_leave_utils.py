@@ -44,6 +44,11 @@ class TestLeaveUtilsHolidayResolution(FrappeTestCase):
         ctx = frappe._dict(current_holiday_lis=None, organization="ORG-1")
 
         with patch("ifitwala_ed.hr.utils._get_employee_context", return_value=ctx):
-            holidays = hr_utils.get_holidays_for_employee("HR-EMP-0001", "2026-02-01", "2026-02-03")
+            holidays = hr_utils.get_holidays_for_employee(
+                "HR-EMP-0001",
+                "2026-02-01",
+                "2026-02-03",
+                raise_exception=False,
+            )
 
         self.assertEqual(holidays, [])

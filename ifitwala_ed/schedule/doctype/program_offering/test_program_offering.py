@@ -9,15 +9,20 @@ from ifitwala_ed.schedule.grade_scale_resolver_utils import resolve_grade_scale
 
 
 class TestProgramOffering(FrappeTestCase):
+    def setUp(self):
+        frappe.set_user("Administrator")
+
     def test_grade_scale_resolver_program_default(self):
         program_scale = _make_grade_scale("Program")
         organization = _make_organization()
         school = _make_school(organization)
+        academic_year = _make_academic_year(school)
         program = _make_program(program_scale)
         course = _make_course("Course")
         offering = _make_offering(
             program,
             school,
+            academic_year,
             [
                 {
                     "course": course.name,
@@ -34,11 +39,13 @@ class TestProgramOffering(FrappeTestCase):
         offering_scale = _make_grade_scale("Offering")
         organization = _make_organization()
         school = _make_school(organization)
+        academic_year = _make_academic_year(school)
         program = _make_program(program_scale)
         course = _make_course("Course")
         offering = _make_offering(
             program,
             school,
+            academic_year,
             [
                 {"course": course.name, "course_name": course.course_name},
             ],
@@ -54,11 +61,13 @@ class TestProgramOffering(FrappeTestCase):
         course_scale = _make_grade_scale("OfferingCourse")
         organization = _make_organization()
         school = _make_school(organization)
+        academic_year = _make_academic_year(school)
         program = _make_program(program_scale)
         course = _make_course("Course")
         offering = _make_offering(
             program,
             school,
+            academic_year,
             [
                 {
                     "course": course.name,
@@ -105,12 +114,28 @@ def _make_school(organization):
         {
             "doctype": "School",
             "school_name": f"School {frappe.generate_hash(length=6)}",
-            "abbr": f"SCH{frappe.generate_hash(length=4)}",
+            "abbr": f"S{frappe.generate_hash(length=4)}",
             "organization": organization.name,
         }
     )
     school.insert()
     return school
+
+
+def _make_academic_year(school):
+    doc = frappe.get_doc(
+        {
+            "doctype": "Academic Year",
+            "academic_year_name": f"AY {frappe.generate_hash(length=6)}",
+            "school": school.name,
+            "year_start_date": "2025-08-01",
+            "year_end_date": "2026-06-30",
+            "archived": 0,
+            "visible_to_admission": 1,
+        }
+    )
+    doc.insert()
+    return doc
 
 
 def _make_program(grade_scale):
@@ -137,7 +162,7 @@ def _make_course(label):
     return course
 
 
-def _make_offering(program, school, offering_courses, grade_scale=None):
+def _make_offering(program, school, academic_year, offering_courses, grade_scale=None):
     offering = frappe.get_doc(
         {
             "doctype": "Program Offering",
@@ -145,6 +170,7 @@ def _make_offering(program, school, offering_courses, grade_scale=None):
             "school": school.name,
             "offering_title": f"Offering {frappe.generate_hash(length=6)}",
             "grade_scale": grade_scale,
+            "offering_academic_years": [{"academic_year": academic_year.name}],
             "offering_courses": offering_courses,
         }
     )

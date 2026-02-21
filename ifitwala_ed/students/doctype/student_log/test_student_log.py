@@ -36,7 +36,7 @@ class TestStudentLog(TestCase):
 
     @patch("frappe.get_roles")
     def test_visibility_predicate_allows_admin_roles(self, mock_get_roles):
-        mock_get_roles.return_value = ["Academic Admin"]
+        mock_get_roles.return_value = ["System Manager"]
         sql, params = get_student_log_visibility_predicate(user="admin@example.com")
         self.assertEqual(sql, "1=1")
         self.assertEqual(params, {})

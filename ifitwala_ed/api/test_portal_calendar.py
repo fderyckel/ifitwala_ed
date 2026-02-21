@@ -91,11 +91,12 @@ class TestPortalCalendar(FrappeTestCase):
         is_group: int = 0,
     ) -> str:
         hash_key = frappe.generate_hash(length=4).upper()
+        abbr = f"{abbr_prefix[:1]}{hash_key}"
         doc = frappe.get_doc(
             {
                 "doctype": "School",
                 "school_name": f"{school_name} {hash_key}",
-                "abbr": f"{abbr_prefix}{hash_key}",
+                "abbr": abbr,
                 "organization": organization,
                 "is_group": 1 if is_group else 0,
                 "parent_school": parent,
@@ -143,8 +144,12 @@ class TestPortalCalendar(FrappeTestCase):
         doc = frappe.get_doc(
             {
                 "doctype": "Employee",
-                "first_name": "Portal",
-                "last_name": f"Staff {hash_key}",
+                "employee_first_name": "Portal",
+                "employee_last_name": f"Staff {hash_key}",
+                "employee_gender": "Prefer not to say",
+                "employee_professional_email": f"portal-staff-{hash_key.lower()}@example.com",
+                "organization": self.organization,
+                "date_of_joining": frappe.utils.nowdate(),
                 "employment_status": "Active",
                 "school": school,
             }

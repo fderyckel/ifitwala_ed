@@ -12,6 +12,9 @@ from ifitwala_ed.schedule.enrollment_request_utils import materialize_program_en
 
 
 class TestProgramEnrollmentRequest(FrappeTestCase):
+    def setUp(self):
+        frappe.set_user("Administrator")
+
     def test_validate_request_prereq_pass(self):
         context = _setup_enrollment_context(score=75)
         request = _make_enrollment_request(
@@ -180,6 +183,8 @@ def _setup_enrollment_context(
     offering_course = {
         "course": target_course.name,
         "course_name": target_course.course_name,
+        "start_academic_year": academic_year.name,
+        "end_academic_year": academic_year.name,
         "capacity": capacity,
     }
     data = {
@@ -187,6 +192,7 @@ def _setup_enrollment_context(
         "program": program.name,
         "school": school.name,
         "offering_title": f"Offering {frappe.generate_hash(length=6)}",
+        "offering_academic_years": [{"academic_year": academic_year.name}],
         "offering_courses": [offering_course],
     }
     if seat_policy:
@@ -301,6 +307,10 @@ def _make_academic_year(school):
             "doctype": "Academic Year",
             "academic_year_name": f"AY {frappe.generate_hash(length=6)}",
             "school": school.name,
+            "year_start_date": "2025-08-01",
+            "year_end_date": "2026-06-30",
+            "archived": 0,
+            "visible_to_admission": 1,
         }
     )
     academic_year.insert()

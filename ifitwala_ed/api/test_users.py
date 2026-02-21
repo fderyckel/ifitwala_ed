@@ -11,7 +11,9 @@ from ifitwala_ed.api.users import (
     STAFF_ROLES,
     _strip_redirect_query,
     get_website_user_home_page,
+    redirect_non_staff_away_from_desk,
     redirect_user_to_entry_portal,
+    sanitize_login_redirect_param,
 )
 
 
@@ -22,6 +24,93 @@ class TestUserRedirect(FrappeTestCase):
         raw = "/login?redirect-to=%2Fapp&foo=bar&redirect_to=%2Fapp#frag"
         cleaned = _strip_redirect_query(raw)
         self.assertEqual(cleaned, "/login?foo=bar#frag")
+
+    def test_sanitize_login_redirect_param_cleans_app_subpaths(self):
+        original_request = getattr(frappe.local, "request", None)
+        original_form_dict = getattr(frappe, "form_dict", None)
+        try:
+            frappe.local.request = frappe._dict(
+                path="/login",
+                method="GET",
+                full_path="/login?redirect-to=%2Fapp%2Feca&foo=bar",
+                args={"redirect-to": "/app/eca"},
+            )
+            frappe.form_dict = frappe._dict({"redirect_to": "/app/eca"})
+            with self.assertRaises(frappe.Redirect):
+                sanitize_login_redirect_param()
+            self.assertEqual(frappe.local.flags.redirect_location, "/login?foo=bar")
+            self.assertEqual(frappe.form_dict.get("redirect_to"), "")
+            self.assertEqual(frappe.form_dict.get("redirect-to"), "")
+        finally:
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
+            if original_form_dict is None:
+                if hasattr(frappe, "form_dict"):
+                    delattr(frappe, "form_dict")
+            else:
+                frappe.form_dict = original_form_dict
+
+    def test_non_staff_desk_request_redirects_admissions_applicant(self):
+        user = frappe.new_doc("User")
+        user.email = f"test_admissions_desk_block_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Admissions"
+        user.last_name = "Applicant"
+        user.enabled = 1
+        user.add_roles("Admissions Applicant")
+        user.save()
+
+        original_request = getattr(frappe.local, "request", None)
+        try:
+            frappe.set_user(user.email)
+            frappe.local.request = frappe._dict(path="/app/eca", method="GET")
+            with self.assertRaises(frappe.Redirect):
+                redirect_non_staff_away_from_desk()
+            self.assertEqual(frappe.local.flags.redirect_location, "/admissions")
+        finally:
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
+            frappe.set_user("Administrator")
+            frappe.delete_doc("User", user.email, force=True)
+
+    def test_staff_desk_request_is_not_redirected(self):
+        user = frappe.new_doc("User")
+        user.email = f"test_staff_desk_allow_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Desk"
+        user.last_name = "Staff"
+        user.enabled = 1
+        user.add_roles("Employee")
+        user.save()
+
+        employee = frappe.new_doc("Employee")
+        employee.first_name = "Desk"
+        employee.last_name = "Staff"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employment_status = "Active"
+        employee.save()
+
+        original_request = getattr(frappe.local, "request", None)
+        try:
+            frappe.set_user(user.email)
+            frappe.local.flags.redirect_location = None
+            frappe.local.request = frappe._dict(path="/app/eca", method="GET")
+            redirect_non_staff_away_from_desk()
+            self.assertIsNone(frappe.local.flags.redirect_location)
+        finally:
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
+            frappe.set_user("Administrator")
+            frappe.delete_doc("Employee", employee.name, force=True)
+            frappe.delete_doc("User", user.email, force=True)
 
     def test_all_users_redirect_to_staff_entry(self):
         """Standard users should be redirected to /portal/staff on login."""

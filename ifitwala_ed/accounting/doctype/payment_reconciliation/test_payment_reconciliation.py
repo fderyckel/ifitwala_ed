@@ -259,7 +259,7 @@ class TestPaymentReconciliation(FrappeTestCase):
         offering = self.make_billable_offering(
             organization=ctx["org"].name,
             income_account=ctx["income"].name,
-            offering_type="One-off Fee",
+            offering_type="Product",
             pricing_mode="Fixed",
         )
         other_invoice = self.make_sales_invoice(

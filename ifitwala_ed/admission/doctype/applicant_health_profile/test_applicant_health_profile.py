@@ -8,6 +8,7 @@ class TestApplicantHealthProfile(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
+        self._ensure_admin_admissions_role("Admission Manager")
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
         self.user = self._create_user_with_role("Admissions Applicant")
@@ -81,8 +82,24 @@ class TestApplicantHealthProfile(FrappeTestCase):
                 "last_name": f"Applicant-{frappe.generate_hash(length=6)}",
                 "organization": organization,
                 "school": school,
-                "application_status": "In Progress",
+                "application_status": "Draft",
             }
         ).insert(ignore_permissions=True)
+        doc._set_status("Invited", "Invited for health profile test", permission_checker=None)
         self._created.append(("Student Applicant", doc.name))
         return doc.name
+
+    def _ensure_admin_admissions_role(self, role_name: str):
+        if not frappe.db.exists("Role", role_name):
+            role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+            self._created.append(("Role", role.name))
+        if not frappe.db.exists("Has Role", {"parent": "Administrator", "role": role_name}):
+            frappe.get_doc(
+                {
+                    "doctype": "Has Role",
+                    "parent": "Administrator",
+                    "parenttype": "User",
+                    "parentfield": "roles",
+                    "role": role_name,
+                }
+            ).insert(ignore_permissions=True)

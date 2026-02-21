@@ -7,6 +7,9 @@ from frappe.tests.utils import FrappeTestCase
 
 
 class TestProgram(FrappeTestCase):
+    def setUp(self):
+        frappe.set_user("Administrator")
+
     def test_prereq_resolves_min_numeric_score(self):
         grade_scale = _make_grade_scale()
         required_course = _make_course("Required")
@@ -25,7 +28,7 @@ class TestProgram(FrappeTestCase):
                     }
                 ],
             }
-        ).insert()
+        ).insert(ignore_permissions=True)
 
         program.reload()
         row = program.prerequisites[0]
@@ -51,7 +54,7 @@ class TestProgram(FrappeTestCase):
         )
 
         with self.assertRaises(frappe.ValidationError):
-            program.insert()
+            program.insert(ignore_permissions=True)
 
     def test_prereq_grade_not_found_raises(self):
         grade_scale = _make_grade_scale()
@@ -74,7 +77,7 @@ class TestProgram(FrappeTestCase):
         )
 
         with self.assertRaises(frappe.ValidationError):
-            program.insert()
+            program.insert(ignore_permissions=True)
 
 
 def _make_grade_scale():
@@ -88,7 +91,7 @@ def _make_grade_scale():
             ],
         }
     )
-    grade_scale.insert()
+    grade_scale.insert(ignore_permissions=True)
     return grade_scale
 
 
@@ -100,5 +103,5 @@ def _make_course(label):
             "status": "Active",
         }
     )
-    course.insert()
+    course.insert(ignore_permissions=True)
     return course

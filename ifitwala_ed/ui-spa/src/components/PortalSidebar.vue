@@ -233,6 +233,6 @@ const homeLink = computed<RouteLocationRaw>(() => {
 
 const accountItems = [
 	{ label: 'Profile', icon: 'user', href: '/app/user-profile' },
-	{ label: 'Logout', icon: 'log-out', href: '/?cmd=web_logout' },
+	{ label: 'Logout', icon: 'log-out', href: '/logout?redirect-to=%2F' },
 ];
 </script>

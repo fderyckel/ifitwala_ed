@@ -28,7 +28,7 @@
 
 					<!-- Leaving SPA intentionally -->
 					<a
-						href="/?cmd=web_logout"
+						href="/logout?redirect-to=%2F"
 						class="staff-layout__desk-switch type-button-label"
 						title="Logout"
 					>

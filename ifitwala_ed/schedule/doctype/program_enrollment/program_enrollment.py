@@ -707,14 +707,15 @@ def _offering_ay_spine(offering_name: str) -> list[dict]:
         return []
 
     # Batch fetch true AY bounds
-    ay_meta = {
-        r.name: r
-        for r in frappe.get_all(
-            "Academic Year",
-            filters={"name": ("in", ay_names)},
-            fields=["name", "year_start_date", "year_end_date"],
-        )
-    }
+    ay_meta = {}
+    for row in frappe.get_all(
+        "Academic Year",
+        filters={"name": ("in", ay_names)},
+        fields=["name", "year_start_date", "year_end_date"],
+    ):
+        name = row.get("name") if isinstance(row, dict) else getattr(row, "name", None)
+        if name:
+            ay_meta[name] = row
 
     out = []
     for r in rows:
@@ -722,14 +723,16 @@ def _offering_ay_spine(offering_name: str) -> list[dict]:
         if not name:
             continue
         meta = ay_meta.get(name)
+        year_start = meta.get("year_start_date") if isinstance(meta, dict) else getattr(meta, "year_start_date", None)
+        year_end = meta.get("year_end_date") if isinstance(meta, dict) else getattr(meta, "year_end_date", None)
         # Skip malformed AYs (don’t fabricate "today")
-        if not meta or not (meta.year_start_date and meta.year_end_date):
+        if not meta or not (year_start and year_end):
             continue
         out.append(
             {
                 "academic_year": name,
-                "start": getdate(meta.year_start_date),
-                "end": getdate(meta.year_end_date),
+                "start": getdate(year_start),
+                "end": getdate(year_end),
             }
         )
     return out
@@ -759,7 +762,12 @@ def _term_meta_many(term_names: set[str]) -> dict[str, dict]:
         filters={"name": ("in", list(term_names))},
         fields=["name", "school", "academic_year", "term_start_date", "term_end_date"],
     )
-    return {r.name: r for r in rows}
+    out = {}
+    for row in rows:
+        name = row.get("name") if isinstance(row, dict) else getattr(row, "name", None)
+        if name:
+            out[name] = row
+    return out
 
 
 def _compute_effective_course_span(offering_name: str, roc: dict) -> tuple[object, object]:
@@ -772,6 +780,8 @@ def _compute_effective_course_span(offering_name: str, roc: dict) -> tuple[objec
 
     s_ay_start, s_ay_end_unused = _ay_bounds_for(offering_name, say)
     e_ay_start_unused, e_ay_end = _ay_bounds_for(offering_name, eay)
+    s_ay_start = getdate(s_ay_start) if s_ay_start else None
+    e_ay_end = getdate(e_ay_end) if e_ay_end else None
     if not (s_ay_start and e_ay_end):
         return (getdate("1900-01-01"), getdate("1899-12-31"))
 

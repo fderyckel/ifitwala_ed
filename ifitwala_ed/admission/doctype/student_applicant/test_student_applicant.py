@@ -107,6 +107,7 @@ class TestStudentApplicant(FrappeTestCase):
 
     def test_submitted_to_under_review_transition(self):
         applicant = self._create_student_applicant()
+        applicant._set_status("Invited", "Invited for lifecycle test", permission_checker=None)
         applicant.mark_in_progress()
         applicant.submit_application()
         applicant.reload()
@@ -124,6 +125,7 @@ class TestStudentApplicant(FrappeTestCase):
         applicant.applicant_user = user.name
         applicant.save(ignore_permissions=True)
 
+        applicant._set_status("Invited", "Invited for rejection test", permission_checker=None)
         applicant.mark_in_progress()
         applicant.submit_application()
         applicant.mark_under_review()
@@ -179,6 +181,7 @@ class TestStudentApplicant(FrappeTestCase):
         source_file.insert(ignore_permissions=True)
         self._created.append(("File", source_file.name))
 
+        applicant._set_status("Invited", "Invited for promotion test", permission_checker=None)
         applicant.mark_in_progress()
         applicant.submit_application()
         applicant.mark_under_review()
@@ -231,6 +234,7 @@ class TestStudentApplicant(FrappeTestCase):
             ],
         )
 
+        applicant._set_status("Invited", "Invited for health promotion test", permission_checker=None)
         applicant.mark_in_progress()
         applicant.submit_application()
         applicant.mark_under_review()
@@ -254,7 +258,8 @@ class TestStudentApplicant(FrappeTestCase):
 
     def _ensure_admissions_role(self, user, role):
         if not frappe.db.exists("Role", role):
-            return
+            frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)
+            self._created.append(("Role", role))
         if not frappe.db.exists("Has Role", {"parent": user, "role": role}):
             frappe.get_doc(
                 {
@@ -355,6 +360,7 @@ class TestStudentApplicant(FrappeTestCase):
         return doc.name
 
     def _create_applicant_health_profile(self, applicant_name, **overrides):
+        frappe.set_user("Administrator")
         doc = frappe.get_doc(
             {
                 "doctype": "Applicant Health Profile",

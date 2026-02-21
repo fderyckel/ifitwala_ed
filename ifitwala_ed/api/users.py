@@ -8,6 +8,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 import frappe
 
 from ifitwala_ed.routing.policy import (
+    ADMISSIONS_APPLICANT_ROLE,
     STAFF_PORTAL_ROLES,
     has_active_employee_profile,
     has_staff_portal_access,
@@ -16,10 +17,18 @@ from ifitwala_ed.routing.policy import (
 
 # Backwards-compatible export used by existing modules/tests.
 STAFF_ROLES = STAFF_PORTAL_ROLES
+PORTAL_ONLY_ROLES = frozenset({"Student", "Guardian", ADMISSIONS_APPLICANT_ROLE})
+
+
+def _get_request_safe():
+    try:
+        return getattr(frappe, "request", None)
+    except RuntimeError:
+        return None
 
 
 def _incoming_redirect_target() -> str:
-    request = getattr(frappe, "request", None)
+    request = _get_request_safe()
     args = getattr(request, "args", None) or {}
     from_args = args.get("redirect-to") or args.get("redirect_to")
     if from_args:
@@ -38,15 +47,24 @@ def _strip_redirect_query(url: str) -> str:
     return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(kept, doseq=True), parts.fragment))
 
 
+def _is_desk_path(path_or_url: str | None) -> bool:
+    raw = str(path_or_url or "").strip()
+    if not raw:
+        return False
+    parsed = urlsplit(raw)
+    path = str(parsed.path or raw).strip()
+    return path == "/app" or path.startswith("/app/")
+
+
 def sanitize_login_redirect_param() -> None:
     """
-    Guard against sticky Desk redirects (?redirect-to=/app) on /login.
+    Guard against sticky Desk redirects (?redirect-to=/app or /app/*) on /login.
 
     Frappe's login frontend can prioritize this query parameter over backend
     home-page resolution. We strip only this one value to preserve explicit
     non-Desk redirects.
     """
-    request = getattr(frappe, "request", None)
+    request = _get_request_safe()
     if not request:
         return
 
@@ -55,7 +73,7 @@ def sanitize_login_redirect_param() -> None:
     incoming = _incoming_redirect_target()
 
     # Only neutralize sticky Desk redirects.
-    if incoming != "/app":
+    if not _is_desk_path(incoming):
         return
 
     # Always clear request-side redirect hints so downstream handlers don't reuse them.
@@ -82,6 +100,52 @@ def sanitize_login_redirect_param() -> None:
         )
         frappe.local.flags.redirect_location = target
         raise frappe.Redirect
+
+
+def _resolve_portal_only_redirect_path(*, roles: set[str]) -> str:
+    if ADMISSIONS_APPLICANT_ROLE in roles:
+        return "/admissions"
+    if "Student" in roles:
+        return "/portal/student"
+    if "Guardian" in roles:
+        return "/portal/guardian"
+    return "/portal/student"
+
+
+def redirect_non_staff_away_from_desk() -> None:
+    """
+    Enforce that non-staff users cannot access Desk routes.
+
+    Portal-only roles (Admissions Applicant, Student, Guardian) are always
+    redirected to their portal entry unless the same user is an active employee.
+    """
+    request = _get_request_safe()
+    if not request:
+        return
+
+    path = str(getattr(request, "path", "") or "").strip()
+    if not _is_desk_path(path):
+        return
+
+    user = frappe.session.user
+    if not user or user == "Guest":
+        return
+
+    roles = set(frappe.get_roles(user))
+    has_active_employee = _has_active_employee_profile(user=user, roles=roles)
+
+    if roles & PORTAL_ONLY_ROLES and not has_active_employee:
+        frappe.local.flags.redirect_location = _resolve_portal_only_redirect_path(roles=roles)
+        raise frappe.Redirect
+
+    if _has_staff_portal_access(user=user, roles=roles):
+        return
+
+    target = _resolve_login_redirect_path(user=user, roles=roles)
+    if target == "/portal/staff":
+        target = "/portal/student"
+    frappe.local.flags.redirect_location = target
+    raise frappe.Redirect
 
 
 def _user_has_home_page_field() -> bool:

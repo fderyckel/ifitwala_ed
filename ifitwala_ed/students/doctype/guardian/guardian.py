@@ -12,6 +12,31 @@ from frappe.utils import get_link_to_form
 from ifitwala_ed.routing.policy import canonical_path_for_section, has_staff_portal_access
 
 
+def _user_has_home_page_field() -> bool:
+    try:
+        return bool(frappe.get_meta("User").has_field("home_page"))
+    except Exception:
+        return False
+
+
+def _get_user_home_page(user: str) -> str | None:
+    if not _user_has_home_page_field():
+        return None
+    try:
+        return frappe.db.get_value("User", user, "home_page")
+    except Exception:
+        return None
+
+
+def _set_user_home_page(user: str, path: str):
+    if not _user_has_home_page_field():
+        return
+    try:
+        frappe.db.set_value("User", user, "home_page", path, update_modified=False)
+    except Exception:
+        return
+
+
 class Guardian(Document):
     def validate(self):
         # 1) Keep validate pure: compute title only
@@ -87,10 +112,10 @@ class Guardian(Document):
 
         guardian_home = canonical_path_for_section("guardian")
         # Set home_page for portal routing if not already set to guardian portal path
-        current_home_page = frappe.db.get_value("User", user_email, "home_page")
+        current_home_page = _get_user_home_page(user_email)
         if current_home_page != guardian_home:
             try:
-                frappe.db.set_value("User", user_email, "home_page", guardian_home, update_modified=False)
+                _set_user_home_page(user_email, guardian_home)
             except Exception:
                 frappe.log_error(
                     frappe.get_traceback(),
@@ -194,8 +219,8 @@ class Guardian(Document):
 
             guardian_home = canonical_path_for_section("guardian")
             # Set home_page so guardian is routed to the guardian portal on login
-            if user.home_page != guardian_home:
-                frappe.db.set_value("User", user.name, "home_page", guardian_home, update_modified=False)
+            if _get_user_home_page(user.name) != guardian_home:
+                _set_user_home_page(user.name, guardian_home)
 
             frappe.msgprint(
                 _("User {0} already exists and has been linked.").format(get_link_to_form("User", self.guardian_email))
@@ -233,7 +258,7 @@ class Guardian(Document):
 
             guardian_home = canonical_path_for_section("guardian")
             # Set home_page so guardian is routed to the guardian portal on login
-            frappe.db.set_value("User", user.name, "home_page", guardian_home, update_modified=False)
+            _set_user_home_page(user.name, guardian_home)
 
         except Exception as e:
             frappe.log_error(f"Error creating user for guardian {self.name}: {e}")

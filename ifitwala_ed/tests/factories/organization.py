@@ -22,7 +22,7 @@ def make_school(organization: str, prefix: str = "School"):
         {
             "doctype": "School",
             "school_name": f"{prefix} {frappe.generate_hash(length=6)}",
-            "abbr": f"SCH{frappe.generate_hash(length=4)}",
+            "abbr": f"S{frappe.generate_hash(length=4)}",
             "organization": organization,
         }
     )

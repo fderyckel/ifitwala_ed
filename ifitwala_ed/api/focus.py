@@ -970,10 +970,24 @@ def mark_inquiry_contacted(
     if not frappe.has_permission(INQUIRY_DOCTYPE, ptype="read", doc=inquiry_doc):
         frappe.throw(_("You are not permitted to view this inquiry."), frappe.PermissionError)
 
+    current_state = (inquiry_doc.workflow_state or "").strip()
+    if current_state == "Contacted":
+        result = "contacted"
+        if client_request_id:
+            key = _idempotency_key(user, focus_item_id, client_request_id, "inquiry_mark_contacted")
+            cache.set_value(key, result, expires_in_sec=60 * 10)
+        return {
+            "ok": True,
+            "idempotent": True,
+            "status": "already_processed",
+            "inquiry_name": inquiry_name,
+            "result": result,
+        }
+
     if (inquiry_doc.assigned_to or "").strip() != user:
         frappe.throw(_("Only the assigned user can complete this inquiry follow-up."), frappe.PermissionError)
 
-    if (inquiry_doc.workflow_state or "").strip() != "Assigned":
+    if current_state != "Assigned":
         frappe.throw(_("This Inquiry is not in Assigned state."))
 
     lock_name = _lock_key(user, focus_item_id, "inquiry_mark_contacted")

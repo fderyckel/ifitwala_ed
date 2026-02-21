@@ -11,11 +11,26 @@ class TestEndofYearChecklist(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self._created = []
+        seed = frappe.generate_hash(length=4).upper()
         self.org = self._create_org()
-        self.root_school = self._create_school("Root School", "RS", self.org, is_group=1)
-        self.child_school = self._create_school("Child School", "CS", self.org, parent=self.root_school, is_group=1)
-        self.leaf_school = self._create_school("Leaf School", "LS", self.org, parent=self.child_school, is_group=0)
-        self.sibling_school = self._create_school("Sibling School", "SS", self.org, parent=self.root_school, is_group=0)
+        self.root_school = self._create_school(f"Root School {seed}", "RS", self.org, is_group=1)
+        self.child_school = self._create_school(
+            f"Child School {seed}",
+            "CS",
+            self.org,
+            parent=self.root_school,
+            is_group=1,
+        )
+        self.leaf_school = self._create_school(
+            f"Leaf School {seed}", "LS", self.org, parent=self.child_school, is_group=0
+        )
+        self.sibling_school = self._create_school(
+            f"Sibling School {seed}",
+            "SS",
+            self.org,
+            parent=self.root_school,
+            is_group=0,
+        )
 
         self.ay_name = "2025-2026"
         self.root_ay = self._create_academic_year(self.root_school, self.ay_name)
@@ -28,8 +43,8 @@ class TestEndofYearChecklist(FrappeTestCase):
         self.leaf_term = self._create_term(self.leaf_ay, "Leaf Term")
 
         self.program = self._create_program()
-        self.root_offering = self._create_program_offering(self.program, self.root_school, self.root_ay)
-        self.child_offering = self._create_program_offering(self.program, self.child_school, self.child_ay)
+        self.root_offering = self._create_program_offering(self.program, self.sibling_school, self.root_ay)
+        self.child_offering = self._create_program_offering(self.program, self.leaf_school, self.child_ay)
         self.leaf_offering = self._create_program_offering(self.program, self.leaf_school, self.leaf_ay)
 
         self.root_student = self._create_student("Root")

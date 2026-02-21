@@ -75,7 +75,8 @@ def get_academic_year_for_date(school: str, meeting_date) -> Optional[str]:
     if not rows:
         return None
 
-    return rows[0].name
+    first = rows[0]
+    return first.get("name") if isinstance(first, dict) else getattr(first, "name", None)
 
 
 class Meeting(Document):

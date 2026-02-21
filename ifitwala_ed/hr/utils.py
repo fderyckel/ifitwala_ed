@@ -131,13 +131,13 @@ def get_holidays_for_employee(employee, start_date, end_date, raise_exception=Tr
         }
         if only_non_weekly:
             filters["weekly_off"] = 0
-            holidays = frappe.get_all(
-                "Staff Calendar Holidays",
-                fields=["holiday_date", "description", "weekly_off"],
-                filters=filters,
-                order_by="holiday_date asc",
-            )
-            return holidays
+        holidays = frappe.get_all(
+            "Staff Calendar Holidays",
+            fields=["holiday_date", "description", "weekly_off"],
+            filters=filters,
+            order_by="holiday_date asc",
+        )
+        return holidays
 
     if raise_exception:
         frappe.throw(_("No Staff Calendar holidays could be resolved for Employee {0}").format(employee))

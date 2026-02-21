@@ -23,7 +23,7 @@
 							</span>
 						</div>
 						<a
-							href="/?cmd=web_logout"
+							href="/logout?redirect-to=%2F"
 							class="type-caption text-ink/70 hover:text-ink underline underline-offset-4"
 						>
 							{{ __('Log out') }}

@@ -43,9 +43,17 @@ def _redirect(to: str):
     raise frappe.Redirect
 
 
+def _request_path(default: str) -> str:
+    try:
+        request = getattr(frappe, "request", None)
+    except RuntimeError:
+        return default
+    return str(getattr(request, "path", default) or default)
+
+
 def get_context(context):
     user = frappe.session.user
-    path = frappe.request.path if hasattr(frappe, "request") else canonical_path_for_section("student")
+    path = _request_path(canonical_path_for_section("student"))
     log_legacy_portal_hit(path=path, user=user)
 
     if not user or user == "Guest":

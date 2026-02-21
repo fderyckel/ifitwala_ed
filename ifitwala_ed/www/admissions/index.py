@@ -43,9 +43,17 @@ def _redirect_to_login(path: str, *, clear_session: bool = False):
     _redirect(build_login_redirect(path))
 
 
+def _request_path(default: str) -> str:
+    try:
+        request = getattr(frappe, "request", None)
+    except RuntimeError:
+        return default
+    return str(getattr(request, "path", default) or default)
+
+
 def get_context(context):
     user = frappe.session.user
-    path = frappe.request.path if hasattr(frappe, "request") else "/admissions"
+    path = _request_path("/admissions")
 
     if not user or user == "Guest":
         _redirect_to_login(path)

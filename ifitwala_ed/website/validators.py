@@ -23,6 +23,8 @@ def normalize_block_props(*, block_type: str, props: dict) -> dict:
             normalized["button_link"] = (
                 normalized.get("cta_link") or normalized.get("url") or normalized.get("link") or ""
             )
+        for legacy_key in ("cta_label", "cta_link", "label", "url", "link"):
+            normalized.pop(legacy_key, None)
 
     elif block_type == "rich_text":
         if not normalized.get("content_html") and normalized.get("content"):

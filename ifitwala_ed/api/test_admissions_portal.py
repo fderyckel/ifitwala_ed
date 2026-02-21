@@ -30,6 +30,7 @@ class TestInviteApplicant(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
+        self._ensure_admin_admissions_role("Admission Manager")
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
         self.applicant = self._create_applicant(self.organization, self.school)
@@ -64,9 +65,13 @@ class TestInviteApplicant(FrappeTestCase):
         self.assertEqual(self.applicant.portal_account_email, email)
         self.assertEqual(self.applicant.applicant_email, email)
 
-        user_row = frappe.db.get_value("User", email, ["name", "enabled"], as_dict=True)
+        user_row = frappe.db.get_value("User", email, ["name", "enabled", "user_type"], as_dict=True)
         self.assertTrue(bool(user_row))
         self.assertEqual(user_row.get("enabled"), 1)
+        self.assertEqual(user_row.get("user_type"), "Website User")
+        roles = set(frappe.get_roles(email))
+        self.assertIn("Admissions Applicant", roles)
+        self.assertNotIn("Desk User", roles)
         self._created.append(("User", email))
 
     def test_invite_applicant_resends_email_for_same_linked_user(self):
@@ -130,6 +135,44 @@ class TestInviteApplicant(FrappeTestCase):
         self.assertEqual(user.enabled, 1)
         roles = {row.role for row in user.roles or []}
         self.assertIn("Admissions Applicant", roles)
+        self.assertNotIn("Desk User", roles)
+        self.assertEqual((user.user_type or "").strip(), "Website User")
+
+    def test_invite_applicant_resend_normalizes_existing_user_to_website_user(self):
+        email = f"normalize-{frappe.generate_hash(length=8)}@example.com"
+
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                return_value="Administrator",
+            ),
+            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True),
+        ):
+            invite_applicant(student_applicant=self.applicant.name, email=email)
+        self._created.append(("User", email))
+
+        user = frappe.get_doc("User", email)
+        user.user_type = "System User"
+        if "Desk User" not in {row.role for row in user.roles or []}:
+            user.add_roles("Desk User")
+        user.save(ignore_permissions=True)
+
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                return_value="Administrator",
+            ),
+            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True),
+        ):
+            payload = invite_applicant(student_applicant=self.applicant.name, email=email)
+
+        self.assertTrue(payload.get("ok"))
+        user.reload()
+        self.assertEqual((user.user_type or "").strip(), "Website User")
+        self.assertEqual(user.enabled, 1)
+        roles = {row.role for row in user.roles or []}
+        self.assertIn("Admissions Applicant", roles)
+        self.assertNotIn("Desk User", roles)
 
     def test_send_invite_email_handles_non_callable_user_flags(self):
         class DummyUser:
@@ -202,7 +245,7 @@ class TestInviteApplicant(FrappeTestCase):
             {
                 "doctype": "School",
                 "school_name": school_name,
-                "abbr": f"SCH{frappe.generate_hash(length=4)}",
+                "abbr": f"S{frappe.generate_hash(length=4)}",
                 "organization": organization,
             }
         ).insert(ignore_permissions=True)
@@ -237,3 +280,18 @@ class TestInviteApplicant(FrappeTestCase):
         doc.insert(ignore_permissions=True)
         self._created.append(("Contact", doc.name))
         return doc
+
+    def _ensure_admin_admissions_role(self, role_name: str):
+        if not frappe.db.exists("Role", role_name):
+            role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+            self._created.append(("Role", role.name))
+        if not frappe.db.exists("Has Role", {"parent": "Administrator", "role": role_name}):
+            frappe.get_doc(
+                {
+                    "doctype": "Has Role",
+                    "parent": "Administrator",
+                    "parenttype": "User",
+                    "parentfield": "roles",
+                    "role": role_name,
+                }
+            ).insert(ignore_permissions=True)

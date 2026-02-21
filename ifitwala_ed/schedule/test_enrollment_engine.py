@@ -9,6 +9,9 @@ from ifitwala_ed.schedule.enrollment_engine import evaluate_enrollment_request
 
 
 class TestEnrollmentEngine(FrappeTestCase):
+    def setUp(self):
+        frappe.set_user("Administrator")
+
     def test_meets_prereq_numeric_score(self):
         context = _setup_context(score=75)
 
@@ -184,7 +187,7 @@ def _setup_context(
         repeatable=repeatable,
         concurrency_ok=concurrency_ok,
     )
-    offering = _make_offering(program, school, target_course, capacity=capacity)
+    offering = _make_offering(program, school, academic_year, target_course, capacity=capacity)
 
     if include_history:
         _make_enrollment(
@@ -266,6 +269,10 @@ def _make_academic_year(school):
             "doctype": "Academic Year",
             "academic_year_name": f"AY {frappe.generate_hash(length=6)}",
             "school": school.name,
+            "year_start_date": "2025-08-01",
+            "year_end_date": "2026-06-30",
+            "archived": 0,
+            "visible_to_admission": 1,
         }
     )
     academic_year.insert()
@@ -343,17 +350,20 @@ def _make_program(grade_scale, target_course, required_course, repeatable=1, con
     return program
 
 
-def _make_offering(program, school, target_course, capacity=None):
+def _make_offering(program, school, academic_year, target_course, capacity=None):
     offering = frappe.get_doc(
         {
             "doctype": "Program Offering",
             "program": program.name,
             "school": school.name,
             "offering_title": f"Offering {frappe.generate_hash(length=6)}",
+            "offering_academic_years": [{"academic_year": academic_year.name}],
             "offering_courses": [
                 {
                     "course": target_course.name,
                     "course_name": target_course.course_name,
+                    "start_academic_year": academic_year.name,
+                    "end_academic_year": academic_year.name,
                     "capacity": capacity,
                 },
             ],
