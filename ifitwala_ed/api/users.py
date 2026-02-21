@@ -347,8 +347,8 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
     Resolve the appropriate portal path based on user roles.
 
     Priority order (locked):
-    1. Admissions Applicant -> /admissions
-    2. Active Employee profile or staff role -> /portal/staff
+    1. Active Employee profile or staff role -> /portal/staff
+    2. Admissions Applicant -> /admissions
     3. Student -> /portal/student
     4. Guardian -> /portal/guardian
     5. Fallback -> /portal/staff
@@ -361,8 +361,8 @@ def redirect_user_to_entry_portal(login_manager=None):
     Login redirect handler: Routes users to role-appropriate portal entry point.
 
     Policy:
-    - Admissions Applicants -> /admissions
     - Active employees and staff-role users -> /portal/staff
+    - Admissions Applicants -> /admissions
     - Students -> /portal/student
     - Guardians -> /portal/guardian
     - Fallback -> /portal/staff

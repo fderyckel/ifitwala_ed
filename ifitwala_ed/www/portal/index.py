@@ -11,6 +11,7 @@ from ifitwala_ed.routing.policy import (
     ADMISSIONS_APPLICANT_ROLE,
     build_login_redirect,
     canonical_path_for_section,
+    has_staff_portal_access,
     log_legacy_portal_hit,
     portal_roles_for_client,
     resolve_default_portal_section,
@@ -61,7 +62,7 @@ def get_context(context):
         _redirect(build_login_redirect(target))
 
     roles = set(frappe.get_roles(user))
-    if ADMISSIONS_APPLICANT_ROLE in roles:
+    if ADMISSIONS_APPLICANT_ROLE in roles and not has_staff_portal_access(user=user, roles=roles):
         _redirect("/admissions")
 
     sections = resolve_portal_sections(user=user, roles=roles)

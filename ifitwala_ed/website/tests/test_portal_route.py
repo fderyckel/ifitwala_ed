@@ -81,6 +81,18 @@ class TestPortalRoute(FrappeTestCase):
             frappe.set_user("Administrator")
             self._restore_request(original_request)
 
+    def test_staff_with_admissions_role_hitting_student_namespace_redirects_to_staff_home(self):
+        user = self._create_user("staff-admissions", roles=["Administrator", "Admissions Applicant"])
+        original_request = self._set_request_path("/portal/student")
+        frappe.set_user(user.name)
+        try:
+            with self.assertRaises(frappe.Redirect):
+                get_context(frappe._dict())
+            self.assertEqual(frappe.local.flags.redirect_location, "/portal/staff")
+        finally:
+            frappe.set_user("Administrator")
+            self._restore_request(original_request)
+
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):
             return
