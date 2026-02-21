@@ -767,7 +767,7 @@ class StudentApplicant(Document):
                 "organization": self.organization,
                 "school": self.school,
                 "source_file": file_row.get("name"),
-                "upload_source": "Promotion",
+                "upload_source": "API",
             },
             context_override={
                 "root_folder": "Home/Students",
@@ -850,7 +850,7 @@ class StudentApplicant(Document):
                 "organization": self.organization,
                 "school": self.school,
                 "source_file": file_row.get("name"),
-                "upload_source": "Promotion",
+                "upload_source": "API",
             },
         )
 
@@ -949,7 +949,7 @@ class StudentApplicant(Document):
                         "organization": self.organization,
                         "school": self.school,
                         "source_file": source.get("name"),
-                        "upload_source": "Promotion",
+                        "upload_source": "API",
                     },
                 )
                 copied_count += 1

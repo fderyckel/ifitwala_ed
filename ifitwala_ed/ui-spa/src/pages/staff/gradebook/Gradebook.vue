@@ -1254,7 +1254,7 @@ function scheduleStudentSave(taskStudent: string) {
 		clearTimeout(existing);
 	}
 
-	studentSaveTimers[taskStudent] = window.setTimeout(() => {
+	studentSaveTimers[taskStudent] = setTimeout(() => {
 		studentSaveTimers[taskStudent] = null;
 		if (!state.dirty) {
 			return;
@@ -1276,7 +1276,7 @@ function scheduleCriteriaSave(taskStudent: string) {
 		clearTimeout(existing);
 	}
 
-	criteriaSaveTimers[taskStudent] = window.setTimeout(() => {
+	criteriaSaveTimers[taskStudent] = setTimeout(() => {
 		criteriaSaveTimers[taskStudent] = null;
 		if (!state.dirtyCriteria) {
 			return;
@@ -1295,7 +1295,7 @@ watch(
 		if (groupSearchTimer) {
 			clearTimeout(groupSearchTimer);
 		}
-		groupSearchTimer = window.setTimeout(() => {
+		groupSearchTimer = setTimeout(() => {
 			groupSearchTimer = null;
 			void loadGroups(value);
 		}, 400);

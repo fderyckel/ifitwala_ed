@@ -583,4 +583,7 @@ def on_doctype_update():
     frappe.db.add_index("Referral Case", ["case_manager"])
     frappe.db.add_index("Referral Case", ["student"])
     frappe.db.add_index("Referral Case", ["school"])
-    frappe.db.add_index("Referral Case Entry", ["entry_type", "is_published", "status"])
+    # During fresh installs, the child table can be unavailable at this point
+    # in the import order. Guard to avoid hard-failing site creation in CI.
+    if frappe.db.table_exists("Referral Case Entry"):
+        frappe.db.add_index("Referral Case Entry", ["entry_type", "is_published", "status"])

@@ -801,6 +801,7 @@ const viewModes = [
 	{ value: 'all', label: 'All' },
 ] as const;
 type ViewMode = (typeof viewModes)[number]['value'];
+const MAX_INLINE_ANNOUNCEMENTS = 5;
 const viewMode = ref<ViewMode>('all');
 const spotlightIndex = ref(0);
 const spotlightAnnouncements = computed<Announcement[]>(() =>
@@ -917,7 +918,7 @@ function getInteractionStatsFor(item: Announcement) {
 
 function openInteractionThread(item: Announcement): void {
 	if (!canShowInteractions(item)) {
-		toast({
+		toast.create({
 			appearance: 'warning',
 			message: 'Comments are disabled for this announcement.',
 		});

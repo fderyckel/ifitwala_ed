@@ -345,6 +345,7 @@ def _make_program(grade_scale, target_course, required_course, repeatable=1, con
             "prerequisites": [
                 {
                     "apply_to_course": target_course.name,
+                    "apply_to_level": "None",
                     "required_course": required_course.name,
                     "min_grade": "B-",
                     "grade_scale_used": grade_scale.name,

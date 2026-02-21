@@ -179,21 +179,17 @@ const resolveSystemTimezone = () =>
 
 const systemTimezone = ref<string>(resolveSystemTimezone());
 
-function nowProvider() {
-	return new Date();
-}
-
 function syncCalendarTimezone() {
 	// DIAG: force local time zone (no plugin needed)
 	const tz = 'local';
 
 	calendarOptions.value.timeZone = tz;
-	calendarOptions.value.now = nowProvider;
+	calendarOptions.value.now = new Date();
 
 	const api = calendarRef.value?.getApi();
 	if (api) {
 		api.setOption('timeZone', tz);
-		api.setOption('now', nowProvider);
+		api.setOption('now', new Date());
 		api.render();
 	}
 }

@@ -7,7 +7,7 @@
       Without this, portals go to #headlessui-portal-root (a sibling) and Dialog will aria-hide it,
       causing “clicks don’t work” + aria-hidden focus warnings.
     -->
-		<PortalGroup target="#overlay-root">
+		<PortalGroup v-if="overlayRootEl" :target="overlayRootEl">
 			<div v-if="rendered.length" class="if-overlay-host" :style="{ zIndex: baseZ }">
 				<div
 					v-for="(entry, idx) in rendered"
@@ -15,7 +15,7 @@
 					class="if-overlay-host__layer"
 					:class="{ 'if-overlay-host__layer--inactive': idx !== activeIdx }"
 					:aria-hidden="idx !== activeIdx ? 'true' : 'false'"
-					:inert="idx !== activeIdx ? '' : null"
+					:inert="idx !== activeIdx"
 				>
 					<component
 						:is="resolveComponent(entry.type)"
@@ -72,6 +72,7 @@ type RenderedEntry = OverlayEntry & {
 const overlay = useOverlayStack();
 
 const teleportReady = ref(false);
+const overlayRootEl = ref<HTMLElement | null>(null);
 onMounted(() => {
 	// Defensive: guarantee teleport target exists
 	let root = document.getElementById('overlay-root');
@@ -80,6 +81,7 @@ onMounted(() => {
 		root.id = 'overlay-root';
 		document.body.appendChild(root);
 	}
+	overlayRootEl.value = root;
 	teleportReady.value = true;
 });
 

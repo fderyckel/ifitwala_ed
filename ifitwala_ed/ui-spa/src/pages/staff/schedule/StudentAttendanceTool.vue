@@ -344,10 +344,10 @@ const toolbarStatus = computed(() => {
 });
 
 const statusVariant = computed(() => {
-	if (bootLoading.value || rosterLoading.value || saving.value) return 'gray';
-	if (justSaved.value) return 'green';
-	if (!filters.student_group || !selectedDate.value) return 'orange';
-	return 'blue';
+	if (bootLoading.value || rosterLoading.value || saving.value) return 'subtle';
+	if (justSaved.value) return 'solid';
+	if (!filters.student_group || !selectedDate.value) return 'outline';
+	return 'ghost';
 });
 
 const rosterHint = computed(() => {

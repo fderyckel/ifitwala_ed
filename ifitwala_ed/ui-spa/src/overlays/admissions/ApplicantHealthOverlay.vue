@@ -587,8 +587,13 @@ function removeVaccination(index: number) {
 	delete vaccinationProofInputs.value[index];
 }
 
-function bindVaccinationProofInput(index: number, el: Element | null) {
-	vaccinationProofInputs.value[index] = el as HTMLInputElement | null;
+function bindVaccinationProofInput(index: number, el: unknown) {
+	if (el && typeof el === 'object' && '$el' in (el as Record<string, unknown>)) {
+		const rootEl = (el as { $el?: unknown }).$el;
+		vaccinationProofInputs.value[index] = rootEl instanceof HTMLInputElement ? rootEl : null;
+		return;
+	}
+	vaccinationProofInputs.value[index] = el instanceof HTMLInputElement ? el : null;
 }
 
 function openVaccinationProofPicker(index: number) {

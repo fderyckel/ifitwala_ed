@@ -420,6 +420,7 @@ const deliveryOptions = [
 	},
 	{ label: 'Collect and assess', value: 'Assess', help: 'Collect evidence and grade it.' },
 ];
+type DeliveryMode = (typeof deliveryOptions)[number]['value'];
 
 const gradingOptions = [
 	{ label: 'Points', value: 'Points', help: 'Score work with a numeric total.' },
@@ -427,7 +428,22 @@ const gradingOptions = [
 	{ label: 'Yes / No', value: 'Binary', help: 'Simple yes or no grading.' },
 ];
 
-const form = reactive({
+type FormState = {
+	title: string;
+	instructions: string;
+	task_type: string;
+	student_group: string;
+	delivery_mode: DeliveryMode;
+	available_from: string;
+	due_date: string;
+	lock_date: string;
+	allow_late_submission: boolean;
+	group_submission: boolean;
+	grading_mode: string;
+	max_points: string;
+};
+
+const form = reactive<FormState>({
 	title: '',
 	instructions: '',
 	task_type: '',
@@ -463,7 +479,7 @@ const groupResource = createResource({
 	},
 	onError: () => {
 		groups.value = [];
-		toast({ appearance: 'danger', message: 'Unable to load classes right now.' });
+		toast.create({ appearance: 'danger', message: 'Unable to load classes right now.' });
 	},
 });
 
@@ -630,7 +646,7 @@ async function submit() {
 			? `Please complete: ${missing.join(', ')}.`
 			: 'Please complete the required fields.';
 		errorMessage.value = msg;
-		toast({ appearance: 'warning', message: msg });
+		toast.create({ appearance: 'warning', message: msg });
 		return;
 	}
 
@@ -675,7 +691,7 @@ async function submit() {
 		const msg =
 			error instanceof Error ? error.message : 'Unable to create the assignment right now.';
 		errorMessage.value = msg;
-		toast({ appearance: 'danger', message: msg });
+		toast.create({ appearance: 'danger', message: msg });
 	} finally {
 		submitting.value = false;
 	}

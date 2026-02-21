@@ -160,7 +160,7 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertEqual(items[0].get("name"), interview.name)
 
     def test_promotion_copies_approved_applicant_document_files(self):
-        doc_type = self._create_applicant_document_type(code=f"promotable-{frappe.generate_hash(length=6)}")
+        doc_type = self._create_applicant_document_type(code="application_form")
         applicant = self._create_student_applicant()
         self._create_applicant_health_profile(applicant.name)
 
@@ -326,11 +326,12 @@ class TestStudentApplicant(FrappeTestCase):
         return doc.name
 
     def _create_student_applicant(self, **overrides):
+        seed = frappe.generate_hash(length=6)
         doc = frappe.get_doc(
             {
                 "doctype": "Student Applicant",
                 "first_name": "Test",
-                "last_name": "Applicant",
+                "last_name": f"Applicant {seed}",
                 "organization": self.org,
                 "school": self.leaf_school,
                 "application_status": "Draft",
@@ -360,6 +361,9 @@ class TestStudentApplicant(FrappeTestCase):
         return user
 
     def _create_applicant_document_type(self, *, code):
+        existing = frappe.db.get_value("Applicant Document Type", {"code": code}, "name")
+        if existing:
+            return existing
         doc = frappe.get_doc(
             {
                 "doctype": "Applicant Document Type",

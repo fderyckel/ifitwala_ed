@@ -207,6 +207,7 @@ async function submit() {
 		errorMessage.value = 'Choose a signal to apply.';
 		return;
 	}
+	const selectedSignal = signal.value;
 
 	if (!selectedStudents.value.length) {
 		errorMessage.value = 'Select at least one student.';
@@ -215,7 +216,7 @@ async function submit() {
 
 	const payload: ClassHubSignal[] = selectedStudents.value.map(student => ({
 		student,
-		signal: signal.value,
+		signal: selectedSignal,
 		note: classNote.value.trim() || `CFU: ${cfuType.value}`,
 	}));
 

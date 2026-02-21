@@ -16,6 +16,7 @@ import type {
 } from '@/types/interactions'
 
 export { REACTION_CODES } from '@/types/interactions'
+export type { InteractionIntentType, ReactionCode } from '@/types/interactions'
 
 // ============================================================================
 // Domain unions and constants

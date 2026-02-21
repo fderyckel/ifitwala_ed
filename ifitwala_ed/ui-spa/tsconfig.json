@@ -13,7 +13,8 @@
 		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
 		"paths": {
-			"@/*": ["src/*"]
+			"@/*": ["src/*"],
+			"frappe-ui": ["src/types/frappe-ui-shim.d.ts"]
 		},
 		"types": ["vite/client"]
 	},
@@ -25,5 +26,6 @@
 		"components.d.ts",
 		"vite.config.ts",
 		"vitest.config.ts"
-	]
+	],
+	"exclude": ["src/**/*.test.ts", "src/**/__tests__/**", "src/test/**"]
 }

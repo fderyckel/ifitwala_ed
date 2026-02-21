@@ -40,7 +40,7 @@
 			<!-- Student Group select fed by groupsResource -->
 			<FormControl
 				type="select"
-				:options="groupOptions.value"
+				:options="groupOptions"
 				option-label="label"
 				option-value="value"
 				v-model="filters.student_group"
@@ -186,10 +186,7 @@
 								<FeatherIcon name="calendar" class="h-4 w-4" />
 								<strong>{{ neatDate(item.entry_datetime) }}</strong>
 							</span>
-							<Badge
-								v-if="(item.status || 'Open') === 'In Progress'"
-								class="ml-2"
-								variant="success"
+							<Badge v-if="(item.status || 'Open') === 'In Progress'" class="ml-2" variant="solid"
 								>In&nbsp;Progress</Badge
 							>
 						</div>
@@ -343,7 +340,7 @@ const medicalDialog = reactive({
 function handleError(error: any, fallback: string) {
 	console.error(fallback, error);
 	const message = typeof error === 'string' ? error : error?.message || fallback;
-	toast({ appearance: 'danger', message });
+	toast.create({ appearance: 'danger', message });
 }
 
 async function fetchGroups() {

@@ -346,7 +346,7 @@ const focusItems = ref<FocusItem[]>([]);
 const lastFocusRefreshAt = ref<number>(0);
 const refreshInFlight = ref<Promise<void> | null>(null);
 let refreshQueued = false;
-let refreshThrottleTimer: ReturnType<typeof window.setTimeout> | null = null;
+let refreshThrottleTimer: ReturnType<typeof setTimeout> | null = null;
 
 const FOCUS_LIMIT = 8;
 const FOCUS_REFRESH_THROTTLE_MS = 800; // coalesce burst triggers
@@ -403,7 +403,7 @@ function refreshFocus(reason: string) {
 		return refreshInFlight.value;
 	}
 
-	refreshThrottleTimer = window.setTimeout(() => {
+	refreshThrottleTimer = setTimeout(() => {
 		refreshThrottleTimer = null;
 		if (refreshQueued && !refreshInFlight.value) {
 			refreshQueued = false;
@@ -437,7 +437,7 @@ function refreshFocus(reason: string) {
  * - On workflow completion: UI Services emit invalidation signals
  *   and StaffHome refreshes (coalesced)
  */
-let focusTimer: ReturnType<typeof window.setInterval> | null = null;
+let focusTimer: ReturnType<typeof setInterval> | null = null;
 let disposeFocusInvalidate: (() => void) | null = null;
 let disposeStudentLogInvalidate: (() => void) | null = null;
 
@@ -464,7 +464,7 @@ function onStudentLogInvalidated() {
 	refreshFocus('signal:student_log:invalidate')
 		?.then(() => {
 			if (shouldToast) {
-				toast({
+				toast.create({
 					title: 'Saved',
 					text: 'Student note submitted.',
 					icon: 'check',
@@ -482,7 +482,7 @@ onMounted(async () => {
 
 	// Poll (tab visible only)
 	if (typeof window !== 'undefined') {
-		focusTimer = window.setInterval(() => {
+		focusTimer = setInterval(() => {
 			if (document.visibilityState === 'visible') {
 				refreshFocus('interval');
 			}
@@ -508,7 +508,7 @@ onBeforeUnmount(() => {
 
 function openFocusItem(item: FocusItem) {
 	if (item.permissions?.can_open === false) {
-		toast({
+		toast.create({
 			title: 'Not available',
 			text: 'You do not have access to open this item.',
 			icon: 'info',
@@ -524,8 +524,8 @@ function openFocusItem(item: FocusItem) {
 /* ANALYTICS ---------------------------------------------------- */
 type StaffHomeAnalyticsLink = {
 	label: string;
-	caption: string;
-	icon: string;
+	caption?: string;
+	icon?: string;
 	to: RouteLocationRaw;
 	badge?: string;
 	capability?: string;

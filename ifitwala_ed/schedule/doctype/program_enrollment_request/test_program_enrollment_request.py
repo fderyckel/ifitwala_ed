@@ -195,6 +195,7 @@ def _setup_enrollment_context(
             "prerequisites": [
                 {
                     "apply_to_course": target_course.name,
+                    "apply_to_level": program_course_level or "None",
                     "required_course": required_course.name,
                     "min_grade": "B-",
                     "grade_scale_used": grade_scale.name,

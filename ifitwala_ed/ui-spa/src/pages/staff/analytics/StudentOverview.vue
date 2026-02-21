@@ -139,6 +139,7 @@ type Snapshot = {
 			status?: string | null;
 			complete?: boolean;
 			mark_awarded?: number | null;
+			out_of?: number | null;
 			visible_to_student?: boolean;
 			visible_to_guardian?: boolean;
 			is_overdue?: boolean;
@@ -176,6 +177,7 @@ type Snapshot = {
 			present_sessions?: number;
 			absent_sessions?: number;
 			unexcused_sessions?: number;
+			late_sessions?: number;
 			academic_year?: string;
 		}[];
 		by_course_breakdown: {

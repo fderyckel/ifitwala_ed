@@ -33,7 +33,7 @@ type DateRangeItem = { label: string; value: string };
 const props = withDefaults(
 	defineProps<{
 		modelValue: string;
-		items: DateRangeItem[];
+		items: readonly DateRangeItem[];
 		size?: 'sm' | 'md';
 		wrapClass?: string;
 		disabled?: boolean;

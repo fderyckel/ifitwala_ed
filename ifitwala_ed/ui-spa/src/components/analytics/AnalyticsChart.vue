@@ -18,10 +18,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { VChart, type ComposeOption } from '@/lib/echarts';
+import { VChart } from '@/lib/echarts';
 
-// Example: base option type; you can refine later with your imported option types.
-type BaseChartOption = ComposeOption<unknown>;
+// Keep option intentionally broad; concrete chart builders provide their own shape.
+type BaseChartOption = Record<string, unknown>;
 
 const props = defineProps<{
 	option: BaseChartOption;
