@@ -34,6 +34,28 @@ class TestApplicantHealthProfile(FrappeTestCase):
         self._created.append(("Applicant Health Profile", profile.name))
         self.assertEqual(profile.review_status, "Pending")
 
+    def test_family_can_edit_health_profile_after_submission(self):
+        frappe.db.set_value(
+            "Student Applicant",
+            self.applicant,
+            "application_status",
+            "Submitted",
+            update_modified=False,
+        )
+        frappe.set_user(self.user)
+        profile = frappe.get_doc(
+            {
+                "doctype": "Applicant Health Profile",
+                "student_applicant": self.applicant,
+                "blood_group": "A Positive",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Health Profile", profile.name))
+
+        profile.diet_requirements = "No peanuts"
+        profile.save(ignore_permissions=True)
+        self.assertEqual(profile.diet_requirements, "No peanuts")
+
     def _create_organization(self) -> str:
         doc = frappe.get_doc(
             {

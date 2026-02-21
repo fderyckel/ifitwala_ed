@@ -28,14 +28,19 @@ export type Request = {
   diet_requirements: string
   medical_surgeries__hospitalizations: string
   other_medical_information: string
+  applicant_health_declared_complete?: boolean
   vaccinations: {
     vaccine_name: string
     date: string
     vaccination_proof: string
     additional_notes: string
+    vaccination_proof_content?: string
+    vaccination_proof_file_name?: string
+    clear_vaccination_proof?: boolean
   }[]
 }
 
 export type Response = {
   ok: boolean
+  applicant_health_declared_complete?: boolean
 }

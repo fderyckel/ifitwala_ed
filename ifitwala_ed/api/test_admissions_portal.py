@@ -32,11 +32,14 @@ class TestInviteApplicant(FrappeTestCase):
         self._created: list[tuple[str, str]] = []
         self._ensure_admin_admissions_role("Admission Manager")
         frappe.clear_cache(user="Administrator")
+        self.staff_user = self._create_admissions_staff_user()
+        frappe.set_user(self.staff_user)
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
         self.applicant = self._create_applicant(self.organization, self.school)
 
     def tearDown(self):
+        frappe.set_user("Administrator")
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
@@ -47,7 +50,7 @@ class TestInviteApplicant(FrappeTestCase):
         with (
             patch(
                 "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
-                return_value="Administrator",
+                return_value=self.staff_user,
             ),
             patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email") as send_invite,
         ):
@@ -81,7 +84,7 @@ class TestInviteApplicant(FrappeTestCase):
         with (
             patch(
                 "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
-                return_value="Administrator",
+                return_value=self.staff_user,
             ),
             patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email"),
         ):
@@ -94,7 +97,7 @@ class TestInviteApplicant(FrappeTestCase):
         with (
             patch(
                 "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
-                return_value="Administrator",
+                return_value=self.staff_user,
             ),
             patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email") as send_invite,
         ):
@@ -122,7 +125,7 @@ class TestInviteApplicant(FrappeTestCase):
         with (
             patch(
                 "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
-                return_value="Administrator",
+                return_value=self.staff_user,
             ),
             patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True),
         ):
@@ -145,7 +148,7 @@ class TestInviteApplicant(FrappeTestCase):
         with (
             patch(
                 "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
-                return_value="Administrator",
+                return_value=self.staff_user,
             ),
             patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True),
         ):
@@ -155,13 +158,16 @@ class TestInviteApplicant(FrappeTestCase):
         user = frappe.get_doc("User", email)
         user.user_type = "System User"
         if "Desk User" not in {row.role for row in user.roles or []}:
-            user.add_roles("Desk User")
+            if not frappe.db.exists("Role", "Desk User"):
+                frappe.get_doc({"doctype": "Role", "role_name": "Desk User"}).insert(ignore_permissions=True)
+                self._created.append(("Role", "Desk User"))
+            user.append("roles", {"role": "Desk User"})
         user.save(ignore_permissions=True)
 
         with (
             patch(
                 "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
-                return_value="Administrator",
+                return_value=self.staff_user,
             ),
             patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True),
         ):
@@ -197,7 +203,7 @@ class TestInviteApplicant(FrappeTestCase):
 
         with patch(
             "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
-            return_value="Administrator",
+            return_value=self.staff_user,
         ):
             payload = get_invite_email_options(student_applicant=self.applicant.name)
 
@@ -221,7 +227,7 @@ class TestInviteApplicant(FrappeTestCase):
         with (
             patch(
                 "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
-                return_value="Administrator",
+                return_value=self.staff_user,
             ),
             patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email"),
         ):
@@ -281,6 +287,22 @@ class TestInviteApplicant(FrappeTestCase):
         doc.insert(ignore_permissions=True)
         self._created.append(("Contact", doc.name))
         return doc
+
+    def _create_admissions_staff_user(self) -> str:
+        email = f"admissions-staff-{frappe.generate_hash(length=8)}@example.com"
+        user = frappe.get_doc(
+            {
+                "doctype": "User",
+                "email": email,
+                "first_name": "Admissions",
+                "last_name": "Staff",
+                "enabled": 1,
+                "roles": [{"role": "Admission Manager"}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("User", user.name))
+        frappe.clear_cache(user=user.name)
+        return user.name
 
     def _ensure_admin_admissions_role(self, role_name: str):
         if not frappe.db.exists("Role", role_name):

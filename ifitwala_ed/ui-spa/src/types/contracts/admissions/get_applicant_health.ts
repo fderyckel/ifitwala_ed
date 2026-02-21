@@ -39,4 +39,8 @@ export type Response = {
   medical_surgeries__hospitalizations: string
   other_medical_information: string
   vaccinations: VaccinationRow[]
+  applicant_health_declared_complete: boolean | number
+  applicant_health_declared_by: string
+  applicant_health_declared_on: string
+  applicant_display_name: string
 }

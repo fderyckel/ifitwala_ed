@@ -14,6 +14,8 @@ class TestStudentApplicant(FrappeTestCase):
         self._created = []
         self._ensure_admissions_role("Administrator", "Admission Manager")
         frappe.clear_cache(user="Administrator")
+        self.staff_user = self._create_user("Admissions", "Staff", add_role="Admission Manager")
+        frappe.set_user(self.staff_user.name)
         self.org = self._create_org()
         self.parent_school = self._create_school("Admissions Root", "AR", self.org, is_group=1)
         self.leaf_school = self._create_school("Admissions Leaf", "AL", self.org, parent=self.parent_school, is_group=0)
@@ -23,6 +25,7 @@ class TestStudentApplicant(FrappeTestCase):
         self.hidden_ay = self._create_academic_year(self.leaf_school, "2023-2024", archived=0, visible=0)
 
     def tearDown(self):
+        frappe.set_user("Administrator")
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
@@ -368,7 +371,7 @@ class TestStudentApplicant(FrappeTestCase):
         return doc.name
 
     def _create_applicant_health_profile(self, applicant_name, **overrides):
-        frappe.set_user("Administrator")
+        frappe.set_user(self.staff_user.name)
         doc = frappe.get_doc(
             {
                 "doctype": "Applicant Health Profile",

@@ -546,11 +546,18 @@ ApplicantHealthPayload {
   diet_requirements: string
   medical_surgeries__hospitalizations: string
   other_medical_information: string
+  applicant_health_declared_complete: boolean
+  applicant_health_declared_by: string
+  applicant_health_declared_on: string
+  applicant_display_name: string
   vaccinations: Array<{
     vaccine_name: string
     date: string
     vaccination_proof: string
     additional_notes: string
+    vaccination_proof_content?: string // request-only (base64 image)
+    vaccination_proof_file_name?: string // request-only
+    clear_vaccination_proof?: boolean // request-only
   }>
 }
 ```
@@ -558,6 +565,7 @@ ApplicantHealthPayload {
 ### Rules
 
 * POST allowed only if Applicant mutable
+* Health section is considered complete for applicant flow only when `applicant_health_declared_complete = true`
 * Review status **not writable** by portal
 * Staff notes invisible
 

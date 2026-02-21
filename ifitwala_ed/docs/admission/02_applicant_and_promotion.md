@@ -1950,6 +1950,9 @@ Applicant Health Profile
 | `medical_surgeries__hospitalizations` | Text             |
 | `other_medical_information` | Text Editor                   |
 | `vaccinations`       | Table → Student Patient Vaccination |
+| `applicant_health_declared_complete` | Check                  |
+| `applicant_health_declared_by` | Link → User                   |
+| `applicant_health_declared_on` | Datetime                      |
 | `review_status`      | Select                              |
 | `review_notes`       | Text                                |
 | `reviewed_by`        | Link → User                         |

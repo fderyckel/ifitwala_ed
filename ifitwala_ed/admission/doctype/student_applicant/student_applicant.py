@@ -684,10 +684,22 @@ class StudentApplicant(Document):
             student_patient.set(fieldname, profile.get(fieldname))
 
         student_patient.set("vaccinations", [])
-        for row in profile.get("vaccinations") or []:
+        for index, row in enumerate(profile.get("vaccinations") or []):
+            proof_url = self._copy_health_vaccination_proof_to_student(
+                profile=profile,
+                student_patient=student_patient,
+                source_proof_url=row.get("vaccination_proof"),
+                vaccination_row=row,
+                index=index,
+            )
             student_patient.append(
                 "vaccinations",
-                {fieldname: row.get(fieldname) for fieldname in HEALTH_PROFILE_VACCINATION_FIELDS},
+                {
+                    "vaccine_name": row.get("vaccine_name"),
+                    "date": row.get("date"),
+                    "vaccination_proof": proof_url,
+                    "additional_notes": row.get("additional_notes"),
+                },
             )
 
         student_patient.save(ignore_permissions=True)
@@ -695,6 +707,76 @@ class StudentApplicant(Document):
             "student_patient": student_patient.name,
             "vaccinations": len(student_patient.get("vaccinations") or []),
         }
+
+    def _copy_health_vaccination_proof_to_student(
+        self,
+        *,
+        profile,
+        student_patient,
+        source_proof_url: str | None,
+        vaccination_row,
+        index: int,
+    ) -> str:
+        proof_url = (source_proof_url or "").strip()
+        if not proof_url:
+            return ""
+        if proof_url.startswith("http"):
+            return proof_url
+
+        file_row = frappe.db.get_value(
+            "File",
+            {
+                "file_url": proof_url,
+                "attached_to_doctype": "Applicant Health Profile",
+                "attached_to_name": profile.name,
+            },
+            ["name", "file_url", "file_name", "is_private"],
+            as_dict=True,
+        )
+        if not file_row:
+            return proof_url
+
+        content = self._read_file_bytes(file_row)
+        if not content:
+            return proof_url
+
+        vaccine = frappe.scrub(vaccination_row.get("vaccine_name") or "")
+        date_value = frappe.scrub(str(vaccination_row.get("date") or ""))
+        slot_key = "_".join(part for part in [vaccine, date_value] if part) or f"row_{index + 1}"
+        slot = f"health_vaccination_proof_{slot_key[:80]}"
+        filename = file_row.get("file_name") or os.path.basename(
+            file_row.get("file_url") or f"vaccination_{index + 1}.png"
+        )
+
+        file_doc = file_dispatcher.create_and_classify_file(
+            file_kwargs={
+                "attached_to_doctype": "Student Patient",
+                "attached_to_name": student_patient.name,
+                "attached_to_field": "vaccinations",
+                "file_name": filename,
+                "content": content,
+                "is_private": 1 if file_row.get("is_private") else 0,
+            },
+            classification={
+                "primary_subject_type": "Student",
+                "primary_subject_id": student_patient.student,
+                "data_class": "safeguarding",
+                "purpose": "medical_record",
+                "retention_policy": "until_school_exit_plus_6m",
+                "slot": slot,
+                "organization": self.organization,
+                "school": self.school,
+                "source_file": file_row.get("name"),
+                "upload_source": "Promotion",
+            },
+            context_override={
+                "root_folder": "Home/Students",
+                "subfolder": f"{student_patient.student}/Health",
+                "file_category": "Student Health",
+                "logical_key": slot,
+            },
+        )
+        return file_doc.file_url
 
     def _has_media_consent(self) -> bool:
         return has_applicant_policy_acknowledgement(

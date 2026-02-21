@@ -28,9 +28,10 @@ def _get_request_safe():
         except RuntimeError:
             return None
 
-    if hasattr(request, "_get_current_object"):
+    proxy_resolver = getattr(request, "_get_current_object", None)
+    if callable(proxy_resolver):
         try:
-            request = request._get_current_object()
+            request = proxy_resolver()
         except RuntimeError:
             return None
 

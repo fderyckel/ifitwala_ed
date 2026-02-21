@@ -32,7 +32,16 @@ class ApplicantHealthProfile(Document):
             frappe.throw(_("Applicant is read-only in terminal states."))
 
         if is_family:
-            if status not in {"Invited", "In Progress", "Missing Info"}:
+            if status not in {
+                "Draft",
+                "Invited",
+                "In Progress",
+                "Submitted",
+                "Under Review",
+                "Missing Info",
+                "Approved",
+                "Withdrawn",
+            }:
                 frappe.throw(_("Family edits are not allowed for this Applicant status."))
 
         if self._review_fields_changed(before) and not is_staff:

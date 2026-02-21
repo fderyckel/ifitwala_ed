@@ -757,6 +757,10 @@ Not label. Not free text. **Code only.**
 | `photo`                      | `family_photo`        |
 | `application_form`           | `application_form`    |
 
+For `Applicant Health Profile` vaccination proof uploads (not `Applicant Document`), use deterministic slot prefix:
+
+* `health_vaccination_proof_<vaccine-and-date-key>`
+
 ### Enforcement rule
 
 * If `Applicant Document Type.code` is missing or unmapped → **reject upload**

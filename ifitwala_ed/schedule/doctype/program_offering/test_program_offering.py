@@ -17,8 +17,8 @@ class TestProgramOffering(FrappeTestCase):
         organization = _make_organization()
         school = _make_school(organization)
         academic_year = _make_academic_year(school)
-        program = _make_program(program_scale)
         course = _make_course("Course")
+        program = _make_program(program_scale, [course.name])
         offering = _make_offering(
             program,
             school,
@@ -40,8 +40,8 @@ class TestProgramOffering(FrappeTestCase):
         organization = _make_organization()
         school = _make_school(organization)
         academic_year = _make_academic_year(school)
-        program = _make_program(program_scale)
         course = _make_course("Course")
+        program = _make_program(program_scale, [course.name])
         offering = _make_offering(
             program,
             school,
@@ -62,8 +62,8 @@ class TestProgramOffering(FrappeTestCase):
         organization = _make_organization()
         school = _make_school(organization)
         academic_year = _make_academic_year(school)
-        program = _make_program(program_scale)
         course = _make_course("Course")
+        program = _make_program(program_scale, [course.name])
         offering = _make_offering(
             program,
             school,
@@ -138,12 +138,13 @@ def _make_academic_year(school):
     return doc
 
 
-def _make_program(grade_scale):
+def _make_program(grade_scale, courses=None):
     program = frappe.get_doc(
         {
             "doctype": "Program",
             "program_name": f"Program {frappe.generate_hash(length=6)}",
             "grade_scale": grade_scale.name,
+            "courses": [{"course": course_name} for course_name in (courses or [])],
         }
     )
     program.insert()

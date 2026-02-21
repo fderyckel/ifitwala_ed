@@ -37,6 +37,10 @@
   "others_section",
   "other_medical_information",
   "vaccinations",
+  "health_declaration_section",
+  "applicant_health_declared_complete",
+  "applicant_health_declared_by",
+  "applicant_health_declared_on",
   "review_status",
   "review_notes",
   "reviewed_by",
@@ -204,6 +208,30 @@
    "fieldtype": "Table",
    "label": "Vaccinations",
    "options": "Student Patient Vaccination"
+  },
+  {
+   "fieldname": "health_declaration_section",
+   "fieldtype": "Section Break",
+   "label": "Applicant Health Declaration"
+  },
+  {
+   "default": "0",
+   "fieldname": "applicant_health_declared_complete",
+   "fieldtype": "Check",
+   "label": "Applicant Health Disclosure Confirmed"
+  },
+  {
+   "fieldname": "applicant_health_declared_by",
+   "fieldtype": "Link",
+   "label": "Declared By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applicant_health_declared_on",
+   "fieldtype": "Datetime",
+   "label": "Declared On",
+   "read_only": 1
   },
   {
    "default": "Pending",

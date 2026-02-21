@@ -43,6 +43,37 @@
 				<p class="type-body-strong text-amber-900">{{ __('Notice') }}</p>
 				<p class="mt-1 type-caption text-amber-900/80">{{ actionError }}</p>
 			</div>
+			<div
+				class="rounded-2xl px-4 py-4 shadow-soft"
+				:class="
+					isDeclaredComplete
+						? 'border border-leaf/40 bg-leaf/10'
+						: 'border border-amber-200 bg-amber-50'
+				"
+			>
+				<p
+					class="type-body-strong"
+					:class="isDeclaredComplete ? 'text-emerald-900' : 'text-amber-900'"
+				>
+					{{
+						isDeclaredComplete
+							? __('Health declaration confirmed')
+							: __('Health declaration pending')
+					}}
+				</p>
+				<p
+					class="mt-1 type-caption"
+					:class="isDeclaredComplete ? 'text-emerald-900/80' : 'text-amber-900/80'"
+				>
+					{{
+						isDeclaredComplete
+							? __('Confirmed for {0}.').replace('{0}', applicantDisplayName)
+							: __(
+									'Please open Edit and confirm this is all known health information for {0}.'
+								).replace('{0}', applicantDisplayName)
+					}}
+				</p>
+			</div>
 
 			<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
 				<div class="grid gap-4 md:grid-cols-2">
@@ -223,11 +254,24 @@ function createEmptyHealth(): HealthResponse {
 		medical_surgeries__hospitalizations: '',
 		other_medical_information: '',
 		vaccinations: [],
+		applicant_health_declared_complete: false,
+		applicant_health_declared_by: '',
+		applicant_health_declared_on: '',
+		applicant_display_name: '',
 	};
 }
 
 const hasAllergies = computed(() => {
 	return Boolean(health.value?.allergies);
+});
+
+const isDeclaredComplete = computed(() => {
+	return Boolean(health.value?.applicant_health_declared_complete);
+});
+
+const applicantDisplayName = computed(() => {
+	const name = (health.value?.applicant_display_name || '').trim();
+	return name || __('this applicant');
 });
 
 const conditionRows = computed(() => {

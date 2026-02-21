@@ -27,7 +27,7 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         request.reload()
 
         self.assertEqual(request.validation_status, "Valid")
-        self.assertEqual(payload["overall_result"], "valid")
+        self.assertTrue(bool((payload.get("summary") or {}).get("valid")))
         self.assertTrue(_has_prereq_result(payload, context["required_course"].name, "pass"))
 
     def test_validate_request_prereq_fail(self):
@@ -42,7 +42,7 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         request.reload()
 
         self.assertEqual(request.validation_status, "Invalid")
-        self.assertEqual(payload["overall_result"], "invalid")
+        self.assertFalse(bool((payload.get("summary") or {}).get("valid")))
         self.assertTrue(_has_prereq_result(payload, context["required_course"].name, "fail"))
 
     def test_validate_request_capacity_exceeded(self):
@@ -69,7 +69,7 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         second_request.reload()
 
         self.assertEqual(second_request.validation_status, "Invalid")
-        self.assertEqual(payload["overall_result"], "invalid")
+        self.assertFalse(bool((payload.get("summary") or {}).get("valid")))
         self.assertTrue(_has_rule_result(payload, context["target_course"].name, "capacity_available", "fail"))
 
     def test_validate_request_basket_rules(self):
@@ -92,7 +92,7 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         request.reload()
 
         self.assertEqual(request.validation_status, "Invalid")
-        self.assertEqual(payload["overall_result"], "invalid")
+        self.assertFalse(bool((payload.get("summary") or {}).get("valid")))
         self.assertTrue(_has_rule_result(payload, "BASKET", "basket_valid", "fail"))
 
     def test_materialize_request_updates_enrollment(self):
@@ -124,19 +124,37 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
 
 
 def _has_prereq_result(payload, required_course, result):
-    for entry in payload.get("prerequisites") or []:
-        if entry.get("required_course") == required_course and entry.get("result") == result:
-            return True
+    course_rows = (payload.get("results") or {}).get("courses") or []
+    if result == "fail":
+        for entry in course_rows:
+            reasons = entry.get("reasons") or []
+            if any(required_course in str(reason or "") for reason in reasons):
+                return True
+        return False
+    if result == "pass":
+        for entry in course_rows:
+            reasons = entry.get("reasons") or []
+            if any(required_course in str(reason or "") for reason in reasons):
+                return False
+        return True
     return False
 
 
 def _has_rule_result(payload, required_course, rule, result):
-    for entry in payload.get("prerequisites") or []:
-        if (
-            entry.get("required_course") == required_course
-            and entry.get("rule") == rule
-            and entry.get("result") == result
-        ):
+    if rule == "capacity_available":
+        for entry in (payload.get("results") or {}).get("courses") or []:
+            if entry.get("course") != required_course:
+                continue
+            status = ((entry.get("capacity") or {}).get("status") or "").strip()
+            if result == "fail" and status == "full":
+                return True
+            if result == "pass" and status != "full":
+                return True
+    if rule == "basket_valid":
+        basket_status = (((payload.get("results") or {}).get("basket") or {}).get("status") or "").strip()
+        if result == "fail" and basket_status == "invalid":
+            return True
+        if result == "pass" and basket_status in {"ok", "valid"}:
             return True
     return False
 
@@ -211,6 +229,8 @@ def _setup_enrollment_context(
         data["seat_policy"] = seat_policy
     if enrollment_rules:
         data["enrollment_rules"] = enrollment_rules
+    else:
+        data["enrollment_rules"] = [{"rule_type": "MIN_TOTAL_COURSES", "int_value_1": 1}]
     offering = frappe.get_doc(data).insert()
 
     enrollment = frappe.get_doc(

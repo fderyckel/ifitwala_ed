@@ -548,8 +548,9 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_login_self_heals_active_employee_link_and_redirects_to_staff(self):
         """If user_id link is missing but active employee email matches, login should self-heal and route staff."""
+        email = f"test_self_heal_employee_link_{frappe.generate_hash(length=6)}@example.com"
         user = frappe.new_doc("User")
-        user.email = "test_self_heal_employee_link@example.com"
+        user.email = email
         user.first_name = "Self"
         user.last_name = "Heal"
         user.enabled = 1
@@ -560,7 +561,7 @@ class TestUserRedirect(FrappeTestCase):
         employee.employee_first_name = "Self"
         employee.employee_last_name = "Heal"
         employee.date_of_joining = nowdate()
-        employee.employee_professional_email = user.email
+        employee.employee_professional_email = email
         employee.organization = _ensure_test_organization()
         employee.employment_status = "Active"
         employee.insert(ignore_permissions=True)
@@ -571,7 +572,7 @@ class TestUserRedirect(FrappeTestCase):
         redirect_user_to_entry_portal()
 
         employee.reload()
-        self.assertEqual(employee.user_id, user.email)
+        self.assertEqual(employee.user_id, email)
         self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
         self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
 
@@ -581,8 +582,9 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_unlinked_active_employee_email_match_routes_to_staff(self):
         """Active employee email match should resolve staff portal even when user_id link is missing."""
+        email = f"test_unlinked_active_employee_{frappe.generate_hash(length=6)}@example.com"
         user = frappe.new_doc("User")
-        user.email = "test_unlinked_active_employee_email_match@example.com"
+        user.email = email
         user.first_name = "Unlinked"
         user.last_name = "Active"
         user.enabled = 1
@@ -592,7 +594,7 @@ class TestUserRedirect(FrappeTestCase):
         employee.employee_first_name = "Unlinked"
         employee.employee_last_name = "Active"
         employee.date_of_joining = nowdate()
-        employee.employee_professional_email = user.email
+        employee.employee_professional_email = email
         employee.organization = _ensure_test_organization()
         employee.employment_status = "Active"
         employee.insert(ignore_permissions=True)

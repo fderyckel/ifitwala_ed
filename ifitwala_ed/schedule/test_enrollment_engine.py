@@ -363,6 +363,7 @@ def _make_offering(program, school, academic_year, target_course, required_cours
             "school": school.name,
             "offering_title": f"Offering {frappe.generate_hash(length=6)}",
             "offering_academic_years": [{"academic_year": academic_year.name}],
+            "enrollment_rules": [{"rule_type": "MIN_TOTAL_COURSES", "int_value_1": 1}],
             "offering_courses": [
                 {
                     "course": target_course.name,
@@ -384,18 +385,29 @@ def _make_offering(program, school, academic_year, target_course, required_cours
 
 
 def _make_enrollment(student, program, offering, academic_year, course_rows):
-    enrollment = frappe.get_doc(
+    enrollment_name = frappe.db.get_value(
+        "Program Enrollment",
         {
-            "doctype": "Program Enrollment",
             "student": student.name,
-            "program": program.name,
             "program_offering": offering.name,
             "academic_year": academic_year.name,
-            "enrollment_date": nowdate(),
-            "enrollment_source": "Migration",
-            "enrollment_override_reason": "Test setup",
-        }
-    ).insert()
+        },
+    )
+    if enrollment_name:
+        enrollment = frappe.get_doc("Program Enrollment", enrollment_name)
+    else:
+        enrollment = frappe.get_doc(
+            {
+                "doctype": "Program Enrollment",
+                "student": student.name,
+                "program": program.name,
+                "program_offering": offering.name,
+                "academic_year": academic_year.name,
+                "enrollment_date": nowdate(),
+                "enrollment_source": "Migration",
+                "enrollment_override_reason": "Test setup",
+            }
+        ).insert()
     for row in course_rows:
         enrollment.append("courses", row)
     enrollment.save()

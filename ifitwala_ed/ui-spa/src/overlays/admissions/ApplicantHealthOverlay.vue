@@ -196,6 +196,7 @@
 								>
 									<p class="type-caption text-ink/60">{{ __('No vaccination entries yet.') }}</p>
 								</div>
+
 								<div
 									v-for="(row, idx) in form.vaccinations"
 									:key="`vaccination-${idx}`"
@@ -232,16 +233,54 @@
 											/>
 										</div>
 									</div>
+
 									<div class="grid gap-3 md:grid-cols-2">
 										<div class="space-y-2">
-											<p class="type-caption text-ink/70">{{ __('Vaccination proof URL') }}</p>
+											<p class="type-caption text-ink/70">{{ __('Vaccination proof image') }}</p>
+											<div class="flex flex-wrap items-center gap-2">
+												<button
+													type="button"
+													class="rounded-full border border-border/70 bg-white px-3 py-1 type-caption text-ink/70 disabled:opacity-50"
+													:disabled="isReadOnly || submitting"
+													@click="openVaccinationProofPicker(idx)"
+												>
+													{{
+														row.vaccination_proof || row._uploadFileName
+															? __('Replace image')
+															: __('Upload image')
+													}}
+												</button>
+												<button
+													v-if="row.vaccination_proof || row._uploadFileName"
+													type="button"
+													class="rounded-full border border-border/60 bg-white px-3 py-1 type-caption text-ink/60 disabled:opacity-50"
+													:disabled="isReadOnly || submitting"
+													@click="clearVaccinationProof(idx)"
+												>
+													{{ __('Remove image') }}
+												</button>
+											</div>
 											<input
-												v-model="row.vaccination_proof"
-												type="text"
-												placeholder="/files/example.png"
-												class="w-full rounded-2xl border border-border/70 bg-white px-4 py-3 text-sm text-ink shadow-soft outline-none focus:ring-2 focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
+												:type="'file'"
+												accept="image/*"
+												class="hidden"
 												:disabled="isReadOnly || submitting"
+												:ref="el => bindVaccinationProofInput(idx, el)"
+												@change="onVaccinationProofSelected(idx, $event)"
 											/>
+											<p v-if="row._uploadFileName" class="type-caption text-ink/55">
+												{{ __('Selected') }}: {{ row._uploadFileName }}
+											</p>
+											<p v-else-if="row.vaccination_proof" class="type-caption text-ink/55">
+												<a
+													:href="row.vaccination_proof"
+													target="_blank"
+													rel="noopener noreferrer"
+													class="underline"
+												>
+													{{ __('View current proof image') }}
+												</a>
+											</p>
 										</div>
 										<div class="space-y-2">
 											<p class="type-caption text-ink/70">{{ __('Additional notes') }}</p>
@@ -255,6 +294,39 @@
 									</div>
 								</div>
 							</section>
+
+							<section
+								class="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 shadow-soft"
+							>
+								<p class="type-body-strong text-amber-900">{{ __('Health declaration') }}</p>
+								<p class="type-caption text-amber-900/80">
+									{{
+										__('I confirm this is all known health information for {0}.').replace(
+											'{0}',
+											applicantDisplayName
+										)
+									}}
+								</p>
+								<label class="inline-flex items-center gap-2 type-body text-amber-900">
+									<input
+										type="checkbox"
+										v-model="form.applicant_health_declared_complete"
+										class="h-4 w-4 rounded border-amber-300"
+										:disabled="isReadOnly || submitting"
+									/>
+									<span>{{ __('I acknowledge and confirm this declaration.') }}</span>
+								</label>
+								<p
+									v-if="!form.applicant_health_declared_complete"
+									class="type-caption text-amber-900/75"
+								>
+									{{
+										__(
+											'Health will remain in progress until this declaration is checked and saved.'
+										)
+									}}
+								</p>
+							</section>
 						</div>
 
 						<div
@@ -264,7 +336,7 @@
 								{{
 									isReadOnly
 										? __('This application is read-only.')
-										: __('You can update this later if needed.')
+										: __('You can save draft updates and confirm later.')
 								}}
 							</p>
 							<div class="flex items-center gap-3">
@@ -333,6 +405,21 @@ type ConditionKey =
 	| 'recurrent_nose_bleeding'
 	| 'vision_problem';
 
+type VaccinationRow = {
+	vaccine_name: string;
+	date: string;
+	vaccination_proof: string;
+	additional_notes: string;
+	_uploadFile: File | null;
+	_uploadFileName: string;
+	_clearVaccinationProof: boolean;
+};
+
+type LocalHealthPayload = Omit<HealthPayload, 'vaccinations'> & {
+	vaccinations: VaccinationRow[];
+	applicant_health_declared_complete: boolean;
+};
+
 const props = defineProps<{
 	open: boolean;
 	zIndex?: number;
@@ -347,6 +434,7 @@ const service = createAdmissionsService();
 
 const submitting = ref(false);
 const errorMessage = ref('');
+const vaccinationProofInputs = ref<Record<number, HTMLInputElement | null>>({});
 
 const bloodGroupOptions = [
 	'A Positive',
@@ -380,7 +468,7 @@ const conditionFields: { key: ConditionKey; label: string }[] = [
 	{ key: 'vision_problem', label: __('Vision Problems') },
 ];
 
-const form = reactive<HealthPayload>({
+const form = reactive<LocalHealthPayload>({
 	blood_group: '',
 	allergies: false,
 	food_allergies: '',
@@ -408,6 +496,10 @@ const form = reactive<HealthPayload>({
 	medical_surgeries__hospitalizations: '',
 	other_medical_information: '',
 	vaccinations: [],
+	applicant_health_declared_complete: false,
+	applicant_health_declared_by: '',
+	applicant_health_declared_on: '',
+	applicant_display_name: '',
 });
 
 const overlayStyle = computed(() => ({
@@ -415,6 +507,9 @@ const overlayStyle = computed(() => ({
 }));
 
 const isReadOnly = computed(() => Boolean(props.readOnly));
+const applicantDisplayName = computed(() => {
+	return (form.applicant_display_name || '').trim() || __('this applicant');
+});
 
 function setError(err: unknown, fallback: string) {
 	const msg =
@@ -428,6 +523,23 @@ function setError(err: unknown, fallback: string) {
 
 function clearError() {
 	errorMessage.value = '';
+}
+
+function createVaccinationRow(row?: {
+	vaccine_name?: string;
+	date?: string;
+	vaccination_proof?: string;
+	additional_notes?: string;
+}): VaccinationRow {
+	return {
+		vaccine_name: row?.vaccine_name || '',
+		date: row?.date || '',
+		vaccination_proof: row?.vaccination_proof || '',
+		additional_notes: row?.additional_notes || '',
+		_uploadFile: null,
+		_uploadFileName: '',
+		_clearVaccinationProof: false,
+	};
 }
 
 function resetForm() {
@@ -458,25 +570,56 @@ function resetForm() {
 	form.diet_requirements = initial?.diet_requirements || '';
 	form.medical_surgeries__hospitalizations = initial?.medical_surgeries__hospitalizations || '';
 	form.other_medical_information = initial?.other_medical_information || '';
-	form.vaccinations = (initial?.vaccinations || []).map(row => ({
-		vaccine_name: row.vaccine_name || '',
-		date: row.date || '',
-		vaccination_proof: row.vaccination_proof || '',
-		additional_notes: row.additional_notes || '',
-	}));
+	form.vaccinations = (initial?.vaccinations || []).map(row => createVaccinationRow(row));
+	form.applicant_health_declared_complete = Boolean(initial?.applicant_health_declared_complete);
+	form.applicant_health_declared_by = initial?.applicant_health_declared_by || '';
+	form.applicant_health_declared_on = initial?.applicant_health_declared_on || '';
+	form.applicant_display_name = initial?.applicant_display_name || '';
+	vaccinationProofInputs.value = {};
 }
 
 function addVaccination() {
-	form.vaccinations.push({
-		vaccine_name: '',
-		date: '',
-		vaccination_proof: '',
-		additional_notes: '',
-	});
+	form.vaccinations.push(createVaccinationRow());
 }
 
 function removeVaccination(index: number) {
 	form.vaccinations.splice(index, 1);
+	delete vaccinationProofInputs.value[index];
+}
+
+function bindVaccinationProofInput(index: number, el: Element | null) {
+	vaccinationProofInputs.value[index] = el as HTMLInputElement | null;
+}
+
+function openVaccinationProofPicker(index: number) {
+	if (isReadOnly.value || submitting.value) return;
+	vaccinationProofInputs.value[index]?.click();
+}
+
+function onVaccinationProofSelected(index: number, event: Event) {
+	const target = event.target as HTMLInputElement | null;
+	const file = target?.files?.[0] || null;
+	if (!file) return;
+	if (!file.type || !file.type.startsWith('image/')) {
+		setError('', __('Vaccination proof must be an image file.'));
+		if (target) target.value = '';
+		return;
+	}
+	const row = form.vaccinations[index];
+	if (!row) return;
+	row._uploadFile = file;
+	row._uploadFileName = file.name;
+	row._clearVaccinationProof = false;
+	if (target) target.value = '';
+}
+
+function clearVaccinationProof(index: number) {
+	const row = form.vaccinations[index];
+	if (!row) return;
+	row.vaccination_proof = '';
+	row._uploadFile = null;
+	row._uploadFileName = '';
+	row._clearVaccinationProof = true;
 }
 
 function emitClose(reason: CloseReason) {
@@ -527,11 +670,25 @@ function cleanValue(value: unknown): string {
 	return typeof value === 'string' ? value.trim() : String(value || '').trim();
 }
 
+async function readAsBase64(file: File): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onerror = () => reject(new Error('Unable to read file'));
+		reader.onload = () => {
+			const result = typeof reader.result === 'string' ? reader.result : '';
+			const parts = result.split(',');
+			resolve(parts.length > 1 ? parts[1] : result);
+		};
+		reader.readAsDataURL(file);
+	});
+}
+
 async function submit() {
 	if (isReadOnly.value) {
 		setError('', __('This application is read-only.'));
 		return;
 	}
+
 	const invalidVaccinationIndex = form.vaccinations.findIndex(
 		row => !cleanValue(row.vaccine_name) || !cleanValue(row.date)
 	);
@@ -549,6 +706,36 @@ async function submit() {
 	submitting.value = true;
 	clearError();
 	try {
+		const vaccinationsPayload = await Promise.all(
+			form.vaccinations.map(async row => {
+				const payload: {
+					vaccine_name: string;
+					date: string;
+					vaccination_proof: string;
+					additional_notes: string;
+					vaccination_proof_content?: string;
+					vaccination_proof_file_name?: string;
+					clear_vaccination_proof?: boolean;
+				} = {
+					vaccine_name: cleanValue(row.vaccine_name),
+					date: cleanValue(row.date),
+					vaccination_proof: cleanValue(row.vaccination_proof),
+					additional_notes: cleanValue(row.additional_notes),
+				};
+
+				if (row._clearVaccinationProof) {
+					payload.clear_vaccination_proof = true;
+				}
+				if (row._uploadFile) {
+					payload.vaccination_proof_content = await readAsBase64(row._uploadFile);
+					payload.vaccination_proof_file_name = row._uploadFile.name;
+					payload.clear_vaccination_proof = false;
+				}
+
+				return payload;
+			})
+		);
+
 		await service.updateHealth({
 			blood_group: cleanValue(form.blood_group),
 			allergies: Boolean(form.allergies),
@@ -576,12 +763,8 @@ async function submit() {
 			diet_requirements: cleanValue(form.diet_requirements),
 			medical_surgeries__hospitalizations: cleanValue(form.medical_surgeries__hospitalizations),
 			other_medical_information: cleanValue(form.other_medical_information),
-			vaccinations: form.vaccinations.map(row => ({
-				vaccine_name: cleanValue(row.vaccine_name),
-				date: cleanValue(row.date),
-				vaccination_proof: cleanValue(row.vaccination_proof),
-				additional_notes: cleanValue(row.additional_notes),
-			})),
+			applicant_health_declared_complete: Boolean(form.applicant_health_declared_complete),
+			vaccinations: vaccinationsPayload,
 		});
 		emitClose('programmatic');
 		emit('done');

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import base64
+
 import frappe
 from frappe import _
+from frappe.utils import cint, now_datetime
 
 from ifitwala_ed.admission import admissions_portal as admission_api
 from ifitwala_ed.admission.admission_utils import (
@@ -21,6 +24,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     select_nearest_policy_rows_by_key,
 )
 from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
+from ifitwala_ed.utilities import file_dispatcher
 
 ADMISSIONS_ROLE = "Admissions Applicant"
 
@@ -90,6 +94,10 @@ def _default_health_payload() -> dict:
     payload = {field: "" for field in APPLICANT_HEALTH_FIELDS}
     payload["allergies"] = 0
     payload["vaccinations"] = []
+    payload["applicant_health_declared_complete"] = 0
+    payload["applicant_health_declared_by"] = ""
+    payload["applicant_health_declared_on"] = ""
+    payload["applicant_display_name"] = ""
     return payload
 
 
@@ -108,6 +116,98 @@ def _as_check(value) -> int:
     return 1 if normalized in {"1", "true", "yes", "on"} else 0
 
 
+def _as_bool(value) -> bool:
+    return bool(_as_check(value))
+
+
+def _coerce_vaccination_date(value) -> str | None:
+    text = _as_text(value).strip()
+    return text or None
+
+
+def _decode_base64_content(content_text: str | None) -> bytes:
+    if not content_text:
+        frappe.throw(_("Vaccination proof content is required."))
+    try:
+        return base64.b64decode(content_text)
+    except Exception:
+        frappe.throw(_("Vaccination proof content must be base64-encoded."))
+
+
+def _build_applicant_display_name(row: dict) -> str:
+    parts = [
+        _as_text(row.get("first_name")).strip(),
+        _as_text(row.get("middle_name")).strip(),
+        _as_text(row.get("last_name")).strip(),
+    ]
+    name = " ".join(part for part in parts if part).strip()
+    return name or _as_text(row.get("name")).strip()
+
+
+def _portal_health_state(student_applicant: str) -> dict:
+    health_row = frappe.db.get_value(
+        "Applicant Health Profile",
+        {"student_applicant": student_applicant},
+        ["name", "applicant_health_declared_complete"],
+        as_dict=True,
+    )
+    if not health_row:
+        return {"ok": False, "status": "missing"}
+    if cint(health_row.get("applicant_health_declared_complete")):
+        return {"ok": True, "status": "complete"}
+    return {"ok": False, "status": "in_progress"}
+
+
+def _vaccination_slot(row: dict, index: int) -> str:
+    vaccine = _as_text(row.get("vaccine_name")).strip()
+    date_value = _as_text(row.get("date")).strip()
+    base = "_".join(part for part in [vaccine, date_value] if part) or f"row_{index + 1}"
+    return f"health_vaccination_proof_{frappe.scrub(base)[:80]}"
+
+
+def _upload_vaccination_proof(
+    *,
+    applicant_row: dict,
+    health_doc,
+    vaccination_row: dict,
+    index: int,
+) -> str:
+    content = _decode_base64_content(_as_text(vaccination_row.get("vaccination_proof_content")))
+    file_name = (
+        _as_text(vaccination_row.get("vaccination_proof_file_name")).strip() or f"vaccination_proof_{index + 1}.png"
+    )
+    slot = _vaccination_slot(vaccination_row, index)
+
+    file_doc = file_dispatcher.create_and_classify_file(
+        file_kwargs={
+            "attached_to_doctype": "Applicant Health Profile",
+            "attached_to_name": health_doc.name,
+            "attached_to_field": "vaccinations",
+            "file_name": file_name,
+            "content": content,
+            "is_private": 1,
+        },
+        classification={
+            "primary_subject_type": "Student Applicant",
+            "primary_subject_id": applicant_row.get("name"),
+            "data_class": "safeguarding",
+            "purpose": "medical_record",
+            "retention_policy": "until_school_exit_plus_6m",
+            "slot": slot,
+            "organization": applicant_row.get("organization"),
+            "school": applicant_row.get("school"),
+            "upload_source": "SPA",
+        },
+        context_override={
+            "root_folder": "Home/Admissions",
+            "subfolder": f"Applicant/{applicant_row.get('name')}/Health",
+            "file_category": "Admissions Health",
+            "logical_key": slot,
+        },
+    )
+    return _as_text(file_doc.file_url)
+
+
 def _normalize_vaccinations(vaccinations) -> list[dict]:
     if vaccinations is None:
         return []
@@ -123,9 +223,12 @@ def _normalize_vaccinations(vaccinations) -> list[dict]:
         normalized.append(
             {
                 "vaccine_name": _as_text(row.get("vaccine_name")),
-                "date": row.get("date"),
+                "date": _coerce_vaccination_date(row.get("date")),
                 "vaccination_proof": _as_text(row.get("vaccination_proof")),
                 "additional_notes": _as_text(row.get("additional_notes")),
+                "vaccination_proof_content": _as_text(row.get("vaccination_proof_content")),
+                "vaccination_proof_file_name": _as_text(row.get("vaccination_proof_file_name")),
+                "clear_vaccination_proof": _as_bool(row.get("clear_vaccination_proof")),
             }
         )
     return normalized
@@ -143,6 +246,9 @@ def _serialize_health_doc(doc) -> dict:
         {fieldname: _as_text(row.get(fieldname)) for fieldname in APPLICANT_HEALTH_VACCINATION_FIELDS}
         for row in (doc.get("vaccinations") or [])
     ]
+    payload["applicant_health_declared_complete"] = _as_check(doc.get("applicant_health_declared_complete"))
+    payload["applicant_health_declared_by"] = _as_text(doc.get("applicant_health_declared_by"))
+    payload["applicant_health_declared_on"] = _as_text(doc.get("applicant_health_declared_on"))
     return payload
 
 
@@ -159,7 +265,15 @@ def _require_admissions_applicant() -> str:
 
 
 def _get_applicant_for_user(user: str, fields: list[str] | None = None) -> dict:
-    fields = fields or ["name", "application_status", "organization", "school", "first_name", "last_name"]
+    fields = fields or [
+        "name",
+        "application_status",
+        "organization",
+        "school",
+        "first_name",
+        "middle_name",
+        "last_name",
+    ]
     rows = frappe.get_all(
         "Student Applicant",
         filters={"applicant_user": user},
@@ -296,9 +410,12 @@ def get_applicant_snapshot(student_applicant: str | None = None):
 
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
     readiness = applicant.get_readiness_snapshot()
+    portal_health = _portal_health_state(applicant.name)
+    readiness_for_portal = dict(readiness)
+    readiness_for_portal["health"] = portal_health
 
     completeness = {
-        "health": _completion_state_for_health(readiness.get("health") or {}),
+        "health": _completion_state_for_health(portal_health),
         "documents": _completion_state_for_requirement(
             (readiness.get("documents") or {}).get("required") or [],
             (readiness.get("documents") or {}).get("missing") or [],
@@ -312,7 +429,7 @@ def get_applicant_snapshot(student_applicant: str | None = None):
     }
 
     portal_status = _portal_status_for(applicant.application_status)
-    next_actions = _derive_next_actions(applicant.application_status, readiness)
+    next_actions = _derive_next_actions(applicant.application_status, readiness_for_portal)
 
     return {
         "applicant": {
@@ -330,6 +447,7 @@ def get_applicant_snapshot(student_applicant: str | None = None):
 def get_applicant_health(student_applicant: str | None = None):
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
+    applicant_display_name = _build_applicant_display_name(row)
 
     health_name = frappe.db.get_value(
         "Applicant Health Profile",
@@ -337,10 +455,14 @@ def get_applicant_health(student_applicant: str | None = None):
         "name",
     )
     if not health_name:
-        return _default_health_payload()
+        payload = _default_health_payload()
+        payload["applicant_display_name"] = applicant_display_name
+        return payload
 
     doc = frappe.get_doc("Applicant Health Profile", health_name)
-    return _serialize_health_doc(doc)
+    payload = _serialize_health_doc(doc)
+    payload["applicant_display_name"] = applicant_display_name
+    return payload
 
 
 @frappe.whitelist()
@@ -373,6 +495,7 @@ def update_applicant_health(
     diet_requirements: str | None = None,
     medical_surgeries__hospitalizations: str | None = None,
     other_medical_information: str | None = None,
+    applicant_health_declared_complete=None,
     vaccinations=None,
 ):
     user = _require_admissions_applicant()
@@ -421,15 +544,68 @@ def update_applicant_health(
         "medical_surgeries__hospitalizations": _as_text(medical_surgeries__hospitalizations),
         "other_medical_information": _as_text(other_medical_information),
     }
-    normalized_vaccinations = _normalize_vaccinations(vaccinations)
+    if vaccinations is None:
+        normalized_vaccinations = [
+            {
+                "vaccine_name": _as_text(row_existing.get("vaccine_name")),
+                "date": _coerce_vaccination_date(row_existing.get("date")),
+                "vaccination_proof": _as_text(row_existing.get("vaccination_proof")),
+                "additional_notes": _as_text(row_existing.get("additional_notes")),
+                "vaccination_proof_content": "",
+                "vaccination_proof_file_name": "",
+                "clear_vaccination_proof": False,
+            }
+            for row_existing in (doc.get("vaccinations") or [])
+        ]
+    else:
+        normalized_vaccinations = _normalize_vaccinations(vaccinations)
+    declaration_provided = applicant_health_declared_complete is not None
+    declaration_confirmed = _as_bool(applicant_health_declared_complete)
 
     doc.update(updates)
+    if doc.is_new():
+        # Vaccination proof uploads attach to this profile and require a persisted name.
+        doc.save(ignore_permissions=True)
+
     doc.set("vaccinations", [])
-    for row in normalized_vaccinations:
-        doc.append("vaccinations", row)
+    for index, vaccination_row in enumerate(normalized_vaccinations):
+        proof_url = _as_text(vaccination_row.get("vaccination_proof"))
+        if vaccination_row.get("clear_vaccination_proof"):
+            proof_url = ""
+        if _as_text(vaccination_row.get("vaccination_proof_content")):
+            proof_url = _upload_vaccination_proof(
+                applicant_row=row,
+                health_doc=doc,
+                vaccination_row=vaccination_row,
+                index=index,
+            )
+
+        doc.append(
+            "vaccinations",
+            {
+                "vaccine_name": _as_text(vaccination_row.get("vaccine_name")),
+                "date": _coerce_vaccination_date(vaccination_row.get("date")),
+                "vaccination_proof": proof_url,
+                "additional_notes": _as_text(vaccination_row.get("additional_notes")),
+            },
+        )
+
+    if declaration_provided:
+        if declaration_confirmed:
+            doc.applicant_health_declared_complete = 1
+            doc.applicant_health_declared_by = user
+            doc.applicant_health_declared_on = now_datetime()
+        else:
+            doc.applicant_health_declared_complete = 0
+            doc.applicant_health_declared_by = None
+            doc.applicant_health_declared_on = None
+
     doc.save(ignore_permissions=True)
 
-    return {"ok": True}
+    return {
+        "ok": True,
+        "applicant_health_declared_complete": bool(cint(doc.get("applicant_health_declared_complete"))),
+    }
 
 
 @frappe.whitelist()
