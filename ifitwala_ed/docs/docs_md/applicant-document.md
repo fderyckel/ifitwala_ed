@@ -3,7 +3,7 @@ title: "Applicant Document: Governed Admission File Record"
 slug: applicant-document
 category: Admission
 doc_order: 6
-version: "1.1.0"
+version: "1.2.0"
 last_change_date: "2026-02-21"
 summary: "Track each applicant document type, review status, and promotion relevance with strict immutability and governed file handling."
 seo_title: "Applicant Document: Governed Admission File Record"
@@ -77,12 +77,31 @@ seo_description: "Track each applicant document type, review status, and promoti
 Changing an uploaded document's type or applicant after submission is blocked. Replace with a new governed upload instead.
 </Callout>
 
+## Operational Guardrails
+
+<DoDont doTitle="Do" dontTitle="Don't">
+  <Do>Create one canonical row per (`student_applicant`, `document_type`) and replace evidence through governed upload flows.</Do>
+  <Do>Use reviewer roles (`Academic Admin`/`System Manager`) for review-status decisions and promotion flags.</Do>
+  <Dont>Bypass dispatcher/classification and attach ad-hoc files directly for admissions evidence.</Dont>
+  <Dont>Mutate immutable anchors after creation (`student_applicant`, `document_type`).</Dont>
+</DoDont>
+
 ## Lifecycle and Linked Documents
 
-1. Create/select the applicant and choose the exact required document type.
-2. Upload through governed flows so one canonical row is maintained per applicant and document type.
-3. Admissions reviewers update review fields and promotion relevance as evidence is assessed.
-4. On promotion, only approved/promotable evidence is carried into student-facing records.
+<Steps title="Applicant Document Lifecycle">
+  <Step title="Create">
+    Create/select the applicant and choose the exact required document type.
+  </Step>
+  <Step title="Upload">
+    Upload through governed flows so one canonical row is maintained per applicant and document type.
+  </Step>
+  <Step title="Review">
+    Admissions reviewers update review fields and promotion relevance as evidence is assessed.
+  </Step>
+  <Step title="Promote">
+    On promotion, only approved/promotable evidence is carried into student-facing records.
+  </Step>
+</Steps>
 
 ## When Validation Happens
 
@@ -123,7 +142,7 @@ This doctype is the legal/operational evidence anchor for admissions. Use replac
 
 ## Technical Notes (IT)
 
-### Schema and Controller Snapshot
+### Latest Technical Snapshot (2026-02-21)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.py`
@@ -174,6 +193,7 @@ Runtime controller rules:
 
 ## Related Docs
 
-- [**Applicant Document Type**](/docs/en/applicant-document-type/) - catalog and requirement rules
-- [**Student Applicant**](/docs/en/student-applicant/) - readiness and decision lifecycle
-- [**Applicant Health Profile**](/docs/en/applicant-health-profile/) - complementary review evidence
+<RelatedDocs
+  slugs="applicant-document-type,student-applicant,applicant-health-profile"
+  title="Related Evidence and Readiness Docs"
+/>

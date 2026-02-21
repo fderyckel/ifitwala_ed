@@ -63,7 +63,7 @@ class TestAdmissionsPortalRoute(FrappeTestCase):
             self._restore_request(original_request)
 
     def test_staff_user_hitting_admissions_is_redirected_to_staff_portal(self):
-        user = self._create_user("staff-only", roles=["Administrator"])
+        user = self._create_user("staff-only", roles=["Employee"])
         original_request = self._set_request_path("/admissions")
         frappe.set_user(user.name)
         try:
@@ -75,7 +75,7 @@ class TestAdmissionsPortalRoute(FrappeTestCase):
             self._restore_request(original_request)
 
     def test_staff_with_admissions_role_without_applicant_redirects_to_staff_portal(self):
-        user = self._create_user("staff-admissions", roles=["Administrator", "Admissions Applicant"])
+        user = self._create_user("staff-admissions", roles=["Employee", "Admissions Applicant"])
         original_request = self._set_request_path("/admissions")
         frappe.set_user(user.name)
         try:

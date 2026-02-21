@@ -3,7 +3,7 @@ title: "Applicant Health Profile: Health Disclosure and Clearance"
 slug: applicant-health-profile
 category: Admission
 doc_order: 7
-version: "2.1.0"
+version: "2.2.0"
 last_change_date: "2026-02-21"
 summary: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
 seo_title: "Applicant Health Profile: Health Disclosure and Clearance"
@@ -49,14 +49,37 @@ seo_description: "Capture health details, control family/staff editing by applic
 Families can provide health details in portal phases where edits are allowed, then staff can move review status to `Cleared` or `Needs Follow-Up`.
 </Callout>
 
+## Operational Guardrails
+
+<DoDont doTitle="Do" dontTitle="Don't">
+  <Do>Keep reviewer outcomes explicit (`Pending`, `Needs Follow-Up`, `Cleared`) and let reviewer metadata stamp automatically.</Do>
+  <Do>Use governed vaccination-proof uploads and canonical file URLs.</Do>
+  <Dont>Approve applicant decisions while health review is unresolved.</Dont>
+  <Dont>Allow family-side edits after terminal applicant states (`Rejected`, `Promoted`).</Dont>
+</DoDont>
+
 ## Lifecycle and Linked Documents
 
-1. Create health profile context as soon as an applicant enters active review.
-2. Capture family-provided health details and keep entries current through the review window.
-3. Staff reviewers move the profile through review outcomes (`Pending`, `Needs Follow-Up`, `Cleared`).
-4. Applicant approval readiness depends on the health review state being complete.
-5. On applicant promotion, health fields and vaccination rows are copied into `Student Patient` / `Student Patient Vaccination`.
-6. Vaccination proof images are uploaded through governed dispatcher storage and linked via canonical file URLs.
+<Steps title="Applicant Health Lifecycle">
+  <Step title="Create Profile">
+    Create health profile context as soon as an applicant enters active review.
+  </Step>
+  <Step title="Capture Details">
+    Capture family-provided health details and keep entries current through the review window.
+  </Step>
+  <Step title="Review">
+    Staff reviewers move the profile through review outcomes (`Pending`, `Needs Follow-Up`, `Cleared`).
+  </Step>
+  <Step title="Gate Decisions">
+    Applicant approval readiness depends on the health review state being complete.
+  </Step>
+  <Step title="Promote">
+    On applicant promotion, health fields and vaccination rows are copied into `Student Patient` / `Student Patient Vaccination`.
+  </Step>
+  <Step title="Governed Proof Files">
+    Vaccination proof images are uploaded through governed dispatcher storage and linked via canonical file URLs.
+  </Step>
+</Steps>
 
 <Callout type="warning" title="Admissions decision impact">
 Do not move applicants to final approval while health review remains unresolved; readiness checks are designed to prevent this.
@@ -64,7 +87,7 @@ Do not move applicants to final approval while health review remains unresolved;
 
 ## Technical Notes (IT)
 
-### Schema and Controller Snapshot
+### Latest Technical Snapshot (2026-02-21)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_health_profile/applicant_health_profile.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/applicant_health_profile/applicant_health_profile.py`
@@ -107,6 +130,7 @@ Runtime controller rules:
 
 ## Related Docs
 
-- [**Student Applicant**](/docs/en/student-applicant/) - readiness and decision lifecycle
-- [**Applicant Interview**](/docs/en/applicant-interview/) - additional review evidence
-- [**Applicant Document**](/docs/en/applicant-document/) - required file evidence
+<RelatedDocs
+  slugs="student-applicant,applicant-interview,applicant-document"
+  title="Related Applicant Review Docs"
+/>

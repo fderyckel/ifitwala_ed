@@ -13,7 +13,7 @@ class TestEnrollmentEngine(FrappeTestCase):
         frappe.set_user("Administrator")
 
     def test_meets_prereq_numeric_score(self):
-        context = _setup_context(score=75)
+        context = _setup_context(score=95)
 
         result = evaluate_enrollment_request(
             {

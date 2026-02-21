@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.2.1"
-last_change_date: "2026-02-20"
+version: "1.3.0"
+last_change_date: "2026-02-21"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
@@ -68,6 +68,15 @@ This is where admissions correctness is enforced. Client UX helps, but status tr
 <Callout type="note" title="Digital signature scope">
 Current implementation is an explicit acknowledge action with timestamped audit trail. It does not capture a handwritten/typed signature artifact field.
 </Callout>
+
+## Operational Guardrails
+
+<DoDont doTitle="Do" dontTitle="Don't">
+  <Do>Use lifecycle actions (`approve_application`, `reject_application`, `promote_to_student`) to keep readiness and audit behavior consistent.</Do>
+  <Do>Use the Desk invite/resend portal actions so `portal_account_email`, user linkage, and role assignment remain server-owned.</Do>
+  <Dont>Directly mutate protected identity/anchor fields (`inquiry`, `student`, `applicant_user`, `applicant_contact`, `portal_account_email`).</Dont>
+  <Dont>Treat UI-only state as truth; rely on server readiness checks before approval and promotion decisions.</Dont>
+</DoDont>
 
 ## Lifecycle States
 
@@ -259,14 +268,24 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 
 ## Lifecycle and Linked Documents
 
-1. Create applicant identity and institutional anchor (`organization`, `school`).
-2. Progress through lifecycle states while collecting policies, documents, health, and interview evidence.
-3. Use readiness snapshot checks before approval or rejection decisions.
-4. Promote approved applicants to `Student` records and copy governed artifacts forward.
+<Steps title="Student Applicant Lifecycle">
+  <Step title="Create">
+    Create applicant identity and institutional anchor (`organization`, `school`).
+  </Step>
+  <Step title="Collect Evidence">
+    Progress through lifecycle states while collecting policies, documents, health, and interview evidence.
+  </Step>
+  <Step title="Review Readiness">
+    Use readiness snapshot checks before approval or rejection decisions.
+  </Step>
+  <Step title="Promote">
+    Promote approved applicants to `Student` records and copy governed artifacts forward.
+  </Step>
+</Steps>
 
 ## Technical Notes (IT)
 
-### Schema and Controller Snapshot
+### Latest Technical Snapshot (2026-02-21)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
@@ -397,11 +416,7 @@ Runtime controller rules (server):
 
 ## Related Docs
 
-- [**Inquiry**](/docs/en/inquiry/) - lead conversion into applicant
-- [**Applicant Document Type**](/docs/en/applicant-document-type/) - required document policy
-- [**Applicant Document**](/docs/en/applicant-document/) - governed admissions files
-- [**Applicant Health Profile**](/docs/en/applicant-health-profile/) - health review component
-- [**Applicant Interview**](/docs/en/applicant-interview/) - interview evidence component
-- [**Institutional Policy**](/docs/en/institutional-policy/) - policy identity/scope used by applicant readiness
-- [**Policy Version**](/docs/en/policy-version/) - active legal text source for applicant policy cards
-- [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) - acknowledgement evidence rows tied to applicant context
+<RelatedDocs
+  slugs="inquiry,applicant-document-type,applicant-document,applicant-health-profile,applicant-interview,institutional-policy,policy-version,policy-acknowledgement"
+  title="Related Applicant Lifecycle Docs"
+/>

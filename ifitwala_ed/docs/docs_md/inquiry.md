@@ -3,7 +3,7 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.2.0"
+version: "1.3.0"
 last_change_date: "2026-02-21"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
@@ -47,6 +47,15 @@ Allowed transitions are strictly server-validated:
 - Any non-`Archived` state -> `Archived`
 - Backward transitions are rejected.
 
+## Operational Guardrails
+
+<DoDont doTitle="Do" dontTitle="Don't">
+  <Do>Use `Assign`/`Reassign` actions so ownership, SLA fields, and ToDo artifacts stay consistent.</Do>
+  <Do>Move state with named actions (`Mark Contacted`, `Qualify`, `Archive`) so server transition rules and metrics are enforced.</Do>
+  <Dont>Manually edit workflow fields to skip required transitions.</Dont>
+  <Dont>Treat every inquiry as admissions conversion; convert only when it is actually admissions-relevant.</Dont>
+</DoDont>
+
 ## Where Inquiry Is Used Across the ERP
 
 - **Desk form + list view**:
@@ -78,11 +87,23 @@ Allowed transitions are strictly server-validated:
 
 ## Lifecycle and Linked Documents
 
-1. Capture inbound request as `New` (admission-related or not).
-2. Assign ownership (`Assigned`) when coordinated follow-up is needed.
-3. Mark as `Contacted` when first outreach is completed and metrics are stamped.
-4. If it is admissions-relevant and ready, move to `Qualified` and optionally invite/create a `Student Applicant`.
-5. Archive completed/closed paths through `Archived` (including non-admissions inquiries like general or media requests).
+<Steps title="Inquiry Lifecycle">
+  <Step title="Capture">
+    Capture inbound request as `New` (admission-related or not).
+  </Step>
+  <Step title="Assign">
+    Assign ownership (`Assigned`) when coordinated follow-up is needed.
+  </Step>
+  <Step title="Contact">
+    Mark as `Contacted` when first outreach is completed and metrics are stamped.
+  </Step>
+  <Step title="Qualify or Close">
+    If it is admissions-relevant and ready, move to `Qualified` and optionally invite/create a `Student Applicant`.
+  </Step>
+  <Step title="Archive">
+    Archive completed/closed paths through `Archived` (including non-admissions inquiries like general or media requests).
+  </Step>
+</Steps>
 
 <Callout type="info" title="Transition guardrails">
 Workflow transitions are server-validated. Teams should follow the canonical state path instead of manually editing status fields.
@@ -171,7 +192,7 @@ Action-level guard in server code: lifecycle and assignment methods enforce admi
 
 ## Related Docs
 
-- [**Admission Settings**](/docs/en/admission-settings/) - SLA defaults and assignment visual settings
-- [**Organization**](/docs/en/organization/) - organization hierarchy used when scoping Inquiry with School
-- [**Student Applicant**](/docs/en/student-applicant/) - conversion target after qualification
-- [**Registration of Interest**](/docs/en/registration-of-interest/) - alternate admissions lead intake
+<RelatedDocs
+  slugs="admission-settings,organization,student-applicant,registration-of-interest"
+  title="Continue With Related Admission Docs"
+/>

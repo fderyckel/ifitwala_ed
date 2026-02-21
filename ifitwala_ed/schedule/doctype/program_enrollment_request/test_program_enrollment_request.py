@@ -16,7 +16,7 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         frappe.set_user("Administrator")
 
     def test_validate_request_prereq_pass(self):
-        context = _setup_enrollment_context(score=75)
+        context = _setup_enrollment_context(score=95)
         request = _make_enrollment_request(
             context,
             student=context["student"],
@@ -96,7 +96,7 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         self.assertTrue(_has_rule_result(payload, "BASKET", "basket_valid", "fail"))
 
     def test_materialize_request_updates_enrollment(self):
-        context = _setup_enrollment_context(score=85)
+        context = _setup_enrollment_context(score=95)
         request = _make_enrollment_request(
             context,
             student=context["student"],
