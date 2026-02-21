@@ -197,8 +197,15 @@ def _redirect_channel_snapshot(*, login_manager=None) -> dict[str, str]:
     }
 
 
+def _is_login_flow_request() -> bool:
+    request = _get_request_safe()
+    path = str(getattr(request, "path", "") or "").strip()
+    cmd = str((getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()).get("cmd") or "").strip().lower()
+    return cmd == "login" or path == "/login" or path == "/api/method/login"
+
+
 def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: str, login_manager=None) -> None:
-    """Temporary diagnostics for login redirect debugging."""
+    """Diagnostics for login redirect debugging."""
     request = _get_request_safe()
     request_path = str(getattr(request, "path", "") or "")
     cmd = str((getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()).get("cmd") or "")
@@ -319,7 +326,7 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
     return resolve_login_redirect_path(user=user, roles=roles)
 
 
-def redirect_user_to_entry_portal(login_manager=None):
+def redirect_user_to_entry_portal(login_manager=None, *, hook_source: str = "login_hook"):
     """
     Login redirect handler: Routes users to role-appropriate portal entry point.
 
@@ -343,24 +350,33 @@ def redirect_user_to_entry_portal(login_manager=None):
     roles = set(frappe.get_roles(user))
     path = _resolve_login_redirect_path(user=user, roles=roles)
 
-    stage_prefix = "on_session_creation" if login_manager is not None else "on_login"
-    _emit_login_redirect_trace(
-        user=user,
-        roles=roles,
-        path=path,
-        stage=f"{stage_prefix}:before_set",
-        login_manager=login_manager,
-    )
+    if _is_login_flow_request():
+        _emit_login_redirect_trace(
+            user=user,
+            roles=roles,
+            path=path,
+            stage=f"{hook_source}:before_set",
+            login_manager=login_manager,
+        )
 
     # Force canonical portal target even when login was initiated with /app.
     _set_login_redirect_state(path=path, login_manager=login_manager)
-    _emit_login_redirect_trace(
-        user=user,
-        roles=roles,
-        path=path,
-        stage=f"{stage_prefix}:after_set",
-        login_manager=login_manager,
-    )
+    if _is_login_flow_request():
+        _emit_login_redirect_trace(
+            user=user,
+            roles=roles,
+            path=path,
+            stage=f"{hook_source}:after_set",
+            login_manager=login_manager,
+        )
+
+
+def redirect_user_to_entry_portal_on_login(login_manager=None):
+    return redirect_user_to_entry_portal(login_manager=login_manager, hook_source="on_login")
+
+
+def redirect_user_to_entry_portal_on_session_creation(login_manager=None):
+    return redirect_user_to_entry_portal(login_manager=login_manager, hook_source="on_session_creation")
 
 
 def get_website_user_home_page(user=None) -> str:

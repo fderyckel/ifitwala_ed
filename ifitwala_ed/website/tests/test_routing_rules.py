@@ -15,11 +15,11 @@ class TestRoutingRules(FrappeTestCase):
     def test_login_redirect_hooks_share_single_owner(self):
         self.assertEqual(
             hooks.on_login,
-            "ifitwala_ed.api.users.redirect_user_to_entry_portal",
+            "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_login",
         )
         self.assertEqual(
             hooks.on_session_creation,
-            "ifitwala_ed.api.users.redirect_user_to_entry_portal",
+            "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_session_creation",
         )
         self.assertEqual(
             hooks.get_website_user_home_page,
