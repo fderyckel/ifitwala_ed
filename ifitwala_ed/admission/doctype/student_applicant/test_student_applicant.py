@@ -154,6 +154,7 @@ class TestStudentApplicant(FrappeTestCase):
     def test_promotion_copies_approved_applicant_document_files(self):
         doc_type = self._create_applicant_document_type(code=f"promotable-{frappe.generate_hash(length=6)}")
         applicant = self._create_student_applicant()
+        self._create_applicant_health_profile(applicant.name)
 
         applicant_doc = frappe.get_doc(
             {
@@ -211,6 +212,45 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertTrue(copied_classification_names)
         for name in copied_classification_names:
             self._created.append(("File Classification", name))
+
+    def test_promotion_copies_health_profile_to_student_patient(self):
+        applicant = self._create_student_applicant()
+        self._create_applicant_health_profile(
+            applicant.name,
+            blood_group="O Positive",
+            allergies=1,
+            food_allergies="Peanuts",
+            asthma="Mild",
+            vaccinations=[
+                {
+                    "vaccine_name": "MMR",
+                    "date": frappe.utils.nowdate(),
+                    "vaccination_proof": "/files/mmr-proof.png",
+                    "additional_notes": "Dose 1",
+                }
+            ],
+        )
+
+        applicant.mark_in_progress()
+        applicant.submit_application()
+        applicant.mark_under_review()
+        applicant._set_status("Approved", "Approval seeded for health promotion copy test", permission_checker=None)
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+
+        student_patient_name = frappe.db.get_value("Student Patient", {"student": student_name}, "name")
+        self.assertTrue(student_patient_name)
+        self._created.append(("Student Patient", student_patient_name))
+
+        student_patient = frappe.get_doc("Student Patient", student_patient_name)
+        self.assertEqual(student_patient.blood_group, "O Positive")
+        self.assertEqual(int(student_patient.allergies or 0), 1)
+        self.assertEqual(student_patient.food_allergies, "Peanuts")
+        self.assertEqual(student_patient.asthma, "Mild")
+        self.assertEqual(len(student_patient.vaccinations or []), 1)
+        self.assertEqual(student_patient.vaccinations[0].vaccine_name, "MMR")
+        self.assertEqual(str(student_patient.vaccinations[0].date), frappe.utils.nowdate())
 
     def _ensure_admissions_role(self, user, role):
         if not frappe.db.exists("Role", role):
@@ -313,3 +353,15 @@ class TestStudentApplicant(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Type", doc.name))
         return doc.name
+
+    def _create_applicant_health_profile(self, applicant_name, **overrides):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Applicant Health Profile",
+                "student_applicant": applicant_name,
+                "review_status": "Cleared",
+                **overrides,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Health Profile", doc.name))
+        return doc

@@ -7,7 +7,7 @@ from ifitwala_ed.accounting.doctype.account.chart_of_accounts.chart_of_accounts 
     get_chart,
 )
 
-DEFAULT_CHART_TEMPLATE = "standard_chart_of_accounts_with_account_number"
+DEFAULT_CHART_TEMPLATE = "standard_chart_of_accounts"
 
 
 def get_minimal_coa_skeleton():

@@ -49,6 +49,102 @@ READ_ONLY_REASON_MAP = {
     "Promoted": _("Application completed."),
 }
 
+APPLICANT_HEALTH_FIELDS = (
+    "blood_group",
+    "allergies",
+    "food_allergies",
+    "insect_bites",
+    "medication_allergies",
+    "asthma",
+    "bladder__bowel_problems",
+    "diabetes",
+    "headache_migraine",
+    "high_blood_pressure",
+    "seizures",
+    "bone_joints_scoliosis",
+    "blood_disorder_info",
+    "fainting_spells",
+    "hearing_problems",
+    "recurrent_ear_infections",
+    "speech_problem",
+    "birth_defect",
+    "dental_problems",
+    "g6pd",
+    "heart_problems",
+    "recurrent_nose_bleeding",
+    "vision_problem",
+    "diet_requirements",
+    "medical_surgeries__hospitalizations",
+    "other_medical_information",
+)
+
+APPLICANT_HEALTH_VACCINATION_FIELDS = (
+    "vaccine_name",
+    "date",
+    "vaccination_proof",
+    "additional_notes",
+)
+
+
+def _default_health_payload() -> dict:
+    payload = {field: "" for field in APPLICANT_HEALTH_FIELDS}
+    payload["allergies"] = 0
+    payload["vaccinations"] = []
+    return payload
+
+
+def _as_text(value) -> str:
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _as_check(value) -> int:
+    if isinstance(value, bool):
+        return 1 if value else 0
+    if isinstance(value, (int, float)):
+        return 1 if value else 0
+    normalized = str(value or "").strip().lower()
+    return 1 if normalized in {"1", "true", "yes", "on"} else 0
+
+
+def _normalize_vaccinations(vaccinations) -> list[dict]:
+    if vaccinations is None:
+        return []
+    if isinstance(vaccinations, str):
+        vaccinations = frappe.parse_json(vaccinations)
+    if not isinstance(vaccinations, list):
+        frappe.throw(_("Vaccinations payload must be a list."))
+
+    normalized: list[dict] = []
+    for row in vaccinations:
+        if not isinstance(row, dict):
+            frappe.throw(_("Each vaccination entry must be an object."))
+        normalized.append(
+            {
+                "vaccine_name": _as_text(row.get("vaccine_name")),
+                "date": row.get("date"),
+                "vaccination_proof": _as_text(row.get("vaccination_proof")),
+                "additional_notes": _as_text(row.get("additional_notes")),
+            }
+        )
+    return normalized
+
+
+def _serialize_health_doc(doc) -> dict:
+    payload = _default_health_payload()
+    for fieldname in APPLICANT_HEALTH_FIELDS:
+        if fieldname == "allergies":
+            payload[fieldname] = _as_check(doc.get(fieldname))
+        else:
+            payload[fieldname] = _as_text(doc.get(fieldname))
+
+    payload["vaccinations"] = [
+        {fieldname: _as_text(row.get(fieldname)) for fieldname in APPLICANT_HEALTH_VACCINATION_FIELDS}
+        for row in (doc.get("vaccinations") or [])
+    ]
+    return payload
+
 
 def _require_admissions_applicant() -> str:
     user = frappe.session.user
@@ -235,31 +331,49 @@ def get_applicant_health(student_applicant: str | None = None):
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
 
-    health = frappe.db.get_value(
+    health_name = frappe.db.get_value(
         "Applicant Health Profile",
         {"student_applicant": row.get("name")},
-        ["health_summary", "medical_conditions", "allergies", "medications"],
-        as_dict=True,
+        "name",
     )
-    if not health:
-        health = {
-            "health_summary": "",
-            "medical_conditions": "",
-            "allergies": "",
-            "medications": "",
-        }
+    if not health_name:
+        return _default_health_payload()
 
-    return health
+    doc = frappe.get_doc("Applicant Health Profile", health_name)
+    return _serialize_health_doc(doc)
 
 
 @frappe.whitelist()
 def update_applicant_health(
     *,
     student_applicant: str | None = None,
-    health_summary: str | None = None,
-    medical_conditions: str | None = None,
-    allergies: str | None = None,
-    medications: str | None = None,
+    blood_group: str | None = None,
+    allergies=None,
+    food_allergies: str | None = None,
+    insect_bites: str | None = None,
+    medication_allergies: str | None = None,
+    asthma: str | None = None,
+    bladder__bowel_problems: str | None = None,
+    diabetes: str | None = None,
+    headache_migraine: str | None = None,
+    high_blood_pressure: str | None = None,
+    seizures: str | None = None,
+    bone_joints_scoliosis: str | None = None,
+    blood_disorder_info: str | None = None,
+    fainting_spells: str | None = None,
+    hearing_problems: str | None = None,
+    recurrent_ear_infections: str | None = None,
+    speech_problem: str | None = None,
+    birth_defect: str | None = None,
+    dental_problems: str | None = None,
+    g6pd: str | None = None,
+    heart_problems: str | None = None,
+    recurrent_nose_bleeding: str | None = None,
+    vision_problem: str | None = None,
+    diet_requirements: str | None = None,
+    medical_surgeries__hospitalizations: str | None = None,
+    other_medical_information: str | None = None,
+    vaccinations=None,
 ):
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
@@ -280,13 +394,39 @@ def update_applicant_health(
         )
 
     updates = {
-        "health_summary": health_summary or "",
-        "medical_conditions": medical_conditions or "",
-        "allergies": allergies or "",
-        "medications": medications or "",
+        "blood_group": _as_text(blood_group),
+        "allergies": _as_check(allergies),
+        "food_allergies": _as_text(food_allergies),
+        "insect_bites": _as_text(insect_bites),
+        "medication_allergies": _as_text(medication_allergies),
+        "asthma": _as_text(asthma),
+        "bladder__bowel_problems": _as_text(bladder__bowel_problems),
+        "diabetes": _as_text(diabetes),
+        "headache_migraine": _as_text(headache_migraine),
+        "high_blood_pressure": _as_text(high_blood_pressure),
+        "seizures": _as_text(seizures),
+        "bone_joints_scoliosis": _as_text(bone_joints_scoliosis),
+        "blood_disorder_info": _as_text(blood_disorder_info),
+        "fainting_spells": _as_text(fainting_spells),
+        "hearing_problems": _as_text(hearing_problems),
+        "recurrent_ear_infections": _as_text(recurrent_ear_infections),
+        "speech_problem": _as_text(speech_problem),
+        "birth_defect": _as_text(birth_defect),
+        "dental_problems": _as_text(dental_problems),
+        "g6pd": _as_text(g6pd),
+        "heart_problems": _as_text(heart_problems),
+        "recurrent_nose_bleeding": _as_text(recurrent_nose_bleeding),
+        "vision_problem": _as_text(vision_problem),
+        "diet_requirements": _as_text(diet_requirements),
+        "medical_surgeries__hospitalizations": _as_text(medical_surgeries__hospitalizations),
+        "other_medical_information": _as_text(other_medical_information),
     }
+    normalized_vaccinations = _normalize_vaccinations(vaccinations)
 
     doc.update(updates)
+    doc.set("vaccinations", [])
+    for row in normalized_vaccinations:
+        doc.append("vaccinations", row)
     doc.save(ignore_permissions=True)
 
     return {"ok": True}

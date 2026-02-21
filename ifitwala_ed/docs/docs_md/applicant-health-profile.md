@@ -3,6 +3,8 @@ title: "Applicant Health Profile: Health Disclosure and Clearance"
 slug: applicant-health-profile
 category: Admission
 doc_order: 7
+version: "2.0.0"
+last_change_date: "2026-02-20"
 summary: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
 seo_title: "Applicant Health Profile: Health Disclosure and Clearance"
 seo_description: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
@@ -20,10 +22,11 @@ seo_description: "Capture health details, control family/staff editing by applic
 
 ## What It Captures
 
-- Health summary
-- Medical conditions
-- Allergies
-- Medications
+- Blood group
+- Allergy check and details (`food_allergies`, `insect_bites`, `medication_allergies`)
+- Condition detail fields (from `asthma` through `vision_problem`)
+- Diet and history fields (`diet_requirements`, `medical_surgeries__hospitalizations`, `other_medical_information`)
+- Vaccinations child rows (`vaccine_name`, `date`, `vaccination_proof`, `additional_notes`)
 - Staff review status and notes
 
 ## Where It Is Used Across the ERP
@@ -51,6 +54,7 @@ Families can provide health details in portal phases where edits are allowed, th
 2. Capture family-provided health details and keep entries current through the review window.
 3. Staff reviewers move the profile through review outcomes (`Pending`, `Needs Follow-Up`, `Cleared`).
 4. Applicant approval readiness depends on the health review state being complete.
+5. On applicant promotion, health fields and vaccination rows are copied into `Student Patient` / `Student Patient Vaccination`.
 
 <Callout type="warning" title="Admissions decision impact">
 Do not move applicants to final approval while health review remains unresolved; readiness checks are designed to prevent this.
@@ -78,6 +82,7 @@ Do not move applicants to final approval while health review remains unresolved;
 - **Controller methods**:
   - permission gating by role and applicant status
   - reviewer metadata stamping (`reviewed_by`, `reviewed_on`)
+  - promotion handoff consumed by `Student Applicant.promote_to_student`
 
 ### Permission Matrix
 

@@ -1,3 +1,4 @@
+# ifitwala_ed/accounting/doctype/account/chart_of_accounts/verified/standard_chart_of_accounts.py
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 

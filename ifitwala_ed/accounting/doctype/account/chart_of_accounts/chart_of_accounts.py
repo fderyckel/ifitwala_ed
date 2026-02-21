@@ -13,10 +13,7 @@ from unidecode import unidecode
 
 STANDARD_CHART_ALIASES = {
     "Standard": "standard_chart_of_accounts",
-    "Standard with Numbers": "standard_chart_of_accounts_with_account_number",
     "standard_chart_of_accounts": "standard_chart_of_accounts",
-    "standard_chart_of_accounts_with_account_number": "standard_chart_of_accounts_with_account_number",
-    "syscohada_chart_of_accounts": "syscohada_chart_of_accounts",
 }
 
 
@@ -155,6 +152,8 @@ def get_chart(chart_template, existing_organization=None):
             folders = ("verified", "unverified")
         for folder in folders:
             path = os.path.join(os.path.dirname(__file__), folder)
+            if not os.path.exists(path):
+                continue
             for fname in os.listdir(path):
                 fname = frappe.as_unicode(fname)
                 if fname.endswith(".json"):
@@ -193,7 +192,7 @@ def get_charts_for_country(country, with_standard=False):
 
     # if more than one charts, returned then add the standard
     if len(charts) != 1 or with_standard:
-        charts += ["Standard", "Standard with Numbers"]
+        charts += ["Standard"]
 
     return charts
 

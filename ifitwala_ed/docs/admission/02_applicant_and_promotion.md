@@ -638,7 +638,7 @@ Introduce **Applicant Interview** as a first-class admissions artifact.
 
 ### Scope
 
-Create a **pre-student health container** without touching `Student Patient`.
+Create a **pre-student health container** linked to admissions, then sync it to `Student Patient` on promotion.
 
 ### Changes
 
@@ -652,14 +652,14 @@ Create a **pre-student health container** without touching `Student Patient`.
 
 ### Hard rules
 
-* ❌ No `Student Patient` creation
-* ❌ No health data written to Student
-* ❌ No promotion side effects
+* ✅ No `Student Patient` writes before promotion
+* ✅ On promotion, copy Applicant Health Profile fields to `Student Patient`
+* ✅ On promotion, copy vaccination child rows to `Student Patient Vaccination`
 
 ### Acceptance
 
 * Health data can be reviewed safely pre-student
-* Promotion later can selectively map data
+* Promotion copies approved health intake into student health records
 
 ---
 
@@ -1940,10 +1940,16 @@ Applicant Health Profile
 | Field                | Type                                |
 | -------------------- | ----------------------------------- |
 | `student_applicant`  | Link → Student Applicant (required) |
-| `health_summary`     | Text                                |
-| `medical_conditions` | Text                                |
-| `allergies`          | Text                                |
-| `medications`        | Text                                |
+| `blood_group`        | Select                              |
+| `allergies`          | Check                               |
+| `food_allergies`     | Small Text                          |
+| `insect_bites`       | Small Text                          |
+| `medication_allergies` | Small Text                        |
+| `asthma` ... `vision_problem` | Small Text family of condition fields |
+| `diet_requirements`  | Small Text                          |
+| `medical_surgeries__hospitalizations` | Text             |
+| `other_medical_information` | Text Editor                   |
+| `vaccinations`       | Table → Student Patient Vaccination |
 | `review_status`      | Select                              |
 | `review_notes`       | Text                                |
 | `reviewed_by`        | Link → User                         |
@@ -1959,14 +1965,14 @@ Cleared
 
 ### Hard rules
 
-* ❌ No `Student Patient` creation
-* ❌ No health data written to Student
-* ❌ No promotion side effects
+* ✅ No `Student Patient` writes before promotion
+* ✅ On promotion, copy Applicant Health Profile fields to `Student Patient`
+* ✅ On promotion, copy vaccination child rows to `Student Patient Vaccination`
 
 ### Acceptance
 
 * Health data can be reviewed safely pre-Student
-* Promotion later may selectively map data (Phase 03+)
+* Promotion copies approved health intake into student health records
 
 ---
 

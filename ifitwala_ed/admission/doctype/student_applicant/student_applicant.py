@@ -73,6 +73,42 @@ EDIT_RULES = {
     "Promoted": {"family": False, "staff": False},
 }
 
+HEALTH_PROFILE_COPY_FIELDS = (
+    "blood_group",
+    "allergies",
+    "food_allergies",
+    "insect_bites",
+    "medication_allergies",
+    "asthma",
+    "bladder__bowel_problems",
+    "diabetes",
+    "headache_migraine",
+    "high_blood_pressure",
+    "seizures",
+    "bone_joints_scoliosis",
+    "blood_disorder_info",
+    "fainting_spells",
+    "hearing_problems",
+    "recurrent_ear_infections",
+    "speech_problem",
+    "birth_defect",
+    "dental_problems",
+    "g6pd",
+    "heart_problems",
+    "recurrent_nose_bleeding",
+    "vision_problem",
+    "diet_requirements",
+    "medical_surgeries__hospitalizations",
+    "other_medical_information",
+)
+
+HEALTH_PROFILE_VACCINATION_FIELDS = (
+    "vaccine_name",
+    "date",
+    "vaccination_proof",
+    "additional_notes",
+)
+
 
 class StudentApplicant(Document):
     def before_save(self):
@@ -562,11 +598,13 @@ class StudentApplicant(Document):
             frappe.throw(_("Applicant must be Approved before promotion."))
 
         if self.student:
+            self._copy_health_profile_to_student_patient(self.student, require_profile=False)
             self._set_status("Promoted", "Applicant promoted")
             return self.student
 
         existing = frappe.db.get_value("Student", {"student_applicant": self.name}, "name")
         if existing:
+            self._copy_health_profile_to_student_patient(existing, require_profile=False)
             self.flags.from_promotion = True
             self.student = existing
             self.save(ignore_permissions=True)
@@ -591,6 +629,7 @@ class StudentApplicant(Document):
         finally:
             frappe.flags.from_applicant_promotion = prev_flag
 
+        health_snapshot = self._copy_health_profile_to_student_patient(student.name)
         copied_docs = self._copy_promotable_documents_to_student(student)
 
         file_doc = self._copy_applicant_image_to_student(student)
@@ -610,10 +649,52 @@ class StudentApplicant(Document):
         self._set_status("Promoted", "Applicant promoted")
         self.add_comment(
             "Comment",
-            text=_("Promoted file transfer completed: {0} Applicant Document file(s) copied.").format(copied_docs),
+            text=_(
+                "Promoted transfer completed: {0} Applicant Document file(s) copied; "
+                "{1} vaccination row(s) synced to Student Patient {2}."
+            ).format(copied_docs, health_snapshot["vaccinations"], health_snapshot["student_patient"]),
         )
 
         return student.name
+
+    def _copy_health_profile_to_student_patient(self, student_name: str, *, require_profile: bool = True) -> dict:
+        profile_name = frappe.db.get_value(
+            "Applicant Health Profile",
+            {"student_applicant": self.name},
+            "name",
+        )
+        if not profile_name:
+            if require_profile:
+                frappe.throw(_("Applicant Health Profile is required before promotion."))
+            return {"student_patient": "", "vaccinations": 0}
+
+        profile = frappe.get_doc("Applicant Health Profile", profile_name)
+        existing_patient = frappe.db.get_value("Student Patient", {"student": student_name}, "name")
+        if existing_patient:
+            student_patient = frappe.get_doc("Student Patient", existing_patient)
+        else:
+            student_patient = frappe.get_doc(
+                {
+                    "doctype": "Student Patient",
+                    "student": student_name,
+                }
+            )
+
+        for fieldname in HEALTH_PROFILE_COPY_FIELDS:
+            student_patient.set(fieldname, profile.get(fieldname))
+
+        student_patient.set("vaccinations", [])
+        for row in profile.get("vaccinations") or []:
+            student_patient.append(
+                "vaccinations",
+                {fieldname: row.get(fieldname) for fieldname in HEALTH_PROFILE_VACCINATION_FIELDS},
+            )
+
+        student_patient.save(ignore_permissions=True)
+        return {
+            "student_patient": student_patient.name,
+            "vaccinations": len(student_patient.get("vaccinations") or []),
+        }
 
     def _has_media_consent(self) -> bool:
         return has_applicant_policy_acknowledgement(
