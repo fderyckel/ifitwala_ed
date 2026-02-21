@@ -9,32 +9,7 @@ from frappe.contacts.address_and_contact import load_address_and_contact
 from frappe.model.document import Document
 from frappe.utils import get_link_to_form
 
-from ifitwala_ed.routing.policy import canonical_path_for_section, has_staff_portal_access
-
-
-def _user_has_home_page_field() -> bool:
-    try:
-        return bool(frappe.get_meta("User").has_field("home_page"))
-    except Exception:
-        return False
-
-
-def _get_user_home_page(user: str) -> str | None:
-    if not _user_has_home_page_field():
-        return None
-    try:
-        return frappe.db.get_value("User", user, "home_page")
-    except Exception:
-        return None
-
-
-def _set_user_home_page(user: str, path: str):
-    if not _user_has_home_page_field():
-        return
-    try:
-        frappe.db.set_value("User", user, "home_page", path, update_modified=False)
-    except Exception:
-        return
+from ifitwala_ed.routing.policy import has_staff_portal_access
 
 
 def _ensure_user_role(user: str, role: str):
@@ -104,7 +79,7 @@ class Guardian(Document):
 
     def _ensure_guardian_portal_routing(self, user_email: str):
         """
-        Ensure the linked user has Guardian role and correct home_page for portal routing.
+        Ensure the linked user has Guardian role for portal routing.
         Called when Guardian is created or user field is updated.
         """
         if not user_email or not frappe.db.exists("User", user_email):
@@ -112,7 +87,7 @@ class Guardian(Document):
 
         user_roles = set(frappe.get_roles(user_email))
 
-        # Don't override home_page for staff members - they get their own routing
+        # Staff members keep staff-owned routing behavior.
         if has_staff_portal_access(user=user_email, roles=user_roles):
             return
 
@@ -124,18 +99,6 @@ class Guardian(Document):
                 frappe.log_error(
                     frappe.get_traceback(),
                     f"Guardian portal routing role update failed for user {user_email}",
-                )
-
-        guardian_home = canonical_path_for_section("guardian")
-        # Set home_page for portal routing if not already set to guardian portal path
-        current_home_page = _get_user_home_page(user_email)
-        if current_home_page != guardian_home:
-            try:
-                _set_user_home_page(user_email, guardian_home)
-            except Exception:
-                frappe.log_error(
-                    frappe.get_traceback(),
-                    f"Guardian portal routing home_page update failed for user {user_email}",
                 )
 
     def _find_contact_name(self) -> str | None:
@@ -227,16 +190,11 @@ class Guardian(Document):
             if self.user != self.guardian_email:
                 self.db_set("user", self.guardian_email, update_modified=False)
 
-            # Ensure existing user has Guardian role and correct home_page for portal routing
+            # Ensure existing user has Guardian role.
             user = frappe.get_doc("User", self.guardian_email)
             roles = [r.role for r in user.roles]
             if "Guardian" not in roles:
                 _ensure_user_role(user.name, "Guardian")
-
-            guardian_home = canonical_path_for_section("guardian")
-            # Set home_page so guardian is routed to the guardian portal on login
-            if _get_user_home_page(user.name) != guardian_home:
-                _set_user_home_page(user.name, guardian_home)
 
             frappe.msgprint(
                 _("User {0} already exists and has been linked.").format(get_link_to_form("User", self.guardian_email))
@@ -270,10 +228,6 @@ class Guardian(Document):
             frappe.flags.skip_contact_to_guardian_sync = True
 
             user.insert(ignore_permissions=True)
-
-            guardian_home = canonical_path_for_section("guardian")
-            # Set home_page so guardian is routed to the guardian portal on login
-            _set_user_home_page(user.name, guardian_home)
 
         except Exception as e:
             frappe.log_error(f"Error creating user for guardian {self.name}: {e}")

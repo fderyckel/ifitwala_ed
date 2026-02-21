@@ -20,7 +20,7 @@ class TestGuardianUserCreation(FrappeTestCase):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
-    def test_create_guardian_user_sets_home_page(self):
+    def test_create_guardian_user_assigns_guardian_role(self):
         guardian = self._create_guardian(email=f"test-guardian-{frappe.generate_hash(length=6)}@example.com")
 
         self.assertFalse(guardian.user)
@@ -32,8 +32,6 @@ class TestGuardianUserCreation(FrappeTestCase):
         user = frappe.get_doc("User", user_name)
         roles = [r.role for r in user.roles]
         self.assertIn("Guardian", roles)
-        if self._user_has_home_page_field():
-            self.assertEqual(self._get_user_home_page(user_name), "/portal/guardian")
 
         guardian.reload()
         self.assertEqual(guardian.user, user_name)
@@ -49,7 +47,7 @@ class TestGuardianUserCreation(FrappeTestCase):
         guardian.reload()
         self.assertEqual(guardian.user, user.name)
 
-    def test_existing_user_gets_home_page_and_role(self):
+    def test_existing_user_gets_guardian_role(self):
         user = self._create_user("existing-no-guardian")
         roles_before = [r.role for r in user.roles]
         self.assertNotIn("Guardian", roles_before)
@@ -61,22 +59,9 @@ class TestGuardianUserCreation(FrappeTestCase):
         user.reload()
         roles_after = [r.role for r in user.roles]
         self.assertIn("Guardian", roles_after)
-        if self._user_has_home_page_field():
-            self.assertEqual(self._get_user_home_page(user.name), "/portal/guardian")
 
         guardian.reload()
         self.assertEqual(guardian.user, user.name)
-
-    def _user_has_home_page_field(self) -> bool:
-        try:
-            return bool(frappe.get_meta("User").has_field("home_page"))
-        except Exception:
-            return False
-
-    def _get_user_home_page(self, user: str) -> str | None:
-        if not self._user_has_home_page_field():
-            return None
-        return frappe.db.get_value("User", user, "home_page")
 
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):
@@ -129,18 +114,16 @@ class TestGuardianPortalRouting(FrappeTestCase):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
-    def test_guardian_created_with_existing_user_sets_home_page(self):
+    def test_guardian_created_with_existing_user_assigns_guardian_role(self):
         user = self._create_user("with-user-link")
         guardian = self._create_guardian(email=user.name, user=user.name)
 
         user.reload()
         self.assertIn("Guardian", [r.role for r in user.roles])
-        if self._user_has_home_page_field():
-            self.assertEqual(self._get_user_home_page(user.name), "/portal/guardian")
 
         self.assertEqual(guardian.user, user.name)
 
-    def test_guardian_user_field_update_sets_home_page(self):
+    def test_guardian_user_field_update_assigns_guardian_role(self):
         guardian = self._create_guardian(email=f"guardian-update-{frappe.generate_hash(length=6)}@example.com")
         user = self._create_user("added-later")
 
@@ -149,33 +132,16 @@ class TestGuardianPortalRouting(FrappeTestCase):
 
         user.reload()
         self.assertIn("Guardian", [r.role for r in user.roles])
-        if self._user_has_home_page_field():
-            self.assertEqual(self._get_user_home_page(user.name), "/portal/guardian")
 
-    def test_guardian_does_not_override_staff_home_page(self):
+    def test_guardian_does_not_override_staff_roles(self):
         self._ensure_role("Teacher")
         user = self._create_user("staff-guardian", roles=["Teacher"])
-        if self._user_has_home_page_field():
-            frappe.db.set_value("User", user.name, "home_page", "/app", update_modified=False)
 
         guardian = self._create_guardian(email=user.name, user=user.name)
         user.reload()
 
         self.assertIn("Teacher", [r.role for r in user.roles])
-        if self._user_has_home_page_field():
-            self.assertEqual(self._get_user_home_page(user.name), "/app")
         self.assertEqual(guardian.user, user.name)
-
-    def _user_has_home_page_field(self) -> bool:
-        try:
-            return bool(frappe.get_meta("User").has_field("home_page"))
-        except Exception:
-            return False
-
-    def _get_user_home_page(self, user: str) -> str | None:
-        if not self._user_has_home_page_field():
-            return None
-        return frappe.db.get_value("User", user, "home_page")
 
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):

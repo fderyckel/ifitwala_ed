@@ -182,63 +182,26 @@ def redirect_non_staff_away_from_desk() -> None:
     _raise_request_redirect(target)
 
 
-def _user_has_home_page_field() -> bool:
-    """Return True when User.home_page exists on this site schema."""
-    try:
-        return bool(frappe.get_meta("User").has_field("home_page"))
-    except Exception:
-        return False
+def _redirect_channel_snapshot(*, login_manager=None) -> dict[str, str]:
+    form = getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()
+    response = getattr(frappe.local, "response", frappe._dict()) or frappe._dict()
+    local_login_manager = getattr(frappe.local, "login_manager", None)
+
+    return {
+        "form_redirect_to": str(form.get("redirect_to") or ""),
+        "form_redirect_dash": str(form.get("redirect-to") or ""),
+        "response_home_page": str(response.get("home_page") or ""),
+        "response_redirect_to": str(response.get("redirect_to") or ""),
+        "login_manager_home_page": str(getattr(login_manager, "home_page", "") or ""),
+        "local_login_manager_home_page": str(getattr(local_login_manager, "home_page", "") or ""),
+    }
 
 
-def _get_user_home_page_safe(user: str) -> str | None:
-    """Best-effort read for User.home_page that never breaks auth flow."""
-    if not _user_has_home_page_field():
-        return None
-    try:
-        return frappe.db.get_value("User", user, "home_page")
-    except Exception as exc:
-        if hasattr(frappe.db, "is_missing_column") and frappe.db.is_missing_column(exc):
-            return None
-        return None
-
-
-def _set_user_home_page_safe(*, user: str, path: str) -> None:
-    """Best-effort write for User.home_page that never breaks auth flow."""
-    if not _user_has_home_page_field():
-        return
-    try:
-        frappe.db.set_value("User", user, "home_page", path, update_modified=False)
-    except Exception as exc:
-        if hasattr(frappe.db, "is_missing_column") and frappe.db.is_missing_column(exc):
-            return
-        return
-
-
-def _normalize_invalid_user_home_page(*, user: str, path: str) -> None:
-    """
-    Repair invalid User.home_page values that are not absolute paths.
-
-    Canonical routes are absolute (start with '/'). Any non-empty relative value
-    can produce broken login redirects and is normalized to the resolved path.
-    """
-    current_raw = _get_user_home_page_safe(user)
-    current = str(current_raw or "").strip()
-    if not current:
-        return
-    if current.startswith("/"):
-        return
-    target = path
-    if target != current:
-        _set_user_home_page_safe(user=user, path=target)
-
-
-def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: str) -> None:
+def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: str, login_manager=None) -> None:
     """Temporary diagnostics for login redirect debugging."""
     request = _get_request_safe()
     request_path = str(getattr(request, "path", "") or "")
     cmd = str((getattr(frappe, "form_dict", frappe._dict()) or frappe._dict()).get("cmd") or "")
-
-    user_home_page = _get_user_home_page_safe(user)
 
     payload = {
         "stage": stage,
@@ -250,7 +213,7 @@ def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: 
         "request_path": request_path,
         "cmd": cmd,
         "incoming_redirect_to": _incoming_redirect_target(),
-        "user_home_page": user_home_page,
+        "channels": _redirect_channel_snapshot(login_manager=login_manager),
     }
     frappe.log_error(
         title="LOGIN REDIRECT TRACE",
@@ -367,7 +330,7 @@ def redirect_user_to_entry_portal(login_manager=None):
     - Guardians -> /portal/guardian
     - Fallback -> /portal/staff
 
-    Login redirect is response-only (no broad User.home_page writes in login flow).
+    Login redirect is response-only (no User DocType writes in login flow).
     The same handler is bound to both on_login and on_session_creation so the
     target survives downstream Desk home-page resolution.
     """
@@ -380,14 +343,24 @@ def redirect_user_to_entry_portal(login_manager=None):
     roles = set(frappe.get_roles(user))
     path = _resolve_login_redirect_path(user=user, roles=roles)
 
-    # Self-heal malformed runtime values that can hijack login redirects.
-    _normalize_invalid_user_home_page(user=user, path=path)
-
-    stage = "on_session_creation" if login_manager is not None else "on_login"
-    _emit_login_redirect_trace(user=user, roles=roles, path=path, stage=stage)
+    stage_prefix = "on_session_creation" if login_manager is not None else "on_login"
+    _emit_login_redirect_trace(
+        user=user,
+        roles=roles,
+        path=path,
+        stage=f"{stage_prefix}:before_set",
+        login_manager=login_manager,
+    )
 
     # Force canonical portal target even when login was initiated with /app.
     _set_login_redirect_state(path=path, login_manager=login_manager)
+    _emit_login_redirect_trace(
+        user=user,
+        roles=roles,
+        path=path,
+        stage=f"{stage_prefix}:after_set",
+        login_manager=login_manager,
+    )
 
 
 def get_website_user_home_page(user=None) -> str:

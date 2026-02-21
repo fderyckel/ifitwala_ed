@@ -50,12 +50,6 @@ def _append_role(user_doc, role: str) -> None:
 class TestUserRedirect(FrappeTestCase):
     """Test unified login redirect logic."""
 
-    def _user_has_home_page_field(self) -> bool:
-        try:
-            return bool(frappe.get_meta("User").has_field("home_page"))
-        except Exception:
-            return False
-
     def test_strip_redirect_query_removes_redirect_to_params(self):
         raw = "/login?redirect-to=%2Fapp&foo=bar&redirect_to=%2Fapp#frag"
         cleaned = _strip_redirect_query(raw)
@@ -245,57 +239,6 @@ class TestUserRedirect(FrappeTestCase):
 
         self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
         self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
-
-        frappe.set_user("Administrator")
-        frappe.delete_doc("User", user.email, force=True)
-
-    def test_login_redirect_does_not_persist_user_home_page(self):
-        """Login redirect should be response-only and must not overwrite User.home_page."""
-        user = frappe.new_doc("User")
-        user.email = "test_no_home_page_persist@example.com"
-        user.first_name = "No"
-        user.last_name = "Persist"
-        user.enabled = 1
-        if self._user_has_home_page_field():
-            user.home_page = "/app"
-        user.insert(ignore_permissions=True)
-
-        frappe.set_user(user.email)
-        frappe.local.response = {}
-        redirect_user_to_entry_portal()
-
-        self.assertEqual(frappe.local.response.get("home_page"), "/portal/staff")
-        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/staff")
-
-        if self._user_has_home_page_field():
-            user.reload()
-            self.assertEqual(user.home_page, "/app")
-
-        frappe.set_user("Administrator")
-        frappe.delete_doc("User", user.email, force=True)
-
-    def test_login_redirect_normalizes_invalid_relative_home_page(self):
-        """Invalid relative User.home_page values should be repaired to canonical portal routes."""
-        user = frappe.new_doc("User")
-        user.email = "test_normalize_relative_home_page@example.com"
-        user.first_name = "Relative"
-        user.last_name = "Home"
-        user.enabled = 1
-        if self._user_has_home_page_field():
-            user.home_page = "portal/student"
-        _append_role(user, "Student")
-        user.insert(ignore_permissions=True)
-
-        frappe.set_user(user.email)
-        frappe.local.response = {}
-        redirect_user_to_entry_portal()
-
-        self.assertEqual(frappe.local.response.get("home_page"), "/portal/student")
-        self.assertEqual(frappe.local.response.get("redirect_to"), "/portal/student")
-
-        if self._user_has_home_page_field():
-            user.reload()
-            self.assertEqual(user.home_page, "/portal/student")
 
         frappe.set_user("Administrator")
         frappe.delete_doc("User", user.email, force=True)

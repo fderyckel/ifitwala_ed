@@ -239,7 +239,7 @@ const calendarOptions = ref({
 	nowIndicator: true,
 	events: events.value,
 	timeZone: systemTimezone.value,
-	now: nowProvider(),
+	now: new Date(),
 	hiddenDays: hiddenDays.value,
 	datesSet: (arg: DatesSetArg) => handleDatesSet(arg),
 	eventDisplay: 'block',
