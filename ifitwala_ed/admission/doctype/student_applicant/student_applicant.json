@@ -4,7 +4,9 @@
  "autoname": "format:APPL-{MM}-{YYYY}-{###}",
  "creation": "2024-12-06 15:44:29.050774",
  "default_view": "List",
+ "description": "Track each applicant document type, review status, and promotion relevance with strict immutability and governed file handling.",
  "doctype": "DocType",
+ "documentation": "https://ifitwala.com/docs/en/student-applicant/",
  "engine": "InnoDB",
  "field_order": [
   "section_break_esdq",
@@ -255,7 +257,7 @@
  "image_field": "applicant_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-13 10:31:57",
+ "modified": "2026-02-22 08:03:21.748008",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",
