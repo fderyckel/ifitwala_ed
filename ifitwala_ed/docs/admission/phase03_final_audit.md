@@ -44,7 +44,8 @@ The implementation of Phase 03 (Admissions Decision & Promotion) has been audite
 *   **Implementation:**
     *   `Student.validate()` calls `_validate_creation_source()`.
     *   Throws error unless `self.student_applicant` is set OR `frappe.flags` are set (migration/import).
-    *   `check_domain_constraint`: `after_insert` intentionally skips `create_student_user`, `create_student_patient` if `flags.from_applicant_promotion` is set. This honors the "No side effects" rule for Phase 3 (promotion only, enrollment comes later).
+    *   `check_domain_constraint`: `after_insert` intentionally skips `create_student_user` if `flags.from_applicant_promotion` is set.
+    *   `Student Patient` is created/synced by promotion service logic, not by `Student.after_insert`.
 *   **Conclusion:** ✅ **Verified**.
 
 ### 5. PR-03.5 — Desk UX
@@ -62,13 +63,15 @@ The implementation of Phase 03 (Admissions Decision & Promotion) has been audite
 3. Promotion now copies approved Applicant Document files via classified `File` creation with `source_file` linkage preserved.
 4. `submitted_at` and `decision_at` timestamps are now set by lifecycle transitions.
 5. Hardening completed: direct Student creation now permits only applicant promotion or explicit import/migration/patch contexts.
+6. Identity provisioning is now treated as a separate post-promotion boundary.
 
 ## ⚠️ Notes for Future Phases
 
 While the Phase 3 implementation is correct, please note these downstream implications for Phase 4 (Enrollment/Onboarding):
 
-1.  **Student User Uncreated:** Promoting an applicant does **NOT** create the Student User or Patient record yet (due to `after_insert` guard). Phase 4 must explicitly trigger these creations when the student is "Enrolled" or "Matriculated".
-2.  **Interview Logic:** The readiness check assumes `Count(Interview) >= 1` is sufficient. If you need specific interview types (e.g. "Principal Interview" vs "General Chat"), you may need to add "Interview Type" requirements later.
+1.  **Student User Uncreated:** Promoting an applicant does **NOT** auto-create student portal access (due to the promotion `after_insert` guard for user creation). Identity upgrade must provision access after enrollment confirmation.
+2.  **Student Patient on Promotion:** Promotion already creates/syncs `Student Patient` from Applicant Health Profile.
+3.  **Interview Logic:** The readiness check assumes `Count(Interview) >= 1` is sufficient. If you need specific interview types (e.g. "Principal Interview" vs "General Chat"), you may need to add "Interview Type" requirements later.
 
 ## Final Sign-Off
 

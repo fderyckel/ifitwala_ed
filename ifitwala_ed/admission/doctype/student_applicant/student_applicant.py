@@ -33,6 +33,8 @@ from ifitwala_ed.utilities.school_tree import get_school_scope_for_academic_year
 
 FAMILY_ROLES = {"Guardian"}
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
+GUARDIAN_ROLE = "Guardian"
+STUDENT_ROLE = "Student"
 SYSTEM_MANAGER_ROLE = "System Manager"
 DECISION_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
 TERMINAL_STATUSES = {"Rejected", "Withdrawn", "Promoted"}
@@ -656,6 +658,268 @@ class StudentApplicant(Document):
         )
 
         return student.name
+
+    @frappe.whitelist()
+    def upgrade_identity(self):
+        ensure_admissions_permission()
+
+        if self.application_status != "Promoted":
+            frappe.throw(_("Identity Upgrade is only allowed once the applicant is Promoted."))
+
+        student_name = (self.student or "").strip()
+        if not student_name:
+            frappe.throw(_("Promotion must create a Student before identity upgrade."))
+
+        self._require_active_enrollment(student_name)
+        student = frappe.get_doc("Student", student_name)
+
+        guardian_specs = self._resolve_upgrade_guardians()
+        touched_users = set()
+        linked_guardians = []
+        for spec in guardian_specs:
+            guardian = spec["guardian"]
+            relationship = spec["relationship"]
+            user_name = self._ensure_guardian_user_and_roles(guardian)
+            if user_name:
+                touched_users.add(user_name)
+            linked_guardians.append({"guardian": guardian, "relationship": relationship})
+
+        added_guardians = self._ensure_student_guardian_links(student, linked_guardians)
+
+        student_user = self._ensure_student_user_access(student)
+        if student_user:
+            touched_users.add(student_user)
+
+        if self.applicant_user:
+            self._ensure_user_roles(
+                self.applicant_user,
+                add_roles=set(),
+                remove_roles={ADMISSIONS_APPLICANT_ROLE},
+            )
+            touched_users.add(self.applicant_user)
+
+        user_list = ", ".join(sorted(touched_users)) if touched_users else _("none")
+        guardian_list = (
+            ", ".join(sorted({row["guardian"].name for row in linked_guardians})) if linked_guardians else _("none")
+        )
+        self.add_comment(
+            "Comment",
+            text=_(
+                "Identity Upgrade completed by {0} on {1}. "
+                "State: Promoted -> Identity Upgraded. "
+                "Student: {2}. Guardians linked: {3} (new links: {4}). Users updated: {5}."
+            ).format(
+                frappe.bold(frappe.session.user),
+                now_datetime(),
+                frappe.bold(student_name),
+                guardian_list,
+                added_guardians,
+                user_list,
+            ),
+        )
+        return {
+            "ok": True,
+            "student": student_name,
+            "guardians_linked": [row["guardian"].name for row in linked_guardians],
+            "guardians_added": added_guardians,
+            "users_updated": sorted(touched_users),
+            "student_user": student_user,
+        }
+
+    def _require_active_enrollment(self, student_name: str):
+        has_active = frappe.db.exists(
+            "Program Enrollment",
+            {
+                "student": student_name,
+                "archived": 0,
+            },
+        )
+        if has_active:
+            return
+        frappe.throw(_("Identity Upgrade requires an active Program Enrollment for Student {0}.").format(student_name))
+
+    def _resolve_upgrade_guardians(self) -> list[dict]:
+        rows = self.get("guardians") or []
+        resolved = []
+        seen = set()
+        for row in rows:
+            guardian_name = (row.get("guardian") or "").strip()
+            if not guardian_name or guardian_name in seen:
+                continue
+            if not frappe.db.exists("Guardian", guardian_name):
+                frappe.throw(_("Guardian {0} does not exist.").format(guardian_name))
+            seen.add(guardian_name)
+            resolved.append(
+                {
+                    "guardian": frappe.get_doc("Guardian", guardian_name),
+                    "relationship": row.get("relationship") or "Other",
+                }
+            )
+        if resolved:
+            return resolved
+        fallback = self._create_or_reuse_guardian_from_contact()
+        return [fallback]
+
+    def _create_or_reuse_guardian_from_contact(self) -> dict:
+        email = normalize_email_value(self.applicant_email) or normalize_email_value(self.portal_account_email)
+        if self.applicant_contact and not email:
+            email = get_contact_primary_email(self.applicant_contact)
+        mobile = None
+        contact_first_name = None
+        contact_last_name = None
+        if self.applicant_contact:
+            contact_row = frappe.db.get_value(
+                "Contact",
+                self.applicant_contact,
+                ["first_name", "last_name"],
+                as_dict=True,
+            )
+            if contact_row:
+                contact_first_name = contact_row.get("first_name")
+                contact_last_name = contact_row.get("last_name")
+            mobile = frappe.db.get_value(
+                "Contact Phone",
+                {"parent": self.applicant_contact, "is_primary_mobile_no": 1},
+                "phone",
+            )
+
+        if not email:
+            frappe.throw(
+                _("Identity Upgrade requires a guardian email. Add a Guardian row or Applicant Contact email.")
+            )
+        if not mobile:
+            frappe.throw(
+                _("Identity Upgrade requires a guardian mobile phone. Add a Guardian row or Applicant Contact mobile.")
+            )
+
+        existing = frappe.db.get_value("Guardian", {"guardian_email": email}, "name")
+        if existing:
+            guardian = frappe.get_doc("Guardian", existing)
+            if not guardian.guardian_mobile_phone:
+                guardian.guardian_mobile_phone = mobile
+                guardian.save(ignore_permissions=True)
+            return {"guardian": guardian, "relationship": "Other"}
+
+        first_name = (contact_first_name or "").strip() or (self.first_name or "").strip() or _("Guardian")
+        last_name = (contact_last_name or "").strip() or (self.last_name or "").strip() or _("Contact")
+        guardian = frappe.get_doc(
+            {
+                "doctype": "Guardian",
+                "guardian_first_name": first_name,
+                "guardian_last_name": last_name,
+                "guardian_email": email,
+                "guardian_mobile_phone": mobile,
+            }
+        ).insert(ignore_permissions=True)
+        return {"guardian": guardian, "relationship": "Other"}
+
+    def _ensure_guardian_user_and_roles(self, guardian):
+        if not guardian.user:
+            guardian.create_guardian_user()
+            guardian.reload()
+        if not guardian.user:
+            frappe.throw(_("Guardian {0} must be linked to a User.").format(guardian.name))
+        self._ensure_user_roles(
+            guardian.user,
+            add_roles={GUARDIAN_ROLE},
+            remove_roles={ADMISSIONS_APPLICANT_ROLE},
+        )
+        return guardian.user
+
+    def _ensure_student_guardian_links(self, student, guardian_specs: list[dict]) -> int:
+        existing = {row.get("guardian") for row in (student.get("guardians") or []) if row.get("guardian")}
+        added = 0
+        for spec in guardian_specs:
+            guardian_name = spec["guardian"].name
+            if guardian_name in existing:
+                continue
+            student.append(
+                "guardians",
+                {
+                    "guardian": guardian_name,
+                    "relation": spec["relationship"] or "Other",
+                },
+            )
+            existing.add(guardian_name)
+            added += 1
+        if added:
+            student.save(ignore_permissions=True)
+        return added
+
+    def _ensure_student_user_access(self, student):
+        email = normalize_email_value(student.student_email) or normalize_email_value(self.applicant_user)
+        if not email:
+            frappe.throw(_("Student email is required before identity upgrade can provision Student access."))
+
+        student_user = None
+        if frappe.db.exists("User", email):
+            student_user = frappe.get_doc("User", email)
+        else:
+            student_user = frappe.get_doc(
+                {
+                    "doctype": "User",
+                    "enabled": 1,
+                    "first_name": student.student_first_name,
+                    "middle_name": student.student_middle_name,
+                    "last_name": student.student_last_name,
+                    "email": email,
+                    "username": email,
+                    "gender": student.student_gender,
+                    "send_welcome_email": 0,
+                    "user_type": "Website User",
+                }
+            )
+            student_user.insert(ignore_permissions=True)
+
+        self._ensure_user_roles(
+            student_user.name,
+            add_roles={STUDENT_ROLE},
+            remove_roles={ADMISSIONS_APPLICANT_ROLE},
+        )
+
+        if student.student_email != email:
+            frappe.db.set_value("Student", student.name, "student_email", email, update_modified=False)
+
+        return student_user.name
+
+    def _ensure_user_roles(self, user_name: str, *, add_roles: set[str], remove_roles: set[str]):
+        if not user_name or not frappe.db.exists("User", user_name):
+            return
+
+        user_doc = frappe.get_doc("User", user_name)
+        current_roles = []
+        existing_roles = []
+        seen = set()
+        for row in user_doc.get("roles") or []:
+            role = (row.role or "").strip()
+            if not role:
+                continue
+            current_roles.append(role)
+            if role in remove_roles or role in seen:
+                continue
+            seen.add(role)
+            existing_roles.append(role)
+
+        changed = current_roles != existing_roles
+        for role in sorted(add_roles):
+            if role in seen:
+                continue
+            existing_roles.append(role)
+            seen.add(role)
+            changed = True
+
+        if changed:
+            user_doc.set("roles", [{"role": role} for role in existing_roles])
+
+        if (user_doc.user_type or "").strip() != "Website User":
+            user_doc.user_type = "Website User"
+            changed = True
+        if not int(user_doc.enabled or 0):
+            user_doc.enabled = 1
+            changed = True
+
+        if changed:
+            user_doc.save(ignore_permissions=True)
 
     def _copy_health_profile_to_student_patient(self, student_name: str, *, require_profile: bool = True) -> dict:
         profile_name = frappe.db.get_value(

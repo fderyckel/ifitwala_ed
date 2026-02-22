@@ -103,6 +103,10 @@ class Student(Document):
         if self.student_applicant:
             return
 
+        # Explicit, audited admin bypass
+        if int(self.allow_direct_creation or 0) == 1:
+            return
+
         # Explicit bypass for migration / import
         if getattr(frappe.flags, "in_migration", False):
             return
@@ -114,7 +118,7 @@ class Student(Document):
         frappe.throw(
             _(
                 "Students must be created via Applicant promotion. "
-                "Set an explicit import/migration/patch context to create directly."
+                "Set allow_direct_creation=1 or an explicit import/migration/patch context to create directly."
             )
         )
 

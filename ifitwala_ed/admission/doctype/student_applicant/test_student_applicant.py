@@ -2,6 +2,8 @@
 # Copyright (c) 2024, fdR and Contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -12,6 +14,9 @@ class TestStudentApplicant(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self._created = []
+        self._ensure_role("Admissions Applicant")
+        self._ensure_role("Student")
+        self._ensure_role("Guardian")
         self._ensure_admissions_role("Administrator", "Admission Manager")
         frappe.clear_cache(user="Administrator")
         self.staff_user = self._create_user("Admissions", "Staff", add_role="Admission Manager")
@@ -270,6 +275,95 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertEqual(student_patient.vaccinations[0].vaccine_name, "MMR")
         self.assertEqual(str(student_patient.vaccinations[0].date), frappe.utils.nowdate())
 
+    def test_upgrade_identity_requires_active_enrollment(self):
+        applicant = self._create_student_applicant()
+        self._create_applicant_health_profile(applicant.name)
+
+        applicant.db_set("application_status", "Invited", update_modified=False)
+        applicant.reload()
+        applicant.mark_in_progress()
+        applicant.submit_application()
+        applicant.mark_under_review()
+        applicant.db_set("application_status", "Approved", update_modified=False)
+        applicant.reload()
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+
+        with self.assertRaises(frappe.ValidationError):
+            applicant.upgrade_identity()
+
+    def test_upgrade_identity_is_idempotent_and_provisions_roles(self):
+        applicant_user = self._create_user("Applicant", "Portal", add_role="Admissions Applicant")
+        applicant = self._create_student_applicant()
+        self._create_applicant_health_profile(applicant.name)
+
+        guardian = self._create_guardian(
+            first_name="Parent",
+            last_name="One",
+            email=applicant_user.name,
+            mobile="+14155550123",
+            user=applicant_user.name,
+        )
+        applicant.append(
+            "guardians",
+            {
+                "guardian": guardian.name,
+                "relationship": "Mother",
+                "is_primary": 1,
+                "can_consent": 1,
+            },
+        )
+        applicant.flags.from_applicant_invite = True
+        applicant.flags.from_contact_sync = True
+        applicant.applicant_user = applicant_user.name
+        applicant.applicant_email = applicant_user.name
+        applicant.portal_account_email = applicant_user.name
+        applicant.save(ignore_permissions=True)
+
+        applicant.db_set("application_status", "Invited", update_modified=False)
+        applicant.reload()
+        applicant.mark_in_progress()
+        applicant.submit_application()
+        applicant.mark_under_review()
+        applicant.db_set("application_status", "Approved", update_modified=False)
+        applicant.reload()
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+
+        original_exists = frappe.db.exists
+
+        def exists_with_enrollment(doctype, filters=None, *args, **kwargs):
+            if doctype == "Program Enrollment" and isinstance(filters, dict):
+                if filters.get("student") == student_name and int(filters.get("archived") or 0) == 0:
+                    return "PE-MOCK-0001"
+            return original_exists(doctype, filters, *args, **kwargs)
+
+        with patch.object(frappe.db, "exists", side_effect=exists_with_enrollment):
+            first = applicant.upgrade_identity()
+            second = applicant.upgrade_identity()
+
+        self.assertTrue(first.get("ok"))
+        self.assertEqual(second.get("guardians_added"), 0)
+
+        student = frappe.get_doc("Student", student_name)
+        guardian_links = [row.guardian for row in (student.get("guardians") or []) if row.guardian == guardian.name]
+        self.assertEqual(len(guardian_links), 1)
+
+        user = frappe.get_doc("User", applicant_user.name)
+        self.assertEqual(int(user.enabled or 0), 1)
+        role_names = set(
+            frappe.get_all(
+                "Has Role",
+                filters={"parent": applicant_user.name, "parenttype": "User"},
+                pluck="role",
+            )
+        )
+        self.assertIn("Guardian", role_names)
+        self.assertIn("Student", role_names)
+        self.assertNotIn("Admissions Applicant", role_names)
+
     def _ensure_admissions_role(self, user, role):
         if not frappe.db.exists("Role", role):
             frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)
@@ -285,6 +379,12 @@ class TestStudentApplicant(FrappeTestCase):
                 }
             ).insert(ignore_permissions=True)
         frappe.clear_cache(user=user)
+
+    def _ensure_role(self, role):
+        if frappe.db.exists("Role", role):
+            return
+        frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)
+        self._created.append(("Role", role))
 
     def _create_org(self):
         name = f"Org-{frappe.generate_hash(length=6)}"
@@ -359,6 +459,20 @@ class TestStudentApplicant(FrappeTestCase):
         user.insert(ignore_permissions=True)
         self._created.append(("User", user.name))
         return user
+
+    def _create_guardian(self, *, first_name, last_name, email, mobile, user=None):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Guardian",
+                "guardian_first_name": first_name,
+                "guardian_last_name": last_name,
+                "guardian_email": email,
+                "guardian_mobile_phone": mobile,
+                "user": user,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Guardian", doc.name))
+        return doc
 
     def _create_applicant_document_type(self, *, code):
         existing = frappe.db.get_value("Applicant Document Type", {"code": code}, "name")

@@ -1,16 +1,5 @@
 # Admissions UX, Portal Surface, Files & GDPR — Canonical Contract (LOCKED)
 
-> Consolidated from:
-> - `/mnt/data/phase050_admission_portal.md`
-> - `/mnt/data/phase050.md`
-> - `/mnt/data/files_01_architecture_notes.md` (admissions-relevant sections)
-> - `/mnt/data/files_02_GDPR.md`
-
-> Purpose: lock UX non-authority rules + portal surface mapping + admissions file ownership + GDPR boundary.
-
-
----
-
 ## 1. UX invariants and portal surface map (source)
 
 
@@ -30,7 +19,7 @@
 
 ---
 
-## 0. Problem Being Solved (No Hand-Waving)
+## 0. Problem Being Solved
 
 Admissions needs a **secure, authenticated, limited-scope portal** for applicants/families **before** they become Guardians or Students.
 
@@ -1052,11 +1041,33 @@ Any attempt → redirect to login.
 
 ## C.8 Lifecycle Management (LOCKED)
 
+### Two Explicit Lifecycle Boundaries
+
+1. Promotion (Data Boundary)
+
+- Applicant -> Student
+- Creates/links `Student`
+- Creates/syncs `Student Patient`
+- Copies approved/promotable admissions documents
+- Does not create Guardian records
+- Does not provision portal identities or mutate access roles
+
+2. Identity Upgrade (Access Boundary)
+
+- Runs only after enrollment confirmation (active `Program Enrollment` for the promoted student)
+- Creates/reuses `Guardian` records as needed
+- Creates/links `User` records for guardians and student portal access
+- Removes `Admissions Applicant` and assigns long-term portal roles (`Guardian`, `Student`)
+- Links Guardian <-> Student in SIS records
+
+Promotion and Identity Upgrade are independent actions and may happen at different times.
+
 ### User Creation
 
 Triggered by:
 
 * Invite to Apply
+* Identity Upgrade (Guardian/Student access provisioning)
 
 ### User Deactivation (MANDATORY)
 
@@ -1067,8 +1078,8 @@ Triggered by:
 | Applicant Promoted  | Disable OR delete user  |
 | GDPR Erasure        | Anonymize or purge user |
 
-No role mutation.
-No role reuse.
+Role mutation is allowed only inside Identity Upgrade.
+Role reuse outside Identity Upgrade is forbidden.
 No silent persistence.
 
 ---
@@ -1077,10 +1088,9 @@ No silent persistence.
 
 Codex **must not**:
 
-* Convert Admissions Applicant → Guardian
 * Share accounts across Applicants
 * Reuse credentials
-* Grant Website User role
+* Grant Guardian/Student access during Promotion
 * Grant Desk access
 * Infer permissions from email match
 * Allow multiple Applicants per user
@@ -1096,7 +1106,9 @@ Codex must:
 * [x] Enforce record scoping in admissions-portal endpoints
 * [x] Block all non-admissions routes
 * [x] Disable user at Phase 3 completion
-* [x] Never mutate roles dynamically
+* [x] Keep promotion and identity upgrade as separate server actions
+* [x] Gate identity upgrade on active Program Enrollment
+* [x] Make identity upgrade idempotent for Users/Guardians/links
 
 ---
 

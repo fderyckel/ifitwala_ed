@@ -10,8 +10,6 @@ seo_title: "Applicant Interview: Structured Interview Evidence"
 seo_description: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
 ---
 
-## Applicant Interview: Structured Interview Evidence
-
 ## Before You Start (Prerequisites)
 
 - Create the `Student Applicant` record first.

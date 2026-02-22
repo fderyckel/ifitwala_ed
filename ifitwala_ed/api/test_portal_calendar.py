@@ -5,7 +5,12 @@ from datetime import date, datetime, time, timedelta
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.api.calendar import _collect_staff_holiday_events, _system_tzinfo
+from ifitwala_ed.api.calendar import (
+    _collect_staff_holiday_events,
+    _resolve_employee_for_user,
+    _system_tzinfo,
+    get_staff_calendar,
+)
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 
 
@@ -69,6 +74,29 @@ class TestPortalCalendar(FrappeTestCase):
         self.assertEqual(event.meta.get("fallback"), "school_calendar")
         self.assertEqual(event.meta.get("school_calendar"), self.parent_calendar)
 
+    def test_staff_calendar_resolves_employee_by_email_when_user_id_missing(self):
+        user = self._create_user()
+        employee = self._create_employee(self.child_school, professional_email=user.name)
+
+        resolved = _resolve_employee_for_user(
+            user.name,
+            fields=["name", "school"],
+            employment_status_filter=["!=", "Inactive"],
+        )
+        self.assertTrue(resolved)
+        self.assertEqual(resolved.get("name"), employee)
+        self.assertEqual(resolved.get("school"), self.child_school)
+
+        frappe.set_user(user.name)
+        payload = get_staff_calendar(
+            from_datetime="2026-01-07T00:00:00",
+            to_datetime="2026-01-10T00:00:00",
+            sources=["staff_holiday"],
+            force_refresh=True,
+        )
+        self.assertIn("events", payload)
+        self.assertTrue(any(evt.get("source") == "staff_holiday" for evt in payload.get("events", [])))
+
     def _create_organization(self) -> str:
         hash_key = frappe.generate_hash(length=6).upper()
         doc = frappe.get_doc(
@@ -121,6 +149,20 @@ class TestPortalCalendar(FrappeTestCase):
         self._created.append(("Academic Year", doc.name))
         return doc.name
 
+    def _create_user(self):
+        hash_key = frappe.generate_hash(length=6).lower()
+        doc = frappe.get_doc(
+            {
+                "doctype": "User",
+                "email": f"portal-calendar-{hash_key}@example.com",
+                "first_name": "Portal",
+                "last_name": "Calendar",
+                "enabled": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("User", doc.name))
+        return doc
+
     def _create_school_calendar(self, school: str, academic_year: str, holiday_date: date) -> str:
         doc = frappe.get_doc(
             {
@@ -139,15 +181,16 @@ class TestPortalCalendar(FrappeTestCase):
         self._created.append(("School Calendar", doc.name))
         return doc.name
 
-    def _create_employee(self, school: str) -> str:
+    def _create_employee(self, school: str, *, professional_email: str | None = None) -> str:
         hash_key = frappe.generate_hash(length=6).upper()
+        email = professional_email or f"portal-staff-{hash_key.lower()}@example.com"
         doc = frappe.get_doc(
             {
                 "doctype": "Employee",
                 "employee_first_name": "Portal",
                 "employee_last_name": f"Staff {hash_key}",
                 "employee_gender": "Prefer not to say",
-                "employee_professional_email": f"portal-staff-{hash_key.lower()}@example.com",
+                "employee_professional_email": email,
                 "organization": self.organization,
                 "date_of_joining": frappe.utils.nowdate(),
                 "employment_status": "Active",

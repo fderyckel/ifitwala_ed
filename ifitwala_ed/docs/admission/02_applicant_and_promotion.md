@@ -11,6 +11,27 @@
 
 ---
 
+## 0. 2026-02-22 Canonical Boundary Update
+
+This document now follows the authoritative split in
+`docs/admission/03_portal_files_gdpr.md`:
+
+1. Promotion (Data Boundary)
+- Applicant -> Student
+- Creates `Student` and syncs/creates `Student Patient`
+- Copies approved promotable evidence
+- No Guardian/User/role provisioning
+
+2. Identity Upgrade (Access Boundary)
+- Runs only after active `Program Enrollment` exists
+- Provisions Guardian/Student access identities and role transitions
+- Links Guardian <-> Student
+
+Any historical checklist text below that implies "promotion creates Student only" or
+"no Student Patient effects at promotion" is superseded by this boundary update.
+
+---
+
 ## 1. Student Applicant — canonical staging container
 
 
@@ -51,7 +72,7 @@ Inquiry → Student Applicant → Student
 
 ### 1.3 Student (Canonical Record)
 
-* Created **only** by promotion
+* Created only by promotion (with Student Patient sync as part of promotion data handoff)
 * Permanent, auditable, institutional truth
 * Admissions logic does **not** live here
 
@@ -2990,6 +3011,6 @@ If you want, next step we can:
 ## 4. Implementation invariants to verify during debugging
 
 * Promotion is **atomic** (all‑or‑nothing)
-* Promotion is **idempotent** (re‑run does not duplicate Students/Users/Contacts/Patient)
+* Promotion is **idempotent** (re‑run does not duplicate Student/Student Patient/data copies)
 * Applicant becomes **permanently read‑only** after promotion
 * Creation source guard: Student creation is allowed only via Applicant promotion, except explicit migration/import flags.

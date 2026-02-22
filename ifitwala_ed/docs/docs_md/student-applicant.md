@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.3.0"
-last_change_date: "2026-02-21"
+version: "1.4.0"
+last_change_date: "2026-02-22"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
@@ -341,9 +341,17 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - interview summary shows recent interview links for direct navigation from applicant review section
 - **Promotion side-effects (`promote_to_student`)**:
   - creates/links `Student`, writes `Student.student_applicant`, then sets applicant status to `Promoted`
+  - creates/syncs `Student Patient` from Applicant Health Profile data
+  - copies approved promotable admissions documents into Student-owned governed files
   - copies applicant image through governed file dispatcher into Student profile image slot
+  - does **not** create Guardian/User portal access or mutate portal roles
   - does **not** send welcome email or print-format welcome kit by itself
   - invite email behavior exists in staff portal endpoint `invite_applicant` (separate flow)
+- **Identity upgrade side-effects (`upgrade_identity`)**:
+  - requires an active `Program Enrollment` for the promoted student
+  - provisions/links Guardian + Student access identities and roles
+  - links guardians to Student in canonical Student guardian rows
+  - is idempotent (re-run does not duplicate users or guardian links)
 - **Link query endpoints**:
   - `academic_year_intent_query`
   - `school_by_organization_query`

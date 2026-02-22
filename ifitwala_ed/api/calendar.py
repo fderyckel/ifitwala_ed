@@ -106,6 +106,59 @@ class CalendarEvent:
         }
 
 
+def _resolve_employee_for_user(
+    user: str,
+    *,
+    fields: Sequence[str] | None = None,
+    employment_status_filter=None,
+) -> Optional[dict]:
+    """
+    Resolve employee linkage for a user with legacy-safe fallback.
+
+    Primary path:
+    - Employee.user_id == user
+
+    Fallback path (legacy data):
+    - exactly one Employee matches employee_professional_email == User.email
+    - user_id on that row is blank or already points to this same user
+    """
+    wanted_fields = list(fields or ["name"])
+    if "name" not in wanted_fields:
+        wanted_fields.append("name")
+
+    direct_filters = {"user_id": user}
+    if employment_status_filter is not None:
+        direct_filters["employment_status"] = employment_status_filter
+
+    direct_row = frappe.db.get_value("Employee", direct_filters, wanted_fields, as_dict=True)
+    if direct_row:
+        return direct_row
+
+    login_email = (frappe.db.get_value("User", user, "email") or user or "").strip()
+    if not login_email:
+        return None
+
+    fallback_filters = {"employee_professional_email": login_email}
+    if employment_status_filter is not None:
+        fallback_filters["employment_status"] = employment_status_filter
+
+    fallback_rows = frappe.get_all(
+        "Employee",
+        filters=fallback_filters,
+        fields=[*wanted_fields, "user_id"],
+        limit_page_length=2,
+    )
+    if len(fallback_rows) != 1:
+        return None
+
+    row = fallback_rows[0]
+    mapped_user = str(row.get("user_id") or "").strip()
+    if mapped_user and mapped_user != user:
+        return None
+
+    return {field: row.get(field) for field in wanted_fields}
+
+
 @frappe.whitelist()
 def get_staff_calendar(
     from_datetime: Optional[str] = None,
@@ -118,11 +171,10 @@ def get_staff_calendar(
     if not user or user == "Guest":
         frappe.throw(_("Please sign in to view your calendar."), frappe.PermissionError)
 
-    employee = frappe.db.get_value(
-        "Employee",
-        {"user_id": user, "employment_status": ["!=", "Inactive"]},
-        ["name", "employee_full_name"],
-        as_dict=True,
+    employee = _resolve_employee_for_user(
+        user,
+        fields=["name", "employee_full_name"],
+        employment_status_filter=["!=", "Inactive"],
     )
     if not employee:
         frappe.throw(_("Your user is not linked to an Employee record."), frappe.PermissionError)
@@ -538,7 +590,9 @@ def _collect_student_group_events(
     *,
     employee_id: Optional[str] = None,
 ) -> List[CalendarEvent]:
-    employee_id = employee_id or frappe.db.get_value("Employee", {"user_id": user}, "name")
+    if not employee_id:
+        employee_row = _resolve_employee_for_user(user, fields=["name"])
+        employee_id = (employee_row or {}).get("name")
     return _collect_student_group_events_from_bookings(employee_id, window_start, window_end, tzinfo)
 
 
@@ -777,7 +831,8 @@ def _collect_meeting_events(
     # start_date = window_start.date()  # noqa: F841
     # end_date = window_end.date()  # noqa: F841
 
-    employee_id = frappe.db.get_value("Employee", {"user_id": user}, "name")
+    employee_row = _resolve_employee_for_user(user, fields=["name"])
+    employee_id = (employee_row or {}).get("name")
 
     params = {
         "user": user,
@@ -903,11 +958,12 @@ def get_meeting_details(meeting: str):
         order_by="idx asc",
     )
 
-    employee_id = frappe.db.get_value(
-        "Employee",
-        {"user_id": user, "employment_status": ["!=", "Inactive"]},
-        "name",
+    employee_row = _resolve_employee_for_user(
+        user,
+        fields=["name"],
+        employment_status_filter=["!=", "Inactive"],
     )
+    employee_id = (employee_row or {}).get("name")
 
     if not _meeting_access_allowed(doc, participants, user, employee_id):
         frappe.throw(_("You are not a participant of this meeting."), frappe.PermissionError)
@@ -1106,8 +1162,10 @@ def _collect_school_events(
     window_end: datetime,
     tzinfo: pytz.timezone,
 ) -> List[CalendarEvent]:
-    emp_row = frappe.db.get_value(
-        "Employee", {"user_id": user, "employment_status": ["!=", "Inactive"]}, ["name", "school"], as_dict=True
+    emp_row = _resolve_employee_for_user(
+        user,
+        fields=["name", "school"],
+        employment_status_filter=["!=", "Inactive"],
     )
     employee_school = (emp_row or {}).get("school") if emp_row else None
     allowed_schools = get_ancestor_schools(employee_school) if employee_school else []
@@ -1362,7 +1420,8 @@ def _user_has_student_group_access(user: str, group_name: str) -> bool:
         return True
 
     # Staff/desk access paths.
-    employee_id = frappe.db.get_value("Employee", {"user_id": user}, "name")
+    employee_row = _resolve_employee_for_user(user, fields=["name"])
+    employee_id = (employee_row or {}).get("name")
     instructor_ids = _resolve_instructor_ids(user, employee_id)
     group_names, _ = _student_group_memberships(user, employee_id, instructor_ids)
     if group_name in group_names:
@@ -1461,11 +1520,10 @@ def _school_event_access_allowed(event_doc, user: str) -> bool:
     if is_participant:
         return True
 
-    emp_row = frappe.db.get_value(
-        "Employee",
-        {"user_id": user, "employment_status": ["!=", "Inactive"]},
-        ["school"],
-        as_dict=True,
+    emp_row = _resolve_employee_for_user(
+        user,
+        fields=["school"],
+        employment_status_filter=["!=", "Inactive"],
     )
     employee_school = (emp_row or {}).get("school")
     if employee_school and event_doc.school:
@@ -1496,7 +1554,8 @@ def debug_staff_calendar_window(from_datetime: Optional[str] = None, to_datetime
     instr = set(
         frappe.get_all("Instructor", filters={"linked_user_id": user}, pluck="name", ignore_permissions=True) or []
     )
-    emp = frappe.db.get_value("Employee", {"user_id": user}, "name")
+    employee_row = _resolve_employee_for_user(user, fields=["name"])
+    emp = (employee_row or {}).get("name")
     if emp:
         instr.update(
             frappe.get_all("Instructor", filters={"employee": emp}, pluck="name", ignore_permissions=True) or []
@@ -1579,9 +1638,8 @@ def get_portal_calendar_prefs(from_datetime: Optional[str] = None, to_datetime: 
     tzinfo = _system_tzinfo()
 
     # Resolve user's base school via Employee, else Instructor
-    school = frappe.db.get_value("Employee", {"user_id": user}, "school") or frappe.db.get_value(
-        "Instructor", {"linked_user_id": user}, "school"
-    )
+    employee_row = _resolve_employee_for_user(user, fields=["school"])
+    school = (employee_row or {}).get("school") or frappe.db.get_value("Instructor", {"linked_user_id": user}, "school")
 
     # Resolve effective School Calendar (self -> nearest ancestor) for today.
     calendar_name = None

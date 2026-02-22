@@ -140,6 +140,17 @@ Validation is enforced server-side in multiple checkpoints:
 This doctype is the legal/operational evidence anchor for admissions. Use replacement uploads, not field mutation, when evidence changes.
 </Callout>
 
+## Reporting
+
+- No dedicated Script/Query Report currently declares this doctype as `ref_doctype`.
+
+## Related Docs
+
+<RelatedDocs
+  slugs="applicant-document-type,student-applicant,applicant-health-profile"
+  title="Related Evidence and Readiness Docs"
+/>
+
 ## Technical Notes (IT)
 
 ### Latest Technical Snapshot (2026-02-21)
@@ -186,14 +197,3 @@ Runtime controller rules:
 - Upload/manage permission requires admissions or approved roles.
 - Review-field edits (`review_status`, notes, reviewer fields) are restricted to `Academic Admin` or `System Manager`.
 - Terminal applicant states (`Rejected`, `Promoted`) are read-only.
-
-## Reporting
-
-- No dedicated Script/Query Report currently declares this doctype as `ref_doctype`.
-
-## Related Docs
-
-<RelatedDocs
-  slugs="applicant-document-type,student-applicant,applicant-health-profile"
-  title="Related Evidence and Readiness Docs"
-/>

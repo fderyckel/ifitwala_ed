@@ -388,7 +388,9 @@ function map_health_status(status) {
 
 function add_decision_actions(frm) {
 	const status = frm.doc.application_status;
-	["Start Review", "Approve", "Reject", "Promote"].forEach((label) => frm.remove_custom_button(label));
+	["Start Review", "Approve", "Reject", "Promote", "Upgrade Identity"].forEach((label) =>
+		frm.remove_custom_button(label)
+	);
 
 	if (status === "Submitted") {
 		frm.add_custom_button("Start Review", () => {
@@ -445,6 +447,19 @@ function add_decision_actions(frm) {
 					.then(() => frm.reload_doc())
 					.catch((err) => {
 						frappe.msgprint(err.message || "Unable to promote applicant.");
+					});
+			});
+		});
+	}
+
+	if (status === "Promoted") {
+		frm.add_custom_button("Upgrade Identity", () => {
+			frappe.confirm("Upgrade identity for this promoted applicant?", () => {
+				blurActiveModalFocus();
+				frm.call("upgrade_identity")
+					.then(() => frm.reload_doc())
+					.catch((err) => {
+						frappe.msgprint(err.message || "Unable to upgrade identity.");
 					});
 			});
 		});
