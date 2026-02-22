@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.4.0"
+version: "1.5.0"
 last_change_date: "2026-02-22"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -257,7 +257,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 
 ### Required for approval-readiness path
 
-1. Required `Applicant Document Type` records are configured (`is_required = 1`, `is_active = 1`) for the organization/school scope you expect.
+1. Required `Applicant Document Type` records are configured (`is_required = 1`, `is_active = 1`) for the organization/school ancestor scope you expect (parent-scope document types apply to descendants).
 2. Applicant has corresponding `Applicant Document` rows and required ones reach `review_status = Approved`.
 3. `Applicant Health Profile.review_status = Cleared`.
 

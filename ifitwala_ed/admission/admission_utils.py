@@ -11,60 +11,100 @@ from frappe.desk.form.assign_to import remove as remove_assignment
 from frappe.utils import add_days, getdate, now, nowdate, validate_email_address
 from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
 
+from ifitwala_ed.governance.policy_scope_utils import (
+    get_organization_ancestors_including_self,
+    get_school_ancestors_including_self,
+)
+
 ADMISSIONS_ROLES = {"Admission Manager", "Admission Officer"}
 
 
-APPLICANT_DOCUMENT_SLOT_MAP = {
-    "passport": {
-        "slot": "identity_passport",
-        "data_class": "legal",
-        "purpose": "identification_document",
-        "retention_policy": "until_school_exit_plus_6m",
-    },
-    "birth_certificate": {
-        "slot": "identity_birth_cert",
-        "data_class": "legal",
-        "purpose": "identification_document",
-        "retention_policy": "until_school_exit_plus_6m",
-    },
-    "health_record": {
-        "slot": "health_record",
-        "data_class": "safeguarding",
-        "purpose": "medical_record",
-        "retention_policy": "until_school_exit_plus_6m",
-    },
-    "transcript": {
-        "slot": "prior_transcript",
-        "data_class": "academic",
-        "purpose": "academic_report",
-        "retention_policy": "until_program_end_plus_1y",
-    },
-    "report_card": {
-        "slot": "prior_transcript",
-        "data_class": "academic",
-        "purpose": "academic_report",
-        "retention_policy": "until_program_end_plus_1y",
-    },
-    "photo": {
-        "slot": "family_photo",
-        "data_class": "administrative",
-        "purpose": "administrative",
-        "retention_policy": "immediate_on_request",
-    },
-    "application_form": {
-        "slot": "application_form",
-        "data_class": "administrative",
-        "purpose": "administrative",
-        "retention_policy": "until_program_end_plus_1y",
-    },
-}
+APPLICANT_DOCUMENT_CLASSIFICATION_FIELDS = (
+    "classification_slot",
+    "classification_data_class",
+    "classification_purpose",
+    "classification_retention_policy",
+)
 
 
-def get_applicant_document_slot_spec(doc_type_code: str) -> dict:
-    """Return slot classification spec for an Applicant Document Type code."""
-    if not doc_type_code:
+def _normalize_scope_value(value: str | None) -> str:
+    return (value or "").strip()
+
+
+def get_applicant_scope_ancestors(*, organization: str | None, school: str | None) -> tuple[list[str], list[str]]:
+    return (
+        get_organization_ancestors_including_self(_normalize_scope_value(organization)),
+        get_school_ancestors_including_self(_normalize_scope_value(school)),
+    )
+
+
+def is_applicant_document_type_in_scope(
+    *,
+    document_type_organization: str | None,
+    document_type_school: str | None,
+    applicant_org_ancestors: list[str],
+    applicant_school_ancestors: list[str],
+) -> bool:
+    row_org = _normalize_scope_value(document_type_organization)
+    row_school = _normalize_scope_value(document_type_school)
+    org_scope = applicant_org_ancestors if isinstance(applicant_org_ancestors, set) else set(applicant_org_ancestors)
+    school_scope = (
+        applicant_school_ancestors if isinstance(applicant_school_ancestors, set) else set(applicant_school_ancestors)
+    )
+
+    if row_org and row_org not in org_scope:
+        return False
+    if row_school and row_school not in school_scope:
+        return False
+    return True
+
+
+def _format_doc_type_spec_from_row(row: dict | None) -> dict:
+    if not row:
         return {}
-    return APPLICANT_DOCUMENT_SLOT_MAP.get(doc_type_code.strip())
+
+    slot = _normalize_scope_value(row.get("classification_slot"))
+    data_class = _normalize_scope_value(row.get("classification_data_class"))
+    purpose = _normalize_scope_value(row.get("classification_purpose"))
+    retention_policy = _normalize_scope_value(row.get("classification_retention_policy"))
+    if not (slot and data_class and purpose and retention_policy):
+        return {}
+    return {
+        "slot": slot,
+        "data_class": data_class,
+        "purpose": purpose,
+        "retention_policy": retention_policy,
+    }
+
+
+def get_applicant_document_slot_spec(*, document_type: str | None = None, doc_type_code: str | None = None) -> dict:
+    """Return slot/classification spec from Applicant Document Type fields only."""
+    lookup_name = _normalize_scope_value(document_type)
+    lookup_code = _normalize_scope_value(doc_type_code)
+
+    row = None
+    if lookup_name:
+        row = frappe.db.get_value(
+            "Applicant Document Type",
+            lookup_name,
+            APPLICANT_DOCUMENT_CLASSIFICATION_FIELDS,
+            as_dict=True,
+        )
+    if not row and lookup_code:
+        row = frappe.db.get_value(
+            "Applicant Document Type",
+            {"code": lookup_code},
+            APPLICANT_DOCUMENT_CLASSIFICATION_FIELDS,
+            as_dict=True,
+        )
+    if not row and lookup_name:
+        row = frappe.db.get_value(
+            "Applicant Document Type",
+            {"code": lookup_name},
+            APPLICANT_DOCUMENT_CLASSIFICATION_FIELDS,
+            as_dict=True,
+        )
+    return _format_doc_type_spec_from_row(row)
 
 
 def ensure_admissions_permission(user: str | None = None) -> str:

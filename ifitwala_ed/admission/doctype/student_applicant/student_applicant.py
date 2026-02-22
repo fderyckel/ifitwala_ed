@@ -15,7 +15,9 @@ from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     ensure_admissions_permission,
     get_applicant_document_slot_spec,
+    get_applicant_scope_ancestors,
     get_contact_primary_email,
+    is_applicant_document_type_in_scope,
     normalize_email_value,
 )
 from ifitwala_ed.governance.policy_scope_utils import (
@@ -1186,11 +1188,17 @@ class StudentApplicant(Document):
                 continue
 
             doc_type_code = document_type_map.get(doc_row.get("document_type")) or doc_row.get("document_type")
-            slot_spec = get_applicant_document_slot_spec(doc_type_code) or {
-                "data_class": "administrative",
-                "purpose": "administrative",
-                "retention_policy": "until_program_end_plus_1y",
-            }
+            slot_spec = get_applicant_document_slot_spec(
+                document_type=doc_row.get("document_type"),
+                doc_type_code=doc_type_code,
+            )
+            if not slot_spec:
+                copy_errors.append(
+                    _("Applicant Document Type {0} is missing classification settings.").format(
+                        doc_type_code or doc_row.get("document_type") or _("Unknown")
+                    )
+                )
+                continue
             slot_key = f"admissions_{frappe.scrub(doc_type_code or 'document')}"
             filename = source.get("file_name") or os.path.basename(source.get("file_url") or "document")
 
@@ -1370,18 +1378,27 @@ class StudentApplicant(Document):
         if not self.organization:
             return {"ok": False, "missing": [], "unapproved": [], "required": []}
 
-        required_types = frappe.db.sql(
-            """
-            SELECT name, code, document_type_name
-              FROM `tabApplicant Document Type`
-             WHERE is_required = 1
-               AND is_active = 1
-               AND (organization IS NULL OR organization = '' OR organization = %s)
-               AND (school IS NULL OR school = '' OR school = %s)
-            """,
-            (self.organization, self.school),
-            as_dict=True,
+        type_rows = frappe.get_all(
+            "Applicant Document Type",
+            filters={"is_required": 1, "is_active": 1},
+            fields=["name", "code", "document_type_name", "organization", "school"],
         )
+        applicant_org_ancestors, applicant_school_ancestors = get_applicant_scope_ancestors(
+            organization=self.organization,
+            school=self.school,
+        )
+        applicant_org_ancestors = set(applicant_org_ancestors)
+        applicant_school_ancestors = set(applicant_school_ancestors)
+        required_types = [
+            row
+            for row in type_rows
+            if is_applicant_document_type_in_scope(
+                document_type_organization=row.get("organization"),
+                document_type_school=row.get("school"),
+                applicant_org_ancestors=applicant_org_ancestors,
+                applicant_school_ancestors=applicant_school_ancestors,
+            )
+        ]
 
         if not required_types:
             return {"ok": True, "missing": [], "unapproved": [], "required": []}

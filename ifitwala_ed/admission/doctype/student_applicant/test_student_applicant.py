@@ -233,6 +233,38 @@ class TestStudentApplicant(FrappeTestCase):
         for name in copied_classification_names:
             self._created.append(("File Classification", name))
 
+    def test_required_document_type_from_parent_school_applies_to_child_school_applicant(self):
+        code = f"parent_req_{frappe.generate_hash(length=6)}"
+        doc_type = self._create_applicant_document_type(
+            code=code,
+            school=self.parent_school,
+            is_required=1,
+        )
+        applicant = self._create_student_applicant()
+
+        missing_payload = applicant.has_required_documents()
+        self.assertFalse(missing_payload.get("ok"))
+        self.assertIn(code, missing_payload.get("missing") or [])
+
+        frappe.set_user("Administrator")
+        try:
+            applicant_doc = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document",
+                    "student_applicant": applicant.name,
+                    "document_type": doc_type,
+                    "review_status": "Approved",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.set_user(self.staff_user.name)
+        self._created.append(("Applicant Document", applicant_doc.name))
+
+        approved_payload = applicant.has_required_documents()
+        self.assertTrue(approved_payload.get("ok"))
+        self.assertNotIn(code, approved_payload.get("missing") or [])
+        self.assertNotIn(code, approved_payload.get("unapproved") or [])
+
     def test_promotion_copies_health_profile_to_student_patient(self):
         applicant = self._create_student_applicant()
         self._create_applicant_health_profile(
@@ -474,7 +506,15 @@ class TestStudentApplicant(FrappeTestCase):
         self._created.append(("Guardian", doc.name))
         return doc
 
-    def _create_applicant_document_type(self, *, code):
+    def _create_applicant_document_type(
+        self,
+        *,
+        code,
+        school=None,
+        organization=None,
+        is_required=0,
+        is_active=1,
+    ):
         existing = frappe.db.get_value("Applicant Document Type", {"code": code}, "name")
         if existing:
             return existing
@@ -483,10 +523,14 @@ class TestStudentApplicant(FrappeTestCase):
                 "doctype": "Applicant Document Type",
                 "code": code,
                 "document_type_name": f"Type {code}",
-                "organization": self.org,
-                "school": self.leaf_school,
-                "is_active": 1,
-                "is_required": 0,
+                "organization": organization or self.org,
+                "school": school or self.leaf_school,
+                "is_active": is_active,
+                "is_required": is_required,
+                "classification_slot": f"admissions_{frappe.scrub(code)}",
+                "classification_data_class": "administrative",
+                "classification_purpose": "administrative",
+                "classification_retention_policy": "until_program_end_plus_1y",
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Type", doc.name))

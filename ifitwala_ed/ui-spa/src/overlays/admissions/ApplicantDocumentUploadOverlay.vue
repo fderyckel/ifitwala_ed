@@ -164,17 +164,38 @@ const documentLabel = computed(() => props.documentLabel || '');
 const description = computed(() => props.description || '');
 
 function setError(err: unknown, fallback: string) {
-	const msg =
+	const raw =
 		(typeof err === 'object' && err && 'message' in (err as any)
 			? String((err as any).message)
 			: '') ||
 		(typeof err === 'string' ? err : '') ||
-		fallback;
-	errorMessage.value = msg;
+		'';
+	errorMessage.value = normalizeUploadErrorMessage(raw, fallback);
 }
 
 function clearError() {
 	errorMessage.value = '';
+}
+
+function normalizeUploadErrorMessage(raw: string, fallback: string): string {
+	const msg = (raw || '').trim();
+	if (!msg) return fallback;
+	const lower = msg.toLowerCase();
+	if (lower.includes('outside the applicant scope')) {
+		return __(
+			'This document request is no longer available for your application. Refresh the page and try again.'
+		);
+	}
+	if (
+		lower.includes('not configured for uploads') ||
+		lower.includes('missing upload classification settings') ||
+		lower.includes('retention policy defined')
+	) {
+		return __(
+			'This document upload is temporarily unavailable. Please contact the admissions office.'
+		);
+	}
+	return msg;
 }
 
 function resetForm() {

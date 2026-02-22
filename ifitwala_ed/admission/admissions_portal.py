@@ -38,11 +38,9 @@ def upload_applicant_document(
     )
 
     doc_type_code = frappe.db.get_value("Applicant Document Type", doc.document_type, "code") or doc.document_type
-    slot_spec = get_applicant_document_slot_spec(doc_type_code)
+    slot_spec = get_applicant_document_slot_spec(document_type=doc.document_type, doc_type_code=doc_type_code)
     if not slot_spec:
-        frappe.throw(
-            _("Applicant Document Type code is not mapped for file classification: {0}.").format(doc_type_code)
-        )
+        frappe.throw(_("Applicant Document Type is missing upload classification settings: {0}.").format(doc_type_code))
 
     applicant_row = (
         frappe.db.get_value(

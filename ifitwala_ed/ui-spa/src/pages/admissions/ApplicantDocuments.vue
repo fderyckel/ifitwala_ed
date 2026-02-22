@@ -36,15 +36,50 @@
 				<p class="mt-1 type-caption text-amber-900/80">{{ actionError }}</p>
 			</div>
 			<div
+				v-if="requiredTotalCount"
+				class="rounded-2xl border border-border/70 bg-sand/30 px-4 py-4 shadow-soft"
+			>
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<div>
+						<p class="type-body-strong text-ink">{{ __('Required documents') }}</p>
+						<p class="mt-1 type-caption text-ink/65">{{ requiredSummaryText }}</p>
+					</div>
+					<button
+						type="button"
+						class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+						:disabled="isReadOnly || !nextRequiredDoc"
+						@click="openNextRequired"
+					>
+						{{ __('Upload next required') }}
+					</button>
+				</div>
+			</div>
+			<div
 				v-for="doc in displayDocuments"
 				:key="doc.key"
 				class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft"
 			>
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div>
-						<p class="type-body-strong text-ink">{{ doc.label }}</p>
-						<p class="mt-1 type-caption" :class="doc.statusTone">
-							{{ doc.statusLabel }}
+						<div class="flex flex-wrap items-center gap-2">
+							<p class="type-body-strong text-ink">{{ doc.label }}</p>
+							<span
+								class="rounded-full border px-2 py-0.5 type-caption"
+								:class="
+									doc.is_required
+										? 'border-amber-300 bg-amber-50 text-amber-900'
+										: 'border-border/70 bg-surface text-ink/60'
+								"
+							>
+								{{ doc.is_required ? __('Required') : __('Optional') }}
+							</span>
+						</div>
+						<p class="mt-1 type-caption" :class="doc.statusTone">{{ doc.statusLabel }}</p>
+						<p
+							v-if="doc.is_required && doc.statusKey !== 'approved'"
+							class="mt-1 type-caption text-ink/55"
+						>
+							{{ __('Needed before submission.') }}
 						</p>
 						<p v-if="doc.uploaded_at" class="mt-1 type-caption text-ink/55">
 							{{ __('Uploaded') }}: {{ doc.uploaded_at }}
@@ -63,7 +98,7 @@
 						<button
 							type="button"
 							class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
-							:disabled="isReadOnly"
+							:disabled="isReadOnly || !doc.document_type"
 							@click="openUpload(doc)"
 						>
 							{{ doc.file_url ? __('Replace') : __('Upload') }}
@@ -112,20 +147,58 @@ const actionError = ref('');
 
 const isReadOnly = computed(() => Boolean(session.value?.applicant?.is_read_only));
 
-function statusLabelFor(doc: ApplicantDocument | null, isRequired: boolean) {
-	if (!doc) return isRequired ? __('Missing') : __('Optional');
-	return doc.review_status === 'Approved'
-		? __('Approved')
-		: doc.review_status === 'Rejected'
-			? __('Rejected')
-			: __('Pending review');
+function statusKeyFor(doc: ApplicantDocument | null, isRequired: boolean) {
+	if (!doc) return isRequired ? 'missing' : 'optional';
+	if (doc.review_status === 'Approved') return 'approved';
+	if (doc.review_status === 'Rejected') return 'rejected';
+	return 'pending';
 }
 
-function statusToneFor(doc: ApplicantDocument | null, isRequired: boolean) {
-	if (!doc) return isRequired ? 'text-rose-700' : 'text-ink/55';
-	if (doc.review_status === 'Approved') return 'text-leaf';
-	if (doc.review_status === 'Rejected') return 'text-rose-700';
-	return 'text-sun';
+function statusLabelFor(statusKey: string) {
+	switch (statusKey) {
+		case 'approved':
+			return __('Approved');
+		case 'rejected':
+			return __('Rejected');
+		case 'pending':
+			return __('Pending review');
+		case 'missing':
+			return __('Missing');
+		case 'optional':
+		default:
+			return __('Optional');
+	}
+}
+
+function statusToneFor(statusKey: string) {
+	switch (statusKey) {
+		case 'approved':
+			return 'text-leaf';
+		case 'rejected':
+		case 'missing':
+			return 'text-rose-700';
+		case 'pending':
+			return 'text-sun';
+		case 'optional':
+		default:
+			return 'text-ink/55';
+	}
+}
+
+function statusSortWeight(statusKey: string) {
+	switch (statusKey) {
+		case 'missing':
+			return 0;
+		case 'rejected':
+			return 1;
+		case 'pending':
+			return 2;
+		case 'approved':
+			return 3;
+		case 'optional':
+		default:
+			return 4;
+	}
 }
 
 const displayDocuments = computed(() => {
@@ -136,6 +209,7 @@ const displayDocuments = computed(() => {
 
 	const items = documentTypes.value.map(docType => {
 		const doc = docMap.get(docType.code || docType.name) || null;
+		const statusKey = statusKeyFor(doc, docType.is_required);
 		return {
 			key: docType.code || docType.name,
 			document_type: docType.code || docType.name,
@@ -144,14 +218,16 @@ const displayDocuments = computed(() => {
 			is_required: docType.is_required,
 			file_url: doc?.file_url || null,
 			uploaded_at: doc?.uploaded_at || null,
-			statusLabel: statusLabelFor(doc, docType.is_required),
-			statusTone: statusToneFor(doc, docType.is_required),
+			statusKey,
+			statusLabel: statusLabelFor(statusKey),
+			statusTone: statusToneFor(statusKey),
 		};
 	});
 
 	// Include documents that aren't in the type list
 	documents.value.forEach(doc => {
 		if (!doc.document_type || items.find(item => item.document_type === doc.document_type)) return;
+		const statusKey = statusKeyFor(doc, false);
 		items.push({
 			key: doc.document_type,
 			document_type: doc.document_type,
@@ -160,12 +236,35 @@ const displayDocuments = computed(() => {
 			is_required: false,
 			file_url: doc.file_url || null,
 			uploaded_at: doc.uploaded_at || null,
-			statusLabel: statusLabelFor(doc, false),
-			statusTone: statusToneFor(doc, false),
+			statusKey,
+			statusLabel: statusLabelFor(statusKey),
+			statusTone: statusToneFor(statusKey),
 		});
 	});
 
-	return items;
+	return items.sort((a, b) => {
+		if (a.is_required !== b.is_required) return a.is_required ? -1 : 1;
+		const byStatus = statusSortWeight(a.statusKey) - statusSortWeight(b.statusKey);
+		if (byStatus) return byStatus;
+		return a.label.localeCompare(b.label);
+	});
+});
+
+const requiredDocuments = computed(() => displayDocuments.value.filter(doc => doc.is_required));
+const requiredTotalCount = computed(() => requiredDocuments.value.length);
+const requiredApprovedCount = computed(
+	() => requiredDocuments.value.filter(doc => doc.statusKey === 'approved').length
+);
+const nextRequiredDoc = computed(
+	() => requiredDocuments.value.find(doc => doc.statusKey !== 'approved') || null
+);
+const requiredSummaryText = computed(() => {
+	const total = requiredTotalCount.value;
+	const approved = requiredApprovedCount.value;
+	if (!total) return __('No required documents configured.');
+	return __('Approved {0} of {1} required documents.')
+		.replace('{0}', String(approved))
+		.replace('{1}', String(total));
 });
 
 async function loadDocuments() {
@@ -192,6 +291,12 @@ function openUpload(doc: { document_type: string; label: string; description?: s
 		actionError.value = __('This application is read-only.');
 		return;
 	}
+	if (!doc.document_type) {
+		actionError.value = __(
+			'This document request is incomplete. Please contact the admissions office.'
+		);
+		return;
+	}
 	actionError.value = '';
 	overlay.open('admissions-document-upload', {
 		documentType: doc.document_type,
@@ -199,6 +304,14 @@ function openUpload(doc: { document_type: string; label: string; description?: s
 		description: doc.description || '',
 		readOnly: isReadOnly.value,
 	});
+}
+
+function openNextRequired() {
+	if (!nextRequiredDoc.value) {
+		actionError.value = __('All required documents are already approved.');
+		return;
+	}
+	openUpload(nextRequiredDoc.value);
 }
 
 let unsubscribe: (() => void) | null = null;

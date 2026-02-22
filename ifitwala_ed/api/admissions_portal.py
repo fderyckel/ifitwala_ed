@@ -13,8 +13,11 @@ from ifitwala_ed.admission.admission_utils import (
     ensure_admissions_permission,
     ensure_contact_for_email,
     ensure_inquiry_contact,
+    get_applicant_document_slot_spec,
+    get_applicant_scope_ancestors,
     get_contact_email_options,
     get_contact_primary_email,
+    is_applicant_document_type_in_scope,
     normalize_email_value,
     upsert_contact_email,
 )
@@ -702,6 +705,13 @@ def list_applicant_document_types(student_applicant: str | None = None):
     if not organization:
         return {"document_types": []}
 
+    applicant_org_ancestors, applicant_school_ancestors = get_applicant_scope_ancestors(
+        organization=organization,
+        school=school,
+    )
+    applicant_org_ancestors = set(applicant_org_ancestors)
+    applicant_school_ancestors = set(applicant_school_ancestors)
+
     rows = frappe.get_all(
         "Applicant Document Type",
         filters={"is_active": 1},
@@ -720,9 +730,12 @@ def list_applicant_document_types(student_applicant: str | None = None):
 
     payload = []
     for row_type in rows:
-        if row_type.get("organization") and row_type.get("organization") != organization:
-            continue
-        if row_type.get("school") and school and row_type.get("school") != school:
+        if not is_applicant_document_type_in_scope(
+            document_type_organization=row_type.get("organization"),
+            document_type_school=row_type.get("school"),
+            applicant_org_ancestors=applicant_org_ancestors,
+            applicant_school_ancestors=applicant_school_ancestors,
+        ):
             continue
         payload.append(
             {
@@ -758,15 +771,41 @@ def upload_applicant_document(
     doc_type_row = frappe.db.get_value(
         "Applicant Document Type",
         document_type,
-        ["organization", "school", "is_active"],
+        [
+            "organization",
+            "school",
+            "is_active",
+            "code",
+            "classification_slot",
+            "classification_data_class",
+            "classification_purpose",
+            "classification_retention_policy",
+        ],
         as_dict=True,
     )
     if not doc_type_row or not doc_type_row.get("is_active"):
         frappe.throw(_("Invalid or inactive document type."))
-    if doc_type_row.get("organization") and doc_type_row.get("organization") != row.get("organization"):
-        frappe.throw(_("Document type does not belong to the Applicant organization."))
-    if doc_type_row.get("school") and doc_type_row.get("school") != row.get("school"):
-        frappe.throw(_("Document type does not belong to the Applicant school."))
+
+    applicant_org_ancestors, applicant_school_ancestors = get_applicant_scope_ancestors(
+        organization=row.get("organization"),
+        school=row.get("school"),
+    )
+    applicant_org_ancestors = set(applicant_org_ancestors)
+    applicant_school_ancestors = set(applicant_school_ancestors)
+    if not is_applicant_document_type_in_scope(
+        document_type_organization=doc_type_row.get("organization"),
+        document_type_school=doc_type_row.get("school"),
+        applicant_org_ancestors=applicant_org_ancestors,
+        applicant_school_ancestors=applicant_school_ancestors,
+    ):
+        frappe.throw(_("Document type is outside the Applicant scope."))
+
+    slot_spec = get_applicant_document_slot_spec(
+        document_type=document_type,
+        doc_type_code=doc_type_row.get("code"),
+    )
+    if not slot_spec:
+        frappe.throw(_("This document type is not configured for uploads."))
 
     payload = {
         "student_applicant": row.get("name"),

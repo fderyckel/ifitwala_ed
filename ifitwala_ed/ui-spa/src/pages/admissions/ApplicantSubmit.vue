@@ -44,11 +44,22 @@
 			</div>
 
 			<div
-				v-if="blockingMessage"
+				v-if="blockingActions.length"
 				class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
 			>
 				<p class="type-body-strong text-amber-900">{{ __('Action required') }}</p>
 				<p class="mt-1 type-caption text-amber-900/80">{{ blockingMessage }}</p>
+				<div class="mt-3 flex flex-col gap-2">
+					<RouterLink
+						v-for="action in blockingActions"
+						:key="`${action.route_name}:${action.label}`"
+						:to="{ name: action.route_name }"
+						class="flex items-center justify-between rounded-xl border border-amber-200 bg-white px-3 py-2 type-caption text-amber-900"
+					>
+						<span>{{ action.label }}</span>
+						<span>{{ __('Open') }}</span>
+					</RouterLink>
+				</div>
 			</div>
 
 			<div class="flex flex-wrap items-center gap-3">
@@ -62,10 +73,10 @@
 				</button>
 				<RouterLink
 					v-if="!isReady"
-					:to="{ name: 'admissions-overview' }"
+					:to="{ name: firstBlockingRouteName }"
 					class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70"
 				>
-					{{ __('View next actions') }}
+					{{ __('Open first required step') }}
 				</RouterLink>
 			</div>
 		</div>
@@ -83,6 +94,7 @@ import { useOverlayStack } from '@/composables/useOverlayStack';
 import { __ } from '@/lib/i18n';
 import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals';
 import type { Response as ApplicantSnapshot } from '@/types/contracts/admissions/get_applicant_snapshot';
+import type { NextAction } from '@/types/contracts/admissions/types';
 
 const service = createAdmissionsService();
 const overlay = useOverlayStack();
@@ -95,14 +107,24 @@ const actionError = ref('');
 
 const isReadOnly = computed(() => Boolean(session.value?.applicant?.is_read_only));
 
-const isReady = computed(() => {
+const blockingActions = computed<NextAction[]>(() => {
 	const actions = snapshot.value?.next_actions || [];
-	return actions.every(action => !action.is_blocking);
+	return actions.filter(action => action.is_blocking);
+});
+
+const isReady = computed(() => {
+	return blockingActions.value.length === 0;
+});
+
+const firstBlockingRouteName = computed(() => {
+	return blockingActions.value[0]?.route_name || 'admissions-overview';
 });
 
 const blockingMessage = computed(() => {
 	if (isReady.value) return '';
-	return __('Complete all required sections before submitting.');
+	const first = blockingActions.value[0];
+	if (!first) return __('Complete all required sections before submitting.');
+	return __('Complete "{0}" before submitting.').replace('{0}', first.label);
 });
 
 const readinessItems = computed(() => {
@@ -144,7 +166,8 @@ function openSubmit() {
 		return;
 	}
 	if (!isReady.value) {
-		actionError.value = __('Complete all required sections before submitting.');
+		actionError.value =
+			blockingMessage.value || __('Complete all required sections before submitting.');
 		return;
 	}
 	actionError.value = '';
