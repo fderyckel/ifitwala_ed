@@ -17,9 +17,16 @@
 	>
 		<div class="flex h-full flex-col">
 			<div class="portal-sidebar__brand">
-				<RouterLink :to="homeLink" class="portal-sidebar__item" :aria-label="homeLabel" @click="handleNavActivate">
+				<RouterLink
+					:to="homeLink"
+					class="portal-sidebar__item"
+					:aria-label="homeLabel"
+					@click="handleNavActivate"
+				>
 					<FeatherIcon name="book-open" class="portal-sidebar__icon" />
-					<span class="portal-sidebar__label type-body-strong" aria-hidden="true">{{ homeLabel }}</span>
+					<span class="portal-sidebar__label type-body-strong" aria-hidden="true">{{
+						homeLabel
+					}}</span>
 					<span class="sr-only">{{ homeLabel }}</span>
 				</RouterLink>
 			</div>
@@ -38,9 +45,13 @@
 							@click="handleNavActivate"
 						>
 							<FeatherIcon :name="item.icon" class="portal-sidebar__icon" />
-							<span class="portal-sidebar__label type-body-strong" aria-hidden="true">{{ item.label }}</span>
+							<span class="portal-sidebar__label type-body-strong" aria-hidden="true">{{
+								item.label
+							}}</span>
 							<span class="sr-only">{{ item.label }}</span>
-							<span class="portal-sidebar__tooltip type-caption" aria-hidden="true">{{ item.label }}</span>
+							<span class="portal-sidebar__tooltip type-caption" aria-hidden="true">{{
+								item.label
+							}}</span>
 						</RouterLink>
 					</nav>
 				</div>
@@ -57,9 +68,13 @@
 							@click="handleNavActivate"
 						>
 							<FeatherIcon :name="item.icon" class="portal-sidebar__icon" />
-							<span class="portal-sidebar__label type-body-strong" aria-hidden="true">{{ item.label }}</span>
+							<span class="portal-sidebar__label type-body-strong" aria-hidden="true">{{
+								item.label
+							}}</span>
 							<span class="sr-only">{{ item.label }}</span>
-							<span class="portal-sidebar__tooltip type-caption" aria-hidden="true">{{ item.label }}</span>
+							<span class="portal-sidebar__tooltip type-caption" aria-hidden="true">{{
+								item.label
+							}}</span>
 						</RouterLink>
 					</nav>
 				</div>
@@ -76,9 +91,13 @@
 							@click="handleNavActivate"
 						>
 							<FeatherIcon :name="item.icon" class="portal-sidebar__icon" />
-							<span class="portal-sidebar__label type-body-strong" aria-hidden="true">{{ item.label }}</span>
+							<span class="portal-sidebar__label type-body-strong" aria-hidden="true">{{
+								item.label
+							}}</span>
 							<span class="sr-only">{{ item.label }}</span>
-							<span class="portal-sidebar__tooltip type-caption" aria-hidden="true">{{ item.label }}</span>
+							<span class="portal-sidebar__tooltip type-caption" aria-hidden="true">{{
+								item.label
+							}}</span>
 						</a>
 					</nav>
 				</div>
@@ -98,9 +117,17 @@
 					:aria-label="isRailExpanded ? 'Collapse navigation' : 'Expand navigation'"
 					@click="emit('toggle-rail')"
 				>
-					<FeatherIcon name="chevron-right" class="h-4 w-4 transition-transform" :class="{ 'rotate-180': isRailExpanded }" />
-					<span class="portal-sidebar__label" aria-hidden="true">{{ isRailExpanded ? 'Collapse' : 'Expand' }}</span>
-					<span class="sr-only">{{ isRailExpanded ? 'Collapse navigation' : 'Expand navigation' }}</span>
+					<FeatherIcon
+						name="chevron-right"
+						class="h-4 w-4 transition-transform"
+						:class="{ 'rotate-180': isRailExpanded }"
+					/>
+					<span class="portal-sidebar__label" aria-hidden="true">{{
+						isRailExpanded ? 'Collapse' : 'Expand'
+					}}</span>
+					<span class="sr-only">{{
+						isRailExpanded ? 'Collapse navigation' : 'Expand navigation'
+					}}</span>
 				</button>
 			</div>
 		</div>
@@ -108,44 +135,48 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { RouteLocationRaw } from 'vue-router'
-import { RouterLink } from 'vue-router'
-import { FeatherIcon } from 'frappe-ui'
+import { computed } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
+import { RouterLink } from 'vue-router';
+import { FeatherIcon } from 'frappe-ui';
 
-type PortalSection = 'student' | 'guardian'
+type PortalSection = 'student' | 'guardian';
 
 type MenuItem = {
-	label: string
-	icon: string
-	to: RouteLocationRaw
-}
+	label: string;
+	icon: string;
+	to: RouteLocationRaw;
+};
 
 const props = defineProps<{
-	isMobileOpen: boolean
-	isRailExpanded: boolean
-	activeSection: PortalSection
-}>()
+	isMobileOpen: boolean;
+	isRailExpanded: boolean;
+	activeSection: PortalSection;
+}>();
 
 const emit = defineEmits<{
-	(e: 'close-mobile'): void
-	(e: 'toggle-rail'): void
-}>()
+	(e: 'close-mobile'): void;
+	(e: 'toggle-rail'): void;
+}>();
 
 function handleNavActivate() {
-	emit('close-mobile')
+	emit('close-mobile');
 }
 
 const portalRoles = computed<string[]>(() => {
-	const raw = (window as unknown as { portalRoles?: string[] }).portalRoles
-	if (!Array.isArray(raw)) return []
+	const raw = (window as unknown as { portalRoles?: string[] }).portalRoles;
+	if (!Array.isArray(raw)) return [];
 	return raw
-		.map((role) => String(role || '').trim().toLowerCase())
-		.filter(Boolean)
-})
+		.map(role =>
+			String(role || '')
+				.trim()
+				.toLowerCase()
+		)
+		.filter(Boolean);
+});
 
-const hasStudentPortal = computed(() => portalRoles.value.includes('student'))
-const hasGuardianPortal = computed(() => portalRoles.value.includes('guardian'))
+const hasStudentPortal = computed(() => portalRoles.value.includes('student'));
+const hasGuardianPortal = computed(() => portalRoles.value.includes('guardian'));
 
 const studentMenu: MenuItem[] = [
 	{ label: 'Dashboard', icon: 'home', to: { name: 'student-home' } },
@@ -154,54 +185,54 @@ const studentMenu: MenuItem[] = [
 	{ label: 'Courses', icon: 'book-open', to: { name: 'student-courses' } },
 	{ label: 'Student Log', icon: 'file-text', to: { name: 'student-logs' } },
 	{ label: 'Profile', icon: 'user', to: { name: 'student-profile' } },
-]
+];
 
 const guardianMenu: MenuItem[] = [
 	{ label: 'Family Snapshot', icon: 'home', to: { name: 'guardian-home' } },
 	{ label: 'Activities', icon: 'star', to: { name: 'guardian-activities' } },
 	{ label: 'Showcase Portfolio', icon: 'layers', to: { name: 'guardian-portfolio' } },
-]
+];
 
 const menuItems = computed<MenuItem[]>(() => {
 	if (props.activeSection === 'guardian' && hasGuardianPortal.value) {
-		return guardianMenu
+		return guardianMenu;
 	}
 	if (props.activeSection === 'student' && hasStudentPortal.value) {
-		return studentMenu
+		return studentMenu;
 	}
-	if (hasStudentPortal.value) return studentMenu
-	if (hasGuardianPortal.value) return guardianMenu
-	return []
-})
+	if (hasStudentPortal.value) return studentMenu;
+	if (hasGuardianPortal.value) return guardianMenu;
+	return [];
+});
 
 const switchItems = computed<MenuItem[]>(() => {
-	const items: MenuItem[] = []
+	const items: MenuItem[] = [];
 	if (props.activeSection !== 'student' && hasStudentPortal.value) {
-		items.push({ label: 'Go to Student Portal', icon: 'book-open', to: { name: 'student-home' } })
+		items.push({ label: 'Go to Student Portal', icon: 'book-open', to: { name: 'student-home' } });
 	}
 	if (props.activeSection !== 'guardian' && hasGuardianPortal.value) {
-		items.push({ label: 'Go to Guardian Portal', icon: 'users', to: { name: 'guardian-home' } })
+		items.push({ label: 'Go to Guardian Portal', icon: 'users', to: { name: 'guardian-home' } });
 	}
-	return items
-})
+	return items;
+});
 
 const sidebarLabel = computed(() => {
-	if (props.activeSection === 'guardian') return 'Guardian Portal'
-	return 'Student Portal'
-})
+	if (props.activeSection === 'guardian') return 'Guardian Portal';
+	return 'Student Portal';
+});
 
 const homeLabel = computed(() => {
-	if (props.activeSection === 'guardian') return 'Guardian Home'
-	return 'Student Home'
-})
+	if (props.activeSection === 'guardian') return 'Guardian Home';
+	return 'Student Home';
+});
 
 const homeLink = computed<RouteLocationRaw>(() => {
-	if (props.activeSection === 'guardian') return { name: 'guardian-home' }
-	return { name: 'student-home' }
-})
+	if (props.activeSection === 'guardian') return { name: 'guardian-home' };
+	return { name: 'student-home' };
+});
 
 const accountItems = [
 	{ label: 'Profile', icon: 'user', href: '/app/user-profile' },
-	{ label: 'Logout', icon: 'log-out', href: '/?cmd=web_logout' },
-]
+	{ label: 'Logout', icon: 'log-out', href: '/logout?redirect-to=%2F' },
+];
 </script>

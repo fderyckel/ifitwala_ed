@@ -814,7 +814,3 @@ This Phase 1 design is **clean, conservative, and future-proof**:
 * It respects ERPNext accounting invariants
 * It aligns perfectly with your education domain
 * It leaves room for Phase 2 pricing without refactors
-
-
-
-

@@ -4,9 +4,17 @@ slug: registration-of-interest
 category: Admission
 doc_order: 3
 summary: "Capture family and student intent early, route it into admissions operations, and keep response timing visible."
+seo_title: "Registration of Interest: Early Lead Capture Before Full Application"
+seo_description: "Capture family and student intent early, route it into admissions operations, and keep response timing visible."
 ---
 
-# Registration of Interest: Early Lead Capture Before Full Application
+## Registration of Interest: Early Lead Capture Before Full Application
+
+## Before You Start (Prerequisites)
+
+- Configure `Admission Settings` first so SLA deadlines are set consistently.
+- Ensure lookup masters exist (`Organization`, `School`, and intended academic structures used on the form).
+- Ensure admissions team users are ready to own and follow up new submissions.
 
 `Registration of Interest` is the lightweight front door for families who are not ready for a full application but want to start the conversation.
 
@@ -28,7 +36,22 @@ summary: "Capture family and student intent early, route it into admissions oper
 Use Registration of Interest when you want broad demand capture. Use Inquiry when you are actively managing admission conversations and ownership.
 </Callout>
 
+## Lifecycle and Linked Documents
+
+1. Publish and monitor the registration form as top-of-funnel admissions intake.
+2. New submissions enter operations with SLA deadlines and assignment follow-up patterns.
+3. Admissions staff triage demand and decide which leads should move into managed inquiry/application flows.
+4. Maintain source/channel quality so analytics remain useful for outreach planning.
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/admission/doctype/registration_of_interest/registration_of_interest.json`
+- **Controller file**: `ifitwala_ed/admission/doctype/registration_of_interest/registration_of_interest.py`
+- **Required fields (`reqd=1`)**: none at schema level; controller/workflow rules enforce operational completeness where applicable.
+- **Lifecycle hooks in controller**: `before_insert`, `after_insert`, `before_save`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Registration of Interest` (`ifitwala_ed/admission/doctype/registration_of_interest/`)
 - **Autoname**: `ROI-{YY}-{MM}-{###}`

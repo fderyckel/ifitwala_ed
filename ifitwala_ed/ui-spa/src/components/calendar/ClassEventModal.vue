@@ -8,11 +8,7 @@
   - ScheduleCalendar.vue
 -->
 <template>
-	<TransitionRoot
-		as="template"
-		:show="open"
-		@after-leave="emitAfterLeave"
-	>
+	<TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
 		<Dialog
 			as="div"
 			class="if-overlay if-overlay--class"
@@ -63,7 +59,11 @@
 									{{ data.course_name }}
 								</p>
 							</div>
-							<button class="if-overlay__icon-button" aria-label="Close class modal" @click="emitClose('programmatic')">
+							<button
+								class="if-overlay__icon-button"
+								aria-label="Close class modal"
+								@click="emitClose('programmatic')"
+							>
 								<FeatherIcon name="x" class="h-5 w-5" />
 							</button>
 						</div>
@@ -78,7 +78,9 @@
 
 							<div v-else-if="error" class="meeting-modal__error">
 								<p class="type-body">{{ error }}</p>
-								<button class="meeting-modal__cta" @click="emitClose('programmatic')">Close</button>
+								<button class="meeting-modal__cta" @click="emitClose('programmatic')">
+									Close
+								</button>
 							</div>
 
 							<div v-else-if="data">
@@ -105,7 +107,11 @@
 									<div>
 										<p class="meeting-modal__label type-label">Rotation Day</p>
 										<p class="meeting-modal__value type-body">
-											{{ data.rotation_day !== null && data.rotation_day !== undefined ? `Day ${data.rotation_day}` : '—' }}
+											{{
+												data.rotation_day !== null && data.rotation_day !== undefined
+													? `Day ${data.rotation_day}`
+													: '—'
+											}}
 										</p>
 									</div>
 									<div>
@@ -114,7 +120,9 @@
 									</div>
 									<div>
 										<p class="meeting-modal__label type-label">Location</p>
-										<p class="meeting-modal__value type-body">{{ data.location || 'To be announced' }}</p>
+										<p class="meeting-modal__value type-body">
+											{{ data.location || 'To be announced' }}
+										</p>
 									</div>
 									<div>
 										<p class="meeting-modal__label type-label">School</p>
@@ -126,12 +134,16 @@
 									<header class="meeting-modal__section-heading">
 										<div>
 											<p class="meeting-modal__label type-label">Schedule</p>
-											<p class="meeting-modal__value type-body" v-if="sessionDateLabel">{{ sessionDateLabel }}</p>
+											<p class="meeting-modal__value type-body" v-if="sessionDateLabel">
+												{{ sessionDateLabel }}
+											</p>
 										</div>
 									</header>
 									<p class="meeting-modal__value type-body">
 										{{ timeLabel }}
-										<span v-if="data?.timezone" class="meeting-modal__timezone">({{ data.timezone }})</span>
+										<span v-if="data?.timezone" class="meeting-modal__timezone"
+											>({{ data.timezone }})</span
+										>
 									</p>
 								</section>
 
@@ -202,144 +214,145 @@ import {
 	DialogTitle,
 	TransitionChild,
 	TransitionRoot,
-} from '@headlessui/vue'
-import { FeatherIcon } from 'frappe-ui'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
-import { useOverlayStack } from '@/composables/useOverlayStack'
-import { api } from '@/lib/client'
-import type { ClassEventDetails } from './classEventTypes'
+} from '@headlessui/vue';
+import { FeatherIcon } from 'frappe-ui';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { RouterLink, useRoute } from 'vue-router';
+import { useOverlayStack } from '@/composables/useOverlayStack';
+import { api } from '@/lib/client';
+import type { ClassEventDetails } from './classEventTypes';
 
 const props = defineProps<{
-	open: boolean
-	zIndex?: number
-	eventId?: string | null
-	portalRole?: 'staff' | 'student' | 'guardian'
-}>()
+	open: boolean;
+	zIndex?: number;
+	eventId?: string | null;
+	portalRole?: 'staff' | 'student' | 'guardian';
+}>();
 
-const overlay = useOverlayStack()
-const route = useRoute()
+const overlay = useOverlayStack();
+const route = useRoute();
 
-type CloseReason = 'backdrop' | 'esc' | 'programmatic'
+type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
 const emit = defineEmits<{
-	(e: 'close', reason: CloseReason): void
-	(e: 'create-announcement', event: ClassEventDetails): void
-	(e: 'create-task', payload: { studentGroup: string; dueDate: string | null }): void
-	(e: 'after-leave'): void
-}>()
+	(e: 'close', reason: CloseReason): void;
+	(e: 'create-announcement', event: ClassEventDetails): void;
+	(e: 'create-task', payload: { studentGroup: string; dueDate: string | null }): void;
+	(e: 'after-leave'): void;
+}>();
 
 const overlayStyle = computed(() => {
-	return props.zIndex ? ({ zIndex: props.zIndex } as Record<string, any>) : undefined
-})
+	return props.zIndex ? ({ zIndex: props.zIndex } as Record<string, any>) : undefined;
+});
 
-const loading = ref(false)
-const error = ref<string | null>(null)
-const data = ref<ClassEventDetails | null>(null)
+const loading = ref(false);
+const error = ref<string | null>(null);
+const data = ref<ClassEventDetails | null>(null);
 
-let requestSeq = 0
+let requestSeq = 0;
 
 watch(
 	() => [props.open, props.eventId] as const,
 	async ([isOpen, eventId]) => {
-		if (!isOpen) return
+		if (!isOpen) return;
 		if (!eventId) {
-			loading.value = false
-			error.value = 'Could not determine which class was clicked. Please refresh and try again.'
-			data.value = null
-			return
+			loading.value = false;
+			error.value = 'Could not determine which class was clicked. Please refresh and try again.';
+			data.value = null;
+			return;
 		}
 
-		loading.value = true
-		error.value = null
-		data.value = null
+		loading.value = true;
+		error.value = null;
+		data.value = null;
 
-		const seq = ++requestSeq
+		const seq = ++requestSeq;
 		try {
 			const payload = (await api('ifitwala_ed.api.calendar.get_student_group_event_details', {
 				event_id: eventId,
-			})) as ClassEventDetails
+			})) as ClassEventDetails;
 
 			if (seq === requestSeq) {
-				data.value = payload
+				data.value = payload;
 			}
 		} catch (err) {
 			if (seq === requestSeq) {
-				error.value = err instanceof Error ? err.message : 'Unable to load class details right now.'
+				error.value =
+					err instanceof Error ? err.message : 'Unable to load class details right now.';
 			}
 		} finally {
 			if (seq === requestSeq) {
-				loading.value = false
+				loading.value = false;
 			}
 		}
 	},
 	{ immediate: true }
-)
+);
 
-const courseLabel = computed(() => data.value?.course_name || data.value?.course || '—')
+const courseLabel = computed(() => data.value?.course_name || data.value?.course || '—');
 
 const sessionDateLabel = computed(() => {
-	if (!data.value?.session_date) return ''
+	if (!data.value?.session_date) return '';
 	try {
-		const date = new Date(data.value.session_date)
+		const date = new Date(data.value.session_date);
 		return new Intl.DateTimeFormat(undefined, {
 			weekday: 'long',
 			month: 'long',
 			day: 'numeric',
 			year: 'numeric',
-		}).format(date)
+		}).format(date);
 	} catch {
-		return data.value.session_date ?? ''
+		return data.value.session_date ?? '';
 	}
-})
+});
 
 function safeDate(value?: string | null) {
-	if (!value) return null
-	const date = new Date(value)
-	if (Number.isNaN(date.getTime())) return null
-	return date
+	if (!value) return null;
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return null;
+	return date;
 }
 
 const timeLabel = computed(() => {
-	const start = safeDate(data.value?.start)
-	if (!start) return 'Time to be confirmed'
-	const end = safeDate(data.value?.end)
-	const timezone = data.value?.timezone || undefined
+	const start = safeDate(data.value?.start);
+	if (!start) return 'Time to be confirmed';
+	const end = safeDate(data.value?.end);
+	const timezone = data.value?.timezone || undefined;
 	const formatter = new Intl.DateTimeFormat(undefined, {
 		hour: 'numeric',
 		minute: '2-digit',
 		timeZone: timezone,
-	})
-	if (!end) return formatter.format(start)
-	return `${formatter.format(start)} – ${formatter.format(end)}`
-})
+	});
+	if (!end) return formatter.format(start);
+	return `${formatter.format(start)} – ${formatter.format(end)}`;
+});
 
 const attendanceLink = computed(() => {
-	if (!data.value?.student_group) return { name: 'staff-attendance' }
-	return { name: 'staff-attendance', query: { student_group: data.value.student_group } }
-})
+	if (!data.value?.student_group) return { name: 'staff-attendance' };
+	return { name: 'staff-attendance', query: { student_group: data.value.student_group } };
+});
 
 const gradebookLink = computed(() => {
-	if (!data.value?.student_group) return { name: 'staff-gradebook' }
-	return { name: 'staff-gradebook', query: { student_group: data.value.student_group } }
-})
+	if (!data.value?.student_group) return { name: 'staff-gradebook' };
+	return { name: 'staff-gradebook', query: { student_group: data.value.student_group } };
+});
 
 const isStudentPortal = computed(() => {
-	if (props.portalRole) return props.portalRole === 'student'
-	return typeof route.name === 'string' && route.name.startsWith('student-')
-})
+	if (props.portalRole) return props.portalRole === 'student';
+	return typeof route.name === 'string' && route.name.startsWith('student-');
+});
 
 const studentCourseLink = computed(() => {
-	if (!data.value?.course) return { name: 'student-courses' as const }
-	return { name: 'student-course-detail' as const, params: { course_id: data.value.course } }
-})
+	if (!data.value?.course) return { name: 'student-courses' as const };
+	return { name: 'student-course-detail' as const, params: { course_id: data.value.course } };
+});
 
 function emitClose(reason: CloseReason = 'programmatic') {
-	emit('close', reason)
+	emit('close', reason);
 }
 
 function emitCreateAnnouncement() {
-	if (!data.value) return
+	if (!data.value) return;
 
 	// Replace current modal with announcement quick-create overlay
 	// (You must have this overlay type + component registered in OverlayHost)
@@ -347,26 +360,24 @@ function emitCreateAnnouncement() {
 		// keep it minimal: pass what the quick-create needs
 		studentGroup: data.value.student_group || null,
 		title: data.value.title || '',
-	})
+	});
 }
 
 function emitCreateTask() {
-	if (!data.value?.student_group) return
+	if (!data.value?.student_group) return;
 
 	// Clean handoff: class modal disappears, create-task appears as top
 	overlay.replaceTop('create-task', {
 		prefillStudentGroup: data.value.student_group,
 		prefillDueDate: data.value.end || data.value.start || null,
-	})
+	});
 }
-
-
 
 function emitAfterLeave() {
-	emit('after-leave')
+	emit('after-leave');
 }
 
-const initialFocus = ref<HTMLElement | null>(null)
+const initialFocus = ref<HTMLElement | null>(null);
 
 /**
  * HeadlessUI Dialog @close payload is ambiguous (boolean/undefined).
@@ -377,20 +388,20 @@ function onDialogClose(_payload: unknown) {
 }
 
 function onKeydown(e: KeyboardEvent) {
-	if (!props.open) return
-	if (e.key === 'Escape') emitClose('esc')
+	if (!props.open) return;
+	if (e.key === 'Escape') emitClose('esc');
 }
 
 watch(
 	() => props.open,
-	(v) => {
-		if (v) document.addEventListener('keydown', onKeydown, true)
-		else document.removeEventListener('keydown', onKeydown, true)
+	v => {
+		if (v) document.addEventListener('keydown', onKeydown, true);
+		else document.removeEventListener('keydown', onKeydown, true);
 	},
 	{ immediate: true }
-)
+);
 
 onBeforeUnmount(() => {
-	document.removeEventListener('keydown', onKeydown, true)
-})
+	document.removeEventListener('keydown', onKeydown, true);
+});
 </script>

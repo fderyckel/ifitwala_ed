@@ -66,6 +66,12 @@ Current create flow:
 
 Role handling now follows managed sync:
 - on employee save, `sync_user_access_from_employee` computes effective roles/workspace from employee history + designation defaults.
+- on employee save, linked `User.enabled` is enforced from `Employee.employment_status`:
+  - `Active` -> `enabled = 1`
+  - any other status (`Temporary Leave`, `Suspended`, `Left`, or blank) -> `enabled = 0`
+- role rows are preserved; status gating is enforced via user enable/disable state (no role stripping for non-active employees).
+- routing policy resolves active employee status using `Employee.user_id` first, then an unambiguous active match on `employee_professional_email` to avoid false-negative staff routing when legacy user links are missing.
+- at login, if a staff user has no active `Employee.user_id` link but exactly one active `Employee` row matches `employee_professional_email`, the system self-heals `user_id` and re-runs access sync.
 - designation-trigger path in `Employee._apply_designation_role()` now also handles first-time user linkage (`user_id` newly set), not only designation changes.
 - role-management authorization includes `HR User`, `HR Manager`, `System Manager`, and `Administrator`.
 
@@ -105,3 +111,13 @@ Impact: HR User can execute the same controlled role-assignment automation as HR
 We decided to grant pre-join baseline role access from designation when a user is created before joining date, while not applying workspace until active history exists.
 Reason: onboarding requires immediate account usability, but workspace/default context should remain tied to active employment rows.
 Impact: pre-join users get baseline role access; workspace is deferred until current history rows are active.
+
+[2026-02-18] Decision:
+We decided that employee account access is strictly controlled by `Employee.employment_status`, and only `Active` keeps the linked `User` enabled.
+Reason: non-active employees must not access either Desk or Portal while retaining historical role assignments.
+Impact: the employee sync hook now toggles `User.enabled` automatically and blocks login/access for non-active employee statuses.
+
+[2026-02-18] Decision:
+We decided to self-heal missing active Employee-to-User links at login when there is exactly one unambiguous active match on `employee_professional_email`.
+Reason: historical data can miss `Employee.user_id`, which produced false-negative staff redirects and sent active staff users to the student portal.
+Impact: successful login now repairs the link and re-applies access sync before role-based portal redirect is resolved.

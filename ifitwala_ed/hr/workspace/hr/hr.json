@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"2ZEKCIFXhC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Staff Calendar\",\"col\":3}},{\"id\":\"jWVGn2pXes\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Employee\",\"col\":3}},{\"id\":\"N5HOjIizuz\",\"type\":\"header\",\"data\":{\"text\":\"<br>\",\"col\":12}},{\"id\":\"2RtsIQZnHc\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}},{\"id\":\"TWmZIg6AHQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Professional Growth Plan\",\"col\":4}},{\"id\":\"cQh43EktlU\",\"type\":\"card\",\"data\":{\"card_name\":\"HR Settings\",\"col\":4}},{\"id\":\"Yp4LCkAfaM\",\"type\":\"card\",\"data\":{\"card_name\":\"Communication\",\"col\":4}}]",
+ "content": "[{\"id\":\"2ZEKCIFXhC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Staff Calendar\",\"col\":3}},{\"id\":\"jWVGn2pXes\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Employee\",\"col\":3}},{\"id\":\"N5HOjIizuz\",\"type\":\"header\",\"data\":{\"text\":\"<br>\",\"col\":12}},{\"id\":\"2RtsIQZnHc\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}},{\"id\":\"TWmZIg6AHQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Professional Growth Plan\",\"col\":4}},{\"id\":\"Yp4LCkAfaM\",\"type\":\"card\",\"data\":{\"card_name\":\"Communication\",\"col\":4}},{\"id\":\"JL5e-ow9vG\",\"type\":\"card\",\"data\":{\"card_name\":\"Leave\",\"col\":4}},{\"id\":\"cQh43EktlU\",\"type\":\"card\",\"data\":{\"card_name\":\"HR Settings\",\"col\":4}}]",
  "creation": "2025-04-22 08:21:35.205048",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,55 +13,6 @@
  "is_hidden": 0,
  "label": "HR",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "HR Settings",
-   "link_count": 4,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Designation",
-   "link_count": 0,
-   "link_to": "Designation",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Department",
-   "link_count": 0,
-   "link_to": "Department",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Employee Group",
-   "link_count": 0,
-   "link_to": "Employee Group",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Employment Type",
-   "link_count": 0,
-   "link_to": "Employment Type",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -87,46 +38,6 @@
    "label": "Staff Calendar",
    "link_count": 0,
    "link_to": "Staff Calendar",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Leave Application",
-   "link_count": 0,
-   "link_to": "Leave Application",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Leave Allocation",
-   "link_count": 0,
-   "link_to": "Leave Allocation",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Leave Policy Assignment",
-   "link_count": 0,
-   "link_to": "Leave Policy Assignment",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Leave Control Panel",
-   "link_count": 0,
-   "link_to": "Leave Control Panel",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -208,9 +119,127 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "HR Settings",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Designation",
+   "link_count": 0,
+   "link_to": "Designation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Department",
+   "link_count": 0,
+   "link_to": "Department",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employee Group",
+   "link_count": 0,
+   "link_to": "Employee Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employment Type",
+   "link_count": 0,
+   "link_to": "Employment Type",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Leave Control Panel",
+   "link_count": 0,
+   "link_to": "Leave Control Panel",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Leave",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Leave Allocation",
+   "link_count": 0,
+   "link_to": "Leave Allocation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Leave Application",
+   "link_count": 0,
+   "link_to": "Leave Application",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Leave Block List",
+   "link_count": 0,
+   "link_to": "Leave Block List",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Leave Adjustment",
+   "link_count": 0,
+   "link_to": "Leave Adjustment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Leave Encashment",
+   "link_count": 0,
+   "link_to": "Leave Encashment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-01-31 11:32:48.374438",
+ "modified": "2026-02-19 15:21:44.691915",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",
@@ -248,22 +277,6 @@
    "doc_view": "List",
    "label": "Staff Calendar",
    "link_to": "Staff Calendar",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Blue",
-   "doc_view": "List",
-   "label": "Leave Application",
-   "link_to": "Leave Application",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Orange",
-   "doc_view": "List",
-   "label": "Leave Allocation",
-   "link_to": "Leave Allocation",
    "stats_filter": "[]",
    "type": "DocType"
   }

@@ -93,9 +93,7 @@
 							>
 								<FeatherIcon name="message-circle" class="h-3 w-3" />
 								<span>Comments</span>
-								<span class="text-[10px] text-slate-token/60">
-									({{ commentCount }})
-								</span>
+								<span class="text-[10px] text-slate-token/60"> ({{ commentCount }}) </span>
 							</button>
 						</div>
 
@@ -110,7 +108,7 @@
 								v-if="interaction"
 								:interaction="interaction"
 								:readonly="false"
-								:on-react="(code) => $emit('react', code)"
+								:on-react="code => $emit('react', code)"
 							/>
 						</div>
 					</div>
@@ -125,62 +123,60 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Button, FeatherIcon } from 'frappe-ui'
-import { getInteractionStats } from '@/utils/interactionStats'
-import type { InteractionSummary } from '@/types/morning_brief'
-import type { ReactionCode } from '@/types/interactions'
-import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue'
+import { computed } from 'vue';
+import { Button, FeatherIcon } from 'frappe-ui';
+import { getInteractionStats } from '@/utils/interactionStats';
+import type { InteractionSummary } from '@/types/morning_brief';
+import type { ReactionCode } from '@/types/interactions';
+import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 
 defineOptions({
-	inheritAttrs: false
-})
+	inheritAttrs: false,
+});
 
 const props = defineProps<{
-	modelValue: boolean
-	title?: string
-	subtitle?: string
-	content?: string
-	image?: string
-	imageFallback?: string
-	badge?: string
-	interaction?: InteractionSummary
-	showInteractions?: boolean
-	showComments?: boolean
-}>()
+	modelValue: boolean;
+	title?: string;
+	subtitle?: string;
+	content?: string;
+	image?: string;
+	imageFallback?: string;
+	badge?: string;
+	interaction?: InteractionSummary;
+	showInteractions?: boolean;
+	showComments?: boolean;
+}>();
 
 const emit = defineEmits<{
-	'update:modelValue': [boolean]
-	acknowledge: []
-	'open-comments': []
-	react: [ReactionCode]
-}>()
+	'update:modelValue': [boolean];
+	acknowledge: [];
+	'open-comments': [];
+	react: [ReactionCode];
+}>();
 
 const hasHeaderContent = computed(
 	() => !!(props.title || props.subtitle || props.image || props.imageFallback || props.badge)
-)
+);
 
 const isOpen = computed({
 	get: () => props.modelValue,
-	set: (value: boolean) => emit('update:modelValue', value)
-})
+	set: (value: boolean) => emit('update:modelValue', value),
+});
 
 const interaction = computed<InteractionSummary>(() => ({
-  counts: {},
-  self: null,
-  reaction_counts: {},
-  reactions_total: 0,
-  comments_total: 0,
-  ...(props.interaction ?? {})
-}))
+	counts: {},
+	self: null,
+	reaction_counts: {},
+	reactions_total: 0,
+	comments_total: 0,
+	...(props.interaction ?? {}),
+}));
 
-const stats = computed(() => getInteractionStats(interaction.value))
+const stats = computed(() => getInteractionStats(interaction.value));
 
 // HTML straight-through from Org Communication.message
-const contentHtml = computed(() => props.content || '')
+const contentHtml = computed(() => props.content || '');
 
 // Comment count = thread entries (Comment + Question)
-const commentCount = computed(() => stats.value.comments_total ?? 0)
-
-
+const commentCount = computed(() => stats.value.comments_total ?? 0);
 </script>

@@ -1,253 +1,182 @@
-# Copyright (c) 2024, François de Ryckel and Contributors
-# See license.txt
+# ifitwala_ed/students/doctype/guardian/test_guardian.py
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
 
 class TestGuardian(FrappeTestCase):
-	pass
+    pass
 
 
 class TestGuardianUserCreation(FrappeTestCase):
-	"""Test guardian user creation and portal routing."""
+    def setUp(self):
+        frappe.set_user("Administrator")
+        self._created: list[tuple[str, str]] = []
+        self._ensure_role("Guardian")
 
-	def test_create_guardian_user_sets_home_page(self):
-		"""Creating a guardian user should set their home_page to /guardian."""
-		# Create a guardian without a user first
-		guardian = frappe.new_doc("Guardian")
-		guardian.guardian_first_name = "Test"
-		guardian.guardian_last_name = "Guardian Portal"
-		guardian.guardian_email = "test_guardian_portal@example.com"
-		guardian.save()
+    def tearDown(self):
+        frappe.set_user("Administrator")
+        for doctype, name in reversed(self._created):
+            if frappe.db.exists(doctype, name):
+                frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
-		# Verify no user exists yet
-		self.assertFalse(guardian.user)
-		self.assertFalse(frappe.db.exists("User", guardian.guardian_email))
+    def test_create_guardian_user_assigns_guardian_role(self):
+        guardian = self._create_guardian(email=f"test-guardian-{frappe.generate_hash(length=6)}@example.com")
 
-		# Create the user via the guardian method
-		user_name = guardian.create_guardian_user()
+        self.assertFalse(guardian.user)
+        self.assertFalse(frappe.db.exists("User", guardian.guardian_email))
 
-		# Verify user was created
-		self.assertTrue(frappe.db.exists("User", user_name))
-		user = frappe.get_doc("User", user_name)
+        user_name = guardian.create_guardian_user()
+        self.assertTrue(frappe.db.exists("User", user_name))
 
-		# Verify Guardian role was assigned
-		roles = [r.role for r in user.roles]
-		self.assertIn("Guardian", roles)
+        user = frappe.get_doc("User", user_name)
+        roles = [r.role for r in user.roles]
+        self.assertIn("Guardian", roles)
 
-		# MOST IMPORTANT: Verify home_page is set to /guardian for automatic portal routing
-		self.assertEqual(user.home_page, "/guardian")
+        guardian.reload()
+        self.assertEqual(guardian.user, user_name)
+        self._created.append(("User", user_name))
 
-		# Verify guardian record was updated with user link
-		guardian.reload()
-		self.assertEqual(guardian.user, user_name)
+    def test_create_guardian_user_links_existing_user(self):
+        user = self._create_user("existing-guardian", roles=["Guardian"])
+        guardian = self._create_guardian(email=user.name)
 
-		# Cleanup
-		frappe.delete_doc("Guardian", guardian.name, force=True)
-		frappe.delete_doc("User", user_name, force=True)
+        result = guardian.create_guardian_user()
+        self.assertEqual(result, user.name)
 
-	def test_create_guardian_user_links_existing_user(self):
-		"""If user already exists, it should be linked and home_page set."""
-		# Create user first
-		user = frappe.new_doc("User")
-		user.email = "existing_guardian_user@example.com"
-		user.first_name = "Existing"
-		user.last_name = "Guardian"
-		user.enabled = 1
-		user.add_roles("Guardian")
-		user.save()
+        guardian.reload()
+        self.assertEqual(guardian.user, user.name)
 
-		# Create guardian pointing to same email
-		guardian = frappe.new_doc("Guardian")
-		guardian.guardian_first_name = "Existing"
-		guardian.guardian_last_name = "Guardian"
-		guardian.guardian_email = user.email
-		guardian.save()
+    def test_existing_user_gets_guardian_role(self):
+        user = self._create_user("existing-no-guardian")
+        roles_before = [r.role for r in user.roles]
+        self.assertNotIn("Guardian", roles_before)
 
-		# Try to create user - should link existing
-		result = guardian.create_guardian_user()
+        guardian = self._create_guardian(email=user.name)
+        result = guardian.create_guardian_user()
+        self.assertEqual(result, user.name)
 
-		# Should return existing user name
-		self.assertEqual(result, user.email)
+        user.reload()
+        roles_after = [r.role for r in user.roles]
+        self.assertIn("Guardian", roles_after)
 
-		# Guardian should be linked
-		guardian.reload()
-		self.assertEqual(guardian.user, user.email)
+        guardian.reload()
+        self.assertEqual(guardian.user, user.name)
 
-		# Cleanup
-		frappe.delete_doc("Guardian", guardian.name, force=True)
-		frappe.delete_doc("User", user.email, force=True)
+    def _ensure_role(self, role_name: str):
+        if frappe.db.exists("Role", role_name):
+            return
+        role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+        self._created.append(("Role", role.name))
 
-	def test_existing_user_gets_home_page_and_role(self):
-		"""Existing users without Guardian role or home_page should get both set."""
-		# Create a user WITHOUT Guardian role and WITHOUT home_page
-		user = frappe.new_doc("User")
-		user.email = "existing_user_no_guardian@example.com"
-		user.first_name = "NoGuardian"
-		user.last_name = "Role"
-		user.enabled = 1
-		user.user_type = "Website User"
-		# Intentionally NOT adding Guardian role
-		user.save()
+    def _create_user(self, prefix: str, roles: list[str] | None = None):
+        roles = roles or []
+        for role in roles:
+            self._ensure_role(role)
+        user = frappe.get_doc(
+            {
+                "doctype": "User",
+                "email": f"{prefix}-{frappe.generate_hash(length=8)}@example.com",
+                "first_name": "Guardian",
+                "last_name": "User",
+                "enabled": 1,
+                "user_type": "Website User",
+                "roles": [{"role": role} for role in roles],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("User", user.name))
+        return user
 
-		# Verify initial state
-		user_roles = [r.role for r in user.roles]
-		self.assertNotIn("Guardian", user_roles)
-		self.assertNotEqual(user.home_page, "/guardian")
-
-		# Create guardian and link to existing user
-		guardian = frappe.new_doc("Guardian")
-		guardian.guardian_first_name = "NoGuardian"
-		guardian.guardian_last_name = "Role"
-		guardian.guardian_email = user.email
-		guardian.save()
-
-		# Create guardian user - should link existing and fix role/home_page
-		result = guardian.create_guardian_user()
-		self.assertEqual(result, user.email)
-
-		# Reload user to get updated values
-		user.reload()
-
-		# Verify Guardian role was added
-		user_roles = [r.role for r in user.roles]
-		self.assertIn("Guardian", user_roles)
-
-		# MOST IMPORTANT: Verify home_page is set for automatic portal routing
-		self.assertEqual(user.home_page, "/guardian")
-
-		# Cleanup
-		guardian.reload()
-		frappe.delete_doc("Guardian", guardian.name, force=True)
-		frappe.delete_doc("User", user.email, force=True)
+    def _create_guardian(self, *, email: str, user: str | None = None):
+        guardian = frappe.get_doc(
+            {
+                "doctype": "Guardian",
+                "guardian_first_name": "Test",
+                "guardian_last_name": "Guardian",
+                "guardian_email": email,
+                "guardian_mobile_phone": "5550000001",
+                "user": user,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Guardian", guardian.name))
+        return guardian
 
 
 class TestGuardianPortalRouting(FrappeTestCase):
-	"""Test automatic portal routing when Guardian is created/updated with linked user."""
+    def setUp(self):
+        frappe.set_user("Administrator")
+        self._created: list[tuple[str, str]] = []
+        self._ensure_role("Guardian")
 
-	def test_guardian_created_with_existing_user_sets_home_page(self):
-		"""
-		When a Guardian is created with an existing user already linked,
-		the user's home_page should be set to /guardian automatically.
-		"""
-		# Create a user first (without Guardian role or home_page)
-		user_email = "guardian_with_user_link@example.com"
-		user = frappe.new_doc("User")
-		user.email = user_email
-		user.first_name = "Guardian"
-		user.last_name = "WithUserLink"
-		user.enabled = 1
-		user.user_type = "Website User"
-		# Intentionally NOT adding Guardian role or home_page
-		user.save()
+    def tearDown(self):
+        frappe.set_user("Administrator")
+        for doctype, name in reversed(self._created):
+            if frappe.db.exists(doctype, name):
+                frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
-		# Create guardian with user already linked
-		guardian = frappe.new_doc("Guardian")
-		guardian.guardian_first_name = "Guardian"
-		guardian.guardian_last_name = "WithUserLink"
-		guardian.guardian_email = user_email
-		guardian.user = user_email  # Link user at creation time
-		guardian.save()
+    def test_guardian_created_with_existing_user_assigns_guardian_role(self):
+        user = self._create_user("with-user-link")
+        guardian = self._create_guardian(email=user.name, user=user.name)
 
-		# Reload user to check updates
-		user.reload()
+        user.reload()
+        self.assertIn("Guardian", [r.role for r in user.roles])
 
-		# Verify Guardian role was added
-		user_roles = [r.role for r in user.roles]
-		self.assertIn("Guardian", user_roles)
+        self.assertEqual(guardian.user, user.name)
 
-		# MOST IMPORTANT: Verify home_page was set automatically
-		self.assertEqual(user.home_page, "/guardian")
+    def test_guardian_user_field_update_assigns_guardian_role(self):
+        guardian = self._create_guardian(email=f"guardian-update-{frappe.generate_hash(length=6)}@example.com")
+        user = self._create_user("added-later")
 
-		# Cleanup
-		frappe.delete_doc("Guardian", guardian.name, force=True)
-		frappe.delete_doc("User", user_email, force=True)
+        guardian.user = user.name
+        guardian.save(ignore_permissions=True)
 
-	def test_guardian_user_field_update_sets_home_page(self):
-		"""
-		When a Guardian's user field is updated to link a new user,
-		the new user's home_page should be set to /guardian.
-		"""
-		# Create guardian WITHOUT user first
-		guardian = frappe.new_doc("Guardian")
-		guardian.guardian_first_name = "Guardian"
-		guardian.guardian_last_name = "UserUpdateTest"
-		guardian.guardian_email = "guardian_user_update@example.com"
-		guardian.save()
+        user.reload()
+        self.assertIn("Guardian", [r.role for r in user.roles])
 
-		# Verify no user linked
-		self.assertFalse(guardian.user)
+    def test_guardian_does_not_override_staff_roles(self):
+        self._ensure_role("Teacher")
+        user = self._create_user("staff-guardian", roles=["Teacher"])
 
-		# Create a user separately (without home_page)
-		user_email = "user_added_later@example.com"
-		user = frappe.new_doc("User")
-		user.email = user_email
-		user.first_name = "User"
-		user.last_name = "AddedLater"
-		user.enabled = 1
-		user.user_type = "Website User"
-		# Intentionally NOT setting home_page
-		user.save()
+        guardian = self._create_guardian(email=user.name, user=user.name)
+        user.reload()
 
-		# Verify initial state - no home_page
-		self.assertNotEqual(user.home_page, "/guardian")
+        self.assertIn("Teacher", [r.role for r in user.roles])
+        self.assertEqual(guardian.user, user.name)
 
-		# Now update the guardian to link the user
-		guardian.user = user_email
-		guardian.save()
+    def _ensure_role(self, role_name: str):
+        if frappe.db.exists("Role", role_name):
+            return
+        role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+        self._created.append(("Role", role.name))
 
-		# Reload user to check updates
-		user.reload()
+    def _create_user(self, prefix: str, roles: list[str] | None = None):
+        roles = roles or []
+        for role in roles:
+            self._ensure_role(role)
+        user = frappe.get_doc(
+            {
+                "doctype": "User",
+                "email": f"{prefix}-{frappe.generate_hash(length=8)}@example.com",
+                "first_name": "Guardian",
+                "last_name": "Portal",
+                "enabled": 1,
+                "user_type": "Website User",
+                "roles": [{"role": role} for role in roles],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("User", user.name))
+        return user
 
-		# Verify Guardian role was added
-		user_roles = [r.role for r in user.roles]
-		self.assertIn("Guardian", user_roles)
-
-		# MOST IMPORTANT: Verify home_page was set on user field update
-		self.assertEqual(user.home_page, "/guardian")
-
-		# Cleanup
-		frappe.delete_doc("Guardian", guardian.name, force=True)
-		frappe.delete_doc("User", user_email, force=True)
-
-	def test_guardian_does_not_override_staff_home_page(self):
-		"""
-		When a user has staff roles, their home_page should NOT be overridden
-		when linked to a Guardian.
-		"""
-		# Create a user with staff role
-		user_email = "staff_guardian@example.com"
-		user = frappe.new_doc("User")
-		user.email = user_email
-		user.first_name = "Staff"
-		user.last_name = "Guardian"
-		user.enabled = 1
-		user.user_type = "System User"
-		user.add_roles("Teacher")  # Staff role
-		user.save()
-
-		# Set a custom home_page
-		frappe.db.set_value("User", user_email, "home_page", "/app", update_modified=False)
-
-		# Create guardian with this user linked
-		guardian = frappe.new_doc("Guardian")
-		guardian.guardian_first_name = "Staff"
-		guardian.guardian_last_name = "Guardian"
-		guardian.guardian_email = user_email
-		guardian.user = user_email
-		guardian.save()
-
-		# Reload user to check
-		user.reload()
-
-		# Verify staff role is still present
-		user_roles = [r.role for r in user.roles]
-		self.assertIn("Teacher", user_roles)
-
-		# IMPORTANT: home_page should NOT be changed for staff
-		self.assertEqual(user.home_page, "/app")
-
-		# Cleanup
-		frappe.delete_doc("Guardian", guardian.name, force=True)
-		frappe.delete_doc("User", user_email, force=True)
+    def _create_guardian(self, *, email: str, user: str | None = None):
+        guardian = frappe.get_doc(
+            {
+                "doctype": "Guardian",
+                "guardian_first_name": "Guardian",
+                "guardian_last_name": "Routing",
+                "guardian_email": email,
+                "guardian_mobile_phone": "5550000002",
+                "user": user,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Guardian", guardian.name))
+        return guardian

@@ -4,9 +4,17 @@ slug: task-outcome
 category: Assessment
 doc_order: 7
 summary: "Maintain one authoritative outcome per student per delivery, with official scores/grades, criterion truth, statuses, and publication controls."
+seo_title: "Task Outcome: The Official Student-Level Assessment Record"
+seo_description: "Maintain one authoritative outcome per student per delivery, with official scores/grades, criterion truth, statuses, and publication controls."
 ---
 
-# Task Outcome: The Official Student-Level Assessment Record
+## Task Outcome: The Official Student-Level Assessment Record
+
+## Before You Start (Prerequisites)
+
+- Submit the parent `Task Delivery` first; outcomes are generated from delivery + student roster.
+- Ensure the student is part of the linked group at generation time.
+- Lock grading policy inputs at delivery level before active grading begins.
 
 `Task Outcome` is the institutional truth row for a student on a specific delivery. Submissions and contributions can evolve, but the outcome is where official status and released results live.
 
@@ -31,7 +39,29 @@ Exactly one outcome exists for each `Task Delivery × Student` pair, protected b
 - Term reporting source data:
   - `ifitwala_ed/assessment/term_reporting.py` aggregates outcomes into [**Course Term Result**](/docs/en/course-term-result/).
 
+## Lifecycle and Linked Documents
+
+1. Generate outcomes from submitted delivery (one row per student).
+2. Accept submissions and contribution inputs over time while preserving grading traceability.
+3. Maintain official criterion and grade truth in this doctype.
+4. Publish/unpublish outcomes as part of controlled communication and reporting workflows.
+
+<Callout type="warning" title="Identity immutability">
+Outcome identity (`task_delivery`, `task`, `student`) is protected by controller and index guards to prevent duplicate truth rows.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/task_outcome/task_outcome.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/task_outcome/task_outcome.py`
+- **Required fields (`reqd=1`)**:
+  - `task_delivery` (`Link` -> `Task Delivery`)
+  - `task` (`Link` -> `Task`)
+  - `student` (`Link` -> `Student`)
+- **Lifecycle hooks in controller**: `before_validate`, `validate`, `on_update`, `on_doctype_update`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Task Outcome` (`ifitwala_ed/assessment/doctype/task_outcome/`)
 - **Autoname**: `TOU-{YYYY}-{MM}-{#####}`

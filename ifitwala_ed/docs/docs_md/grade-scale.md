@@ -4,9 +4,17 @@ slug: grade-scale
 category: Assessment
 doc_order: 3
 summary: "Define grade boundaries once and apply them consistently across tasks, outcomes, moderation, and term reporting."
+seo_title: "Grade Scale: Converting Scores into Institutional Meaning"
+seo_description: "Define grade boundaries once and apply them consistently across tasks, outcomes, moderation, and term reporting."
 ---
 
-# Grade Scale: Converting Scores into Institutional Meaning
+## Grade Scale: Converting Scores into Institutional Meaning
+
+## Before You Start (Prerequisites)
+
+- Finalize institutional grading policy and band boundaries first.
+- Create scales and interval boundaries before running grading flows (`Task Delivery`, `Task Outcome`, reporting).
+- Set scale defaults on curriculum/scheduling masters (`Program`, `Course`) for consistent downstream prefill.
 
 A score by itself is not policy. `Grade Scale` turns raw numbers into grade symbols and descriptors your institution stands behind.
 
@@ -31,7 +39,27 @@ When grade boundaries live in one master place, teachers can grade quickly while
   - [**Course**](/docs/en/course/)
   - `Program Offering` and `Program Offering Course`
 
+## Lifecycle and Linked Documents
+
+1. Define grade boundaries and descriptors as institutional policy first.
+2. Set defaults on curriculum entities (`Program`, `Course`, and task contexts).
+3. Teachers grade through deliveries/outcomes; services validate and convert values using this scale.
+4. Term reporting stores grade-scale context so historical reports remain interpretable.
+
+<Callout type="warning" title="Policy stability">
+Adjusting boundary logic mid-term affects interpretation across active grading work. Plan changes for clean cycle boundaries when possible.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/grade_scale/grade_scale.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/grade_scale/grade_scale.py`
+- **Required fields (`reqd=1`)**:
+  - `grade_scale_name` (`Data`)
+- **Lifecycle hooks in controller**: none (reference/master behavior, or handled by framework defaults).
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Grade Scale` (`ifitwala_ed/assessment/doctype/grade_scale/`)
 - **Autoname**: `field:grade_scale_name`

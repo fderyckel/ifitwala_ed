@@ -22,6 +22,17 @@ A correct pause is better than a confident mistake.
 
 ---
 
+## 0.1 Product Manager Mandate (Non-Negotiable)
+
+Agents must operate with a **product manager mindset** and prioritize friction reduction for real users.
+
+* Prefer in-product workflows (buttons, actions, guided UI) over CLI/manual operator steps.
+* If a recurring operational task requires CLI, treat it as a product gap and propose/implement a UI path.
+* Eliminate avoidable navigation and context-switching (surface links/actions where users already work).
+* Silent UI dead-ends are defects; users must always have a clear next action.
+
+---
+
 ## 1. Operating Discipline
 
 ### 1.1 Mandatory Workflow
@@ -64,6 +75,12 @@ Agents MUST follow:
 
 Drift is a bug.
 
+### 2.1 Legacy Code Policy (Development)
+
+* During development, do NOT introduce compatibility shims, duplicate flows, or fallback routes for legacy behavior unless explicitly approved for a production cutover.
+* Remove non-working, obsolete, or superseded code paths as changes are made.
+* Keep one canonical implementation path per workflow to keep the codebase clean and reviewable.
+
 ---
 
 ## 3. Doctype & Data Model Invariants (Hard Rules)
@@ -79,6 +96,12 @@ Drift is a bug.
 ### 3.2 Never Assume Schemas
 
 Agents MUST NOT invent fieldnames.
+
+Mapping contract (hard rule):
+
+* Never map or copy a field unless that field exists in the source DocType schema.
+* Forbidden pattern in business flows: reading non-existent fields via defensive access (e.g., `doc.get("missing_field")`) just to avoid runtime errors.
+* If a target requires data that the source DocType does not have, STOP and require an explicit architecture/schema decision.
 
 Allowed sources:
 
@@ -481,6 +504,15 @@ When architecture changes are made (if approved), agents MUST update correspondi
 * `curriculum_relationship_notes.md`
 
 Docs must reflect **reality**, not aspiration.
+
+Front matter rule for markdown docs under `ifitwala_ed/docs/docs_md/`:
+
+* Every doc MUST include YAML fields:
+  * `version`
+  * `last_change_date`
+* Any time a doc is changed, agent MUST:
+  * increment/update `version`
+  * set `last_change_date` to the actual change date (`YYYY-MM-DD`)
 
 ---
 

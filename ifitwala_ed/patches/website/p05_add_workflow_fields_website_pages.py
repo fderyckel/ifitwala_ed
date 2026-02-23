@@ -4,6 +4,5 @@ import frappe
 
 
 def execute():
-	frappe.reload_doc("school_site", "doctype", "school_website_page")
-	frappe.reload_doc("school_site", "doctype", "program_website_profile")
-
+    frappe.reload_doc("school_site", "doctype", "school_website_page")
+    frappe.reload_doc("school_site", "doctype", "program_website_profile")

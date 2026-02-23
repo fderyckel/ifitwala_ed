@@ -13,21 +13,21 @@ frappe.ui.form.on('Student Patient Visit', {
 		}
 	},
 
-	refresh: function(frm) { 
-		
+	refresh: function(frm) {
+
 		frm.set_query('student_patient', function() {
 			return {
 				filters: {'status': 'Active'}
 			};
-		}); 
-		
+		});
+
 		// Set Time of Arrival on document load if not already set
 		if (!frm.doc.time_of_arrival && !frm.doc.__islocal) {
 			frm.set_value('time_of_arrival', frappe.datetime.now_time());
 		}
 
-	}, 
-	
+	},
+
 	// to show a non-clickable message to inform that a student log has been created
 	after_save: function (frm) {
 		if (frm.doc.docstatus === 1) {
@@ -36,40 +36,40 @@ frappe.ui.form.on('Student Patient Visit', {
 				indicator: 'green'
 			});
 		}
-	}, 
+	},
 
 	before_submit: function(frm) {
 		// Set Time of Discharge on before_submit if not already set
 		if (!frm.doc.time_of_discharge) {
 				frm.set_value('time_of_discharge', frappe.datetime.now_time());
 		}
-	}, 
+	},
 
-	student_patient: function(frm) { 
+	student_patient: function(frm) {
 		frm.events.set_student_info(frm);
-	}, 
-	
+	},
+
 	set_student_info: function(frm) {
 		// Step 1: Get the Student linked to this Student Patient
 		if (!frm.doc.student_patient) return;
-	
+
 		frappe.db.get_value('Student Patient', frm.doc.student_patient, 'student')
 			.then(r => {
 				const student_id = r.message?.student;
 				if (!student_id) return;
-	
+
 				// Step 2: Fetch student bio info from utility method
 				frappe.call({
 					method: 'ifitwala_ed.health.doctype.student_patient.student_patient.get_student_basic_info',
 					args: { student: student_id },
 					callback: function(res) {
 						if (!res.message) return;
-	
+
 						const student = res.message;
 						const age = student.student_date_of_birth
 							? calculate_age(student.student_date_of_birth)
 							: '';
-	
+
 						frm.set_value({
 							student: student_id,
 							student_name: student.student_full_name,

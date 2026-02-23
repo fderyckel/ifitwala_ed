@@ -4,9 +4,17 @@ slug: course-term-result
 category: Assessment
 doc_order: 11
 summary: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."
+seo_title: "Course Term Result: The Frozen Record of Term Performance"
+seo_description: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."
 ---
 
-# Course Term Result: The Frozen Record of Term Performance
+## Course Term Result: The Frozen Record of Term Performance
+
+## Before You Start (Prerequisites)
+
+- Create and configure the relevant `Reporting Cycle` first.
+- Ensure source grading truth exists (`Task Outcome` data in scope) before generation.
+- Generate/update results through reporting-cycle services; do not treat this as a hand-entered source doctype.
 
 `Course Term Result` is the durable term-level record generated from assessment outcomes. It is designed for reporting reliability, not live-grade experimentation.
 
@@ -22,7 +30,26 @@ Course Term Result intentionally duplicates context fields (student, course, pro
 - Linked into student reporting presentation:
   - `Student Term Report Course` child rows reference Course Term Result.
 
+## Lifecycle and Linked Documents
+
+1. Create and prepare a `Reporting Cycle` for the exact school/year/term scope.
+2. Run cycle recalculation so results are generated from official `Task Outcome` truth.
+3. Apply approved overrides only where policy requires human adjustment.
+4. Publish/consume results in student term-reporting artifacts and downstream analytics.
+
+<Callout type="warning" title="Source of truth boundary">
+`Course Term Result` is a generated/frozen reporting record. Do not use it as a substitute for day-to-day grading workflows.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/course_term_result/course_term_result.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/course_term_result/course_term_result.py`
+- **Required fields (`reqd=1`)**: none at schema level; controller/workflow rules enforce operational completeness where applicable.
+- **Lifecycle hooks in controller**: `validate`, `on_doctype_update`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Course Term Result` (`ifitwala_ed/assessment/doctype/course_term_result/`)
 - **Key links**:

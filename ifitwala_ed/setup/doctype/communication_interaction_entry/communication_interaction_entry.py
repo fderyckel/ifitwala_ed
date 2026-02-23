@@ -10,17 +10,16 @@ MAX_NOTE_LENGTH = 300
 
 
 class CommunicationInteractionEntry(Document):
-	def validate(self):
-		if self.note:
-			self.note = (self.note or "").strip()
-			if len(self.note) > MAX_NOTE_LENGTH:
-				self.note = self.note[:MAX_NOTE_LENGTH]
-
+    def validate(self):
+        if self.note:
+            self.note = (self.note or "").strip()
+            if len(self.note) > MAX_NOTE_LENGTH:
+                self.note = self.note[:MAX_NOTE_LENGTH]
 
 
 def on_doctype_update():
-	frappe.db.add_index(
-		"Communication Interaction Entry",
-		["org_communication", "creation"],
-		index_name="idx_comm_interaction_entry_comm_creation",
-	)
+    frappe.db.add_index(
+        "Communication Interaction Entry",
+        ["org_communication", "creation"],
+        index_name="idx_comm_interaction_entry_comm_creation",
+    )

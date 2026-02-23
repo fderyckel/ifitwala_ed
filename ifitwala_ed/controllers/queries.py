@@ -6,15 +6,16 @@ import frappe
 from frappe.desk.reportview import get_filters_cond, get_match_cond
 from frappe.utils import unique
 
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def employee_query(doctype, txt, searchfield, start, page_len, filters):
-	doctype = "Employee"
-	conditions = []
-	fields = get_fields(doctype, ["name", "employee_full_name"])
+    doctype = "Employee"
+    conditions = []
+    fields = get_fields(doctype, ["name", "employee_full_name"])
 
-	return frappe.db.sql(
-		"""select {fields} from `tabEmployee`
+    return frappe.db.sql(
+        """select {fields} from `tabEmployee`
 		where employment_status in ('Active', 'Suspended')
 			and docstatus < 2
 			and ({key} like %(txt)s
@@ -26,23 +27,24 @@ def employee_query(doctype, txt, searchfield, start, page_len, filters):
 			idx desc,
 			name, employee_full_name
 		limit %(page_len)s offset %(start)s""".format(
-			**{
-				"fields": ", ".join(fields),
-				"key": searchfield,
-				"fcond": get_filters_cond(doctype, filters, conditions),
-				"mcond": get_match_cond(doctype),
-			}
-		),
-		{"txt": "%%%s%%" % txt, "_txt": txt.replace("%", ""), "start": start, "page_len": page_len},
-	)
+            **{
+                "fields": ", ".join(fields),
+                "key": searchfield,
+                "fcond": get_filters_cond(doctype, filters, conditions),
+                "mcond": get_match_cond(doctype),
+            }
+        ),
+        {"txt": "%%%s%%" % txt, "_txt": txt.replace("%", ""), "start": start, "page_len": page_len},
+    )
+
 
 def get_fields(doctype, fields=None):
-	if fields is None:
-		fields = []
-	meta = frappe.get_meta(doctype)
-	fields.extend(meta.get_search_fields())
+    if fields is None:
+        fields = []
+    meta = frappe.get_meta(doctype)
+    fields.extend(meta.get_search_fields())
 
-	if meta.title_field and meta.title_field.strip() not in fields:
-		fields.insert(1, meta.title_field.strip())
+    if meta.title_field and meta.title_field.strip() not in fields:
+        fields.insert(1, meta.title_field.strip())
 
-	return unique(fields)
+    return unique(fields)

@@ -4,9 +4,17 @@ slug: task-contribution
 category: Assessment
 doc_order: 9
 summary: "Store non-destructive grading contributions per submission version, then derive official outcomes through policy-aware services."
+seo_title: "Task Contribution: Teacher and Moderator Judgment Inputs"
+seo_description: "Store non-destructive grading contributions per submission version, then derive official outcomes through policy-aware services."
 ---
 
-# Task Contribution: Teacher and Moderator Judgment Inputs
+## Task Contribution: Teacher and Moderator Judgment Inputs
+
+## Before You Start (Prerequisites)
+
+- Create the target `Task Outcome` first.
+- Ensure contributor users and grading permissions are set for the delivery context.
+- If evidence-based grading is used, ensure at least one `Task Submission` version exists.
 
 `Task Contribution` captures who graded what, when, and against which submission version. It preserves collaboration history (self, review, moderation) without overwriting prior judgments.
 
@@ -26,7 +34,30 @@ Contributions are professional inputs. Official student truth is still written t
 - Staleness updates triggered when student evidence changes (`mark_contributions_stale`).
 - Criteria-mode grading stores row-level marks in child table `Task Contribution Criterion`.
 
+## Lifecycle and Linked Documents
+
+1. Start from an existing `Task Outcome` and, where required, linked `Task Submission` evidence.
+2. Teachers/reviewers create contribution entries (draft, submit, moderate, or override flows).
+3. Contribution services recompute official outcome data without destroying historical contribution rows.
+4. Use moderation and staleness flags to keep official outcomes aligned with latest evidence.
+
+<Callout type="warning" title="Do not bypass outcome services">
+Directly editing official outcome fields without contribution/service flow can break moderation traceability.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/task_contribution/task_contribution.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/task_contribution/task_contribution.py`
+- **Required fields (`reqd=1`)**:
+  - `task_outcome` (`Link` -> `Task Outcome`)
+  - `contributor` (`Link` -> `User`)
+  - `contribution_type` (`Select`)
+  - `submitted_on` (`Datetime`)
+- **Lifecycle hooks in controller**: `before_validate`, `validate`, `after_insert`, `on_doctype_update`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Task Contribution` (`ifitwala_ed/assessment/doctype/task_contribution/`)
 - **Autoname**: `TCO-{YYYY}-{#####}`

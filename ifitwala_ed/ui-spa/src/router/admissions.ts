@@ -5,6 +5,7 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: { name: 'admissions-overview' } },
   { path: '/overview', name: 'admissions-overview', component: () => import('@/pages/admissions/ApplicantOverview.vue') },
+  { path: '/profile', name: 'admissions-profile', component: () => import('@/pages/admissions/ApplicantProfile.vue') },
   { path: '/health', name: 'admissions-health', component: () => import('@/pages/admissions/ApplicantHealth.vue') },
   { path: '/documents', name: 'admissions-documents', component: () => import('@/pages/admissions/ApplicantDocuments.vue') },
   { path: '/policies', name: 'admissions-policies', component: () => import('@/pages/admissions/ApplicantPolicies.vue') },

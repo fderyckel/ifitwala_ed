@@ -34,7 +34,10 @@
 			</div>
 		</div>
 
-		<div v-else-if="!courses.length" class="text-center py-10 border-2 border-dashed border-gray-300 rounded-lg">
+		<div
+			v-else-if="!courses.length"
+			class="text-center py-10 border-2 border-dashed border-gray-300 rounded-lg"
+		>
 			<p class="mt-2 text-sm text-gray-500">No courses found for the selected academic year.</p>
 		</div>
 
@@ -57,7 +60,9 @@
 					</div>
 				</div>
 				<div class="p-4">
-					<p class="text-base font-semibold text-gray-900 truncate group-hover:text-[var(--jacaranda)]">
+					<p
+						class="text-base font-semibold text-gray-900 truncate group-hover:text-[var(--jacaranda)]"
+					>
 						{{ course.course_name }}
 					</p>
 					<p class="text-sm text-gray-500 mt-1">
@@ -70,66 +75,68 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
-import { call, FeatherIcon } from 'frappe-ui'
+import { ref, onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
+import { call, FeatherIcon } from 'frappe-ui';
 
-const loading = ref(true)
-const error = ref(null)
-const courses = ref([])
-const academicYears = ref([])
-const selectedYear = ref(null)
+const loading = ref(true);
+const error = ref(null);
+const courses = ref([]);
+const academicYears = ref([]);
+const selectedYear = ref(null);
 
 // Absolute path for the public placeholder served by Frappe
-const PLACEHOLDER = '/assets/ifitwala_ed/images/course_placeholder.jpg'
+const PLACEHOLDER = '/assets/ifitwala_ed/images/course_placeholder.jpg';
 
 // If an image fails to load (404, etc.), swap to placeholder once
 function imgFallback(e) {
-	const el = e?.target
+	const el = e?.target;
 	// Ensure it's an <img>, and avoid infinite loop by checking current src
-	if (!el || el.tagName !== 'IMG') return
+	if (!el || el.tagName !== 'IMG') return;
 	// If already the placeholder, do nothing
-	const current = el.getAttribute('src') || ''
-	if (current === PLACEHOLDER) return
-	el.src = PLACEHOLDER
+	const current = el.getAttribute('src') || '';
+	if (current === PLACEHOLDER) return;
+	el.src = PLACEHOLDER;
 }
 
 async function fetchData() {
-	loading.value = true
-	error.value = null
+	loading.value = true;
+	error.value = null;
 	try {
-		const response = await call(
-			'ifitwala_ed.api.courses.get_courses_data',
-			{ academic_year: selectedYear.value }
-		)
+		const response = await call('ifitwala_ed.api.courses.get_courses_data', {
+			academic_year: selectedYear.value,
+		});
 
 		// Support both shapes: {message: {...}} or payload directly
-		const msg = (response && typeof response === 'object' && 'message' in response)
-			? response.message
-			: response
+		const msg =
+			response && typeof response === 'object' && 'message' in response
+				? response.message
+				: response;
 
 		if (msg?.error) {
-			error.value = msg.error
-			courses.value = Array.isArray(msg?.courses) ? msg.courses : []
-			academicYears.value = Array.isArray(msg?.academic_years) ? msg.academic_years : []
-			return
+			error.value = msg.error;
+			courses.value = Array.isArray(msg?.courses) ? msg.courses : [];
+			academicYears.value = Array.isArray(msg?.academic_years) ? msg.academic_years : [];
+			return;
 		}
 
-		academicYears.value = Array.isArray(msg?.academic_years) ? msg.academic_years : []
-		courses.value = Array.isArray(msg?.courses) ? msg.courses : []
+		academicYears.value = Array.isArray(msg?.academic_years) ? msg.academic_years : [];
+		courses.value = Array.isArray(msg?.courses) ? msg.courses : [];
 
 		// Initialize or correct the selected year from backend
-		if (selectedYear.value === null || (msg?.selected_year && msg.selected_year !== selectedYear.value)) {
-			selectedYear.value = msg?.selected_year ?? null
+		if (
+			selectedYear.value === null ||
+			(msg?.selected_year && msg.selected_year !== selectedYear.value)
+		) {
+			selectedYear.value = msg?.selected_year ?? null;
 		}
 	} catch (e) {
-		console.error(e)
-		error.value = 'An unexpected error occurred while fetching courses.'
+		console.error(e);
+		error.value = 'An unexpected error occurred while fetching courses.';
 	} finally {
-		loading.value = false
+		loading.value = false;
 	}
 }
 
-onMounted(fetchData)
+onMounted(fetchData);
 </script>
-

@@ -3,15 +3,21 @@
 
 // ifitwala_ed/admission/doctype/inquiry/inquiry.js
 
+function blurActiveModalFocus() {
+	const active = document.activeElement;
+	if (!(active instanceof HTMLElement)) {
+		return;
+	}
+	if (active.closest(".modal")) {
+		active.blur();
+	}
+}
+
 frappe.ui.form.on("Inquiry", {
 	refresh(frm) {
 		frm.page.clear_actions_menu();
 
-		const rawState = String(frm.doc.workflow_state || '').trim();
-		const stateAliasMap = {
-			'New Inquiry': 'New',
-		};
-		const s = stateAliasMap[rawState] || rawState;
+		const s = String(frm.doc.workflow_state || '').trim();
 		const is_manager = frappe.user.has_role('Admission Manager');
 		const is_officer = frappe.user.has_role('Admission Officer');
 		const canonicalStates = new Set(['New', 'Assigned', 'Contacted', 'Qualified', 'Archived']);
@@ -30,7 +36,7 @@ frappe.ui.form.on("Inquiry", {
 			frm.add_custom_button('Reassign', () => frm.trigger('reassign'));
 		}
 
-		if (s === 'Assigned' && is_officer) {
+		if (s === 'Assigned' && (is_officer || is_manager)) {
 			frm.add_custom_button('Mark Contacted', () => frm.trigger('mark_contacted'));
 		}
 
@@ -81,48 +87,91 @@ frappe.ui.form.on("Inquiry", {
 	// Invite to Apply
 	// --------------------------------------------------
 	invite_to_apply(frm) {
-		frappe.prompt(
-			[
-				{
-					label: __('School'),
-					fieldname: 'school',
-					fieldtype: 'Link',
-					options: 'School',
-					reqd: 1
-				},
+		let dialog = null;
+		const schoolQuery = () => {
+			const organization = String((dialog && dialog.get_value('organization')) || '').trim();
+			if (!organization) {
+				return { filters: { name: '' } };
+			}
+			return {
+				query: 'ifitwala_ed.admission.admission_utils.school_by_organization_scope_query',
+				filters: { organization }
+			};
+		};
+
+		dialog = new frappe.ui.Dialog({
+			title: __('Invite to Apply'),
+			fields: [
 				{
 					label: __('Organization'),
 					fieldname: 'organization',
 					fieldtype: 'Link',
 					options: 'Organization',
-					reqd: 0,
-					description: __('Optional override; normally inferred from School')
+					reqd: 1,
+					get_query: () => ({
+						query: 'ifitwala_ed.api.inquiry.inquiry_organization_link_query'
+					})
+				},
+				{
+					label: __('School'),
+					fieldname: 'school',
+					fieldtype: 'Link',
+					options: 'School',
+					reqd: 1,
+					get_query: schoolQuery
 				}
 			],
-			(values) => {
+			primary_action_label: __('Invite'),
+			primary_action: (values) => {
+				const organization = String(values.organization || '').trim();
+				const school = String(values.school || '').trim();
+
+				if (!organization) {
+					frappe.msgprint(__('Please select an Organization.'));
+					return;
+				}
+				if (!school) {
+					frappe.msgprint(__('Please select a School.'));
+					return;
+				}
+
+				dialog.disable_primary_action();
 				frappe.call({
 					method: 'ifitwala_ed.admission.admission_utils.from_inquiry_invite',
 					args: {
 						inquiry_name: frm.doc.name,
-						school: values.school,
-						organization: values.organization || null
+						school,
+						organization
 					},
-					freeze: true,
-					callback: (r) => {
-						if (!r.exc && r.message) {
+					freeze: true
+				})
+					.then((r) => {
+						if (r && r.message) {
 							frappe.show_alert(__('Applicant created'));
+							blurActiveModalFocus();
+							dialog.hide();
 							frappe.set_route('Form', 'Student Applicant', r.message);
+							return;
 						}
-					},
-					error: (err) => {
+						frappe.msgprint(__('Failed to invite applicant.'));
+					})
+					.catch((err) => {
 						console.error(err);
-						frappe.msgprint(__('Failed to invite applicant'));
-					}
-				});
-			},
-			__('Invite to Apply'),
-			__('Invite')
-		);
+						frappe.msgprint(__('Failed to invite applicant. Ensure School belongs to the selected Organization.'));
+					})
+					.then(() => {
+						dialog.enable_primary_action();
+					});
+			}
+		});
+
+		const organizationField = dialog.get_field('organization');
+		if (organizationField) {
+			organizationField.df.onchange = () => {
+				dialog.set_value('school', null);
+			};
+		}
+		dialog.show();
 	},
 
 	// --------------------------------------------------
@@ -133,7 +182,7 @@ frappe.ui.form.on("Inquiry", {
 		frappe.prompt(
 			[
 				{
-					label: 'Assign To (Admission Officer)',
+					label: 'Assign To (Admission Officer/Manager)',
 					fieldname: 'assigned_to',
 					fieldtype: 'Link',
 					options: 'User',
@@ -144,6 +193,7 @@ frappe.ui.form.on("Inquiry", {
 				}
 			],
 			(values) => {
+				blurActiveModalFocus();
 				frappe.call({
 					method: 'ifitwala_ed.admission.admission_utils.assign_inquiry',
 					args: {
@@ -168,7 +218,7 @@ frappe.ui.form.on("Inquiry", {
 		frappe.prompt(
 			[
 				{
-					label: 'Reassign To (Admission Officer)',
+					label: 'Reassign To (Admission Officer/Manager)',
 					fieldname: 'new_assigned_to',
 					fieldtype: 'Link',
 					options: 'User',
@@ -179,6 +229,7 @@ frappe.ui.form.on("Inquiry", {
 				}
 			],
 			(values) => {
+				blurActiveModalFocus();
 				frappe.call({
 					method: 'ifitwala_ed.admission.admission_utils.reassign_inquiry',
 					args: {
@@ -203,6 +254,7 @@ frappe.ui.form.on("Inquiry", {
 		frappe.confirm(
 			__("Do you also want to mark the related task as completed?"),
 			() => {
+				blurActiveModalFocus();
 				frappe.call({
 					doc: frm.doc,
 					method: "mark_contacted",
@@ -215,6 +267,7 @@ frappe.ui.form.on("Inquiry", {
 				});
 			},
 			() => {
+				blurActiveModalFocus();
 				frappe.call({
 					doc: frm.doc,
 					method: "mark_contacted",
@@ -245,6 +298,7 @@ frappe.ui.form.on("Inquiry", {
 		frappe.confirm(
 			__("Archive this inquiry?"),
 			() => {
+				blurActiveModalFocus();
 				frappe.call({
 					doc: frm.doc,
 					method: "archive",

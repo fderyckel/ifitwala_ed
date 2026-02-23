@@ -6,7 +6,29 @@
 > - `/mnt/data/phase030.md`
 
 > Purpose: lock Applicant semantics and the Promotion boundary (server truth). Phases/steps removed; contracts preserved.
+> Note: historical phase checklists in this file are retained for audit and marked complete.
 
+
+---
+
+## 0. 2026-02-22 Canonical Boundary Update
+
+This document now follows the authoritative split in
+`docs/admission/03_portal_files_gdpr.md`:
+
+1. Promotion (Data Boundary)
+- Applicant -> Student
+- Creates `Student` and syncs/creates `Student Patient`
+- Copies approved promotable evidence
+- No Guardian/User/role provisioning
+
+2. Identity Upgrade (Access Boundary)
+- Runs only after active `Program Enrollment` exists
+- Provisions Guardian/Student access identities and role transitions
+- Links Guardian <-> Student
+
+Any historical checklist text below that implies "promotion creates Student only" or
+"no Student Patient effects at promotion" is superseded by this boundary update.
 
 ---
 
@@ -50,7 +72,7 @@ Inquiry → Student Applicant → Student
 
 ### 1.3 Student (Canonical Record)
 
-* Created **only** by promotion
+* Created only by promotion (with Student Patient sync as part of promotion data handoff)
 * Permanent, auditable, institutional truth
 * Admissions logic does **not** live here
 
@@ -116,6 +138,7 @@ Under Review
 Missing Info
 Approved
 Rejected
+Withdrawn
 Promoted
 ```
 
@@ -135,6 +158,7 @@ Any other value is invalid.
 | Missing Info | ✅ (scoped)  | ✅          | Limited family edits requested     |
 | Approved     | ❌           | ✅          | Decision made; promotion allowed   |
 | Rejected     | ❌           | ❌          | Terminal, read-only                |
+| Withdrawn    | ❌           | ❌          | Terminal, read-only                |
 | Promoted     | ❌           | ❌          | Terminal; Student exists           |
 
 **Rules**
@@ -165,7 +189,7 @@ This prevents:
 
 **System Manager override (exception)**
 
-In terminal states (`Rejected`, `Promoted`), edits are blocked unless a System Manager
+In terminal states (`Rejected`, `Withdrawn`, `Promoted`), edits are blocked unless a System Manager
 performs an explicit override. Overrides must be intentional, audited, and include a
 reason. This is a legal escape hatch, not a normal workflow.
 
@@ -635,7 +659,7 @@ Introduce **Applicant Interview** as a first-class admissions artifact.
 
 ### Scope
 
-Create a **pre-student health container** without touching `Student Patient`.
+Create a **pre-student health container** linked to admissions, then sync it to `Student Patient` on promotion.
 
 ### Changes
 
@@ -649,14 +673,14 @@ Create a **pre-student health container** without touching `Student Patient`.
 
 ### Hard rules
 
-* ❌ No `Student Patient` creation
-* ❌ No health data written to Student
-* ❌ No promotion side effects
+* ✅ No `Student Patient` writes before promotion
+* ✅ On promotion, copy Applicant Health Profile fields to `Student Patient`
+* ✅ On promotion, copy vaccination child rows to `Student Patient Vaccination`
 
 ### Acceptance
 
 * Health data can be reviewed safely pre-student
-* Promotion later can selectively map data
+* Promotion copies approved health intake into student health records
 
 ---
 
@@ -766,7 +790,7 @@ Enable document intake **without polluting Student records**.
 
 ### Hard rules
 
-* ❌ No automatic copying to Student
+* ❌ No copying before explicit promotion
 * ❌ Rejected documents stay rejected
 * ❌ No file moves yet (Phase 3)
 
@@ -862,13 +886,13 @@ Minimal Desk affordances to **review**, not decide.
 
 Phase 02 is **done** only if:
 
-* [ ] Interviews exist and are staff-only
-* [ ] Health data is staged pre-Student
-* [ ] Policies are versioned and explicit
-* [ ] Documents are reviewable without pollution
-* [ ] Applicant readiness is *observable*, not enforced
-* [ ] No promotion logic changed
-* [ ] No UX weakened contracts
+* [x] Interviews exist and are staff-only
+* [x] Health data is staged pre-Student
+* [x] Policies are versioned and explicit
+* [x] Documents are reviewable without pollution
+* [x] Applicant readiness is *observable*, not enforced
+* [x] No promotion logic changed
+* [x] No UX weakened contracts
 
 If any box fails → Phase 02 is incomplete.
 
@@ -1490,14 +1514,14 @@ No additional audit table needed.
 
 PR-02.3 is **acceptable only if**:
 
-* [ ] Uses `Policy Acknowledgement` exactly
-* [ ] Links to `Policy Version`, not Policy
-* [ ] Admissions Applicant-only acknowledgement enforced server-side
-* [ ] Context bound to `Student Applicant`
-* [ ] Append-only, immutable
-* [ ] No lifecycle or promotion logic touched
-* [ ] No admissions-specific policy hacks
-* [ ] Read-only readiness indicators only
+* [x] Uses `Policy Acknowledgement` exactly
+* [x] Links to `Policy Version`, not Policy
+* [x] Admissions Applicant-only acknowledgement enforced server-side
+* [x] Context bound to `Student Applicant`
+* [x] Append-only, immutable
+* [x] No lifecycle or promotion logic touched
+* [x] No admissions-specific policy hacks
+* [x] Read-only readiness indicators only
 
 If any box fails → **PR must be rejected or split**.
 
@@ -1783,13 +1807,13 @@ These are all premature authority leaks.
 
 PR-02.5 passes **only if**:
 
-* [ ] All logic is read-only
-* [ ] Helpers live on Student Applicant
-* [ ] Missing reasons are explicit
-* [ ] No lifecycle logic touched
-* [ ] No school rules encoded
-* [ ] No promotion coupling
-* [ ] No persistent readiness fields
+* [x] All logic is read-only
+* [x] Helpers live on Student Applicant
+* [x] Missing reasons are explicit
+* [x] No lifecycle logic touched
+* [x] No school rules encoded
+* [x] No promotion coupling
+* [x] No persistent readiness fields
 
 Fail one → reject or split.
 
@@ -1937,10 +1961,19 @@ Applicant Health Profile
 | Field                | Type                                |
 | -------------------- | ----------------------------------- |
 | `student_applicant`  | Link → Student Applicant (required) |
-| `health_summary`     | Text                                |
-| `medical_conditions` | Text                                |
-| `allergies`          | Text                                |
-| `medications`        | Text                                |
+| `blood_group`        | Select                              |
+| `allergies`          | Check                               |
+| `food_allergies`     | Small Text                          |
+| `insect_bites`       | Small Text                          |
+| `medication_allergies` | Small Text                        |
+| `asthma` ... `vision_problem` | Small Text family of condition fields |
+| `diet_requirements`  | Small Text                          |
+| `medical_surgeries__hospitalizations` | Text             |
+| `other_medical_information` | Text Editor                   |
+| `vaccinations`       | Table → Student Patient Vaccination |
+| `applicant_health_declared_complete` | Check                  |
+| `applicant_health_declared_by` | Link → User                   |
+| `applicant_health_declared_on` | Datetime                      |
 | `review_status`      | Select                              |
 | `review_notes`       | Text                                |
 | `reviewed_by`        | Link → User                         |
@@ -1956,14 +1989,14 @@ Cleared
 
 ### Hard rules
 
-* ❌ No `Student Patient` creation
-* ❌ No health data written to Student
-* ❌ No promotion side effects
+* ✅ No `Student Patient` writes before promotion
+* ✅ On promotion, copy Applicant Health Profile fields to `Student Patient`
+* ✅ On promotion, copy vaccination child rows to `Student Patient Vaccination`
 
 ### Acceptance
 
 * Health data can be reviewed safely pre-Student
-* Promotion later may selectively map data (Phase 03+)
+* Promotion copies approved health intake into student health records
 
 ---
 
@@ -2088,7 +2121,7 @@ Administrative Record
 
 ### Hard rules
 
-* ❌ No automatic copying to Student
+* ❌ No copying before explicit promotion
 * ❌ Rejected documents stay rejected
 * ❌ No file moves yet
 
@@ -2168,13 +2201,13 @@ get_readiness_snapshot()
 
 Phase 02 is **done only if**:
 
-* [ ] Interviews exist and are staff-only
-* [ ] Health data is staged pre-Student
-* [ ] Policies are versioned and explicit
-* [ ] Documents are reviewable without pollution
-* [ ] Readiness is observable, not enforced
-* [ ] No promotion logic changed
-* [ ] No UX weakened contracts
+* [x] Interviews exist and are staff-only
+* [x] Health data is staged pre-Student
+* [x] Policies are versioned and explicit
+* [x] Documents are reviewable without pollution
+* [x] Readiness is observable, not enforced
+* [x] No promotion logic changed
+* [x] No UX weakened contracts
 
 ---
 
@@ -2468,8 +2501,9 @@ Prevent **any other path** to Student creation.
 
 ### Flags respected
 
+* `frappe.flags.in_import`
 * `frappe.flags.in_migration`
-* `frappe.flags.allow_direct_student_create`
+* `frappe.flags.in_patch`
 
 ### Hard rules
 
@@ -2515,12 +2549,12 @@ Expose **authority**, not logic, in UI.
 
 Phase 03 is **DONE** only if:
 
-* [ ] Approval is blocked unless ready
-* [ ] Rejection is terminal
-* [ ] Promotion is explicit + irreversible
-* [ ] No other Student creation paths exist
-* [ ] Files are preserved correctly
-* [ ] All authority is server-enforced
+* [x] Approval is blocked unless ready
+* [x] Rejection is terminal
+* [x] Promotion is explicit + irreversible
+* [x] No other Student creation paths exist
+* [x] Files are preserved correctly
+* [x] All authority is server-enforced
 
 Fail one → Phase 03 rejected.
 
@@ -2839,8 +2873,9 @@ In `students/doctype/student/student.py`:
 ```python
 def before_insert(self):
     if not (
-        frappe.flags.in_migration
-        or self.allow_direct_creation
+        frappe.flags.in_import
+        or frappe.flags.in_migration
+        or frappe.flags.in_patch
     ):
         frappe.throw(_("Students must be created via Applicant promotion."))
 ```
@@ -2849,9 +2884,9 @@ def before_insert(self):
 
 `promote_applicant()` must:
 
-* set `allow_direct_creation = 1`
 * create Student
-* never expose this flag elsewhere
+* set `student_applicant`
+* rely on the canonical promotion path (not bypass flags)
 
 ---
 
@@ -2976,6 +3011,6 @@ If you want, next step we can:
 ## 4. Implementation invariants to verify during debugging
 
 * Promotion is **atomic** (all‑or‑nothing)
-* Promotion is **idempotent** (re‑run does not duplicate Students/Users/Contacts/Patient)
+* Promotion is **idempotent** (re‑run does not duplicate Student/Student Patient/data copies)
 * Applicant becomes **permanently read‑only** after promotion
 * Creation source guard: Student creation is allowed only via Applicant promotion, except explicit migration/import flags.

@@ -1,6 +1,6 @@
 import frappe
-from frappe.model.document import Document
 from frappe import _
+from frappe.model.document import Document
 
 
 class Account(Document):
@@ -48,9 +48,7 @@ class Account(Document):
 
         if self.account_type in ["Bank", "Cash", "Receivable"]:
             if self.root_type != "Asset":
-                frappe.throw(
-                    _("Account Type '{0}' must have Root Type 'Asset'").format(self.account_type)
-                )
+                frappe.throw(_("Account Type '{0}' must have Root Type 'Asset'").format(self.account_type))
 
         if self.account_type == "Tax":
             if self.root_type != "Liability":

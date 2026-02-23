@@ -4,34 +4,34 @@ function emitAdmissionCtaEvent(link) {
 	const detail = {
 		intent: link.dataset.intent || null,
 		tracking_id: link.dataset.trackingId || null,
-		href: link.getAttribute("href") || null,
+		href: link.getAttribute('href') || null,
 		ts: Date.now(),
 	};
-	window.dispatchEvent(new CustomEvent("ifitwala:admission-cta-click", { detail }));
+	window.dispatchEvent(new CustomEvent('ifitwala:admission-cta-click', { detail }));
 }
 
 function initAdmissionCtaEmphasis() {
-	const ctaLinks = Array.from(document.querySelectorAll("[data-admission-cta] .site-cta-link"));
+	const ctaLinks = Array.from(document.querySelectorAll('[data-admission-cta] .site-cta-link'));
 	if (!ctaLinks.length) {
 		return;
 	}
 
-	ctaLinks.forEach((link) => {
-		link.addEventListener("click", () => emitAdmissionCtaEvent(link));
+	ctaLinks.forEach(link => {
+		link.addEventListener('click', () => emitAdmissionCtaEvent(link));
 	});
 
-	const motionEnabled = (document.body.dataset.themeMotion || "on") !== "off";
-	if (!motionEnabled || typeof window.IntersectionObserver === "undefined") {
+	const motionEnabled = (document.body.dataset.themeMotion || 'on') !== 'off';
+	if (!motionEnabled || typeof window.IntersectionObserver === 'undefined') {
 		return;
 	}
 
 	const observer = new IntersectionObserver(
-		(entries) => {
-			entries.forEach((entry) => {
+		entries => {
+			entries.forEach(entry => {
 				if (!entry.isIntersecting) {
 					return;
 				}
-				entry.target.classList.add("is-emphasized");
+				entry.target.classList.add('is-emphasized');
 				observer.unobserve(entry.target);
 			});
 		},
@@ -40,7 +40,7 @@ function initAdmissionCtaEmphasis() {
 		}
 	);
 
-	ctaLinks.forEach((link) => observer.observe(link));
+	ctaLinks.forEach(link => observer.observe(link));
 }
 
-document.addEventListener("DOMContentLoaded", initAdmissionCtaEmphasis);
+document.addEventListener('DOMContentLoaded', initAdmissionCtaEmphasis);

@@ -7,7 +7,7 @@
   Used by:
   - PortalLayout.vue (layouts)
 -->
- 
+
 <template>
 	<footer
 		class="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-gray-200 print:hidden"
@@ -16,7 +16,9 @@
 		<div class="mx-auto max-w-7xl px-3 py-2">
 			<div class="flex flex-col md:flex-row items-center justify-between gap-2">
 				<nav aria-label="Footer links">
-					<ul class="flex flex-wrap items-center justify-center md:justify-start text-xs sm:text-sm text-gray-600">
+					<ul
+						class="flex flex-wrap items-center justify-center md:justify-start text-xs sm:text-sm text-gray-600"
+					>
 						<li v-for="(item, i) in footerItems" :key="item.name" class="flex items-center">
 							<!-- Regular links -->
 							<RouterLink
@@ -44,14 +46,17 @@
 								{{ item.name }}
 							</button>
 
-							<span v-if="i < footerItems.length - 1" class="mx-2 select-none text-gray-300" aria-hidden="true">•</span>
+							<span
+								v-if="i < footerItems.length - 1"
+								class="mx-2 select-none text-gray-300"
+								aria-hidden="true"
+								>•</span
+							>
 						</li>
 					</ul>
 				</nav>
 
-				<p class="text-[11px] sm:text-xs text-gray-500">
-					&copy; {{ currentYear }} Ifitwala Ed
-				</p>
+				<p class="text-[11px] sm:text-xs text-gray-500">&copy; {{ currentYear }} Ifitwala Ed</p>
 			</div>
 		</div>
 	</footer>
@@ -63,20 +68,25 @@
 			<label class="flex items-start gap-2 text-sm">
 				<input type="checkbox" v-model="form.consent" class="mt-0.5" />
 				<span>
-					I understand this is not an emergency service and consent to share this information with the counsellor team.
+					I understand this is not an emergency service and consent to share this information with
+					the counsellor team.
 				</span>
 			</label>
 
 			<!-- Quick crisis microcopy -->
 			<div class="rounded border border-red-200 bg-red-50 p-2 text-xs text-red-700">
-				If you or someone else is in immediate danger, contact local emergency services. This form is not monitored 24/7.
+				If you or someone else is in immediate danger, contact local emergency services. This form
+				is not monitored 24/7.
 			</div>
 
 			<!-- Category & Severity -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 				<div class="flex flex-col gap-1">
 					<label class="text-xs text-gray-600">Referral Category</label>
-					<select v-model="form.referral_category" class="rounded border border-gray-300 px-2 py-1.5">
+					<select
+						v-model="form.referral_category"
+						class="rounded border border-gray-300 px-2 py-1.5"
+					>
 						<option value="">Select…</option>
 						<option v-for="c in CATEGORIES" :key="c" :value="c">{{ c }}</option>
 					</select>
@@ -99,14 +109,19 @@
 					class="rounded border border-gray-300 px-2 py-1.5"
 					placeholder="Write in your own words…"
 				/>
-				<p class="text-[11px] text-gray-500">Avoid sharing passwords or highly sensitive private information.</p>
+				<p class="text-[11px] text-gray-500">
+					Avoid sharing passwords or highly sensitive private information.
+				</p>
 			</div>
 
 			<!-- Contact preferences -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 				<div class="flex flex-col gap-1">
 					<label class="text-xs text-gray-600">Preferred contact method</label>
-					<select v-model="form.preferred_contact_method" class="rounded border border-gray-300 px-2 py-1.5">
+					<select
+						v-model="form.preferred_contact_method"
+						class="rounded border border-gray-300 px-2 py-1.5"
+					>
 						<option value="">—</option>
 						<option>Email</option>
 						<option>In-app</option>
@@ -132,21 +147,26 @@
 			<!-- Attachments (images / PDFs) -->
 			<div class="flex flex-col gap-1">
 				<label class="text-xs text-gray-600">Attachments (optional)</label>
-				<input ref="fileInput" type="file" accept=".png,.jpg,.jpeg,.pdf" multiple class="text-sm" />
+				<input
+					ref="fileInput"
+					type="file"
+					accept=".png,.jpg,.jpeg,.pdf"
+					multiple
+					class="text-sm"
+				/>
 				<p class="text-[11px] text-gray-500">Images or PDFs only (max 10 MB each).</p>
 			</div>
 
 			<!-- Actions -->
 			<div class="flex items-center justify-end gap-2 pt-1">
 				<Button theme="secondary" @click="open = false">Cancel</Button>
-				<Button :loading="submitting" :disabled="!canSubmit" @click="submit">
-					Submit
-				</Button>
+				<Button :loading="submitting" :disabled="!canSubmit" @click="submit"> Submit </Button>
 			</div>
 
 			<!-- Confidentiality microcopy -->
 			<p class="text-[11px] text-gray-500">
-				Confidentiality: by default, your submission will be visible to the counsellor case team only.
+				Confidentiality: by default, your submission will be visible to the counsellor case team
+				only.
 			</p>
 		</div>
 	</Dialog>
@@ -189,7 +209,7 @@ const canSubmit = computed(() => {
 		form.consent &&
 		form.referral_category.trim().length > 0 &&
 		form.severity.trim().length > 0 &&
-		(form.referral_description.trim().length >= 10)
+		form.referral_description.trim().length >= 10
 	);
 });
 
@@ -242,11 +262,14 @@ async function submit() {
 			fd.append('referral_name', name);
 			fd.append('file', file, file.name);
 
-			const resp = await fetch('/api/method/ifitwala_ed.utilities.portal_utils.upload_self_referral_file', {
-				method: 'POST',
-				body: fd,
-				headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
-			});
+			const resp = await fetch(
+				'/api/method/ifitwala_ed.utilities.portal_utils.upload_self_referral_file',
+				{
+					method: 'POST',
+					body: fd,
+					headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
+				}
+			);
 			if (!resp.ok) {
 				// Non-blocking: show a warning but keep success for the referral itself
 				console.warn('Upload failed:', file.name, await resp.text());

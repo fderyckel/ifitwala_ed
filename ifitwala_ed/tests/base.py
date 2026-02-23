@@ -7,16 +7,16 @@ from frappe.tests.utils import FrappeTestCase
 
 
 class IfitwalaFrappeTestCase(FrappeTestCase):
-	"""Common base class for Ifitwala tests.
+    """Common base class for Ifitwala tests.
 
-	Keeps volatile cross-test flags deterministic.
-	"""
+    Keeps volatile cross-test flags deterministic.
+    """
 
-	@classmethod
-	def setUpClass(cls):
-		super().setUpClass()
-		frappe.flags.enrollment_from_request = False
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        frappe.flags.enrollment_from_request = False
 
-	def tearDown(self):
-		frappe.flags.enrollment_from_request = False
-		super().tearDown()
+    def tearDown(self):
+        frappe.flags.enrollment_from_request = False
+        super().tearDown()

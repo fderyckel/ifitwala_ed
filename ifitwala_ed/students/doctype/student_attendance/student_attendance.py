@@ -10,53 +10,54 @@ from frappe.utils import cint
 
 
 class StudentAttendance(Document):
-	def validate(self):
-		# Skip duplicate checks on bulk import
-		if getattr(self.flags, "in_import", False):
-			return
+    def validate(self):
+        # Skip duplicate checks on bulk import
+        if getattr(self.flags, "in_import", False):
+            return
 
-		# Whole-day rows: one per (student, date)
-		if cint(self.whole_day):
-			if not self.student or not self.attendance_date:
-				frappe.throw(
-					_("Student and Attendance Date are required for whole-day attendance."),
-					title=_("Missing Required Fields"),
-				)
+        # Whole-day rows: one per (student, date)
+        if cint(self.whole_day):
+            if not self.student or not self.attendance_date:
+                frappe.throw(
+                    _("Student and Attendance Date are required for whole-day attendance."),
+                    title=_("Missing Required Fields"),
+                )
 
-			exists = frappe.db.exists(
-				"Student Attendance",
-				{
-					"student": self.student,
-					"attendance_date": self.attendance_date,
-					"whole_day": 1,
-					"name": ["!=", self.name],
-				},
-			)
-			if exists:
-				frappe.throw(
-					_(
-						"Daily attendance for student {0} on {1} already exists. "
-						"Edit the existing record instead of creating a new one."
-					).format(self.student, self.attendance_date),
-					title=_("Duplicate Whole-Day Attendance"),
-				)
+            exists = frappe.db.exists(
+                "Student Attendance",
+                {
+                    "student": self.student,
+                    "attendance_date": self.attendance_date,
+                    "whole_day": 1,
+                    "name": ["!=", self.name],
+                },
+            )
+            if exists:
+                frappe.throw(
+                    _(
+                        "Daily attendance for student {0} on {1} already exists. "
+                        "Edit the existing record instead of creating a new one."
+                    ).format(self.student, self.attendance_date),
+                    title=_("Duplicate Whole-Day Attendance"),
+                )
 
-		# Block-level rows: per (student, group, date, block)
-		else:
-			if frappe.db.exists(
-				"Student Attendance",
-				{
-					"student": self.student,
-					"student_group": self.student_group,
-					"attendance_date": self.attendance_date,
-					"block_number": self.block_number,
-					"name": ["!=", self.name],
-				},
-			):
-				frappe.throw(
-					_("Attendance for this student, date, group, and block already exists."),
-					title=_("Duplicate Attendance"),
-				)
+        # Block-level rows: per (student, group, date, block)
+        else:
+            if frappe.db.exists(
+                "Student Attendance",
+                {
+                    "student": self.student,
+                    "student_group": self.student_group,
+                    "attendance_date": self.attendance_date,
+                    "block_number": self.block_number,
+                    "name": ["!=", self.name],
+                },
+            ):
+                frappe.throw(
+                    _("Attendance for this student, date, group, and block already exists."),
+                    title=_("Duplicate Attendance"),
+                )
+
 
 def on_doctype_update():
     frappe.db.add_index(

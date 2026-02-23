@@ -2,15 +2,45 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "hash",
- "creation": "2026-02-01 00:00:00.000000",
+ "creation": "2026-02-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "student_applicant",
-  "health_summary",
-  "medical_conditions",
+  "blood_group",
   "allergies",
-  "medications",
+  "food_allergies",
+  "insect_bites",
+  "medication_allergies",
+  "asthma",
+  "bladder__bowel_problems",
+  "diabetes",
+  "headache_migraine",
+  "high_blood_pressure",
+  "seizures",
+  "bone_joints_scoliosis",
+  "blood_disorder_info",
+  "fainting_spells",
+  "hearing_problems",
+  "recurrent_ear_infections",
+  "speech_problem",
+  "birth_defect",
+  "dental_problems",
+  "g6pd",
+  "heart_problems",
+  "recurrent_nose_bleeding",
+  "vision_problem",
+  "diet_data_section",
+  "diet_requirements",
+  "medical_history_section",
+  "medical_surgeries__hospitalizations",
+  "others_section",
+  "other_medical_information",
+  "vaccinations",
+  "health_declaration_section",
+  "applicant_health_declared_complete",
+  "applicant_health_declared_by",
+  "applicant_health_declared_on",
   "review_status",
   "review_notes",
   "reviewed_by",
@@ -20,29 +50,189 @@
   {
    "fieldname": "student_applicant",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Student Applicant",
    "options": "Student Applicant",
    "reqd": 1
   },
   {
-   "fieldname": "health_summary",
-   "fieldtype": "Text",
-   "label": "Health Summary"
+   "fieldname": "blood_group",
+   "fieldtype": "Select",
+   "label": "Blood Group",
+   "options": "\nA Positive\nA Negative\nAB Positive\nAB Negative\nB Positive\nB Negative\nO Positive\nO Negative"
   },
   {
-   "fieldname": "medical_conditions",
-   "fieldtype": "Text",
-   "label": "Medical Conditions"
-  },
-  {
+   "default": "0",
    "fieldname": "allergies",
-   "fieldtype": "Text",
-   "label": "Allergies"
+   "fieldtype": "Check",
+   "label": "Any allergies"
   },
   {
-   "fieldname": "medications",
+   "depends_on": "eval: doc.allergies==\"1\"",
+   "fieldname": "food_allergies",
+   "fieldtype": "Small Text",
+   "label": "Food Allergies"
+  },
+  {
+   "depends_on": "eval: doc.allergies==\"1\"",
+   "fieldname": "insect_bites",
+   "fieldtype": "Small Text",
+   "label": "Insect Bites"
+  },
+  {
+   "depends_on": "eval: doc.allergies == \"1\"",
+   "fieldname": "medication_allergies",
+   "fieldtype": "Small Text",
+   "label": "Medication Allergies"
+  },
+  {
+   "fieldname": "asthma",
+   "fieldtype": "Small Text",
+   "label": "Asthma"
+  },
+  {
+   "fieldname": "bladder__bowel_problems",
+   "fieldtype": "Small Text",
+   "label": "Bladder / Bowel Problems"
+  },
+  {
+   "fieldname": "diabetes",
+   "fieldtype": "Small Text",
+   "label": "Diabetes"
+  },
+  {
+   "fieldname": "headache_migraine",
+   "fieldtype": "Small Text",
+   "label": "Headache / Migraine"
+  },
+  {
+   "fieldname": "high_blood_pressure",
+   "fieldtype": "Small Text",
+   "label": "Low/High Blood Pressure"
+  },
+  {
+   "fieldname": "seizures",
+   "fieldtype": "Small Text",
+   "label": "Seizures"
+  },
+  {
+   "fieldname": "bone_joints_scoliosis",
+   "fieldtype": "Small Text",
+   "label": "Bone Joints Scoliosis"
+  },
+  {
+   "fieldname": "blood_disorder_info",
+   "fieldtype": "Small Text",
+   "label": "Blood Disorder Info"
+  },
+  {
+   "fieldname": "fainting_spells",
+   "fieldtype": "Small Text",
+   "label": "Fainting Spells"
+  },
+  {
+   "fieldname": "hearing_problems",
+   "fieldtype": "Small Text",
+   "label": "Hearing Problems"
+  },
+  {
+   "fieldname": "recurrent_ear_infections",
+   "fieldtype": "Small Text",
+   "label": "Recurrent Ear infections"
+  },
+  {
+   "fieldname": "speech_problem",
+   "fieldtype": "Small Text",
+   "label": "Speech Problem"
+  },
+  {
+   "fieldname": "birth_defect",
+   "fieldtype": "Small Text",
+   "label": "Birth Defect"
+  },
+  {
+   "fieldname": "dental_problems",
+   "fieldtype": "Small Text",
+   "label": "Dental Problems"
+  },
+  {
+   "fieldname": "g6pd",
+   "fieldtype": "Small Text",
+   "label": "G6PD"
+  },
+  {
+   "fieldname": "heart_problems",
+   "fieldtype": "Small Text",
+   "label": "Heart Problems"
+  },
+  {
+   "fieldname": "recurrent_nose_bleeding",
+   "fieldtype": "Small Text",
+   "label": "Recurrent Nose Bleeding"
+  },
+  {
+   "fieldname": "vision_problem",
+   "fieldtype": "Small Text",
+   "label": "Vision Problems"
+  },
+  {
+   "fieldname": "diet_data_section",
+   "fieldtype": "Section Break",
+   "label": "Other Data"
+  },
+  {
+   "fieldname": "diet_requirements",
+   "fieldtype": "Small Text",
+   "label": "Diet Requirements"
+  },
+  {
+   "fieldname": "medical_history_section",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "medical_surgeries__hospitalizations",
    "fieldtype": "Text",
-   "label": "Medications"
+   "label": "Medical Surgeries / Hospitalizations"
+  },
+  {
+   "fieldname": "others_section",
+   "fieldtype": "Section Break",
+   "label": "Others"
+  },
+  {
+   "fieldname": "other_medical_information",
+   "fieldtype": "Text Editor",
+   "label": "Other Medical Information"
+  },
+  {
+   "fieldname": "vaccinations",
+   "fieldtype": "Table",
+   "label": "Vaccinations",
+   "options": "Student Patient Vaccination"
+  },
+  {
+   "fieldname": "health_declaration_section",
+   "fieldtype": "Section Break",
+   "label": "Applicant Health Declaration"
+  },
+  {
+   "default": "0",
+   "fieldname": "applicant_health_declared_complete",
+   "fieldtype": "Check",
+   "label": "Applicant Health Disclosure Confirmed"
+  },
+  {
+   "fieldname": "applicant_health_declared_by",
+   "fieldtype": "Link",
+   "label": "Declared By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applicant_health_declared_on",
+   "fieldtype": "Datetime",
+   "label": "Declared On",
+   "read_only": 1
   },
   {
    "default": "Pending",
@@ -72,10 +262,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-01 00:00:00.000000",
+ "modified": "2026-02-22 07:44:07.628920",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Health Profile",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {
@@ -98,31 +289,31 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Admission Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Academic Admin",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Nurse",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
    "share": 1,
    "write": 1
   },
@@ -131,8 +322,24 @@
    "read": 1,
    "role": "Guardian",
    "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Admissions Applicant",
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

@@ -5,9 +5,9 @@ frappe.ui.form.on('Student Patient', {
 	onload(frm) {
         fetch_and_render_student_info(frm);
 
-	}, 
-	
-	refresh: function(frm) { 
+	},
+
+	refresh: function(frm) {
         fetch_and_render_student_info(frm);
 
 
@@ -18,8 +18,8 @@ frappe.ui.form.on('Student Patient', {
 			});
 
             // logic for the Student Visit button
-	        frm.add_custom_button(__('Student Visit'), function () { 
-                frappe.new_doc('Student Patient Visit', { 
+	        frm.add_custom_button(__('Student Visit'), function () {
+                frappe.new_doc('Student Patient Visit', {
                     student: frm.doc.student,
 			        student_patient: frm.doc.name,
 			        time_of_arrival: frappe.datetime.now_time()

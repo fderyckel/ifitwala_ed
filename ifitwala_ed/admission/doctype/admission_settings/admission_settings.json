@@ -2,7 +2,9 @@
  "actions": [],
  "allow_rename": 1,
  "creation": "2025-06-24 18:54:56.594146",
+ "description": "Configure response SLAs, assignment colors, and background SLA checks for the full admissions pipeline.",
  "doctype": "DocType",
+ "documentation": "https://ifitwala.com/docs/en/admission-settings/",
  "engine": "InnoDB",
  "field_order": [
   "section_break_fk4b",
@@ -54,7 +56,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-10 13:28:20.498559",
+ "modified": "2026-02-22 08:11:55.300430",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission Settings",

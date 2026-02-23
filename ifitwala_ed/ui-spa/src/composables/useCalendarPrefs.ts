@@ -66,4 +66,3 @@ export function useCalendarPrefs() {
 
   return { prefs, loading, error, fetch };
 }
-

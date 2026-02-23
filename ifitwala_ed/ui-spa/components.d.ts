@@ -35,6 +35,7 @@ declare module 'vue' {
     HistogramBuckets: typeof import('./src/components/analytics/HistogramBuckets.vue')['default']
     HistoryDialog: typeof import('./src/components/analytics/HistoryDialog.vue')['default']
     HorizontalBarTopN: typeof import('./src/components/analytics/HorizontalBarTopN.vue')['default']
+    InquiryFollowUpAction: typeof import('./src/components/focus/InquiryFollowUpAction.vue')['default']
     InteractionEmojiChips: typeof import('./src/components/InteractionEmojiChips.vue')['default']
     KpiRow: typeof import('./src/components/analytics/KpiRow.vue')['default']
     MeetingEventModal: typeof import('./src/components/calendar/MeetingEventModal.vue')['default']

@@ -4,9 +4,17 @@ slug: task-delivery
 category: Assessment
 doc_order: 5
 summary: "Assign a task to a specific student group with dates, grading mode, and evidence rules, then generate student outcomes at scale."
+seo_title: "Task Delivery: Turning a Task into a Real Teaching Event"
+seo_description: "Assign a task to a specific student group with dates, grading mode, and evidence rules, then generate student outcomes at scale."
 ---
 
-# Task Delivery: Turning a Task into a Real Teaching Event
+## Task Delivery: Turning a Task into a Real Teaching Event
+
+## Before You Start (Prerequisites)
+
+- Create the `Task` first.
+- Create the `Student Group` first (with roster aligned to the teaching context).
+- Prepare grading setup first (`Grade Scale`, and criteria readiness if using criteria grading mode).
 
 `Task Delivery` is where a reusable task becomes real: for this group, in this context, on these dates, with these evidence and grading rules.
 
@@ -28,7 +36,29 @@ Once a delivery has outcomes/evidence, grading configuration is intentionally lo
 - Student reflections and portfolio linkage:
   - `Student Reflection Entry` can reference Task Delivery.
 
+## Lifecycle and Linked Documents
+
+1. Create delivery from reusable `Task` + target `Student Group` context.
+2. Submit delivery to generate student-level `Task Outcome` records.
+3. Collect submissions/contributions under this delivery context during teaching and grading.
+4. Protect historical integrity by keeping grading configuration stable after evidence exists.
+
+<Callout type="info" title="Fresh-site sequencing">
+Do not create deliveries before roster and course context are stable. Rework later is expensive once outcomes exist.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`
+- **Required fields (`reqd=1`)**:
+  - `task` (`Link` -> `Task`)
+  - `student_group` (`Link` -> `Student Group`)
+  - `delivery_mode` (`Select`)
+- **Lifecycle hooks in controller**: `before_validate`, `validate`, `on_submit`, `on_cancel`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Task Delivery` (`ifitwala_ed/assessment/doctype/task_delivery/`)
 - **Autoname**: `TDL-{YYYY}-{#####}`

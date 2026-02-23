@@ -20,4 +20,3 @@ frappe.treeview_settings["Program"] = {
 
 	// onload not needed
 };
-

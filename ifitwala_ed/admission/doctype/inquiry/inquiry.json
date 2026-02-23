@@ -4,7 +4,9 @@
  "allow_rename": 1,
  "autoname": "format:INQ-{YYYY}-{MM}-{DD}-{##}",
  "creation": "2025-06-23 20:28:16.109115",
+ "description": "Capture, assign, and track inquiry follow-up with SLA visibility, assignment ownership, and conversion into Student Applicant.",
  "doctype": "DocType",
+ "documentation": "https://ifitwala.com/docs/en/inquiry/",
  "engine": "InnoDB",
  "field_order": [
   "section_break_9dhi",
@@ -195,7 +197,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-01 11:29:47",
+ "modified": "2026-02-22 08:04:16.722104",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",

@@ -11,6 +11,10 @@
   "belongs_to",
   "organization",
   "school",
+  "classification_slot",
+  "classification_data_class",
+  "classification_purpose",
+  "classification_retention_policy",
   "is_required",
   "is_active",
   "description"
@@ -48,6 +52,29 @@
    "options": "School"
   },
   {
+   "fieldname": "classification_slot",
+   "fieldtype": "Data",
+   "label": "Classification Slot"
+  },
+  {
+   "fieldname": "classification_data_class",
+   "fieldtype": "Select",
+   "label": "Classification Data Class",
+   "options": "academic\nassessment\nsafeguarding\nadministrative\nidentity_image\nlegal\noperational"
+  },
+  {
+   "fieldname": "classification_purpose",
+   "fieldtype": "Select",
+   "label": "Classification Purpose",
+   "options": "text\nidentification_document\ncontract\nassessment_submission\nassessment_feedback\nsafeguarding_evidence\nmedical_record\nvisa_document\npolicy_acknowledgement\nbackground_check\nacademic_report\nemployee_profile_display\nstudent_profile_display\napplicant_profile_display\nportfolio_evidence\njournal_attachment\nportfolio_export\njournal_export\nadministrative\nother"
+  },
+  {
+   "fieldname": "classification_retention_policy",
+   "fieldtype": "Select",
+   "label": "Classification Retention Policy",
+   "options": "until_program_end_plus_1y\nuntil_school_exit_plus_6m\nemployment_duration_plus_grace\nfixed_7y\nimmediate_on_request"
+  },
+  {
    "default": "0",
    "fieldname": "is_required",
    "fieldtype": "Check",
@@ -67,7 +94,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-01 00:00:00.000000",
+ "modified": "2026-02-01 00:05:03",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Document Type",

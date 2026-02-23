@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { createResource } from 'frappe-ui'
+import { computed, onMounted, ref, watch } from 'vue';
+import { createResource } from 'frappe-ui';
 
-import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue'
-import StackedBarChart from '@/components/analytics/StackedBarChart.vue'
+import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
+import StackedBarChart from '@/components/analytics/StackedBarChart.vue';
 
-type HeatmapMode = 'whole-day' | 'per-block'
+type HeatmapMode = 'whole-day' | 'per-block';
 type HeatmapCodeOption = {
-	label?: string
-	value: string
-	description?: string
-	severity?: 'present' | 'unexcused' | 'excused' | 'late' | 'no_school' | 'missing' | 'neutral'
-	severityScore?: number
-}
+	label?: string;
+	value: string;
+	description?: string;
+	severity?: 'present' | 'unexcused' | 'excused' | 'late' | 'no_school' | 'missing' | 'neutral';
+	severityScore?: number;
+};
 
 const palette = {
 	sand: '#f4ecdd',
@@ -21,329 +21,345 @@ const palette = {
 	flame: '#f25b32',
 	clay: '#b6522b',
 	ink: '#071019',
-}
+};
 
 type PermissionFlags = {
-	can_view_tasks: boolean
-	can_view_task_marks: boolean
-	can_view_logs: boolean
-	can_view_referrals: boolean
-	can_view_nurse_details: boolean
-	can_view_attendance_details: boolean
-}
+	can_view_tasks: boolean;
+	can_view_task_marks: boolean;
+	can_view_logs: boolean;
+	can_view_referrals: boolean;
+	can_view_nurse_details: boolean;
+	can_view_attendance_details: boolean;
+};
 
 type StudentGroup = {
-	name: string
-	abbreviation?: string
-	group_based_on?: string
-	course?: string | null
-	attendance_scope?: string | null
-}
+	name: string;
+	abbreviation?: string;
+	group_based_on?: string;
+	course?: string | null;
+	attendance_scope?: string | null;
+};
 
 type Snapshot = {
 	meta: {
-		student: string
-		student_name: string
-		school: string
-		program: string
-		current_academic_year: string
-		view_mode: ViewMode
-		permissions: PermissionFlags
-	}
+		student: string;
+		student_name: string;
+		school: string;
+		program: string;
+		current_academic_year: string;
+		view_mode: ViewMode;
+		permissions: PermissionFlags;
+	};
 	identity: {
-		student: string
-		full_name: string
-		photo?: string | null
-		cohort?: string | null
-		gender?: string | null
-		age?: number | null
-		date_of_birth?: string | null
-		school?: { name: string; label?: string }
+		student: string;
+		full_name: string;
+		photo?: string | null;
+		cohort?: string | null;
+		gender?: string | null;
+		age?: number | null;
+		date_of_birth?: string | null;
+		school?: { name: string; label?: string };
 		program_enrollment?: {
-			name: string
-			program: string
-			program_offering?: string
-			academic_year?: string
-			enrollment_date?: string | null
-			archived?: boolean
-		}
-		student_groups: StudentGroup[]
-	}
+			name: string;
+			program: string;
+			program_offering?: string;
+			academic_year?: string;
+			enrollment_date?: string | null;
+			archived?: boolean;
+		};
+		student_groups: StudentGroup[];
+	};
 	kpis: {
 		attendance: {
-			present_percentage: number
-			total_days: number
-			present_days: number
-			excused_absences: number
-			unexcused_absences: number
-			late_count: number
-		}
+			present_percentage: number;
+			total_days: number;
+			present_days: number;
+			excused_absences: number;
+			unexcused_absences: number;
+			late_count: number;
+		};
 		tasks: {
-			completion_rate: number
-			total_tasks: number
-			completed_tasks: number
-			overdue_tasks: number
-			missed_tasks: number
-		}
+			completion_rate: number;
+			total_tasks: number;
+			completed_tasks: number;
+			overdue_tasks: number;
+			missed_tasks: number;
+		};
 		academic: {
-			latest_overall_label: string | null
-			latest_overall_value: number | null
-			trend: string | null
-		}
+			latest_overall_label: string | null;
+			latest_overall_value: number | null;
+			trend: string | null;
+		};
 		support: {
-			student_logs_total: number
-			student_logs_open_followups: number
-			active_referrals: number
-			nurse_visits_this_term: number
-		}
-	}
+			student_logs_total: number;
+			student_logs_open_followups: number;
+			active_referrals: number;
+			nurse_visits_this_term: number;
+		};
+	};
 	learning: {
 		current_courses: {
-			course: string
-			course_name: string
-			student_group?: string | null
-			student_group_abbreviation?: string | null
-			instructors?: { name: string; full_name: string }[]
-			status?: string
-			completion_rate?: number | null
-			academic_summary?: { latest_grade_label?: string | null; latest_grade_value?: number | null }
-		}[]
+			course: string;
+			course_name: string;
+			student_group?: string | null;
+			student_group_abbreviation?: string | null;
+			instructors?: { name: string; full_name: string }[];
+			status?: string;
+			completion_rate?: number | null;
+			academic_summary?: {
+				latest_grade_label?: string | null;
+				latest_grade_value?: number | null;
+			};
+		}[];
 		task_progress: {
-			status_distribution: { status: string; count: number; year_scope?: string; course?: string | null }[]
+			status_distribution: {
+				status: string;
+				count: number;
+				year_scope?: string;
+				course?: string | null;
+			}[];
 			by_course_completion: {
-				course: string
-				course_name: string
-				completion_rate: number
-				total_tasks?: number
-				completed_tasks?: number
-				missed_tasks?: number
-				academic_year?: string
-			}[]
-		}
+				course: string;
+				course_name: string;
+				completion_rate: number;
+				total_tasks?: number;
+				completed_tasks?: number;
+				missed_tasks?: number;
+				academic_year?: string;
+			}[];
+		};
 		recent_tasks: {
-			task: string
-			title: string
-			course: string
-			course_name: string
-			student_group?: string | null
-			delivery_type?: string | null
-			due_date?: string | null
-			status?: string | null
-			complete?: boolean
-			mark_awarded?: number | null
-			visible_to_student?: boolean
-			visible_to_guardian?: boolean
-			is_overdue?: boolean
-			is_missed?: boolean
-			last_updated_on?: string | null
-		}[]
-	}
+			task: string;
+			title: string;
+			course: string;
+			course_name: string;
+			student_group?: string | null;
+			delivery_type?: string | null;
+			due_date?: string | null;
+			status?: string | null;
+			complete?: boolean;
+			mark_awarded?: number | null;
+			out_of?: number | null;
+			visible_to_student?: boolean;
+			visible_to_guardian?: boolean;
+			is_overdue?: boolean;
+			is_missed?: boolean;
+			last_updated_on?: string | null;
+		}[];
+	};
 	attendance: {
 		summary: {
-			present_percentage: number
-			total_days: number
-			present_days: number
-			excused_absences: number
-			unexcused_absences: number
-			late_count: number
+			present_percentage: number;
+			total_days: number;
+			present_days: number;
+			excused_absences: number;
+			unexcused_absences: number;
+			late_count: number;
 			most_impacted_course?: {
-				course: string
-				course_name: string
-				absent_percentage: number
-			} | null
-		}
-		view_mode: 'all_day' | 'by_course'
+				course: string;
+				course_name: string;
+				absent_percentage: number;
+			} | null;
+		};
+		view_mode: 'all_day' | 'by_course';
 		all_day_heatmap: {
-			date: string
-			attendance_code: string
-			attendance_code_name?: string
-			count_as_present?: boolean
-			color?: string
-			academic_year?: string
-		}[]
+			date: string;
+			attendance_code: string;
+			attendance_code_name?: string;
+			count_as_present?: boolean;
+			color?: string;
+			academic_year?: string;
+		}[];
 		by_course_heatmap: {
-			course: string
-			course_name: string
-			week_label: string
-			present_sessions?: number
-			absent_sessions?: number
-			unexcused_sessions?: number
-			academic_year?: string
-		}[]
+			course: string;
+			course_name: string;
+			week_label: string;
+			present_sessions?: number;
+			absent_sessions?: number;
+			unexcused_sessions?: number;
+			late_sessions?: number;
+			academic_year?: string;
+		}[];
 		by_course_breakdown: {
-			course: string
-			course_name: string
-			present_sessions: number
-			excused_absent_sessions: number
-			unexcused_absent_sessions: number
-			late_sessions: number
-			academic_year?: string
-		}[]
-	}
+			course: string;
+			course_name: string;
+			present_sessions: number;
+			excused_absent_sessions: number;
+			unexcused_absent_sessions: number;
+			late_sessions: number;
+			academic_year?: string;
+		}[];
+	};
 	wellbeing: {
 		timeline: {
-			type: 'student_log' | 'referral' | 'nurse_visit' | 'attendance_incident'
-			doctype: string
-			name: string
-			date: string
-			title: string
-			summary?: string
-			status?: string
-			severity?: string | null
-			is_sensitive?: boolean
-		}[]
+			type: 'student_log' | 'referral' | 'nurse_visit' | 'attendance_incident';
+			doctype: string;
+			name: string;
+			date: string;
+			title: string;
+			summary?: string;
+			status?: string;
+			severity?: string | null;
+			is_sensitive?: boolean;
+		}[];
 		metrics: {
-			student_logs?: { total?: number; open_followups?: number; recent_30_days?: number }
-			referrals?: { total?: number; active?: number }
-			nurse_visits?: { total?: number; this_term?: number; last_12_months?: number }
-			time_series?: { period: string; student_logs?: number; referrals?: number; nurse_visits?: number }[]
-		}
-	}
+			student_logs?: { total?: number; open_followups?: number; recent_30_days?: number };
+			referrals?: { total?: number; active?: number };
+			nurse_visits?: { total?: number; this_term?: number; last_12_months?: number };
+			time_series?: {
+				period: string;
+				student_logs?: number;
+				referrals?: number;
+				nurse_visits?: number;
+			}[];
+		};
+	};
 	history: {
-		year_options: { key: string; label: string; academic_year?: string; academic_years?: string[] }[]
-		selected_year_scope?: string
+		year_options: {
+			key: string;
+			label: string;
+			academic_year?: string;
+			academic_years?: string[];
+		}[];
+		selected_year_scope?: string;
 		academic_trend: {
-			academic_year: string
-			label: string
-			overall_grade_label?: string | null
-			overall_grade_value?: number | null
-			task_completion_rate?: number | null
-		}[]
+			academic_year: string;
+			label: string;
+			overall_grade_label?: string | null;
+			overall_grade_value?: number | null;
+			task_completion_rate?: number | null;
+		}[];
 		attendance_trend: {
-			academic_year: string
-			label: string
-			present_percentage?: number | null
-			unexcused_absences?: number | null
-		}[]
+			academic_year: string;
+			label: string;
+			present_percentage?: number | null;
+			unexcused_absences?: number | null;
+		}[];
 		reflection_flags: {
-			id: string
-			category: string
-			severity: 'positive' | 'neutral' | 'concern'
-			message_staff?: string
-			message_student?: string
-		}[]
-	}
-}
+			id: string;
+			category: string;
+			severity: 'positive' | 'neutral' | 'concern';
+			message_staff?: string;
+			message_student?: string;
+		}[];
+	};
+};
 
-type ViewMode = 'staff' | 'admin' | 'counselor' | 'attendance' | 'student' | 'guardian'
+type ViewMode = 'staff' | 'admin' | 'counselor' | 'attendance' | 'student' | 'guardian';
 
 const viewModeOptions: { id: ViewMode; label: string }[] = [
 	{ id: 'staff', label: 'Staff' },
 	{ id: 'student', label: 'Student' },
 	{ id: 'guardian', label: 'Guardian' },
-]
+];
 
 const filters = ref<{ school: string | null; program: string | null; student: string | null }>({
 	school: null,
 	program: null,
 	student: null,
-})
+});
 
-const viewMode = ref<ViewMode>('staff')
+const viewMode = ref<ViewMode>('staff');
 
 const filterMetaResource = createResource({
 	url: 'ifitwala_ed.api.student_overview_dashboard.get_filter_meta',
 	method: 'GET',
 	auto: true,
-})
+});
 
-const filterMeta = computed(() => (filterMetaResource.data as any) || {})
-const schools = computed(() => filterMeta.value.schools || [])
-const programs = computed(() => filterMeta.value.programs || [])
-
+const filterMeta = computed(() => (filterMetaResource.data as any) || {});
+const schools = computed(() => filterMeta.value.schools || []);
+const programs = computed(() => filterMeta.value.programs || []);
 
 watch(
 	filterMeta,
-	(meta) => {
+	meta => {
 		if (meta?.default_school && !filters.value.school) {
-			filters.value.school = meta.default_school
+			filters.value.school = meta.default_school;
 		}
 	},
 	{ immediate: true }
-)
+);
 
 watch(
 	() => filters.value.school,
 	(newSchool, oldSchool) => {
 		if (newSchool !== oldSchool) {
 			// when school changes, program may no longer be valid
-			filters.value.program = null
-			clearStudent()
+			filters.value.program = null;
+			clearStudent();
 		}
 	}
-)
+);
 
-
-const studentSearch = ref('')
-const studentSuggestions = ref<{ id: string; name: string }[]>([])
-const studentDropdownOpen = ref(false)
-let studentSearchTimer: number | undefined
+const studentSearch = ref('');
+const studentSuggestions = ref<{ id: string; name: string }[]>([]);
+const studentDropdownOpen = ref(false);
+let studentSearchTimer: number | undefined;
 
 const studentSearchResource = createResource({
 	url: 'ifitwala_ed.api.student_overview_dashboard.search_students',
 	method: 'GET',
 	auto: false,
-})
+});
 
-const studentLoading = computed(() => studentSearchResource.loading)
+const studentLoading = computed(() => studentSearchResource.loading);
 
 function debounce(fn: () => void, delay = 350) {
-	window.clearTimeout(studentSearchTimer)
-	studentSearchTimer = window.setTimeout(fn, delay)
+	window.clearTimeout(studentSearchTimer);
+	studentSearchTimer = window.setTimeout(fn, delay);
 }
-
 
 function openStudentDropdown() {
 	// show dropdown with hint when focused but empty
-	studentDropdownOpen.value = true
+	studentDropdownOpen.value = true;
 }
 
 async function fetchStudents() {
-	const query = studentSearch.value.trim()
+	const query = studentSearch.value.trim();
 
 	// Empty query: keep dropdown open to show the hint row
 	if (!query) {
-		studentSuggestions.value = []
-		studentDropdownOpen.value = true
-		return
+		studentSuggestions.value = [];
+		studentDropdownOpen.value = true;
+		return;
 	}
 
 	const res = await studentSearchResource.fetch({
 		search_text: query,
 		school: filters.value.school,
 		program: filters.value.program,
-	})
-	const list = (res as any[]) || []
+	});
+	const list = (res as any[]) || [];
 	studentSuggestions.value = list.map((s: any) => ({
 		id: s.student || s.name,
 		name: s.student_full_name || s.full_name || s.name,
-	}))
-	studentDropdownOpen.value = !!studentSuggestions.value.length
+	}));
+	studentDropdownOpen.value = !!studentSuggestions.value.length;
 }
 
-
-
 function selectStudent(s: { id: string; name: string }) {
-	filters.value.student = s.id
-	studentSearch.value = s.name
-	studentDropdownOpen.value = false
+	filters.value.student = s.id;
+	studentSearch.value = s.name;
+	studentDropdownOpen.value = false;
 }
 
 function clearStudent() {
-	filters.value.student = null
-	studentSearch.value = ''
-	studentSuggestions.value = []
-	studentDropdownOpen.value = false
+	filters.value.student = null;
+	studentSearch.value = '';
+	studentSuggestions.value = [];
+	studentDropdownOpen.value = false;
 }
 
-const readyForSnapshot = computed(() => Boolean(filters.value.school && filters.value.program && filters.value.student))
+const readyForSnapshot = computed(() =>
+	Boolean(filters.value.school && filters.value.program && filters.value.student)
+);
 
 const snapshotResource = createResource({
 	url: 'ifitwala_ed.api.student_overview_dashboard.get_student_center_snapshot',
 	method: 'POST',
 	auto: false,
-})
-
+});
 
 const emptySnapshot: Snapshot = {
 	meta: {
@@ -436,100 +452,105 @@ const emptySnapshot: Snapshot = {
 		attendance_trend: [],
 		reflection_flags: [],
 	},
-}
+};
 
-const snapshot = computed<Snapshot>(() => (snapshotResource.data as Snapshot) || emptySnapshot)
-const loadingSnapshot = computed(() => snapshotResource.loading)
+const snapshot = computed<Snapshot>(() => (snapshotResource.data as Snapshot) || emptySnapshot);
+const loadingSnapshot = computed(() => snapshotResource.loading);
 
-let snapshotDebounce: number | undefined
+let snapshotDebounce: number | undefined;
 function debounceSnapshot() {
-	window.clearTimeout(snapshotDebounce)
+	window.clearTimeout(snapshotDebounce);
 	snapshotDebounce = window.setTimeout(() => {
-		if (readyForSnapshot.value) loadSnapshot()
-	}, 350)
+		if (readyForSnapshot.value) loadSnapshot();
+	}, 350);
 }
 
 async function loadSnapshot() {
-	if (!readyForSnapshot.value) return
-	if (snapshotResource.loading) return // small guard to avoid spam
+	if (!readyForSnapshot.value) return;
+	if (snapshotResource.loading) return; // small guard to avoid spam
 
 	await snapshotResource.submit({
 		student: filters.value.student,
 		school: filters.value.school,
 		program: filters.value.program,
 		view_mode: viewMode.value,
-	})
+	});
 }
-
 
 watch(
 	[filters, viewMode],
 	() => {
-		debounceSnapshot()
+		debounceSnapshot();
 	},
 	{ deep: true }
-)
+);
 
 onMounted(() => {
-	if (readyForSnapshot.value) loadSnapshot()
-})
+	if (readyForSnapshot.value) loadSnapshot();
+});
 
 // local UI state
-const selectedCourse = ref<string | null>(null)
-const taskYearScope = ref<'current' | 'previous' | 'all'>('current')
-const attendanceView = ref<'all_day' | 'by_course'>('all_day')
-const attendanceScope = ref<'current' | 'last' | 'all'>('current')
-const wellbeingScope = ref<'current' | 'last' | 'all'>('current')
-const wellbeingFilter = ref<'all' | 'student_log' | 'referral' | 'nurse_visit' | 'attendance_incident'>('all')
-const historyScope = ref<'current' | 'previous' | 'two_years' | 'all'>('all')
-const attendanceKpiSource = ref<'all_day' | 'by_course'>('all_day')
+const selectedCourse = ref<string | null>(null);
+const taskYearScope = ref<'current' | 'previous' | 'all'>('current');
+const attendanceView = ref<'all_day' | 'by_course'>('all_day');
+const attendanceScope = ref<'current' | 'last' | 'all'>('current');
+const wellbeingScope = ref<'current' | 'last' | 'all'>('current');
+const wellbeingFilter = ref<
+	'all' | 'student_log' | 'referral' | 'nurse_visit' | 'attendance_incident'
+>('all');
+const historyScope = ref<'current' | 'previous' | 'two_years' | 'all'>('all');
+const attendanceKpiSource = ref<'all_day' | 'by_course'>('all_day');
 watch(
 	() => snapshot.value.meta?.student,
 	() => {
-		selectedCourse.value = null
+		selectedCourse.value = null;
 	}
-)
+);
 
-const permissions = computed<PermissionFlags>(() => snapshot.value.meta.permissions)
-const displayViewMode = computed<ViewMode>(() => snapshot.value.meta.view_mode || viewMode.value)
+const permissions = computed<PermissionFlags>(() => snapshot.value.meta.permissions);
+const displayViewMode = computed<ViewMode>(() => snapshot.value.meta.view_mode || viewMode.value);
 
 function formatPct(value: number | null | undefined, digits = 0) {
-	if (value == null || Number.isNaN(value)) return '0%'
-	return `${Math.round(Number(value) * 100 * 10 ** digits) / 10 ** digits}%`
+	if (value == null || Number.isNaN(value)) return '0%';
+	return `${Math.round(Number(value) * 100 * 10 ** digits) / 10 ** digits}%`;
 }
 
 function formatCount(value: number | null | undefined) {
-	if (value == null) return '0'
-	return new Intl.NumberFormat().format(value)
+	if (value == null) return '0';
+	return new Intl.NumberFormat().format(value);
 }
 
 function formatDate(value?: string | null) {
-	if (!value) return ''
-	return value.slice(0, 10)
+	if (!value) return '';
+	return value.slice(0, 10);
 }
 
-const hasAllDayHeatmap = computed(() => (snapshot.value.attendance.all_day_heatmap || []).length > 0)
-const hasByCourseHeatmap = computed(() => (snapshot.value.attendance.by_course_heatmap || []).length > 0)
-const hasAnyHeatmap = computed(() => hasAllDayHeatmap.value || hasByCourseHeatmap.value)
+const hasAllDayHeatmap = computed(
+	() => (snapshot.value.attendance.all_day_heatmap || []).length > 0
+);
+const hasByCourseHeatmap = computed(
+	() => (snapshot.value.attendance.by_course_heatmap || []).length > 0
+);
+const hasAnyHeatmap = computed(() => hasAllDayHeatmap.value || hasByCourseHeatmap.value);
 
 watch(
 	[() => hasAllDayHeatmap.value, () => hasByCourseHeatmap.value],
 	([hasAllDay, hasByCourse]) => {
 		if (hasAllDay) {
-			attendanceView.value = 'all_day'
-			attendanceKpiSource.value = 'all_day'
+			attendanceView.value = 'all_day';
+			attendanceKpiSource.value = 'all_day';
 		} else if (hasByCourse) {
-			attendanceView.value = 'by_course'
-			attendanceKpiSource.value = 'by_course'
+			attendanceView.value = 'by_course';
+			attendanceKpiSource.value = 'by_course';
 		}
 	}
-)
+);
 
 const attendanceSourceLabel = computed(() => {
-	if (attendanceKpiSource.value === 'all_day') return 'Whole day'
-	if (attendanceKpiSource.value === 'by_course') return 'Course-based'
-	return 'No attendance data'
-})
+	if (attendanceKpiSource.value === 'all_day') return 'Whole day';
+	if (attendanceKpiSource.value === 'by_course') return 'Course-based';
+	return 'No attendance data';
+});
 
 const attendanceSourceToggle = computed(() => ({
 	active: attendanceKpiSource.value,
@@ -537,60 +558,70 @@ const attendanceSourceToggle = computed(() => ({
 		{ id: 'all_day', label: 'Whole day' },
 		{ id: 'by_course', label: 'Per course' },
 	],
-}))
+}));
 
 function setAttendanceKpiSource(source: 'all_day' | 'by_course') {
-	attendanceKpiSource.value = source
+	attendanceKpiSource.value = source;
 	if (source === 'all_day') {
-		attendanceView.value = 'all_day'
+		attendanceView.value = 'all_day';
 	} else {
-		attendanceView.value = 'by_course'
+		attendanceView.value = 'by_course';
 	}
 }
 
-const courses = computed(() => snapshot.value.learning.current_courses || [])
-const selectedCourseRow = computed(() => courses.value.find((c) => c.course === selectedCourse.value) || null)
+const courses = computed(() => snapshot.value.learning.current_courses || []);
+const selectedCourseRow = computed(
+	() => courses.value.find(c => c.course === selectedCourse.value) || null
+);
 
 function toggleCourse(courseId: string) {
-	selectedCourse.value = selectedCourse.value === courseId ? null : courseId
+	selectedCourse.value = selectedCourse.value === courseId ? null : courseId;
 }
 
 function matchesYearScope(itemYear?: string | null, scope?: string) {
-	if (!scope || scope === 'all') return true
-	if (!itemYear) return true
-	if (scope === 'current') return itemYear === snapshot.value.meta.current_academic_year
+	if (!scope || scope === 'all') return true;
+	if (!itemYear) return true;
+	if (scope === 'current') return itemYear === snapshot.value.meta.current_academic_year;
 	if (scope === 'previous') {
-		const prev = snapshot.value.history.year_options.find((y) => y.key === 'previous')?.academic_year
-		return prev ? itemYear === prev : true
+		const prev = snapshot.value.history.year_options.find(
+			y => y.key === 'previous'
+		)?.academic_year;
+		return prev ? itemYear === prev : true;
 	}
 	if (scope === 'two_years') {
-		const yrs = snapshot.value.history.year_options.find((y) => y.key === 'two_years')?.academic_years || []
-		return yrs.includes(itemYear)
+		const yrs =
+			snapshot.value.history.year_options.find(y => y.key === 'two_years')?.academic_years || [];
+		return yrs.includes(itemYear);
 	}
 	if (scope === 'last') {
-		const prev = snapshot.value.history.year_options.find((y) => y.key === 'previous')?.academic_year
-		return prev ? itemYear === prev : true
+		const prev = snapshot.value.history.year_options.find(
+			y => y.key === 'previous'
+		)?.academic_year;
+		return prev ? itemYear === prev : true;
 	}
-	return true
+	return true;
 }
 
 const filteredStatusDistribution = computed(() => {
-	const list = snapshot.value.learning.task_progress.status_distribution || []
-	return list.filter((item) => {
-		const yearMatch = matchesYearScope(item.year_scope, taskYearScope.value)
-		const courseMatch = selectedCourse.value ? !item.course || item.course === selectedCourse.value : true
-		return yearMatch && courseMatch
-	})
-})
+	const list = snapshot.value.learning.task_progress.status_distribution || [];
+	return list.filter(item => {
+		const yearMatch = matchesYearScope(item.year_scope, taskYearScope.value);
+		const courseMatch = selectedCourse.value
+			? !item.course || item.course === selectedCourse.value
+			: true;
+		return yearMatch && courseMatch;
+	});
+});
 
 const statusDonutData = computed(() => {
-	const total = filteredStatusDistribution.value.reduce((acc, curr) => acc + (curr.count || 0), 0) || 1
-	return filteredStatusDistribution.value.map((item) => ({
+	const total =
+		filteredStatusDistribution.value.reduce((acc, curr) => acc + (curr.count || 0), 0) || 1;
+	return filteredStatusDistribution.value.map(item => ({
 		name: item.status,
 		value: item.count,
 		pct: Math.round((item.count / total) * 100),
-	}))
-})
+	}));
+});
 
 const taskStatusOption = computed(() => ({
 	color: ['#0ea5e9', '#6366f1', '#f97316', '#22c55e', '#ef4444'],
@@ -609,66 +640,76 @@ const taskStatusOption = computed(() => ({
 			emphasis: { label: { show: true, fontWeight: 'bold' } },
 		},
 	],
-}))
+}));
 
 const filteredCourseCompletion = computed(() => {
-	const list = snapshot.value.learning.task_progress.by_course_completion || []
-	return list.filter((row) => matchesYearScope(row.academic_year, taskYearScope.value))
-})
+	const list = snapshot.value.learning.task_progress.by_course_completion || [];
+	return list.filter(row => matchesYearScope(row.academic_year, taskYearScope.value));
+});
 
 const completionOption = computed(() => {
-	const courses = filteredCourseCompletion.value
-	if (!courses.length) return {}
+	const courses = filteredCourseCompletion.value;
+	if (!courses.length) return {};
 	return {
 		grid: { left: 100, right: 20, top: 10, bottom: 20 },
 		xAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
-		yAxis: { type: 'category', data: courses.map((c) => c.course_name || c.course) },
+		yAxis: { type: 'category', data: courses.map(c => c.course_name || c.course) },
 		tooltip: {
 			trigger: 'axis',
 			axisPointer: { type: 'shadow' },
 			formatter: (params: any) => {
-				const p = Array.isArray(params) ? params[0] : params
-				const row = courses[p.dataIndex]
-				return `${row.course_name || row.course}: ${Math.round((row.completion_rate || 0) * 100)}%`
+				const p = Array.isArray(params) ? params[0] : params;
+				const row = courses[p.dataIndex];
+				return `${row.course_name || row.course}: ${Math.round((row.completion_rate || 0) * 100)}%`;
 			},
 		},
 		series: [
 			{
 				type: 'bar',
-				data: courses.map((c) => Math.round((c.completion_rate || 0) * 100)),
+				data: courses.map(c => Math.round((c.completion_rate || 0) * 100)),
 				itemStyle: { color: '#0ea5e9' },
 				showBackground: true,
 				backgroundStyle: { color: '#f8fafc' },
 			},
 		],
-	}
-})
+	};
+});
 
 const recentTasks = computed(() => {
-	const list = snapshot.value.learning.recent_tasks || []
-	if (permissions.value.can_view_tasks) return list
-	return list.filter((t) => t.visible_to_student || t.visible_to_guardian)
-})
+	const list = snapshot.value.learning.recent_tasks || [];
+	if (permissions.value.can_view_tasks) return list;
+	return list.filter(t => t.visible_to_student || t.visible_to_guardian);
+});
 
 const filteredAllDayHeatmap = computed(() => {
-	const list = snapshot.value.attendance.all_day_heatmap || []
-	return list.filter((row) => matchesYearScope(row.academic_year, attendanceScope.value))
-})
+	const list = snapshot.value.attendance.all_day_heatmap || [];
+	return list.filter(row => matchesYearScope(row.academic_year, attendanceScope.value));
+});
 
 const allDayHeatmapOption = computed(() => {
-	if (attendanceView.value !== 'all_day') return {}
-	const data = filteredAllDayHeatmap.value
-	if (!data.length) return {}
-	const dates = data.map((d) => d.date)
-	const values = data.map((item, idx) => [idx, 0, 1, item])
+	if (attendanceView.value !== 'all_day') return {};
+	const data = filteredAllDayHeatmap.value;
+	if (!data.length) return {};
+	const dates = data.map(d => d.date);
+	const values = data.map((item, idx) => [idx, 0, 1, item]);
 	return {
 		grid: { left: 20, right: 10, top: 10, bottom: 30 },
-		xAxis: { type: 'category', data: dates, axisLabel: { show: false }, splitArea: { show: false } },
-		yAxis: { type: 'category', data: [''], axisLabel: { show: false }, splitArea: { show: false } },
+		xAxis: {
+			type: 'category',
+			data: dates,
+			axisLabel: { show: false },
+			splitArea: { show: false },
+		},
+		yAxis: {
+			type: 'category',
+			data: [''],
+			axisLabel: { show: false },
+			splitArea: { show: false },
+		},
 		tooltip: {
 			formatter: (params: any) => {
-				const item = params.value?.[3] || {}
-				return `${item.date || ''}<br>${item.attendance_code_name || item.attendance_code || ''}`
+				const item = params.value?.[3] || {};
+				return `${item.date || ''}<br>${item.attendance_code_name || item.attendance_code || ''}`;
 			},
 		},
 		visualMap: { show: false, min: 0, max: 1 },
@@ -680,35 +721,35 @@ const allDayHeatmapOption = computed(() => {
 					borderWidth: 1,
 					borderColor: 'rgba(7,16,25,0.08)',
 					color: (params: any) => {
-						const row = params.value?.[3] || {}
-						if (row.color) return row.color
-						if (row.is_late) return palette.clay
-						if (row.count_as_present) return palette.leaf
-						return palette.flame
+						const row = params.value?.[3] || {};
+						if (row.color) return row.color;
+						if (row.is_late) return palette.clay;
+						if (row.count_as_present) return palette.leaf;
+						return palette.flame;
 					},
 				},
 			},
 		],
-	}
-})
+	};
+});
 
 const filteredByCourseHeatmap = computed(() => {
-	const list = snapshot.value.attendance.by_course_heatmap || []
-	return list.filter((row) => matchesYearScope(row.academic_year, attendanceScope.value))
-})
+	const list = snapshot.value.attendance.by_course_heatmap || [];
+	return list.filter(row => matchesYearScope(row.academic_year, attendanceScope.value));
+});
 
 const byCourseHeatmapOption = computed(() => {
-	if (attendanceView.value !== 'by_course') return {}
-	const rows = filteredByCourseHeatmap.value
-	if (!rows.length) return {}
-	const courses = Array.from(new Set(rows.map((r) => r.course_name || r.course)))
-	const weeks = Array.from(new Set(rows.map((r) => r.week_label)))
-	const data = rows.map((row) => {
+	if (attendanceView.value !== 'by_course') return {};
+	const rows = filteredByCourseHeatmap.value;
+	if (!rows.length) return {};
+	const courses = Array.from(new Set(rows.map(r => r.course_name || r.course)));
+	const weeks = Array.from(new Set(rows.map(r => r.week_label)));
+	const data = rows.map(row => {
 		const severity =
 			(row.unexcused_sessions || 0) * 2 +
 			(row.absent_sessions || 0) +
 			(row.late_sessions || 0) +
-			1
+			1;
 		return {
 			value: [
 				weeks.indexOf(row.week_label),
@@ -716,21 +757,22 @@ const byCourseHeatmapOption = computed(() => {
 				severity,
 			],
 			row,
-		}
-	})
-	const minSeverity = Math.min(...data.map((d) => d.value[2]))
-	const maxSeverity = Math.max(...data.map((d) => d.value[2]))
+		};
+	});
+	const minSeverity = Math.min(...data.map(d => d.value[2]));
+	const maxSeverity = Math.max(...data.map(d => d.value[2]));
 	return {
 		grid: { left: 120, right: 10, top: 10, bottom: 48 },
 		xAxis: { type: 'category', data: weeks, axisLabel: { rotate: 30 } },
 		yAxis: { type: 'category', data: courses },
 		tooltip: {
 			formatter: (params: any) => {
-				const row = params.data?.row || {}
-				const total = (row.present_sessions || 0) + (row.absent_sessions || 0) + (row.unexcused_sessions || 0)
+				const row = params.data?.row || {};
+				const total =
+					(row.present_sessions || 0) + (row.absent_sessions || 0) + (row.unexcused_sessions || 0);
 				return `${row.course_name || row.course} (${row.week_label})<br>${formatCount(
 					row.unexcused_sessions
-				)} unexcused / ${formatCount(row.absent_sessions)} absent / ${formatCount(row.late_sessions)} late / ${formatCount(row.present_sessions)} present`
+				)} unexcused / ${formatCount(row.absent_sessions)} absent / ${formatCount(row.late_sessions)} late / ${formatCount(row.present_sessions)} present`;
 			},
 		},
 		visualMap: {
@@ -753,14 +795,14 @@ const byCourseHeatmapOption = computed(() => {
 				emphasis: { itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.2)' } },
 			},
 		],
-	}
-})
+	};
+});
 
 const breakdownRows = computed(() => {
-	const list = snapshot.value.attendance.by_course_breakdown || []
+	const list = snapshot.value.attendance.by_course_breakdown || [];
 	return list
-		.filter((row) => matchesYearScope(row.academic_year, attendanceScope.value))
-		.map((row) => ({
+		.filter(row => matchesYearScope(row.academic_year, attendanceScope.value))
+		.map(row => ({
 			category: row.course_name || row.course,
 			values: {
 				present: row.present_sessions,
@@ -768,53 +810,58 @@ const breakdownRows = computed(() => {
 				unexcused: row.unexcused_absent_sessions,
 				late: row.late_sessions,
 			},
-		}))
-})
+		}));
+});
 
 const attendanceKpi = computed(() => {
 	if (attendanceKpiSource.value === 'by_course') {
-		const rows = breakdownRows.value
+		const rows = breakdownRows.value;
 		const totals = rows.reduce(
 			(acc, row) => {
-				acc.present += row.values.present || 0
-				acc.excused += row.values.excused || 0
-				acc.unexcused += row.values.unexcused || 0
-				acc.late += row.values.late || 0
-				return acc
+				acc.present += row.values.present || 0;
+				acc.excused += row.values.excused || 0;
+				acc.unexcused += row.values.unexcused || 0;
+				acc.late += row.values.late || 0;
+				return acc;
 			},
 			{ present: 0, excused: 0, unexcused: 0, late: 0 }
-		)
-		const totalSessions = totals.present + totals.excused + totals.unexcused + totals.late
+		);
+		const totalSessions = totals.present + totals.excused + totals.unexcused + totals.late;
 		return {
 			present_percentage: totalSessions ? totals.present / totalSessions : 0,
 			excused: totals.excused,
 			unexcused: totals.unexcused,
-		}
+		};
 	}
 
 	// Whole-day mode from heatmap rows
-	const rows = filteredAllDayHeatmap.value
-	const present = rows.filter((r) => r.count_as_present).length
-	const total = rows.length
+	const rows = filteredAllDayHeatmap.value;
+	const present = rows.filter(r => r.count_as_present).length;
+	const total = rows.length;
 	return {
-		present_percentage: total ? present / total : snapshot.value.kpis.attendance.present_percentage,
+		present_percentage: total
+			? present / total
+			: snapshot.value.kpis.attendance.present_percentage,
 		excused: snapshot.value.kpis.attendance.excused_absences,
 		unexcused: total ? total - present : snapshot.value.kpis.attendance.unexcused_absences,
-	}
-})
+	};
+});
 
 const heatmapStudentOptions = computed(() => {
-	if (!snapshot.value.meta.student) return []
+	if (!snapshot.value.meta.student) return [];
 	return [
 		{
-			label: snapshot.value.identity.full_name || snapshot.value.meta.student_name || snapshot.value.meta.student,
+			label:
+				snapshot.value.identity.full_name ||
+				snapshot.value.meta.student_name ||
+				snapshot.value.meta.student,
 			value: snapshot.value.meta.student,
 		},
-	]
-})
+	];
+});
 
 const heatmapAttendanceCodes = computed<HeatmapCodeOption[]>(() => {
-	const fromServer = (snapshot.value.attendance as any)?.codes || []
+	const fromServer = (snapshot.value.attendance as any)?.codes || [];
 	if (fromServer.length) {
 		return fromServer.map((c: any) => ({
 			label: c.label || c.attendance_code_name || c.value,
@@ -822,7 +869,7 @@ const heatmapAttendanceCodes = computed<HeatmapCodeOption[]>(() => {
 			description: '',
 			severity: c.count_as_present ? 'present' : 'unexcused',
 			severityScore: c.count_as_present ? 2 : 5,
-		}))
+		}));
 	}
 
 	// Fallback palette
@@ -832,8 +879,8 @@ const heatmapAttendanceCodes = computed<HeatmapCodeOption[]>(() => {
 		{ label: 'Absent', value: 'ABS', severity: 'excused', severityScore: 4 },
 		{ label: 'Late', value: 'L', severity: 'late', severityScore: 3 },
 		{ label: 'No school', value: 'HOL', severity: 'no_school', severityScore: 0 },
-	]
-})
+	];
+});
 
 const heatmapStatusLegend = computed(() => ({
 	P: { severity: 'present', label: 'Present' },
@@ -841,24 +888,26 @@ const heatmapStatusLegend = computed(() => ({
 	ABS: { severity: 'excused', label: 'Absent', score: 4 },
 	L: { severity: 'late', label: 'Late', score: 3 },
 	HOL: { severity: 'no_school', label: 'Holiday', score: 0 },
-}))
+}));
 
 const heatmapWholeDayPoints = computed(() =>
-	(snapshot.value.attendance.all_day_heatmap || []).map((row) => ({
+	(snapshot.value.attendance.all_day_heatmap || []).map(row => ({
 		date: row.date,
 		academic_year: row.academic_year,
 		status_code: row.attendance_code,
 		severity_score: deriveSeverityScore(row.attendance_code, row.count_as_present),
 		source: 'Student Attendance records',
 	}))
-)
+);
 
 const heatmapBlockPoints = computed(() => {
-	const rows = snapshot.value.attendance.by_course_heatmap || []
-	const courseOrder = Array.from(new Set(rows.map((r) => r.course || r.course_name))).filter(Boolean)
-	return rows.map((row) => {
-		const blockNumber = Math.max(courseOrder.indexOf(row.course || row.course_name) + 1, 1)
-		const { statusCode, severityScore } = deriveCourseStatus(row)
+	const rows = snapshot.value.attendance.by_course_heatmap || [];
+	const courseOrder = Array.from(new Set(rows.map(r => r.course || r.course_name))).filter(
+		Boolean
+	);
+	return rows.map(row => {
+		const blockNumber = Math.max(courseOrder.indexOf(row.course || row.course_name) + 1, 1);
+		const { statusCode, severityScore } = deriveCourseStatus(row);
 		return {
 			date: row.week_label || '',
 			week_index: parseWeekIndex(row.week_label),
@@ -870,55 +919,56 @@ const heatmapBlockPoints = computed(() => {
 			status_code: statusCode,
 			severity_score: severityScore,
 			source: 'Student Attendance records',
-		}
-	})
-})
+		};
+	});
+});
 
 const heatmapBlockLabels = computed(() => {
-	const labels: Record<number, string> = {}
-	heatmapBlockPoints.value.forEach((point) => {
+	const labels: Record<number, string> = {};
+	heatmapBlockPoints.value.forEach(point => {
 		if (point.block_number) {
-			labels[point.block_number] = point.block_label || point.course || `Block ${point.block_number}`
+			labels[point.block_number] =
+				point.block_label || point.course || `Block ${point.block_number}`;
 		}
-	})
-	return labels
-})
+	});
+	return labels;
+});
 
 function deriveSeverityScore(code?: string, countAsPresent?: boolean | null) {
-	if (countAsPresent === true) return 2
-	if (countAsPresent === false) return 5
-	const normalized = (code || '').toUpperCase()
-	if (normalized === 'P') return 2
-	if (normalized === 'L') return 3
-	if (normalized === 'E' || normalized === 'EXC') return 4
-	if (normalized === 'A' || normalized === 'UNX') return 5
-	if (normalized === 'HOL' || normalized === 'NA') return 0
-	return undefined
+	if (countAsPresent === true) return 2;
+	if (countAsPresent === false) return 5;
+	const normalized = (code || '').toUpperCase();
+	if (normalized === 'P') return 2;
+	if (normalized === 'L') return 3;
+	if (normalized === 'E' || normalized === 'EXC') return 4;
+	if (normalized === 'A' || normalized === 'UNX') return 5;
+	if (normalized === 'HOL' || normalized === 'NA') return 0;
+	return undefined;
 }
 
 function deriveCourseStatus(row: any) {
-	const unexcused = row.unexcused_sessions || 0
-	const absent = row.absent_sessions || 0
-	if (unexcused > 0) return { statusCode: 'UNX', severityScore: 5 }
-	if (absent > 0) return { statusCode: 'ABS', severityScore: 4 }
-	if ((row.late_sessions || 0) > 0) return { statusCode: 'L', severityScore: 3 }
-	return { statusCode: 'P', severityScore: 2 }
+	const unexcused = row.unexcused_sessions || 0;
+	const absent = row.absent_sessions || 0;
+	if (unexcused > 0) return { statusCode: 'UNX', severityScore: 5 };
+	if (absent > 0) return { statusCode: 'ABS', severityScore: 4 };
+	if ((row.late_sessions || 0) > 0) return { statusCode: 'L', severityScore: 3 };
+	return { statusCode: 'P', severityScore: 2 };
 }
 
 function parseWeekIndex(label?: string | null) {
-	if (!label) return 0
-	const match = label.match(/W(\d{1,2})$/i) || label.match(/-(\d{1,2})$/)
-	return match ? Number(match[1]) : 0
+	if (!label) return 0;
+	const match = label.match(/W(\d{1,2})$/i) || label.match(/-(\d{1,2})$/);
+	return match ? Number(match[1]) : 0;
 }
 
 const wellbeingTimeline = computed(() => {
-	const events = snapshot.value.wellbeing.timeline || []
-	return events.filter((item) => {
-		const scopeMatch = matchesYearScope((item as any).academic_year, wellbeingScope.value)
-		const typeMatch = wellbeingFilter.value === 'all' ? true : item.type === wellbeingFilter.value
-		return scopeMatch && typeMatch
-	})
-})
+	const events = snapshot.value.wellbeing.timeline || [];
+	return events.filter(item => {
+		const scopeMatch = matchesYearScope((item as any).academic_year, wellbeingScope.value);
+		const typeMatch = wellbeingFilter.value === 'all' ? true : item.type === wellbeingFilter.value;
+		return scopeMatch && typeMatch;
+	});
+});
 
 const kpiTiles = computed(() => [
 	{
@@ -931,7 +981,8 @@ const kpiTiles = computed(() => [
 		clickable: hasAllDayHeatmap.value && hasByCourseHeatmap.value,
 		onClick: () => {
 			if (hasAllDayHeatmap.value && hasByCourseHeatmap.value) {
-				attendanceKpiSource.value = attendanceKpiSource.value === 'all_day' ? 'by_course' : 'all_day'
+				attendanceKpiSource.value =
+					attendanceKpiSource.value === 'all_day' ? 'by_course' : 'all_day';
 			}
 		},
 		sourceToggle: attendanceSourceToggle.value,
@@ -946,7 +997,9 @@ const kpiTiles = computed(() => [
 	{
 		label: 'Academic progress',
 		value: snapshot.value.kpis.academic.latest_overall_label || '—',
-		sub: snapshot.value.kpis.academic.trend ? `Trend: ${snapshot.value.kpis.academic.trend}` : 'Latest overall grade',
+		sub: snapshot.value.kpis.academic.trend
+			? `Trend: ${snapshot.value.kpis.academic.trend}`
+			: 'Latest overall grade',
 	},
 	{
 		label: 'Support signals',
@@ -955,12 +1008,12 @@ const kpiTiles = computed(() => [
 			snapshot.value.kpis.support.nurse_visits_this_term
 		)} nurse visits`,
 	},
-])
+]);
 
 const wellbeingSeriesOption = computed(() => {
-	const series = snapshot.value.wellbeing.metrics.time_series || []
-	if (!series.length) return {}
-	const labels = series.map((s) => s.period)
+	const series = snapshot.value.wellbeing.metrics.time_series || [];
+	if (!series.length) return {};
+	const labels = series.map(s => s.period);
 	return {
 		grid: { left: 40, right: 10, top: 10, bottom: 40 },
 		tooltip: { trigger: 'axis' },
@@ -968,108 +1021,108 @@ const wellbeingSeriesOption = computed(() => {
 		xAxis: { type: 'category', data: labels },
 		yAxis: { type: 'value' },
 		series: [
-			{ name: 'Logs', type: 'bar', stack: 'total', data: series.map((s) => s.student_logs || 0) },
-			{ name: 'Referrals', type: 'bar', stack: 'total', data: series.map((s) => s.referrals || 0) },
-			{ name: 'Nurse visits', type: 'bar', stack: 'total', data: series.map((s) => s.nurse_visits || 0) },
+			{ name: 'Logs', type: 'bar', stack: 'total', data: series.map(s => s.student_logs || 0) },
+			{ name: 'Referrals', type: 'bar', stack: 'total', data: series.map(s => s.referrals || 0) },
+			{
+				name: 'Nurse visits',
+				type: 'bar',
+				stack: 'total',
+				data: series.map(s => s.nurse_visits || 0),
+			},
 		],
-	}
-})
+	};
+});
 
-const historyYearOptions = computed(() => snapshot.value.history.year_options || [])
+const historyYearOptions = computed(() => snapshot.value.history.year_options || []);
 const filteredAcademicTrend = computed(() => {
-	const data = snapshot.value.history.academic_trend || []
-	return data.filter((row) => matchesYearScope(row.academic_year, historyScope.value))
-})
+	const data = snapshot.value.history.academic_trend || [];
+	return data.filter(row => matchesYearScope(row.academic_year, historyScope.value));
+});
 
 const filteredAttendanceTrend = computed(() => {
-	const data = snapshot.value.history.attendance_trend || []
-	return data.filter((row) => matchesYearScope(row.academic_year, historyScope.value))
-})
+	const data = snapshot.value.history.attendance_trend || [];
+	return data.filter(row => matchesYearScope(row.academic_year, historyScope.value));
+});
 
 const academicTrendOption = computed(() => {
-	if (!filteredAcademicTrend.value.length) return {}
+	if (!filteredAcademicTrend.value.length) return {};
 	return {
 		grid: { left: 40, right: 10, top: 10, bottom: 40 },
 		tooltip: { trigger: 'axis' },
 		legend: { top: 0, data: ['Overall', 'Task completion'] },
-		xAxis: { type: 'category', data: filteredAcademicTrend.value.map((d) => d.label) },
+		xAxis: { type: 'category', data: filteredAcademicTrend.value.map(d => d.label) },
 		yAxis: { type: 'value', min: 0 },
 		series: [
 			{
 				name: 'Overall',
 				type: 'line',
 				smooth: true,
-				data: filteredAcademicTrend.value.map((d) => d.overall_grade_value ?? null),
+				data: filteredAcademicTrend.value.map(d => d.overall_grade_value ?? null),
 			},
 			{
 				name: 'Task completion',
 				type: 'line',
 				smooth: true,
-				data: filteredAcademicTrend.value.map((d) =>
+				data: filteredAcademicTrend.value.map(d =>
 					d.task_completion_rate != null ? Math.round(d.task_completion_rate * 100) : null
 				),
 			},
 		],
-	}
-})
+	};
+});
 
 const attendanceTrendOption = computed(() => {
-	if (!filteredAttendanceTrend.value.length) return {}
+	if (!filteredAttendanceTrend.value.length) return {};
 	return {
 		grid: { left: 40, right: 10, top: 10, bottom: 40 },
 		tooltip: { trigger: 'axis' },
 		legend: { top: 0, data: ['Attendance %', 'Unexcused absences'] },
-		xAxis: { type: 'category', data: filteredAttendanceTrend.value.map((d) => d.label) },
+		xAxis: { type: 'category', data: filteredAttendanceTrend.value.map(d => d.label) },
 		yAxis: { type: 'value' },
 		series: [
 			{
 				name: 'Attendance %',
 				type: 'line',
 				smooth: true,
-				data: filteredAttendanceTrend.value.map((d) =>
+				data: filteredAttendanceTrend.value.map(d =>
 					d.present_percentage != null ? Math.round(d.present_percentage * 100) : null
 				),
 			},
 			{
 				name: 'Unexcused absences',
 				type: 'bar',
-				data: filteredAttendanceTrend.value.map((d) => d.unexcused_absences || 0),
+				data: filteredAttendanceTrend.value.map(d => d.unexcused_absences || 0),
 			},
 		],
-	}
-})
+	};
+});
 
 const reflectionFlags = computed(() => {
-	const flags = snapshot.value.history.reflection_flags || []
-	return flags.map((flag) => ({
+	const flags = snapshot.value.history.reflection_flags || [];
+	return flags.map(flag => ({
 		...flag,
 		message:
 			displayViewMode.value === 'student' || displayViewMode.value === 'guardian'
 				? flag.message_student || flag.message_staff
 				: flag.message_staff || flag.message_student,
-	}))
-})
+	}));
+});
 </script>
 
 <template>
 	<div
 		class="min-h-full px-4 pb-8 pt-8 md:px-6 lg:px-8"
-		style="background: var(--portal-gradient-bg);"
+		style="background: var(--portal-gradient-bg)"
 	>
 		<header class="flex flex-wrap items-center justify-between gap-3">
 			<div class="flex-1 text-center">
-				<h1 class="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">Student Overview</h1>
+				<h1 class="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+					Student Overview
+				</h1>
 			</div>
 			<div class="ifit-filters flex items-center gap-2">
-				<select
-					v-model="viewMode"
-					class="h-8 rounded-md border px-2 text-xs"
-				>
-					<option
-						v-for="m in viewModeOptions"
-						:key="m.id"
-						:value="m.id"
-					>
+				<select v-model="viewMode" class="h-8 rounded-md border px-2 text-xs">
+					<option v-for="m in viewModeOptions" :key="m.id" :value="m.id">
 						{{ m.label }}
 					</option>
 				</select>
@@ -1079,16 +1132,9 @@ const reflectionFlags = computed(() => {
 		<section class="ifit-filters mt-4 mb-3 flex flex-wrap items-end gap-3">
 			<div class="flex flex-col gap-1 w-48">
 				<label class="type-label">School</label>
-				<select
-					v-model="filters.school"
-					class="h-9 rounded-md border px-2 text-xs"
-				>
+				<select v-model="filters.school" class="h-9 rounded-md border px-2 text-xs">
 					<option value="">Select a school</option>
-					<option
-						v-for="s in schools"
-						:key="s.name"
-						:value="s.name"
-					>
+					<option v-for="s in schools" :key="s.name" :value="s.name">
 						{{ s.label || s.name }}
 					</option>
 				</select>
@@ -1096,16 +1142,9 @@ const reflectionFlags = computed(() => {
 
 			<div class="flex flex-col gap-1 w-48">
 				<label class="type-label">Program</label>
-				<select
-					v-model="filters.program"
-					class="h-9 rounded-md border px-2 text-xs"
-				>
+				<select v-model="filters.program" class="h-9 rounded-md border px-2 text-xs">
 					<option value="">Select</option>
-					<option
-						v-for="p in programs"
-						:key="p.name"
-						:value="p.name"
-					>
+					<option v-for="p in programs" :key="p.name" :value="p.name">
 						{{ p.label || p.name }}
 					</option>
 				</select>
@@ -1123,11 +1162,7 @@ const reflectionFlags = computed(() => {
 						@focus="openStudentDropdown"
 						@input="debounce(fetchStudents)"
 					/>
-					<button
-						v-if="studentSearch"
-						class="ml-1 text-[11px] text-ink/60"
-						@click="clearStudent"
-					>
+					<button v-if="studentSearch" class="ml-1 text-[11px] text-ink/60" @click="clearStudent">
 						Clear
 					</button>
 				</div>
@@ -1135,12 +1170,7 @@ const reflectionFlags = computed(() => {
 					v-if="studentDropdownOpen"
 					class="absolute top-full z-30 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-border/80 bg-[rgb(var(--surface-rgb))] shadow-soft"
 				>
-					<div
-						v-if="studentLoading"
-						class="px-3 py-2 text-xs text-ink/70"
-					>
-						Searching…
-					</div>
+					<div v-if="studentLoading" class="px-3 py-2 text-xs text-ink/70">Searching…</div>
 					<button
 						v-for="s in studentSuggestions"
 						:key="s.id"
@@ -1154,9 +1184,11 @@ const reflectionFlags = computed(() => {
 						v-if="!studentLoading && !studentSuggestions.length"
 						class="px-3 py-2 text-xs text-ink/60"
 					>
-						{{ studentSearch
-							? 'No matches. Try a different name or ID.'
-							: 'Start typing to search for a student.' }}
+						{{
+							studentSearch
+								? 'No matches. Try a different name or ID.'
+								: 'Start typing to search for a student.'
+						}}
 					</div>
 				</div>
 			</div>
@@ -1180,7 +1212,9 @@ const reflectionFlags = computed(() => {
 
 				<div v-else class="space-y-6">
 					<!-- Band 1: Identity & Snapshot -->
-					<section class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-5 shadow-sm">
+					<section
+						class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-5 shadow-sm"
+					>
 						<div class="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
 							<div class="flex gap-4">
 								<div
@@ -1208,7 +1242,9 @@ const reflectionFlags = computed(() => {
 									</div>
 									<p class="text-xs text-slate-500">
 										{{ snapshot.identity.program_enrollment?.program || snapshot.meta.program }}
-										<span v-if="snapshot.identity.school?.label">· {{ snapshot.identity.school?.label }}</span>
+										<span v-if="snapshot.identity.school?.label"
+											>· {{ snapshot.identity.school?.label }}</span
+										>
 									</p>
 									<p class="text-xs text-slate-500">
 										<span v-if="snapshot.identity.age">Age {{ snapshot.identity.age }}</span>
@@ -1217,18 +1253,20 @@ const reflectionFlags = computed(() => {
 									</p>
 								</div>
 							</div>
-								<div class="flex flex-col gap-2">
+							<div class="flex flex-col gap-2">
 								<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
 									<div
 										v-for="tile in kpiTiles"
 										:key="tile.label"
-									:class="[
-										'flex flex-col rounded-xl border px-3 py-3 shadow-sm overflow-hidden',
-										'border-[rgb(var(--border-rgb)/0.65)] bg-[rgb(var(--surface-rgb)/0.92)]',
-										tile.clickable ? 'cursor-pointer hover:border-[#1f7a45] hover:bg-[rgb(var(--surface-rgb))]' : '',
-									]"
-									@click="tile.onClick && tile.onClick()"
-								>
+										:class="[
+											'flex flex-col rounded-xl border px-3 py-3 shadow-sm overflow-hidden',
+											'border-[rgb(var(--border-rgb)/0.65)] bg-[rgb(var(--surface-rgb)/0.92)]',
+											tile.clickable
+												? 'cursor-pointer hover:border-[#1f7a45] hover:bg-[rgb(var(--surface-rgb))]'
+												: '',
+										]"
+										@click="tile.onClick && tile.onClick()"
+									>
 										<div class="flex items-center justify-between gap-2">
 											<p class="text-[11px] font-semibold uppercase tracking-wide text-ink/70">
 												{{ tile.label }}
@@ -1250,9 +1288,7 @@ const reflectionFlags = computed(() => {
 												type="button"
 												class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold transition"
 												:class="[
-													opt.id === tile.sourceToggle.active
-														? 'chip chip-active'
-														: 'chip',
+													opt.id === tile.sourceToggle.active ? 'chip chip-active' : 'chip',
 												]"
 												@click="setAttendanceKpiSource(opt.id as any)"
 											>
@@ -1270,7 +1306,9 @@ const reflectionFlags = computed(() => {
 					</section>
 
 					<!-- Band 2: Learning & Tasks -->
-					<section class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(0,2fr)]">
+					<section
+						class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(0,2fr)]"
+					>
 						<!-- Current Courses -->
 						<div class="card-surface px-4 py-4">
 							<header class="mb-3 flex items-center justify-between">
@@ -1292,19 +1330,25 @@ const reflectionFlags = computed(() => {
 									@click="toggleCourse(course.course)"
 								>
 									<div class="flex items-center justify-between gap-2">
-										<div class="font-semibold text-slate-900">{{ course.course_name || course.course }}</div>
+										<div class="font-semibold text-slate-900">
+											{{ course.course_name || course.course }}
+										</div>
 										<span class="text-[11px] uppercase tracking-wide text-slate-500">
 											{{ course.status || 'current' }}
 										</span>
 									</div>
 									<div class="mt-1 flex items-center justify-between text-xs text-slate-600">
-										<span>{{ course.instructors?.map((i) => i.full_name).join(', ') }}</span>
+										<span>{{ course.instructors?.map(i => i.full_name).join(', ') }}</span>
 										<span v-if="course.completion_rate != null">
 											{{ Math.round((course.completion_rate || 0) * 100) }}% tasks done
 										</span>
 									</div>
 									<div class="text-[11px] text-slate-500">
-										{{ course.academic_summary?.latest_grade_label ? `Latest: ${course.academic_summary.latest_grade_label}` : '' }}
+										{{
+											course.academic_summary?.latest_grade_label
+												? `Latest: ${course.academic_summary.latest_grade_label}`
+												: ''
+										}}
 									</div>
 								</div>
 								<div v-if="!courses.length" class="text-xs text-slate-400">No courses found.</div>
@@ -1327,21 +1371,28 @@ const reflectionFlags = computed(() => {
 										type="button"
 										:class="[
 											'rounded-full px-3 py-1 text-[11px] font-semibold',
-											taskYearScope === scope ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600',
+											taskYearScope === scope
+												? 'bg-emerald-500 text-white'
+												: 'bg-slate-100 text-slate-600',
 										]"
 										@click="taskYearScope = scope as any"
 									>
-										{{ scope === 'current' ? 'This year' : scope === 'previous' ? 'Last year' : 'All years' }}
+										{{
+											scope === 'current'
+												? 'This year'
+												: scope === 'previous'
+													? 'Last year'
+													: 'All years'
+										}}
 									</button>
 								</div>
 							</header>
 							<div class="grid gap-4 lg:grid-cols-5">
 								<div class="lg:col-span-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-									<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">Task status</h4>
-									<AnalyticsChart
-										v-if="statusDonutData.length"
-										:option="taskStatusOption"
-									/>
+									<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">
+										Task status
+									</h4>
+									<AnalyticsChart v-if="statusDonutData.length" :option="taskStatusOption" />
 									<p v-else class="text-xs text-slate-400">No task data.</p>
 								</div>
 								<div class="lg:col-span-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
@@ -1365,7 +1416,9 @@ const reflectionFlags = computed(() => {
 							<header class="mb-3 flex items-center justify-between">
 								<div>
 									<h3 class="text-sm font-semibold text-slate-800">Most recent tasks</h3>
-									<p class="text-[11px] text-slate-500">Latest {{ recentTasks.length }} items visible to you.</p>
+									<p class="text-[11px] text-slate-500">
+										Latest {{ recentTasks.length }} items visible to you.
+									</p>
 								</div>
 							</header>
 							<div class="space-y-2">
@@ -1381,7 +1434,9 @@ const reflectionFlags = computed(() => {
 											>
 												{{ task.course_name || task.course }}
 											</span>
-											<span class="text-[11px] text-slate-500">{{ task.status || 'Assigned' }}</span>
+											<span class="text-[11px] text-slate-500">{{
+												task.status || 'Assigned'
+											}}</span>
 											<span
 												v-if="task.is_overdue || task.is_missed"
 												class="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700"
@@ -1399,7 +1454,12 @@ const reflectionFlags = computed(() => {
 											{{ task.mark_awarded ?? '—' }} / {{ task.out_of }}
 										</span>
 										<span v-else-if="!permissions.can_view_task_marks">Marks hidden</span>
-										<span v-if="task.visible_to_student === false || task.visible_to_guardian === false" class="ml-2 text-amber-600">
+										<span
+											v-if="
+												task.visible_to_student === false || task.visible_to_guardian === false
+											"
+											class="ml-2 text-amber-600"
+										>
 											Restricted
 										</span>
 									</div>
@@ -1416,14 +1476,20 @@ const reflectionFlags = computed(() => {
 						<div class="flex flex-wrap items-center justify-center gap-2">
 							<button
 								type="button"
-								:class="['chip-toggle', attendanceView === 'all_day' ? 'chip-toggle-active' : 'chip-toggle-muted']"
+								:class="[
+									'chip-toggle',
+									attendanceView === 'all_day' ? 'chip-toggle-active' : 'chip-toggle-muted',
+								]"
 								@click="setAttendanceKpiSource('all_day')"
 							>
 								All-day view
 							</button>
 							<button
 								type="button"
-								:class="['chip-toggle', attendanceView === 'by_course' ? 'chip-toggle-active' : 'chip-toggle-muted']"
+								:class="[
+									'chip-toggle',
+									attendanceView === 'by_course' ? 'chip-toggle-active' : 'chip-toggle-muted',
+								]"
 								@click="setAttendanceKpiSource('by_course')"
 							>
 								By course / activity
@@ -1433,10 +1499,19 @@ const reflectionFlags = computed(() => {
 									v-for="scope in ['current', 'last', 'all']"
 									:key="scope"
 									type="button"
-									:class="['chip-scope', attendanceScope === scope ? 'chip-scope-active' : 'chip-scope-muted']"
+									:class="[
+										'chip-scope',
+										attendanceScope === scope ? 'chip-scope-active' : 'chip-scope-muted',
+									]"
 									@click="attendanceScope = scope as any"
 								>
-									{{ scope === 'current' ? 'This year' : scope === 'last' ? 'Last year' : 'All years' }}
+									{{
+										scope === 'current'
+											? 'This year'
+											: scope === 'last'
+												? 'Last year'
+												: 'All years'
+									}}
 								</button>
 							</div>
 						</div>
@@ -1447,11 +1522,17 @@ const reflectionFlags = computed(() => {
 									<div>
 										<h3 class="section-header">Attendance heatmap</h3>
 										<p class="type-meta">
-											{{ attendanceView === 'all_day' ? 'Daily status by code' : 'Course × week patterns' }}
+											{{
+												attendanceView === 'all_day'
+													? 'Daily status by code'
+													: 'Course × week patterns'
+											}}
 										</p>
 									</div>
 									<span class="type-chip-muted">
-										{{ attendanceView === 'all_day' ? 'Whole-day records' : 'Session-level records' }}
+										{{
+											attendanceView === 'all_day' ? 'Whole-day records' : 'Session-level records'
+										}}
 									</span>
 								</header>
 
@@ -1487,19 +1568,14 @@ const reflectionFlags = computed(() => {
 										v-if="attendanceView === 'by_course' && breakdownRows.length"
 										title=""
 										:series="[
-											{ key: 'present',   label: 'Present',   color: palette.leaf },
-											{ key: 'excused',   label: 'Excused',   color: palette.sand },
+											{ key: 'present', label: 'Present', color: palette.leaf },
+											{ key: 'excused', label: 'Excused', color: palette.sand },
 											{ key: 'unexcused', label: 'Unexcused', color: palette.flame },
-											{ key: 'late',      label: 'Late',      color: palette.clay },
+											{ key: 'late', label: 'Late', color: palette.clay },
 										]"
 										:rows="breakdownRows"
 									/>
-									<p
-										v-else
-										class="type-empty"
-									>
-										Switch to course view to see breakdown.
-									</p>
+									<p v-else class="type-empty">Switch to course view to see breakdown.</p>
 
 									<div class="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
 										<div class="mini-kpi-card">
@@ -1507,7 +1583,8 @@ const reflectionFlags = computed(() => {
 											<p class="mini-kpi-value">
 												{{
 													formatCount(
-														snapshot.attendance.summary.total_days - snapshot.attendance.summary.present_days
+														snapshot.attendance.summary.total_days -
+															snapshot.attendance.summary.present_days
 													)
 												}}
 											</p>
@@ -1520,7 +1597,11 @@ const reflectionFlags = computed(() => {
 										</div>
 										<div class="mini-kpi-card">
 											<p class="mini-kpi-label">
-												{{ displayViewMode === 'student' ? 'Most fragile course' : 'Most impacted course' }}
+												{{
+													displayViewMode === 'student'
+														? 'Most fragile course'
+														: 'Most impacted course'
+												}}
 											</p>
 											<p class="mini-kpi-value">
 												{{ snapshot.attendance.summary.most_impacted_course?.course_name || '—' }}
@@ -1534,7 +1615,9 @@ const reflectionFlags = computed(() => {
 
 					<!-- Band 4: Wellbeing & Support -->
 					<section class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-						<div class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
+						<div
+							class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm"
+						>
 							<header class="mb-3 flex flex-wrap items-center justify-between gap-3">
 								<div>
 									<h3 class="text-sm font-semibold text-slate-800">Wellbeing timeline</h3>
@@ -1600,7 +1683,9 @@ const reflectionFlags = computed(() => {
 							</div>
 						</div>
 
-						<div class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm">
+						<div
+							class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm"
+						>
 							<header class="mb-3 flex items-center justify-between">
 								<h3 class="text-sm font-semibold text-slate-800">Support metrics & patterns</h3>
 							</header>
@@ -1611,19 +1696,25 @@ const reflectionFlags = computed(() => {
 							<div v-else class="text-xs text-slate-400">No trend data yet.</div>
 							<div class="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-600">
 								<div class="rounded-lg bg-slate-50/70 px-3 py-2">
-									<p class="text-[11px] uppercase tracking-wide text-slate-500">Open log follow-ups</p>
+									<p class="text-[11px] uppercase tracking-wide text-slate-500">
+										Open log follow-ups
+									</p>
 									<p class="text-base font-semibold text-slate-900">
 										{{ formatCount(snapshot.wellbeing.metrics.student_logs?.open_followups || 0) }}
 									</p>
 								</div>
 								<div class="rounded-lg bg-slate-50/70 px-3 py-2">
-									<p class="text-[11px] uppercase tracking-wide text-slate-500">Active referrals</p>
+									<p class="text-[11px] uppercase tracking-wide text-slate-500">
+										Active referrals
+									</p>
 									<p class="text-base font-semibold text-amber-600">
 										{{ formatCount(snapshot.wellbeing.metrics.referrals?.active || 0) }}
 									</p>
 								</div>
 								<div class="rounded-lg bg-slate-50/70 px-3 py-2">
-									<p class="text-[11px] uppercase tracking-wide text-slate-500">Nurse visits (this term)</p>
+									<p class="text-[11px] uppercase tracking-wide text-slate-500">
+										Nurse visits (this term)
+									</p>
 									<p class="text-base font-semibold text-slate-900">
 										{{ formatCount(snapshot.wellbeing.metrics.nurse_visits?.this_term || 0) }}
 									</p>
@@ -1646,7 +1737,9 @@ const reflectionFlags = computed(() => {
 									type="button"
 									:class="[
 										'rounded-full px-3 py-1 text-[11px] font-semibold',
-										historyScope === opt.key ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600',
+										historyScope === opt.key
+											? 'bg-slate-900 text-white'
+											: 'bg-slate-100 text-slate-600',
 									]"
 									@click="historyScope = opt.key as any"
 								>
@@ -1654,9 +1747,13 @@ const reflectionFlags = computed(() => {
 								</button>
 							</div>
 						</header>
-						<div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,2fr)]">
+						<div
+							class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,2fr)]"
+						>
 							<div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-								<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">Academic & task trend</h4>
+								<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">
+									Academic & task trend
+								</h4>
 								<AnalyticsChart
 									v-if="filteredAcademicTrend.length"
 									:option="academicTrendOption"
@@ -1664,7 +1761,9 @@ const reflectionFlags = computed(() => {
 								<p v-else class="text-xs text-slate-400">No academic history.</p>
 							</div>
 							<div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-								<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">Attendance trend</h4>
+								<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">
+									Attendance trend
+								</h4>
 								<AnalyticsChart
 									v-if="filteredAttendanceTrend.length"
 									:option="attendanceTrendOption"
@@ -1672,7 +1771,9 @@ const reflectionFlags = computed(() => {
 								<p v-else class="text-xs text-slate-400">No attendance history.</p>
 							</div>
 							<div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-								<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">Reflection</h4>
+								<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">
+									Reflection
+								</h4>
 								<ul class="space-y-2 text-xs text-slate-700">
 									<li
 										v-for="flag in reflectionFlags"
@@ -1683,7 +1784,9 @@ const reflectionFlags = computed(() => {
 										<p class="text-[11px] text-slate-500">{{ flag.category }}</p>
 									</li>
 								</ul>
-								<p v-if="!reflectionFlags.length" class="text-xs text-slate-400">No reflection prompts.</p>
+								<p v-if="!reflectionFlags.length" class="text-xs text-slate-400">
+									No reflection prompts.
+								</p>
 							</div>
 						</div>
 					</section>
@@ -1691,5 +1794,4 @@ const reflectionFlags = computed(() => {
 			</div>
 		</section>
 	</div>
-
 </template>

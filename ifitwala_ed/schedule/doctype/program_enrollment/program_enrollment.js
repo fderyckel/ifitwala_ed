@@ -386,7 +386,7 @@ frappe.ui.form.on("Program Enrollment", {
 	refresh(frm) {
 		set_queries(frm);
 		show_offering_span_indicator(frm);
-		warn_if_enrollment_date_outside_offering(frm); 
+		warn_if_enrollment_date_outside_offering(frm);
 		add_grid_actions(frm);
 		nudge_before_delete(frm);
 	},
@@ -430,7 +430,7 @@ frappe.ui.form.on("Program Enrollment", {
 				)
 			});
 		}
-	}, 
+	},
 
 	enrollment_date(frm) {
 		warn_if_enrollment_date_outside_offering(frm);
@@ -446,7 +446,7 @@ frappe.ui.form.on("Program Enrollment", {
 				indicator: "orange"
 			});
 		}
-	}, 
+	},
 
 	// Offering is the source of truth for school/cohort and AY spine.
 	program_offering: frappe.utils.debounce(function (frm) {
@@ -480,13 +480,13 @@ frappe.ui.form.on("Program Enrollment", {
 					});
 				}
 				show_offering_span_indicator(frm);
-				warn_if_enrollment_date_outside_offering(frm); 
+				warn_if_enrollment_date_outside_offering(frm);
 			});
 	}, 200),
 
 	academic_year(frm) {
 		show_offering_span_indicator(frm);
-		warn_if_enrollment_date_outside_offering(frm); 
+		warn_if_enrollment_date_outside_offering(frm);
 	},
 
 	// Keep this—now calls the server method that seeds from Program Offering Course
@@ -546,10 +546,10 @@ frappe.ui.form.on("Program Enrollment Course", {
 				}
 			}
 		}
-		
+
 		await validate_row_terms(frm, row);
 
-	}, 
+	},
 
  	status(frm, cdt, cdn) {
 		const row = frappe.get_doc(cdt, cdn);
@@ -559,7 +559,7 @@ frappe.ui.form.on("Program Enrollment Course", {
 	dropped_date(frm, cdt, cdn) {
 		const row = frappe.get_doc(cdt, cdn);
 		enforce_dropped_requires_date(frm, row);
-	}, 
+	},
 
 	async term_start(frm, cdt, cdn) {
 		const row = frappe.get_doc(cdt, cdn);

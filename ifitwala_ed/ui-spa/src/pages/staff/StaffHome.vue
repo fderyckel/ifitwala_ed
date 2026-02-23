@@ -19,8 +19,7 @@
 			<RouterLink
 				:to="{ name: 'MorningBriefing' }"
 				target="_blank"
-				class="inline-flex items-center gap-2 rounded-full bg-jacaranda px-5 py-2.5 type-button-label text-white shadow-soft
-					transition-transform hover:-translate-y-0.5 hover:shadow-strong"
+				class="inline-flex items-center gap-2 rounded-full bg-jacaranda px-5 py-2.5 type-button-label text-white shadow-soft transition-transform hover:-translate-y-0.5 hover:shadow-strong"
 			>
 				<FeatherIcon name="sun" class="h-4 w-4 text-yellow-300" />
 				<span>Morning Brief</span>
@@ -58,9 +57,7 @@
 
 			<!-- RIGHT COL: QUICK ACTIONS ------------------------------->
 			<div class="lg:col-span-4 space-y-4">
-				<h3 class="px-1 type-h3 text-canopy">
-					Quick Actions
-				</h3>
+				<h3 class="px-1 type-h3 text-canopy">Quick Actions</h3>
 
 				<div class="grid gap-3">
 					<!-- Create task uses overlay stack (single overlay system) -->
@@ -143,15 +140,11 @@
 					class="flex flex-col gap-4 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 pb-6 pt-7 sm:flex-row sm:items-center sm:justify-between"
 				>
 					<div class="space-y-2">
-						<p class="type-overline text-slate-token/70">
-							Analytics
-						</p>
-						<h3 class="type-h2">
-							Insights & Dashboards
-						</h3>
+						<p class="type-overline text-slate-token/70">Analytics</p>
+						<h3 class="type-h2">Insights & Dashboards</h3>
 						<p class="max-w-2xl type-body text-slate-token/80">
-							Jump straight into the dashboards you need. Start with the quick hitters, or browse by
-							category when you are exploring trends.
+							Jump straight into the dashboards you need. Start with the quick hitters, or browse
+							by category when you are exploring trends.
 						</p>
 					</div>
 
@@ -159,8 +152,7 @@
 						to="/analytics"
 						target="_blank"
 						rel="noopener"
-						class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm
-							transition hover:-translate-y-0.5 hover:border-jacaranda hover:text-jacaranda"
+						class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-jacaranda hover:text-jacaranda"
 					>
 						<FeatherIcon name="grid" class="h-4 w-4 text-slate-token/60" />
 						<span>View all analytics</span>
@@ -195,8 +187,7 @@
 
 						<span
 							v-if="link.badge"
-							class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda
-								ring-1 ring-jacaranda/25"
+							class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
 						>
 							{{ link.badge }}
 						</span>
@@ -230,7 +221,9 @@
 									</p>
 								</div>
 							</div>
-							<span class="rounded-full bg-slate-100 px-3 py-1 type-badge-label text-slate-token/70">
+							<span
+								class="rounded-full bg-slate-100 px-3 py-1 type-badge-label text-slate-token/70"
+							>
 								{{ category.links.length }} links
 							</span>
 						</div>
@@ -244,7 +237,9 @@
 								rel="noopener"
 								class="group/link flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-sky/15"
 							>
-								<span class="type-body-strong text-ink transition-colors group-hover/link:text-jacaranda">
+								<span
+									class="type-body-strong text-ink transition-colors group-hover/link:text-jacaranda"
+								>
 									{{ link.label }}
 								</span>
 								<FeatherIcon
@@ -261,16 +256,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import type { RouteLocationRaw } from 'vue-router'
-import { FeatherIcon, toast } from 'frappe-ui'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
+import { FeatherIcon, toast } from 'frappe-ui';
 
-import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue'
-import FocusListCard from '@/components/focus/FocusListCard.vue'
-import { useOverlayStack } from '@/composables/useOverlayStack'
-import { getStaffHomeHeader, listFocusItems, type StaffHomeHeader } from '@/lib/services/staff/staffHomeService'
-import type { FocusItem } from '@/types/focusItem'
-import { uiSignals, SIGNAL_FOCUS_INVALIDATE, SIGNAL_STUDENT_LOG_INVALIDATE } from '@/lib/uiSignals'
+import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue';
+import FocusListCard from '@/components/focus/FocusListCard.vue';
+import { useOverlayStack } from '@/composables/useOverlayStack';
+import {
+	getStaffHomeHeader,
+	listFocusItems,
+	type StaffHomeHeader,
+} from '@/lib/services/staff/staffHomeService';
+import type { FocusItem } from '@/types/focusItem';
+import {
+	uiSignals,
+	SIGNAL_FOCUS_INVALIDATE,
+	SIGNAL_STUDENT_LOG_INVALIDATE,
+} from '@/lib/uiSignals';
 
 /**
  * StaffHome (A+ refresh ownership)
@@ -292,25 +295,27 @@ import { uiSignals, SIGNAL_FOCUS_INVALIDATE, SIGNAL_STUDENT_LOG_INVALIDATE } fro
  */
 
 /* USER --------------------------------------------------------- */
-const userDoc = ref<StaffHomeHeader | null>(null)
+const userDoc = ref<StaffHomeHeader | null>(null);
 
 onMounted(async () => {
 	try {
-		userDoc.value = await getStaffHomeHeader()
+		userDoc.value = await getStaffHomeHeader();
 	} catch (err) {
-		console.error('[StaffHome] Failed to load header:', err)
+		console.error('[StaffHome] Failed to load header:', err);
 	}
-})
+});
 
 const firstName = computed(() => {
-	const doc = userDoc.value
-	if (!doc) return 'Staff'
-	if (doc.first_name) return doc.first_name
-	if (doc.full_name) return doc.full_name.split(' ')[0]
-	return 'Staff'
-})
+	const doc = userDoc.value;
+	if (!doc) return 'Staff';
+	if (doc.first_name) return doc.first_name;
+	if (doc.full_name) return doc.full_name.split(' ')[0];
+	return 'Staff';
+});
 
-const userCapabilities = computed<Record<string, boolean>>(() => userDoc.value?.capabilities ?? {})
+const userCapabilities = computed<Record<string, boolean>>(
+	() => userDoc.value?.capabilities ?? {}
+);
 
 /* QUICK ACTIONS ------------------------------------------------ */
 const quickActions = [
@@ -326,102 +331,102 @@ const quickActions = [
 		icon: 'layers',
 		to: { name: 'staff-portfolio' },
 	},
-]
+];
 
 /* FOCUS -------------------------------------------------------- */
-const overlay = useOverlayStack()
-const focusLoading = ref(false)
-const focusItems = ref<FocusItem[]>([])
+const overlay = useOverlayStack();
+const focusLoading = ref(false);
+const focusItems = ref<FocusItem[]>([]);
 
 /**
  * Refresh focus (deduped + lightly throttled)
  * - Avoid request stampedes (signals, visibility, interval can collide)
  * - Coalesce burst invalidations into a single refresh
  */
-const lastFocusRefreshAt = ref<number>(0)
-const refreshInFlight = ref<Promise<void> | null>(null)
-let refreshQueued = false
-let refreshThrottleTimer: ReturnType<typeof window.setTimeout> | null = null
+const lastFocusRefreshAt = ref<number>(0);
+const refreshInFlight = ref<Promise<void> | null>(null);
+let refreshQueued = false;
+let refreshThrottleTimer: ReturnType<typeof setTimeout> | null = null;
 
-const FOCUS_LIMIT = 8
-const FOCUS_REFRESH_THROTTLE_MS = 800 // coalesce burst triggers
-const FOCUS_VISIBILITY_STALE_MS = 60_000 // align with likely server TTL
-const FOCUS_POLL_MS = 120_000
+const FOCUS_LIMIT = 8;
+const FOCUS_REFRESH_THROTTLE_MS = 800; // coalesce burst triggers
+const FOCUS_VISIBILITY_STALE_MS = 60_000; // align with likely server TTL
+const FOCUS_POLL_MS = 120_000;
 
 function markRefreshed() {
-	lastFocusRefreshAt.value = Date.now()
+	lastFocusRefreshAt.value = Date.now();
 }
 
 function shouldRefreshOnVisibility() {
-	return Date.now() - lastFocusRefreshAt.value > FOCUS_VISIBILITY_STALE_MS
+	return Date.now() - lastFocusRefreshAt.value > FOCUS_VISIBILITY_STALE_MS;
 }
 
 async function doRefreshFocus(_reason: string) {
-	focusLoading.value = true
+	focusLoading.value = true;
 	try {
-		const items = await listFocusItems({ open_only: 1, limit: FOCUS_LIMIT, offset: 0 })
-		focusItems.value = items
-		markRefreshed()
+		const items = await listFocusItems({ open_only: 1, limit: FOCUS_LIMIT, offset: 0 });
+		focusItems.value = items;
+		markRefreshed();
 	} catch (err) {
-		console.error('[StaffHome] Failed to load focus list:', err)
+		console.error('[StaffHome] Failed to load focus list:', err);
 	} finally {
-		focusLoading.value = false
+		focusLoading.value = false;
 	}
 }
 
 function refreshFocus(reason: string) {
 	// If one is in flight, queue exactly one extra run (coalesce).
 	if (refreshInFlight.value) {
-		refreshQueued = true
-		return refreshInFlight.value
+		refreshQueued = true;
+		return refreshInFlight.value;
 	}
 
 	// Throttle bursts (signals can fire rapidly after workflows)
 	if (refreshThrottleTimer) {
-		refreshQueued = true
-		return refreshInFlight.value ?? Promise.resolve()
+		refreshQueued = true;
+		return refreshInFlight.value ?? Promise.resolve();
 	}
 
 	// Guard: in non-browser contexts, skip throttling and run immediately.
 	if (typeof window === 'undefined') {
 		refreshInFlight.value = (async () => {
 			try {
-				await doRefreshFocus(reason)
+				await doRefreshFocus(reason);
 			} finally {
-				refreshInFlight.value = null
+				refreshInFlight.value = null;
 				if (refreshQueued) {
-					refreshQueued = false
-					await refreshFocus('queued')
+					refreshQueued = false;
+					await refreshFocus('queued');
 				}
 			}
-		})()
-		return refreshInFlight.value
+		})();
+		return refreshInFlight.value;
 	}
 
-	refreshThrottleTimer = window.setTimeout(() => {
-		refreshThrottleTimer = null
+	refreshThrottleTimer = setTimeout(() => {
+		refreshThrottleTimer = null;
 		if (refreshQueued && !refreshInFlight.value) {
-			refreshQueued = false
-			refreshFocus('coalesced')
+			refreshQueued = false;
+			refreshFocus('coalesced');
 		}
-	}, FOCUS_REFRESH_THROTTLE_MS)
+	}, FOCUS_REFRESH_THROTTLE_MS);
 
 	refreshInFlight.value = (async () => {
 		try {
-			await doRefreshFocus(reason)
+			await doRefreshFocus(reason);
 		} catch (e) {
 			// doRefreshFocus already logs; keep this calm
 		} finally {
-			refreshInFlight.value = null
+			refreshInFlight.value = null;
 			if (refreshQueued) {
-				refreshQueued = false
+				refreshQueued = false;
 				// Run one more time immediately after a completed in-flight refresh
-				await refreshFocus('queued')
+				await refreshFocus('queued');
 			}
 		}
-	})()
+	})();
 
-	return refreshInFlight.value
+	return refreshInFlight.value;
 }
 
 /**
@@ -432,103 +437,106 @@ function refreshFocus(reason: string) {
  * - On workflow completion: UI Services emit invalidation signals
  *   and StaffHome refreshes (coalesced)
  */
-let focusTimer: ReturnType<typeof window.setInterval> | null = null
-let disposeFocusInvalidate: (() => void) | null = null
-let disposeStudentLogInvalidate: (() => void) | null = null
+let focusTimer: ReturnType<typeof setInterval> | null = null;
+let disposeFocusInvalidate: (() => void) | null = null;
+let disposeStudentLogInvalidate: (() => void) | null = null;
 
 // Local intent flag: only toast “Saved” when StaffHome initiated the workflow.
 // Avoids global spam if student_log:invalidate is emitted from other surfaces.
-const pendingStudentLogSavedToast = ref(false)
+const pendingStudentLogSavedToast = ref(false);
 
 function onVisibilityChange() {
 	if (document.visibilityState === 'visible' && shouldRefreshOnVisibility()) {
-		refreshFocus('visibility')
+		refreshFocus('visibility');
 	}
 }
 
 function onFocusInvalidated() {
-	refreshFocus('signal:focus:invalidate')
+	refreshFocus('signal:focus:invalidate');
 }
 
 function onStudentLogInvalidated() {
-	const shouldToast = pendingStudentLogSavedToast.value
+	const shouldToast = pendingStudentLogSavedToast.value;
 	// Clear immediately so we never double-toast across coalesced runs.
-	pendingStudentLogSavedToast.value = false
+	pendingStudentLogSavedToast.value = false;
 
 	// Refresh what StaffHome owns (Focus). Then optionally toast after refetch success.
 	refreshFocus('signal:student_log:invalidate')
 		?.then(() => {
 			if (shouldToast) {
-				toast({
+				toast.create({
 					title: 'Saved',
 					text: 'Student note submitted.',
 					icon: 'check',
-				})
+				});
 			}
 		})
 		.catch(() => {
 			// If refresh fails, do not toast success.
-		})
+		});
 }
 
 onMounted(async () => {
 	// Initial load
-	await refreshFocus('mount')
+	await refreshFocus('mount');
 
 	// Poll (tab visible only)
 	if (typeof window !== 'undefined') {
-		focusTimer = window.setInterval(() => {
+		focusTimer = setInterval(() => {
 			if (document.visibilityState === 'visible') {
-				refreshFocus('interval')
+				refreshFocus('interval');
 			}
-		}, FOCUS_POLL_MS)
+		}, FOCUS_POLL_MS);
 	}
 
-	document.addEventListener('visibilitychange', onVisibilityChange)
+	document.addEventListener('visibilitychange', onVisibilityChange);
 
 	// A+ integration point: signals (subscribe returns disposer)
-	disposeFocusInvalidate = uiSignals.subscribe(SIGNAL_FOCUS_INVALIDATE, onFocusInvalidated)
-	disposeStudentLogInvalidate = uiSignals.subscribe(SIGNAL_STUDENT_LOG_INVALIDATE, onStudentLogInvalidated)
-})
+	disposeFocusInvalidate = uiSignals.subscribe(SIGNAL_FOCUS_INVALIDATE, onFocusInvalidated);
+	disposeStudentLogInvalidate = uiSignals.subscribe(
+		SIGNAL_STUDENT_LOG_INVALIDATE,
+		onStudentLogInvalidated
+	);
+});
 
 onBeforeUnmount(() => {
-	if (focusTimer && typeof window !== 'undefined') window.clearInterval(focusTimer)
-	document.removeEventListener('visibilitychange', onVisibilityChange)
-	if (disposeFocusInvalidate) disposeFocusInvalidate()
-	if (disposeStudentLogInvalidate) disposeStudentLogInvalidate()
-})
+	if (focusTimer && typeof window !== 'undefined') window.clearInterval(focusTimer);
+	document.removeEventListener('visibilitychange', onVisibilityChange);
+	if (disposeFocusInvalidate) disposeFocusInvalidate();
+	if (disposeStudentLogInvalidate) disposeStudentLogInvalidate();
+});
 
 function openFocusItem(item: FocusItem) {
 	if (item.permissions?.can_open === false) {
-		toast({
+		toast.create({
 			title: 'Not available',
 			text: 'You do not have access to open this item.',
 			icon: 'info',
-		})
-		return
+		});
+		return;
 	}
 
 	overlay.open('focus-router', {
 		focusItemId: item.id,
-	})
+	});
 }
 
 /* ANALYTICS ---------------------------------------------------- */
 type StaffHomeAnalyticsLink = {
-	label: string
-	caption: string
-	icon: string
-	to: RouteLocationRaw
-	badge?: string
-	capability?: string
-}
+	label: string;
+	caption?: string;
+	icon?: string;
+	to: RouteLocationRaw;
+	badge?: string;
+	capability?: string;
+};
 
 type StaffHomeAnalyticsCategory = {
-	title: string
-	description: string
-	icon: string
-	links: StaffHomeAnalyticsLink[]
-}
+	title: string;
+	description: string;
+	icon: string;
+	links: StaffHomeAnalyticsLink[];
+};
 
 const analyticsQuickLinks: StaffHomeAnalyticsLink[] = [
 	{
@@ -545,7 +553,7 @@ const analyticsQuickLinks: StaffHomeAnalyticsLink[] = [
 		to: '/staff/room-utilization',
 		capability: 'analytics_scheduling',
 	},
-]
+];
 
 const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 	{
@@ -553,8 +561,16 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		description: 'Student body profile, admissions, and retention.',
 		icon: 'trending-up',
 		links: [
-			{ label: 'Demographics Overview', to: { name: 'student-demographic-analytics' }, capability: 'analytics_admissions' },
-			{ label: 'Enrollment Analytics', to: { name: 'StaffEnrollmentAnalytics' }, capability: 'analytics_admissions' },
+			{
+				label: 'Demographics Overview',
+				to: { name: 'student-demographic-analytics' },
+				capability: 'analytics_admissions',
+			},
+			{
+				label: 'Enrollment Analytics',
+				to: { name: 'StaffEnrollmentAnalytics' },
+				capability: 'analytics_admissions',
+			},
 		],
 	},
 	{
@@ -562,10 +578,26 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		description: 'Coverage, punctuality, and daily health of the timetable.',
 		icon: 'check-square',
 		links: [
-			{ label: 'Attendance Analytics', to: { name: 'staff-attendance-analytics' }, capability: 'analytics_attendance' },
-			{ label: 'Attendance Ledger', to: { name: 'staff-attendance-ledger' }, capability: 'analytics_attendance' },
-			{ label: 'Late Arrivals', to: '/analytics/operations/late-arrivals', capability: 'analytics_attendance' },
-			{ label: 'Duty Coverage', to: '/analytics/operations/duty-coverage', capability: 'analytics_attendance_admin' },
+			{
+				label: 'Attendance Analytics',
+				to: { name: 'staff-attendance-analytics' },
+				capability: 'analytics_attendance',
+			},
+			{
+				label: 'Attendance Ledger',
+				to: { name: 'staff-attendance-ledger' },
+				capability: 'analytics_attendance',
+			},
+			{
+				label: 'Late Arrivals',
+				to: '/analytics/operations/late-arrivals',
+				capability: 'analytics_attendance',
+			},
+			{
+				label: 'Duty Coverage',
+				to: '/analytics/operations/duty-coverage',
+				capability: 'analytics_attendance_admin',
+			},
 		],
 	},
 	{
@@ -573,8 +605,16 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		description: 'Grades, assessments, and intervention impact.',
 		icon: 'book',
 		links: [
-			{ label: 'Student Overview', to: { name: 'staff-student-overview' }, capability: 'analytics_attendance' },
-			{ label: 'Assessment Trends', to: '/analytics/academic/assessment-trends', capability: 'analytics_attendance' },
+			{
+				label: 'Student Overview',
+				to: { name: 'staff-student-overview' },
+				capability: 'analytics_attendance',
+			},
+			{
+				label: 'Assessment Trends',
+				to: '/analytics/academic/assessment-trends',
+				capability: 'analytics_attendance',
+			},
 		],
 	},
 	{
@@ -582,8 +622,16 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		description: 'Referrals, caseloads, incidents, and follow-ups.',
 		icon: 'heart',
 		links: [
-			{ label: 'Student Log Analytics', to: { name: 'staff-student-log-analytics' }, capability: 'analytics_wellbeing' },
-			{ label: 'Counseling Caseload', to: '/analytics/wellbeing/counseling-caseload', capability: 'analytics_wellbeing' },
+			{
+				label: 'Student Log Analytics',
+				to: { name: 'staff-student-log-analytics' },
+				capability: 'analytics_wellbeing',
+			},
+			{
+				label: 'Counseling Caseload',
+				to: '/analytics/wellbeing/counseling-caseload',
+				capability: 'analytics_wellbeing',
+			},
 		],
 	},
 	{
@@ -591,10 +639,22 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		description: 'Availability, development, and evaluations.',
 		icon: 'users',
 		links: [
-			{ label: 'Organizational Chart', to: { name: 'staff-organization-chart' }, capability: 'analytics_hr' },
+			{
+				label: 'Organizational Chart',
+				to: { name: 'staff-organization-chart' },
+				capability: 'analytics_hr',
+			},
 			{ label: 'Leave Balance', to: '/analytics/staff/leave-balance', capability: 'analytics_hr' },
-			{ label: 'Training Progress', to: '/analytics/staff/training-progress', capability: 'analytics_hr' },
-			{ label: 'Evaluations Summary', to: '/analytics/staff/evaluations-summary', capability: 'analytics_hr' },
+			{
+				label: 'Training Progress',
+				to: '/analytics/staff/training-progress',
+				capability: 'analytics_hr',
+			},
+			{
+				label: 'Evaluations Summary',
+				to: '/analytics/staff/evaluations-summary',
+				capability: 'analytics_hr',
+			},
 		],
 	},
 	{
@@ -602,8 +662,16 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		description: 'Timetable load, rooms, and transport fill.',
 		icon: 'calendar',
 		links: [
-			{ label: 'Room Occupancy', to: { name: 'staff-room-utilization' }, capability: 'analytics_scheduling' },
-			{ label: 'Bus & Route Load', to: '/analytics/scheduling/bus-route-load', capability: 'analytics_scheduling' },
+			{
+				label: 'Room Occupancy',
+				to: { name: 'staff-room-utilization' },
+				capability: 'analytics_scheduling',
+			},
+			{
+				label: 'Bus & Route Load',
+				to: '/analytics/scheduling/bus-route-load',
+				capability: 'analytics_scheduling',
+			},
 		],
 	},
 	{
@@ -611,8 +679,16 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		description: 'Family engagement, events, and surveys.',
 		icon: 'message-circle',
 		links: [
-			{ label: 'Inquiries Analytics', to: { name: 'staff-inquiry-analytics' }, capability: 'analytics_admissions' },
-			{ label: 'Survey Results', to: '/analytics/engagement/survey-results', capability: 'analytics_admissions' },
+			{
+				label: 'Inquiries Analytics',
+				to: { name: 'staff-inquiry-analytics' },
+				capability: 'analytics_admissions',
+			},
+			{
+				label: 'Survey Results',
+				to: '/analytics/engagement/survey-results',
+				capability: 'analytics_admissions',
+			},
 		],
 	},
 	{
@@ -620,35 +696,45 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		description: 'Safeguarding signals and audit readiness.',
 		icon: 'shield',
 		links: [
-			{ label: 'Audit Readiness', to: '/analytics/compliance/audit-readiness', capability: 'analytics_attendance_admin' },
-			{ label: 'Policy Acknowledgments', to: '/analytics/compliance/policy-acknowledgments', capability: 'analytics_attendance_admin' },
+			{
+				label: 'Audit Readiness',
+				to: '/analytics/compliance/audit-readiness',
+				capability: 'analytics_attendance_admin',
+			},
+			{
+				label: 'Policy Acknowledgments',
+				to: '/analytics/compliance/policy-acknowledgments',
+				capability: 'analytics_attendance_admin',
+			},
 		],
 	},
-]
+];
 
 function isAnalyticsLinkVisible(link: StaffHomeAnalyticsLink) {
-	if (!link.capability) return true
-	return Boolean(userCapabilities.value[link.capability])
+	if (!link.capability) return true;
+	return Boolean(userCapabilities.value[link.capability]);
 }
 
-const visibleAnalyticsQuickLinks = computed(() => analyticsQuickLinks.filter(isAnalyticsLinkVisible))
+const visibleAnalyticsQuickLinks = computed(() =>
+	analyticsQuickLinks.filter(isAnalyticsLinkVisible)
+);
 const visibleAnalyticsCategories = computed<StaffHomeAnalyticsCategory[]>(() =>
 	analyticsCategories
-		.map((category) => ({
+		.map(category => ({
 			...category,
 			links: category.links.filter(isAnalyticsLinkVisible),
 		}))
-		.filter((category) => category.links.length > 0)
-)
+		.filter(category => category.links.length > 0)
+);
 const hasVisibleAnalyticsLinks = computed(
 	() => visibleAnalyticsQuickLinks.value.length > 0 || visibleAnalyticsCategories.value.length > 0
-)
+);
 
 /* GREETING ----------------------------------------------------- */
 const greeting = computed(() => {
-	const hour = new Date().getHours()
-	return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-})
+	const hour = new Date().getHours();
+	return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+});
 
 /* OVERLAY: Create Task ---------------------------------------- */
 function openCreateTask() {
@@ -656,7 +742,7 @@ function openCreateTask() {
 		prefillStudentGroup: null,
 		prefillDueDate: null,
 		prefillAvailableFrom: null,
-	})
+	});
 }
 
 /* OVERLAY: Student Log ---------------------------------------- */
@@ -664,10 +750,10 @@ function openStudentLog() {
 	// Mark local intent for success feedback owned by this refresh owner.
 	// Service will emit SIGNAL_STUDENT_LOG_INVALIDATE after confirmed success.
 	// StaffHome will refetch and optionally toast after refetch success.
-	pendingStudentLogSavedToast.value = true
+	pendingStudentLogSavedToast.value = true;
 
 	overlay.open('student-log-create', {
 		mode: 'school',
-	})
+	});
 }
 </script>

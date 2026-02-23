@@ -4,75 +4,75 @@
 # ifitwala_ed/api/morning_brief.py
 
 import frappe
-from frappe.utils import today, add_days, getdate, formatdate, strip_html, now_datetime
-from ifitwala_ed.utilities.school_tree import get_descendant_schools
+from frappe.utils import add_days, formatdate, getdate, now_datetime, strip_html, today
 
 from ifitwala_ed.api.org_comm_utils import check_audience_match
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 
 @frappe.whitelist()
 def get_briefing_widgets():
-	user = frappe.session.user
-	roles = frappe.get_roles(user)
+    user = frappe.session.user
+    roles = frappe.get_roles(user)
 
-	widgets = {}
+    widgets = {}
 
-	# Use site timezone (from System Settings) and normal Gregorian date
-	site_now = now_datetime()
-	# site_today = getdate(site_now)  # noqa: F841
-	widgets["today_label"] = site_now.strftime("%A, %d %B %Y")
+    # Use site timezone (from System Settings) and normal Gregorian date
+    site_now = now_datetime()
+    # site_today = getdate(site_now)  # noqa: F841
+    widgets["today_label"] = site_now.strftime("%A, %d %B %Y")
 
+    # 1. TOP: ORGANIZATIONAL COMMUNICATION
+    widgets["announcements"] = get_daily_bulletin(user, roles)
 
-	# 1. TOP: ORGANIZATIONAL COMMUNICATION
-	widgets["announcements"] = get_daily_bulletin(user, roles)
+    # 2. BOTTOM: STAFF BIRTHDAYS
+    # Visible to all staff roles
+    if any(r in roles for r in ["Academic Staff", "Employee", "System Manager", "Instructor"]):
+        widgets["staff_birthdays"] = get_staff_birthdays()
 
-	# 2. BOTTOM: STAFF BIRTHDAYS
-	# Visible to all staff roles
-	if any(r in roles for r in ["Academic Staff", "Employee", "System Manager", "Instructor"]):
-		widgets["staff_birthdays"] = get_staff_birthdays()
+    # 3. ANALYTICS (Admin Only)
+    if "Academic Admin" in roles or "System Manager" in roles:
+        widgets["clinic_volume"] = get_clinic_activity()
+        widgets["admissions_pulse"] = get_admissions_pulse()
+        widgets["critical_incidents"] = get_critical_incidents_count()
 
-	# 3. ANALYTICS (Admin Only)
-	if "Academic Admin" in roles or "System Manager" in roles:
-		widgets["clinic_volume"] = get_clinic_activity()
-		widgets["admissions_pulse"] = get_admissions_pulse()
-		widgets["critical_incidents"] = get_critical_incidents_count()
+    # 4. INSTRUCTOR CONTEXT
+    my_groups = []
+    if "Instructor" in roles:
+        my_groups = get_my_student_groups(user)
+        if my_groups:
+            widgets["grading_velocity"] = get_pending_grading_tasks(my_groups)
+            widgets["my_student_birthdays"] = get_my_student_birthdays(my_groups)
 
-	# 4. INSTRUCTOR CONTEXT
-	my_groups = []
-	if "Instructor" in roles:
-		my_groups = get_my_student_groups(user)
-		if my_groups:
-			widgets["grading_velocity"] = get_pending_grading_tasks(my_groups)
-			widgets["my_student_birthdays"] = get_my_student_birthdays(my_groups)
+    # 5. LOGS FEED (Admin & Leads)
+    if "Academic Admin" in roles or "System Manager" in roles or "Pastoral Lead" in roles:
+        widgets["student_logs"] = get_recent_student_logs(user)
 
-	# 5. LOGS FEED (Admin & Leads)
-	if "Academic Admin" in roles or "System Manager" in roles or "Pastoral Lead" in roles:
-		widgets["student_logs"] = get_recent_student_logs(user)
+    # 6. ATTENDANCE PULSE
+    # Admin: 30-day trend
+    if "Academic Admin" in roles or "System Manager" in roles or "Academic Assistant" in roles:
+        widgets["attendance_trend"] = get_attendance_trend(user)
 
-	# 6. ATTENDANCE PULSE
-	# Admin: 30-day trend
-	if "Academic Admin" in roles or "System Manager" in roles or "Academic Assistant" in roles:
-		widgets["attendance_trend"] = get_attendance_trend(user)
+    # Instructor: My absent students today
+    if "Instructor" in roles:
+        if not my_groups:
+            my_groups = get_my_student_groups(user)
+        if my_groups:
+            widgets["my_absent_students"] = get_my_absent_students(my_groups)
 
-	# Instructor: My absent students today
-	if "Instructor" in roles:
-		if not my_groups:
-			my_groups = get_my_student_groups(user)
-		if my_groups:
-			widgets["my_absent_students"] = get_my_absent_students(my_groups)
-
-	return widgets
+    return widgets
 
 
 # ==============================================================================
 # SECTION 1: DAILY BULLETIN (Org Communication)
 # ==============================================================================
 
-def get_daily_bulletin(user, roles):
-	system_today = getdate(today())
 
-	# Use SQL to handle OR condition for brief_end_date (>= today OR NULL)
-	sql = """
+def get_daily_bulletin(user, roles):
+    system_today = getdate(today())
+
+    # Use SQL to handle OR condition for brief_end_date (>= today OR NULL)
+    sql = """
 		SELECT
 			name,
 			title,
@@ -97,39 +97,38 @@ def get_daily_bulletin(user, roles):
 		ORDER BY priority DESC, brief_order ASC, creation DESC
 		LIMIT 50
 	"""
-	comms = frappe.db.sql(sql, (system_today, system_today), as_dict=True)
+    comms = frappe.db.sql(sql, (system_today, system_today), as_dict=True)
 
-	employee = frappe.db.get_value(
-		"Employee",
-		{"user_id": user},
-		["name", "school", "organization", "department"],
-		as_dict=True,
-	)
+    employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": user},
+        ["name", "school", "organization", "department"],
+        as_dict=True,
+    )
 
-	visible_comms = []
+    visible_comms = []
 
-	for c in comms:
-		# Expiry Check (Already filtered in query, but double check)
-		if c.brief_end_date and getdate(c.brief_end_date) < system_today:
-			continue
+    for c in comms:
+        # Expiry Check (Already filtered in query, but double check)
+        if c.brief_end_date and getdate(c.brief_end_date) < system_today:
+            continue
 
-		if check_audience_match(c.name, user, roles, employee):
-			visible_comms.append(
-				{
-					"name": c.name,
-					"title": c.title,
-					# FULL HTML – used by ContentDialog via v-html
-					"content": c.message or "",
-					"type": c.communication_type,
-					"priority": c.priority,
-					"interaction_mode": c.interaction_mode,
-					"allow_public_thread": c.allow_public_thread,
-					"allow_private_notes": c.allow_private_notes,
-				}
-			)
+        if check_audience_match(c.name, user, roles, employee):
+            visible_comms.append(
+                {
+                    "name": c.name,
+                    "title": c.title,
+                    # FULL HTML – used by ContentDialog via v-html
+                    "content": c.message or "",
+                    "type": c.communication_type,
+                    "priority": c.priority,
+                    "interaction_mode": c.interaction_mode,
+                    "allow_public_thread": c.allow_public_thread,
+                    "allow_private_notes": c.allow_private_notes,
+                }
+            )
 
-	return visible_comms
-
+    return visible_comms
 
 
 # ==============================================================================
@@ -138,114 +137,114 @@ def get_daily_bulletin(user, roles):
 
 
 def get_clinic_activity():
-	"""Count of Student Patient Visits for the last 3 days."""
-	user = frappe.session.user
-	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+    """Count of Student Patient Visits for the last 3 days."""
+    user = frappe.session.user
+    employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
 
-	filters = {"docstatus": 1}
-	if employee and employee.school:
-		filters["school"] = employee.school
+    filters = {"docstatus": 1}
+    if employee and employee.school:
+        filters["school"] = employee.school
 
-	dates = [today(), add_days(today(), -1), add_days(today(), -2)]
-	data = []
-	for d in dates:
-		filters["date"] = d
-		count = frappe.db.count("Student Patient Visit", filters)
-		data.append({"date": formatdate(d, "dd-MMM"), "count": count})
-	return data
+    dates = [today(), add_days(today(), -1), add_days(today(), -2)]
+    data = []
+    for d in dates:
+        filters["date"] = d
+        count = frappe.db.count("Student Patient Visit", filters)
+        data.append({"date": formatdate(d, "dd-MMM"), "count": count})
+    return data
 
 
 def get_admissions_pulse():
-	"""Weekly new applications count."""
-	start_date = add_days(today(), -7)
-	results = frappe.db.sql(
-		"""
+    """Weekly new applications count."""
+    start_date = add_days(today(), -7)
+    results = frappe.db.sql(
+        """
 		SELECT COUNT(name) as count, application_status
 		FROM `tabStudent Applicant`
 		WHERE creation >= %s
 		GROUP BY application_status
 	""",
-		(start_date,),
-		as_dict=True,
-	)
+        (start_date,),
+        as_dict=True,
+    )
 
-	total = sum([r["count"] for r in results])
-	return {"total_new_weekly": total, "breakdown": results}
+    total = sum([r["count"] for r in results])
+    return {"total_new_weekly": total, "breakdown": results}
 
 
 def get_critical_incidents_count():
-	"""Count of Open logs marked as 'Requires Follow Up'."""
-	user = frappe.session.user
-	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+    """Count of Open logs marked as 'Requires Follow Up'."""
+    user = frappe.session.user
+    employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
 
-	filters = {
-		"requires_follow_up": 1,
-		"follow_up_status": "Open",
-		"docstatus": 1,
-	}
+    filters = {
+        "requires_follow_up": 1,
+        "follow_up_status": "Open",
+        "docstatus": 1,
+    }
 
-	if employee and employee.school:
-		filters["school"] = employee.school
+    if employee and employee.school:
+        filters["school"] = employee.school
 
-	return frappe.db.count("Student Log", filters)
+    return frappe.db.count("Student Log", filters)
 
 
 def get_my_student_groups(user: str) -> list[str]:
-	"""Return Student Group names where this user is an instructor.
+    """Return Student Group names where this user is an instructor.
 
-	Priority:
-	1) Employee.user_id → Student Group Instructor.instructor (Link to Employee)
-	2) If no match and SGI has `user_id` column → match on that.
-	"""
-	if not user or user == "Guest":
-		return []
+    Priority:
+    1) Employee.user_id → Student Group Instructor.instructor (Link to Employee)
+    2) If no match and SGI has `user_id` column → match on that.
+    """
+    if not user or user == "Guest":
+        return []
 
-	groups: list[str] = []
+    groups: list[str] = []
 
-	# 1) Primary path: Employee → instructor
-	employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
-	if employee:
-		groups = frappe.db.get_all(
-			"Student Group Instructor",
-			filters={"instructor": employee},
-			pluck="parent",
-		)
+    # 1) Primary path: Employee → instructor
+    employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+    if employee:
+        groups = frappe.db.get_all(
+            "Student Group Instructor",
+            filters={"instructor": employee},
+            pluck="parent",
+        )
 
-	if groups:
-		# Deduplicate while preserving order
-		return list(dict.fromkeys(groups))
+    if groups:
+        # Deduplicate while preserving order
+        return list(dict.fromkeys(groups))
 
-	# 2) Fallback path: direct User link on child table (if present)
-	# This protects you if you later move to a User-based link
-	if frappe.db.has_column("Student Group Instructor", "user_id"):
-		groups = frappe.db.get_all(
-			"Student Group Instructor",
-			filters={"user_id": user},
-			pluck="parent",
-		)
-		if groups:
-			return list(dict.fromkeys(groups))
+    # 2) Fallback path: direct User link on child table (if present)
+    # This protects you if you later move to a User-based link
+    if frappe.db.has_column("Student Group Instructor", "user_id"):
+        groups = frappe.db.get_all(
+            "Student Group Instructor",
+            filters={"user_id": user},
+            pluck="parent",
+        )
+        if groups:
+            return list(dict.fromkeys(groups))
 
-	return []
+    return []
 
 
 def get_pending_grading_tasks(group_names):
-	"""Count of past-due, graded tasks for the instructor."""
-	if not group_names:
-		return 0
+    """Count of past-due, graded tasks for the instructor."""
+    if not group_names:
+        return 0
 
-	groups_formatted = "', '".join(group_names)
-	site_today = today()
+    groups_formatted = "', '".join(group_names)
+    site_today = today()
 
-	# Use site date string instead of DB CURDATE() to respect site timezone
-	return frappe.db.sql(
-		f"""
+    # Use site date string instead of DB CURDATE() to respect site timezone
+    return frappe.db.sql(
+        f"""
 		SELECT COUNT(name) FROM `tabTask`
 		WHERE student_group IN ('{groups_formatted}')
 		AND is_graded = 1 AND is_published = 1
 		AND status != 'Closed' AND due_date < '{site_today}'
 	"""
-	)[0][0]
+    )[0][0]
 
 
 # ==============================================================================
@@ -254,70 +253,70 @@ def get_pending_grading_tasks(group_names):
 
 
 def get_recent_student_logs(user):
-	from_date = add_days(today(), -1)
-	filters = {
-		"date": (">=", from_date),
-		"log_type": ("!=", "Medical"),
-	}
+    from_date = add_days(today(), -1)
+    filters = {
+        "date": (">=", from_date),
+        "log_type": ("!=", "Medical"),
+    }
 
-	# FIX: Only fetch 'school' (removed default_school)
-	employee = frappe.db.get_value(
-		"Employee",
-		{"user_id": user},
-		["name", "school"],
-		as_dict=True,
-	)
+    # FIX: Only fetch 'school' (removed default_school)
+    employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": user},
+        ["name", "school"],
+        as_dict=True,
+    )
 
-	if employee and employee.school:
-		# FIX: Use utility function get_descendant_schools
-		# Admin/Leads at Parent School see logs from Child Schools
-		schools = get_descendant_schools(employee.school)
-		if schools:
-			filters["school"] = ("in", schools)
+    if employee and employee.school:
+        # FIX: Use utility function get_descendant_schools
+        # Admin/Leads at Parent School see logs from Child Schools
+        schools = get_descendant_schools(employee.school)
+        if schools:
+            filters["school"] = ("in", schools)
 
-	logs = frappe.get_all(
-		"Student Log",
-		fields=[
-			"name",
-			"student_name",
-			"student_image",
-			"log_type",
-			"date",
-			"requires_follow_up",
-			"follow_up_status",
-			"log",
-		],
-		filters=filters,
-		order_by="date desc, time desc",
-		limit=50,
-	)
+    logs = frappe.get_all(
+        "Student Log",
+        fields=[
+            "name",
+            "student_name",
+            "student_image",
+            "log_type",
+            "date",
+            "requires_follow_up",
+            "follow_up_status",
+            "log",
+        ],
+        filters=filters,
+        order_by="date desc, time desc",
+        limit=50,
+    )
 
-	formatted_logs = []
-	for log in logs:
-		raw_text = strip_html(log.log or "")
-		snippet = (raw_text[:120] + "...") if len(raw_text) > 120 else raw_text
+    formatted_logs = []
+    for log in logs:
+        raw_text = strip_html(log.log or "")
+        snippet = (raw_text[:120] + "...") if len(raw_text) > 120 else raw_text
 
-		status_color = "gray"
-		if log.requires_follow_up:
-			if log.follow_up_status == "Open":
-				status_color = "red"
-			elif log.follow_up_status == "Completed":
-				status_color = "green"
+        status_color = "gray"
+        if log.requires_follow_up:
+            if log.follow_up_status == "Open":
+                status_color = "red"
+            elif log.follow_up_status == "Completed":
+                status_color = "green"
 
-		formatted_logs.append(
-			{
-				"name": log.name,
-				"student_name": log.student_name,
-				"student_image": log.student_image,
-				"log_type": log.log_type,
-				"date_display": formatdate(log.date, "dd-MMM"),
-				"snippet": snippet,
-				"full_content": log.log,
-				"status_color": status_color,
-			}
-		)
+        formatted_logs.append(
+            {
+                "name": log.name,
+                "student_name": log.student_name,
+                "student_image": log.student_image,
+                "log_type": log.log_type,
+                "date_display": formatdate(log.date, "dd-MMM"),
+                "snippet": snippet,
+                "full_content": log.log,
+                "status_color": status_color,
+            }
+        )
 
-	return formatted_logs
+    return formatted_logs
 
 
 # ==============================================================================
@@ -326,21 +325,21 @@ def get_recent_student_logs(user):
 
 
 def get_staff_birthdays():
-	"""
-	Active employees with birthdays today or next 3 days.
-	Handles year wrap-around (e.g. Dec 31 -> Jan 2).
-	"""
-	start_md = formatdate(add_days(today(), -4), "MM-dd")
-	end_md = formatdate(add_days(today(), 4), "MM-dd")
+    """
+    Active employees with birthdays today or next 3 days.
+    Handles year wrap-around (e.g. Dec 31 -> Jan 2).
+    """
+    start_md = formatdate(add_days(today(), -4), "MM-dd")
+    end_md = formatdate(add_days(today(), 4), "MM-dd")
 
-	condition = "DATE_FORMAT(employee_date_of_birth, '%%m-%%d') BETWEEN %s AND %s"
-	if start_md > end_md:
-		condition = (
-			"(DATE_FORMAT(employee_date_of_birth, '%%m-%%d') >= %s "
-			"OR DATE_FORMAT(employee_date_of_birth, '%%m-%%d') <= %s)"
-		)
+    condition = "DATE_FORMAT(employee_date_of_birth, '%%m-%%d') BETWEEN %s AND %s"
+    if start_md > end_md:
+        condition = (
+            "(DATE_FORMAT(employee_date_of_birth, '%%m-%%d') >= %s "
+            "OR DATE_FORMAT(employee_date_of_birth, '%%m-%%d') <= %s)"
+        )
 
-	sql = f"""
+    sql = f"""
 		SELECT
 			employee_full_name as name,
 			employee_image as image,
@@ -354,30 +353,30 @@ def get_staff_birthdays():
 		ORDER BY
 			DATE_FORMAT(employee_date_of_birth, '%%%%m-%%%%d') ASC
 	"""
-	return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+    return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
 
 
 def get_my_student_birthdays(group_names):
-	"""
-	Active students in my groups with birthdays ±4 days.
-	"""
-	if not group_names:
-		return []
+    """
+    Active students in my groups with birthdays ±4 days.
+    """
+    if not group_names:
+        return []
 
-	groups_formatted = "', '".join(group_names)
+    groups_formatted = "', '".join(group_names)
 
-	start_md = formatdate(add_days(today(), -4), "MM-dd")
-	end_md = formatdate(add_days(today(), 4), "MM-dd")
+    start_md = formatdate(add_days(today(), -4), "MM-dd")
+    end_md = formatdate(add_days(today(), 4), "MM-dd")
 
-	# Handle year wrap (Dec→Jan)
-	condition = "DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') BETWEEN %s AND %s"
-	if start_md > end_md:
-		condition = (
-			"(DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') >= %s "
-			"OR DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') <= %s)"
-		)
+    # Handle year wrap (Dec→Jan)
+    condition = "DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') BETWEEN %s AND %s"
+    if start_md > end_md:
+        condition = (
+            "(DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') >= %s "
+            "OR DATE_FORMAT(s.student_date_of_birth, '%%m-%%d') <= %s)"
+        )
 
-	sql = f"""
+    sql = f"""
 		SELECT DISTINCT
 			s.student_first_name AS first_name,
 			s.student_last_name AS last_name,
@@ -392,7 +391,7 @@ def get_my_student_birthdays(group_names):
 		ORDER BY DATE_FORMAT(s.student_date_of_birth, '%%%%m-%%%%d') ASC
 	"""
 
-	return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+    return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
 
 
 # ==============================================================================
@@ -401,18 +400,18 @@ def get_my_student_birthdays(group_names):
 
 
 def get_attendance_trend(user):
-	"""
-	Returns daily absence count for the last 30 days for the user's school.
-	"""
-	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
-	if not employee or not employee.school:
-		return []
+    """
+    Returns daily absence count for the last 30 days for the user's school.
+    """
+    employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+    if not employee or not employee.school:
+        return []
 
-	# Get last 30 days
-	end_date = today()
-	start_date = add_days(end_date, -30)
+    # Get last 30 days
+    end_date = today()
+    start_date = add_days(end_date, -30)
 
-	sql = """
+    sql = """
 		SELECT
 			sa.attendance_date as date,
 			COUNT(*) as count
@@ -426,38 +425,36 @@ def get_attendance_trend(user):
 		ORDER BY sa.attendance_date ASC
 	"""
 
-	results = frappe.db.sql(
-		sql, (employee.school, start_date, end_date), as_dict=True
-	)
+    results = frappe.db.sql(sql, (employee.school, start_date, end_date), as_dict=True)
 
-	# Fill in missing dates with 0
-	data_map = {getdate(r.date): r.count for r in results}
+    # Fill in missing dates with 0
+    data_map = {getdate(r.date): r.count for r in results}
 
-	final_data = []
-	current_date = getdate(start_date)
-	target_date = getdate(end_date)
+    final_data = []
+    current_date = getdate(start_date)
+    target_date = getdate(end_date)
 
-	while current_date <= target_date:
-		d_str = formatdate(current_date, "yyyy-mm-dd")
-		count = data_map.get(current_date, 0)
-		final_data.append({"date": d_str, "count": count})
-		current_date = add_days(current_date, 1)
+    while current_date <= target_date:
+        d_str = formatdate(current_date, "yyyy-mm-dd")
+        count = data_map.get(current_date, 0)
+        final_data.append({"date": d_str, "count": count})
+        current_date = add_days(current_date, 1)
 
-	return final_data
+    return final_data
 
 
 def get_my_absent_students(group_names):
-	"""
-	Returns list of students in my groups who are absent TODAY.
-	"""
-	if not group_names:
-		return []
+    """
+    Returns list of students in my groups who are absent TODAY.
+    """
+    if not group_names:
+        return []
 
-	groups_formatted = "', '".join(group_names)
-	site_today = today()
+    groups_formatted = "', '".join(group_names)
+    site_today = today()
 
-	# Use site date instead of DB CURDATE()
-	sql = f"""
+    # Use site date instead of DB CURDATE()
+    sql = f"""
 		SELECT
 			sa.student_name,
 			sa.attendance_code,
@@ -474,76 +471,74 @@ def get_my_absent_students(group_names):
 		AND sac.count_as_present = 0
 	"""
 
-	return frappe.db.sql(sql, as_dict=True)
+    return frappe.db.sql(sql, as_dict=True)
 
 
 @frappe.whitelist()
 def get_critical_incidents_details():
-	"""
-	Returns detailed list of Open logs marked as 'Requires Follow Up'.
-	"""
-	user = frappe.session.user
-	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+    """
+    Returns detailed list of Open logs marked as 'Requires Follow Up'.
+    """
+    user = frappe.session.user
+    employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
 
-	filters = {
-		"requires_follow_up": 1,
-		"follow_up_status": "Open",
-		"docstatus": 1,
-	}
+    filters = {
+        "requires_follow_up": 1,
+        "follow_up_status": "Open",
+        "docstatus": 1,
+    }
 
-	if employee and employee.school:
-		filters["school"] = employee.school
+    if employee and employee.school:
+        filters["school"] = employee.school
 
-	logs = frappe.get_all(
-		"Student Log",
-		filters=filters,
-		fields=["name", "student_name", "student_image", "log_type", "date", "log"],
-		order_by="date desc, creation desc",
-	)
+    logs = frappe.get_all(
+        "Student Log",
+        filters=filters,
+        fields=["name", "student_name", "student_image", "log_type", "date", "log"],
+        order_by="date desc, creation desc",
+    )
 
-	for log in logs:
-		log.date_display = formatdate(log.date, "dd-MMM")
-		raw_text = strip_html(log.log or "")
-		log.snippet = (raw_text[:100] + "...") if len(raw_text) > 100 else raw_text
+    for log in logs:
+        log.date_display = formatdate(log.date, "dd-MMM")
+        raw_text = strip_html(log.log or "")
+        log.snippet = (raw_text[:100] + "...") if len(raw_text) > 100 else raw_text
 
-	return logs
+    return logs
 
 
 @frappe.whitelist()
 def get_clinic_visits_trend(time_range="1M"):
-	"""
-	Returns daily visit counts for the specified range.
-	time_range: '1M', '3M', '6M', 'YTD'
-	"""
-	user = frappe.session.user
-	employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+    """
+    Returns daily visit counts for the specified range.
+    time_range: '1M', '3M', '6M', 'YTD'
+    """
+    user = frappe.session.user
+    employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
 
-	# Default to user's school, or global if no school assigned
-	school_filter = {}
-	if employee and employee.school:
-		school_filter = {"school": employee.school}
+    # Default to user's school, or global if no school assigned
+    school_filter = {}
+    if employee and employee.school:
+        school_filter = {"school": employee.school}
 
-	end_date = today()
-	start_date = add_days(end_date, -30)  # Default 1M
+    end_date = today()
+    start_date = add_days(end_date, -30)  # Default 1M
 
-	if time_range == "3M":
-		start_date = add_days(end_date, -90)
-	elif time_range == "6M":
-		start_date = add_days(end_date, -180)
-	elif time_range == "YTD":
-		academic_year = frappe.db.get_value(
-			"Academic Year", {"current": 1}, "year_start_date"
-		)
-		if academic_year:
-			start_date = academic_year
-		else:
-			import datetime
+    if time_range == "3M":
+        start_date = add_days(end_date, -90)
+    elif time_range == "6M":
+        start_date = add_days(end_date, -180)
+    elif time_range == "YTD":
+        academic_year = frappe.db.get_value("Academic Year", {"current": 1}, "year_start_date")
+        if academic_year:
+            start_date = academic_year
+        else:
+            import datetime
 
-			start_date = f"{datetime.date.today().year}-01-01"
+            start_date = f"{datetime.date.today().year}-01-01"
 
-	school_condition = "AND school = %(school)s" if school_filter else ""
+    school_condition = "AND school = %(school)s" if school_filter else ""
 
-	sql = f"""
+    sql = f"""
 		SELECT date, COUNT(*) as count
 		FROM `tabStudent Patient Visit`
 		WHERE docstatus = 1
@@ -553,29 +548,29 @@ def get_clinic_visits_trend(time_range="1M"):
 		ORDER BY date ASC
 	"""
 
-	visits = frappe.db.sql(
-		sql,
-		{
-			"school": school_filter.get("school"),
-			"start_date": start_date,
-			"end_date": end_date,
-		},
-		as_dict=True,
-	)
+    visits = frappe.db.sql(
+        sql,
+        {
+            "school": school_filter.get("school"),
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+        as_dict=True,
+    )
 
-	data_map = {getdate(v.date): v.count for v in visits}
-	final_data = []
+    data_map = {getdate(v.date): v.count for v in visits}
+    final_data = []
 
-	curr = getdate(start_date)
-	end = getdate(end_date)
+    curr = getdate(start_date)
+    end = getdate(end_date)
 
-	while curr <= end:
-		d_str = formatdate(curr, "yyyy-mm-dd")
-		final_data.append({"date": d_str, "count": data_map.get(curr, 0)})
-		curr = add_days(curr, 1)
+    while curr <= end:
+        d_str = formatdate(curr, "yyyy-mm-dd")
+        final_data.append({"date": d_str, "count": data_map.get(curr, 0)})
+        curr = add_days(curr, 1)
 
-	return {
-		"data": final_data,
-		"school": employee.school if employee else "All Schools",
-		"range": time_range,
-	}
+    return {
+        "data": final_data,
+        "school": employee.school if employee else "All Schools",
+        "range": time_range,
+    }

@@ -1,8 +1,8 @@
 <!-- ifitwala_ed/docs/website/05_school_slug_vs_page_route.md -->
 # School Slug vs Website Page Route (Canonical)
 
-**Audience:** Website admins, implementers, and content editors  
-**Scope:** Builder-lite public website routing  
+**Audience:** Website admins, implementers, and content editors
+**Scope:** Builder-lite public website routing
 **Status (February 13, 2026):** Implemented and enforced by route rules, renderer resolution, and `School Website Page` validation
 
 ---
@@ -136,8 +136,7 @@ For admissions/public form requests:
 
 For authenticated portal requests:
 
-1. Canonical portal namespaces are `/student/*`, `/staff/*`, and `/guardian/*`.
-2. Legacy `/portal/*` paths are compatibility redirects to the canonical namespaces.
+1. Canonical authenticated portal namespace is `/portal/*`.
 
 ---
 

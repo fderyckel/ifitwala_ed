@@ -141,9 +141,8 @@
   {
    "depends_on": "allow_encashment",
    "fieldname": "earning_component",
-   "fieldtype": "Link",
-   "label": "Earning Component",
-   "options": "Salary Component"
+   "fieldtype": "Data",
+   "label": "Earning Component"
   },
   {
    "collapsible": 1,

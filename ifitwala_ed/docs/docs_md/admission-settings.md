@@ -4,9 +4,17 @@ slug: admission-settings
 category: Admission
 doc_order: 1
 summary: "Configure response SLAs, assignment colors, and background SLA checks for the full admissions pipeline."
+seo_title: "Admission Settings: SLA and Assignment Controls"
+seo_description: "Configure response SLAs, assignment colors, and background SLA checks for the full admissions pipeline."
 ---
 
-# Admission Settings: SLA and Assignment Controls
+## Admission Settings: SLA and Assignment Controls
+
+## Before You Start (Prerequisites)
+
+- Ensure your admissions team users and roles are in place (`Admission Manager` / `Admission Officer`).
+- Confirm you will run admissions through `Inquiry` and/or `Registration of Interest` so SLA settings are actually used.
+- Align SLA values and assignment color conventions with operations before enabling checks.
 
 Admission teams move fast, and missed follow-ups are expensive. `Admission Settings` is the control center that keeps Inquiry and Registration workflows time-bound and visible.
 
@@ -34,7 +42,26 @@ When these settings are correct, your team sees at-risk records early instead of
 - **Write**: `System Manager`, `Admission Manager`
 - **Read-only**: `Admission Officer`, `Academic Admin`
 
+## Lifecycle and Linked Documents
+
+1. Set SLA and assignment settings before admitting your first inquiry batch.
+2. Run daily intake in `Inquiry` and `Registration of Interest`; each record uses this configuration.
+3. Review breached/at-risk records and adjust team workload from assignment and ToDo indicators.
+4. Revisit SLA values at term boundaries so new admissions periods reflect real team capacity.
+
+<Callout type="info" title="When to change settings">
+Treat SLA updates as operational policy changes. Confirm with admissions leadership before changing values mid-cycle.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/admission/doctype/admission_settings/admission_settings.json`
+- **Controller file**: `ifitwala_ed/admission/doctype/admission_settings/admission_settings.py`
+- **Required fields (`reqd=1`)**: none at schema level; controller/workflow rules enforce operational completeness where applicable.
+- **Lifecycle hooks in controller**: none (reference/master behavior, or handled by framework defaults).
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Admission Settings` (`ifitwala_ed/admission/doctype/admission_settings/`)
 - **Type**: `issingle = 1`

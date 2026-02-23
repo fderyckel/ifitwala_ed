@@ -22,7 +22,7 @@ Inquiry → Student Applicant → Promotion → Student
 * Student Applicant = **sole pre‑student container**
 * Student = canonical institutional record
 
-A Student **cannot** exist except through Applicant promotion.
+A Student **cannot** exist except through Applicant promotion, unless an explicit migration/import bypass is used.
 
 
 ---

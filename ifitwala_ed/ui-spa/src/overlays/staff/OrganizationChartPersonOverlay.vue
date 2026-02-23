@@ -77,9 +77,7 @@
 									<p class="type-caption text-slate-500 break-all">
 										Email: {{ person.professional_email || '-' }}
 									</p>
-									<p class="type-caption text-slate-500">
-										Ext: {{ person.phone_ext || '-' }}
-									</p>
+									<p class="type-caption text-slate-500">Ext: {{ person.phone_ext || '-' }}</p>
 									<p class="type-caption text-slate-500">
 										{{ person.school || '-' }} · {{ person.organization || '-' }}
 									</p>
@@ -94,53 +92,59 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
-import { FeatherIcon } from 'frappe-ui'
+import { computed, ref } from 'vue';
+import {
+	Dialog,
+	DialogPanel,
+	DialogTitle,
+	TransitionChild,
+	TransitionRoot,
+} from '@headlessui/vue';
+import { FeatherIcon } from 'frappe-ui';
 
 const props = defineProps<{
-	open: boolean
-	zIndex?: number
-	overlayId?: string | null
+	open: boolean;
+	zIndex?: number;
+	overlayId?: string | null;
 	person: {
-		id?: string
-		name?: string | null
-		first_name?: string | null
-		title?: string | null
-		school?: string | null
-		organization?: string | null
-		image?: string | null
-		professional_email?: string | null
-		phone_ext?: string | null
-	}
-}>()
+		id?: string;
+		name?: string | null;
+		first_name?: string | null;
+		title?: string | null;
+		school?: string | null;
+		organization?: string | null;
+		image?: string | null;
+		professional_email?: string | null;
+		phone_ext?: string | null;
+	};
+}>();
 
-type CloseReason = 'backdrop' | 'esc' | 'programmatic'
+type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
 const emit = defineEmits<{
-	(e: 'close', reason: CloseReason): void
-	(e: 'after-leave'): void
-}>()
+	(e: 'close', reason: CloseReason): void;
+	(e: 'after-leave'): void;
+}>();
 
-const initialFocus = ref<HTMLElement | null>(null)
-const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }))
+const initialFocus = ref<HTMLElement | null>(null);
+const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }));
 
 const initials = computed(() => {
-	const source = (props.person.first_name || props.person.name || '').trim()
-	if (!source) return '-'
-	const parts = source.split(/\s+/).slice(0, 2)
-	return parts.map((part) => part[0]?.toUpperCase() || '').join('') || '-'
-})
+	const source = (props.person.first_name || props.person.name || '').trim();
+	if (!source) return '-';
+	const parts = source.split(/\s+/).slice(0, 2);
+	return parts.map(part => part[0]?.toUpperCase() || '').join('') || '-';
+});
 
 function emitClose(reason: CloseReason) {
-	emit('close', reason)
+	emit('close', reason);
 }
 
 function emitAfterLeave() {
-	emit('after-leave')
+	emit('after-leave');
 }
 
 function onDialogClose() {
-	emitClose('esc')
+	emitClose('esc');
 }
 </script>

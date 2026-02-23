@@ -4,9 +4,17 @@ slug: assessment-category
 category: Assessment
 doc_order: 1
 summary: "Define meaningful assessment buckets (Formative, Summative, Project, etc.) so teaching teams, analytics, and reporting speak the same language."
+seo_title: "Assessment Category: Classifying Learning Work Clearly"
+seo_description: "Define meaningful assessment buckets (Formative, Summative, Project, etc.) so teaching teams, analytics, and reporting speak the same language."
 ---
 
-# Assessment Category: Classifying Learning Work Clearly
+## Assessment Category: Classifying Learning Work Clearly
+
+## Before You Start (Prerequisites)
+
+- Agree the institution-wide assessment taxonomy (for example formative/summative/project) first.
+- Create categories before configuring `Course`, `Program`, and `Task` records that reference them.
+- Keep naming stable once categories are in active reporting use.
 
 Not every piece of student work should be treated the same. `Assessment Category` gives schools a shared vocabulary for classwork, projects, summatives, and other evidence types so decisions stay consistent across teams.
 
@@ -23,7 +31,27 @@ When categories are clean, your curriculum team can compare like-for-like eviden
   - `Curriculum` workspace shortcut (`ifitwala_ed/curriculum/workspace/curriculum/curriculum.json`)
   - `Admin` workspace shortcut (`ifitwala_ed/school_settings/workspace/admin/admin.json`)
 
+## Lifecycle and Linked Documents
+
+1. Define categories first as shared language for assessment design.
+2. Attach categories in curriculum setup (`Course` and `Program`) before task rollout.
+3. Classify each `Task` using the same vocabulary to keep gradebook and analytics comparable.
+4. Review category usage periodically to avoid overlap and duplicate semantics.
+
+<Callout type="info" title="Governance tip">
+Treat category names as policy vocabulary, not teacher-specific labels, so reporting remains consistent across years.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/assessment_category/assessment_category.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/assessment_category/assessment_category.py`
+- **Required fields (`reqd=1`)**:
+  - `category_name` (`Data`)
+- **Lifecycle hooks in controller**: none (reference/master behavior, or handled by framework defaults).
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Assessment Category` (`ifitwala_ed/assessment/doctype/assessment_category/`)
 - **Autoname**: `field:category_name`

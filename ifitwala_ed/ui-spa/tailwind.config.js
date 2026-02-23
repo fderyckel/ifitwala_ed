@@ -5,18 +5,12 @@ import colors from 'tailwindcss/colors';
 import typography from '@tailwindcss/typography';
 import lineClamp from '@tailwindcss/line-clamp';
 
-const withOpacity = (variable) => ({ opacityValue }) => {
-	if (opacityValue === undefined) {
-		return `rgb(var(${variable}) / 1)`;
-	}
-	return `rgb(var(${variable}) / ${opacityValue})`;
-};
-const wrapUtilities = (plugin) => {
+const wrapUtilities = plugin => {
 	if (typeof plugin !== 'function') {
 		return plugin;
 	}
 
-	const wrapped = (api) => {
+	const wrapped = api => {
 		const { addUtilities, addComponents } = api;
 		const safeAddUtilities = (utilities, options) => {
 			if (!utilities || typeof utilities !== 'object') {
@@ -64,11 +58,7 @@ export default {
 		'./src/**/*.{vue,js,ts}',
 		'./node_modules/frappe-ui/src/**/*.{vue,js,ts}',
 	],
-	safelist: [
-		'bg-surface',
-		'bg-surface-soft',
-		'bg-surface-strong',
-	],
+	safelist: ['bg-surface', 'bg-surface-soft', 'bg-surface-strong'],
 	theme: {
 		extend: {
 			/* 1. Fonts wired to CSS vars (tokens.css) */

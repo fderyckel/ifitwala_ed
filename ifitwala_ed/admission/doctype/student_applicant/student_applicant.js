@@ -3,6 +3,15 @@
 
 // ifitwala_ed/admission/doctype/student_applicant/student_applicant.js
 
+function blurActiveModalFocus() {
+	const active = document.activeElement;
+	if (!(active instanceof HTMLElement)) {
+		return;
+	}
+	if (active.closest(".modal")) {
+		active.blur();
+	}
+}
 
 frappe.ui.form.on("Student Applicant", {
 
@@ -31,6 +40,7 @@ frappe.ui.form.on("Student Applicant", {
 		frm.trigger("setup_governed_image_upload");
 		render_review_sections(frm);
 		add_decision_actions(frm);
+		add_portal_invite_action(frm);
 	},
 
 	setup_governed_image_upload(frm) {
@@ -113,6 +123,117 @@ frappe.ui.form.on("Student Applicant", {
 	},
 });
 
+const TERMINAL_PORTAL_INVITE_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
+
+function add_portal_invite_action(frm) {
+	frm.remove_custom_button(__("Invite Applicant Portal"), __("Actions"));
+	frm.remove_custom_button(__("Resend Portal Invite"), __("Actions"));
+	frm.remove_custom_button(__("Invite Applicant Portal"));
+	frm.remove_custom_button(__("Resend Portal Invite"));
+
+	if (!frm.doc || frm.is_new()) {
+		return;
+	}
+
+	const status = String(frm.doc.application_status || "").trim();
+	if (TERMINAL_PORTAL_INVITE_STATUSES.has(status)) {
+		return;
+	}
+
+	const hasLinkedUser = Boolean(String(frm.doc.applicant_user || "").trim());
+	const label = hasLinkedUser ? __("Resend Portal Invite") : __("Invite Applicant Portal");
+	frm.add_custom_button(label, () => prompt_portal_invite(frm), __("Actions"));
+}
+
+function prompt_portal_invite(frm) {
+	const linkedEmail = String(frm.doc.applicant_user || "").trim().toLowerCase();
+	const hasLinkedUser = Boolean(linkedEmail);
+
+	frappe.call({
+		method: "ifitwala_ed.api.admissions_portal.get_invite_email_options",
+		args: {
+			student_applicant: frm.doc.name,
+		},
+	})
+		.then((res) => {
+			const payload = res?.message || {};
+			const emails = Array.isArray(payload.emails) ? payload.emails : [];
+			const selectedEmail = String(payload.selected_email || "").trim().toLowerCase();
+
+			const fields = [];
+			if (emails.length) {
+				fields.push({
+					label: __("Contact Email"),
+					fieldname: "selected_email",
+					fieldtype: "Select",
+					reqd: 0,
+					options: emails.join("\n"),
+					default: selectedEmail || emails[0],
+					description: __("Select an existing Contact email."),
+				});
+			}
+
+			fields.push({
+				label: __("New Email"),
+				fieldname: "new_email",
+				fieldtype: "Data",
+				options: "Email",
+				reqd: !emails.length,
+				description: emails.length
+					? __("Optional: enter a new email to add to Contact and invite.")
+					: __("Enter applicant email to create/link Contact and invite."),
+			});
+
+			frappe.prompt(
+				fields,
+				(values) => {
+					const newEmail = String(values.new_email || "").trim().toLowerCase();
+					const pickedEmail = String(values.selected_email || "").trim().toLowerCase();
+					const email = newEmail || pickedEmail;
+					if (!email) {
+						frappe.msgprint(__("Please select or enter an applicant email."));
+						return;
+					}
+
+					frappe.call({
+						method: "ifitwala_ed.api.admissions_portal.invite_applicant",
+						args: {
+							student_applicant: frm.doc.name,
+							email,
+						},
+						freeze: true,
+						freeze_message: hasLinkedUser
+							? __("Re-sending applicant portal invite...")
+							: __("Inviting applicant to portal..."),
+					})
+						.then((inviteRes) => {
+							const message = inviteRes?.message || {};
+							const resent = Boolean(message.resent);
+							const emailSent = message.email_sent !== false;
+							frappe.show_alert({
+								message: emailSent
+									? (resent ? __("Portal invite email re-sent.") : __("Portal invite email sent."))
+									: __("Portal access linked, but invite email could not be sent."),
+								indicator: "green",
+							});
+							if (!emailSent) {
+								frappe.msgprint(__("Applicant user and role were created/linked, but email sending failed. Ask family to use Forgot Password on /login or click Resend Portal Invite later."));
+							}
+							frm.reload_doc();
+						})
+						.catch((err) => {
+							frappe.msgprint(err?.message || __("Unable to send applicant portal invite."));
+						});
+				},
+				hasLinkedUser ? __("Resend Portal Invite") : __("Invite Applicant Portal"),
+				hasLinkedUser ? __("Resend") : __("Invite")
+			);
+		})
+		.catch((err) => {
+			frappe.msgprint(err?.message || __("Unable to load applicant invite email options."));
+		});
+}
+
 function render_review_sections(frm) {
 	frm.call("get_readiness_snapshot")
 		.then((res) => {
@@ -145,6 +266,7 @@ function render_snapshot(data) {
 	return [
 		render_line("Ready for approval", escape_html(ready)),
 		render_line("Readiness issues", render_list(issues)),
+		render_line("Profile", render_ok_label(data.profile)),
 		render_line("Policies", render_ok_label(data.policies)),
 		render_line("Documents", render_ok_label(data.documents)),
 		render_line("Health", render_ok_label(data.health)),
@@ -157,9 +279,43 @@ function render_interviews(interviews) {
 		return render_empty("No interview data.");
 	}
 	const count = Number(interviews.count || 0);
+	const items = Array.isArray(interviews.items) ? interviews.items : [];
 	return [
 		render_line("Interview count", escape_html(String(count))),
+		render_line("Recent interviews", render_interview_links(items)),
 	].join("");
+}
+
+function render_interview_links(items) {
+	if (!items.length) {
+		return escape_html("None");
+	}
+
+	const links = items
+		.map((row) => {
+			const name = String(row?.name || "").trim();
+			if (!name) {
+				return "";
+			}
+			const date = String(row?.interview_date || "").trim();
+			const type = String(row?.interview_type || "").trim();
+			const pieces = [name];
+			if (date) {
+				pieces.push(date);
+			}
+			if (type) {
+				pieces.push(type);
+			}
+			const label = escape_html(pieces.join(" · "));
+			const href = `/app/applicant-interview/${encodeURIComponent(name)}`;
+			return `<a href="${href}">${label}</a>`;
+		})
+		.filter(Boolean);
+
+	if (!links.length) {
+		return escape_html("None");
+	}
+	return links.join(", ");
 }
 
 function render_health(health) {
@@ -233,11 +389,27 @@ function map_health_status(status) {
 
 function add_decision_actions(frm) {
 	const status = frm.doc.application_status;
-	["Approve", "Reject", "Promote"].forEach((label) => frm.remove_custom_button(label));
+	["Start Review", "Approve", "Reject", "Promote", "Upgrade Identity"].forEach((label) =>
+		frm.remove_custom_button(label)
+	);
+
+	if (status === "Submitted") {
+		frm.add_custom_button("Start Review", () => {
+			frappe.confirm("Move this applicant to Under Review?", () => {
+				blurActiveModalFocus();
+				frm.call("mark_under_review")
+					.then(() => frm.reload_doc())
+					.catch((err) => {
+						frappe.msgprint(err.message || "Unable to move applicant to Under Review.");
+					});
+			});
+		});
+	}
 
 	if (status === "Under Review") {
 		frm.add_custom_button("Approve", () => {
 			frappe.confirm("Approve this applicant?", () => {
+				blurActiveModalFocus();
 				frm.call("approve_application")
 					.then(() => frm.reload_doc())
 					.catch((err) => {
@@ -255,6 +427,7 @@ function add_decision_actions(frm) {
 					reqd: 1,
 				},
 				(values) => {
+					blurActiveModalFocus();
 					frm.call("reject_application", { reason: values.reason })
 						.then(() => frm.reload_doc())
 						.catch((err) => {
@@ -270,10 +443,24 @@ function add_decision_actions(frm) {
 	if (status === "Approved") {
 		frm.add_custom_button("Promote", () => {
 			frappe.confirm("Promote this applicant to Student?", () => {
+				blurActiveModalFocus();
 				frm.call("promote_to_student")
 					.then(() => frm.reload_doc())
 					.catch((err) => {
 						frappe.msgprint(err.message || "Unable to promote applicant.");
+					});
+			});
+		});
+	}
+
+	if (status === "Promoted") {
+		frm.add_custom_button("Upgrade Identity", () => {
+			frappe.confirm("Upgrade identity for this promoted applicant?", () => {
+				blurActiveModalFocus();
+				frm.call("upgrade_identity")
+					.then(() => frm.reload_doc())
+					.catch((err) => {
+						frappe.msgprint(err.message || "Unable to upgrade identity.");
 					});
 			});
 		});

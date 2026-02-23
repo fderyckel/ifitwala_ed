@@ -177,4 +177,3 @@ frappe.ui.form.on("School Calendar Holidays", {
 		frm.save();
 	}
 });
-

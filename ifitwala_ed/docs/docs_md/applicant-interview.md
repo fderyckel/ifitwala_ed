@@ -3,10 +3,18 @@ title: "Applicant Interview: Structured Interview Evidence"
 slug: applicant-interview
 category: Admission
 doc_order: 8
+version: "1.1.0"
+last_change_date: "2026-02-20"
 summary: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
+seo_title: "Applicant Interview: Structured Interview Evidence"
+seo_description: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
 ---
 
-# Applicant Interview: Structured Interview Evidence
+## Before You Start (Prerequisites)
+
+- Create the `Student Applicant` record first.
+- Have interview date/time and participants prepared before creating the record.
+- Ensure interviewer users exist in the system for clean participant linkage.
 
 `Applicant Interview` captures interview evidence as part of admissions review. It formalizes interview context and leaves an audit trail on the applicant record.
 
@@ -30,10 +38,35 @@ Controller logic remains on the parent doctype; child table controller is intent
 
 - [**Student Applicant**](/docs/en/student-applicant/):
   - interview count contributes to readiness snapshot
-  - create/update events add audit comments on applicant timeline
+  - create/update events add audit comments on applicant timeline with a direct link to the interview record
 - Admission workspace: direct access card under Student Applicant operations.
 
+## Lifecycle and Linked Documents
+
+1. Create one interview record per interview event for the applicant.
+2. Capture date, mode, participants, confidentiality level, and structured notes/outcome.
+3. Update interview records as evidence evolves; timeline comments keep a visible audit trail.
+4. Interview completion contributes to applicant readiness and admissions decision confidence.
+
+<Callout type="tip" title="Operational pattern">
+Use separate interview rows for separate interactions instead of continuously overwriting one row.
+</Callout>
+
+<Callout type="info" title="Architecture rule">
+Interviewers are child rows for structure only; workflow logic and validations are enforced in the parent doctype.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.json`
+- **Controller file**: `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.py`
+- **Required fields (`reqd=1`)**:
+  - `student_applicant` (`Link` -> `Student Applicant`)
+  - `interview_date` (`Date`)
+- **Lifecycle hooks in controller**: `validate`, `after_insert`, `on_update`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Applicant Interview` (`ifitwala_ed/admission/doctype/applicant_interview/`)
 - **Autoname**: `hash`
@@ -42,11 +75,11 @@ Controller logic remains on the parent doctype; child table controller is intent
   - child table `Applicant Interviewer` embedded in parent
 - **Student Applicant integration**:
   - readiness snapshot uses `has_required_interviews()`
-  - create/update posts audit comments onto applicant timeline
+  - create/update posts audit comments onto applicant timeline with clickable interview links
 - **Key hooks**:
   - `validate`: permission + applicant-state guard
   - `after_insert`: audit comment "Interview recorded"
-  - `on_update`: audit comment "Interview updated"
+  - `on_update`: audit comment "Interview updated" (only on saves after insert)
 - **Readiness nuance**:
   - `StudentApplicant.has_required_interviews()` tracks count and snapshot section
   - current `ready` boolean blocks on policies/documents/health, not interview count

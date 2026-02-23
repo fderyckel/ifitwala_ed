@@ -1,8 +1,8 @@
 <!-- ifitwala_ed/docs/website/07_page_recipes.md -->
 # Page Recipes (Current Baseline)
 
-**Audience:** Marketing, admissions, and website managers  
-**Status (February 12, 2026):** Synced with implemented website editor and renderer behavior  
+**Audience:** Marketing, admissions, and website managers
+**Status (February 12, 2026):** Synced with implemented website editor and renderer behavior
 **Goal:** Low-friction page composition using currently supported blocks
 
 ---

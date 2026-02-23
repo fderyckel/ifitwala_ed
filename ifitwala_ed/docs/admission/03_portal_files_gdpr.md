@@ -1,16 +1,5 @@
 # Admissions UX, Portal Surface, Files & GDPR — Canonical Contract (LOCKED)
 
-> Consolidated from:
-> - `/mnt/data/phase050_admission_portal.md`
-> - `/mnt/data/phase050.md`
-> - `/mnt/data/files_01_architecture_notes.md` (admissions-relevant sections)
-> - `/mnt/data/files_02_GDPR.md`
-
-> Purpose: lock UX non-authority rules + portal surface mapping + admissions file ownership + GDPR boundary.
-
-
----
-
 ## 1. UX invariants and portal surface map (source)
 
 
@@ -30,7 +19,7 @@
 
 ---
 
-## 0. Problem Being Solved (No Hand-Waving)
+## 0. Problem Being Solved
 
 Admissions needs a **secure, authenticated, limited-scope portal** for applicants/families **before** they become Guardians or Students.
 
@@ -332,7 +321,8 @@ This is enforced **server-side**, not via UI hiding.
 * File Classification primary subject is **Student Applicant**
 * All files are deletable via Applicant purge
 * No documents live directly on User
-* Files are never re-linked or copied on promotion
+* Files are never moved or re-linked on promotion
+* Approved promotable Applicant Documents are copied as new Student File records with source linkage preserved
 * Identity can be erased independently of application record
 
 (Full GDPR policy handled elsewhere; this portal does not violate it.)
@@ -518,16 +508,53 @@ POST /api/admissions/health/update
 
 ```ts
 ApplicantHealthPayload {
-  health_summary: string
-  medical_conditions: string
-  allergies: string
-  medications: string
+  // mirrors Applicant Health Profile fields aligned to Student Patient intake:
+  blood_group: string
+  allergies: boolean
+  food_allergies: string
+  insect_bites: string
+  medication_allergies: string
+  asthma: string
+  bladder__bowel_problems: string
+  diabetes: string
+  headache_migraine: string
+  high_blood_pressure: string
+  seizures: string
+  bone_joints_scoliosis: string
+  blood_disorder_info: string
+  fainting_spells: string
+  hearing_problems: string
+  recurrent_ear_infections: string
+  speech_problem: string
+  birth_defect: string
+  dental_problems: string
+  g6pd: string
+  heart_problems: string
+  recurrent_nose_bleeding: string
+  vision_problem: string
+  diet_requirements: string
+  medical_surgeries__hospitalizations: string
+  other_medical_information: string
+  applicant_health_declared_complete: boolean
+  applicant_health_declared_by: string
+  applicant_health_declared_on: string
+  applicant_display_name: string
+  vaccinations: Array<{
+    vaccine_name: string
+    date: string
+    vaccination_proof: string
+    additional_notes: string
+    vaccination_proof_content?: string // request-only (base64 image)
+    vaccination_proof_file_name?: string // request-only
+    clear_vaccination_proof?: boolean // request-only
+  }>
 }
 ```
 
 ### Rules
 
 * POST allowed only if Applicant mutable
+* Health section is considered complete for applicant flow only when `applicant_health_declared_complete = true`
 * Review status **not writable** by portal
 * Staff notes invisible
 
@@ -1014,11 +1041,33 @@ Any attempt → redirect to login.
 
 ## C.8 Lifecycle Management (LOCKED)
 
+### Two Explicit Lifecycle Boundaries
+
+1. Promotion (Data Boundary)
+
+- Applicant -> Student
+- Creates/links `Student`
+- Creates/syncs `Student Patient`
+- Copies approved/promotable admissions documents
+- Does not create Guardian records
+- Does not provision portal identities or mutate access roles
+
+2. Identity Upgrade (Access Boundary)
+
+- Runs only after enrollment confirmation (active `Program Enrollment` for the promoted student)
+- Creates/reuses `Guardian` records as needed
+- Creates/links `User` records for guardians and student portal access
+- Removes `Admissions Applicant` and assigns long-term portal roles (`Guardian`, `Student`)
+- Links Guardian <-> Student in SIS records
+
+Promotion and Identity Upgrade are independent actions and may happen at different times.
+
 ### User Creation
 
 Triggered by:
 
 * Invite to Apply
+* Identity Upgrade (Guardian/Student access provisioning)
 
 ### User Deactivation (MANDATORY)
 
@@ -1029,8 +1078,8 @@ Triggered by:
 | Applicant Promoted  | Disable OR delete user  |
 | GDPR Erasure        | Anonymize or purge user |
 
-No role mutation.
-No role reuse.
+Role mutation is allowed only inside Identity Upgrade.
+Role reuse outside Identity Upgrade is forbidden.
 No silent persistence.
 
 ---
@@ -1039,10 +1088,9 @@ No silent persistence.
 
 Codex **must not**:
 
-* Convert Admissions Applicant → Guardian
 * Share accounts across Applicants
 * Reuse credentials
-* Grant Website User role
+* Grant Guardian/Student access during Promotion
 * Grant Desk access
 * Infer permissions from email match
 * Allow multiple Applicants per user
@@ -1053,12 +1101,14 @@ Codex **must not**:
 
 Codex must:
 
-* [ ] Create `Admissions Applicant` role
-* [ ] Assign minimal DocType permissions
-* [ ] Enforce record scoping in every endpoint
-* [ ] Block all non-admissions routes
-* [ ] Disable user at Phase 3 completion
-* [ ] Never mutate roles dynamically
+* [x] Create `Admissions Applicant` role
+* [x] Assign minimal DocType permissions
+* [x] Enforce record scoping in admissions-portal endpoints
+* [x] Block all non-admissions routes
+* [x] Disable user at Phase 3 completion
+* [x] Keep promotion and identity upgrade as separate server actions
+* [x] Gate identity upgrade on active Program Enrollment
+* [x] Make identity upgrade idempotent for Users/Guardians/links
 
 ---
 
@@ -2300,7 +2350,7 @@ Admissions files MUST NOT:
 - be owned by Student
 - be owned by Guardian
 - be re-linked or moved on promotion
-- be duplicated during promotion
+- be duplicated implicitly; only approved promotable documents are copied as new Student-owned records
 
 ### Rationale
 
@@ -2312,7 +2362,8 @@ Admissions files MUST NOT:
 ### Promotion Boundary
 
 Promotion from Applicant → Student:
-- does **not** move, copy, or reassign files
+- does **not** move or re-link Applicant files
+- copies only approved promotable Applicant Documents into new Student File records
 - freezes Applicant files as historical admissions artefacts
 - operational records must never depend on admissions file ownership
 

@@ -4,9 +4,17 @@ slug: task
 category: Assessment
 doc_order: 4
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
+seo_title: "Task: The Reusable Learning and Assessment Blueprint"
+seo_description: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
 ---
 
-# Task: The Reusable Learning and Assessment Blueprint
+## Task: The Reusable Learning and Assessment Blueprint
+
+## Before You Start (Prerequisites)
+
+- Create the default `Course` first (`default_course` is required).
+- Prepare supporting assessment masters first (`Assessment Category`, `Grade Scale`, reusable `Assessment Criteria`).
+- Stabilize task design before creating downstream `Task Delivery` records.
 
 `Task` is the design layer for learning work. It defines intent, instructions, and default assessment behavior, but it is not yet assigned to a class. That separation keeps teaching flexible and prevents accidental data duplication.
 
@@ -40,7 +48,28 @@ Teachers can reuse a strong task design across cohorts and terms, while each del
   - `Curriculum` workspace
   - `Admin` workspace
 
+## Lifecycle and Linked Documents
+
+1. Author reusable task design with required curriculum anchor (`default_course`).
+2. Configure assessment defaults and optional criteria template rows.
+3. Create `Task Delivery` records per group/cohort as execution instances.
+4. Downstream outcomes, submissions, and contributions inherit delivery/task context.
+
+<Callout type="info" title="Template mindset">
+Treat `Task` as reusable design policy. Delivery, evidence, and official results belong in downstream doctypes.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/task/task.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/task/task.py`
+- **Required fields (`reqd=1`)**:
+  - `title` (`Data`)
+  - `default_course` (`Link` -> `Course`)
+- **Lifecycle hooks in controller**: `before_validate`, `validate`, `on_trash`
+- **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Task` (`ifitwala_ed/assessment/doctype/task/`)
 - **Title field**: `title`

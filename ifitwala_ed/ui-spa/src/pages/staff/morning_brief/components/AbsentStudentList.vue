@@ -10,12 +10,23 @@
 		</div>
 
 		<div class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar pr-1">
-			<div v-for="(stu, idx) in students" :key="idx"
-				class="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors">
-
-				<div class="h-10 w-10 rounded-full bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200">
-					<img v-if="stu.student_image" :src="stu.student_image" class="h-full w-full object-cover">
-					<div v-else class="h-full w-full flex items-center justify-center text-sm font-bold text-slate-400">
+			<div
+				v-for="(stu, idx) in students"
+				:key="idx"
+				class="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors"
+			>
+				<div
+					class="h-10 w-10 rounded-full bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200"
+				>
+					<img
+						v-if="stu.student_image"
+						:src="stu.student_image"
+						class="h-full w-full object-cover"
+					/>
+					<div
+						v-else
+						class="h-full w-full flex items-center justify-center text-sm font-bold text-slate-400"
+					>
 						{{ stu.student_name.substring(0, 2) }}
 					</div>
 				</div>
@@ -23,8 +34,14 @@
 				<div class="flex-1 min-w-0">
 					<div class="flex justify-between items-start">
 						<h4 class="text-sm font-bold text-ink truncate">{{ stu.student_name }}</h4>
-						<span class="text-[10px] font-bold px-1.5 py-0.5 rounded border"
-							:style="{ borderColor: stu.status_color, color: stu.status_color, backgroundColor: stu.status_color + '10' }">
+						<span
+							class="text-[10px] font-bold px-1.5 py-0.5 rounded border"
+							:style="{
+								borderColor: stu.status_color,
+								color: stu.status_color,
+								backgroundColor: stu.status_color + '10',
+							}"
+						>
 							{{ stu.attendance_code }}
 						</span>
 					</div>
@@ -33,8 +50,10 @@
 						<FeatherIcon name="users" class="h-3 w-3" /> {{ stu.student_group }}
 					</p>
 
-					<div v-if="stu.remark"
-						class="mt-1.5 text-xs text-slate-600 bg-slate-100 p-1.5 rounded italic border-l-2 border-slate-300">
+					<div
+						v-if="stu.remark"
+						class="mt-1.5 text-xs text-slate-600 bg-slate-100 p-1.5 rounded italic border-l-2 border-slate-300"
+					>
 						"{{ stu.remark }}"
 					</div>
 					<div v-else class="mt-1.5 text-[10px] text-red-500 font-medium flex items-center gap-1">
@@ -47,12 +66,12 @@
 </template>
 
 <script setup>
-import { FeatherIcon } from 'frappe-ui'
+import { FeatherIcon } from 'frappe-ui';
 
 defineProps({
 	students: {
 		type: Array,
-		default: () => []
-	}
-})
+		default: () => [],
+	},
+});
 </script>

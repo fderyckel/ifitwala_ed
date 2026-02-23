@@ -183,6 +183,7 @@ You must define **admissions slots** explicitly.
 | `identity_passport`   | legal          | until_school_exit_plus_6m |
 | `identity_birth_cert` | legal          | until_school_exit_plus_6m |
 | `health_record`       | safeguarding   | until_school_exit_plus_6m |
+| `health_vaccination_proof_*` | safeguarding | until_school_exit_plus_6m |
 | `prior_transcript`    | academic       | until_program_end_plus_1y |
 | `family_photo`        | administrative | immediate_on_request      |
 | `application_form`    | administrative | until_program_end_plus_1y |

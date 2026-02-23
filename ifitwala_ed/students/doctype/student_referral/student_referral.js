@@ -198,4 +198,3 @@ async function ensure_case(frm) {
 	const r = await frm.call("open_case");
 	return r && r.message ? r.message : null;
 }
-

@@ -98,9 +98,7 @@ class PictureManagement(Document):
 
             # Already in correct folder?
             file_folder_doc = (
-                frappe.db.get_value("File", f.folder, ["file_name", "folder"], as_dict=True)
-                if f.folder
-                else None
+                frappe.db.get_value("File", f.folder, ["file_name", "folder"], as_dict=True) if f.folder else None
             )
             if (
                 file_folder_doc
@@ -135,9 +133,7 @@ class PictureManagement(Document):
                 fields=["name", "attached_to_doctype", "attached_to_name", "attached_to_field"],
             )
             for dup in duplicates:
-                frappe.db.set_value(
-                    "File", dup.name, "file_url", f"/{new_relative_path}", update_modified=False
-                )
+                frappe.db.set_value("File", dup.name, "file_url", f"/{new_relative_path}", update_modified=False)
                 if dup.attached_to_doctype and dup.attached_to_field:
                     frappe.db.set_value(
                         dup.attached_to_doctype,

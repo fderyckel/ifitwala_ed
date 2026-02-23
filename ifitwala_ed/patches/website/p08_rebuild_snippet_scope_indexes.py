@@ -4,5 +4,4 @@ from ifitwala_ed.school_site.doctype.website_snippet.website_snippet import ensu
 
 
 def execute():
-	ensure_scope_indexes()
-
+    ensure_scope_indexes()

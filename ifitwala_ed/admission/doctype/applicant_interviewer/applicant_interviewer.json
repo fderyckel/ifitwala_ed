@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2026-02-01 00:00:00.000000",
+ "creation": "2026-02-01 00:00:00",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -12,6 +12,8 @@
   {
    "fieldname": "interviewer",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_preview": 1,
    "label": "Interviewer",
    "options": "User",
    "reqd": 1
@@ -21,12 +23,13 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-02-01 00:00:00.000000",
+ "modified": "2026-02-19 23:33:38.260666",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Interviewer",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

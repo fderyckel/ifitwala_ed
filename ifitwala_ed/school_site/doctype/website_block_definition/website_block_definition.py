@@ -4,4 +4,4 @@ from frappe.model.document import Document
 
 
 class WebsiteBlockDefinition(Document):
-	pass
+    pass

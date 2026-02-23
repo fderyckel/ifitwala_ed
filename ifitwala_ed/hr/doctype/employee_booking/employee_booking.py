@@ -8,14 +8,13 @@ from frappe.model.document import Document
 
 
 class EmployeeBooking(Document):
-	pass
-
+    pass
 
 
 def on_doctype_update():
-	# For conflict checks: employee + time window
-	frappe.db.add_index("Employee Booking", fields=["employee", "from_datetime", "to_datetime"])
+    # For conflict checks: employee + time window
+    frappe.db.add_index("Employee Booking", fields=["employee", "from_datetime", "to_datetime"])
 
-	# For cleanup / upsert by source document
-	frappe.db.add_index("Employee Booking", fields=["source_doctype", "source_name"])
-	frappe.db.add_index("Employee Booking", fields=["location", "from_datetime", "to_datetime"])
+    # For cleanup / upsert by source document
+    frappe.db.add_index("Employee Booking", fields=["source_doctype", "source_name"])
+    frappe.db.add_index("Employee Booking", fields=["location", "from_datetime", "to_datetime"])

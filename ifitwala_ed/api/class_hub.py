@@ -34,10 +34,26 @@ def _demo_students(seed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return seed
 
     names = [
-        "Amina Dar", "Leo Mendez", "Priya Shah", "Samir Khan", "Noah Park",
-        "Maya Singh", "Iris Chan", "Luis Ortega", "Zara Ali", "Omar Haddad",
-        "Nina Patel", "Ethan Cole", "Ava Brooks", "Milo Reyes", "Sana Noor",
-        "Hugo Silva", "Riya Kapoor", "Jun Park", "Layla Haddad", "Aria Klein",
+        "Amina Dar",
+        "Leo Mendez",
+        "Priya Shah",
+        "Samir Khan",
+        "Noah Park",
+        "Maya Singh",
+        "Iris Chan",
+        "Luis Ortega",
+        "Zara Ali",
+        "Omar Haddad",
+        "Nina Patel",
+        "Ethan Cole",
+        "Ava Brooks",
+        "Milo Reyes",
+        "Sana Noor",
+        "Hugo Silva",
+        "Riya Kapoor",
+        "Jun Park",
+        "Layla Haddad",
+        "Aria Klein",
     ]
 
     demo: List[Dict[str, Any]] = []
@@ -92,10 +108,7 @@ def _build_bundle(
         ]
     )
 
-    focus_students = [
-        {"student": row["student"], "student_name": row["student_name"]}
-        for row in students[:3]
-    ]
+    focus_students = [{"student": row["student"], "student_name": row["student_name"]} for row in students[:3]]
 
     today_iso = date or nowdate()
     today_label = formatdate(getdate(today_iso), "EEE d MMM")

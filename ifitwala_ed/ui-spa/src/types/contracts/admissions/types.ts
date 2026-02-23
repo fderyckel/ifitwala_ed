@@ -20,6 +20,34 @@ export type NextAction = {
   icon?: string
 }
 
+export type ApplicantApplicationContext = {
+  organization: string
+  school: string
+  academic_year?: string | null
+  term?: string | null
+  program?: string | null
+  program_offering?: string | null
+}
+
+export type ApplicantProfile = {
+  student_preferred_name?: string | null
+  student_date_of_birth?: string | null
+  student_gender?: string | null
+  student_mobile_number?: string | null
+  student_joining_date?: string | null
+  student_first_language?: string | null
+  student_second_language?: string | null
+  student_nationality?: string | null
+  student_second_nationality?: string | null
+  residency_status?: string | null
+}
+
+export type ApplicantProfileCompleteness = {
+  ok: boolean
+  missing: string[]
+  required: string[]
+}
+
 export type ApplicantDocument = {
   name: string
   document_type: string

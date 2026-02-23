@@ -3,11 +3,8 @@
 	 Ensure you first write for which page this CSS is intended
    ========================================= */
 
-
-
 /* Schedule Calendar (ontop of fullCalendar) */
 /* Bigger rows for timeGrid views */
 #instructor-cal .fc-timegrid-slot {
-	min-height: 2.55em;   
+	min-height: 2.55em;
 }
-

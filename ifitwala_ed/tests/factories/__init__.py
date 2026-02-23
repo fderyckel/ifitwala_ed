@@ -5,9 +5,9 @@ from ifitwala_ed.tests.factories.organization import make_organization, make_sch
 from ifitwala_ed.tests.factories.users import make_user
 
 __all__ = [
-	"make_academic_year",
-	"make_term",
-	"make_organization",
-	"make_school",
-	"make_user",
+    "make_academic_year",
+    "make_term",
+    "make_organization",
+    "make_school",
+    "make_user",
 ]

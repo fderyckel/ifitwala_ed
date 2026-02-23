@@ -6,4 +6,4 @@ from frappe.model.document import Document
 
 
 class ProgramAssessmentCategory(Document):
-	pass
+    pass

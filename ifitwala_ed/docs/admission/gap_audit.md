@@ -224,3 +224,8 @@ Your gap audit is **correct**; I’m tightening it into *actionable deltas*.
 This audit is **final** unless you change the contract.
 
 ---
+
+
+
+FDR Notes:
+could require different type of interview to be passed as part of the workflow.

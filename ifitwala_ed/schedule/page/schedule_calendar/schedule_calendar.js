@@ -1,5 +1,5 @@
 /**********************************************************************
- * Instructor Schedule Calendar 
+ * Instructor Schedule Calendar
  * *
  *********************************************************************/
 
@@ -16,8 +16,8 @@ function loadFullCalendarCSS() {
 loadFullCalendarCSS();
 
 
-frappe.pages["schedule_calendar"].on_page_load = function (wrapper) { 
-	render_schedule_calendar_page(wrapper);   
+frappe.pages["schedule_calendar"].on_page_load = function (wrapper) {
+	render_schedule_calendar_page(wrapper);
 };
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -124,10 +124,10 @@ function render_schedule_calendar_page(wrapper) {
 		const $div = $('<div id="instructor-cal">').appendTo(page.body);
 
 		cal = new FullCalendar.Calendar($div[0], {
-			plugins: [ 
-				FullCalendar.timeGridPlugin, 
-				FullCalendar.dayGridPlugin, 
-				FullCalendar.listPlugin 
+			plugins: [
+				FullCalendar.timeGridPlugin,
+				FullCalendar.dayGridPlugin,
+				FullCalendar.listPlugin
 			],
 			initialView: "timeGridWeek",
 			headerToolbar: {
@@ -135,7 +135,7 @@ function render_schedule_calendar_page(wrapper) {
 				center: "title",
 				right:  "dayGridMonth,timeGridWeek,timeGridDay,listWeek"
 			},
-			//slotMinHeight: 150, 
+			//slotMinHeight: 150,
 			eventMinHeight: 50,
 			slotDuration: '00:15:00',
   		slotLabelInterval: '01:00:00',
@@ -153,7 +153,7 @@ function render_schedule_calendar_page(wrapper) {
 					].filter(Boolean).join("<br>");
 					$(info.el).tooltip({ title: tip, html: true, container: "body" });
 				}
-			}, 
+			},
 
 			eventClick(info) {
 				info.jsEvent.preventDefault();   // stop native link behaviour
@@ -167,7 +167,7 @@ function render_schedule_calendar_page(wrapper) {
 					);
 					return;
 				}
-			}, 
+			},
 		});
 		cal.render();
 	}

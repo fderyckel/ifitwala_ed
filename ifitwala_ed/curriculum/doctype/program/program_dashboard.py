@@ -3,13 +3,11 @@
 
 from frappe import _
 
-def get_data(): 
-  return {
-    "fieldname": "program",
-    "transactions": [
-      {
-        "label": _("Schedule"),
-        "items": ["Program Enrollment", "Student Group"]
-       },    
-    ]
-  }
+
+def get_data():
+    return {
+        "fieldname": "program",
+        "transactions": [
+            {"label": _("Schedule"), "items": ["Program Enrollment", "Student Group"]},
+        ],
+    }

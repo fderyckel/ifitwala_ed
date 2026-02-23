@@ -4,9 +4,17 @@ slug: assessment-criteria
 category: Assessment
 doc_order: 2
 summary: "Create reusable criteria and performance levels that power rubric-based grading across tasks, outcomes, moderation, and reporting."
+seo_title: "Assessment Criteria: Defining What Good Work Looks Like"
+seo_description: "Create reusable criteria and performance levels that power rubric-based grading across tasks, outcomes, moderation, and reporting."
 ---
 
-# Assessment Criteria: Defining What Good Work Looks Like
+## Assessment Criteria: Defining What Good Work Looks Like
+
+## Before You Start (Prerequisites)
+
+- Define rubric language and criterion naming standards first.
+- If you use course-group-aware naming, create `Course Group` records first.
+- Create reusable criteria before building `Task` templates that reference them.
 
 `Assessment Criteria` is where schools encode the quality standards behind grading. Instead of re-writing rubrics for every task, you define criteria once and reuse them across classes and years.
 
@@ -28,7 +36,27 @@ Criteria are curriculum truth, not one-off task notes. That keeps grading consis
   - `Curriculum` workspace
   - `Admin` workspace
 
+## Lifecycle and Linked Documents
+
+1. Design reusable criteria and performance levels before authoring large task sets.
+2. Attach criteria to `Task` templates so classroom use is standardized.
+3. When deliveries are submitted in criteria mode, criteria are snapshotted into `Task Rubric Version`.
+4. Teacher contributions and official outcomes then evaluate learners against those frozen criteria.
+
+<Callout type="warning" title="Change control">
+Renaming or redefining criteria after active deliveries can create moderation confusion; treat criteria edits as controlled curriculum changes.
+</Callout>
+
 ## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/assessment/doctype/assessment_criteria/assessment_criteria.json`
+- **Controller file**: `ifitwala_ed/assessment/doctype/assessment_criteria/assessment_criteria.py`
+- **Required fields (`reqd=1`)**:
+  - `assessment_criteria` (`Data`)
+- **Lifecycle hooks in controller**: `validate`
+- **Operational/public methods**: `autoname`
 
 - **DocType**: `Assessment Criteria` (`ifitwala_ed/assessment/doctype/assessment_criteria/`)
 - **Autoname logic** (`autoname` in controller):

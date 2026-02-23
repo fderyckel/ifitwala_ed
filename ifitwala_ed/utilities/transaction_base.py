@@ -6,9 +6,9 @@ import frappe.share
 
 
 def delete_events(ref_type, ref_name):
-	events = (
-		frappe.db.sql_list(
-			""" SELECT
+    events = (
+        frappe.db.sql_list(
+            """ SELECT
 			distinct `tabEvent`.name
 		from
 			`tabEvent`, `tabEvent Participants`
@@ -17,10 +17,10 @@ def delete_events(ref_type, ref_name):
 			and `tabEvent Participants`.reference_doctype = %s
 			and `tabEvent Participants`.reference_docname = %s
 		""",
-			(ref_type, ref_name),
-		)
-		or []
-	)
+            (ref_type, ref_name),
+        )
+        or []
+    )
 
-	if events:
-		frappe.delete_doc("Event", events, for_reload=True)
+    if events:
+        frappe.delete_doc("Event", events, for_reload=True)

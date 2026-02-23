@@ -14,4 +14,3 @@ export async function getGuardianHomeSnapshot(
 ): Promise<GetGuardianHomeSnapshotResponse> {
 	return apiMethod<GetGuardianHomeSnapshotResponse>(METHOD, payload)
 }
-

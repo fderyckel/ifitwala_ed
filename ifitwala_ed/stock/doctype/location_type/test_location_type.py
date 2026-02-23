@@ -6,4 +6,4 @@ from frappe.tests.utils import FrappeTestCase
 
 
 class TestLocationType(FrappeTestCase):
-	pass
+    pass

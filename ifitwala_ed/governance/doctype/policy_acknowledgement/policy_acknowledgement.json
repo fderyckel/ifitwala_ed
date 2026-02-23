@@ -57,7 +57,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 00:00:00.000000",
+ "modified": "2026-01-06 00:11:07",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Policy Acknowledgement",
@@ -97,6 +97,11 @@
   {
    "read": 1,
    "role": "Admission Manager"
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Admissions Applicant"
   }
  ],
  "sort_field": "modified",
