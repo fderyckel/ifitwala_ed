@@ -974,7 +974,7 @@ def submit_application(student_applicant: str | None = None):
     row = _ensure_applicant_match(student_applicant, user)
 
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
-    result = applicant._set_status("Submitted", "Application submitted", permission_checker=None)
+    result = applicant._submit_application(permission_checker=None)
     return {"ok": True, "changed": result.get("changed")}
 
 

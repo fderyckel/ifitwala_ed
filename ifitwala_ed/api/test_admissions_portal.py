@@ -13,6 +13,7 @@ from ifitwala_ed.api.admissions_portal import (
     _send_applicant_invite_email,
     get_invite_email_options,
     invite_applicant,
+    submit_application,
 )
 
 
@@ -319,3 +320,107 @@ class TestInviteApplicant(FrappeTestCase):
                 }
             ).insert(ignore_permissions=True)
         frappe.clear_cache(user="Administrator")
+
+
+class TestSubmitApplication(FrappeTestCase):
+    def setUp(self):
+        frappe.set_user("Administrator")
+        self._created: list[tuple[str, str]] = []
+        self._ensure_role("Admissions Applicant")
+        self.organization = self._create_organization()
+        self.school = self._create_school(self.organization)
+        self.applicant_user = self._create_applicant_user()
+        self.applicant = self._create_applicant(self.organization, self.school, self.applicant_user)
+
+    def tearDown(self):
+        frappe.set_user("Administrator")
+        for doctype, name in reversed(self._created):
+            if frappe.db.exists(doctype, name):
+                frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+
+    def test_submit_application_accepts_invited_state(self):
+        frappe.set_user(self.applicant_user)
+        payload = submit_application(student_applicant=self.applicant.name)
+        self.assertTrue(payload.get("ok"))
+        self.assertTrue(payload.get("changed"))
+
+        self.applicant.reload()
+        self.assertEqual(self.applicant.application_status, "Submitted")
+        self.assertTrue(bool(self.applicant.submitted_at))
+
+    def test_submit_application_accepts_missing_info_state(self):
+        self.applicant.db_set("application_status", "Missing Info", update_modified=False)
+        self.applicant.reload()
+
+        frappe.set_user(self.applicant_user)
+        payload = submit_application(student_applicant=self.applicant.name)
+        self.assertTrue(payload.get("ok"))
+        self.assertTrue(payload.get("changed"))
+
+        self.applicant.reload()
+        self.assertEqual(self.applicant.application_status, "Submitted")
+        self.assertTrue(bool(self.applicant.submitted_at))
+
+    def _ensure_role(self, role_name: str):
+        if frappe.db.exists("Role", role_name):
+            return
+        role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+        self._created.append(("Role", role.name))
+
+    def _create_organization(self) -> str:
+        organization_name = f"Org {frappe.generate_hash(length=6)}"
+        doc = frappe.get_doc(
+            {
+                "doctype": "Organization",
+                "organization_name": organization_name,
+                "abbr": f"ORG{frappe.generate_hash(length=4)}",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Organization", doc.name))
+        return doc.name
+
+    def _create_school(self, organization: str) -> str:
+        school_name = f"School {frappe.generate_hash(length=6)}"
+        doc = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": school_name,
+                "abbr": f"S{frappe.generate_hash(length=4)}",
+                "organization": organization,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("School", doc.name))
+        return doc.name
+
+    def _create_applicant_user(self) -> str:
+        email = f"portal-applicant-{frappe.generate_hash(length=8)}@example.com"
+        user = frappe.get_doc(
+            {
+                "doctype": "User",
+                "email": email,
+                "first_name": "Portal",
+                "last_name": "Applicant",
+                "enabled": 1,
+                "roles": [{"role": "Admissions Applicant"}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("User", user.name))
+        frappe.clear_cache(user=user.name)
+        return user.name
+
+    def _create_applicant(self, organization: str, school: str, applicant_user: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                "first_name": "Portal",
+                "last_name": f"Submit-{frappe.generate_hash(length=6)}",
+                "organization": organization,
+                "school": school,
+                "application_status": "Draft",
+            }
+        ).insert(ignore_permissions=True)
+        doc.db_set("applicant_user", applicant_user, update_modified=False)
+        doc.db_set("application_status", "Invited", update_modified=False)
+        doc.reload()
+        self._created.append(("Student Applicant", doc.name))
+        return doc

@@ -543,9 +543,16 @@ class StudentApplicant(Document):
     def mark_in_progress(self):
         return self._set_status("In Progress", "Marked In Progress")
 
+    def _submit_application(self, permission_checker=ensure_admissions_permission):
+        # Portal users can submit directly from Invited/Missing Info; normalize
+        # through In Progress so transition guards remain canonical.
+        if self.application_status in {"Invited", "Missing Info"}:
+            self._set_status("In Progress", "Marked In Progress", permission_checker=permission_checker)
+        return self._set_status("Submitted", "Application submitted", permission_checker=permission_checker)
+
     @frappe.whitelist()
     def submit_application(self):
-        return self._set_status("Submitted", "Application submitted")
+        return self._submit_application()
 
     @frappe.whitelist()
     def mark_under_review(self):

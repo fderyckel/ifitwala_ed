@@ -128,6 +128,28 @@ class TestStudentApplicant(FrappeTestCase):
         applicant.reload()
         self.assertEqual(applicant.application_status, "Under Review")
 
+    def test_submit_application_allows_invited_without_manual_in_progress_step(self):
+        applicant = self._create_student_applicant()
+        applicant.db_set("application_status", "Invited", update_modified=False)
+        applicant.reload()
+
+        applicant.submit_application()
+        applicant.reload()
+
+        self.assertEqual(applicant.application_status, "Submitted")
+        self.assertTrue(bool(applicant.submitted_at))
+
+    def test_submit_application_allows_missing_info_without_manual_in_progress_step(self):
+        applicant = self._create_student_applicant()
+        applicant.db_set("application_status", "Missing Info", update_modified=False)
+        applicant.reload()
+
+        applicant.submit_application()
+        applicant.reload()
+
+        self.assertEqual(applicant.application_status, "Submitted")
+        self.assertTrue(bool(applicant.submitted_at))
+
     def test_reject_disables_portal_user(self):
         user = self._create_user("Applicant", "Portal", add_role="Admissions Applicant")
         applicant = self._create_student_applicant()
