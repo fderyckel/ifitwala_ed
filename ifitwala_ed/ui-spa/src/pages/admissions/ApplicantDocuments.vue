@@ -257,13 +257,25 @@ const requiredTotalCount = computed(() => requiredDocuments.value.length);
 const requiredApprovedCount = computed(
 	() => requiredDocuments.value.filter(doc => doc.statusKey === 'approved').length
 );
+const requiredUploadedCount = computed(
+	() => requiredDocuments.value.filter(doc => doc.statusKey !== 'missing').length
+);
 const nextRequiredDoc = computed(
 	() => requiredDocuments.value.find(doc => doc.statusKey !== 'approved') || null
 );
 const requiredSummaryText = computed(() => {
 	const total = requiredTotalCount.value;
 	const approved = requiredApprovedCount.value;
+	const uploaded = requiredUploadedCount.value;
 	if (!total) return __('No required documents configured.');
+	if (uploaded < total) {
+		return __('Uploaded {0} of {1} required documents.')
+			.replace('{0}', String(uploaded))
+			.replace('{1}', String(total));
+	}
+	if (approved < total) {
+		return __('All required documents uploaded. Awaiting admissions review.');
+	}
 	return __('Approved {0} of {1} required documents.')
 		.replace('{0}', String(approved))
 		.replace('{1}', String(total));

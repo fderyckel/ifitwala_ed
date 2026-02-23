@@ -8,6 +8,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.admissions_portal import (
+    _derive_next_actions,
     _portal_status_for,
     _read_only_for,
     _send_applicant_invite_email,
@@ -28,6 +29,36 @@ class TestAdmissionsPortalContracts(FrappeTestCase):
         is_read_only, reason = _read_only_for("Withdrawn")
         self.assertTrue(is_read_only)
         self.assertTrue(bool(reason))
+
+    def test_next_actions_documents_missing_is_blocking_upload(self):
+        actions = _derive_next_actions(
+            "In Progress",
+            {
+                "profile": {"ok": True},
+                "policies": {"ok": True},
+                "health": {"ok": True},
+                "documents": {"ok": False, "missing": ["ID & Passport"], "unapproved": []},
+            },
+        )
+        upload_actions = [row for row in actions if row.get("route_name") == "admissions-documents"]
+        self.assertEqual(len(upload_actions), 1)
+        self.assertEqual(upload_actions[0].get("label"), "Upload required documents")
+        self.assertTrue(bool(upload_actions[0].get("is_blocking")))
+
+    def test_next_actions_documents_under_review_is_not_blocking_upload(self):
+        actions = _derive_next_actions(
+            "In Progress",
+            {
+                "profile": {"ok": True},
+                "policies": {"ok": True},
+                "health": {"ok": True},
+                "documents": {"ok": False, "missing": [], "unapproved": ["Transcripts"]},
+            },
+        )
+        upload_actions = [row for row in actions if row.get("route_name") == "admissions-documents"]
+        self.assertEqual(len(upload_actions), 1)
+        self.assertEqual(upload_actions[0].get("label"), "Documents under review")
+        self.assertFalse(bool(upload_actions[0].get("is_blocking")))
 
 
 class TestInviteApplicant(FrappeTestCase):

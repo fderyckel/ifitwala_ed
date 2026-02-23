@@ -492,14 +492,26 @@ def _derive_next_actions(application_status: str, readiness: dict) -> list[dict]
         )
 
     if not documents.get("ok"):
-        actions.append(
-            {
-                "label": _("Upload required documents"),
-                "route_name": "admissions-documents",
-                "intent": "primary",
-                "is_blocking": True,
-            }
-        )
+        missing_docs = documents.get("missing") or []
+        unapproved_docs = documents.get("unapproved") or []
+        if missing_docs:
+            actions.append(
+                {
+                    "label": _("Upload required documents"),
+                    "route_name": "admissions-documents",
+                    "intent": "primary",
+                    "is_blocking": True,
+                }
+            )
+        elif unapproved_docs:
+            actions.append(
+                {
+                    "label": _("Documents under review"),
+                    "route_name": "admissions-documents",
+                    "intent": "default",
+                    "is_blocking": False,
+                }
+            )
 
     if not health.get("ok"):
         actions.append(

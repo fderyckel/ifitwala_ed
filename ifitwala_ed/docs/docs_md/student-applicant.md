@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.6.1"
+version: "1.6.3"
 last_change_date: "2026-02-23"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -202,6 +202,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - website entry `/admissions` (`ifitwala_ed/www/admissions/index.py`)
   - SPA pages: overview, profile, documents, health, policies, submit
   - API service: `ifitwala_ed.api.admissions_portal.*`
+  - next-actions contract: document upload is blocking only when required docs are missing; uploaded docs pending review are surfaced as under-review (non-blocking) for applicants, and Submit page shows an explicit "Awaiting admissions review" banner
 - **Promotion linkage**:
   - `Student.student_applicant` link
   - `promote_to_student` creates/links `Student`

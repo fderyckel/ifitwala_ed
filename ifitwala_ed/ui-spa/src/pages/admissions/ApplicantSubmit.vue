@@ -62,6 +62,26 @@
 				</div>
 			</div>
 
+			<div
+				v-if="documentsUnderReview"
+				class="rounded-2xl border border-leaf/40 bg-leaf/10 px-4 py-3"
+			>
+				<p class="type-body-strong text-emerald-900">{{ __('Awaiting admissions review') }}</p>
+				<p class="mt-1 type-caption text-emerald-900/80">
+					{{
+						__(
+							'All required documents are uploaded. Submission will be enabled once admissions review is complete.'
+						)
+					}}
+				</p>
+				<RouterLink
+					:to="{ name: 'admissions-documents' }"
+					class="mt-3 inline-flex rounded-full border border-leaf/40 bg-white px-4 py-2 type-caption text-emerald-900"
+				>
+					{{ __('View document statuses') }}
+				</RouterLink>
+			</div>
+
 			<div class="flex flex-wrap items-center gap-3">
 				<button
 					type="button"
@@ -72,7 +92,7 @@
 					{{ __('Submit application') }}
 				</button>
 				<RouterLink
-					v-if="!isReady"
+					v-if="!isReady && blockingActions.length"
 					:to="{ name: firstBlockingRouteName }"
 					class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70"
 				>
@@ -112,8 +132,26 @@ const blockingActions = computed<NextAction[]>(() => {
 	return actions.filter(action => action.is_blocking);
 });
 
+const documentsUnderReview = computed(() => {
+	const actions = snapshot.value?.next_actions || [];
+	return actions.some(
+		action =>
+			action.route_name === 'admissions-documents' &&
+			!action.is_blocking &&
+			snapshot.value?.completeness?.documents === 'in_progress'
+	);
+});
+
 const isReady = computed(() => {
-	return blockingActions.value.length === 0;
+	const completeness = snapshot.value?.completeness;
+	if (!completeness) return false;
+	return (
+		completeness.profile === 'complete' &&
+		completeness.health === 'complete' &&
+		completeness.documents === 'complete' &&
+		completeness.policies === 'complete' &&
+		blockingActions.value.length === 0
+	);
 });
 
 const firstBlockingRouteName = computed(() => {
@@ -167,6 +205,12 @@ function openSubmit() {
 		return;
 	}
 	if (!isReady.value) {
+		if (documentsUnderReview.value) {
+			actionError.value = __(
+				'Your required documents are uploaded and under admissions review. You can submit once review is complete.'
+			);
+			return;
+		}
 		actionError.value =
 			blockingMessage.value || __('Complete all required sections before submitting.');
 		return;
