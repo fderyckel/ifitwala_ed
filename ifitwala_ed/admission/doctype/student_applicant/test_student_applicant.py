@@ -330,6 +330,7 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertEqual(str(student.student_date_of_birth), "2014-01-01")
         self.assertEqual(student.student_gender, "Female")
         self.assertEqual(student.student_mobile_number, "+14155550199")
+        self.assertEqual(str(student.student_joining_date), str(applicant.student_joining_date))
         self.assertEqual(student.student_first_language, language)
         self.assertEqual(student.student_second_language, language)
         self.assertEqual(student.student_nationality, country)
@@ -337,7 +338,7 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertEqual(student.residency_status, "Local Resident")
         self.assertEqual(student.anchor_school, applicant.school)
 
-    def test_misconfigured_required_document_type_is_skipped_in_readiness(self):
+    def test_misconfigured_required_document_type_is_still_required_in_readiness(self):
         code = f"misconfigured_req_{frappe.generate_hash(length=6)}"
         doc_type = frappe.get_doc(
             {
@@ -355,8 +356,9 @@ class TestStudentApplicant(FrappeTestCase):
 
         applicant = self._create_student_applicant()
         payload = applicant.has_required_documents()
-        self.assertTrue(payload.get("ok"))
-        self.assertNotIn(code, payload.get("required") or [])
+        self.assertFalse(payload.get("ok"))
+        self.assertIn(code, payload.get("required") or [])
+        self.assertIn(code, payload.get("missing") or [])
 
     def test_promotion_copies_health_profile_to_student_patient(self):
         applicant = self._create_student_applicant()

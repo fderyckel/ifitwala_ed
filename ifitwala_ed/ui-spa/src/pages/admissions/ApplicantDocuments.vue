@@ -208,12 +208,12 @@ const displayDocuments = computed(() => {
 	});
 
 	const items = documentTypes.value.map(docType => {
-		const doc = docMap.get(docType.code || docType.name) || null;
+		const doc = docMap.get(docType.name) || null;
 		const statusKey = statusKeyFor(doc, docType.is_required);
 		return {
-			key: docType.code || docType.name,
-			document_type: docType.code || docType.name,
-			label: docType.document_type_name || docType.code,
+			key: docType.name,
+			document_type: docType.name,
+			label: docType.document_type_name || docType.code || docType.name,
 			description: docType.description,
 			is_required: docType.is_required,
 			file_url: doc?.file_url || null,

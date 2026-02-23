@@ -202,6 +202,11 @@ const profileRows = computed(() => {
 			value: displayText(profile.student_preferred_name),
 		},
 		{
+			key: 'admission_date',
+			label: __('Admission date'),
+			value: displayText(profile.student_joining_date),
+		},
+		{
 			key: 'date_of_birth',
 			label: __('Date of birth'),
 			value: displayText(profile.student_date_of_birth),

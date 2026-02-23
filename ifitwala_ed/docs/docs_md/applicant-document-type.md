@@ -3,7 +3,7 @@ title: "Applicant Document Type: Authoritative Admissions Evidence Catalog"
 slug: applicant-document-type
 category: Admission
 doc_order: 5
-version: "1.3.1"
+version: "1.3.2"
 last_change_date: "2026-02-23"
 summary: "Define canonical admissions document types and codes that drive portal options, readiness checks, and deterministic file-classification slots."
 seo_title: "Applicant Document Type: Authoritative Admissions Evidence Catalog"
@@ -32,7 +32,7 @@ seo_description: "Define canonical admissions document types and codes that driv
 ## Non-Negotiable Invariants
 
 1. `code` is unique and acts as the canonical identity for the type.
-2. Required-readiness contract is driven by active types where `is_required = 1`, scope matches applicant organization/school ancestors, and classification fields are complete.
+2. Required-readiness contract is driven by active types where `is_required = 1` and scope matches applicant organization/school ancestors.
 3. Portal upload options must be limited to active, in-scope types.
 4. Upload classification must resolve to slot/data-class/purpose/retention-policy for every active type.
 5. Type deactivation (`is_active = 0`) retires future use without rewriting historical applicant evidence.
@@ -42,7 +42,7 @@ seo_description: "Define canonical admissions document types and codes that driv
 - [**Applicant Document**](/docs/en/applicant-document/): each row references one type.
 - [**Student Applicant**](/docs/en/student-applicant/): readiness check resolves required types by org/school scope.
 - Admissions portal:
-  - `list_applicant_document_types` (returns active, in-scope, upload-configured types)
+  - `list_applicant_document_types` (returns active, in-scope types)
   - `upload_applicant_document` pre-validation for activity and scope
 - Governed upload routing:
   - source: classification fields on `Applicant Document Type`

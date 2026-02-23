@@ -109,7 +109,6 @@ APPLICANT_PROFILE_REQUIRED_FIELD_LABELS = (
     ("student_date_of_birth", "Date of Birth"),
     ("student_gender", "Student Gender"),
     ("student_mobile_number", "Mobile Number"),
-    ("student_joining_date", "Joining Date"),
     ("student_first_language", "First Language"),
     ("student_nationality", "Nationality"),
     ("residency_status", "Residency Status"),
@@ -627,6 +626,11 @@ def update_applicant_profile(
     row = _ensure_applicant_match(student_applicant, user)
 
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
+    incoming_joining_date = _as_text(student_joining_date).strip() if student_joining_date is not None else None
+    existing_joining_date = _as_text(applicant.get("student_joining_date")).strip()
+    if incoming_joining_date is not None and incoming_joining_date != existing_joining_date:
+        frappe.throw(_("Admission Date can only be set by the admissions office."), frappe.PermissionError)
+
     updates = {
         "student_preferred_name": _as_text(
             applicant.get("student_preferred_name") if student_preferred_name is None else student_preferred_name
@@ -640,9 +644,7 @@ def update_applicant_profile(
         "student_mobile_number": _as_text(
             applicant.get("student_mobile_number") if student_mobile_number is None else student_mobile_number
         ).strip(),
-        "student_joining_date": _as_text(
-            applicant.get("student_joining_date") if student_joining_date is None else student_joining_date
-        ).strip(),
+        "student_joining_date": existing_joining_date,
         "student_first_language": _as_text(
             applicant.get("student_first_language") if student_first_language is None else student_first_language
         ).strip(),
@@ -926,10 +928,6 @@ def list_applicant_document_types(student_applicant: str | None = None):
             "description",
             "school",
             "organization",
-            "classification_slot",
-            "classification_data_class",
-            "classification_purpose",
-            "classification_retention_policy",
         ],
         order_by="is_required desc, document_type_name asc",
     )
@@ -942,8 +940,6 @@ def list_applicant_document_types(student_applicant: str | None = None):
             applicant_org_ancestors=applicant_org_ancestors,
             applicant_school_ancestors=applicant_school_ancestors,
         ):
-            continue
-        if not has_complete_applicant_document_type_classification(row_type):
             continue
         payload.append(
             {

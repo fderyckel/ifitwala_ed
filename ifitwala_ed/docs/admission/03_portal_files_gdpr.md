@@ -969,6 +969,7 @@ Permissions alone are **insufficient**.
 
   * application_status ∈ {Invited, In Progress, Missing Info}
 * Only specific fields writable (no status, no governance fields)
+* `student_joining_date` (Admission Date) is admissions-office-owned and portal read-only
 
 #### Applicant Document
 
@@ -1510,7 +1511,7 @@ Families NEVER see or touch:
 | Portal Section | Backing Object | Family Action |
 |---------------|---------------|---------------|
 | Applicant Overview | Student Applicant | Read |
-| Personal Details | Student Applicant | Write (until submission) |
+| Personal Details | Student Applicant | Write (until submission, except Admission Date) |
 | Guardians | Applicant Guardian | Write |
 | Health Information | Applicant Health Profile | Write |
 | Documents | Applicant Document | Upload only |

@@ -964,6 +964,7 @@ Permissions alone are **insufficient**.
 
   * application_status ∈ {Invited, In Progress, Missing Info}
 * Only specific fields writable (no status, no governance fields)
+* `student_joining_date` (Admission Date) is admissions-office-owned and portal read-only
 
 #### Applicant Document
 

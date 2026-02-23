@@ -155,13 +155,16 @@
 					</label>
 
 					<label class="block">
-						<span class="type-caption text-ink/60">{{ __('Joining date') }}</span>
+						<span class="type-caption text-ink/60">{{ __('Admission date') }}</span>
 						<input
 							v-model="profile.student_joining_date"
 							type="date"
 							class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
-							:disabled="isReadOnly || saving"
+							disabled
 						/>
+						<p class="mt-1 type-caption text-ink/55">
+							{{ __('Set by the admissions office.') }}
+						</p>
 					</label>
 
 					<label class="block">
@@ -374,7 +377,6 @@ async function saveProfile() {
 			student_date_of_birth: profile.value.student_date_of_birth || '',
 			student_gender: profile.value.student_gender || '',
 			student_mobile_number: profile.value.student_mobile_number || '',
-			student_joining_date: profile.value.student_joining_date || '',
 			student_first_language: profile.value.student_first_language || '',
 			student_second_language: profile.value.student_second_language || '',
 			student_nationality: profile.value.student_nationality || '',

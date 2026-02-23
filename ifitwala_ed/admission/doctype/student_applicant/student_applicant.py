@@ -9,7 +9,7 @@ import os
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import now_datetime, nowdate
+from frappe.utils import now_datetime
 
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
@@ -17,7 +17,6 @@ from ifitwala_ed.admission.admission_utils import (
     get_applicant_document_slot_spec,
     get_applicant_scope_ancestors,
     get_contact_primary_email,
-    has_complete_applicant_document_type_classification,
     is_applicant_document_type_in_scope,
     normalize_email_value,
 )
@@ -666,7 +665,7 @@ class StudentApplicant(Document):
                     "student_date_of_birth": self.student_date_of_birth,
                     "student_gender": self.student_gender,
                     "student_mobile_number": self.student_mobile_number,
-                    "student_joining_date": self.student_joining_date or nowdate(),
+                    "student_joining_date": self.student_joining_date,
                     "student_first_language": self.student_first_language,
                     "student_second_language": self.student_second_language,
                     "student_nationality": self.student_nationality,
@@ -1434,10 +1433,6 @@ class StudentApplicant(Document):
                 "document_type_name",
                 "organization",
                 "school",
-                "classification_slot",
-                "classification_data_class",
-                "classification_purpose",
-                "classification_retention_policy",
             ],
         )
         applicant_org_ancestors, applicant_school_ancestors = get_applicant_scope_ancestors(
@@ -1446,27 +1441,16 @@ class StudentApplicant(Document):
         )
         applicant_org_ancestors = set(applicant_org_ancestors)
         applicant_school_ancestors = set(applicant_school_ancestors)
-        required_types: list[dict] = []
-        misconfigured_required_types: list[str] = []
-        for row in type_rows:
-            if not is_applicant_document_type_in_scope(
+        required_types = [
+            row
+            for row in type_rows
+            if is_applicant_document_type_in_scope(
                 document_type_organization=row.get("organization"),
                 document_type_school=row.get("school"),
                 applicant_org_ancestors=applicant_org_ancestors,
                 applicant_school_ancestors=applicant_school_ancestors,
-            ):
-                continue
-            if not has_complete_applicant_document_type_classification(row):
-                misconfigured_required_types.append(row.get("code") or row.get("document_type_name") or row.get("name"))
-                continue
-            required_types.append(row)
-
-        if misconfigured_required_types:
-            frappe.logger("admissions_readiness", allow_site=True).warning(
-                "Skipping misconfigured Applicant Document Types in readiness for %s: %s",
-                self.name,
-                ", ".join(sorted({item for item in misconfigured_required_types if item})),
             )
+        ]
 
         if not required_types:
             return {"ok": True, "missing": [], "unapproved": [], "required": []}

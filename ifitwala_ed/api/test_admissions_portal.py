@@ -384,7 +384,6 @@ class TestSubmitApplication(FrappeTestCase):
             student_date_of_birth="2013-03-01",
             student_gender="Female",
             student_mobile_number="+14155551234",
-            student_joining_date=frappe.utils.nowdate(),
             student_first_language=language,
             student_second_language=language,
             student_nationality=country,
@@ -399,6 +398,17 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(profile.get("student_preferred_name"), "Portal Preferred")
         self.assertEqual(profile.get("student_nationality"), country)
         self.assertEqual(profile.get("student_first_language"), language)
+
+    def test_update_applicant_profile_rejects_changing_admission_date(self):
+        self.applicant.db_set("student_joining_date", "2026-01-10", update_modified=False)
+        self.applicant.reload()
+
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.PermissionError):
+            update_applicant_profile(
+                student_applicant=self.applicant.name,
+                student_joining_date="2026-02-10",
+            )
 
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):
