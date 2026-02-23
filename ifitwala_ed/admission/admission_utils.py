@@ -27,8 +27,77 @@ APPLICANT_DOCUMENT_CLASSIFICATION_FIELDS = (
 )
 
 
+APPLICANT_DOCUMENT_CODE_CLASSIFICATION_MAP = {
+    "passport": {
+        "slot": "identity_passport",
+        "data_class": "legal",
+        "purpose": "identification_document",
+        "retention_policy": "until_school_exit_plus_6m",
+    },
+    "id_documents": {
+        "slot": "identity_passport",
+        "data_class": "legal",
+        "purpose": "identification_document",
+        "retention_policy": "until_school_exit_plus_6m",
+    },
+    "birth_certificate": {
+        "slot": "identity_birth_cert",
+        "data_class": "legal",
+        "purpose": "identification_document",
+        "retention_policy": "until_school_exit_plus_6m",
+    },
+    "health_record": {
+        "slot": "health_record",
+        "data_class": "safeguarding",
+        "purpose": "medical_record",
+        "retention_policy": "until_school_exit_plus_6m",
+    },
+    "transcript": {
+        "slot": "prior_transcript",
+        "data_class": "academic",
+        "purpose": "academic_report",
+        "retention_policy": "until_program_end_plus_1y",
+    },
+    "transcripts": {
+        "slot": "prior_transcript",
+        "data_class": "academic",
+        "purpose": "academic_report",
+        "retention_policy": "until_program_end_plus_1y",
+    },
+    "report_card": {
+        "slot": "prior_transcript",
+        "data_class": "academic",
+        "purpose": "academic_report",
+        "retention_policy": "until_program_end_plus_1y",
+    },
+    "photo": {
+        "slot": "family_photo",
+        "data_class": "administrative",
+        "purpose": "applicant_profile_display",
+        "retention_policy": "immediate_on_request",
+    },
+    "application_form": {
+        "slot": "application_form",
+        "data_class": "administrative",
+        "purpose": "administrative",
+        "retention_policy": "until_program_end_plus_1y",
+    },
+}
+
+
 def _normalize_scope_value(value: str | None) -> str:
     return (value or "").strip()
+
+
+def _normalize_document_type_code(value: str | None) -> str:
+    return frappe.scrub(_normalize_scope_value(value))
+
+
+def get_default_applicant_document_type_spec(*, doc_type_code: str | None = None) -> dict:
+    lookup = _normalize_document_type_code(doc_type_code)
+    if not lookup:
+        return {}
+    return dict(APPLICANT_DOCUMENT_CODE_CLASSIFICATION_MAP.get(lookup) or {})
 
 
 def get_applicant_scope_ancestors(*, organization: str | None, school: str | None) -> tuple[list[str], list[str]]:
@@ -78,7 +147,16 @@ def _format_doc_type_spec_from_row(row: dict | None) -> dict:
 
 
 def has_complete_applicant_document_type_classification(row: dict | None) -> bool:
-    return bool(_format_doc_type_spec_from_row(row))
+    spec = _format_doc_type_spec_from_row(row)
+    if spec:
+        return True
+    if not row:
+        return False
+    return bool(
+        get_default_applicant_document_type_spec(
+            doc_type_code=row.get("code") or row.get("name"),
+        )
+    )
 
 
 def get_applicant_document_slot_spec(*, document_type: str | None = None, doc_type_code: str | None = None) -> dict:
@@ -108,7 +186,12 @@ def get_applicant_document_slot_spec(*, document_type: str | None = None, doc_ty
             APPLICANT_DOCUMENT_CLASSIFICATION_FIELDS,
             as_dict=True,
         )
-    return _format_doc_type_spec_from_row(row)
+    explicit = _format_doc_type_spec_from_row(row)
+    if explicit:
+        return explicit
+    return get_default_applicant_document_type_spec(
+        doc_type_code=lookup_code or lookup_name,
+    )
 
 
 def ensure_admissions_permission(user: str | None = None) -> str:

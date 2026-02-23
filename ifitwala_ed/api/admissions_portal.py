@@ -1005,7 +1005,24 @@ def upload_applicant_document(
         frappe.throw(_("Document type is outside the Applicant scope."))
 
     if not has_complete_applicant_document_type_classification(doc_type_row):
-        frappe.throw(_("This document type is not configured for uploads. Please contact the admissions office."))
+        missing_labels = []
+        for fieldname, label in (
+            ("classification_slot", "slot"),
+            ("classification_data_class", "data class"),
+            ("classification_purpose", "purpose"),
+            ("classification_retention_policy", "retention policy"),
+        ):
+            if not _as_text(doc_type_row.get(fieldname)).strip():
+                missing_labels.append(label)
+        doc_type_label = _as_text(doc_type_row.get("code") or document_type).strip() or _("Unknown")
+        if missing_labels:
+            frappe.throw(
+                _("This document type is not configured for uploads ({0}). Missing: {1}.").format(
+                    doc_type_label,
+                    ", ".join(missing_labels),
+                )
+            )
+        frappe.throw(_("This document type is not configured for uploads ({0}).").format(doc_type_label))
 
     payload = {
         "student_applicant": row.get("name"),

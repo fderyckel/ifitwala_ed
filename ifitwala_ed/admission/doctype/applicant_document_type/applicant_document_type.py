@@ -5,6 +5,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint
 
+from ifitwala_ed.admission.admission_utils import get_default_applicant_document_type_spec
 from ifitwala_ed.governance.policy_scope_utils import is_policy_organization_applicable_to_context
 
 
@@ -45,8 +46,15 @@ class ApplicantDocumentType(Document):
 
         provided = [fieldname for fieldname, value in values.items() if value]
         missing = [fieldname for fieldname, value in values.items() if not value]
+        defaults = get_default_applicant_document_type_spec(doc_type_code=self.code)
 
         if not provided:
+            if defaults:
+                self.classification_slot = defaults["slot"]
+                self.classification_data_class = defaults["data_class"]
+                self.classification_purpose = defaults["purpose"]
+                self.classification_retention_policy = defaults["retention_policy"]
+                return
             if cint(self.is_active):
                 frappe.throw(
                     _(
@@ -54,6 +62,17 @@ class ApplicantDocumentType(Document):
                         "Provide slot, data class, purpose, and retention policy."
                     )
                 )
+            return
+
+        if missing and defaults:
+            if not values["classification_slot"]:
+                self.classification_slot = defaults["slot"]
+            if not values["classification_data_class"]:
+                self.classification_data_class = defaults["data_class"]
+            if not values["classification_purpose"]:
+                self.classification_purpose = defaults["purpose"]
+            if not values["classification_retention_policy"]:
+                self.classification_retention_policy = defaults["retention_policy"]
             return
 
         if missing:

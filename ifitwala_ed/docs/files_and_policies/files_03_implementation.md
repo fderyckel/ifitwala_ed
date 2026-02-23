@@ -750,9 +750,11 @@ Not label. Not free text. **Code only.**
 | Applicant Document Type.code | Slot                  |
 | ---------------------------- | --------------------- |
 | `passport`                   | `identity_passport`   |
+| `id_documents`               | `identity_passport`   |
 | `birth_certificate`          | `identity_birth_cert` |
 | `health_record`              | `health_record`       |
 | `transcript`                 | `prior_transcript`    |
+| `transcripts`                | `prior_transcript`    |
 | `report_card`                | `prior_transcript`    |
 | `photo`                      | `family_photo`        |
 | `application_form`           | `application_form`    |

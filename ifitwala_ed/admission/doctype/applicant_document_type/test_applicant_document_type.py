@@ -5,6 +5,8 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.admission.admission_utils import has_complete_applicant_document_type_classification
+
 
 class TestApplicantDocumentType(FrappeTestCase):
     def setUp(self):
@@ -51,6 +53,35 @@ class TestApplicantDocumentType(FrappeTestCase):
                     "is_active": 1,
                 }
             ).insert(ignore_permissions=True)
+
+    def test_active_mapped_code_autofills_classification_fields(self):
+        if frappe.db.exists("Applicant Document Type", "id_documents"):
+            self.skipTest("id_documents exists on site; skipping mapped autofill test.")
+
+        organization = self._create_organization("Admissions Org")
+        school = self._create_school(organization=organization, prefix="Admissions School")
+
+        doc = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Type",
+                "code": "id_documents",
+                "document_type_name": "ID Documents",
+                "organization": organization,
+                "school": school,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Type", doc.name))
+
+        self.assertEqual(doc.classification_slot, "identity_passport")
+        self.assertEqual(doc.classification_data_class, "legal")
+        self.assertEqual(doc.classification_purpose, "identification_document")
+        self.assertEqual(doc.classification_retention_policy, "until_school_exit_plus_6m")
+
+    def test_mapped_code_is_treated_as_upload_configured(self):
+        self.assertTrue(has_complete_applicant_document_type_classification({"code": "transcript"}))
+        self.assertTrue(has_complete_applicant_document_type_classification({"code": "id_documents"}))
+        self.assertFalse(has_complete_applicant_document_type_classification({"code": "custom_unmapped"}))
 
     def test_school_scope_must_match_selected_organization_scope(self):
         root_org = self._create_organization("Root Org", is_group=1)
