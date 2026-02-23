@@ -13,10 +13,10 @@ from ifitwala_ed.admission.admission_utils import (
     ensure_admissions_permission,
     ensure_contact_for_email,
     ensure_inquiry_contact,
-    get_applicant_document_slot_spec,
     get_applicant_scope_ancestors,
     get_contact_email_options,
     get_contact_primary_email,
+    has_complete_applicant_document_type_classification,
     is_applicant_document_type_in_scope,
     normalize_email_value,
     upsert_contact_email,
@@ -91,6 +91,32 @@ APPLICANT_HEALTH_VACCINATION_FIELDS = (
     "vaccination_proof",
     "additional_notes",
 )
+
+APPLICANT_PROFILE_FIELDS = (
+    "student_preferred_name",
+    "student_date_of_birth",
+    "student_gender",
+    "student_mobile_number",
+    "student_joining_date",
+    "student_first_language",
+    "student_second_language",
+    "student_nationality",
+    "student_second_nationality",
+    "residency_status",
+)
+
+APPLICANT_PROFILE_REQUIRED_FIELD_LABELS = (
+    ("student_date_of_birth", "Date of Birth"),
+    ("student_gender", "Student Gender"),
+    ("student_mobile_number", "Mobile Number"),
+    ("student_joining_date", "Joining Date"),
+    ("student_first_language", "First Language"),
+    ("student_nationality", "Nationality"),
+    ("residency_status", "Residency Status"),
+)
+
+APPLICANT_PROFILE_GENDER_OPTIONS = ("Female", "Male", "Other")
+APPLICANT_PROFILE_RESIDENCY_OPTIONS = ("Local Resident", "Expat Resident", "Boarder", "Other")
 
 
 def _has_health_declaration_column() -> bool:
@@ -283,6 +309,72 @@ def _serialize_health_doc(doc) -> dict:
     return payload
 
 
+def _default_profile_payload() -> dict:
+    return {fieldname: "" for fieldname in APPLICANT_PROFILE_FIELDS}
+
+
+def _application_context_payload(row) -> dict:
+    return {
+        "organization": _as_text(row.get("organization")),
+        "school": _as_text(row.get("school")),
+        "academic_year": _as_text(row.get("academic_year")),
+        "term": _as_text(row.get("term")),
+        "program": _as_text(row.get("program")),
+        "program_offering": _as_text(row.get("program_offering")),
+    }
+
+
+def _serialize_applicant_profile(row) -> dict:
+    payload = _default_profile_payload()
+    for fieldname in APPLICANT_PROFILE_FIELDS:
+        payload[fieldname] = _as_text(row.get(fieldname)).strip()
+    return payload
+
+
+def _profile_completeness(profile_payload: dict) -> dict:
+    required = [label for _, label in APPLICANT_PROFILE_REQUIRED_FIELD_LABELS]
+    missing: list[str] = []
+    for fieldname, label in APPLICANT_PROFILE_REQUIRED_FIELD_LABELS:
+        value = _as_text(profile_payload.get(fieldname)).strip()
+        if not value:
+            missing.append(label)
+    return {"ok": not missing, "missing": missing, "required": required}
+
+
+def _profile_reference_options() -> dict:
+    language_rows = frappe.get_all(
+        "Language Xtra",
+        filters={"enabled": 1},
+        fields=["name", "language_name"],
+        order_by="language_name asc",
+    )
+    country_rows = frappe.get_all(
+        "Country",
+        fields=["name"],
+        order_by="name asc",
+    )
+    return {
+        "genders": list(APPLICANT_PROFILE_GENDER_OPTIONS),
+        "residency_statuses": list(APPLICANT_PROFILE_RESIDENCY_OPTIONS),
+        "languages": [
+            {
+                "value": _as_text(row.get("name")).strip(),
+                "label": _as_text(row.get("language_name")).strip() or _as_text(row.get("name")).strip(),
+            }
+            for row in language_rows
+            if _as_text(row.get("name")).strip()
+        ],
+        "countries": [
+            {
+                "value": _as_text(row.get("name")).strip(),
+                "label": _as_text(row.get("name")).strip(),
+            }
+            for row in country_rows
+            if _as_text(row.get("name")).strip()
+        ],
+    }
+
+
 def _require_admissions_applicant() -> str:
     user = frappe.session.user
     if not user or user == "Guest":
@@ -301,9 +393,14 @@ def _get_applicant_for_user(user: str, fields: list[str] | None = None) -> dict:
         "application_status",
         "organization",
         "school",
+        "academic_year",
+        "term",
+        "program",
+        "program_offering",
         "first_name",
         "middle_name",
         "last_name",
+        *APPLICANT_PROFILE_FIELDS,
     ]
     rows = frappe.get_all(
         "Student Applicant",
@@ -373,6 +470,17 @@ def _derive_next_actions(application_status: str, readiness: dict) -> list[dict]
     policies = readiness.get("policies") or {}
     documents = readiness.get("documents") or {}
     health = readiness.get("health") or {}
+    profile = readiness.get("profile") or {}
+
+    if not profile.get("ok"):
+        actions.append(
+            {
+                "label": _("Complete profile information"),
+                "route_name": "admissions-profile",
+                "intent": "primary",
+                "is_blocking": True,
+            }
+        )
 
     if not policies.get("ok"):
         actions.append(
@@ -428,6 +536,10 @@ def get_admissions_session():
             "portal_status": portal_status,
             "school": row.get("school"),
             "organization": row.get("organization"),
+            "academic_year": row.get("academic_year"),
+            "term": row.get("term"),
+            "program": row.get("program"),
+            "program_offering": row.get("program_offering"),
             "is_read_only": bool(is_read_only),
             "read_only_reason": reason,
         },
@@ -446,6 +558,10 @@ def get_applicant_snapshot(student_applicant: str | None = None):
     readiness_for_portal["health"] = portal_health
 
     completeness = {
+        "profile": _completion_state_for_requirement(
+            (readiness.get("profile") or {}).get("required") or [],
+            (readiness.get("profile") or {}).get("missing") or [],
+        ),
         "health": _completion_state_for_health(portal_health),
         "documents": _completion_state_for_requirement(
             (readiness.get("documents") or {}).get("required") or [],
@@ -469,8 +585,94 @@ def get_applicant_snapshot(student_applicant: str | None = None):
             "submitted_at": applicant.get("submitted_at"),
             "decision_at": applicant.get("decision_at"),
         },
+        "application_context": _application_context_payload(applicant),
+        "profile": _serialize_applicant_profile(applicant),
         "completeness": completeness,
         "next_actions": next_actions,
+    }
+
+
+@frappe.whitelist()
+def get_applicant_profile(student_applicant: str | None = None):
+    user = _require_admissions_applicant()
+    row = _ensure_applicant_match(student_applicant, user)
+
+    applicant = frappe.get_doc("Student Applicant", row.get("name"))
+    profile = _serialize_applicant_profile(applicant)
+    completeness = _profile_completeness(profile)
+    return {
+        "profile": profile,
+        "completeness": completeness,
+        "application_context": _application_context_payload(applicant),
+        "options": _profile_reference_options(),
+    }
+
+
+@frappe.whitelist()
+def update_applicant_profile(
+    *,
+    student_applicant: str | None = None,
+    student_preferred_name: str | None = None,
+    student_date_of_birth: str | None = None,
+    student_gender: str | None = None,
+    student_mobile_number: str | None = None,
+    student_joining_date: str | None = None,
+    student_first_language: str | None = None,
+    student_second_language: str | None = None,
+    student_nationality: str | None = None,
+    student_second_nationality: str | None = None,
+    residency_status: str | None = None,
+):
+    user = _require_admissions_applicant()
+    row = _ensure_applicant_match(student_applicant, user)
+
+    applicant = frappe.get_doc("Student Applicant", row.get("name"))
+    updates = {
+        "student_preferred_name": _as_text(
+            applicant.get("student_preferred_name") if student_preferred_name is None else student_preferred_name
+        ).strip(),
+        "student_date_of_birth": _as_text(
+            applicant.get("student_date_of_birth") if student_date_of_birth is None else student_date_of_birth
+        ).strip(),
+        "student_gender": _as_text(
+            applicant.get("student_gender") if student_gender is None else student_gender
+        ).strip(),
+        "student_mobile_number": _as_text(
+            applicant.get("student_mobile_number") if student_mobile_number is None else student_mobile_number
+        ).strip(),
+        "student_joining_date": _as_text(
+            applicant.get("student_joining_date") if student_joining_date is None else student_joining_date
+        ).strip(),
+        "student_first_language": _as_text(
+            applicant.get("student_first_language") if student_first_language is None else student_first_language
+        ).strip(),
+        "student_second_language": _as_text(
+            applicant.get("student_second_language") if student_second_language is None else student_second_language
+        ).strip(),
+        "student_nationality": _as_text(
+            applicant.get("student_nationality") if student_nationality is None else student_nationality
+        ).strip(),
+        "student_second_nationality": _as_text(
+            applicant.get("student_second_nationality")
+            if student_second_nationality is None
+            else student_second_nationality
+        ).strip(),
+        "residency_status": _as_text(
+            applicant.get("residency_status") if residency_status is None else residency_status
+        ).strip(),
+    }
+
+    applicant.update(updates)
+    applicant.save(ignore_permissions=True)
+    profile = _serialize_applicant_profile(applicant)
+    completeness = _profile_completeness(profile)
+
+    return {
+        "ok": True,
+        "profile": profile,
+        "completeness": completeness,
+        "application_context": _application_context_payload(applicant),
+        "options": _profile_reference_options(),
     }
 
 
@@ -724,6 +926,10 @@ def list_applicant_document_types(student_applicant: str | None = None):
             "description",
             "school",
             "organization",
+            "classification_slot",
+            "classification_data_class",
+            "classification_purpose",
+            "classification_retention_policy",
         ],
         order_by="is_required desc, document_type_name asc",
     )
@@ -736,6 +942,8 @@ def list_applicant_document_types(student_applicant: str | None = None):
             applicant_org_ancestors=applicant_org_ancestors,
             applicant_school_ancestors=applicant_school_ancestors,
         ):
+            continue
+        if not has_complete_applicant_document_type_classification(row_type):
             continue
         payload.append(
             {
@@ -800,12 +1008,8 @@ def upload_applicant_document(
     ):
         frappe.throw(_("Document type is outside the Applicant scope."))
 
-    slot_spec = get_applicant_document_slot_spec(
-        document_type=document_type,
-        doc_type_code=doc_type_row.get("code"),
-    )
-    if not slot_spec:
-        frappe.throw(_("This document type is not configured for uploads."))
+    if not has_complete_applicant_document_type_classification(doc_type_row):
+        frappe.throw(_("This document type is not configured for uploads. Please contact the admissions office."))
 
     payload = {
         "student_applicant": row.get("name"),

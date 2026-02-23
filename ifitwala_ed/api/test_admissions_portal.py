@@ -11,9 +11,12 @@ from ifitwala_ed.api.admissions_portal import (
     _portal_status_for,
     _read_only_for,
     _send_applicant_invite_email,
+    get_applicant_profile,
+    get_applicant_snapshot,
     get_invite_email_options,
     invite_applicant,
     submit_application,
+    update_applicant_profile,
 )
 
 
@@ -361,6 +364,42 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(self.applicant.application_status, "Submitted")
         self.assertTrue(bool(self.applicant.submitted_at))
 
+    def test_get_applicant_snapshot_includes_profile_and_application_context(self):
+        frappe.set_user(self.applicant_user)
+        payload = get_applicant_snapshot(student_applicant=self.applicant.name)
+        self.assertIn("profile", payload)
+        self.assertIn("application_context", payload)
+        self.assertIn("profile", payload.get("completeness") or {})
+
+    def test_update_applicant_profile_persists_values(self):
+        language = self._get_or_create_language_xtra()
+        country = self._get_any_country()
+        if not country:
+            self.skipTest("Country records are required for applicant profile update test.")
+
+        frappe.set_user(self.applicant_user)
+        payload = update_applicant_profile(
+            student_applicant=self.applicant.name,
+            student_preferred_name="Portal Preferred",
+            student_date_of_birth="2013-03-01",
+            student_gender="Female",
+            student_mobile_number="+14155551234",
+            student_joining_date=frappe.utils.nowdate(),
+            student_first_language=language,
+            student_second_language=language,
+            student_nationality=country,
+            student_second_nationality=country,
+            residency_status="Local Resident",
+        )
+        self.assertTrue(payload.get("ok"))
+        self.assertTrue((payload.get("completeness") or {}).get("ok"))
+
+        profile_payload = get_applicant_profile(student_applicant=self.applicant.name)
+        profile = profile_payload.get("profile") or {}
+        self.assertEqual(profile.get("student_preferred_name"), "Portal Preferred")
+        self.assertEqual(profile.get("student_nationality"), country)
+        self.assertEqual(profile.get("student_first_language"), language)
+
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):
             return
@@ -424,3 +463,26 @@ class TestSubmitApplication(FrappeTestCase):
         doc.reload()
         self._created.append(("Student Applicant", doc.name))
         return doc
+
+    def _get_or_create_language_xtra(self) -> str:
+        existing = frappe.get_all("Language Xtra", filters={"enabled": 1}, fields=["name"], limit=1)
+        if existing:
+            return existing[0]["name"]
+
+        code = f"lng_{frappe.generate_hash(length=6)}"
+        doc = frappe.get_doc(
+            {
+                "doctype": "Language Xtra",
+                "language_name": f"Language {code}",
+                "language_code": code,
+                "enabled": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Language Xtra", doc.name))
+        return doc.name
+
+    def _get_any_country(self) -> str | None:
+        existing = frappe.get_all("Country", fields=["name"], limit=1, order_by="name asc")
+        if not existing:
+            return None
+        return existing[0]["name"]

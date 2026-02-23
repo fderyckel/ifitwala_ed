@@ -287,6 +287,77 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertNotIn(code, approved_payload.get("missing") or [])
         self.assertNotIn(code, approved_payload.get("unapproved") or [])
 
+    def test_profile_information_reports_missing_required_fields(self):
+        applicant = self._create_student_applicant()
+        payload = applicant.has_required_profile_information()
+        self.assertFalse(payload.get("ok"))
+        self.assertIn("Date of Birth", payload.get("missing") or [])
+        self.assertIn("First Language", payload.get("missing") or [])
+        self.assertIn("Nationality", payload.get("missing") or [])
+
+    def test_promotion_copies_profile_information_to_student(self):
+        language = self._get_or_create_language_xtra()
+        country = self._get_any_country()
+        if not country:
+            self.skipTest("Country records are required for this profile mapping test.")
+
+        applicant = self._create_student_applicant(
+            student_preferred_name="Ada",
+            student_date_of_birth="2014-01-01",
+            student_gender="Female",
+            student_mobile_number="+14155550199",
+            student_joining_date=frappe.utils.nowdate(),
+            student_first_language=language,
+            student_second_language=language,
+            student_nationality=country,
+            student_second_nationality=country,
+            residency_status="Local Resident",
+        )
+        self._create_applicant_health_profile(applicant.name)
+
+        applicant.db_set("application_status", "Invited", update_modified=False)
+        applicant.reload()
+        applicant.mark_in_progress()
+        applicant.submit_application()
+        applicant.mark_under_review()
+        applicant.db_set("application_status", "Approved", update_modified=False)
+        applicant.reload()
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+        student = frappe.get_doc("Student", student_name)
+        self.assertEqual(student.student_preferred_name, "Ada")
+        self.assertEqual(str(student.student_date_of_birth), "2014-01-01")
+        self.assertEqual(student.student_gender, "Female")
+        self.assertEqual(student.student_mobile_number, "+14155550199")
+        self.assertEqual(student.student_first_language, language)
+        self.assertEqual(student.student_second_language, language)
+        self.assertEqual(student.student_nationality, country)
+        self.assertEqual(student.student_second_nationality, country)
+        self.assertEqual(student.residency_status, "Local Resident")
+        self.assertEqual(student.anchor_school, applicant.school)
+
+    def test_misconfigured_required_document_type_is_skipped_in_readiness(self):
+        code = f"misconfigured_req_{frappe.generate_hash(length=6)}"
+        doc_type = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Type",
+                "code": code,
+                "document_type_name": f"Type {code}",
+                "organization": self.org,
+                "school": self.parent_school,
+                "is_required": 1,
+                "is_active": 0,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Type", doc_type.name))
+        frappe.db.set_value("Applicant Document Type", doc_type.name, "is_active", 1, update_modified=False)
+
+        applicant = self._create_student_applicant()
+        payload = applicant.has_required_documents()
+        self.assertTrue(payload.get("ok"))
+        self.assertNotIn(code, payload.get("required") or [])
+
     def test_promotion_copies_health_profile_to_student_patient(self):
         applicant = self._create_student_applicant()
         self._create_applicant_health_profile(
@@ -557,6 +628,29 @@ class TestStudentApplicant(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Type", doc.name))
         return doc.name
+
+    def _get_or_create_language_xtra(self) -> str:
+        existing = frappe.get_all("Language Xtra", filters={"enabled": 1}, fields=["name"], limit=1)
+        if existing:
+            return existing[0]["name"]
+
+        code = f"lng_{frappe.generate_hash(length=6)}"
+        doc = frappe.get_doc(
+            {
+                "doctype": "Language Xtra",
+                "language_name": f"Language {code}",
+                "language_code": code,
+                "enabled": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Language Xtra", doc.name))
+        return doc.name
+
+    def _get_any_country(self) -> str | None:
+        existing = frappe.get_all("Country", fields=["name"], limit=1, order_by="name asc")
+        if not existing:
+            return None
+        return existing[0]["name"]
 
     def _create_applicant_health_profile(self, applicant_name, **overrides):
         frappe.set_user(self.staff_user.name)

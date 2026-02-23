@@ -98,7 +98,7 @@
 						<button
 							type="button"
 							class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
-							:disabled="isReadOnly || !doc.document_type"
+							:disabled="isReadOnly || !doc.document_type || !doc.canUpload"
 							@click="openUpload(doc)"
 						>
 							{{ doc.file_url ? __('Replace') : __('Upload') }}
@@ -221,6 +221,7 @@ const displayDocuments = computed(() => {
 			statusKey,
 			statusLabel: statusLabelFor(statusKey),
 			statusTone: statusToneFor(statusKey),
+			canUpload: true,
 		};
 	});
 
@@ -239,6 +240,7 @@ const displayDocuments = computed(() => {
 			statusKey,
 			statusLabel: statusLabelFor(statusKey),
 			statusTone: statusToneFor(statusKey),
+			canUpload: false,
 		});
 	});
 
@@ -286,7 +288,12 @@ async function loadDocuments() {
 	}
 }
 
-function openUpload(doc: { document_type: string; label: string; description?: string }) {
+function openUpload(doc: {
+	document_type: string;
+	label: string;
+	description?: string;
+	canUpload?: boolean;
+}) {
 	if (isReadOnly.value) {
 		actionError.value = __('This application is read-only.');
 		return;
@@ -295,6 +302,10 @@ function openUpload(doc: { document_type: string; label: string; description?: s
 		actionError.value = __(
 			'This document request is incomplete. Please contact the admissions office.'
 		);
+		return;
+	}
+	if (!doc.canUpload) {
+		actionError.value = __('This document can no longer be uploaded from the applicant portal.');
 		return;
 	}
 	actionError.value = '';

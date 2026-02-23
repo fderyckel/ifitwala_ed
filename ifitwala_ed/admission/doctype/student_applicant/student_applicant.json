@@ -30,6 +30,18 @@
   "term",
   "program",
   "program_offering",
+  "profile_section",
+  "student_preferred_name",
+  "student_date_of_birth",
+  "student_gender",
+  "student_mobile_number",
+  "student_joining_date",
+  "column_break_profile",
+  "student_first_language",
+  "student_second_language",
+  "student_nationality",
+  "student_second_nationality",
+  "residency_status",
   "guardians_section",
   "guardians",
   "review_section",
@@ -247,6 +259,72 @@
    "options": "Program Offering"
   },
   {
+   "fieldname": "profile_section",
+   "fieldtype": "Section Break",
+   "label": "Student Profile (Promotion Data)"
+  },
+  {
+   "fieldname": "student_preferred_name",
+   "fieldtype": "Data",
+   "label": "Preferred Name"
+  },
+  {
+   "fieldname": "student_date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "student_gender",
+   "fieldtype": "Select",
+   "label": "Student Gender",
+   "options": "Female\nMale\nOther"
+  },
+  {
+   "fieldname": "student_mobile_number",
+   "fieldtype": "Data",
+   "label": "Mobile Number",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "student_joining_date",
+   "fieldtype": "Date",
+   "label": "Joining Date"
+  },
+  {
+   "fieldname": "column_break_profile",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "student_first_language",
+   "fieldtype": "Link",
+   "label": "First Language",
+   "options": "Language Xtra"
+  },
+  {
+   "fieldname": "student_second_language",
+   "fieldtype": "Link",
+   "label": "Second Language",
+   "options": "Language Xtra"
+  },
+  {
+   "fieldname": "student_nationality",
+   "fieldtype": "Link",
+   "label": "Nationality",
+   "options": "Country"
+  },
+  {
+   "fieldname": "student_second_nationality",
+   "fieldtype": "Link",
+   "label": "Second Nationality",
+   "options": "Country"
+  },
+  {
+   "fieldname": "residency_status",
+   "fieldtype": "Select",
+   "label": "Residency Status",
+   "options": "Local Resident\nExpat Resident\nBoarder\nOther"
+  },
+  {
    "fieldname": "title",
    "fieldtype": "Data",
    "hidden": 1,
@@ -257,7 +335,7 @@
  "image_field": "applicant_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-22 08:03:21.748008",
+ "modified": "2026-02-22 08:03:23",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",

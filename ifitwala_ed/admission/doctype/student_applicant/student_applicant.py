@@ -9,7 +9,7 @@ import os
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import now_datetime
+from frappe.utils import now_datetime, nowdate
 
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
@@ -17,6 +17,7 @@ from ifitwala_ed.admission.admission_utils import (
     get_applicant_document_slot_spec,
     get_applicant_scope_ancestors,
     get_contact_primary_email,
+    has_complete_applicant_document_type_classification,
     is_applicant_document_type_in_scope,
     normalize_email_value,
 )
@@ -111,6 +112,29 @@ HEALTH_PROFILE_VACCINATION_FIELDS = (
     "date",
     "vaccination_proof",
     "additional_notes",
+)
+
+STUDENT_PROFILE_FIELDS = (
+    "student_preferred_name",
+    "student_date_of_birth",
+    "student_gender",
+    "student_mobile_number",
+    "student_joining_date",
+    "student_first_language",
+    "student_second_language",
+    "student_nationality",
+    "student_second_nationality",
+    "residency_status",
+)
+
+STUDENT_PROFILE_REQUIRED_FIELD_LABELS = (
+    ("student_date_of_birth", "Date of Birth"),
+    ("student_gender", "Student Gender"),
+    ("student_mobile_number", "Mobile Number"),
+    ("student_joining_date", "Joining Date"),
+    ("student_first_language", "First Language"),
+    ("student_nationality", "Nationality"),
+    ("residency_status", "Residency Status"),
 )
 
 
@@ -625,14 +649,30 @@ class StudentApplicant(Document):
         prev_flag = getattr(frappe.flags, "from_applicant_promotion", False)
         frappe.flags.from_applicant_promotion = True
         try:
-            fallback_email = self.applicant_user or f"{frappe.scrub(self.name)}@applicant.local"
+            fallback_email = (
+                normalize_email_value(self.portal_account_email)
+                or normalize_email_value(self.applicant_user)
+                or normalize_email_value(self.applicant_email)
+                or f"{frappe.scrub(self.name)}@applicant.local"
+            )
             student = frappe.get_doc(
                 {
                     "doctype": "Student",
                     "student_first_name": self.first_name,
                     "student_middle_name": self.middle_name,
                     "student_last_name": self.last_name,
+                    "student_preferred_name": self.student_preferred_name or self.first_name,
                     "student_email": fallback_email,
+                    "student_date_of_birth": self.student_date_of_birth,
+                    "student_gender": self.student_gender,
+                    "student_mobile_number": self.student_mobile_number,
+                    "student_joining_date": self.student_joining_date or nowdate(),
+                    "student_first_language": self.student_first_language,
+                    "student_second_language": self.student_second_language,
+                    "student_nationality": self.student_nationality,
+                    "student_second_nationality": self.student_second_nationality,
+                    "residency_status": self.residency_status,
+                    "anchor_school": self.school,
                     "student_applicant": self.name,
                 }
             )
@@ -1388,7 +1428,17 @@ class StudentApplicant(Document):
         type_rows = frappe.get_all(
             "Applicant Document Type",
             filters={"is_required": 1, "is_active": 1},
-            fields=["name", "code", "document_type_name", "organization", "school"],
+            fields=[
+                "name",
+                "code",
+                "document_type_name",
+                "organization",
+                "school",
+                "classification_slot",
+                "classification_data_class",
+                "classification_purpose",
+                "classification_retention_policy",
+            ],
         )
         applicant_org_ancestors, applicant_school_ancestors = get_applicant_scope_ancestors(
             organization=self.organization,
@@ -1396,16 +1446,27 @@ class StudentApplicant(Document):
         )
         applicant_org_ancestors = set(applicant_org_ancestors)
         applicant_school_ancestors = set(applicant_school_ancestors)
-        required_types = [
-            row
-            for row in type_rows
-            if is_applicant_document_type_in_scope(
+        required_types: list[dict] = []
+        misconfigured_required_types: list[str] = []
+        for row in type_rows:
+            if not is_applicant_document_type_in_scope(
                 document_type_organization=row.get("organization"),
                 document_type_school=row.get("school"),
                 applicant_org_ancestors=applicant_org_ancestors,
                 applicant_school_ancestors=applicant_school_ancestors,
+            ):
+                continue
+            if not has_complete_applicant_document_type_classification(row):
+                misconfigured_required_types.append(row.get("code") or row.get("document_type_name") or row.get("name"))
+                continue
+            required_types.append(row)
+
+        if misconfigured_required_types:
+            frappe.logger("admissions_readiness", allow_site=True).warning(
+                "Skipping misconfigured Applicant Document Types in readiness for %s: %s",
+                self.name,
+                ", ".join(sorted({item for item in misconfigured_required_types if item})),
             )
-        ]
 
         if not required_types:
             return {"ok": True, "missing": [], "unapproved": [], "required": []}
@@ -1434,6 +1495,29 @@ class StudentApplicant(Document):
             "missing": missing,
             "unapproved": unapproved,
             "required": list(required_names.values()),
+        }
+
+    def has_required_profile_information(self):
+        required_labels: list[str] = []
+        missing_labels: list[str] = []
+        for fieldname, label in STUDENT_PROFILE_REQUIRED_FIELD_LABELS:
+            required_labels.append(label)
+            value = self.get(fieldname)
+            if value is None:
+                missing_labels.append(label)
+                continue
+            if isinstance(value, str):
+                if not value.strip():
+                    missing_labels.append(label)
+                continue
+            if not str(value).strip():
+                missing_labels.append(label)
+
+        return {
+            "ok": not missing_labels,
+            "missing": missing_labels,
+            "required": required_labels,
+            "fields": {fieldname: self.get(fieldname) for fieldname in STUDENT_PROFILE_FIELDS},
         }
 
     def health_review_complete(self):
@@ -1467,8 +1551,9 @@ class StudentApplicant(Document):
         documents = self.has_required_documents()
         health = self.health_review_complete()
         interviews = self.has_required_interviews()
+        profile = self.has_required_profile_information()
 
-        ready = all([policies.get("ok"), documents.get("ok"), health.get("ok")])
+        ready = all([policies.get("ok"), documents.get("ok"), health.get("ok"), profile.get("ok")])
         issues = []
         if not policies.get("ok"):
             policy_schema_error = getattr(self.flags, "policy_schema_error", None)
@@ -1493,12 +1578,19 @@ class StudentApplicant(Document):
                 issues.append(_("Missing required documents: {0}.").format(", ".join(missing)))
             if unapproved:
                 issues.append(_("Required documents not approved: {0}.").format(", ".join(unapproved)))
+        if not profile.get("ok"):
+            missing = profile.get("missing") or []
+            if missing:
+                issues.append(_("Missing profile information: {0}.").format(", ".join(missing)))
+            else:
+                issues.append(_("Missing required profile information."))
 
         return {
             "policies": policies,
             "documents": documents,
             "health": health,
             "interviews": interviews,
+            "profile": profile,
             "ready": bool(ready),
             "issues": issues,
         }

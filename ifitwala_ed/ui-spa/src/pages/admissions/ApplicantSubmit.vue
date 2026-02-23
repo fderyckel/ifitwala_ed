@@ -131,6 +131,7 @@ const readinessItems = computed(() => {
 	const completeness = snapshot.value?.completeness;
 	if (!completeness) return [];
 	const items = [
+		{ label: __('Profile information'), state: completeness.profile },
 		{ label: __('Health information'), state: completeness.health },
 		{ label: __('Documents'), state: completeness.documents },
 		{ label: __('Policies'), state: completeness.policies },

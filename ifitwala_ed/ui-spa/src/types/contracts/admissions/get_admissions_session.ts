@@ -15,6 +15,10 @@ export type Response = {
     portal_status: PortalApplicantStatus
     school: string
     organization: string
+    academic_year?: string | null
+    term?: string | null
+    program?: string | null
+    program_offering?: string | null
     is_read_only: boolean
     read_only_reason: string | null
   }

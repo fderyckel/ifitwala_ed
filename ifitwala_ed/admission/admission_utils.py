@@ -77,6 +77,10 @@ def _format_doc_type_spec_from_row(row: dict | None) -> dict:
     }
 
 
+def has_complete_applicant_document_type_classification(row: dict | None) -> bool:
+    return bool(_format_doc_type_spec_from_row(row))
+
+
 def get_applicant_document_slot_spec(*, document_type: str | None = None, doc_type_code: str | None = None) -> dict:
     """Return slot/classification spec from Applicant Document Type fields only."""
     lookup_name = _normalize_scope_value(document_type)

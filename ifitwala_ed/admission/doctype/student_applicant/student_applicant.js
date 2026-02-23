@@ -266,6 +266,7 @@ function render_snapshot(data) {
 	return [
 		render_line("Ready for approval", escape_html(ready)),
 		render_line("Readiness issues", render_list(issues)),
+		render_line("Profile", render_ok_label(data.profile)),
 		render_line("Policies", render_ok_label(data.policies)),
 		render_line("Documents", render_ok_label(data.documents)),
 		render_line("Health", render_ok_label(data.health)),

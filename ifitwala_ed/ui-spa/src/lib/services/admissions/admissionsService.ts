@@ -8,6 +8,11 @@ import type { Request as SessionRequest, Response as SessionResponse } from '@/t
 import type { Request as SnapshotRequest, Response as SnapshotResponse } from '@/types/contracts/admissions/get_applicant_snapshot'
 import type { Request as HealthRequest, Response as HealthResponse } from '@/types/contracts/admissions/get_applicant_health'
 import type { Request as UpdateHealthRequest, Response as UpdateHealthResponse } from '@/types/contracts/admissions/update_applicant_health'
+import type { Request as ProfileRequest, Response as ProfileResponse } from '@/types/contracts/admissions/get_applicant_profile'
+import type {
+  Request as UpdateProfileRequest,
+  Response as UpdateProfileResponse,
+} from '@/types/contracts/admissions/update_applicant_profile'
 import type { Request as DocumentsRequest, Response as DocumentsResponse } from '@/types/contracts/admissions/list_applicant_documents'
 import type {
   Request as DocumentTypesRequest,
@@ -39,6 +44,18 @@ export function createAdmissionsService() {
 
   const updateHealthResource = createResource<UpdateHealthResponse>({
     url: 'ifitwala_ed.api.admissions_portal.update_applicant_health',
+    method: 'POST',
+    auto: false,
+  })
+
+  const profileResource = createResource<ProfileResponse>({
+    url: 'ifitwala_ed.api.admissions_portal.get_applicant_profile',
+    method: 'POST',
+    auto: false,
+  })
+
+  const updateProfileResource = createResource<UpdateProfileResponse>({
+    url: 'ifitwala_ed.api.admissions_portal.update_applicant_profile',
     method: 'POST',
     auto: false,
   })
@@ -97,6 +114,16 @@ export function createAdmissionsService() {
     return result
   }
 
+  async function getProfile(payload: ProfileRequest = {}): Promise<ProfileResponse> {
+    return profileResource.submit(payload)
+  }
+
+  async function updateProfile(payload: UpdateProfileRequest): Promise<UpdateProfileResponse> {
+    const result = await updateProfileResource.submit(payload)
+    uiSignals.emit(SIGNAL_ADMISSIONS_PORTAL_INVALIDATE)
+    return result
+  }
+
   async function listDocuments(payload: DocumentsRequest = {}): Promise<DocumentsResponse> {
     return documentsResource.submit(payload)
   }
@@ -132,6 +159,8 @@ export function createAdmissionsService() {
     getSnapshot,
     getHealth,
     updateHealth,
+    getProfile,
+    updateProfile,
     listDocuments,
     listDocumentTypes,
     uploadDocument,

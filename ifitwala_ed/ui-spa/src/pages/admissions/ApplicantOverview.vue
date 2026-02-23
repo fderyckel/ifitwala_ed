@@ -30,6 +30,46 @@
 
 		<div v-else>
 			<div class="grid gap-4 md:grid-cols-2">
+				<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+					<div class="flex items-center justify-between gap-3">
+						<p class="type-body-strong text-ink">{{ __('Application details') }}</p>
+					</div>
+					<div class="mt-3 grid gap-3">
+						<div
+							v-for="row in applicationRows"
+							:key="row.key"
+							class="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-sand/30 px-3 py-2"
+						>
+							<p class="type-caption text-ink/60">{{ row.label }}</p>
+							<p class="type-body text-ink/80 text-right">{{ row.value }}</p>
+						</div>
+					</div>
+				</div>
+
+				<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+					<div class="flex items-center justify-between gap-3">
+						<p class="type-body-strong text-ink">{{ __('Profile summary') }}</p>
+						<RouterLink
+							:to="{ name: 'admissions-profile' }"
+							class="rounded-full bg-ink px-4 py-2 type-caption text-white"
+						>
+							{{ __('Open profile') }}
+						</RouterLink>
+					</div>
+					<div class="mt-3 grid gap-3">
+						<div
+							v-for="row in profileRows"
+							:key="row.key"
+							class="flex items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-2"
+						>
+							<p class="type-caption text-ink/60">{{ row.label }}</p>
+							<p class="type-body text-ink/80 text-right">{{ row.value }}</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="grid gap-4 md:grid-cols-2">
 				<div
 					v-for="card in completionCards"
 					:key="card.key"
@@ -120,6 +160,7 @@ const completionCards = computed(() => {
 	const completeness = snapshot.value?.completeness;
 	if (!completeness) return [];
 	return [
+		{ key: 'profile', label: __('Profile information'), state: completeness.profile },
 		{ key: 'health', label: __('Health information'), state: completeness.health },
 		{ key: 'documents', label: __('Documents'), state: completeness.documents },
 		{ key: 'policies', label: __('Policies'), state: completeness.policies },
@@ -129,6 +170,53 @@ const completionCards = computed(() => {
 		statusLabel: statusLabel(card.state),
 		tone: statusTone(card.state),
 	}));
+});
+
+function displayText(value: unknown): string {
+	const text = typeof value === 'string' ? value.trim() : String(value || '').trim();
+	return text || __('Not provided');
+}
+
+const applicationRows = computed(() => {
+	const context = snapshot.value?.application_context;
+	if (!context) return [];
+	return [
+		{ key: 'school', label: __('School'), value: displayText(context.school) },
+		{ key: 'organization', label: __('Organization'), value: displayText(context.organization) },
+		{
+			key: 'academic_year',
+			label: __('Academic year'),
+			value: displayText(context.academic_year),
+		},
+		{ key: 'program', label: __('Program'), value: displayText(context.program) },
+	];
+});
+
+const profileRows = computed(() => {
+	const profile = snapshot.value?.profile;
+	if (!profile) return [];
+	return [
+		{
+			key: 'preferred_name',
+			label: __('Preferred name'),
+			value: displayText(profile.student_preferred_name),
+		},
+		{
+			key: 'date_of_birth',
+			label: __('Date of birth'),
+			value: displayText(profile.student_date_of_birth),
+		},
+		{
+			key: 'nationality',
+			label: __('Nationality'),
+			value: displayText(profile.student_nationality),
+		},
+		{
+			key: 'first_language',
+			label: __('First language'),
+			value: displayText(profile.student_first_language),
+		},
+	];
 });
 
 async function loadSnapshot() {

@@ -122,6 +122,7 @@ const { session, loading, error, refresh } = provideAdmissionsSession();
 
 const navItems = [
 	{ name: 'overview', label: 'Overview', route: 'admissions-overview' },
+	{ name: 'profile', label: 'Profile', route: 'admissions-profile' },
 	{ name: 'health', label: 'Health', route: 'admissions-health' },
 	{ name: 'documents', label: 'Documents', route: 'admissions-documents' },
 	{ name: 'policies', label: 'Policies', route: 'admissions-policies' },

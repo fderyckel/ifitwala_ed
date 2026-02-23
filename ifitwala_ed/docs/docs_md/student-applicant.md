@@ -3,11 +3,11 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.5.0"
-last_change_date: "2026-02-22"
-summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
+version: "1.6.0"
+last_change_date: "2026-02-23"
+summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
-seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks, governed files, policy acknowledgements, and portal access."
+seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
 ---
 
 ## Student Applicant: The Admission Record of Truth
@@ -17,6 +17,7 @@ seo_description: "Manage applicant lifecycle from invitation to promotion, with 
 - Create [**Organization**](/docs/en/organization/) and [**School**](/docs/en/school/) first (required anchors).
 - If you intend to require applicant consent, configure active applicant-scoped policies first ([**Institutional Policy**](/docs/en/institutional-policy/) + active [**Policy Version**](/docs/en/policy-version/)).
 - Define required [**Applicant Document Type**](/docs/en/applicant-document-type/) records and [**Applicant Health Profile**](/docs/en/applicant-health-profile/) / [**Applicant Interview**](/docs/en/applicant-interview/) review workflow before approval/promotion decisions.
+- Ensure student-profile fields needed for promotion (`student_date_of_birth`, `student_gender`, `student_mobile_number`, `student_joining_date`, `student_first_language`, `student_nationality`, `residency_status`) are collected in the applicant profile step.
 
 ### How Policy Acknowledgement Becomes Mandatory
 
@@ -51,7 +52,7 @@ Use the applicant readiness outputs, not guesswork:
 
 - Keeps one lifecycle record from `Draft` to `Promoted`.
 - Preserves institutional anchor (`organization`, `school`) as immutable once created.
-- Centralizes readiness checks across policies, documents, and health.
+- Centralizes readiness checks across profile, policies, documents, and health.
 - Links admissions to student creation and downstream enrollment operations.
 - Carries forward inquiry intent so teams do not restart data entry from zero.
 
@@ -199,7 +200,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - [**Applicant Interview**](/docs/en/applicant-interview/)
 - **Portal surfaces**:
   - website entry `/admissions` (`ifitwala_ed/www/admissions/index.py`)
-  - SPA pages: overview, documents, health, policies, submit
+  - SPA pages: overview, profile, documents, health, policies, submit
   - API service: `ifitwala_ed.api.admissions_portal.*`
 - **Promotion linkage**:
   - `Student.student_applicant` link
@@ -257,9 +258,10 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 
 ### Required for approval-readiness path
 
-1. Required `Applicant Document Type` records are configured (`is_required = 1`, `is_active = 1`) for the organization/school ancestor scope you expect (parent-scope document types apply to descendants).
+1. Required `Applicant Document Type` records are configured (`is_required = 1`, `is_active = 1`) for the organization/school ancestor scope you expect (parent-scope document types apply to descendants), and each required type has complete upload classification fields.
 2. Applicant has corresponding `Applicant Document` rows and required ones reach `review_status = Approved`.
 3. `Applicant Health Profile.review_status = Cleared`.
+4. Applicant profile information required for Student promotion is complete.
 
 ### Optional but commonly expected in production
 
