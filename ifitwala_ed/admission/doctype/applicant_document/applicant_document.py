@@ -89,7 +89,11 @@ class ApplicantDocument(Document):
 
     def _review_fields_changed(self, before):
         if not before:
-            return bool(self.review_status or self.review_notes or self.reviewed_by or self.reviewed_on)
+            status = (self.review_status or "").strip()
+            # New rows are born with default Pending; that is not a review action.
+            if status and status != "Pending":
+                return True
+            return bool((self.review_notes or "").strip() or self.reviewed_by or self.reviewed_on)
         return any(
             before.get(field) != self.get(field)
             for field in ("review_status", "review_notes", "reviewed_by", "reviewed_on")
