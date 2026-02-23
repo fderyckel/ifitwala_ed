@@ -46,6 +46,7 @@
   "guardians",
   "review_section",
   "review_snapshot",
+  "review_assignments_summary",
   "interviews_section",
   "interviews_summary",
   "health_section",
@@ -211,6 +212,11 @@
    "fieldname": "review_snapshot",
    "fieldtype": "HTML",
    "label": "Review Snapshot"
+  },
+  {
+   "fieldname": "review_assignments_summary",
+   "fieldtype": "HTML",
+   "label": "Review Assignments Summary"
   },
   {
    "fieldname": "interviews_section",

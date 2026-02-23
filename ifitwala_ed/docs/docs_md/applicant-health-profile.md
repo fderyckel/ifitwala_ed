@@ -3,8 +3,8 @@ title: "Applicant Health Profile: Health Disclosure and Clearance"
 slug: applicant-health-profile
 category: Admission
 doc_order: 7
-version: "2.2.0"
-last_change_date: "2026-02-21"
+version: "2.2.1"
+last_change_date: "2026-02-23"
 summary: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
 seo_title: "Applicant Health Profile: Health Disclosure and Clearance"
 seo_description: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
@@ -36,6 +36,7 @@ seo_description: "Capture health details, control family/staff editing by applic
 - Admissions portal APIs:
   - `get_applicant_health`
   - `update_applicant_health`
+  - declaration-complete transition (`applicant_health_declared_complete: 0 -> 1`) materializes reviewer assignments
 - Staff review UI: reviewer metadata stamped when moving to review outcomes.
 - Admission workspace card: direct operational access.
 
@@ -69,6 +70,9 @@ Families can provide health details in portal phases where edits are allowed, th
   </Step>
   <Step title="Review">
     Staff reviewers move the profile through review outcomes (`Pending`, `Needs Follow-Up`, `Cleared`).
+  </Step>
+  <Step title="Reviewer Assignment">
+    When family declaration is marked complete, matching `Applicant Review Rule` reviewers receive Focus assignments through `Applicant Review Assignment`.
   </Step>
   <Step title="Gate Decisions">
     Applicant approval readiness depends on the health review state being complete.

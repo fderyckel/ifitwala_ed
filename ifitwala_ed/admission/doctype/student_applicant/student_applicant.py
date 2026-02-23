@@ -482,6 +482,14 @@ class StudentApplicant(Document):
         self._apply_status_timestamps(previous_status=previous, new_status=new_status)
         self.save(ignore_permissions=True)
 
+        if new_status == "Submitted":
+            from ifitwala_ed.admission.applicant_review_workflow import materialize_application_review_assignments
+
+            materialize_application_review_assignments(
+                student_applicant=self.name,
+                source_event="application_submitted",
+            )
+
         comment_text = _("{0} by {1} on {2}. Status: {3} → {4}.").format(
             action_label,
             frappe.bold(frappe.session.user),
@@ -1702,6 +1710,11 @@ class StudentApplicant(Document):
         count = frappe.db.count("Applicant Interview", {"student_applicant": self.name})
         return {"ok": count >= 1, "count": count, "items": rows}
 
+    def get_review_assignments_summary(self):
+        from ifitwala_ed.admission.applicant_review_workflow import get_review_assignments_summary
+
+        return get_review_assignments_summary(student_applicant=self.name)
+
     @frappe.whitelist()
     def get_readiness_snapshot(self):
         policies = self.has_required_policies()
@@ -1709,6 +1722,7 @@ class StudentApplicant(Document):
         health = self.health_review_complete()
         interviews = self.has_required_interviews()
         profile = self.has_required_profile_information()
+        review_assignments = self.get_review_assignments_summary()
 
         ready = all([policies.get("ok"), documents.get("ok"), health.get("ok"), profile.get("ok")])
         issues = []
@@ -1748,6 +1762,7 @@ class StudentApplicant(Document):
             "health": health,
             "interviews": interviews,
             "profile": profile,
+            "review_assignments": review_assignments,
             "ready": bool(ready),
             "issues": issues,
         }

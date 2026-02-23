@@ -21,6 +21,7 @@ from ifitwala_ed.admission.admission_utils import (
     normalize_email_value,
     upsert_contact_email,
 )
+from ifitwala_ed.admission.applicant_review_workflow import materialize_health_review_assignments
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
@@ -762,6 +763,11 @@ def update_applicant_health(
                 "student_applicant": row.get("name"),
             }
         )
+    has_declaration_column = _has_health_declaration_column()
+    if has_declaration_column:
+        previous_declared_complete = bool(cint(doc.get("applicant_health_declared_complete")))
+    else:
+        previous_declared_complete = bool(_portal_health_state(row.get("name")).get("ok"))
 
     updates = {
         "blood_group": _as_text(blood_group),
@@ -808,7 +814,6 @@ def update_applicant_health(
         normalized_vaccinations = _normalize_vaccinations(vaccinations)
     declaration_provided = applicant_health_declared_complete is not None
     declaration_confirmed = _as_bool(applicant_health_declared_complete)
-    has_declaration_column = _has_health_declaration_column()
 
     doc.update(updates)
     if doc.is_new():
@@ -854,6 +859,12 @@ def update_applicant_health(
         declared_complete = bool(cint(doc.get("applicant_health_declared_complete")))
     else:
         declared_complete = bool(_portal_health_state(row.get("name")).get("ok"))
+
+    if has_declaration_column and declared_complete and not previous_declared_complete:
+        materialize_health_review_assignments(
+            applicant_health_profile=doc.name,
+            source_event="health_submitted",
+        )
 
     return {
         "ok": True,

@@ -1,0 +1,207 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-02-23 00:00:00",
+ "description": "Materialized review task assignment for admissions review workflows.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "target_type",
+  "target_name",
+  "student_applicant",
+  "organization",
+  "school",
+  "program_offering",
+  "assignment_section",
+  "assigned_to_user",
+  "assigned_to_role",
+  "status",
+  "source_event",
+  "decision_section",
+  "decision",
+  "notes",
+  "decided_by",
+  "decided_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "target_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Target Type",
+   "options": "Applicant Document\nApplicant Health Profile\nStudent Applicant",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "target_name",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "label": "Target",
+   "options": "target_type",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "student_applicant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student Applicant",
+   "options": "Student Applicant",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "label": "Program Offering",
+   "options": "Program Offering",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assignment_section",
+   "fieldtype": "Section Break",
+   "label": "Assignment"
+  },
+  {
+   "fieldname": "assigned_to_user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Assigned To User",
+   "options": "User",
+   "search_index": 1
+  },
+  {
+   "fieldname": "assigned_to_role",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Assigned To Role",
+   "options": "Role",
+   "search_index": 1
+  },
+  {
+   "default": "Open",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Open\nDone\nCancelled",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "source_event",
+   "fieldtype": "Data",
+   "label": "Source Event"
+  },
+  {
+   "fieldname": "decision_section",
+   "fieldtype": "Section Break",
+   "label": "Decision"
+  },
+  {
+   "fieldname": "decision",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Decision",
+   "options": "\nApproved\nNeeds Follow-Up\nRejected\nCleared\nRecommend Admit\nRecommend Waitlist\nRecommend Reject"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "decided_by",
+   "fieldtype": "Link",
+   "label": "Decided By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "decided_on",
+   "fieldtype": "Datetime",
+   "label": "Decided On",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-02-23 00:00:00",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Applicant Review Assignment",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

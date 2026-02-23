@@ -240,9 +240,11 @@ function render_review_sections(frm) {
 			const data = res && res.message;
 			if (!data) {
 				set_html(frm, "review_snapshot", render_empty("No readiness data."));
+				set_html(frm, "review_assignments_summary", render_empty("No review assignment decisions yet."));
 				return;
 			}
 			set_html(frm, "review_snapshot", render_snapshot(data));
+			set_html(frm, "review_assignments_summary", render_review_assignments(data.review_assignments));
 			set_html(frm, "interviews_summary", render_interviews(data.interviews));
 			set_html(frm, "health_summary", render_health(data.health));
 			set_html(frm, "policies_summary", render_policies(data.policies));
@@ -250,6 +252,7 @@ function render_review_sections(frm) {
 		})
 		.catch(() => {
 			set_html(frm, "review_snapshot", render_empty("Unable to load review snapshot."));
+			set_html(frm, "review_assignments_summary", render_empty("Unable to load review assignment summary."));
 		});
 }
 
@@ -272,6 +275,59 @@ function render_snapshot(data) {
 		render_line("Health", render_ok_label(data.health)),
 		render_line("Interviews", render_ok_label(data.interviews)),
 	].join("");
+}
+
+function render_review_assignments(summary) {
+	const groups = [
+		{ key: "Applicant Document", label: "Documents" },
+		{ key: "Applicant Health Profile", label: "Health" },
+		{ key: "Student Applicant", label: "Overall Application" },
+	];
+
+	const sections = groups
+		.map((group) => {
+			const rows = Array.isArray(summary?.[group.key]) ? summary[group.key] : [];
+			const body = rows.length
+				? rows
+					.map((row) => `
+						<tr>
+							<td>${escape_html(String(row?.target_label || row?.target_name || "Item"))}</td>
+							<td>${escape_html(String(row?.reviewer || "—"))}</td>
+							<td>${escape_html(String(row?.decision || "—"))}</td>
+							<td>${escape_html(format_datetime(row?.decided_on))}</td>
+							<td>${escape_html(String(row?.notes || "—"))}</td>
+						</tr>
+					`)
+					.join("")
+				: `
+					<tr>
+						<td colspan="5" class="text-muted">No completed reviews.</td>
+					</tr>
+				`;
+
+			return `
+				<div style="margin-bottom: 12px;">
+					<div style="font-weight: 600; margin-bottom: 6px;">${escape_html(group.label)}</div>
+					<div class="table-responsive">
+						<table class="table table-bordered table-sm" style="margin-bottom: 0;">
+							<thead>
+								<tr>
+									<th>Target</th>
+									<th>Reviewer</th>
+									<th>Decision</th>
+									<th>Decided On</th>
+									<th>Notes</th>
+								</tr>
+							</thead>
+							<tbody>${body}</tbody>
+						</table>
+					</div>
+				</div>
+			`;
+		})
+		.join("");
+
+	return sections || render_empty("No review assignment decisions yet.");
 }
 
 function render_interviews(interviews) {

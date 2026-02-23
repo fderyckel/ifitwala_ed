@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.6.5"
+version: "1.6.6"
 last_change_date: "2026-02-23"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -41,6 +41,7 @@ Use the applicant readiness outputs, not guesswork:
    - `Policies Summary` shows a policy matrix with status, signer(s), signed timestamp, and version link.
    - `Documents Summary` shows required-vs-uploaded document tables (missing items, uploader, upload date, reviewer, and links).
    - `Health Summary` shows cleared/pending state, health profile link, reviewer metadata, and declaration metadata.
+   - `Review Assignments Summary` shows completed reviewer decisions across Documents, Health, and Overall Application.
    - `Review Snapshot` includes readiness issues from `get_readiness_snapshot`.
 2. Approval action:
    - `Approve` is blocked by server guard (`approve_application` -> `_validate_ready_for_approval`) until required policy acknowledgements are complete.
@@ -218,6 +219,9 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - policy readiness pulled from active Institutional Policy versions
 - **Operational dashboards**:
   - morning brief admissions pulse (`tabStudent Applicant` weekly status counts)
+- **Reviewer workflow**:
+  - submission trigger creates Overall Application review assignments (`application_status` transition to `Submitted`)
+  - desk shows completed assignment decisions in `review_assignments_summary`
   - staff morning brief surface (`ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`) renders applicant status breakdown
 - **Schedule module touchpoint**:
   - Program Enrollment Tool offers `Student Applicant` as a source option in UI.

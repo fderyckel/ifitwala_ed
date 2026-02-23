@@ -3,7 +3,7 @@ title: "Applicant Document: Authoritative Owner of Admissions Files"
 slug: applicant-document
 category: Admission
 doc_order: 6
-version: "1.4.1"
+version: "1.4.2"
 last_change_date: "2026-02-23"
 summary: "Define each admissions document slot per applicant, enforce review/promotion gates, and keep admissions file ownership boundaries authoritative."
 seo_title: "Applicant Document: Authoritative Owner of Admissions Files"
@@ -109,6 +109,7 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 - governed classification with `primary_subject_type = Student Applicant`
 - file attachment target forced to `Applicant Document`
 - writes timeline comments on `Student Applicant` for each upload/replace event (who, when, source, file link)
+- materializes `Applicant Review Assignment` rows for matching `Applicant Review Rule` scope/reviewers
 
 4. Student Applicant readiness (`has_required_documents`)
 - required doc types must exist and be approved
@@ -156,6 +157,7 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
   - governed endpoint: `ifitwala_ed/admission/admissions_portal.py::upload_applicant_document`
   - portal list endpoints: `ifitwala_ed/api/admissions_portal.py::list_applicant_documents`, `list_applicant_document_types`
   - portal upload wrapper: `ifitwala_ed/api/admissions_portal.py::upload_applicant_document`
+  - focus review action endpoint: `ifitwala_ed/api/focus.py::submit_applicant_review_assignment`
   - SPA page: `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
 - **Runtime role guards (controller)**:
   - upload/manage roles: admissions roles + `Academic Admin` + `System Manager` + `Admissions Applicant`

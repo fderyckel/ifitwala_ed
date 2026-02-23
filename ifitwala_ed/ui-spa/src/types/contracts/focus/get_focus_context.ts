@@ -2,7 +2,7 @@
 
 export type Request = {
   focus_item_id?: string | null
-  reference_doctype?: 'Student Log' | 'Inquiry' | null
+  reference_doctype?: 'Student Log' | 'Inquiry' | 'Applicant Review Assignment' | null
   reference_name?: string | null
   action_type?: string | null
 }
@@ -10,7 +10,7 @@ export type Request = {
 export type Response = {
   focus_item_id?: string | null
   action_type?: string | null
-  reference_doctype: 'Student Log' | 'Inquiry'
+  reference_doctype: 'Student Log' | 'Inquiry' | 'Applicant Review Assignment'
   reference_name: string
   mode: 'assignee' | 'author'
   log: {
@@ -50,4 +50,39 @@ export type Response = {
     follow_up_html?: string | null
     docstatus: 0 | 1 | 2
   }>
+  review_assignment?: {
+    name: string
+    target_type: 'Applicant Document' | 'Applicant Health Profile' | 'Student Applicant'
+    target_name: string
+    student_applicant: string
+    applicant_name?: string | null
+    organization?: string | null
+    school?: string | null
+    program_offering?: string | null
+    assigned_to_user?: string | null
+    assigned_to_role?: string | null
+    source_event?: string | null
+    decision_options: string[]
+    preview?: {
+      document_type?: string | null
+      document_label?: string | null
+      review_status?: string | null
+      review_notes?: string | null
+      file_url?: string | null
+      file_name?: string | null
+      uploaded_at?: string | null
+      declared_complete?: boolean
+      declared_by?: string | null
+      declared_on?: string | null
+      application_status?: string | null
+    } | null
+    previous_reviews?: Array<{
+      assignment: string
+      reviewer?: string | null
+      decision?: string | null
+      notes?: string | null
+      decided_by?: string | null
+      decided_on?: string | null
+    }>
+  } | null
 }

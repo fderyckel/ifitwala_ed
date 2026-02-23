@@ -25,6 +25,10 @@ import type {
 	Request as MarkInquiryContactedRequest,
 	Response as MarkInquiryContactedResponse,
 } from '@/types/contracts/focus/mark_inquiry_contacted'
+import type {
+	Request as SubmitApplicantReviewAssignmentRequest,
+	Response as SubmitApplicantReviewAssignmentResponse,
+} from '@/types/contracts/focus/submit_applicant_review_assignment'
 
 /**
  * Focus Service (A+ — LOCKED)
@@ -65,6 +69,13 @@ export function createFocusService() {
 		method: 'POST',
 		auto: false,
 	})
+
+	const submitApplicantReviewAssignmentResource =
+		createResource<SubmitApplicantReviewAssignmentResponse>({
+			url: 'ifitwala_ed.api.focus.submit_applicant_review_assignment',
+			method: 'POST',
+			auto: false,
+		})
 
 	/* ------------------------------------------------------------
 	 * Public API (domain-only)
@@ -116,10 +127,23 @@ export function createFocusService() {
 		return response
 	}
 
+	async function submitApplicantReviewAssignment(
+		payload: SubmitApplicantReviewAssignmentRequest
+	): Promise<SubmitApplicantReviewAssignmentResponse> {
+		const response = await submitApplicantReviewAssignmentResource.submit(payload)
+
+		if (response.status === 'processed' || response.status === 'already_processed') {
+			uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+		}
+
+		return response
+	}
+
 	return {
 		getFocusContext,
 		submitStudentLogFollowUp,
 		reviewStudentLogOutcome,
 		markInquiryContacted,
+		submitApplicantReviewAssignment,
 	}
 }

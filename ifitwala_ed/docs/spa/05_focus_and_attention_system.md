@@ -161,6 +161,7 @@ Example action types:
 * `student_log.follow_up.act.submit` → mounts `StudentLogFollowUpAction.vue` (assignee mode)
 * `student_log.follow_up.review.decide` → mounts `StudentLogReviewOutcome.vue` (author mode)
 * `inquiry.follow_up.act.first_contact` → mounts `InquiryFollowUpAction.vue` (assignee mode)
+* `applicant_review.assignment.decide` → mounts `ApplicantReviewAssignmentAction.vue` (assignee mode)
 
 Later:
 

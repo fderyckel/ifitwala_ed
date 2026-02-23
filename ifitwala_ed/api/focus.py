@@ -5,20 +5,33 @@
 
 import frappe
 from frappe import _
+from frappe.utils import now_datetime
+
+from ifitwala_ed.admission.applicant_review_workflow import (
+    ASSIGNMENT_DOCTYPE,
+    DECISION_OPTIONS_BY_TARGET,
+    TARGET_APPLICATION,
+    TARGET_DOCUMENT,
+    TARGET_HEALTH,
+    complete_assignment_decision,
+)
 
 STUDENT_LOG_DOCTYPE = "Student Log"
 FOLLOW_UP_DOCTYPE = "Student Log Follow Up"
 INQUIRY_DOCTYPE = "Inquiry"
+APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE = ASSIGNMENT_DOCTYPE
 
 ACTION_STUDENT_LOG_SUBMIT = "student_log.follow_up.act.submit"
 ACTION_STUDENT_LOG_REVIEW = "student_log.follow_up.review.decide"
 ACTION_INQUIRY_FIRST_CONTACT = "inquiry.follow_up.act.first_contact"
+ACTION_APPLICANT_REVIEW_SUBMIT = "applicant_review.assignment.decide"
 
 # Focus action types (v1)
 ACTION_MODE = {
     ACTION_STUDENT_LOG_SUBMIT: "assignee",
     ACTION_STUDENT_LOG_REVIEW: "author",
     ACTION_INQUIRY_FIRST_CONTACT: "assignee",
+    ACTION_APPLICANT_REVIEW_SUBMIT: "assignee",
 }
 
 
@@ -165,6 +178,61 @@ def _can_read_inquiry(name: str) -> bool:
         return bool(rows)
     except Exception:
         return False
+
+
+def _normalize_roles(roles: list[str] | tuple[str, ...] | None) -> list[str]:
+    return sorted({(role or "").strip() for role in (roles or []) if (role or "").strip()})
+
+
+def _reviewer_matches_assignment(row: dict, *, user: str, roles: set[str]) -> bool:
+    assigned_to_user = (row.get("assigned_to_user") or "").strip()
+    assigned_to_role = (row.get("assigned_to_role") or "").strip()
+    if assigned_to_user:
+        return assigned_to_user == user
+    if assigned_to_role:
+        return assigned_to_role in roles
+    return False
+
+
+def _applicant_display_name_from_row(row: dict) -> str:
+    parts = [
+        (row.get("first_name") or "").strip(),
+        (row.get("middle_name") or "").strip(),
+        (row.get("last_name") or "").strip(),
+    ]
+    full_name = " ".join(part for part in parts if part).strip()
+    return full_name or (row.get("student_applicant") or "")
+
+
+def _assignment_title(row: dict) -> str:
+    target_type = (row.get("target_type") or "").strip()
+    applicant_name = _applicant_display_name_from_row(row)
+
+    if target_type == TARGET_DOCUMENT:
+        doc_label = (
+            (row.get("document_label") or "").strip()
+            or (row.get("document_type_code") or "").strip()
+            or (row.get("document_type_name") or "").strip()
+            or (row.get("document_type") or "").strip()
+            or _("Document")
+        )
+        return _("Review {0} — Applicant {1}").format(doc_label, applicant_name)
+
+    if target_type == TARGET_HEALTH:
+        return _("Review Health Profile — Applicant {0}").format(applicant_name)
+
+    return _("Review Application — Applicant {0}").format(applicant_name)
+
+
+def _assignment_subtitle(row: dict) -> str:
+    parts = []
+    school = (row.get("school") or "").strip()
+    program_offering = (row.get("program_offering") or "").strip()
+    if school:
+        parts.append(school)
+    if program_offering:
+        parts.append(program_offering)
+    return " • ".join(parts) if parts else _("Admissions review")
 
 
 @frappe.whitelist()
@@ -492,6 +560,87 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
         )
 
     # ------------------------------------------------------------
+    # D) Admissions applicant review assignments
+    # ------------------------------------------------------------
+    user_roles = _normalize_roles(frappe.get_roles(user))
+    assignment_rows = frappe.db.sql(
+        """
+        select
+            a.name,
+            a.target_type,
+            a.target_name,
+            a.student_applicant,
+            a.assigned_to_user,
+            a.assigned_to_role,
+            a.modified,
+            sa.first_name,
+            sa.middle_name,
+            sa.last_name,
+            sa.school,
+            sa.program_offering,
+            ad.document_type,
+            ad.document_label,
+            adt.document_type_name,
+            adt.code as document_type_code
+        from `tabApplicant Review Assignment` a
+        join `tabStudent Applicant` sa
+          on sa.name = a.student_applicant
+        left join `tabApplicant Document` ad
+          on a.target_type = 'Applicant Document'
+         and ad.name = a.target_name
+        left join `tabApplicant Document Type` adt
+          on adt.name = ad.document_type
+        where (%(open_only)s = 0 or a.status = 'Open')
+          and (
+                a.assigned_to_user = %(user)s
+             or (
+                    ifnull(a.assigned_to_role, '') != ''
+                and a.assigned_to_role in %(roles)s
+             )
+          )
+        order by a.modified desc
+        limit %(limit)s offset %(offset)s
+        """,
+        {
+            "open_only": open_only,
+            "user": user,
+            "roles": tuple(user_roles) or ("",),
+            "limit": limit,
+            "offset": offset,
+        },
+        as_dict=True,
+    )
+
+    for row in assignment_rows:
+        items.append(
+            {
+                "id": build_focus_item_id(
+                    "applicant_review",
+                    APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE,
+                    row.get("name"),
+                    ACTION_APPLICANT_REVIEW_SUBMIT,
+                    user,
+                ),
+                "kind": "action",
+                "title": _assignment_title(row),
+                "subtitle": _assignment_subtitle(row),
+                "badge": None,
+                "priority": 90,
+                "due_date": None,
+                "action_type": ACTION_APPLICANT_REVIEW_SUBMIT,
+                "reference_doctype": APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE,
+                "reference_name": row.get("name"),
+                "payload": {
+                    "applicant_name": _applicant_display_name_from_row(row),
+                    "student_applicant": row.get("student_applicant"),
+                    "target_type": row.get("target_type"),
+                    "target_name": row.get("target_name"),
+                },
+                "permissions": {"can_open": True},
+            }
+        )
+
+    # ------------------------------------------------------------
     # Sort + slice
     # ------------------------------------------------------------
     def _sort_key(x):
@@ -657,7 +806,180 @@ def get_focus_context(
             "follow_ups": [],
         }
 
-    frappe.throw(_("Only Student Log and Inquiry focus items are supported."), frappe.ValidationError)
+    if reference_doctype == APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE:
+        assignment_doc = frappe.get_doc(APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE, reference_name)
+        assignment_row = assignment_doc.as_dict()
+        user_roles = set(frappe.get_roles(frappe.session.user))
+
+        if (assignment_doc.status or "").strip() != "Open":
+            frappe.throw(_("This review assignment is no longer open."), frappe.ValidationError)
+
+        if not _reviewer_matches_assignment(
+            assignment_row,
+            user=frappe.session.user,
+            roles=user_roles,
+        ):
+            frappe.throw(_("You are not assigned to this review item."), frappe.PermissionError)
+
+        student_applicant_row = (
+            frappe.db.get_value(
+                "Student Applicant",
+                assignment_doc.student_applicant,
+                [
+                    "name",
+                    "first_name",
+                    "middle_name",
+                    "last_name",
+                    "organization",
+                    "school",
+                    "program_offering",
+                    "application_status",
+                ],
+                as_dict=True,
+            )
+            or {}
+        )
+
+        preview = {}
+        target_type = (assignment_doc.target_type or "").strip()
+        if target_type == TARGET_DOCUMENT:
+            document_row = frappe.db.sql(
+                """
+                select
+                    d.name,
+                    d.document_type,
+                    d.document_label,
+                    d.review_status,
+                    d.review_notes,
+                    ifnull(dt.document_type_name, '') as document_type_name,
+                    ifnull(dt.code, '') as document_type_code
+                from `tabApplicant Document` d
+                left join `tabApplicant Document Type` dt
+                  on dt.name = d.document_type
+                where d.name = %(name)s
+                """,
+                {"name": assignment_doc.target_name},
+                as_dict=True,
+            )
+            doc_row = document_row[0] if document_row else {}
+            file_rows = frappe.get_all(
+                "File",
+                filters={
+                    "attached_to_doctype": TARGET_DOCUMENT,
+                    "attached_to_name": assignment_doc.target_name,
+                },
+                fields=["file_url", "file_name", "creation"],
+                order_by="creation desc",
+                limit_page_length=1,
+            )
+            file_row = file_rows[0] if file_rows else {}
+            preview = {
+                "document_type": doc_row.get("document_type"),
+                "document_label": (
+                    (doc_row.get("document_label") or "").strip()
+                    or (doc_row.get("document_type_code") or "").strip()
+                    or (doc_row.get("document_type_name") or "").strip()
+                    or (doc_row.get("document_type") or "").strip()
+                    or assignment_doc.target_name
+                ),
+                "review_status": doc_row.get("review_status"),
+                "review_notes": doc_row.get("review_notes"),
+                "file_url": file_row.get("file_url"),
+                "file_name": file_row.get("file_name"),
+                "uploaded_at": str(file_row.get("creation")) if file_row.get("creation") else None,
+            }
+        elif target_type == TARGET_HEALTH:
+            health_row = (
+                frappe.db.get_value(
+                    TARGET_HEALTH,
+                    assignment_doc.target_name,
+                    [
+                        "review_status",
+                        "review_notes",
+                        "applicant_health_declared_complete",
+                        "applicant_health_declared_by",
+                        "applicant_health_declared_on",
+                    ],
+                    as_dict=True,
+                )
+                or {}
+            )
+            preview = {
+                "review_status": health_row.get("review_status"),
+                "review_notes": health_row.get("review_notes"),
+                "declared_complete": bool(health_row.get("applicant_health_declared_complete")),
+                "declared_by": health_row.get("applicant_health_declared_by"),
+                "declared_on": str(health_row.get("applicant_health_declared_on"))
+                if health_row.get("applicant_health_declared_on")
+                else None,
+            }
+        elif target_type == TARGET_APPLICATION:
+            preview = {
+                "application_status": student_applicant_row.get("application_status"),
+            }
+
+        previous_rows = frappe.get_all(
+            APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE,
+            filters={
+                "target_type": assignment_doc.target_type,
+                "target_name": assignment_doc.target_name,
+                "status": "Done",
+            },
+            fields=["name", "assigned_to_user", "assigned_to_role", "decision", "notes", "decided_by", "decided_on"],
+            order_by="decided_on desc, modified desc",
+            limit_page_length=10,
+        )
+        user_name_map = _get_user_full_names(
+            [row.get("assigned_to_user") for row in previous_rows if (row.get("assigned_to_user") or "").strip()]
+            + [row.get("decided_by") for row in previous_rows if (row.get("decided_by") or "").strip()]
+        )
+        previous_reviews = []
+        for row in previous_rows:
+            reviewer_user = (row.get("assigned_to_user") or "").strip()
+            reviewer_role = (row.get("assigned_to_role") or "").strip()
+            decided_by = (row.get("decided_by") or "").strip()
+            previous_reviews.append(
+                {
+                    "assignment": row.get("name"),
+                    "reviewer": reviewer_role or user_name_map.get(reviewer_user) or reviewer_user or None,
+                    "decision": row.get("decision"),
+                    "notes": row.get("notes"),
+                    "decided_by": user_name_map.get(decided_by) or decided_by or None,
+                    "decided_on": str(row.get("decided_on")) if row.get("decided_on") else None,
+                }
+            )
+
+        return {
+            "focus_item_id": focus_item_id,
+            "action_type": action_type,
+            "reference_doctype": APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE,
+            "reference_name": assignment_doc.name,
+            "mode": "assignee",
+            "log": None,
+            "inquiry": None,
+            "follow_ups": [],
+            "review_assignment": {
+                "name": assignment_doc.name,
+                "target_type": assignment_doc.target_type,
+                "target_name": assignment_doc.target_name,
+                "student_applicant": assignment_doc.student_applicant,
+                "applicant_name": _applicant_display_name_from_row(student_applicant_row),
+                "organization": student_applicant_row.get("organization"),
+                "school": student_applicant_row.get("school"),
+                "program_offering": student_applicant_row.get("program_offering"),
+                "assigned_to_user": assignment_doc.assigned_to_user,
+                "assigned_to_role": assignment_doc.assigned_to_role,
+                "source_event": assignment_doc.source_event,
+                "decision_options": DECISION_OPTIONS_BY_TARGET.get(target_type, []),
+                "preview": preview,
+                "previous_reviews": previous_reviews,
+            },
+        }
+
+    frappe.throw(
+        _("Only Student Log, Inquiry, and Applicant Review Assignment focus items are supported."),
+        frappe.ValidationError,
+    )
 
 
 # ---------------------------------------------------------------------
@@ -1016,4 +1338,115 @@ def mark_inquiry_contacted(
             "status": "processed",
             "inquiry_name": inquiry_name,
             "result": result,
+        }
+
+
+@frappe.whitelist()
+def submit_applicant_review_assignment(
+    assignment: str | None = None,
+    decision: str | None = None,
+    notes: str | None = None,
+    focus_item_id: str | None = None,
+    client_request_id: str | None = None,
+):
+    user = _require_login()
+    user_roles = set(frappe.get_roles(user))
+
+    decision = (decision or "").strip()
+    notes = (notes or "").strip() or None
+    assignment_name = (assignment or "").strip() or None
+    focus_item_id = (focus_item_id or "").strip() or None
+    client_request_id = (client_request_id or "").strip() or None
+
+    if focus_item_id:
+        parsed = _parse_focus_item_id(focus_item_id)
+        if parsed.get("user") != user:
+            frappe.throw(_("Invalid focus item id (user mismatch)."), frappe.PermissionError)
+        if parsed.get("reference_doctype") != APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE:
+            frappe.throw(_("Invalid focus item reference."), frappe.ValidationError)
+        if parsed.get("action_type") != ACTION_APPLICANT_REVIEW_SUBMIT:
+            frappe.throw(_("This focus item is not an applicant review action."), frappe.PermissionError)
+        if not assignment_name:
+            assignment_name = (parsed.get("reference_name") or "").strip() or None
+
+    if not assignment_name:
+        frappe.throw(_("Missing assignment."))
+    if not decision:
+        frappe.throw(_("Decision is required."))
+
+    cache = _cache()
+    lock_target = focus_item_id or assignment_name
+
+    if client_request_id:
+        key = _idempotency_key(user, lock_target, client_request_id, "applicant_review_assignment_submit")
+        existing = cache.get_value(key)
+        if existing:
+            return {
+                "ok": True,
+                "idempotent": True,
+                "status": "already_processed",
+                "assignment": assignment_name,
+                "decision": existing,
+            }
+
+    lock_name = _lock_key(user, lock_target, "applicant_review_assignment_submit")
+    with cache.lock(lock_name, timeout=10):
+        if client_request_id:
+            key = _idempotency_key(user, lock_target, client_request_id, "applicant_review_assignment_submit")
+            existing = cache.get_value(key)
+            if existing:
+                return {
+                    "ok": True,
+                    "idempotent": True,
+                    "status": "already_processed",
+                    "assignment": assignment_name,
+                    "decision": existing,
+                }
+
+        assignment_doc = frappe.get_doc(APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE, assignment_name)
+        if not _reviewer_matches_assignment(assignment_doc.as_dict(), user=user, roles=user_roles):
+            frappe.throw(_("You are not assigned to this review item."), frappe.PermissionError)
+
+        if (assignment_doc.status or "").strip() == "Done":
+            return {
+                "ok": True,
+                "idempotent": True,
+                "status": "already_processed",
+                "assignment": assignment_doc.name,
+                "decision": assignment_doc.decision,
+            }
+
+        if (assignment_doc.status or "").strip() != "Open":
+            frappe.throw(_("This review assignment is not open."), frappe.ValidationError)
+
+        complete_assignment_decision(
+            assignment_doc=assignment_doc,
+            decision=decision,
+            notes=notes,
+            decided_by=user,
+        )
+
+        if client_request_id:
+            cache.set_value(key, decision, expires_in_sec=60 * 10)
+
+        frappe.publish_realtime(
+            event="focus:invalidate",
+            message={
+                "assignment": assignment_doc.name,
+                "target_type": assignment_doc.target_type,
+                "target_name": assignment_doc.target_name,
+                "decided_by": user,
+                "decided_on": str(now_datetime()),
+            },
+            user=user,
+        )
+
+        return {
+            "ok": True,
+            "idempotent": False,
+            "status": "processed",
+            "assignment": assignment_doc.name,
+            "target_type": assignment_doc.target_type,
+            "target_name": assignment_doc.target_name,
+            "decision": decision,
         }

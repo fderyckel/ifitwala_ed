@@ -9,6 +9,7 @@ from frappe import _
 from frappe.utils import cint, now_datetime
 
 from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
+from ifitwala_ed.admission.applicant_review_workflow import materialize_document_review_assignments
 from ifitwala_ed.utilities import file_dispatcher
 
 ALLOWED_UPLOAD_SOURCES = {"Desk", "SPA", "API", "Job"}
@@ -107,6 +108,10 @@ def upload_applicant_document(
         file_url=file_doc.file_url,
         upload_source=source,
         action="replaced" if had_existing_file else "uploaded",
+    )
+    materialize_document_review_assignments(
+        applicant_document=doc.name,
+        source_event="document_uploaded",
     )
 
     return {
