@@ -1348,11 +1348,11 @@ class StudentApplicant(Document):
 
     def has_required_policies(self):
         if not self.organization:
-            return {"ok": False, "missing": [], "required": []}
+            return {"ok": False, "missing": [], "required": [], "rows": []}
 
         ancestor_orgs = get_organization_ancestors_including_self(self.organization)
         if not ancestor_orgs:
-            return {"ok": True, "missing": [], "required": []}
+            return {"ok": True, "missing": [], "required": [], "rows": []}
         school_ancestors = get_school_ancestors_including_self(self.school)
 
         schema_check = ensure_policy_applies_to_column(caller="StudentApplicant.has_required_policies")
@@ -1362,6 +1362,7 @@ class StudentApplicant(Document):
                 "ok": False,
                 "missing": [],
                 "required": [],
+                "rows": [],
             }
 
         org_placeholders = ", ".join(["%s"] * len(ancestor_orgs))
@@ -1375,6 +1376,7 @@ class StudentApplicant(Document):
             f"""
             SELECT ip.name AS policy_name,
                    ip.policy_key AS policy_key,
+                   ip.policy_title AS policy_title,
                    ip.organization AS policy_organization,
                    ip.school AS policy_school,
                    pv.name AS policy_version
@@ -1400,37 +1402,78 @@ class StudentApplicant(Document):
         )
 
         if not rows:
-            return {"ok": True, "missing": [], "required": []}
+            return {"ok": True, "missing": [], "required": [], "rows": []}
 
         versions = [row["policy_version"] for row in rows]
-        acknowledged = set(
-            frappe.get_all(
-                "Policy Acknowledgement",
-                filters={
-                    "policy_version": ["in", versions],
-                    "acknowledged_for": "Applicant",
-                    "context_doctype": "Student Applicant",
-                    "context_name": self.name,
-                },
-                pluck="policy_version",
-            )
+        acknowledgement_rows = frappe.get_all(
+            "Policy Acknowledgement",
+            filters={
+                "policy_version": ["in", versions],
+                "acknowledged_for": "Applicant",
+                "context_doctype": "Student Applicant",
+                "context_name": self.name,
+            },
+            fields=["policy_version", "acknowledged_by", "acknowledged_at"],
+            order_by="acknowledged_at desc",
         )
+        acknowledgements_by_version = {}
+        for row_ack in acknowledgement_rows:
+            version = row_ack.get("policy_version")
+            if not version:
+                continue
+            acknowledgements_by_version.setdefault(version, []).append(
+                {
+                    "acknowledged_by": row_ack.get("acknowledged_by"),
+                    "acknowledged_at": row_ack.get("acknowledged_at"),
+                }
+            )
 
-        required = [row["policy_key"] or row["policy_name"] for row in rows]
-        missing = [row["policy_key"] or row["policy_name"] for row in rows if row["policy_version"] not in acknowledged]
-        return {"ok": not missing, "missing": missing, "required": required}
+        required = []
+        missing = []
+        policy_rows = []
+        for row_policy in rows:
+            label = row_policy.get("policy_key") or row_policy.get("policy_title") or row_policy.get("policy_name")
+            required.append(label)
+            version = row_policy.get("policy_version")
+            signers = acknowledgements_by_version.get(version, [])
+            if not signers:
+                missing.append(label)
+            primary_signer = signers[0] if signers else {}
+            policy_rows.append(
+                {
+                    "policy_name": row_policy.get("policy_name"),
+                    "policy_key": row_policy.get("policy_key"),
+                    "policy_title": row_policy.get("policy_title"),
+                    "policy_version": version,
+                    "label": label,
+                    "is_acknowledged": bool(signers),
+                    "acknowledged_by": primary_signer.get("acknowledged_by"),
+                    "acknowledged_at": primary_signer.get("acknowledged_at"),
+                    "signers": signers,
+                }
+            )
+
+        return {"ok": not missing, "missing": missing, "required": required, "rows": policy_rows}
 
     def has_required_documents(self):
         if not self.organization:
-            return {"ok": False, "missing": [], "unapproved": [], "required": []}
+            return {
+                "ok": False,
+                "missing": [],
+                "unapproved": [],
+                "required": [],
+                "required_rows": [],
+                "uploaded_rows": [],
+            }
 
         type_rows = frappe.get_all(
             "Applicant Document Type",
-            filters={"is_required": 1, "is_active": 1},
+            filters={"is_active": 1},
             fields=[
                 "name",
                 "code",
                 "document_type_name",
+                "is_required",
                 "organization",
                 "school",
             ],
@@ -1441,7 +1484,7 @@ class StudentApplicant(Document):
         )
         applicant_org_ancestors = set(applicant_org_ancestors)
         applicant_school_ancestors = set(applicant_school_ancestors)
-        required_types = [
+        in_scope_types = [
             row
             for row in type_rows
             if is_applicant_document_type_in_scope(
@@ -1451,34 +1494,129 @@ class StudentApplicant(Document):
                 applicant_school_ancestors=applicant_school_ancestors,
             )
         ]
-
-        if not required_types:
-            return {"ok": True, "missing": [], "unapproved": [], "required": []}
+        required_types = [row for row in in_scope_types if row.get("is_required")]
+        type_map = {row.get("name"): row for row in in_scope_types if row.get("name")}
 
         required_names = {
             row["name"]: (row["code"] or row["document_type_name"] or row["name"]) for row in required_types
         }
 
-        rows = frappe.get_all(
+        document_rows = frappe.get_all(
             "Applicant Document",
-            filters={"student_applicant": self.name, "document_type": ["in", list(required_names.keys())]},
-            fields=["document_type", "review_status"],
+            filters={"student_applicant": self.name},
+            fields=[
+                "name",
+                "document_type",
+                "document_label",
+                "review_status",
+                "reviewed_by",
+                "reviewed_on",
+                "modified",
+            ],
+            order_by="modified desc",
         )
-        status_map = {row["document_type"]: row["review_status"] for row in rows}
+        document_names = [row.get("name") for row in document_rows if row.get("name")]
+        latest_file_by_document = {}
+        if document_names:
+            file_rows = frappe.get_all(
+                "File",
+                filters={
+                    "attached_to_doctype": "Applicant Document",
+                    "attached_to_name": ["in", document_names],
+                },
+                fields=["attached_to_name", "file_url", "file_name", "creation", "owner"],
+                order_by="creation desc",
+            )
+            for row_file in file_rows:
+                parent_name = row_file.get("attached_to_name")
+                if not parent_name or parent_name in latest_file_by_document:
+                    continue
+                latest_file_by_document[parent_name] = row_file
+
+        documents_by_type = {row.get("document_type"): row for row in document_rows if row.get("document_type")}
 
         missing = []
         unapproved = []
+        required_rows = []
         for doc_type, label in required_names.items():
-            if doc_type not in status_map:
+            document_row = documents_by_type.get(doc_type)
+            if not document_row:
                 missing.append(label)
-            elif status_map[doc_type] != "Approved":
+                required_rows.append(
+                    {
+                        "applicant_document": None,
+                        "document_type": doc_type,
+                        "label": label,
+                        "is_required": True,
+                        "review_status": "Missing",
+                        "reviewed_by": None,
+                        "reviewed_on": None,
+                        "uploaded_by": None,
+                        "uploaded_at": None,
+                        "file_url": None,
+                        "file_name": None,
+                        "modified": None,
+                    }
+                )
+                continue
+
+            review_status = document_row.get("review_status") or "Pending"
+            if review_status != "Approved":
                 unapproved.append(label)
+            latest_file = latest_file_by_document.get(document_row.get("name"), {})
+            required_rows.append(
+                {
+                    "applicant_document": document_row.get("name"),
+                    "document_type": doc_type,
+                    "label": label,
+                    "is_required": True,
+                    "review_status": review_status,
+                    "reviewed_by": document_row.get("reviewed_by"),
+                    "reviewed_on": document_row.get("reviewed_on"),
+                    "uploaded_by": latest_file.get("owner"),
+                    "uploaded_at": latest_file.get("creation"),
+                    "file_url": latest_file.get("file_url"),
+                    "file_name": latest_file.get("file_name"),
+                    "modified": document_row.get("modified"),
+                }
+            )
+
+        uploaded_rows = []
+        for document_row in document_rows:
+            document_type = document_row.get("document_type")
+            meta = type_map.get(document_type) or {}
+            label = (
+                document_row.get("document_label")
+                or meta.get("code")
+                or meta.get("document_type_name")
+                or document_type
+                or document_row.get("name")
+            )
+            latest_file = latest_file_by_document.get(document_row.get("name"), {})
+            uploaded_rows.append(
+                {
+                    "applicant_document": document_row.get("name"),
+                    "document_type": document_type,
+                    "label": label,
+                    "is_required": bool(meta.get("is_required")),
+                    "review_status": document_row.get("review_status") or "Pending",
+                    "reviewed_by": document_row.get("reviewed_by"),
+                    "reviewed_on": document_row.get("reviewed_on"),
+                    "uploaded_by": latest_file.get("owner"),
+                    "uploaded_at": latest_file.get("creation"),
+                    "file_url": latest_file.get("file_url"),
+                    "file_name": latest_file.get("file_name"),
+                    "modified": document_row.get("modified"),
+                }
+            )
 
         return {
             "ok": not missing and not unapproved,
             "missing": missing,
             "unapproved": unapproved,
             "required": list(required_names.values()),
+            "required_rows": required_rows,
+            "uploaded_rows": uploaded_rows,
         }
 
     def has_required_profile_information(self):
@@ -1505,18 +1643,53 @@ class StudentApplicant(Document):
         }
 
     def health_review_complete(self):
-        status = frappe.db.get_value(
+        profile_row = frappe.db.get_value(
             "Applicant Health Profile",
             {"student_applicant": self.name},
-            "review_status",
+            [
+                "name",
+                "review_status",
+                "reviewed_by",
+                "reviewed_on",
+                "applicant_health_declared_complete",
+                "applicant_health_declared_by",
+                "applicant_health_declared_on",
+            ],
+            as_dict=True,
         )
-        if not status:
-            return {"ok": False, "status": "missing"}
+        if not profile_row:
+            return {
+                "ok": False,
+                "status": "missing",
+                "profile_name": None,
+                "review_status": None,
+                "reviewed_by": None,
+                "reviewed_on": None,
+                "declared_complete": False,
+                "declared_by": None,
+                "declared_on": None,
+            }
+        status = profile_row.get("review_status")
         if status == "Cleared":
-            return {"ok": True, "status": "complete"}
-        if status == "Needs Follow-Up":
-            return {"ok": False, "status": "needs_follow_up"}
-        return {"ok": False, "status": "missing"}
+            health_status = "complete"
+            is_ok = True
+        elif status == "Needs Follow-Up":
+            health_status = "needs_follow_up"
+            is_ok = False
+        else:
+            health_status = "pending"
+            is_ok = False
+        return {
+            "ok": is_ok,
+            "status": health_status,
+            "profile_name": profile_row.get("name"),
+            "review_status": status,
+            "reviewed_by": profile_row.get("reviewed_by"),
+            "reviewed_on": profile_row.get("reviewed_on"),
+            "declared_complete": bool(profile_row.get("applicant_health_declared_complete")),
+            "declared_by": profile_row.get("applicant_health_declared_by"),
+            "declared_on": profile_row.get("applicant_health_declared_on"),
+        }
 
     def has_required_interviews(self):
         rows = frappe.get_all(

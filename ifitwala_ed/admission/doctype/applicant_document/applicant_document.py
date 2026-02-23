@@ -3,12 +3,12 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import now_datetime
+from frappe.utils import cint, now_datetime
 
 from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
 
 UPLOAD_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager", "Admissions Applicant"}
-REVIEW_ROLES = {"Academic Admin", "System Manager"}
+REVIEW_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
 
 
 class ApplicantDocument(Document):
@@ -23,6 +23,12 @@ class ApplicantDocument(Document):
 
     def before_delete(self):
         self._validate_delete_allowed()
+
+    def on_update(self):
+        before = self.get_doc_before_save()
+        if not before:
+            return
+        self._append_update_timeline(before)
 
     def get_file_routing_context(self, file_doc):
         doc_type_code = frappe.db.get_value("Applicant Document Type", self.document_type, "code") or self.document_type
@@ -39,7 +45,9 @@ class ApplicantDocument(Document):
             frappe.throw(_("You do not have permission to manage Applicant Documents."))
 
         if self._review_fields_changed(before) and not user_roles & REVIEW_ROLES:
-            frappe.throw(_("Only Academic Admin or System Manager can review documents."))
+            frappe.throw(
+                _("Only Admission Officer, Admission Manager, Academic Admin, or System Manager can review documents.")
+            )
 
     def _validate_applicant_state(self):
         status = frappe.db.get_value("Student Applicant", self.student_applicant, "application_status")
@@ -85,7 +93,9 @@ class ApplicantDocument(Document):
             frappe.throw(_("Is Promotable requires Review Status = Approved."))
         user_roles = set(frappe.get_roles(frappe.session.user))
         if not user_roles & REVIEW_ROLES:
-            frappe.throw(_("Only Academic Admin or System Manager can set Is Promotable."))
+            frappe.throw(
+                _("Only Admission Officer, Admission Manager, Academic Admin, or System Manager can set Is Promotable.")
+            )
 
     def _review_fields_changed(self, before):
         if not before:
@@ -115,3 +125,62 @@ class ApplicantDocument(Document):
         if "System Manager" in user_roles:
             return
         frappe.throw(_("Cannot delete Applicant Document with attached files."))
+
+    def _append_update_timeline(self, before):
+        changes = []
+        previous_status = (before.get("review_status") or "Pending").strip()
+        current_status = (self.get("review_status") or "Pending").strip()
+        if previous_status != current_status:
+            changes.append(_("Review Status: {0} -> {1}").format(previous_status, current_status))
+
+        before_notes = (before.get("review_notes") or "").strip()
+        current_notes = (self.get("review_notes") or "").strip()
+        if before_notes != current_notes:
+            changes.append(_("Review notes updated") if current_notes else _("Review notes cleared"))
+
+        if cint(before.get("is_promotable")) != cint(self.get("is_promotable")):
+            changes.append(
+                _("Is Promotable: {0} -> {1}").format(
+                    _("Yes") if cint(before.get("is_promotable")) else _("No"),
+                    _("Yes") if cint(self.get("is_promotable")) else _("No"),
+                )
+            )
+
+        before_target = (before.get("promotion_target") or "").strip()
+        current_target = (self.get("promotion_target") or "").strip()
+        if before_target != current_target:
+            changes.append(
+                _("Promotion Target: {0} -> {1}").format(
+                    before_target or _("None"),
+                    current_target or _("None"),
+                )
+            )
+
+        if not changes:
+            return
+
+        document_label = (
+            frappe.db.get_value("Applicant Document Type", self.document_type, "code") or self.document_type
+        )
+        message = _("Applicant document updated: {0} ({1}) by {2} on {3}. Changes: {4}.").format(
+            frappe.bold(document_label),
+            frappe.bold(self.name),
+            frappe.bold(frappe.session.user),
+            now_datetime(),
+            "; ".join(changes),
+        )
+
+        try:
+            applicant = frappe.get_doc("Student Applicant", self.student_applicant)
+            applicant.add_comment("Comment", text=message)
+        except Exception:
+            frappe.log_error(
+                message=frappe.as_json(
+                    {
+                        "student_applicant": self.student_applicant,
+                        "applicant_document": self.name,
+                        "changes": changes,
+                    }
+                ),
+                title="Applicant document update timeline write failed",
+            )

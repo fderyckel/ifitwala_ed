@@ -6,7 +6,7 @@ import base64
 
 import frappe
 from frappe import _
-from frappe.utils import cint
+from frappe.utils import cint, now_datetime
 
 from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
 from ifitwala_ed.utilities import file_dispatcher
@@ -58,6 +58,16 @@ def upload_applicant_document(
     if source not in ALLOWED_UPLOAD_SOURCES:
         frappe.throw(_("Invalid upload_source."))
 
+    had_existing_file = bool(
+        frappe.db.exists(
+            "File",
+            {
+                "attached_to_doctype": "Applicant Document",
+                "attached_to_name": doc.name,
+            },
+        )
+    )
+
     file_kwargs = {
         "attached_to_doctype": "Applicant Document",
         "attached_to_name": doc.name,
@@ -87,6 +97,16 @@ def upload_applicant_document(
         "File Classification",
         {"file": file_doc.name},
         "name",
+    )
+
+    _append_document_upload_timeline(
+        student_applicant=doc.student_applicant,
+        applicant_document=doc.name,
+        document_type=doc.document_type,
+        document_type_code=doc_type_code,
+        file_url=file_doc.file_url,
+        upload_source=source,
+        action="replaced" if had_existing_file else "uploaded",
     )
 
     return {
@@ -163,3 +183,47 @@ def _extract_upload(kwargs):
         frappe.throw(_("File content is empty."))
 
     return filename, content
+
+
+def _append_document_upload_timeline(
+    *,
+    student_applicant: str,
+    applicant_document: str,
+    document_type: str,
+    document_type_code: str,
+    file_url: str | None,
+    upload_source: str,
+    action: str,
+):
+    if not student_applicant:
+        return
+
+    document_type_name = frappe.db.get_value("Applicant Document Type", document_type, "document_type_name")
+    document_label = document_type_code or document_type_name or document_type
+    message = _("Applicant document {0}: {1} ({2}) by {3} on {4} via {5}. File: {6}.").format(
+        action,
+        frappe.bold(document_label),
+        frappe.bold(applicant_document),
+        frappe.bold(frappe.session.user),
+        now_datetime(),
+        frappe.bold(upload_source),
+        file_url or _("not available"),
+    )
+
+    try:
+        applicant = frappe.get_doc("Student Applicant", student_applicant)
+        applicant.add_comment("Comment", text=message)
+    except Exception:
+        frappe.log_error(
+            message=frappe.as_json(
+                {
+                    "student_applicant": student_applicant,
+                    "applicant_document": applicant_document,
+                    "document_type": document_type,
+                    "file_url": file_url,
+                    "upload_source": upload_source,
+                    "action": action,
+                }
+            ),
+            title="Applicant document upload timeline write failed",
+        )

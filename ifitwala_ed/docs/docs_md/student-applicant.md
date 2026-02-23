@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.6.3"
+version: "1.6.5"
 last_change_date: "2026-02-23"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -38,7 +38,9 @@ If no policy rows match those rules, policy acknowledgement is not required for 
 Use the applicant readiness outputs, not guesswork:
 
 1. Desk `Student Applicant` form:
-   - `Policies Summary` shows missing policy keys/titles when required acknowledgements are outstanding.
+   - `Policies Summary` shows a policy matrix with status, signer(s), signed timestamp, and version link.
+   - `Documents Summary` shows required-vs-uploaded document tables (missing items, uploader, upload date, reviewer, and links).
+   - `Health Summary` shows cleared/pending state, health profile link, reviewer metadata, and declaration metadata.
    - `Review Snapshot` includes readiness issues from `get_readiness_snapshot`.
 2. Approval action:
    - `Approve` is blocked by server guard (`approve_application` -> `_validate_ready_for_approval`) until required policy acknowledgements are complete.
@@ -65,6 +67,7 @@ This is where admissions correctness is enforced. Client UX helps, but status tr
 - **Paperless edge**: policy acknowledgement is handled in-portal with a permanent `Policy Acknowledgement` record (`acknowledged_by`, `acknowledged_at`, `policy_version`, context binding).
 - **Speed edge**: inquiry invite flow pre-fills applicant identity and intent fields, then admissions staff focus on review and decision instead of retyping.
 - **Compliance edge**: admissions files are routed through governed records (`Applicant Document`) instead of random direct attachments on the applicant.
+- **Operations edge**: applicant timeline now records document upload/replace events and applicant-document review/edit events for fast audit trace.
 
 <Callout type="note" title="Digital signature scope">
 Current implementation is an explicit acknowledge action with timestamped audit trail. It does not capture a handwritten/typed signature artifact field.
@@ -202,7 +205,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - website entry `/admissions` (`ifitwala_ed/www/admissions/index.py`)
   - SPA pages: overview, profile, documents, health, policies, submit
   - API service: `ifitwala_ed.api.admissions_portal.*`
-  - next-actions contract: document upload is blocking only when required docs are missing; uploaded docs pending review are surfaced as under-review (non-blocking) for applicants, and Submit page shows an explicit "Awaiting admissions review" banner
+  - next-actions contract: document upload is blocking only when required docs are missing; uploaded docs pending review are surfaced as under-review (non-blocking) for applicants, and Submit page shows an explicit "Awaiting admissions review" banner while still allowing submission
 - **Promotion linkage**:
   - `Student.student_applicant` link
   - `promote_to_student` creates/links `Student`

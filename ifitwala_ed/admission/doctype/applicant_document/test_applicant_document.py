@@ -11,10 +11,14 @@ class TestApplicantDocument(FrappeTestCase):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._ensure_role("Admissions Applicant")
+        self._ensure_role("Admission Officer")
+        self._ensure_role("Admission Manager")
 
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
         self.applicant_user = self._create_applicant_user()
+        self.admission_officer_user = self._create_staff_user("Admission Officer")
+        self.admission_manager_user = self._create_staff_user("Admission Manager")
         self.applicant = self._create_applicant(self.organization, self.school, self.applicant_user)
         self.document_type = self._create_document_type(self.organization, self.school)
 
@@ -48,11 +52,53 @@ class TestApplicantDocument(FrappeTestCase):
                 }
             ).insert(ignore_permissions=True)
 
+    def test_admission_officer_can_review_document(self):
+        doc = self._create_pending_document_as_applicant()
+        frappe.set_user(self.admission_officer_user)
+        doc = frappe.get_doc("Applicant Document", doc.name)
+        doc.review_status = "Approved"
+        doc.review_notes = "Reviewed by admission officer."
+        doc.save(ignore_permissions=True)
+        self.assertEqual(doc.review_status, "Approved")
+        self.assertEqual(doc.reviewed_by, self.admission_officer_user)
+        self.assertIsNotNone(doc.reviewed_on)
+
+    def test_admission_manager_can_set_promotable_after_approval(self):
+        doc = self._create_pending_document_as_applicant()
+        frappe.set_user(self.admission_manager_user)
+        doc = frappe.get_doc("Applicant Document", doc.name)
+        doc.review_status = "Approved"
+        doc.is_promotable = 1
+        doc.save(ignore_permissions=True)
+        self.assertEqual(doc.review_status, "Approved")
+        self.assertTrue(bool(doc.is_promotable))
+        self.assertEqual(doc.reviewed_by, self.admission_manager_user)
+
+    def test_applicant_cannot_edit_review_notes(self):
+        doc = self._create_pending_document_as_applicant()
+        frappe.set_user(self.applicant_user)
+        doc = frappe.get_doc("Applicant Document", doc.name)
+        doc.review_notes = "Trying to self-review."
+        with self.assertRaises(frappe.ValidationError):
+            doc.save(ignore_permissions=True)
+
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):
             return
         role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
         self._created.append(("Role", role.name))
+
+    def _create_pending_document_as_applicant(self):
+        frappe.set_user(self.applicant_user)
+        doc = frappe.get_doc(
+            {
+                "doctype": "Applicant Document",
+                "student_applicant": self.applicant.name,
+                "document_type": self.document_type,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document", doc.name))
+        return doc
 
     def _create_organization(self) -> str:
         doc = frappe.get_doc(
@@ -87,6 +133,22 @@ class TestApplicantDocument(FrappeTestCase):
                 "last_name": "User",
                 "enabled": 1,
                 "roles": [{"role": "Admissions Applicant"}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("User", doc.name))
+        frappe.clear_cache(user=doc.name)
+        return doc.name
+
+    def _create_staff_user(self, role: str) -> str:
+        email = f"admission-doc-{frappe.generate_hash(length=8)}@example.com"
+        doc = frappe.get_doc(
+            {
+                "doctype": "User",
+                "email": email,
+                "first_name": "Admission",
+                "last_name": role.replace(" ", ""),
+                "enabled": 1,
+                "roles": [{"role": role}],
             }
         ).insert(ignore_permissions=True)
         self._created.append(("User", doc.name))

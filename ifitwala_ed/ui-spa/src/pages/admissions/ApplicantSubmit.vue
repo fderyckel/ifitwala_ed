@@ -70,7 +70,7 @@
 				<p class="mt-1 type-caption text-emerald-900/80">
 					{{
 						__(
-							'All required documents are uploaded. Submission will be enabled once admissions review is complete.'
+							'All required documents are uploaded. You can submit now while admissions reviews your files.'
 						)
 					}}
 				</p>
@@ -143,15 +143,7 @@ const documentsUnderReview = computed(() => {
 });
 
 const isReady = computed(() => {
-	const completeness = snapshot.value?.completeness;
-	if (!completeness) return false;
-	return (
-		completeness.profile === 'complete' &&
-		completeness.health === 'complete' &&
-		completeness.documents === 'complete' &&
-		completeness.policies === 'complete' &&
-		blockingActions.value.length === 0
-	);
+	return blockingActions.value.length === 0;
 });
 
 const firstBlockingRouteName = computed(() => {
@@ -205,12 +197,6 @@ function openSubmit() {
 		return;
 	}
 	if (!isReady.value) {
-		if (documentsUnderReview.value) {
-			actionError.value = __(
-				'Your required documents are uploaded and under admissions review. You can submit once review is complete.'
-			);
-			return;
-		}
 		actionError.value =
 			blockingMessage.value || __('Complete all required sections before submitting.');
 		return;

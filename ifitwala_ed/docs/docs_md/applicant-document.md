@@ -3,8 +3,8 @@ title: "Applicant Document: Authoritative Owner of Admissions Files"
 slug: applicant-document
 category: Admission
 doc_order: 6
-version: "1.4.0"
-last_change_date: "2026-02-22"
+version: "1.4.1"
+last_change_date: "2026-02-23"
 summary: "Define each admissions document slot per applicant, enforce review/promotion gates, and keep admissions file ownership boundaries authoritative."
 seo_title: "Applicant Document: Authoritative Owner of Admissions Files"
 seo_description: "Define each admissions document slot per applicant, enforce review/promotion gates, and keep admissions file ownership boundaries authoritative."
@@ -45,14 +45,14 @@ All admissions evidence files must attach to `Applicant Document`. Treat any alt
 | Actor | Allowed | Forbidden |
 |---|---|---|
 | `Admissions Applicant` (portal) | list types, list documents, upload document file | approve/reject, edit review fields, change `document_type`, delete rows |
-| `Admission Officer` / `Admission Manager` | create/manage rows, operational follow-up | reviewer-only decisions unless also reviewer role |
+| `Admission Officer` / `Admission Manager` | create/manage rows, review decisions, promotion flags | bypassing immutable field rules |
 | `Academic Admin` / `System Manager` | reviewer decisions and promotion flags | bypassing immutable field rules |
 
 ## Operational Guardrails
 
 <DoDont doTitle="Do" dontTitle="Don't">
   <Do>Use one canonical row per (`student_applicant`, `document_type`) and treat new uploads as newer evidence for that slot.</Do>
-  <Do>Use reviewer roles (`Academic Admin` or `System Manager`) for `review_status` and `is_promotable` decisions.</Do>
+  <Do>Use reviewer roles (`Admission Officer`, `Admission Manager`, `Academic Admin`, or `System Manager`) for `review_status` and `is_promotable` decisions.</Do>
   <Dont>Attach admissions evidence directly to `Student Applicant` or `Student`.</Dont>
   <Dont>Re-link applicant-side `File` rows to student records during promotion.</Dont>
 </DoDont>
@@ -108,10 +108,14 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 - document type upload classification contract checks
 - governed classification with `primary_subject_type = Student Applicant`
 - file attachment target forced to `Applicant Document`
+- writes timeline comments on `Student Applicant` for each upload/replace event (who, when, source, file link)
 
 4. Student Applicant readiness (`has_required_documents`)
 - required doc types must exist and be approved
 - approval readiness fails for missing/unapproved required slots
+
+5. Applicant document edit timeline (`Applicant Document.on_update`)
+- review/edit changes (status, notes, promotable flags, promotion target) are comment-audited on `Student Applicant`
 
 ## Reporting
 
@@ -126,14 +130,14 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-02-22)
+### Latest Technical Snapshot (2026-02-23)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.py`
 - **Required fields (`reqd=1`)**:
   - `student_applicant` (`Link` -> `Student Applicant`)
   - `document_type` (`Link` -> `Applicant Document Type`)
-- **Lifecycle hooks in controller**: `validate`, `before_delete`
+- **Lifecycle hooks in controller**: `validate`, `on_update`, `before_delete`
 - **Operational/public methods**: `get_file_routing_context`
 
 - **DocType**: `Applicant Document` (`ifitwala_ed/admission/doctype/applicant_document/`)
@@ -155,7 +159,7 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
   - SPA page: `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
 - **Runtime role guards (controller)**:
   - upload/manage roles: admissions roles + `Academic Admin` + `System Manager` + `Admissions Applicant`
-  - reviewer roles: `Academic Admin`, `System Manager`
+  - reviewer roles: `Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`
   - review-field mutation is blocked for non-reviewer roles
 - **Readiness and promotion integration**:
   - required-document readiness check in `Student Applicant.has_required_documents()`
@@ -166,7 +170,7 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 | Role | Read | Write | Create | Delete | Notes |
 |---|---|---|---|---|---|
 | `Admission Manager` | Yes | Yes | Yes | Yes | Runtime delete guard applies when files exist |
-| `Admission Officer` | Yes | Yes | Yes | Yes | Runtime reviewer guard still applies |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Reviewer authority |
 | `Academic Admin` | Yes | Yes | Yes | Yes | Reviewer authority |
 | `System Manager` | Yes | Yes | Yes | Yes | Reviewer authority + delete override with attached files |
 | `Curriculum Coordinator` | Yes | Yes | Yes | Yes | Runtime guard limits review semantics |
