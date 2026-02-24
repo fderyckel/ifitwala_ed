@@ -217,9 +217,7 @@ def notify_admission_manager(doc):
         return
 
     state = (doc.workflow_state or "").strip()
-    is_new_submission = (doc.doctype == "Inquiry" and state == "New") or (
-        doc.doctype == "Registration of Interest" and state == "New Inquiry"
-    )
+    is_new_submission = doc.doctype == "Inquiry" and state == "New"
     if not is_new_submission:
         return
 
@@ -246,13 +244,13 @@ def notify_admission_manager(doc):
 def check_sla_breaches():
     """
     Recompute SLA statuses using efficient SQL updates.
-    Applies to Inquiry + Registration of Interest.
+    Applies to Inquiry.
     """
     logger = frappe.logger("sla_breaches", allow_site=True)
     cache = frappe.cache()
     today = getdate()
     contacted_states = ("Contacted", "Qualified", "Archived")
-    doc_types = ["Inquiry", "Registration of Interest"]
+    doc_types = ["Inquiry"]
     summary = {
         "started_at": now(),
         "today": str(today),
@@ -939,7 +937,7 @@ def on_todo_update_close_marks_contacted(doc, method=None):
     if doc.status != "Closed":
         return
     # Only for our doctypes
-    if doc.reference_type not in ("Inquiry", "Registration of Interest"):
+    if doc.reference_type != "Inquiry":
         return
     if not doc.reference_name:
         return
@@ -950,10 +948,7 @@ def on_todo_update_close_marks_contacted(doc, method=None):
         return
 
     state = (ref.workflow_state or "New").strip()
-    if ref.doctype == "Inquiry":
-        pre_contact_states = {"New", "Assigned"}
-    else:
-        pre_contact_states = {"New Inquiry", "New", "Assigned"}
+    pre_contact_states = {"New", "Assigned"}
 
     # Only flip from pre-contact states
     if state not in pre_contact_states:

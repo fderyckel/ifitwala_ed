@@ -4,7 +4,6 @@ import frappe
 
 WEB_FORM_ROUTE_MAP = {
     "inquiry": "apply/inquiry",
-    "registration-of-interest": "apply/registration-of-interest",
 }
 
 LEGACY_INQUIRY_ROUTES = {"", "/inquiry", "/apply/inquiry", "/admissions/inquiry"}
@@ -12,10 +11,7 @@ LEGACY_APPLY_ROUTES = {"", "/admissions", "/portal/admissions"}
 
 
 def _reload_public_web_forms():
-    for module, dt, docname in (
-        ("admission", "web_form", "inquiry"),
-        ("admission", "web_form", "registration_of_interest"),
-    ):
+    for module, dt, docname in (("admission", "web_form", "inquiry"),):
         try:
             frappe.reload_doc(module, dt, docname)
         except Exception:

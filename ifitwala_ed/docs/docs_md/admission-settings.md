@@ -3,7 +3,7 @@ title: "Admission Settings: SLA and Assignment Controls"
 slug: admission-settings
 category: Admission
 doc_order: 1
-version: "1.1.1"
+version: "1.1.2"
 last_change_date: "2026-02-24"
 summary: "Configure response SLAs, assignment colors, and background SLA checks for the full admissions pipeline."
 seo_title: "Admission Settings: SLA and Assignment Controls"
@@ -15,10 +15,10 @@ seo_description: "Configure response SLAs, assignment colors, and background SLA
 ## Before You Start (Prerequisites)
 
 - Ensure your admissions team users and roles are in place (`Admission Manager` / `Admission Officer`).
-- Confirm you will run admissions through `Inquiry` and/or `Registration of Interest` so SLA settings are actually used.
+- Confirm you will run admissions through `Inquiry` so SLA settings are actually used.
 - Align SLA values and assignment color conventions with operations before enabling checks.
 
-Admission teams move fast, and missed follow-ups are expensive. `Admission Settings` is the control center that keeps Inquiry and Registration workflows time-bound and visible.
+Admission teams move fast, and missed follow-ups are expensive. `Admission Settings` is the control center that keeps Inquiry workflows time-bound and visible.
 
 <Callout type="tip" title="Why this matters">
 When these settings are correct, your team sees at-risk records early instead of discovering misses at the end of the week.
@@ -34,7 +34,6 @@ When these settings are correct, your team sees at-risk records early instead of
 ## Where It Is Used Across the ERP
 
 - [**Inquiry**](/docs/en/inquiry/): default SLA deadlines and list indicators.
-- [**Registration of Interest**](/docs/en/registration-of-interest/): same SLA helper is reused.
 - Scheduler job: hourly SLA sweep via `ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep`.
   - sweep is column-aware per doctype and skips doctypes that do not expose required SLA columns
   - sweep backfills missing Inquiry `first_contact_due_on` values for legacy rows before status recompute
@@ -50,7 +49,7 @@ When these settings are correct, your team sees at-risk records early instead of
 ## Lifecycle and Linked Documents
 
 1. Set SLA and assignment settings before admitting your first inquiry batch.
-2. Run daily intake in `Inquiry` and `Registration of Interest`; each record uses this configuration.
+2. Run daily intake in `Inquiry`; each record uses this configuration.
 3. Review breached/at-risk records and adjust team workload from assignment and ToDo indicators.
 4. Revisit SLA values at term boundaries so new admissions periods reflect real team capacity.
 
@@ -92,5 +91,4 @@ Treat SLA updates as operational policy changes. Confirm with admissions leaders
 ## Related Docs
 
 - [**Inquiry**](/docs/en/inquiry/) - operational first-contact workflow
-- [**Registration of Interest**](/docs/en/registration-of-interest/) - public lead intake
 - [**Student Applicant**](/docs/en/student-applicant/) - downstream admissions lifecycle

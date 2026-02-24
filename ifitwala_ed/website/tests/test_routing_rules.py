@@ -60,11 +60,6 @@ class TestRoutingRules(FrappeTestCase):
         app_path = frappe.get_app_path("ifitwala_ed")
         configs = [
             ("inquiry", "apply/inquiry", "admission/web_form/inquiry/inquiry.json"),
-            (
-                "registration-of-interest",
-                "apply/registration-of-interest",
-                "admission/web_form/registration_of_interest/registration_of_interest.json",
-            ),
         ]
         for route_name, expected_route, relative_path in configs:
             with open(os.path.join(app_path, relative_path), "r", encoding="utf-8") as f:
@@ -78,9 +73,7 @@ class TestRoutingRules(FrappeTestCase):
         pairs = {(row.get("source"), row.get("target")) for row in redirects if isinstance(row, dict)}
         lookup = {row.get("source"): row for row in redirects if isinstance(row, dict) and row.get("source")}
         self.assertIn(("/inquiry", "/apply/inquiry"), pairs)
-        self.assertIn(("/registration-of-interest", "/apply/registration-of-interest"), pairs)
         self.assertEqual(lookup["/inquiry"].get("redirect_http_status"), 301)
-        self.assertEqual(lookup["/registration-of-interest"].get("redirect_http_status"), 301)
 
     def test_top_level_section_aliases_are_not_redirected(self):
         redirects = getattr(hooks, "website_redirects", []) or []
@@ -106,13 +99,11 @@ class TestRoutingRules(FrappeTestCase):
             css_map,
             {
                 "Inquiry": expected_css,
-                "Registration of Interest": expected_css,
             },
         )
         self.assertEqual(
             js_map,
             {
                 "Inquiry": expected_js,
-                "Registration of Interest": expected_js,
             },
         )

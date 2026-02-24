@@ -45,11 +45,9 @@ app_include_js = ["/assets/ifitwala_ed/js/ifitwala_ed.bundle.js", "/assets/ifitw
 # webform_include_css = {"doctype": "public/css/doctype.css"}
 webform_include_css = {
     "Inquiry": "public/css/admissions_webform_shell.css",
-    "Registration of Interest": "public/css/admissions_webform_shell.css",
 }
 webform_include_js = {
     "Inquiry": "public/js/admissions_webform_shell.js",
-    "Registration of Interest": "public/js/admissions_webform_shell.js",
 }
 
 # include js in page

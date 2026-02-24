@@ -130,8 +130,8 @@ For organization landing requests:
 
 For admissions/public form requests:
 
-1. `/apply/inquiry` and `/apply/registration-of-interest` are native Web Form routes.
-2. Legacy `/inquiry` and `/registration-of-interest` only redirect to those canonical `/apply/*` routes.
+1. `/apply/inquiry` is the native Web Form route.
+2. Legacy `/inquiry` redirects to that canonical `/apply/inquiry` route.
 3. Admissions applicant SPA is namespaced under `/admissions/*` and does not own `/apply/*`.
 
 For authenticated portal requests:

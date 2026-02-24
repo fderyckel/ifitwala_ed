@@ -51,11 +51,6 @@ WEBSITE_ROUTE_RULES = [
 
 WEBSITE_REDIRECTS = [
     {"source": "/inquiry", "target": "/apply/inquiry", "redirect_http_status": 301},
-    {
-        "source": "/registration-of-interest",
-        "target": "/apply/registration-of-interest",
-        "redirect_http_status": 301,
-    },
 ]
 
 

@@ -19,13 +19,13 @@
 2. No default-school redirect from `/`.
 3. No root-level school marketing slugs.
 4. No exception-driven route ownership for webforms.
-5. Legacy `/inquiry` and `/registration-of-interest` only redirect to canonical `/apply/*`.
+5. Legacy `/inquiry` redirects to canonical `/apply/inquiry`.
 
 ## Implementation Notes
 
 1. `ifitwala_ed/www/index.py` renders organization landing directly.
 2. `ifitwala_ed/website/utils.py::resolve_school_from_route` only accepts `/schools/{slug}/...`.
 3. `ifitwala_ed/www/admissions/index.py` remains auth-guarded SPA entrypoint under `/admissions`.
-4. Public form routes are defined in Web Form JSON as `apply/inquiry` and `apply/registration-of-interest`.
+4. Public form route is defined in Web Form JSON as `apply/inquiry`.
 5. Portal SPA owns the canonical authenticated namespace under `/portal/*`.
 7. `/logout` is owned by app website controller and must never rely on `?cmd=web_logout`.

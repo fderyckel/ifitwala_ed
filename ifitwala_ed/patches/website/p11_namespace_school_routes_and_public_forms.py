@@ -6,15 +6,11 @@ from ifitwala_ed.website.utils import normalize_route
 
 WEB_FORM_ROUTE_MAP = {
     "inquiry": "apply/inquiry",
-    "registration-of-interest": "apply/registration-of-interest",
 }
 
 
 def _reload_web_form_docs():
-    for module, dt, docname in (
-        ("admission", "web_form", "inquiry"),
-        ("admission", "web_form", "registration_of_interest"),
-    ):
+    for module, dt, docname in (("admission", "web_form", "inquiry"),):
         try:
             frappe.reload_doc(module, dt, docname)
         except Exception:

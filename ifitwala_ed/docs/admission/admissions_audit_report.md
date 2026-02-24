@@ -42,9 +42,9 @@ The **Admissions module** is structurally sound and well-anchored to the governa
 
 ### Proposal 2: Optimize SLA & Deadline Queries
 **Title**: Index SLA Fields for Scalable Hourly Jobs
-**Problem**: (EFF-01) `check_sla_breaches` performs a full table scan on `Inquiry` (and `Registration of Interest`) every hour. As data grows, this will degrade DB performance.
+**Problem**: (EFF-01) `check_sla_breaches` performs a full table scan on `Inquiry` every hour. As data grows, this will degrade DB performance.
 **Target Roles**: System / DevOps
-**Scope**: `Inquiry` and `Registration of Interest` DocTypes.
+**Scope**: `Inquiry` DocType.
 **Technical Approach**:
 1. Add `search_index=1` (standard index) to:
     - `workflow_state`

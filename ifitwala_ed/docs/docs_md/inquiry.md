@@ -3,7 +3,7 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.3.3"
+version: "1.3.4"
 last_change_date: "2026-02-24"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
@@ -134,7 +134,7 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
 - **Web form surface**:
   - config file `ifitwala_ed/admission/web_form/inquiry/inquiry.json`
   - route `apply/inquiry` (public form)
-  - scoped shell assets via `hooks.py` `webform_include_css/js` for both `Inquiry` and `Registration of Interest`, using app public paths: `public/css/admissions_webform_shell.css` and `public/js/admissions_webform_shell.js`
+  - scoped shell assets via `hooks.py` `webform_include_css/js` for `Inquiry`, using app public paths: `public/css/admissions_webform_shell.css` and `public/js/admissions_webform_shell.js`
 - **Staff analytics (SPA)**:
   - page `ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue`
   - route `/staff/analytics/inquiry` via `ifitwala_ed/ui-spa/src/router/index.ts`
@@ -194,6 +194,6 @@ Action-level guard in server code: lifecycle and assignment methods enforce admi
 ## Related Docs
 
 <RelatedDocs
-  slugs="admission-settings,organization,student-applicant,registration-of-interest"
+  slugs="admission-settings,organization,student-applicant"
   title="Continue With Related Admission Docs"
 />

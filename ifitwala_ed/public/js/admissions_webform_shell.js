@@ -47,11 +47,8 @@
 		var nav = createElement('nav', 'if-webform-shell-nav');
 		var inquiryLink = createElement('a', 'if-webform-shell-link', 'Inquiry');
 		inquiryLink.setAttribute('href', '/apply/inquiry');
-		var roiLink = createElement('a', 'if-webform-shell-link', 'Registration of Interest');
-		roiLink.setAttribute('href', '/apply/registration-of-interest');
 
 		nav.appendChild(inquiryLink);
-		nav.appendChild(roiLink);
 		inner.appendChild(brand);
 		inner.appendChild(nav);
 		header.appendChild(inner);
