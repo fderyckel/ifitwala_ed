@@ -271,7 +271,7 @@ doc_events = {
 
 scheduler_events = {
     "hourly": [
-        "ifitwala_ed.admission.admission_utils.check_sla_breaches",
+        "ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep",
         "ifitwala_ed.schedule.attendance_jobs.prewarm_meeting_dates_hourly_guard",
     ],
     "daily": [

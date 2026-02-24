@@ -19,6 +19,7 @@ from ifitwala_ed.admission.admission_utils import (
     get_contact_primary_email,
     is_applicant_document_type_in_scope,
     normalize_email_value,
+    sync_student_applicant_contact_binding,
 )
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
@@ -138,10 +139,14 @@ STUDENT_PROFILE_REQUIRED_FIELD_LABELS = (
 
 
 class StudentApplicant(Document):
+    def after_insert(self):
+        self._sync_contact_binding()
+
     def before_save(self):
         self._set_title_if_missing()
 
     def on_update(self):
+        self._sync_contact_binding()
         self._sync_applicant_user_lifecycle()
 
     # ---------------------------------------------------------------------
@@ -568,6 +573,14 @@ class StudentApplicant(Document):
             text=_("Applicant portal user {0} disabled after status changed to {1}.").format(
                 frappe.bold(self.applicant_user), frappe.bold(self.application_status)
             ),
+        )
+
+    def _sync_contact_binding(self):
+        if not self.applicant_contact:
+            return
+        sync_student_applicant_contact_binding(
+            student_applicant=self.name,
+            contact_name=self.applicant_contact,
         )
 
     @frappe.whitelist()

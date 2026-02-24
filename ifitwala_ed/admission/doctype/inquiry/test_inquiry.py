@@ -114,6 +114,72 @@ class TestInquiry(FrappeTestCase):
         self.assertTrue(bool(linked.applicant_contact))
         self.assertEqual(linked.applicant_email, inquiry_email)
         self.assertEqual(frappe.db.get_value("Inquiry", inquiry.name, "contact"), linked.applicant_contact)
+        self.assertTrue(
+            bool(
+                frappe.db.exists(
+                    "Dynamic Link",
+                    {
+                        "parenttype": "Contact",
+                        "parentfield": "links",
+                        "parent": linked.applicant_contact,
+                        "link_doctype": "Student Applicant",
+                        "link_name": applicant_name,
+                    },
+                )
+            )
+        )
+
+    def test_from_inquiry_invite_repairs_existing_applicant_contact_link(self):
+        parent_org = self._make_organization("Repair Root", is_group=1)
+        child_org = self._make_organization("Repair Child", parent=parent_org)
+        school = self._make_school(child_org, "Repair School")
+        inquiry = self._make_inquiry(email=f"repair-{frappe.generate_hash(length=8)}@example.com")
+
+        with patch("ifitwala_ed.admission.admission_utils.ensure_admissions_permission", return_value="Administrator"):
+            applicant_name = from_inquiry_invite(
+                inquiry_name=inquiry.name,
+                school=school,
+                organization=parent_org,
+            )
+
+        applicant = frappe.get_doc("Student Applicant", applicant_name)
+        self.assertTrue(bool(applicant.applicant_contact))
+        dynamic_link_name = frappe.db.get_value(
+            "Dynamic Link",
+            {
+                "parenttype": "Contact",
+                "parentfield": "links",
+                "parent": applicant.applicant_contact,
+                "link_doctype": "Student Applicant",
+                "link_name": applicant_name,
+            },
+            "name",
+        )
+        if dynamic_link_name:
+            frappe.delete_doc("Dynamic Link", dynamic_link_name, force=1, ignore_permissions=True)
+
+        with patch("ifitwala_ed.admission.admission_utils.ensure_admissions_permission", return_value="Administrator"):
+            existing_name = from_inquiry_invite(
+                inquiry_name=inquiry.name,
+                school=school,
+                organization=parent_org,
+            )
+
+        self.assertEqual(existing_name, applicant_name)
+        self.assertTrue(
+            bool(
+                frappe.db.exists(
+                    "Dynamic Link",
+                    {
+                        "parenttype": "Contact",
+                        "parentfield": "links",
+                        "parent": applicant.applicant_contact,
+                        "link_doctype": "Student Applicant",
+                        "link_name": applicant_name,
+                    },
+                )
+            )
+        )
 
     def _make_organization(self, prefix: str, parent: str | None = None, is_group: int = 0) -> str:
         doc = frappe.get_doc(

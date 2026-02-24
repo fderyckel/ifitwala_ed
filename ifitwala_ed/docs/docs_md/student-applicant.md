@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.6.6"
-last_change_date: "2026-02-23"
+version: "1.6.8"
+last_change_date: "2026-02-24"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
@@ -114,6 +114,7 @@ Current implementation is an explicit acknowledge action with timestamped audit 
   - creates `Student Applicant` directly in `Invited`
   - pre-fills identity and inquiry intent fields
   - ensures Inquiry has a linked `Contact` and carries it to `Student Applicant.applicant_contact`
+  - ensures Contact has a `Dynamic Link` to the created/reused `Student Applicant` (idempotent sync)
   - derives `Student Applicant.applicant_email` from Contact email rows
   - does **not** by itself guarantee portal login access until an applicant `User` is linked
 
@@ -135,6 +136,7 @@ Behavior in code:
 - email is normalized to lower-case and trimmed before processing
 - invite email is validated against applicant contact ownership (cross-contact drift is blocked)
 - invite email is upserted into `Contact Email` for the applicant contact
+- applicant contact is kept linked to `Student Applicant` via Contact `Dynamic Link` (idempotent sync)
 - if user does not exist, a `User` is created with that email
 - role `Admissions Applicant` is ensured on that user
 - invited user is forced `enabled = 1` so login is not blocked by disabled account state
@@ -219,6 +221,8 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - policy readiness pulled from active Institutional Policy versions
 - **Operational dashboards**:
   - morning brief admissions pulse (`tabStudent Applicant` weekly status counts)
+  - staff admissions cockpit route `/staff/admission-cockpit` (`ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`)
+  - admissions cockpit API `ifitwala_ed.api.admission_cockpit.get_admissions_cockpit_data` (applicant-stage Kanban + blocker strip)
 - **Reviewer workflow**:
   - submission trigger creates Overall Application review assignments (`application_status` transition to `Submitted`)
   - desk shows completed assignment decisions in `review_assignments_summary`

@@ -19,6 +19,7 @@ from ifitwala_ed.admission.admission_utils import (
     has_complete_applicant_document_type_classification,
     is_applicant_document_type_in_scope,
     normalize_email_value,
+    sync_student_applicant_contact_binding,
     upsert_contact_email,
 )
 from ifitwala_ed.admission.applicant_review_workflow import materialize_health_review_assignments
@@ -1052,7 +1053,6 @@ def upload_applicant_document(
         "document_type": document_type,
         "upload_source": "SPA",
         "is_private": 1,
-        "ignore_permissions": 1,
     }
 
     if content:
@@ -1412,6 +1412,10 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
             applicant._set_status("Invited", "Applicant invited", permission_checker=None)
         else:
             applicant.save(ignore_permissions=True)
+        sync_student_applicant_contact_binding(
+            student_applicant=applicant.name,
+            contact_name=contact_name,
+        )
 
         email_sent = _send_applicant_invite_email(user_doc, email)
         applicant.add_comment(
@@ -1470,6 +1474,10 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         applicant._set_status("Invited", "Applicant invited", permission_checker=None)
     else:
         applicant.save(ignore_permissions=True)
+    sync_student_applicant_contact_binding(
+        student_applicant=applicant.name,
+        contact_name=contact_name,
+    )
 
     applicant.add_comment(
         "Comment",

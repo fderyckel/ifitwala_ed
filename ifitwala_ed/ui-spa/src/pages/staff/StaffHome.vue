@@ -680,6 +680,11 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		icon: 'message-circle',
 		links: [
 			{
+				label: 'Admissions Cockpit',
+				to: { name: 'staff-admission-cockpit' },
+				capability: 'analytics_admissions',
+			},
+			{
 				label: 'Inquiries Analytics',
 				to: { name: 'staff-inquiry-analytics' },
 				capability: 'analytics_admissions',

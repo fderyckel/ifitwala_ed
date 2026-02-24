@@ -4,6 +4,7 @@ import { api } from './client'
 
 export const ADMISSION_API = {
   dashboard: 'ifitwala_ed.api.inquiry.get_dashboard_data',
+  admissionsCockpit: 'ifitwala_ed.api.admission_cockpit.get_admissions_cockpit_data',
   inquiryTypes: 'ifitwala_ed.api.inquiry.get_inquiry_types',
   organizations: 'ifitwala_ed.api.inquiry.get_inquiry_organizations',
   schools: 'ifitwala_ed.api.inquiry.get_inquiry_schools',
@@ -27,6 +28,19 @@ export type DashboardFilters = {
 
 export function getInquiryDashboardData(filters: DashboardFilters = {}) {
   return api(ADMISSION_API.dashboard, { filters })
+}
+
+export type AdmissionsCockpitFilters = {
+  organization?: string
+  school?: string
+  assigned_to_me?: number
+  include_terminal?: number
+  application_statuses?: string[]
+  limit?: number
+}
+
+export function getAdmissionsCockpitData(filters: AdmissionsCockpitFilters = {}) {
+  return api(ADMISSION_API.admissionsCockpit, { filters })
 }
 
 export function getInquiryTypes() {

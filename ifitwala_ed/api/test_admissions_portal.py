@@ -103,6 +103,29 @@ class TestInviteApplicant(FrappeTestCase):
         self.assertTrue(bool(self.applicant.applicant_contact))
         self.assertEqual(self.applicant.portal_account_email, email)
         self.assertEqual(self.applicant.applicant_email, email)
+        self.assertTrue(
+            bool(
+                frappe.db.exists(
+                    "Dynamic Link",
+                    {
+                        "parenttype": "Contact",
+                        "parentfield": "links",
+                        "parent": self.applicant.applicant_contact,
+                        "link_doctype": "Student Applicant",
+                        "link_name": self.applicant.name,
+                    },
+                )
+            )
+        )
+        contact_emails = set(
+            frappe.get_all(
+                "Contact Email",
+                filters={"parent": self.applicant.applicant_contact},
+                pluck="email_id",
+            )
+            or []
+        )
+        self.assertIn(email, contact_emails)
 
         user_row = frappe.db.get_value("User", email, ["name", "enabled", "user_type"], as_dict=True)
         self.assertTrue(bool(user_row))

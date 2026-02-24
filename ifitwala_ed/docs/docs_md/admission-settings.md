@@ -3,6 +3,8 @@ title: "Admission Settings: SLA and Assignment Controls"
 slug: admission-settings
 category: Admission
 doc_order: 1
+version: "1.1.1"
+last_change_date: "2026-02-24"
 summary: "Configure response SLAs, assignment colors, and background SLA checks for the full admissions pipeline."
 seo_title: "Admission Settings: SLA and Assignment Controls"
 seo_description: "Configure response SLAs, assignment colors, and background SLA checks for the full admissions pipeline."
@@ -33,7 +35,10 @@ When these settings are correct, your team sees at-risk records early instead of
 
 - [**Inquiry**](/docs/en/inquiry/): default SLA deadlines and list indicators.
 - [**Registration of Interest**](/docs/en/registration-of-interest/): same SLA helper is reused.
-- Scheduler job: hourly SLA sweep via `ifitwala_ed.admission.admission_utils.check_sla_breaches`.
+- Scheduler job: hourly SLA sweep via `ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep`.
+  - sweep is column-aware per doctype and skips doctypes that do not expose required SLA columns
+  - sweep backfills missing Inquiry `first_contact_due_on` values for legacy rows before status recompute
+  - last scheduler run summary is cached at `admissions:sla_sweep:last_run`
 - Assignment flows: `assign_inquiry` and `reassign_inquiry` use these values for follow-up deadlines and ToDo color.
 - Inquiry analytics API uses `followup_sla_days` as upcoming horizon in `ifitwala_ed.api.inquiry.get_dashboard_data`.
 
@@ -73,6 +78,7 @@ Treat SLA updates as operational policy changes. Confirm with admissions leaders
   - `ifitwala_ed/admission/admission_utils.py`
   - `ifitwala_ed/api/inquiry.py`
   - `ifitwala_ed/hooks.py` (scheduler events)
+  - `ifitwala_ed/api/admission_cockpit.py` (staff admissions operational board)
 
 ### Permission Matrix
 

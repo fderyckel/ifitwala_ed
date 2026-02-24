@@ -3,8 +3,8 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.3.0"
-last_change_date: "2026-02-21"
+version: "1.3.3"
+last_change_date: "2026-02-24"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
 seo_description: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
@@ -12,8 +12,8 @@ seo_description: "Capture, assign, and track incoming website inquiries with SLA
 
 ## Before You Start (Prerequisites)
 
-- Configure [**Admission Settings**](/docs/en/admission-settings/) first so SLA and assignment behaviors are available.
-- Ensure [**Organization**](/docs/en/organization/) and `School` master data exist for scoped inquiries.
+- Configure [**Admission Settings**](/docs/en/admission-settings/) first so that SLA and assignment behaviors are available.
+- Ensure [**Organization**](/docs/en/organization/) and [**School**](/docs/en/school/) master data exist for scoped inquiries.
 - Ensure admissions users are set up before assignment/reassignment workflows begin.
 
 `Inquiry` is the general inbound intake record for website visitors. It can represent admission interest, general questions, media requests, or any other first-contact message that needs managed follow-up.
@@ -77,12 +77,13 @@ Allowed transitions are strictly server-validated:
   - links to [**Student Applicant**](/docs/en/student-applicant/)
   - Desk invite action calls `ifitwala_ed.admission.admission_utils.from_inquiry_invite`
   - conversion ensures Inquiry has a `Contact` anchor and carries it into `Student Applicant.applicant_contact` when conversion is requested
+  - conversion also ensures Contact has a `Dynamic Link` to the created/reused `Student Applicant` (idempotent sync)
   - derived applicant email on Student Applicant comes from Contact email rows
   - this conversion step still does not create the portal `User`; portal invite is a separate button on Student Applicant
 - **Analytics surface**:
   - staff SPA route: `/staff/analytics/inquiry`
   - API: `ifitwala_ed.api.inquiry.get_dashboard_data` and related filter endpoints
-- **Scheduler**: hourly SLA recomputation.
+- **Scheduler**: hourly SLA recomputation (`run_hourly_sla_sweep` -> `check_sla_breaches`) with per-doctype column validation, legacy due-date backfill for Inquiry rows, and run summary cache at `admissions:sla_sweep:last_run`.
 - **File routing fallback**: attachments routed under Admissions inquiry context in file management utilities.
 
 ## Lifecycle and Linked Documents
