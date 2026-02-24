@@ -142,9 +142,16 @@
 
 								<div v-if="item.top_blockers.length" class="space-y-1">
 									<p class="type-caption text-slate-token/80">Missing / Blocked</p>
-									<p v-for="issue in item.top_blockers" :key="issue" class="text-xs text-red-700">
-										{{ issue }}
-									</p>
+									<a
+										v-for="issue in item.top_blockers"
+										:key="`${item.name}-${issue.kind}-${issue.label}`"
+										:href="issue.target_url || item.open_url"
+										target="_blank"
+										rel="noopener noreferrer"
+										class="block text-xs text-red-700 hover:underline"
+									>
+										{{ issue.label }}
+									</a>
 								</div>
 							</article>
 
@@ -189,7 +196,12 @@ type CockpitCard = {
 	application_status: string;
 	school: string;
 	program_offering?: string;
-	top_blockers: string[];
+	top_blockers: {
+		kind: string;
+		label: string;
+		target_url?: string;
+		target_label?: string;
+	}[];
 	readiness: {
 		profile_ok: boolean;
 		documents_ok: boolean;
@@ -197,7 +209,11 @@ type CockpitCard = {
 		health_ok: boolean;
 	};
 	open_url: string;
-	blockers: { kind: string }[];
+	blockers: {
+		kind: string;
+		target_url?: string;
+		target_label?: string;
+	}[];
 };
 
 type CockpitColumn = {
