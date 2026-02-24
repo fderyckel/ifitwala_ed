@@ -76,6 +76,13 @@ def _sync_school_website_page_routes():
 
 
 def _sync_school_admissions_cta_defaults():
+    if not frappe.db.table_exists("School"):
+        return
+
+    if not frappe.db.has_column("School", "admissions_inquiry_route"):
+        # Pre-model patch safety: some sites may not have synced this field yet.
+        return
+
     schools = frappe.get_all("School", fields=["name", "admissions_inquiry_route"])
     for school in schools:
         current = (school.admissions_inquiry_route or "").strip()

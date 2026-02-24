@@ -39,18 +39,30 @@ def _sync_web_form_routes():
 
 
 def _sync_school_admissions_defaults():
-    schools = frappe.get_all(
-        "School",
-        fields=["name", "admissions_inquiry_route", "admissions_apply_route"],
-    )
+    if not frappe.db.table_exists("School"):
+        return
+
+    has_inquiry_route = frappe.db.has_column("School", "admissions_inquiry_route")
+    has_apply_route = frappe.db.has_column("School", "admissions_apply_route")
+    if not has_inquiry_route and not has_apply_route:
+        # Pre-model patch safety: columns may not exist yet on some sites.
+        return
+
+    fields = ["name"]
+    if has_inquiry_route:
+        fields.append("admissions_inquiry_route")
+    if has_apply_route:
+        fields.append("admissions_apply_route")
+
+    schools = frappe.get_all("School", fields=fields)
     for school in schools:
         updates = {}
-        current_inquiry = (school.admissions_inquiry_route or "").strip()
-        current_apply = (school.admissions_apply_route or "").strip()
+        current_inquiry = (school.get("admissions_inquiry_route") or "").strip()
+        current_apply = (school.get("admissions_apply_route") or "").strip()
 
-        if current_inquiry in LEGACY_INQUIRY_ROUTES:
+        if has_inquiry_route and current_inquiry in LEGACY_INQUIRY_ROUTES:
             updates["admissions_inquiry_route"] = "/apply/inquiry"
-        if current_apply in LEGACY_APPLY_ROUTES:
+        if has_apply_route and current_apply in LEGACY_APPLY_ROUTES:
             updates["admissions_apply_route"] = "/admissions"
 
         if updates:
