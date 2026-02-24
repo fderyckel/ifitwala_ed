@@ -564,7 +564,7 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			{
 				label: 'Demographics Overview',
 				to: { name: 'student-demographic-analytics' },
-				capability: 'analytics_admissions',
+				capability: 'analytics_demographics',
 			},
 			{
 				label: 'Enrollment Analytics',

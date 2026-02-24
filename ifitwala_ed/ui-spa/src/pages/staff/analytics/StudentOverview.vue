@@ -3,7 +3,9 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { createResource } from 'frappe-ui';
 
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
+import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
 import StackedBarChart from '@/components/analytics/StackedBarChart.vue';
+import { useAnalyticsSnapshotExport } from '@/composables/useAnalyticsSnapshotExport';
 
 type HeatmapMode = 'whole-day' | 'per-block';
 type HeatmapCodeOption = {
@@ -258,8 +260,22 @@ const filters = ref<{ school: string | null; program: string | null; student: st
 	program: null,
 	student: null,
 });
+const snapshotRoot = ref<HTMLElement | null>(null);
 
 const viewMode = ref<ViewMode>('staff');
+const exportFilters = computed(() => ({
+	'View Mode': viewMode.value,
+	School: filters.value.school || 'All',
+	Program: filters.value.program || 'All',
+	Student: filters.value.student || 'None selected',
+}));
+
+const snapshotExport = useAnalyticsSnapshotExport({
+	dashboardSlug: 'student-overview',
+	dashboardTitle: 'Student Overview',
+	getTarget: () => snapshotRoot.value,
+	getFilters: () => exportFilters.value,
+});
 
 const filterMetaResource = createResource({
 	url: 'ifitwala_ed.api.student_overview_dashboard.get_filter_meta',
@@ -1111,6 +1127,7 @@ const reflectionFlags = computed(() => {
 
 <template>
 	<div
+		ref="snapshotRoot"
 		class="min-h-full px-4 pb-8 pt-8 md:px-6 lg:px-8"
 		style="background: var(--portal-gradient-bg)"
 	>
@@ -1120,12 +1137,20 @@ const reflectionFlags = computed(() => {
 					Student Overview
 				</h1>
 			</div>
-			<div class="ifit-filters flex items-center gap-2">
+			<div class="ifit-filters flex flex-col items-end gap-2">
 				<select v-model="viewMode" class="h-8 rounded-md border px-2 text-xs">
 					<option v-for="m in viewModeOptions" :key="m.id" :value="m.id">
 						{{ m.label }}
 					</option>
 				</select>
+				<AnalyticsSnapshotActions
+					:exporting-png="snapshotExport.exportingPng"
+					:exporting-pdf="snapshotExport.exportingPdf"
+					:message="snapshotExport.actionMessage"
+					:disabled="loadingSnapshot"
+					@export-png="snapshotExport.exportPng"
+					@export-pdf="snapshotExport.exportPdf"
+				/>
 			</div>
 		</header>
 

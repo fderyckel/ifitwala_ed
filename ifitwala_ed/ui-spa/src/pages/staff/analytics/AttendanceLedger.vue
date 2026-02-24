@@ -3,6 +3,8 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import AnalyticsCard from '@/components/analytics/AnalyticsCard.vue';
+import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
+import { useAnalyticsSnapshotExport } from '@/composables/useAnalyticsSnapshotExport';
 import DateRangePills from '@/components/filters/DateRangePills.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import { createAttendanceAnalyticsService } from '@/lib/services/attendance/attendanceAnalyticsService';
@@ -32,6 +34,7 @@ const filtersReady = ref(false);
 const isLoading = ref(false);
 const pageError = ref<string | null>(null);
 const actionError = ref<string | null>(null);
+const snapshotRoot = ref<HTMLElement | null>(null);
 
 const schools = ref<FetchSchoolFilterContextResponse['schools']>([]);
 const programs = ref<FetchActiveProgramsResponse>([]);
@@ -84,6 +87,29 @@ const presetItems: Array<{ label: string; value: WindowPreset }> = [
 ];
 
 const pageLengthOptions = [50, 80, 120, 200];
+
+const exportFilters = computed(() => ({
+	School: filters.school || 'All',
+	'Academic Year': filters.academic_year || 'All',
+	Term: filters.term || 'All',
+	Program: filters.program || 'All',
+	'Student Group': filters.student_group || 'All',
+	Window: preset.value,
+	'From Date': filters.start_date || 'Term start',
+	'To Date': filters.end_date || 'Term end',
+	'Attendance Mode': filters.whole_day === 1 ? 'Whole Day' : 'By Block',
+	Student: filters.student || 'All',
+	Instructor: filters.instructor || 'All',
+	Course: filters.course || 'All',
+	'Attendance Code': filters.attendance_code || 'All',
+}));
+
+const snapshotExport = useAnalyticsSnapshotExport({
+	dashboardSlug: 'attendance-ledger',
+	dashboardTitle: 'Attendance Ledger',
+	getTarget: () => snapshotRoot.value,
+	getFilters: () => exportFilters.value,
+});
 
 const rows = computed(() => ledger.value?.rows || []);
 const columns = computed<AttendanceLedgerColumn[]>(() => ledger.value?.columns || []);
@@ -434,7 +460,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div class="analytics-shell attendance-ledger-shell">
+	<div ref="snapshotRoot" class="analytics-shell attendance-ledger-shell">
 		<header class="flex flex-wrap items-end justify-between gap-3">
 			<div>
 				<h1 class="type-h2 text-canopy">Attendance Ledger</h1>
@@ -442,6 +468,14 @@ onMounted(async () => {
 					Row-level attendance evidence for follow-up, compliance, and code integrity.
 				</p>
 			</div>
+			<AnalyticsSnapshotActions
+				:exporting-png="snapshotExport.exportingPng"
+				:exporting-pdf="snapshotExport.exportingPdf"
+				:message="snapshotExport.actionMessage"
+				:disabled="isLoading"
+				@export-png="snapshotExport.exportPng"
+				@export-pdf="snapshotExport.exportPdf"
+			/>
 		</header>
 
 		<FiltersBar>

@@ -11,15 +11,16 @@ from ifitwala_ed.api.attendance import ADMIN_ROLES, COUNSELOR_ROLES, INSTRUCTOR_
 from ifitwala_ed.api.enrollment_analytics import ALLOWED_ANALYTICS_ROLES as ENROLLMENT_ANALYTICS_ROLES
 from ifitwala_ed.api.inquiry import ALLOWED_ANALYTICS_ROLES as INQUIRY_ANALYTICS_ROLES
 from ifitwala_ed.api.room_utilization import ANALYTICS_ROLES as SCHEDULING_ROLES
-from ifitwala_ed.api.student_demographics_dashboard import ALLOWED_ANALYTICS_ROLES as DEMOGRAPHICS_ANALYTICS_ROLES
+from ifitwala_ed.api.student_demographics_dashboard import (
+    ALLOWED_ANALYTICS_ROLES as STUDENT_DEMOGRAPHICS_ANALYTICS_ROLES,
+)
 from ifitwala_ed.api.student_log_dashboard import ALLOWED_ANALYTICS_ROLES as WELLBEING_ANALYTICS_ROLES
 from ifitwala_ed.api.users import STAFF_ROLES
 
 CACHE_TTL_SECONDS = 3600
 HR_ROLES = frozenset({"HR User", "HR Manager"})
-ADMISSIONS_ANALYTICS_ROLES = frozenset(
-    ADMISSIONS_ROLES | INQUIRY_ANALYTICS_ROLES | ENROLLMENT_ANALYTICS_ROLES | DEMOGRAPHICS_ANALYTICS_ROLES
-)
+ADMISSIONS_ANALYTICS_ROLES = frozenset(ADMISSIONS_ROLES | INQUIRY_ANALYTICS_ROLES | ENROLLMENT_ANALYTICS_ROLES)
+DEMOGRAPHICS_ANALYTICS_ROLES = frozenset(STUDENT_DEMOGRAPHICS_ANALYTICS_ROLES)
 
 
 def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_name: str | None) -> str:
@@ -71,6 +72,7 @@ def _build_staff_home_capabilities(roles: set[str]) -> dict[str, bool]:
         "analytics_wellbeing": bool(roles & set(WELLBEING_ANALYTICS_ROLES)),
         "analytics_hr": bool(roles & (set(HR_ROLES) | set(ADMIN_ROLES))),
         "analytics_admissions": bool(roles & set(ADMISSIONS_ANALYTICS_ROLES)),
+        "analytics_demographics": bool(roles & set(DEMOGRAPHICS_ANALYTICS_ROLES)),
         "analytics_scheduling": bool(roles & (set(SCHEDULING_ROLES) | set(ADMIN_ROLES))),
         "can_open_desk": bool(roles & set(STAFF_ROLES)),
     }
@@ -139,7 +141,7 @@ def get_staff_home_header():
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
     cache = frappe.cache()
-    cache_key = f"staff_home:header:v3:{user}"
+    cache_key = f"staff_home:header:v4:{user}"
     cached = cache.get_value(cache_key)
     if cached:
         try:
