@@ -28,6 +28,9 @@ type ExportDashboardPdfResponse = {
 };
 
 const MAX_CANVAS_HEIGHT = 12000;
+const MAX_CAPTURE_WIDTH = 2200;
+const MAX_CAPTURE_HEIGHT = 4200;
+const CAPTURE_SCALE = 1.25;
 
 function resolveSiteTimezone(): string {
 	const tzFromBoot =
@@ -187,6 +190,7 @@ function messageForError(error: unknown, fallback: string): string {
 export function useAnalyticsSnapshotExport(options: UseAnalyticsSnapshotExportOptions) {
 	const exportingPng = ref(false);
 	const exportingPdf = ref(false);
+	const exportLock = ref(false);
 	const actionMessage = ref<string | null>(null);
 	const isBusy = computed(() => exportingPng.value || exportingPdf.value);
 
@@ -202,18 +206,25 @@ export function useAnalyticsSnapshotExport(options: UseAnalyticsSnapshotExportOp
 		const capturedAt = formatSnapshotTimestamp(capturedAtDate, timezone);
 		const filters = toFilterRows(options.getFilters());
 
-		const width = Math.max(target.scrollWidth, Math.ceil(target.getBoundingClientRect().width), 1024);
-		const measuredHeight = Math.max(target.scrollHeight, Math.ceil(target.getBoundingClientRect().height), 720);
-		const height = Math.min(measuredHeight, MAX_CANVAS_HEIGHT);
+		// Keep capture bounded to avoid browser memory pressure on long dashboards.
+		const width = Math.min(
+			Math.max(Math.ceil(target.getBoundingClientRect().width), Math.min(window.innerWidth, 1024)),
+			MAX_CAPTURE_WIDTH
+		);
+		const measuredHeight = Math.max(
+			Math.ceil(target.getBoundingClientRect().height),
+			Math.min(window.innerHeight, 900)
+		);
+		const height = Math.min(measuredHeight, MAX_CAPTURE_HEIGHT);
 
-		if (measuredHeight > MAX_CANVAS_HEIGHT) {
+		if (measuredHeight > MAX_CAPTURE_HEIGHT) {
 			actionMessage.value =
 				'Large dashboard detected. Export includes the first visible sections up to a safe height.';
 		}
 
 		const screenshot = await html2canvas(target, {
 			backgroundColor: '#ffffff',
-			scale: 2,
+			scale: CAPTURE_SCALE,
 			useCORS: true,
 			width,
 			height,
@@ -250,8 +261,9 @@ export function useAnalyticsSnapshotExport(options: UseAnalyticsSnapshotExportOp
 	}
 
 	async function exportPng() {
-		if (isBusy.value) return;
+		if (isBusy.value || exportLock.value) return;
 		exportingPng.value = true;
+		exportLock.value = true;
 		actionMessage.value = null;
 
 		try {
@@ -265,12 +277,14 @@ export function useAnalyticsSnapshotExport(options: UseAnalyticsSnapshotExportOp
 			actionMessage.value = messageForError(error, 'PNG export failed. Please try again.');
 		} finally {
 			exportingPng.value = false;
+			exportLock.value = false;
 		}
 	}
 
 	async function exportPdf() {
-		if (isBusy.value) return;
+		if (isBusy.value || exportLock.value) return;
 		exportingPdf.value = true;
+		exportLock.value = true;
 		actionMessage.value = null;
 
 		try {
@@ -305,6 +319,7 @@ export function useAnalyticsSnapshotExport(options: UseAnalyticsSnapshotExportOp
 			actionMessage.value = messageForError(error, 'PDF export failed. Please try again.');
 		} finally {
 			exportingPdf.value = false;
+			exportLock.value = false;
 		}
 	}
 
