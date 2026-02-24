@@ -1032,7 +1032,7 @@ def from_inquiry_invite(
             changed = True
 
         existing_applicant_email = normalize_email_value(existing_applicant.applicant_email)
-        if inquiry_email and inquiry_email != existing_applicant_email:
+        if inquiry_email and not existing_applicant_email:
             existing_applicant.flags.from_contact_sync = True
             existing_applicant.applicant_email = inquiry_email
             changed = True
