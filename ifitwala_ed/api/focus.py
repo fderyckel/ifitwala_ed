@@ -15,16 +15,26 @@ from ifitwala_ed.admission.applicant_review_workflow import (
     TARGET_HEALTH,
     complete_assignment_decision,
 )
+from ifitwala_ed.api.policy_signature import (
+    close_open_staff_policy_todos,
+    find_open_staff_policy_todos,
+    get_active_employee_for_user,
+    get_policy_version_context,
+    parse_employee_from_todo_description,
+    validate_staff_policy_scope_for_employee,
+)
 
 STUDENT_LOG_DOCTYPE = "Student Log"
 FOLLOW_UP_DOCTYPE = "Student Log Follow Up"
 INQUIRY_DOCTYPE = "Inquiry"
 APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE = ASSIGNMENT_DOCTYPE
+POLICY_VERSION_DOCTYPE = "Policy Version"
 
 ACTION_STUDENT_LOG_SUBMIT = "student_log.follow_up.act.submit"
 ACTION_STUDENT_LOG_REVIEW = "student_log.follow_up.review.decide"
 ACTION_INQUIRY_FIRST_CONTACT = "inquiry.follow_up.act.first_contact"
 ACTION_APPLICANT_REVIEW_SUBMIT = "applicant_review.assignment.decide"
+ACTION_POLICY_STAFF_SIGN = "policy_acknowledgement.staff.sign"
 
 # Focus action types (v1)
 ACTION_MODE = {
@@ -32,6 +42,7 @@ ACTION_MODE = {
     ACTION_STUDENT_LOG_REVIEW: "author",
     ACTION_INQUIRY_FIRST_CONTACT: "assignee",
     ACTION_APPLICANT_REVIEW_SUBMIT: "assignee",
+    ACTION_POLICY_STAFF_SIGN: "assignee",
 }
 
 
@@ -117,6 +128,8 @@ def _resolve_mode(action_type: str | None, reference_doctype: str, doc) -> str:
         return "assignee"
     if reference_doctype == INQUIRY_DOCTYPE and doc.assigned_to == frappe.session.user:
         return "assignee"
+    if reference_doctype == POLICY_VERSION_DOCTYPE:
+        return "assignee"
 
     return "author"
 
@@ -182,6 +195,10 @@ def _can_read_inquiry(name: str) -> bool:
 
 def _normalize_roles(roles: list[str] | tuple[str, ...] | None) -> list[str]:
     return sorted({(role or "").strip() for role in (roles or []) if (role or "").strip()})
+
+
+def _active_employee_row(user: str) -> dict | None:
+    return get_active_employee_for_user(user)
 
 
 def _reviewer_matches_assignment(row: dict, *, user: str, roles: set[str]) -> bool:
@@ -641,6 +658,142 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
         )
 
     # ------------------------------------------------------------
+    # E) Staff policy signature action items (ToDo -> Policy Version)
+    # ------------------------------------------------------------
+    active_employee = _active_employee_row(user)
+    if active_employee:
+        policy_rows = frappe.db.sql(
+            """
+            select
+                t.reference_name as policy_version,
+                t.date as todo_due_date,
+                nullif(trim(ifnull(t.assigned_by, '')), '') as todo_assigned_by,
+                nullif(trim(ifnull(t.assigned_by_full_name, '')), '') as todo_assigned_by_full_name,
+                nullif(trim(ifnull(t.owner, '')), '') as todo_owner,
+                ifnull(t.description, '') as todo_description,
+                ip.policy_key,
+                ip.policy_title,
+                ip.organization as policy_organization,
+                ip.school as policy_school,
+                pv.version_label
+            from `tabToDo` t
+            join `tabPolicy Version` pv
+              on pv.name = t.reference_name
+            join `tabInstitutional Policy` ip
+              on ip.name = pv.institutional_policy
+            where t.allocated_to = %(user)s
+              and t.reference_type = %(ref_type)s
+              and (%(open_only)s = 0 or t.status = 'Open')
+              and pv.is_active = 1
+              and ip.is_active = 1
+              and ip.applies_to like %(applies_to)s
+            order by ifnull(t.date, '9999-12-31') asc, t.modified desc
+            limit %(limit)s offset %(offset)s
+            """,
+            {
+                "user": user,
+                "ref_type": POLICY_VERSION_DOCTYPE,
+                "open_only": open_only,
+                "limit": limit,
+                "offset": offset,
+                "applies_to": "%Staff%",
+            },
+            as_dict=True,
+        )
+
+        policy_assigner_ids: set[str] = set()
+        for row in policy_rows:
+            if row.get("todo_assigned_by_full_name"):
+                continue
+            assigner = row.get("todo_assigned_by") or row.get("todo_owner")
+            if assigner:
+                policy_assigner_ids.add(assigner)
+        policy_assigner_name_by_id = _get_user_full_names(sorted(policy_assigner_ids))
+
+        for row in policy_rows:
+            policy_version = (row.get("policy_version") or "").strip()
+            if not policy_version:
+                continue
+
+            employee_name = parse_employee_from_todo_description(row.get("todo_description")) or active_employee.get(
+                "name"
+            )
+            if not employee_name or employee_name != active_employee.get("name"):
+                continue
+
+            policy_context = {
+                "policy_organization": row.get("policy_organization"),
+                "policy_school": row.get("policy_school"),
+            }
+            try:
+                validate_staff_policy_scope_for_employee(policy_context, active_employee)
+            except Exception:
+                continue
+
+            already_ack = frappe.db.exists(
+                "Policy Acknowledgement",
+                {
+                    "policy_version": policy_version,
+                    "acknowledged_for": "Staff",
+                    "context_doctype": "Employee",
+                    "context_name": active_employee.get("name"),
+                },
+            )
+            if already_ack:
+                continue
+
+            due = str(row.get("todo_due_date")) if row.get("todo_due_date") else None
+            badge = _badge_from_due_date(due)
+            policy_label = (
+                (row.get("policy_title") or "").strip() or (row.get("policy_key") or "").strip() or policy_version
+            )
+            subtitle_parts = [policy_label]
+            version_label = (row.get("version_label") or "").strip()
+            if version_label:
+                subtitle_parts.append(f"Version {version_label}")
+            if row.get("policy_school"):
+                subtitle_parts.append(f"School: {row.get('policy_school')}")
+            subtitle = " • ".join(subtitle_parts)
+
+            assigned_by = (row.get("todo_assigned_by") or row.get("todo_owner") or "").strip() or None
+            assigned_by_name = (row.get("todo_assigned_by_full_name") or "").strip() or None
+            if not assigned_by_name and assigned_by:
+                assigned_by_name = policy_assigner_name_by_id.get(assigned_by) or assigned_by
+
+            items.append(
+                {
+                    "id": build_focus_item_id(
+                        "policy_ack",
+                        POLICY_VERSION_DOCTYPE,
+                        policy_version,
+                        ACTION_POLICY_STAFF_SIGN,
+                        user,
+                    ),
+                    "kind": "action",
+                    "title": "Acknowledge policy",
+                    "subtitle": subtitle,
+                    "badge": badge,
+                    "priority": 85,
+                    "due_date": due,
+                    "action_type": ACTION_POLICY_STAFF_SIGN,
+                    "reference_doctype": POLICY_VERSION_DOCTYPE,
+                    "reference_name": policy_version,
+                    "payload": {
+                        "policy_title": row.get("policy_title"),
+                        "policy_key": row.get("policy_key"),
+                        "version_label": row.get("version_label"),
+                        "policy_organization": row.get("policy_organization"),
+                        "policy_school": row.get("policy_school"),
+                        "employee": active_employee.get("name"),
+                        "employee_group": active_employee.get("employee_group"),
+                        "assigned_by": assigned_by,
+                        "assigned_by_name": assigned_by_name,
+                    },
+                    "permissions": {"can_open": True},
+                }
+            )
+
+    # ------------------------------------------------------------
     # Sort + slice
     # ------------------------------------------------------------
     def _sort_key(x):
@@ -976,8 +1129,101 @@ def get_focus_context(
             },
         }
 
+    if reference_doctype == POLICY_VERSION_DOCTYPE:
+        if action_type and action_type != ACTION_POLICY_STAFF_SIGN:
+            frappe.throw(_("This focus item is not a staff policy acknowledgement action."), frappe.PermissionError)
+
+        policy_row = get_policy_version_context(
+            reference_name,
+            require_active=False,
+            require_staff_applies=True,
+        )
+
+        todos = find_open_staff_policy_todos(user=frappe.session.user, policy_version=reference_name)
+        if not todos:
+            frappe.throw(_("This policy acknowledgement task is no longer open."))
+
+        todo = todos[0]
+        employee_name = parse_employee_from_todo_description(todo.get("description"))
+        employee = (
+            frappe.db.get_value(
+                "Employee",
+                employee_name,
+                [
+                    "name",
+                    "employee_full_name",
+                    "organization",
+                    "school",
+                    "employee_group",
+                    "user_id",
+                    "employment_status",
+                ],
+                as_dict=True,
+            )
+            if employee_name
+            else _active_employee_row(frappe.session.user)
+        )
+        if not employee:
+            frappe.throw(_("No active Employee context could be resolved for this policy task."))
+
+        if (employee.get("user_id") or "").strip() != frappe.session.user:
+            frappe.throw(_("You are not assigned to this policy acknowledgement task."), frappe.PermissionError)
+        if (employee.get("employment_status") or "").strip() != "Active":
+            frappe.throw(_("Only active Employees can acknowledge Staff policies."))
+
+        validate_staff_policy_scope_for_employee(policy_row, employee)
+
+        existing_ack = frappe.db.get_value(
+            "Policy Acknowledgement",
+            {
+                "policy_version": reference_name,
+                "acknowledged_for": "Staff",
+                "context_doctype": "Employee",
+                "context_name": employee.get("name"),
+            },
+            ["name", "acknowledged_at", "acknowledged_by"],
+            as_dict=True,
+        )
+
+        policy_label = (
+            (policy_row.get("policy_title") or "").strip()
+            or (policy_row.get("policy_key") or "").strip()
+            or (policy_row.get("institutional_policy") or "").strip()
+            or reference_name
+        )
+        return {
+            "focus_item_id": focus_item_id,
+            "action_type": action_type or ACTION_POLICY_STAFF_SIGN,
+            "reference_doctype": POLICY_VERSION_DOCTYPE,
+            "reference_name": reference_name,
+            "mode": "assignee",
+            "log": None,
+            "inquiry": None,
+            "follow_ups": [],
+            "review_assignment": None,
+            "policy_signature": {
+                "policy_version": reference_name,
+                "institutional_policy": policy_row.get("institutional_policy"),
+                "policy_key": policy_row.get("policy_key"),
+                "policy_title": policy_row.get("policy_title"),
+                "policy_label": policy_label,
+                "version_label": policy_row.get("version_label"),
+                "effective_from": str(policy_row.get("effective_from")) if policy_row.get("effective_from") else None,
+                "effective_to": str(policy_row.get("effective_to")) if policy_row.get("effective_to") else None,
+                "policy_text_html": policy_row.get("policy_text") or "",
+                "policy_organization": policy_row.get("policy_organization"),
+                "policy_school": policy_row.get("policy_school"),
+                "employee": employee.get("name"),
+                "employee_name": employee.get("employee_full_name"),
+                "employee_group": employee.get("employee_group"),
+                "todo_due_date": str(todo.get("date")) if todo.get("date") else None,
+                "is_acknowledged": bool(existing_ack),
+                "acknowledged_at": existing_ack.get("acknowledged_at") if existing_ack else None,
+            },
+        }
+
     frappe.throw(
-        _("Only Student Log, Inquiry, and Applicant Review Assignment focus items are supported."),
+        _("Only Student Log, Inquiry, Applicant Review Assignment, and Policy Version focus items are supported."),
         frappe.ValidationError,
     )
 
@@ -1339,6 +1585,166 @@ def mark_inquiry_contacted(
             "inquiry_name": inquiry_name,
             "result": result,
         }
+
+
+@frappe.whitelist()
+def acknowledge_staff_policy(
+    focus_item_id: str,
+    client_request_id: str | None = None,
+):
+    user = _require_login()
+    focus_item_id = (focus_item_id or "").strip()
+    client_request_id = (client_request_id or "").strip() or None
+
+    if not focus_item_id:
+        frappe.throw(_("Missing focus_item_id."))
+
+    parsed = _parse_focus_item_id(focus_item_id)
+    if parsed.get("user") != user:
+        frappe.throw(_("Invalid focus item id (user mismatch)."), frappe.PermissionError)
+    if parsed.get("reference_doctype") != POLICY_VERSION_DOCTYPE:
+        frappe.throw(_("Invalid focus item reference."), frappe.ValidationError)
+    if parsed.get("action_type") != ACTION_POLICY_STAFF_SIGN:
+        frappe.throw(_("This focus item is not a staff policy acknowledgement action."), frappe.PermissionError)
+
+    policy_version = (parsed.get("reference_name") or "").strip()
+    if not policy_version:
+        frappe.throw(_("Invalid focus item reference name."), frappe.ValidationError)
+
+    cache = _cache()
+    suffix = "policy_ack_staff_sign"
+    if client_request_id:
+        key = _idempotency_key(user, focus_item_id, client_request_id, suffix)
+        existing = cache.get_value(key)
+        if existing:
+            try:
+                parsed_existing = frappe.parse_json(existing)
+            except Exception:
+                parsed_existing = None
+            if isinstance(parsed_existing, dict):
+                return {
+                    **parsed_existing,
+                    "status": "already_processed",
+                    "idempotent": True,
+                }
+
+    with cache.lock(_lock_key(user, focus_item_id, suffix), timeout=10):
+        if client_request_id:
+            key = _idempotency_key(user, focus_item_id, client_request_id, suffix)
+            existing = cache.get_value(key)
+            if existing:
+                try:
+                    parsed_existing = frappe.parse_json(existing)
+                except Exception:
+                    parsed_existing = None
+                if isinstance(parsed_existing, dict):
+                    return {
+                        **parsed_existing,
+                        "status": "already_processed",
+                        "idempotent": True,
+                    }
+
+        policy_row = get_policy_version_context(
+            policy_version,
+            require_active=True,
+            require_staff_applies=True,
+        )
+
+        todos = find_open_staff_policy_todos(user=user, policy_version=policy_version)
+        active_employee = _active_employee_row(user)
+        if not todos and not active_employee:
+            frappe.throw(_("No open policy acknowledgement task was found for your account."))
+
+        employee_name = None
+        if todos:
+            employee_name = parse_employee_from_todo_description(todos[0].get("description"))
+        if not employee_name and active_employee:
+            employee_name = active_employee.get("name")
+        if not employee_name:
+            frappe.throw(_("No Employee context could be resolved for this acknowledgement."))
+
+        employee = frappe.db.get_value(
+            "Employee",
+            employee_name,
+            [
+                "name",
+                "employee_full_name",
+                "organization",
+                "school",
+                "employee_group",
+                "user_id",
+                "employment_status",
+            ],
+            as_dict=True,
+        )
+        if not employee:
+            frappe.throw(_("Employee context no longer exists."))
+        if (employee.get("user_id") or "").strip() != user:
+            frappe.throw(_("You are not assigned to this policy acknowledgement task."), frappe.PermissionError)
+        if (employee.get("employment_status") or "").strip() != "Active":
+            frappe.throw(_("Only active Employees can acknowledge Staff policies."))
+
+        validate_staff_policy_scope_for_employee(policy_row, employee)
+
+        existing_ack = frappe.db.get_value(
+            "Policy Acknowledgement",
+            {
+                "policy_version": policy_version,
+                "acknowledged_for": "Staff",
+                "context_doctype": "Employee",
+                "context_name": employee_name,
+            },
+            ["name", "acknowledged_at"],
+            as_dict=True,
+        )
+        if existing_ack:
+            closed_count = close_open_staff_policy_todos(user=user, policy_version=policy_version)
+            result = {
+                "ok": True,
+                "idempotent": True,
+                "status": "already_processed",
+                "policy_version": policy_version,
+                "employee": employee_name,
+                "acknowledgement": existing_ack.get("name"),
+                "acknowledged_at": existing_ack.get("acknowledged_at"),
+                "closed_todos": closed_count,
+            }
+            if client_request_id:
+                cache.set_value(key, frappe.as_json(result), expires_in_sec=60 * 10)
+            return result
+
+        ack_doc = frappe.get_doc(
+            {
+                "doctype": "Policy Acknowledgement",
+                "policy_version": policy_version,
+                "acknowledged_by": user,
+                "acknowledged_for": "Staff",
+                "context_doctype": "Employee",
+                "context_name": employee_name,
+            }
+        )
+        ack_doc.insert(ignore_permissions=True)
+
+        closed_count = close_open_staff_policy_todos(user=user, policy_version=policy_version)
+        frappe.publish_realtime(
+            event="focus:invalidate",
+            message={"source": "policy_signature_ack", "policy_version": policy_version},
+            user=user,
+        )
+
+        result = {
+            "ok": True,
+            "idempotent": False,
+            "status": "processed",
+            "policy_version": policy_version,
+            "employee": employee_name,
+            "acknowledgement": ack_doc.name,
+            "acknowledged_at": ack_doc.acknowledged_at,
+            "closed_todos": closed_count,
+        }
+        if client_request_id:
+            cache.set_value(key, frappe.as_json(result), expires_in_sec=60 * 10)
+        return result
 
 
 @frappe.whitelist()

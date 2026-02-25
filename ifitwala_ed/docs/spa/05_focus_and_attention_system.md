@@ -162,6 +162,7 @@ Example action types:
 * `student_log.follow_up.review.decide` → mounts `StudentLogReviewOutcome.vue` (author mode)
 * `inquiry.follow_up.act.first_contact` → mounts `InquiryFollowUpAction.vue` (assignee mode)
 * `applicant_review.assignment.decide` → mounts `ApplicantReviewAssignmentAction.vue` (assignee mode)
+* `policy_acknowledgement.staff.sign` → mounts `StaffPolicyAcknowledgeAction.vue` (assignee mode)
 
 Later:
 
@@ -323,7 +324,14 @@ Behavior:
 * Extended `focus.list` and `focus.get_context` with Inquiry while preserving contract shape
 * Added named endpoint `focus.mark_inquiry_contacted` with assignee + permission + idempotency guards
 
-### Phase 3 — Student Referral / Meetings
+### Phase 3 — Staff Policy Signature (delivered)
+
+* Added `action_type` `policy_acknowledgement.staff.sign`
+* Added `StaffPolicyAcknowledgeAction.vue` routed by `FocusRouterOverlay.vue`
+* Extended `focus.list` and `focus.get_context` with `Policy Version` focus items (staff only)
+* Added named endpoint `focus.acknowledge_staff_policy` with assignment, scope, and idempotency guards
+
+### Phase 4 — Student Referral / Meetings
 
 * Same pattern
 

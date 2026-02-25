@@ -87,6 +87,7 @@ def has_staff_role(user: str | None = None) -> bool:
         roles
         & {
             ACADEMIC_STAFF_ROLE,
+            "Employee",
         }
     )
 

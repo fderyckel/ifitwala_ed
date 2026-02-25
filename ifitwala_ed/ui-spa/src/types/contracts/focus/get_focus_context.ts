@@ -2,7 +2,7 @@
 
 export type Request = {
   focus_item_id?: string | null
-  reference_doctype?: 'Student Log' | 'Inquiry' | 'Applicant Review Assignment' | null
+  reference_doctype?: 'Student Log' | 'Inquiry' | 'Applicant Review Assignment' | 'Policy Version' | null
   reference_name?: string | null
   action_type?: string | null
 }
@@ -10,7 +10,7 @@ export type Request = {
 export type Response = {
   focus_item_id?: string | null
   action_type?: string | null
-  reference_doctype: 'Student Log' | 'Inquiry' | 'Applicant Review Assignment'
+  reference_doctype: 'Student Log' | 'Inquiry' | 'Applicant Review Assignment' | 'Policy Version'
   reference_name: string
   mode: 'assignee' | 'author'
   log: {
@@ -84,5 +84,24 @@ export type Response = {
       decided_by?: string | null
       decided_on?: string | null
     }>
+  } | null
+  policy_signature?: {
+    policy_version: string
+    institutional_policy?: string | null
+    policy_key?: string | null
+    policy_title?: string | null
+    policy_label?: string | null
+    version_label?: string | null
+    effective_from?: string | null
+    effective_to?: string | null
+    policy_text_html?: string | null
+    policy_organization?: string | null
+    policy_school?: string | null
+    employee?: string | null
+    employee_name?: string | null
+    employee_group?: string | null
+    todo_due_date?: string | null
+    is_acknowledged?: boolean
+    acknowledged_at?: string | null
   } | null
 }

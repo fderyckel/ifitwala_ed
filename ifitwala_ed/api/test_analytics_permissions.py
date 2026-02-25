@@ -17,6 +17,7 @@ class TestAnalyticsPermissions(FrappeTestCase):
         caps = _build_staff_home_capabilities({"Accreditation Visitor"})
         self.assertTrue(caps.get("analytics_demographics"))
         self.assertFalse(caps.get("analytics_admissions"))
+        self.assertFalse(caps.get("analytics_policy_signatures"))
 
     def test_demographics_access_allows_admission_officer_full_mode(self):
         with patch(
@@ -67,3 +68,8 @@ class TestAnalyticsPermissions(FrappeTestCase):
         ):
             with self.assertRaises(frappe.PermissionError):
                 _get_demographics_access_context(user="staff@example.com")
+
+    def test_staff_home_policy_signature_capabilities_for_hr(self):
+        caps = _build_staff_home_capabilities({"HR Manager"})
+        self.assertTrue(caps.get("analytics_policy_signatures"))
+        self.assertTrue(caps.get("manage_policy_signatures"))

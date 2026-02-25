@@ -3,9 +3,9 @@ title: "Policy Acknowledgement: Append-Only Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "1.0.0"
+version: "1.1.0"
 last_change_date: "2026-02-25"
-summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, and organization-scope validation."
+summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, organization-scope validation, and staff policy-signature campaign workflows."
 seo_title: "Policy Acknowledgement: Append-Only Consent Evidence"
 seo_description: "Record immutable who/what/when acknowledgement evidence with strict context, role, and organization-scope validation."
 ---
@@ -45,8 +45,39 @@ seo_description: "Record immutable who/what/when acknowledgement evidence with s
   - users with `Student` role
   - guardian role only when guardian is linked to that student.
 - Guardian acknowledgements require guardian self-context.
-- Staff acknowledgements require staff role (`Academic Staff`).
+- Staff acknowledgements require staff role (`Academic Staff` or `Employee`).
 - `System Manager` can bypass role validation, and override inserts are comment-audited.
+
+## Staff Signature Campaign Workflow (Internal Tools)
+
+The internal workflow for staff policy signatures is campaign-based and scope-driven:
+
+1. Select a `Policy Version` plus target scope:
+   - `organization` (required)
+   - `school` (optional)
+   - `employee_group` (optional)
+2. Preview scope impact before launch:
+   - target employees
+   - eligible users
+   - already signed
+   - already open
+   - to create
+3. Launch creates `ToDo` rows linked to `Policy Version` for staff not already signed and not already open.
+4. Staff complete acknowledgement from Focus action `policy_acknowledgement.staff.sign`.
+5. On acknowledgement:
+   - one immutable `Policy Acknowledgement` row is inserted (`acknowledged_for=Staff`, `context_doctype=Employee`)
+   - open policy ToDos for that staff/policy version are closed
+   - Focus invalidation is published.
+
+### New Policy vs Updated Policy (Best-Practice Trigger Rules)
+
+- New policy (`Policy Version` first active release):
+  - launch campaign for full intended scope.
+- Updated policy (new active `Policy Version` replacing prior version):
+  - launch a fresh campaign for the new version; do not reuse prior acknowledgements.
+  - prior acknowledgements remain immutable evidence for the old version.
+- Scope changes (organization/school/group changes):
+  - apply to future campaign launches only; existing acknowledgements are not recomputed.
 
 ## Where It Is Used Across the ERP
 
@@ -61,6 +92,11 @@ seo_description: "Record immutable who/what/when acknowledgement evidence with s
   - idempotent return when same acknowledgement already exists.
 - Policy-version immutability chain:
   - existence of any acknowledgement activates lock behavior in [**Policy Version**](/docs/en/policy-version/).
+- Internal staff policy workflow APIs:
+  - `ifitwala_ed.api.policy_signature.get_staff_policy_campaign_options`
+  - `ifitwala_ed.api.policy_signature.launch_staff_policy_campaign`
+  - `ifitwala_ed.api.policy_signature.get_staff_policy_signature_dashboard`
+  - `ifitwala_ed.api.focus.acknowledge_staff_policy`
 
 ## Lifecycle and Linked Documents
 

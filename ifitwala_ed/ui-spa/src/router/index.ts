@@ -44,6 +44,7 @@ const routes: RouteRecordRaw[] = [
 	{ path: '/staff/analytics/attendance', name: 'staff-attendance-analytics', component: () => import('@/pages/staff/analytics/AttendanceAnalytics.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/attendance-ledger', name: 'staff-attendance-ledger', component: () => import('@/pages/staff/analytics/AttendanceLedger.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/enrollment', name: 'StaffEnrollmentAnalytics', component: () => import('@/pages/staff/analytics/EnrollmentAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/policy-signatures', name: 'staff-policy-signature-analytics', component: () => import('@/pages/staff/analytics/PolicySignatureAnalytics.vue'), meta: { layout: 'staff' } },
   { path: '/staff/announcements', name: 'staff-announcements', component: () => import('@/pages/staff/OrgCommunicationArchive.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/inquiry', name: 'staff-inquiry-analytics', component: () => import('@/pages/staff/analytics/InquiryAnalytics.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/admission-cockpit', name: 'staff-admission-cockpit', component: () => import('@/pages/staff/admissions/AdmissionsCockpit.vue'), meta: { layout: 'staff' } },

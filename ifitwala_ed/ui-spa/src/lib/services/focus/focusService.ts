@@ -29,6 +29,10 @@ import type {
 	Request as SubmitApplicantReviewAssignmentRequest,
 	Response as SubmitApplicantReviewAssignmentResponse,
 } from '@/types/contracts/focus/submit_applicant_review_assignment'
+import type {
+	Request as AcknowledgeStaffPolicyRequest,
+	Response as AcknowledgeStaffPolicyResponse,
+} from '@/types/contracts/focus/acknowledge_staff_policy'
 
 /**
  * Focus Service (A+ — LOCKED)
@@ -76,6 +80,12 @@ export function createFocusService() {
 			method: 'POST',
 			auto: false,
 		})
+
+	const acknowledgeStaffPolicyResource = createResource<AcknowledgeStaffPolicyResponse>({
+		url: 'ifitwala_ed.api.focus.acknowledge_staff_policy',
+		method: 'POST',
+		auto: false,
+	})
 
 	/* ------------------------------------------------------------
 	 * Public API (domain-only)
@@ -139,11 +149,24 @@ export function createFocusService() {
 		return response
 	}
 
+	async function acknowledgeStaffPolicy(
+		payload: AcknowledgeStaffPolicyRequest
+	): Promise<AcknowledgeStaffPolicyResponse> {
+		const response = await acknowledgeStaffPolicyResource.submit(payload)
+
+		if (response.status === 'processed' || response.status === 'already_processed') {
+			uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+		}
+
+		return response
+	}
+
 	return {
 		getFocusContext,
 		submitStudentLogFollowUp,
 		reviewStudentLogOutcome,
 		markInquiryContacted,
 		submitApplicantReviewAssignment,
+		acknowledgeStaffPolicy,
 	}
 }

@@ -98,6 +98,29 @@
 						/>
 					</button>
 
+					<button
+						v-if="userCapabilities.manage_policy_signatures"
+						type="button"
+						class="action-tile group"
+						@click="openPolicySignatureCampaign"
+					>
+						<div class="action-tile__icon">
+							<FeatherIcon name="file-text" class="h-6 w-6" />
+						</div>
+						<div class="flex-1 min-w-0">
+							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+								Launch policy signature
+							</p>
+							<p class="truncate type-caption text-slate-token/70">
+								Create signature tasks by organization scope
+							</p>
+						</div>
+						<FeatherIcon
+							name="chevron-right"
+							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+						/>
+					</button>
+
 					<!-- Standard Quick Actions (router links, not overlays) -->
 					<RouterLink
 						v-for="action in quickActions"
@@ -708,8 +731,8 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			},
 			{
 				label: 'Policy Acknowledgments',
-				to: '/analytics/compliance/policy-acknowledgments',
-				capability: 'analytics_attendance_admin',
+				to: { name: 'staff-policy-signature-analytics' },
+				capability: 'analytics_policy_signatures',
 			},
 		],
 	},
@@ -760,5 +783,9 @@ function openStudentLog() {
 	overlay.open('student-log-create', {
 		mode: 'school',
 	});
+}
+
+function openPolicySignatureCampaign() {
+	overlay.open('staff-policy-signature-campaign', {});
 }
 </script>

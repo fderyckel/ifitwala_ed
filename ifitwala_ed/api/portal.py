@@ -10,6 +10,10 @@ from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
 from ifitwala_ed.api.attendance import ADMIN_ROLES, COUNSELOR_ROLES, INSTRUCTOR_ROLES
 from ifitwala_ed.api.enrollment_analytics import ALLOWED_ANALYTICS_ROLES as ENROLLMENT_ANALYTICS_ROLES
 from ifitwala_ed.api.inquiry import ALLOWED_ANALYTICS_ROLES as INQUIRY_ANALYTICS_ROLES
+from ifitwala_ed.api.policy_signature import (
+    POLICY_SIGNATURE_ANALYTICS_ROLES,
+    POLICY_SIGNATURE_MANAGER_ROLES,
+)
 from ifitwala_ed.api.room_utilization import ANALYTICS_ROLES as SCHEDULING_ROLES
 from ifitwala_ed.api.student_demographics_dashboard import (
     ALLOWED_ANALYTICS_ROLES as STUDENT_DEMOGRAPHICS_ANALYTICS_ROLES,
@@ -74,6 +78,8 @@ def _build_staff_home_capabilities(roles: set[str]) -> dict[str, bool]:
         "analytics_admissions": bool(roles & set(ADMISSIONS_ANALYTICS_ROLES)),
         "analytics_demographics": bool(roles & set(DEMOGRAPHICS_ANALYTICS_ROLES)),
         "analytics_scheduling": bool(roles & (set(SCHEDULING_ROLES) | set(ADMIN_ROLES))),
+        "analytics_policy_signatures": bool(roles & set(POLICY_SIGNATURE_ANALYTICS_ROLES)),
+        "manage_policy_signatures": bool(roles & set(POLICY_SIGNATURE_MANAGER_ROLES)),
         "can_open_desk": bool(roles & set(STAFF_ROLES)),
     }
 
