@@ -16,6 +16,9 @@
 					<div v-if="assignment?.assigned_to_role" class="type-meta text-muted mt-1">
 						Assigned role: {{ assignment.assigned_to_role }}
 					</div>
+					<div v-if="assignment?.assigned_to_user_name" class="type-meta text-muted mt-1">
+						Assigned user: {{ assignment.assigned_to_user_name }}
+					</div>
 				</div>
 
 				<div class="shrink-0 flex items-center gap-2">
@@ -24,6 +27,44 @@
 					</button>
 					<button type="button" class="btn btn-quiet" @click="requestRefresh">Refresh</button>
 				</div>
+			</div>
+		</div>
+
+		<div v-if="assignment?.assigned_to_role" class="card-surface p-4">
+			<div class="type-body font-medium">Role queue ownership</div>
+			<p class="mt-2 type-meta text-muted">
+				Any {{ assignment.assigned_to_role }} can complete this review. You can take it or assign
+				it.
+			</p>
+			<div class="mt-3 flex flex-wrap items-center gap-2">
+				<button
+					type="button"
+					class="btn btn-quiet"
+					:disabled="busy || !canClaim"
+					@click="claimAssignment"
+				>
+					Take ownership
+				</button>
+			</div>
+			<div class="mt-3 flex flex-wrap items-center gap-2">
+				<select
+					v-model="reassignToUser"
+					class="if-input min-w-[16rem]"
+					:disabled="busy || !canReassign"
+				>
+					<option value="">Assign to user with role</option>
+					<option v-for="row in roleCandidates" :key="row.name" :value="row.name">
+						{{ row.full_name || row.name }}
+					</option>
+				</select>
+				<button
+					type="button"
+					class="btn btn-quiet"
+					:disabled="busy || !canReassign || !reassignToUser"
+					@click="reassignAssignment"
+				>
+					Assign
+				</button>
 			</div>
 		</div>
 
@@ -117,6 +158,8 @@ import { createFocusService } from '@/lib/services/focus/focusService';
 
 import type { Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context';
 import type { Request as SubmitApplicantReviewAssignmentRequest } from '@/types/contracts/focus/submit_applicant_review_assignment';
+import type { Request as ClaimApplicantReviewAssignmentRequest } from '@/types/contracts/focus/claim_applicant_review_assignment';
+import type { Request as ReassignApplicantReviewAssignmentRequest } from '@/types/contracts/focus/reassign_applicant_review_assignment';
 
 const props = defineProps<{
 	focusItemId?: string | null;
@@ -137,6 +180,7 @@ const notes = ref('');
 const busy = ref(false);
 const submittedOnce = ref(false);
 const actionError = ref<string | null>(null);
+const reassignToUser = ref('');
 
 const targetLabel = computed(() => {
 	if (!assignment.value) return __('Applicant review');
@@ -150,6 +194,13 @@ const targetLabel = computed(() => {
 const decisionOptions = computed(() => assignment.value?.decision_options || []);
 const canSubmit = computed(() => Boolean(decision.value && assignment.value?.name));
 const previousReviews = computed(() => assignment.value?.previous_reviews || []);
+const canClaim = computed(() =>
+	Boolean(assignment.value?.can_claim && assignment.value?.assigned_to_role)
+);
+const canReassign = computed(() =>
+	Boolean(assignment.value?.can_reassign && assignment.value?.assigned_to_role)
+);
+const roleCandidates = computed(() => assignment.value?.role_candidates || []);
 
 const deskUrl = computed(() => {
 	if (!assignment.value) return null;
@@ -171,6 +222,7 @@ watch(
 		busy.value = false;
 		submittedOnce.value = false;
 		actionError.value = null;
+		reassignToUser.value = '';
 	},
 	{ immediate: true, deep: false }
 );
@@ -232,6 +284,84 @@ async function submitDecision() {
 		emit('done');
 	} catch (err: unknown) {
 		submittedOnce.value = false;
+		actionError.value = errorMessage(err);
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function claimAssignment() {
+	if (busy.value) return;
+	actionError.value = null;
+
+	if (!assignment.value?.name) {
+		actionError.value = __('Missing assignment context. Please reopen from Focus list.');
+		return;
+	}
+	if (!assignment.value?.assigned_to_role) {
+		actionError.value = __('This review is already assigned to a specific user.');
+		return;
+	}
+	if (!canClaim.value) {
+		actionError.value = __('You are not allowed to claim this review.');
+		return;
+	}
+
+	busy.value = true;
+	try {
+		const payload: ClaimApplicantReviewAssignmentRequest = {
+			assignment: assignment.value.name,
+			focus_item_id: props.focusItemId || null,
+			client_request_id: newClientRequestId('applicant_review_claim'),
+		};
+		const response = await focusService.claimApplicantReviewAssignment(payload);
+		if (!response?.ok) {
+			throw new Error(__('Could not claim this review.'));
+		}
+		requestRefresh();
+	} catch (err: unknown) {
+		actionError.value = errorMessage(err);
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function reassignAssignment() {
+	if (busy.value) return;
+	actionError.value = null;
+
+	if (!assignment.value?.name) {
+		actionError.value = __('Missing assignment context. Please reopen from Focus list.');
+		return;
+	}
+	if (!assignment.value?.assigned_to_role) {
+		actionError.value = __('Only role-queue reviews can be reassigned here.');
+		return;
+	}
+	if (!canReassign.value) {
+		actionError.value = __('You are not allowed to reassign this review.');
+		return;
+	}
+	if (!reassignToUser.value) {
+		actionError.value = __('Select a user before assigning.');
+		return;
+	}
+
+	busy.value = true;
+	try {
+		const payload: ReassignApplicantReviewAssignmentRequest = {
+			assignment: assignment.value.name,
+			reassign_to_user: reassignToUser.value,
+			focus_item_id: props.focusItemId || null,
+			client_request_id: newClientRequestId('applicant_review_reassign'),
+		};
+		const response = await focusService.reassignApplicantReviewAssignment(payload);
+		if (!response?.ok) {
+			throw new Error(__('Could not reassign this review.'));
+		}
+		reassignToUser.value = '';
+		emit('done');
+	} catch (err: unknown) {
 		actionError.value = errorMessage(err);
 	} finally {
 		busy.value = false;

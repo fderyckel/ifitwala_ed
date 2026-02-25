@@ -15,6 +15,8 @@ TARGET_HEALTH = "Applicant Health Profile"
 TARGET_APPLICATION = "Student Applicant"
 ASSIGNMENT_DOCTYPE = "Applicant Review Assignment"
 RULE_REVIEWER_DOCTYPE = "Applicant Review Rule Reviewer"
+REVIEWER_MODE_ROLE_ONLY = "Role Only"
+REVIEWER_MODE_SPECIFIC_USER = "Specific User"
 
 DECISION_OPTIONS_BY_TARGET = {
     TARGET_DOCUMENT: ["Approved", "Needs Follow-Up", "Rejected"],
@@ -54,10 +56,32 @@ def get_student_applicant_scope(student_applicant: str) -> dict:
     return row
 
 
-def _normalize_reviewer_key(reviewer_user: str | None, reviewer_role: str | None) -> tuple[str | None, str | None]:
+def _normalize_reviewer_row(
+    reviewer_mode: str | None,
+    reviewer_user: str | None,
+    reviewer_role: str | None,
+) -> tuple[str | None, str | None, str | None]:
+    mode = (reviewer_mode or "").strip()
     user = (reviewer_user or "").strip() or None
     role = (reviewer_role or "").strip() or None
-    return user, role
+
+    if mode not in {REVIEWER_MODE_ROLE_ONLY, REVIEWER_MODE_SPECIFIC_USER}:
+        if user:
+            mode = REVIEWER_MODE_SPECIFIC_USER
+        elif role:
+            mode = REVIEWER_MODE_ROLE_ONLY
+
+    if mode == REVIEWER_MODE_ROLE_ONLY:
+        if not role or user:
+            return None, None, None
+        return mode, None, role
+
+    if mode == REVIEWER_MODE_SPECIFIC_USER:
+        if not user:
+            return None, None, None
+        return mode, user, None
+
+    return None, None, None
 
 
 def _score_rule_row(
@@ -174,18 +198,19 @@ def resolve_reviewers_for_target(
     reviewer_rows = frappe.get_all(
         RULE_REVIEWER_DOCTYPE,
         filters={"parent": ["in", [row.get("name") for row in matched_rules]]},
-        fields=["parent", "reviewer_user", "reviewer_role"],
+        fields=["parent", "reviewer_mode", "reviewer_user", "reviewer_role"],
         order_by="idx asc",
     )
 
     deduped: list[dict] = []
     seen: set[tuple[str | None, str | None]] = set()
     for row in reviewer_rows:
-        reviewer_user, reviewer_role = _normalize_reviewer_key(
+        reviewer_mode, reviewer_user, reviewer_role = _normalize_reviewer_row(
+            row.get("reviewer_mode"),
             row.get("reviewer_user"),
             row.get("reviewer_role"),
         )
-        if bool(reviewer_user) == bool(reviewer_role):
+        if not reviewer_mode:
             continue
         key = (reviewer_user, reviewer_role)
         if key in seen:
@@ -193,6 +218,7 @@ def resolve_reviewers_for_target(
         seen.add(key)
         deduped.append(
             {
+                "reviewer_mode": reviewer_mode,
                 "reviewer_user": reviewer_user,
                 "reviewer_role": reviewer_role,
             }

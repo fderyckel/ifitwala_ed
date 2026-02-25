@@ -6,12 +6,22 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "reviewer_mode",
   "reviewer_role",
   "reviewer_user"
  ],
  "fields": [
   {
-   "columns": 6,
+   "columns": 4,
+   "default": "Role Only",
+   "fieldname": "reviewer_mode",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Reviewer Mode",
+   "options": "Role Only\nSpecific User"
+  },
+  {
+   "columns": 4,
    "fieldname": "reviewer_role",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -19,7 +29,7 @@
    "options": "Role"
   },
   {
-   "columns": 6,
+   "columns": 4,
    "fieldname": "reviewer_user",
    "fieldtype": "Link",
    "in_list_view": 1,

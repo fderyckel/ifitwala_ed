@@ -33,14 +33,26 @@ class TestApplicantReviewWorkflow(FrappeTestCase):
     def test_materialize_merges_same_scope_reviewers_and_dedupes(self):
         role_name = "Admission Officer"
         self._create_review_rule(
-            reviewers=[{"reviewer_role": role_name}],
+            reviewers=[{"reviewer_mode": "Role Only", "reviewer_role": role_name}],
         )
         self._create_review_rule(
-            reviewers=[{"reviewer_user": self.reviewer_user}],
+            reviewers=[
+                {
+                    "reviewer_mode": "Specific User",
+                    "reviewer_role": role_name,
+                    "reviewer_user": self.reviewer_user,
+                }
+            ],
         )
-        # Duplicate on purpose; should dedupe by (reviewer_user, reviewer_role)
+        # Duplicate on purpose; should dedupe by assignment actor.
         self._create_review_rule(
-            reviewers=[{"reviewer_user": self.reviewer_user}],
+            reviewers=[
+                {
+                    "reviewer_mode": "Specific User",
+                    "reviewer_role": role_name,
+                    "reviewer_user": self.reviewer_user,
+                }
+            ],
         )
 
         names = materialize_application_review_assignments(student_applicant=self.student_applicant.name)

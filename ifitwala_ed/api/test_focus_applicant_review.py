@@ -3,7 +3,12 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.api.focus import list_focus_items, submit_applicant_review_assignment
+from ifitwala_ed.api.focus import (
+    claim_applicant_review_assignment,
+    list_focus_items,
+    reassign_applicant_review_assignment,
+    submit_applicant_review_assignment,
+)
 from ifitwala_ed.tests.factories.users import make_user
 
 
@@ -55,6 +60,53 @@ class TestFocusApplicantReview(FrappeTestCase):
         frappe.set_user(self.reviewer_two)
         items_after = list_focus_items(open_only=1, limit=50, offset=0)
         self.assertFalse(any(row.get("reference_name") == self.assignment.name for row in items_after))
+
+    def test_role_holder_can_claim_role_assignment(self):
+        frappe.set_user(self.reviewer_two)
+        result = claim_applicant_review_assignment(assignment=self.assignment.name)
+        self.assertTrue(result.get("ok"))
+        self.assertEqual(result.get("status"), "processed")
+
+        self.assignment.reload()
+        self.assertEqual((self.assignment.assigned_to_user or "").strip(), self.reviewer_two)
+        self.assertEqual((self.assignment.assigned_to_role or "").strip(), "")
+
+        items_two = list_focus_items(open_only=1, limit=50, offset=0)
+        self.assertTrue(any(row.get("reference_name") == self.assignment.name for row in items_two))
+
+        frappe.set_user(self.reviewer_one)
+        items_one = list_focus_items(open_only=1, limit=50, offset=0)
+        self.assertFalse(any(row.get("reference_name") == self.assignment.name for row in items_one))
+
+    def test_role_holder_can_reassign_role_assignment_to_role_member(self):
+        frappe.set_user(self.reviewer_one)
+        result = reassign_applicant_review_assignment(
+            assignment=self.assignment.name,
+            reassign_to_user=self.reviewer_two,
+        )
+        self.assertTrue(result.get("ok"))
+        self.assertEqual(result.get("status"), "processed")
+
+        self.assignment.reload()
+        self.assertEqual((self.assignment.assigned_to_user or "").strip(), self.reviewer_two)
+        self.assertEqual((self.assignment.assigned_to_role or "").strip(), "")
+
+        items_two = list_focus_items(open_only=1, limit=50, offset=0)
+        self.assertTrue(any(row.get("reference_name") == self.assignment.name for row in items_two))
+
+        items_one = list_focus_items(open_only=1, limit=50, offset=0)
+        self.assertFalse(any(row.get("reference_name") == self.assignment.name for row in items_one))
+
+    def test_reassign_rejects_target_without_required_role(self):
+        target_user = make_user()
+        self._created.append(("User", target_user.name))
+
+        frappe.set_user(self.reviewer_one)
+        with self.assertRaises(frappe.ValidationError):
+            reassign_applicant_review_assignment(
+                assignment=self.assignment.name,
+                reassign_to_user=target_user.name,
+            )
 
     def _ensure_role(self, user: str, role: str):
         if not frappe.db.exists("Role", role):

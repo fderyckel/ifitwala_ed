@@ -211,6 +211,47 @@ def _reviewer_matches_assignment(row: dict, *, user: str, roles: set[str]) -> bo
     return False
 
 
+def _enabled_users_for_role(role: str | None) -> list[dict]:
+    role_name = (role or "").strip()
+    if not role_name:
+        return []
+    return frappe.db.sql(
+        """
+        select
+            u.name,
+            ifnull(nullif(trim(u.full_name), ''), u.name) as full_name
+        from `tabUser` u
+        join `tabHas Role` hr
+          on hr.parent = u.name
+        where hr.role = %(role)s
+          and u.enabled = 1
+        order by full_name asc, u.name asc
+        """,
+        {"role": role_name},
+        as_dict=True,
+    )
+
+
+def _resolve_review_assignment_name(*, user: str, assignment: str | None, focus_item_id: str | None) -> str:
+    assignment_name = (assignment or "").strip() or None
+    focus_item = (focus_item_id or "").strip() or None
+
+    if focus_item:
+        parsed = _parse_focus_item_id(focus_item)
+        if parsed.get("user") != user:
+            frappe.throw(_("Invalid focus item id (user mismatch)."), frappe.PermissionError)
+        if parsed.get("reference_doctype") != APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE:
+            frappe.throw(_("Invalid focus item reference."), frappe.ValidationError)
+        if parsed.get("action_type") != ACTION_APPLICANT_REVIEW_SUBMIT:
+            frappe.throw(_("This focus item is not an applicant review action."), frappe.PermissionError)
+        if not assignment_name:
+            assignment_name = (parsed.get("reference_name") or "").strip() or None
+
+    if not assignment_name:
+        frappe.throw(_("Missing assignment."))
+    return assignment_name
+
+
 def _applicant_display_name_from_row(row: dict) -> str:
     parts = [
         (row.get("first_name") or "").strip(),
@@ -1085,6 +1126,7 @@ def get_focus_context(
         user_name_map = _get_user_full_names(
             [row.get("assigned_to_user") for row in previous_rows if (row.get("assigned_to_user") or "").strip()]
             + [row.get("decided_by") for row in previous_rows if (row.get("decided_by") or "").strip()]
+            + ([assignment_doc.assigned_to_user] if (assignment_doc.assigned_to_user or "").strip() else [])
         )
         previous_reviews = []
         for row in previous_rows:
@@ -1101,6 +1143,11 @@ def get_focus_context(
                     "decided_on": str(row.get("decided_on")) if row.get("decided_on") else None,
                 }
             )
+
+        assigned_to_role = (assignment_doc.assigned_to_role or "").strip()
+        can_claim = bool(assigned_to_role and assigned_to_role in user_roles)
+        can_reassign = can_claim
+        role_candidates = _enabled_users_for_role(assigned_to_role) if can_reassign else []
 
         return {
             "focus_item_id": focus_item_id,
@@ -1121,7 +1168,12 @@ def get_focus_context(
                 "school": student_applicant_row.get("school"),
                 "program_offering": student_applicant_row.get("program_offering"),
                 "assigned_to_user": assignment_doc.assigned_to_user,
+                "assigned_to_user_name": user_name_map.get(assignment_doc.assigned_to_user)
+                or assignment_doc.assigned_to_user,
                 "assigned_to_role": assignment_doc.assigned_to_role,
+                "can_claim": can_claim,
+                "can_reassign": can_reassign,
+                "role_candidates": role_candidates,
                 "source_event": assignment_doc.source_event,
                 "decision_options": DECISION_OPTIONS_BY_TARGET.get(target_type, []),
                 "preview": preview,
@@ -1748,6 +1800,187 @@ def acknowledge_staff_policy(
 
 
 @frappe.whitelist()
+def claim_applicant_review_assignment(
+    assignment: str | None = None,
+    focus_item_id: str | None = None,
+    client_request_id: str | None = None,
+):
+    user = _require_login()
+    user_roles = set(frappe.get_roles(user))
+
+    assignment_name = _resolve_review_assignment_name(user=user, assignment=assignment, focus_item_id=focus_item_id)
+    lock_target = (focus_item_id or "").strip() or assignment_name
+    client_request_id = (client_request_id or "").strip() or None
+
+    cache = _cache()
+    if client_request_id:
+        key = _idempotency_key(user, lock_target, client_request_id, "applicant_review_assignment_claim")
+        existing = cache.get_value(key)
+        if existing:
+            return {
+                "ok": True,
+                "idempotent": True,
+                "status": "already_processed",
+                "assignment": assignment_name,
+                "assigned_to_user": existing,
+            }
+
+    with cache.lock(_lock_key(user, lock_target, "applicant_review_assignment_claim"), timeout=10):
+        if client_request_id:
+            key = _idempotency_key(user, lock_target, client_request_id, "applicant_review_assignment_claim")
+            existing = cache.get_value(key)
+            if existing:
+                return {
+                    "ok": True,
+                    "idempotent": True,
+                    "status": "already_processed",
+                    "assignment": assignment_name,
+                    "assigned_to_user": existing,
+                }
+
+        assignment_doc = frappe.get_doc(APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE, assignment_name)
+        if (assignment_doc.status or "").strip() != "Open":
+            frappe.throw(_("This review assignment is not open."), frappe.ValidationError)
+
+        assigned_to_user = (assignment_doc.assigned_to_user or "").strip()
+        assigned_to_role = (assignment_doc.assigned_to_role or "").strip()
+
+        if assigned_to_user:
+            if assigned_to_user == user:
+                return {
+                    "ok": True,
+                    "idempotent": True,
+                    "status": "already_processed",
+                    "assignment": assignment_doc.name,
+                    "assigned_to_user": user,
+                }
+            frappe.throw(_("This review assignment is already assigned to a specific user."), frappe.PermissionError)
+
+        if not assigned_to_role:
+            frappe.throw(_("This review assignment is missing an assigned role."), frappe.ValidationError)
+        if assigned_to_role not in user_roles:
+            frappe.throw(_("You are not assigned to this review item."), frappe.PermissionError)
+
+        assignment_doc.assigned_to_user = user
+        assignment_doc.assigned_to_role = None
+        assignment_doc.save(ignore_permissions=True)
+
+        if client_request_id:
+            cache.set_value(key, user, expires_in_sec=60 * 10)
+
+        frappe.publish_realtime(
+            event="focus:invalidate",
+            message={
+                "assignment": assignment_doc.name,
+                "target_type": assignment_doc.target_type,
+                "target_name": assignment_doc.target_name,
+                "claimed_by": user,
+                "claimed_on": str(now_datetime()),
+            },
+            user=user,
+        )
+
+        return {
+            "ok": True,
+            "idempotent": False,
+            "status": "processed",
+            "assignment": assignment_doc.name,
+            "assigned_to_user": user,
+        }
+
+
+@frappe.whitelist()
+def reassign_applicant_review_assignment(
+    assignment: str | None = None,
+    reassign_to_user: str | None = None,
+    focus_item_id: str | None = None,
+    client_request_id: str | None = None,
+):
+    user = _require_login()
+    user_roles = set(frappe.get_roles(user))
+
+    assignment_name = _resolve_review_assignment_name(user=user, assignment=assignment, focus_item_id=focus_item_id)
+    target_user = (reassign_to_user or "").strip() or None
+    if not target_user:
+        frappe.throw(_("Reassign To User is required."), frappe.ValidationError)
+
+    lock_target = (focus_item_id or "").strip() or assignment_name
+    client_request_id = (client_request_id or "").strip() or None
+
+    cache = _cache()
+    if client_request_id:
+        key = _idempotency_key(user, lock_target, client_request_id, "applicant_review_assignment_reassign")
+        existing = cache.get_value(key)
+        if existing:
+            return {
+                "ok": True,
+                "idempotent": True,
+                "status": "already_processed",
+                "assignment": assignment_name,
+                "assigned_to_user": existing,
+            }
+
+    with cache.lock(_lock_key(user, lock_target, "applicant_review_assignment_reassign"), timeout=10):
+        if client_request_id:
+            key = _idempotency_key(user, lock_target, client_request_id, "applicant_review_assignment_reassign")
+            existing = cache.get_value(key)
+            if existing:
+                return {
+                    "ok": True,
+                    "idempotent": True,
+                    "status": "already_processed",
+                    "assignment": assignment_name,
+                    "assigned_to_user": existing,
+                }
+
+        assignment_doc = frappe.get_doc(APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE, assignment_name)
+        if (assignment_doc.status or "").strip() != "Open":
+            frappe.throw(_("This review assignment is not open."), frappe.ValidationError)
+
+        assigned_to_role = (assignment_doc.assigned_to_role or "").strip()
+        if not assigned_to_role:
+            frappe.throw(
+                _("Only role-queue assignments can be reassigned from this action."),
+                frappe.ValidationError,
+            )
+        if assigned_to_role not in user_roles:
+            frappe.throw(_("You are not assigned to this review item."), frappe.PermissionError)
+
+        if not frappe.db.exists("User", {"name": target_user, "enabled": 1}):
+            frappe.throw(_("Reassign To User must be an enabled user."), frappe.ValidationError)
+        if not frappe.db.exists("Has Role", {"parent": target_user, "role": assigned_to_role}):
+            frappe.throw(_("Reassign To User must have role {0}.").format(assigned_to_role), frappe.ValidationError)
+
+        assignment_doc.assigned_to_user = target_user
+        assignment_doc.assigned_to_role = None
+        assignment_doc.save(ignore_permissions=True)
+
+        if client_request_id:
+            cache.set_value(key, target_user, expires_in_sec=60 * 10)
+
+        frappe.publish_realtime(
+            event="focus:invalidate",
+            message={
+                "assignment": assignment_doc.name,
+                "target_type": assignment_doc.target_type,
+                "target_name": assignment_doc.target_name,
+                "reassigned_by": user,
+                "reassigned_to": target_user,
+                "reassigned_on": str(now_datetime()),
+            },
+            user=user,
+        )
+
+        return {
+            "ok": True,
+            "idempotent": False,
+            "status": "processed",
+            "assignment": assignment_doc.name,
+            "assigned_to_user": target_user,
+        }
+
+
+@frappe.whitelist()
 def submit_applicant_review_assignment(
     assignment: str | None = None,
     decision: str | None = None,
@@ -1760,23 +1993,9 @@ def submit_applicant_review_assignment(
 
     decision = (decision or "").strip()
     notes = (notes or "").strip() or None
-    assignment_name = (assignment or "").strip() or None
+    assignment_name = _resolve_review_assignment_name(user=user, assignment=assignment, focus_item_id=focus_item_id)
     focus_item_id = (focus_item_id or "").strip() or None
     client_request_id = (client_request_id or "").strip() or None
-
-    if focus_item_id:
-        parsed = _parse_focus_item_id(focus_item_id)
-        if parsed.get("user") != user:
-            frappe.throw(_("Invalid focus item id (user mismatch)."), frappe.PermissionError)
-        if parsed.get("reference_doctype") != APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE:
-            frappe.throw(_("Invalid focus item reference."), frappe.ValidationError)
-        if parsed.get("action_type") != ACTION_APPLICANT_REVIEW_SUBMIT:
-            frappe.throw(_("This focus item is not an applicant review action."), frappe.PermissionError)
-        if not assignment_name:
-            assignment_name = (parsed.get("reference_name") or "").strip() or None
-
-    if not assignment_name:
-        frappe.throw(_("Missing assignment."))
     if not decision:
         frappe.throw(_("Decision is required."))
 

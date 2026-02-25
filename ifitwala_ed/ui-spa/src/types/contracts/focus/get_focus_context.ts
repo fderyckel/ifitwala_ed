@@ -60,7 +60,14 @@ export type Response = {
     school?: string | null
     program_offering?: string | null
     assigned_to_user?: string | null
+    assigned_to_user_name?: string | null
     assigned_to_role?: string | null
+    can_claim?: boolean
+    can_reassign?: boolean
+    role_candidates?: Array<{
+      name: string
+      full_name?: string | null
+    }>
     source_event?: string | null
     decision_options: string[]
     preview?: {
