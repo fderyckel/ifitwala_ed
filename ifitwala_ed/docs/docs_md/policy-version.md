@@ -3,7 +3,7 @@ title: "Policy Version: Legal Text Snapshot and Activation Gate"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.0.0"
+version: "1.1.0"
 last_change_date: "2026-02-25"
 summary: "Store immutable policy text versions, enforce one active version per policy, and lock legal text once acknowledgements exist."
 seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
@@ -27,6 +27,9 @@ seo_description: "Store immutable policy text versions, enforce one active versi
 - `policy_text` must be non-empty.
 - Only one active version is allowed per institutional policy.
 - `institutional_policy` is immutable after insert.
+- `approved_by` (when set) must be an enabled system user with `Policy Version` write access and in policy scope:
+  - school-scoped policy: approver must belong to the same school or an ancestor/parent school
+  - organization-scoped policy: approver must belong to the same organization or an ancestor/parent organization
 - Once any acknowledgement exists for a version:
   - `policy_text`, `version_label`, and `institutional_policy` are locked.
   - only `System Manager` with explicit `flags.override_reason` can override, and override is comment-audited.
@@ -84,7 +87,7 @@ Use a new version row for policy changes. Keep old versions for audit continuity
   - `is_active` (Check, required, default `0`)
 - **Controller guards**:
   - `before_insert`: policy admin check + parent/uniqueness/text validation
-  - `before_save`: immutability + acknowledgement lock + active-state validation
+  - `before_save`: immutability + acknowledgement lock + approved-by write/scope validation + active-state validation
   - `before_delete`: hard block
 
 ### Permission Matrix
@@ -100,6 +103,7 @@ Use a new version row for policy changes. Keep old versions for audit continuity
 
 Runtime controller rules:
 - Policy version management requires policy-admin roles (`System Manager`, `Organization Admin`, `Accounts Manager`, `Admission Manager`, `Academic Admin`, `HR Manager`).
+- `approved_by` options are filtered by a server link query so only write-capable users in valid policy scope are selectable.
 - Acknowledgement lock makes legal text effectively append-only after first acknowledgement, except explicit System Manager override flow.
 
 ## Related Docs

@@ -145,6 +145,20 @@ You may:
 
 ---
 
+#### Step 4 — `approved_by` authority and scope
+
+If `approved_by` is set:
+
+* Must be an enabled **System User**
+* Must have **write** access to `Policy Version`
+* Scope enforcement:
+  * If policy has `school`: user must belong to that school or an ancestor (parent) school
+  * If policy is org-scoped only: user must belong to that organization or an ancestor organization
+
+Desk link options for `approved_by` are server-filtered to this same rule.
+
+---
+
 ### `before_delete`
 
 **Always hard-fail**
