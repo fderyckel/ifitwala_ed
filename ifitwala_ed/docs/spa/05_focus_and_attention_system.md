@@ -163,6 +163,7 @@ Example action types:
 * `inquiry.follow_up.act.first_contact` → mounts `InquiryFollowUpAction.vue` (assignee mode)
 * `applicant_review.assignment.decide` → mounts `ApplicantReviewAssignmentAction.vue` (assignee mode)
 * `policy_acknowledgement.staff.sign` → mounts `StaffPolicyAcknowledgeAction.vue` (assignee mode)
+  * includes typed full-name signature + legal attestation before submit
 
 Later:
 

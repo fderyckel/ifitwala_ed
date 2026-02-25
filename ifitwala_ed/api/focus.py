@@ -1304,6 +1304,19 @@ def _lock_key(user: str, focus_item_id: str, suffix: str | None = None) -> str:
     return f"ifitwala_ed:lock:focus:{user}:{focus_item_id}{sfx}"
 
 
+def _normalize_signature_name(value: str | None) -> str:
+    return " ".join((value or "").split()).casefold()
+
+
+def _as_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    text = (str(value or "").strip()).lower()
+    return text in {"1", "true", "yes", "y", "on"}
+
+
 @frappe.whitelist()
 def submit_student_log_follow_up(
     focus_item_id: str,
@@ -1643,10 +1656,14 @@ def mark_inquiry_contacted(
 def acknowledge_staff_policy(
     focus_item_id: str,
     client_request_id: str | None = None,
+    typed_signature_name: str | None = None,
+    attestation_confirmed: int | str | bool | None = None,
 ):
     user = _require_login()
     focus_item_id = (focus_item_id or "").strip()
     client_request_id = (client_request_id or "").strip() or None
+    typed_signature_name = (typed_signature_name or "").strip()
+    attestation_confirmed_flag = _as_bool(attestation_confirmed)
 
     if not focus_item_id:
         frappe.throw(_("Missing focus_item_id."))
@@ -1764,6 +1781,33 @@ def acknowledge_staff_policy(
             if client_request_id:
                 cache.set_value(key, frappe.as_json(result), expires_in_sec=60 * 10)
             return result
+
+        expected_full_name = (employee.get("employee_full_name") or "").strip()
+        expected_candidates = {
+            normalized
+            for normalized in {
+                _normalize_signature_name(expected_full_name),
+                _normalize_signature_name(employee_name),
+            }
+            if normalized
+        }
+
+        if not attestation_confirmed_flag:
+            frappe.throw(
+                _("You must confirm the electronic signature attestation before signing."),
+                frappe.ValidationError,
+            )
+
+        normalized_typed_name = _normalize_signature_name(typed_signature_name)
+        if not normalized_typed_name:
+            frappe.throw(_("Type your full name as your electronic signature."), frappe.ValidationError)
+
+        if expected_candidates and normalized_typed_name not in expected_candidates:
+            expected_label = expected_full_name or employee_name
+            frappe.throw(
+                _("Typed signature must match your employee name exactly: {0}").format(expected_label),
+                frappe.ValidationError,
+            )
 
         ack_doc = frappe.get_doc(
             {

@@ -3,7 +3,7 @@ title: "Policy Acknowledgement: Append-Only Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "1.1.0"
+version: "1.2.0"
 last_change_date: "2026-02-25"
 summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, organization-scope validation, and staff policy-signature campaign workflows."
 seo_title: "Policy Acknowledgement: Append-Only Consent Evidence"
@@ -63,7 +63,9 @@ The internal workflow for staff policy signatures is campaign-based and scope-dr
    - already open
    - to create
 3. Launch creates `ToDo` rows linked to `Policy Version` for staff not already signed and not already open.
-4. Staff complete acknowledgement from Focus action `policy_acknowledgement.staff.sign`.
+4. Staff complete acknowledgement from Focus action `policy_acknowledgement.staff.sign` using formal e-sign controls:
+   - type full signer name exactly as employee record
+   - confirm electronic-signature attestation
 5. On acknowledgement:
    - one immutable `Policy Acknowledgement` row is inserted (`acknowledged_for=Staff`, `context_doctype=Employee`)
    - open policy ToDos for that staff/policy version are closed
@@ -78,6 +80,13 @@ The internal workflow for staff policy signatures is campaign-based and scope-dr
   - prior acknowledgements remain immutable evidence for the old version.
 - Scope changes (organization/school/group changes):
   - apply to future campaign launches only; existing acknowledgements are not recomputed.
+
+### Electronic Signature Controls (Staff)
+
+- Signature is server-validated, not UI-only:
+  - typed signature name must match employee identity context
+  - legal attestation confirmation is required
+- One-click acknowledgement without attestation is rejected.
 
 ## Where It Is Used Across the ERP
 

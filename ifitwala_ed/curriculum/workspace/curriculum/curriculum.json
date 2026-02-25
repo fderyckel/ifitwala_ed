@@ -413,7 +413,7 @@
    "doc_view": "List",
    "label": "Portal",
    "type": "URL",
-   "url": "/staff"
+   "url": "/hub/staff"
   }
  ],
  "title": "Curriculum"

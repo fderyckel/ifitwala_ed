@@ -18,7 +18,7 @@
 						{{ scopeLabel }}
 					</div>
 					<div v-if="policy?.employee_name || policy?.employee" class="type-meta text-muted mt-1">
-						Employee: {{ policy?.employee_name || policy?.employee }}
+						Signer: {{ expectedSignerLabel }}
 					</div>
 					<div v-if="policy?.todo_due_date" class="type-meta text-muted mt-1">
 						Due: {{ policy.todo_due_date }}
@@ -47,15 +47,71 @@
 
 		<div class="card-surface p-4">
 			<div class="type-body font-medium">Policy text</div>
-			<div class="type-meta text-muted mt-1">Review this policy version before acknowledging.</div>
+			<div class="type-meta text-muted mt-1">
+				Review this policy version carefully before signing.
+			</div>
 
-			<div class="mt-3 rounded-xl border border-ink/10 bg-white p-3">
+			<div class="mt-3 rounded-xl border border-ink/10 bg-white p-3 max-h-80 overflow-auto">
 				<div
 					v-if="policy?.policy_text_html"
 					class="prose prose-sm max-w-none text-ink"
 					v-html="trustedHtml(policy.policy_text_html)"
 				/>
 				<p v-else class="type-meta text-muted">No policy text is available for this version.</p>
+			</div>
+		</div>
+
+		<div class="card-surface p-4">
+			<div class="type-body font-medium">Electronic signature</div>
+			<p class="type-meta text-muted mt-1">
+				To sign, type your full name exactly as recorded and confirm the legal attestation.
+			</p>
+
+			<div class="mt-3 rounded-xl border border-ink/10 bg-white p-3 space-y-3">
+				<div class="type-caption text-ink/70">
+					Expected signer name:
+					<span class="type-body-strong text-ink">{{ expectedSignerLabel }}</span>
+				</div>
+
+				<label class="block space-y-1">
+					<span class="type-caption text-ink/70">Type full name as electronic signature</span>
+					<input
+						v-model="typedSignatureName"
+						type="text"
+						class="if-input w-full"
+						placeholder="Enter your full name"
+						:disabled="busy || policy?.is_acknowledged"
+						@input="signatureTouched = true"
+					/>
+				</label>
+
+				<p
+					v-if="signatureTouched && typedSignatureName.trim() && !isTypedSignatureMatch"
+					class="type-meta text-ink"
+				>
+					Typed signature must match exactly: {{ expectedSignerLabel }}
+				</p>
+
+				<label class="flex items-start gap-2">
+					<input
+						v-model="attestationConfirmed"
+						type="checkbox"
+						class="mt-1 h-4 w-4"
+						:disabled="busy || policy?.is_acknowledged"
+					/>
+					<span class="type-meta text-ink/80">
+						I acknowledge that typing my full name is my electronic signature and I agree to this
+						policy.
+					</span>
+				</label>
+
+				<div class="rounded-lg border border-ink/10 bg-surface-soft px-3 py-2">
+					<div class="type-caption text-ink/60">Signature preview</div>
+					<div class="type-body-strong text-ink mt-1">
+						{{ typedSignatureName.trim() || 'Not signed' }}
+					</div>
+					<div class="type-meta text-ink/60 mt-1">Timestamp on submit: {{ nowLabel }}</div>
+				</div>
 			</div>
 
 			<div v-if="actionError" class="mt-3 rounded-xl border border-ink/10 bg-white p-3">
@@ -70,7 +126,7 @@
 					:disabled="busy || submittedOnce || !canAcknowledge"
 					@click="acknowledgePolicy"
 				>
-					{{ busy ? 'Saving…' : 'Acknowledge policy' }}
+					{{ busy ? 'Signing…' : 'Sign and acknowledge policy' }}
 				</button>
 			</div>
 		</div>
@@ -103,6 +159,11 @@ const policy = ref<GetFocusContextResponse['policy_signature']>(null);
 const busy = ref(false);
 const submittedOnce = ref(false);
 const actionError = ref<string | null>(null);
+const typedSignatureName = ref('');
+const attestationConfirmed = ref(false);
+const signatureTouched = ref(false);
+
+const nowLabel = computed(() => new Date().toLocaleString());
 
 const policyTitle = computed(() => {
 	return (
@@ -111,6 +172,14 @@ const policyTitle = computed(() => {
 		(policy.value?.policy_key || '').trim() ||
 		(policy.value?.policy_version || '').trim() ||
 		__('Policy')
+	);
+});
+
+const expectedSignerLabel = computed(() => {
+	return (
+		(policy.value?.employee_name || '').trim() ||
+		(policy.value?.employee || '').trim() ||
+		__('Employee record')
 	);
 });
 
@@ -123,8 +192,24 @@ const scopeLabel = computed(() => {
 	return parts.join(' • ');
 });
 
+function normalizeName(value: string): string {
+	return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+const isTypedSignatureMatch = computed(() => {
+	const typed = normalizeName(typedSignatureName.value || '');
+	if (!typed) return false;
+	const expected = normalizeName(expectedSignerLabel.value || '');
+	return expected ? typed === expected : true;
+});
+
 const canAcknowledge = computed(() => {
-	return Boolean(policy.value?.policy_version) && !policy.value?.is_acknowledged;
+	return (
+		Boolean(policy.value?.policy_version) &&
+		!policy.value?.is_acknowledged &&
+		isTypedSignatureMatch.value &&
+		attestationConfirmed.value
+	);
 });
 
 watch(
@@ -134,6 +219,9 @@ watch(
 		busy.value = false;
 		submittedOnce.value = false;
 		actionError.value = null;
+		typedSignatureName.value = '';
+		attestationConfirmed.value = false;
+		signatureTouched.value = false;
 	},
 	{ immediate: true, deep: false }
 );
@@ -193,14 +281,25 @@ function errorMessage(err: unknown): string {
 async function acknowledgePolicy() {
 	if (busy.value || submittedOnce.value) return;
 	actionError.value = null;
+	signatureTouched.value = true;
 
 	const focusItemId = requireFocusItemId();
 	if (!focusItemId) return;
 
-	if (!canAcknowledge.value) {
-		actionError.value = policy.value?.is_acknowledged
-			? __('This policy has already been acknowledged.')
-			: __('Policy acknowledgement is not available for this item.');
+	if (policy.value?.is_acknowledged) {
+		actionError.value = __('This policy has already been acknowledged.');
+		return;
+	}
+	if (!typedSignatureName.value.trim()) {
+		actionError.value = __('Type your full name to provide your electronic signature.');
+		return;
+	}
+	if (!isTypedSignatureMatch.value) {
+		actionError.value = `${__('Typed signature must match exactly:')} ${expectedSignerLabel.value}`;
+		return;
+	}
+	if (!attestationConfirmed.value) {
+		actionError.value = __('Confirm the legal attestation before signing.');
 		return;
 	}
 
@@ -210,6 +309,8 @@ async function acknowledgePolicy() {
 		const payload: AcknowledgeStaffPolicyRequest = {
 			focus_item_id: focusItemId,
 			client_request_id: newClientRequestId('policy_ack'),
+			typed_signature_name: typedSignatureName.value.trim(),
+			attestation_confirmed: attestationConfirmed.value ? 1 : 0,
 		};
 		const response = await focusService.acknowledgeStaffPolicy(payload);
 		if (!response?.ok) throw new Error(__('Unable to acknowledge policy.'));

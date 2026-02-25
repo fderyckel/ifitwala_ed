@@ -3,6 +3,8 @@
 export type Request = {
 	focus_item_id: string;
 	client_request_id?: string | null;
+	typed_signature_name?: string | null;
+	attestation_confirmed?: 0 | 1;
 };
 
 export type Response = {

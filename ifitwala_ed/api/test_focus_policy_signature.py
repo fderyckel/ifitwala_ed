@@ -116,11 +116,14 @@ class TestFocusPolicySignature(FrappeTestCase):
         self.assertEqual(policy_ctx.get("policy_version"), self.policy_version.name)
         self.assertEqual(policy_ctx.get("employee"), self.employee.name)
         self.assertFalse(policy_ctx.get("is_acknowledged"))
+        signer_name = (policy_ctx.get("employee_name") or "").strip() or self.employee.name
 
         client_request_id = f"fps-ack-{frappe.generate_hash(length=8)}"
         result = acknowledge_staff_policy(
             focus_item_id=focus_item_id,
             client_request_id=client_request_id,
+            typed_signature_name=signer_name,
+            attestation_confirmed=1,
         )
         self.assertTrue(result.get("ok"))
         self.assertEqual(result.get("status"), "processed")
@@ -141,7 +144,26 @@ class TestFocusPolicySignature(FrappeTestCase):
         replay = acknowledge_staff_policy(
             focus_item_id=focus_item_id,
             client_request_id=client_request_id,
+            typed_signature_name=signer_name,
+            attestation_confirmed=1,
         )
         self.assertTrue(replay.get("ok"))
         self.assertTrue(replay.get("idempotent"))
         self.assertEqual(replay.get("status"), "already_processed")
+
+    def test_policy_signature_rejects_signature_mismatch(self):
+        frappe.set_user(self.staff_user.name)
+
+        items = list_focus_items(open_only=1, limit=50, offset=0)
+        policy_items = [row for row in items if row.get("action_type") == ACTION_POLICY_STAFF_SIGN]
+        self.assertTrue(policy_items, "Expected policy signature action in focus list")
+
+        focus_item_id = policy_items[0]["id"]
+
+        with self.assertRaises(frappe.ValidationError):
+            acknowledge_staff_policy(
+                focus_item_id=focus_item_id,
+                typed_signature_name="Wrong Name",
+                attestation_confirmed=1,
+                client_request_id=f"fps-ack-bad-{frappe.generate_hash(length=8)}",
+            )
