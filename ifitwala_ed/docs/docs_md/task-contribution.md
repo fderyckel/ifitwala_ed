@@ -3,6 +3,8 @@ title: "Task Contribution: Teacher and Moderator Judgment Inputs"
 slug: task-contribution
 category: Assessment
 doc_order: 9
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Store non-destructive grading contributions per submission version, then derive official outcomes through policy-aware services."
 seo_title: "Task Contribution: Teacher and Moderator Judgment Inputs"
 seo_description: "Store non-destructive grading contributions per submission version, then derive official outcomes through policy-aware services."

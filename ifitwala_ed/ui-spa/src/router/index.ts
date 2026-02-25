@@ -52,8 +52,8 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  // Canonical portal namespace is /portal; route paths remain base-less inside SPA.
-  history: createWebHistory('/portal'),
+  // Canonical portal namespace is /hub; route paths remain base-less inside SPA.
+  history: createWebHistory('/hub'),
   routes,
 })
 

@@ -40,14 +40,22 @@
 					{% endif %}
 					<span class="text-base font-semibold tracking-tight">{{ landing.organization_name }}</span>
 				</div>
-				{% if is_guest_user %}
+				<div class="inline-flex items-center gap-2">
 					<a
-						href="{{ login_url }}"
+						href="{{ portal_login_url }}"
 						class="inline-flex rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
 					>
-						Login
+						Portal Login
 					</a>
-				{% endif %}
+					{% if is_guest_user %}
+						<a
+							href="{{ login_url }}"
+							class="inline-flex rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+						>
+							Login
+						</a>
+					{% endif %}
+				</div>
 			</div>
 		</header>
 
@@ -104,6 +112,15 @@
 				&copy; {{ current_year }} {{ landing.organization_name }}. All rights reserved.
 			</div>
 		</footer>
+
+		<a
+			href="{{ inquiry_url }}"
+			class="fixed bottom-5 right-5 z-50 inline-flex flex-col rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+			aria-label="Let's talk about admissions"
+		>
+			<span class="text-sm font-semibold text-slate-900">Let's Talk</span>
+			<span class="text-xs text-slate-600">Ask Admissions</span>
+		</a>
 	</div>
 
 	<script src="/assets/ifitwala_ed/website/image_fallback.js" defer></script>

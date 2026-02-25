@@ -136,7 +136,7 @@ For admissions/public form requests:
 
 For authenticated portal requests:
 
-1. Canonical authenticated portal namespace is `/portal/*`.
+1. Canonical authenticated portal namespace is `/hub/*`.
 
 ---
 

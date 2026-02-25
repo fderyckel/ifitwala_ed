@@ -46,6 +46,37 @@
 >
 	<div id="ifitwala-page-root" class="ifitwala-page-shell min-h-screen flex flex-col">
 		<header class="site-header sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+			<div class="site-utility-bar border-b border-slate-200/70">
+				<div class="mx-auto flex w-full max-w-6xl items-center justify-end gap-3 px-6 py-2">
+					<a
+						href="{{ site_shell.other_organizations_url }}"
+						class="site-utility-link inline-flex rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+					>
+						Other Organizations
+					</a>
+					<a
+						href="{{ site_shell.portal_login_url }}"
+						class="site-utility-link inline-flex rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+					>
+						Portal Login
+					</a>
+					{% if site_shell.organization_logo %}
+						<a
+							href="{{ site_shell.other_organizations_url }}"
+							class="site-organization-logo-link inline-flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-100"
+							title="{{ site_shell.organization_name or 'Organization' }}"
+						>
+							<img
+								src="{{ site_shell.organization_logo }}"
+								alt="{{ site_shell.organization_name or site_shell.brand_name }}"
+								class="h-8 w-8 rounded-md object-cover"
+								loading="lazy"
+							>
+						</a>
+					{% endif %}
+				</div>
+			</div>
+
 			<div class="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
 				<a href="{{ site_shell.brand_url }}" class="site-brand-link inline-flex items-center gap-3 text-slate-900">
 					{% if site_shell.brand_logo %}
@@ -147,6 +178,15 @@
 				</div>
 			</div>
 		</footer>
+
+		<a
+			href="{{ site_shell.inquiry_url }}"
+			class="site-talk-bubble fixed bottom-5 right-5 z-50 inline-flex flex-col rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+			aria-label="Let's talk about admissions"
+		>
+			<span class="text-sm font-semibold text-slate-900">Let's Talk</span>
+			<span class="text-xs text-slate-600">Ask Admissions</span>
+		</a>
 	</div>
 
 	<script src="/assets/ifitwala_ed/website/image_fallback.js" defer></script>

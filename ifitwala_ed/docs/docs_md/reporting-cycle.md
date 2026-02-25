@@ -3,6 +3,8 @@ title: "Reporting Cycle: Controlling When Grades Become Official Term Truth"
 slug: reporting-cycle
 category: Assessment
 doc_order: 10
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Define reporting scope and lifecycle, then generate/freeze term results with explicit cutoffs and governance controls."
 seo_title: "Reporting Cycle: Controlling When Grades Become Official Term Truth"
 seo_description: "Define reporting scope and lifecycle, then generate/freeze term results with explicit cutoffs and governance controls."

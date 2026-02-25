@@ -79,7 +79,6 @@
   {
    "fieldname": "organization_logo",
    "fieldtype": "Attach Image",
-   "hidden": 1,
    "label": "Organization Logo"
   },
   {

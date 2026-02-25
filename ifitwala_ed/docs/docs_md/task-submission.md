@@ -3,6 +3,8 @@ title: "Task Submission: Versioned Student Evidence with Governance"
 slug: task-submission
 category: Assessment
 doc_order: 8
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Capture append-only student evidence (files, text, links), enforce versioning, and keep outcomes and portfolio workflows synchronized."
 seo_title: "Task Submission: Versioned Student Evidence with Governance"
 seo_description: "Capture append-only student evidence (files, text, links), enforce versioning, and keep outcomes and portfolio workflows synchronized."

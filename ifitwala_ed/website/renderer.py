@@ -11,8 +11,10 @@ from ifitwala_ed.website.utils import (
     is_school_public,
     normalize_route,
     parse_props,
+    resolve_admissions_cta_url,
     resolve_school_from_route,
     truncate_text,
+    validate_cta_link,
     validate_props_schema,
 )
 from ifitwala_ed.website.validators import normalize_block_props
@@ -216,17 +218,46 @@ def _build_site_shell_context(*, school, route: str) -> dict:
     navigation = _get_navigation_items(school=school)
     footer_links = navigation[:4]
     is_guest_user = (frappe.session.user or "Guest") == "Guest"
+    organization_row = frappe.db.get_value(
+        "Organization",
+        school.organization,
+        ["name", "organization_name", "organization_logo"],
+        as_dict=True,
+    )
+
+    organization_name = (organization_row.get("organization_name") if organization_row else None) or school.organization
+    organization_logo = organization_row.get("organization_logo") if organization_row else None
+
+    inquiry_url = None
+    try:
+        inquiry_url = resolve_admissions_cta_url(school=school, intent="inquire")
+    except frappe.ValidationError:
+        inquiry_url = "/apply/inquiry"
+    inquiry_url = validate_cta_link(inquiry_url) or "/apply/inquiry"
+
+    apply_url = None
+    try:
+        apply_url = resolve_admissions_cta_url(school=school, intent="apply")
+    except frappe.ValidationError:
+        apply_url = "/admissions"
+    apply_url = validate_cta_link(apply_url) or "/admissions"
 
     return {
         "brand_name": school.school_name or school.name,
         "brand_url": brand_url,
         "brand_logo": getattr(school, "school_logo", None),
+        "organization_name": organization_name,
+        "organization_logo": organization_logo,
         "navigation": navigation,
         "footer_links": footer_links,
         "current_route": normalize_route(route),
         "current_year": frappe.utils.now_datetime().year,
         "is_guest_user": is_guest_user,
         "login_url": "/login",
+        "portal_login_url": "/hub",
+        "other_organizations_url": "/",
+        "inquiry_url": inquiry_url,
+        "apply_url": apply_url,
     }
 
 
@@ -693,6 +724,8 @@ def _build_organization_landing_context(*, route: str):
         "seo": seo,
         "is_guest_user": (frappe.session.user or "Guest") == "Guest",
         "login_url": "/login",
+        "portal_login_url": "/hub",
+        "inquiry_url": "/apply/inquiry",
         "current_year": frappe.utils.now_datetime().year,
         "template": "ifitwala_ed/website/templates/organization_landing.html",
     }

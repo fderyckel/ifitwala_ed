@@ -3,6 +3,8 @@ title: "Institutional Policy: Policy Identity and Scope Anchor"
 slug: institutional-policy
 category: Governance
 doc_order: 1
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Define policy identity, organization/school scope, and target audience so active policy versions can be resolved and acknowledged correctly."
 seo_title: "Institutional Policy: Policy Identity and Scope Anchor"
 seo_description: "Define policy identity, organization/school scope, and target audience so active policy versions can be resolved and acknowledged correctly."

@@ -1,7 +1,7 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# ifitwala_ed/www/portal/index.py
+# ifitwala_ed/www/hub/index.py
 
 import os
 

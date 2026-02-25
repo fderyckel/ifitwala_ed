@@ -3,6 +3,8 @@ title: "Course Term Result: The Frozen Record of Term Performance"
 slug: course-term-result
 category: Assessment
 doc_order: 11
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."
 seo_title: "Course Term Result: The Frozen Record of Term Performance"
 seo_description: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."

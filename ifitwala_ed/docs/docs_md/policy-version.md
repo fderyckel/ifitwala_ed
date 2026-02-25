@@ -3,6 +3,8 @@ title: "Policy Version: Legal Text Snapshot and Activation Gate"
 slug: policy-version
 category: Governance
 doc_order: 2
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Store immutable policy text versions, enforce one active version per policy, and lock legal text once acknowledgements exist."
 seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
 seo_description: "Store immutable policy text versions, enforce one active version per policy, and lock legal text once acknowledgements exist."

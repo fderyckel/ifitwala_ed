@@ -19,7 +19,7 @@
 | `/apply/...` | Native Frappe Web Forms | Public admissions entry forms |
 | `/inquiry` | Legacy redirect | `301` to `/apply/inquiry` |
 | `/admissions/...` | SPA | Authenticated admissions applicant portal |
-| `/portal/...` | Portal SPA | Canonical authenticated portals |
+| `/hub/...` | Portal SPA | Canonical authenticated portals |
 | `/logout` | Website route (`www/logout`) | Canonical logout endpoint; clears session then redirects |
 | `/desk` | Desk | ERP/desk surface |
 

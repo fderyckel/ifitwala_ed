@@ -9,7 +9,7 @@
 | `/schools/*` | Custom website renderer | School marketing pages |
 | `/apply/*` | Native Frappe Web Forms | Public forms |
 | `/admissions/*` | Vue SPA (`www/admissions`) | Authenticated applicant portal |
-| `/portal/*` | Vue SPA (`www/portal`) | Canonical authenticated portal namespaces |
+| `/hub/*` | Vue SPA (`www/hub`) | Canonical authenticated portal namespaces |
 | `/logout` | Website controller (`www/logout.py`) | Canonical logout endpoint with safe redirect |
 | `/desk/*` | Frappe Desk | Internal administration |
 
@@ -27,5 +27,5 @@
 2. `ifitwala_ed/website/utils.py::resolve_school_from_route` only accepts `/schools/{slug}/...`.
 3. `ifitwala_ed/www/admissions/index.py` remains auth-guarded SPA entrypoint under `/admissions`.
 4. Public form route is defined in Web Form JSON as `apply/inquiry`.
-5. Portal SPA owns the canonical authenticated namespace under `/portal/*`.
+5. Portal SPA owns the canonical authenticated namespace under `/hub/*`.
 7. `/logout` is owned by app website controller and must never rely on `?cmd=web_logout`.

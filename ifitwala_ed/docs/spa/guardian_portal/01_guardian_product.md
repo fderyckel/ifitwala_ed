@@ -479,7 +479,7 @@ Deliverable: GuardianHome.vue uses the service and renders zones with progressiv
 * Page owns loading + error states
 * Inline expand is UI-only state
 * No toasts inside components; shell decides later
-* No hardcoded `/portal` paths inside SPA (use named routes / base-less paths)
+* No hardcoded `/hub` paths inside SPA (use named routes / base-less paths)
 
 ### Step 6 — Codex agent task slicing (execution plan)
 

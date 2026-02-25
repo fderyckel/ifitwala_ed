@@ -3,6 +3,8 @@ title: "Assessment Category: Classifying Learning Work Clearly"
 slug: assessment-category
 category: Assessment
 doc_order: 1
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Define meaningful assessment buckets (Formative, Summative, Project, etc.) so teaching teams, analytics, and reporting speak the same language."
 seo_title: "Assessment Category: Classifying Learning Work Clearly"
 seo_description: "Define meaningful assessment buckets (Formative, Summative, Project, etc.) so teaching teams, analytics, and reporting speak the same language."

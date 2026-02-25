@@ -3,6 +3,8 @@ title: "Policy Acknowledgement: Append-Only Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, and organization-scope validation."
 seo_title: "Policy Acknowledgement: Append-Only Consent Evidence"
 seo_description: "Record immutable who/what/when acknowledgement evidence with strict context, role, and organization-scope validation."

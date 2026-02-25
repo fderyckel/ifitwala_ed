@@ -227,9 +227,9 @@ Admissions Portal lives under **its own SPA base**, e.g.:
 
 It must **not** live under:
 
-* `/portal/student`
-* `/portal/guardian`
-* `/portal/staff`
+* `/hub/student`
+* `/hub/guardian`
+* `/hub/staff`
 
 This avoids:
 
@@ -1030,7 +1030,7 @@ No overrides.
 ### Forbidden Routes
 
 ```
-/portal/*
+/hub/*
 /student/*
 /guardian/*
 /desk/*

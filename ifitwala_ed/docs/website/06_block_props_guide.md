@@ -5,7 +5,7 @@
 **Scope:** Builder‑lite v1 + Phase‑02 blocks
 **Goal:** Exact props, types, rules, and examples for every block
 **Canonical implementation source:** `ifitwala_ed/website/block_registry.py`
-**Status (February 12, 2026):** Synced with implemented A1/A2/B1/B2/C1/C2/D1/D2 baseline
+**Status (February 25, 2026):** Synced with implemented Builder-lite blocks including `section_carousel` and hero image-fade controls
 
 ---
 
@@ -46,7 +46,7 @@ Block availability is enforced by parent DocType context (Desk picker + save-tim
 
 | context | allowed block types |
 | --- | --- |
-| `School Website Page` + `page_type = Standard` | `hero`, `rich_text`, `program_list`, `leadership`, `cta`, `faq`, `content_snippet` |
+| `School Website Page` + `page_type = Standard` | `hero`, `rich_text`, `section_carousel`, `program_list`, `leadership`, `cta`, `faq`, `content_snippet` |
 | `School Website Page` + `page_type = Admissions` | all Standard blocks + `admissions_overview`, `admissions_steps`, `admission_cta` |
 | `Program Website Profile` | all Standard blocks + `program_intro` |
 | `Website Story` | Standard blocks only |
@@ -60,6 +60,7 @@ If a block type is outside the allowed set for the current context, save is bloc
 * Current enhancement scripts:
   * `hero` -> `/assets/ifitwala_ed/website/blocks/hero.js`
   * `admission_cta` -> `/assets/ifitwala_ed/website/blocks/admission_cta.js`
+  * `section_carousel` -> `/assets/ifitwala_ed/website/blocks/section_carousel.js`
 
 ### 0.7 Theme profile is separate from block props
 
@@ -90,6 +91,8 @@ If a block type is outside the allowed set for the current context, save is bloc
 | `autoplay` | boolean | no | `true` | Carousel auto‑advance |
 | `interval` | integer | no | `5000` | Minimum `1000` ms |
 | `variant` | string | no | `"default"` | Reserved for future layout variants |
+| `image_fade_mode` | string | no | `"dark"` | `none`, `dark`, `primary`, or `accent` |
+| `image_fade_opacity` | integer | no | `34` | 0..90 overlay opacity for readability |
 | `cta_label` | string | no | — | Button label |
 | `cta_link` | string | no | — | CTA URL (validated) |
 
@@ -107,6 +110,8 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
     { "image": "/files/hero_01.jpg", "caption": "Campus sunrise", "alt": "Campus at dawn" },
     { "image": "/files/hero_02.jpg", "caption": "Student life", "alt": "Students on campus" }
   ],
+  "image_fade_mode": "primary",
+  "image_fade_opacity": 42,
   "autoplay": true,
   "interval": 6000,
   "cta_label": "Book a Visit",
@@ -321,7 +326,49 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 
 ---
 
-## 9) Content Snippet
+## 9) Section Carousel
+
+### Purpose
+
+* Long-scroll storytelling sections with text + compact image carousel
+* Supports NIST-style repeated feature sections without changing page ownership rules
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `heading` | string | yes | — | Section heading (`<h2>`) |
+| `content_html` | string | no | — | Sanitized explanatory copy |
+| `layout` | string | no | `"content_left"` | `content_left` or `content_right` |
+| `items` | array | yes | — | Carousel image items (at least 1) |
+| `items[].image` | string | yes (per item) | — | File URL |
+| `items[].alt` | string | no | — | Alt text |
+| `items[].caption` | string | no | — | Optional image caption |
+| `autoplay` | boolean | no | `true` | Carousel auto‑advance |
+| `interval` | integer | no | `5000` | Minimum `1000` ms |
+| `cta_label` | string | no | — | Optional section CTA label |
+| `cta_link` | string | no | — | Optional section CTA URL (validated) |
+
+### Example
+```json
+{
+  "heading": "Activities",
+  "content_html": "<p>More than 300 activities across arts, service, and sports.</p>",
+  "layout": "content_left",
+  "items": [
+    { "image": "/files/activity_01.jpg", "caption": "After-school sports", "alt": "Students at training" },
+    { "image": "/files/activity_02.jpg", "caption": "Student clubs", "alt": "Students in club meeting" }
+  ],
+  "autoplay": true,
+  "interval": 5200,
+  "cta_label": "Learn More",
+  "cta_link": "/schools/iss/activities"
+}
+```
+
+---
+
+## 10) Content Snippet
 
 ### Purpose
 
@@ -352,7 +399,7 @@ Snippet resolution order is deterministic:
 
 ---
 
-## 10) Leadership
+## 11) Leadership
 
 ### Purpose
 
@@ -378,7 +425,7 @@ Snippet resolution order is deterministic:
 
 ---
 
-## 11) CTA
+## 12) CTA
 
 ### Purpose
 
