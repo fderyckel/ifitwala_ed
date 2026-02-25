@@ -78,7 +78,7 @@ website_redirects = WEBSITE_REDIRECTS
 
 # Home Pages
 # ----------
-# Neutralize sticky login redirect-to=/app before login page/scripts execute.
+# Neutralize sticky login redirect-to=/desk (and legacy /app) before login page/scripts execute.
 before_request = [
     "ifitwala_ed.api.users.sanitize_login_redirect_param",
     "ifitwala_ed.api.users.redirect_non_staff_away_from_desk",

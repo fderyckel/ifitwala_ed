@@ -147,12 +147,12 @@ def _desk_route_slug(doctype: str) -> str:
 
 
 def _doc_url(doctype: str, name: str) -> str:
-    return f"/app/{_desk_route_slug(doctype)}/{quote(_to_text(name), safe='')}"
+    return f"/desk/{_desk_route_slug(doctype)}/{quote(_to_text(name), safe='')}"
 
 
 def _new_doc_url(doctype: str, params: dict[str, str] | None = None) -> str:
     slug = _desk_route_slug(doctype)
-    base = f"/app/{slug}/new-{slug}-1"
+    base = f"/desk/{slug}/new-{slug}-1"
     if not params:
         return base
 
@@ -179,7 +179,7 @@ def _target(
     elif name:
         url = _doc_url(doctype, name)
     else:
-        url = f"/app/{_desk_route_slug(doctype)}"
+        url = f"/desk/{_desk_route_slug(doctype)}"
 
     return {
         "target_doctype": doctype,

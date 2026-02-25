@@ -31,7 +31,7 @@ frappe.ui.form.on("Learning Unit", {
 				learning_unit: frm.doc.name,
 			});
 			// open the "New Lesson" form in a new tab
-			window.open("/app/lesson/new-lesson", "_blank");
+			window.open("/desk/lesson/new-lesson", "_blank");
 		}, __("Lessons"));
 
 		// Make the Lessons group button blue (primary)
@@ -74,7 +74,7 @@ function show_lessons_dialog(rows) {
 		const pubDot = r.is_published
 			? `<span class="indicator-pill green ms-2">${__("Published")}</span>`
 			: `<span class="indicator-pill orange ms-2">${__("Draft")}</span>`;
-		const link = `<a href="/app/lesson/${encodeURIComponent(r.name)}" target="_blank">${frappe.utils.escape_html(r.title || "(Untitled)")}</a>`;
+		const link = `<a href="/desk/lesson/${encodeURIComponent(r.name)}" target="_blank">${frappe.utils.escape_html(r.title || "(Untitled)")}</a>`;
 		return `<li class="list-group-item d-flex align-items-center justify-content-between">
 			<div>${orderBadge}${link}${typeBadge}${pubDot}</div>
 		</li>`;

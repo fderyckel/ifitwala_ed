@@ -12,7 +12,7 @@
 
 				<div class="flex items-center gap-3">
 					<!-- Leaving SPA intentionally -->
-					<a href="/app" class="staff-layout__desk-switch type-button-label">
+					<a href="/desk" class="staff-layout__desk-switch type-button-label">
 						<svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
 							<path
 								d="M4 4h16v10H4zm4 14h8m-4-4v4"

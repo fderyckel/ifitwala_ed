@@ -68,7 +68,7 @@
 								<a
 									v-if="meeting"
 									class="meeting-modal__desk-link type-caption"
-									:href="`/app/meeting/${meeting.name}`"
+									:href="`/desk/meeting/${meeting.name}`"
 									target="_blank"
 									rel="noreferrer"
 								>

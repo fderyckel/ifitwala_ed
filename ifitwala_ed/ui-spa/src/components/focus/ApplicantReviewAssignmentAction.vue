@@ -154,12 +154,12 @@ const previousReviews = computed(() => assignment.value?.previous_reviews || [])
 const deskUrl = computed(() => {
 	if (!assignment.value) return null;
 	if (assignment.value.target_type === 'Applicant Document') {
-		return `/app/applicant-document/${encodeURIComponent(assignment.value.target_name)}`;
+		return `/desk/applicant-document/${encodeURIComponent(assignment.value.target_name)}`;
 	}
 	if (assignment.value.target_type === 'Applicant Health Profile') {
-		return `/app/applicant-health-profile/${encodeURIComponent(assignment.value.target_name)}`;
+		return `/desk/applicant-health-profile/${encodeURIComponent(assignment.value.target_name)}`;
 	}
-	return `/app/student-applicant/${encodeURIComponent(assignment.value.student_applicant)}`;
+	return `/desk/student-applicant/${encodeURIComponent(assignment.value.student_applicant)}`;
 });
 
 watch(

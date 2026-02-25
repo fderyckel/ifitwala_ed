@@ -196,8 +196,7 @@ class LeaveAllocation(Document):
             )
 
             frappe.throw(
-                _("Reference")
-                + f': <a href="/app/Form/Leave Allocation/{leave_allocation[0][0]}">{leave_allocation[0][0]}</a>',
+                _("Reference: {0}").format(get_link_to_form("Leave Allocation", leave_allocation[0][0])),
                 OverlapError,
             )
 

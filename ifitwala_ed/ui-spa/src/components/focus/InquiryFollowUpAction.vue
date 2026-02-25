@@ -124,7 +124,7 @@ function requestRefresh() {
 function openInDesk(name: string) {
 	const safeName = String(name || '').trim();
 	if (!safeName) return;
-	window.open(`/app/inquiry/${encodeURIComponent(safeName)}`, '_blank', 'noopener');
+	window.open(`/desk/inquiry/${encodeURIComponent(safeName)}`, '_blank', 'noopener');
 }
 
 function requireFocusItemId(): string | null {

@@ -115,7 +115,7 @@ def _invoice_url(sales_invoice: str | None) -> str | None:
     name = (sales_invoice or "").strip()
     if not name:
         return None
-    return f"/app/sales-invoice/{name}"
+    return f"/desk/sales-invoice/{name}"
 
 
 def _status_label(

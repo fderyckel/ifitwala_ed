@@ -51,7 +51,7 @@ class TestUserRedirect(FrappeTestCase):
     """Test unified login redirect logic."""
 
     def test_strip_redirect_query_removes_redirect_to_params(self):
-        raw = "/login?redirect-to=%2Fapp&foo=bar&redirect_to=%2Fapp#frag"
+        raw = "/login?redirect-to=%2Fdesk&foo=bar&redirect_to=%2Fdesk#frag"
         cleaned = _strip_redirect_query(raw)
         self.assertEqual(cleaned, "/login?foo=bar#frag")
 
@@ -62,10 +62,10 @@ class TestUserRedirect(FrappeTestCase):
             frappe.local.request = frappe._dict(
                 path="/login",
                 method="GET",
-                full_path="/login?redirect-to=%2Fapp%2Feca&foo=bar",
-                args={"redirect-to": "/app/eca"},
+                full_path="/login?redirect-to=%2Fdesk%2Feca&foo=bar",
+                args={"redirect-to": "/desk/eca"},
             )
-            frappe.form_dict = frappe._dict({"redirect_to": "/app/eca"})
+            frappe.form_dict = frappe._dict({"redirect_to": "/desk/eca"})
             with self.assertRaises(RequestRedirect) as ctx:
                 sanitize_login_redirect_param()
             self.assertEqual(getattr(ctx.exception, "new_url", None), "/login?foo=bar")
@@ -95,7 +95,7 @@ class TestUserRedirect(FrappeTestCase):
         original_request = getattr(frappe.local, "request", None)
         try:
             frappe.set_user(user.email)
-            frappe.local.request = frappe._dict(path="/app/eca", method="GET")
+            frappe.local.request = frappe._dict(path="/desk/eca", method="GET")
             with self.assertRaises(RequestRedirect) as ctx:
                 redirect_non_staff_away_from_desk()
             self.assertEqual(getattr(ctx.exception, "new_url", None), "/admissions")
@@ -122,7 +122,7 @@ class TestUserRedirect(FrappeTestCase):
         try:
             frappe.set_user(user.email)
             frappe.local.flags.redirect_location = None
-            frappe.local.request = frappe._dict(path="/app/eca", method="GET")
+            frappe.local.request = frappe._dict(path="/desk/eca", method="GET")
             redirect_non_staff_away_from_desk()
             self.assertIsNone(frappe.local.flags.redirect_location)
         finally:
@@ -157,7 +157,7 @@ class TestUserRedirect(FrappeTestCase):
         try:
             frappe.set_user(user.email)
             frappe.local.flags.redirect_location = None
-            frappe.local.request = frappe._dict(path="/app/eca", method="GET")
+            frappe.local.request = frappe._dict(path="/desk/eca", method="GET")
             redirect_non_staff_away_from_desk()
             self.assertIsNone(frappe.local.flags.redirect_location)
         finally:
@@ -244,7 +244,7 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("User", user.email, force=True)
 
     def test_login_redirect_overrides_incoming_redirect_to_param(self):
-        """Role-based redirect must win over incoming redirect_to values like /app."""
+        """Role-based redirect must win over incoming redirect_to values like /desk."""
         user = frappe.new_doc("User")
         user.email = "test_override_redirect_param@example.com"
         user.first_name = "Override"
@@ -265,7 +265,7 @@ class TestUserRedirect(FrappeTestCase):
 
         frappe.set_user(user.email)
         frappe.local.response = {}
-        frappe.form_dict = frappe._dict({"redirect_to": "/app"})
+        frappe.form_dict = frappe._dict({"redirect_to": "/desk"})
 
         redirect_user_to_entry_portal()
 

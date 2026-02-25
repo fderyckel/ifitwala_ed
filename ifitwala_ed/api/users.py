@@ -18,6 +18,7 @@ from ifitwala_ed.routing.policy import (
 # Backwards-compatible export used by existing modules/tests.
 STAFF_ROLES = STAFF_PORTAL_ROLES
 PORTAL_ONLY_ROLES = frozenset({"Student", "Guardian", ADMISSIONS_APPLICANT_ROLE})
+DESK_PATHS = ("/desk", "/app")
 
 
 def _get_request_safe():
@@ -71,7 +72,10 @@ def _is_desk_path(path_or_url: str | None) -> bool:
         return False
     parsed = urlsplit(raw)
     path = str(parsed.path or raw).strip()
-    return path == "/app" or path.startswith("/app/")
+    for prefix in DESK_PATHS:
+        if path == prefix or path.startswith(f"{prefix}/"):
+            return True
+    return False
 
 
 def _raise_request_redirect(target: str) -> None:
@@ -92,7 +96,7 @@ def _raise_request_redirect(target: str) -> None:
 
 def sanitize_login_redirect_param() -> None:
     """
-    Guard against sticky Desk redirects (?redirect-to=/app or /app/*) on /login.
+    Guard against sticky Desk redirects (?redirect-to=/desk or legacy /app) on /login.
 
     Frappe's login frontend can prioritize this query parameter over backend
     home-page resolution. We strip only this one value to preserve explicit
@@ -359,7 +363,7 @@ def redirect_user_to_entry_portal(login_manager=None, *, hook_source: str = "log
             login_manager=login_manager,
         )
 
-    # Force canonical portal target even when login was initiated with /app.
+    # Force canonical portal target even when login was initiated with Desk URLs.
     _set_login_redirect_state(path=path, login_manager=login_manager)
     if _is_login_flow_request():
         _emit_login_redirect_trace(

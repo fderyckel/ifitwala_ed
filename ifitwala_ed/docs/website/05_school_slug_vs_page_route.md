@@ -14,7 +14,7 @@ The public root route `/` is the **Organization Landing**.
 * `/` is not rewritten to a default school anymore.
 * Legacy aliases `/home`, `/index`, and `/index.html` resolve to the same landing.
 * School websites are scoped under `/schools/...`.
-* Desk entry `/app` remains framework-owned and outside website page resolution.
+* Desk entry `/desk` remains framework-owned and outside website page resolution.
 
 This keeps organization-level discovery separate from school-level website pages.
 

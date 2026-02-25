@@ -769,7 +769,7 @@ onMounted(async () => {
 										<a
 											v-if="col.fieldname === 'student_label' && row.student"
 											class="text-canopy hover:underline"
-											:href="`/app/student/${row.student}`"
+											:href="`/desk/student/${row.student}`"
 											target="_blank"
 											rel="noopener noreferrer"
 										>

@@ -1028,7 +1028,7 @@ No overrides.
 /portal/*
 /student/*
 /guardian/*
-/app/*
+/desk/*
 ```
 
 Any attempt → redirect to login.

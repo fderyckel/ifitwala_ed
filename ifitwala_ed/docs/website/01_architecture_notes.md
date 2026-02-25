@@ -21,7 +21,7 @@
 | `/admissions/...` | SPA | Authenticated admissions applicant portal |
 | `/portal/...` | Portal SPA | Canonical authenticated portals |
 | `/logout` | Website route (`www/logout`) | Canonical logout endpoint; clears session then redirects |
-| `/app` | Desk | ERP/desk surface |
+| `/desk` | Desk | ERP/desk surface |
 
 Rules:
 * No root catch-all.

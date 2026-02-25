@@ -318,15 +318,25 @@ function newClientRequestId(prefix = 'req') {
 	return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+function deskRouteSlug(doctype: string) {
+	return String(doctype || '')
+		.trim()
+		.toLowerCase()
+		.replace(/_/g, ' ')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+}
+
 function openInDesk(doctype: string, name: string) {
 	// leaving SPA intentionally (Desk route)
 	const safeDoctype = String(doctype || '').trim();
 	const safeName = String(name || '').trim();
-	if (!safeDoctype || !safeName) return;
+	const routeDoctype = deskRouteSlug(safeDoctype);
+	if (!routeDoctype || !safeName) return;
 
-	// Desk accepts /app/<Doctype>/<name> with URL encoding. Do not slugify doctypes.
+	// Desk v16 route shape is /desk/<doctype-slug>/<name>.
 	window.open(
-		`/app/${encodeURIComponent(safeDoctype)}/${encodeURIComponent(safeName)}`,
+		`/desk/${encodeURIComponent(routeDoctype)}/${encodeURIComponent(safeName)}`,
 		'_blank',
 		'noopener'
 	);

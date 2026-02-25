@@ -539,9 +539,14 @@ async function completeParentLog() {
 /* Helpers ------------------------------------------------------ */
 function openInDesk(doctype: string, name: string) {
 	const safeDoctype = String(doctype || '').trim();
-	if (!safeDoctype || !name) return;
+	const routeDoctype = String(safeDoctype)
+		.toLowerCase()
+		.replace(/_/g, ' ')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	if (!routeDoctype || !name) return;
 
-	const url = `/app/${encodeURIComponent(safeDoctype)}/${encodeURIComponent(name)}`;
+	const url = `/desk/${encodeURIComponent(routeDoctype)}/${encodeURIComponent(name)}`;
 	window.open(url, '_blank', 'noopener');
 }
 

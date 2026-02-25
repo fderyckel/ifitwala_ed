@@ -11,7 +11,7 @@
 | `/admissions/*` | Vue SPA (`www/admissions`) | Authenticated applicant portal |
 | `/portal/*` | Vue SPA (`www/portal`) | Canonical authenticated portal namespaces |
 | `/logout` | Website controller (`www/logout.py`) | Canonical logout endpoint with safe redirect |
-| `/app/*` | Frappe Desk | Internal administration |
+| `/desk/*` | Frappe Desk | Internal administration |
 
 ## Non-Negotiable Routing Rules
 

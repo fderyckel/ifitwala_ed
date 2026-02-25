@@ -363,7 +363,7 @@ function render_interview_links(items) {
 				pieces.push(type);
 			}
 			const label = escape_html(pieces.join(" · "));
-			const href = `/app/applicant-interview/${encodeURIComponent(name)}`;
+			const href = `/desk/applicant-interview/${encodeURIComponent(name)}`;
 			return `<a href="${href}">${label}</a>`;
 		})
 		.filter(Boolean);
@@ -382,10 +382,10 @@ function render_health(health) {
 	const reviewTone = health.status === "complete" ? "green" : health.status === "needs_follow_up" ? "red" : "amber";
 	const declarationTone = health.declared_complete ? "green" : "amber";
 	const profileLink = health.profile_name
-		? render_text_link(
-			`/app/applicant-health-profile/${encodeURIComponent(String(health.profile_name))}`,
-			String(health.profile_name)
-		)
+			? render_text_link(
+				`/desk/applicant-health-profile/${encodeURIComponent(String(health.profile_name))}`,
+				String(health.profile_name)
+			)
 		: escape_html("Not created");
 	const reviewedBy = render_user_link(health.reviewed_by);
 	const reviewedOn = format_datetime(health.reviewed_on);
@@ -444,7 +444,7 @@ function render_policies(policies) {
 				<td>${statusPill}</td>
 				<td>${render_signers(signers)}</td>
 				<td>${escape_html(format_datetime(row?.acknowledged_at))}</td>
-				<td>${version ? render_text_link(`/app/policy-version/${encodeURIComponent(version)}`, version) : escape_html("—")}</td>
+				<td>${version ? render_text_link(`/desk/policy-version/${encodeURIComponent(version)}`, version) : escape_html("—")}</td>
 			</tr>
 		`;
 	}).join("");
@@ -488,7 +488,7 @@ function render_documents(documents) {
 	const requiredBody = requiredRows.map((row) => {
 		const docName = String(row?.applicant_document || "").trim();
 		const docLink = docName
-			? render_text_link(`/app/applicant-document/${encodeURIComponent(docName)}`, docName)
+			? render_text_link(`/desk/applicant-document/${encodeURIComponent(docName)}`, docName)
 			: escape_html("—");
 		const fileLink = row?.file_url ? render_text_link(String(row.file_url), "File", true) : escape_html("—");
 		return `
@@ -617,7 +617,7 @@ function render_user_link(user) {
 	if (!userName) {
 		return escape_html("—");
 	}
-	return render_text_link(`/app/user/${encodeURIComponent(userName)}`, userName);
+	return render_text_link(`/desk/user/${encodeURIComponent(userName)}`, userName);
 }
 
 function render_signers(signers) {
