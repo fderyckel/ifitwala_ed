@@ -8,6 +8,7 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, nowdate
 
 from ifitwala_ed.hr import employee_access
+from ifitwala_ed.hr.doctype.employee import employee as employee_controller
 
 
 class TestEmployee(FrappeTestCase):
@@ -128,3 +129,43 @@ class TestEmployee(FrappeTestCase):
         compute_access.assert_called_once_with(emp)
         self.assertEqual(user_doc.enabled, 1)
         user_doc.save.assert_called_once_with(ignore_permissions=True)
+
+    def test_employee_pqc_hr_user_is_global(self):
+        with patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR User"]):
+            self.assertIsNone(employee_controller.get_permission_query_conditions(user="hr.user@example.com"))
+
+    def test_employee_has_permission_hr_manager_is_global(self):
+        doc = frappe._dict(organization="ORG-001", school="SCH-001")
+
+        with patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR Manager"]):
+            self.assertTrue(employee_controller.employee_has_permission(doc, "read", "hr.manager@example.com"))
+            self.assertTrue(employee_controller.employee_has_permission(doc, "write", "hr.manager@example.com"))
+
+    def test_employee_pqc_academic_admin_remains_school_scoped(self):
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["Academic Admin"]),
+            patch("ifitwala_ed.hr.doctype.employee.employee.get_user_base_school", return_value="SCH-ROOT"),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.get_descendant_schools",
+                return_value=["SCH-ROOT", "SCH-CHILD"],
+            ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.escape", side_effect=lambda v: f"'{v}'"),
+        ):
+            condition = employee_controller.get_permission_query_conditions(user="academic.admin@example.com")
+
+        self.assertEqual(condition, "`tabEmployee`.`school` IN ('SCH-ROOT', 'SCH-CHILD')")
+
+    def test_employee_has_permission_academic_admin_stays_scoped(self):
+        allowed_doc = frappe._dict(school="SCH-CHILD")
+        blocked_doc = frappe._dict(school="SCH-OTHER")
+
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["Academic Admin"]),
+            patch("ifitwala_ed.hr.doctype.employee.employee.get_user_base_school", return_value="SCH-ROOT"),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.get_descendant_schools",
+                return_value=["SCH-ROOT", "SCH-CHILD"],
+            ),
+        ):
+            self.assertTrue(employee_controller.employee_has_permission(allowed_doc, "read", "aa@example.com"))
+            self.assertFalse(employee_controller.employee_has_permission(blocked_doc, "read", "aa@example.com"))

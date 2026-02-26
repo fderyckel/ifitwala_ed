@@ -740,8 +740,6 @@ def create_user(employee, user=None, email=None):
             frappe.throw(_("Only HR can create users from Employee."), frappe.PermissionError)
 
         # Resolve caller's base org
-        from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
-
         base_org = get_user_base_org(caller)
         if not base_org:
             frappe.throw(
@@ -901,16 +899,9 @@ def get_permission_query_conditions(user=None):
 
     roles = set(frappe.get_roles(user))
 
-    # HR: scope by Organization subtree
-    if roles & {"HR Manager", "HR User"}:
-        base_org = get_user_base_org(user)
-        if not base_org:
-            return None
-        orgs = get_descendant_organizations(base_org) or []
-        if not orgs:
-            return "1=0"
-        vals = ", ".join(frappe.db.escape(o) for o in orgs)
-        return f"`tabEmployee`.`organization` IN ({vals})"
+    # HR + System Manager: global Employee visibility
+    if roles & {"System Manager", "HR Manager", "HR User"}:
+        return None
 
     # Academic Admin: scope by School subtree
     if "Academic Admin" in roles:
@@ -933,16 +924,12 @@ def employee_has_permission(doc, ptype, user):
 
     roles = set(frappe.get_roles(user))
 
+    # HR roles have full Employee doc access (doctype perms still apply for global actions)
+    if roles & {"HR Manager", "HR User"}:
+        return True
+
     # Read-like checks (list/report/export/print/open)
     if ptype in {"read", "report", "export", "print"}:
-        # HR → Organization subtree
-        if roles & {"HR Manager", "HR User"}:
-            base_org = get_user_base_org(user)
-            if not base_org:
-                return None
-            desc = set(get_descendant_organizations(base_org) or [])
-            return doc.organization in desc
-
         # Academic Admin → School subtree
         if "Academic Admin" in roles:
             base_school = get_user_base_school(user)
