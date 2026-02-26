@@ -3,8 +3,8 @@ title: "Organization: Legal Entity and Hierarchy Root"
 slug: organization
 category: Setup
 doc_order: 1
-version: "1.0.1"
-last_change_date: "2026-02-25"
+version: "1.0.2"
+last_change_date: "2026-02-26"
 summary: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, and website-school ownership."
 seo_title: "Organization: Legal Entity and Hierarchy Root"
 seo_description: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, and website-school ownership."
@@ -21,6 +21,9 @@ seo_description: "Define legal entities as a NestedSet hierarchy and anchor scho
 - `default_website_school`, when set, must belong to the same organization.
 - `organization_logo` is the website shell organization mark (top-right utility area and organization landing brand).
 - Virtual root (`All Organizations`) cannot have a parent.
+- HR scope on Organization is descendant-based:
+  - base org from user default `organization` (fallback `Global Defaults.default_organization`)
+  - plus explicit `User Permission` grants on `Organization` and descendants.
 
 ## Where It Is Used Across the ERP
 
@@ -54,6 +57,7 @@ seo_description: "Define legal entities as a NestedSet hierarchy and anchor scho
 |---|---|---|---|---|---|
 | `System Manager` | Yes | Yes | Yes | Yes | Full access |
 | `HR Manager` | Yes | Yes | Yes | No | No delete permission in doctype |
+| `HR User` | Yes | No | No | No | Descendant-scoped read access (self + children) |
 | `Accounts Manager` | Yes | Yes | Yes | Yes | Full access |
 | `Academic Admin` | Yes | Yes | No | No | Read/write existing |
 | `Employee` | Yes | No | No | No | Read-only |
