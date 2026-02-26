@@ -24,7 +24,7 @@ The document acts as the authoritative HR staff record. It also drives access-re
 Permission scope for `Employee`:
 - `HR Manager` and `HR User` are scoped by Organization descendant inheritance.
 - `HR Manager` and `HR User` can also access employees where `organization` is not yet filled.
-- HR organization scope resolution uses user default `organization` and expands explicit `User Permission` grants on `Organization`; if none resolves, only unassigned-organization Employee rows are visible to HR.
+- HR organization scope resolution uses user default `organization`, then `Global Defaults.default_organization`, and expands explicit `User Permission` grants on `Organization`; if none resolves, only unassigned-organization Employee rows are visible to HR.
 - `Academic Admin` remains school-subtree scoped through permission query + doc checks.
 
 ### 1.1 Staff Portal Holiday Resolution (Portal Calendar Contract)
@@ -147,3 +147,8 @@ Impact: Employee permission scope now unions descendants from default organizati
 We decided HR base-org resolution must not depend on linked Employee rows.
 Reason: HR doctype scope is an operator scope concern and should be driven by organization defaults/permissions, not employee linkage status.
 Impact: Employee linkage status no longer affects HR Employee doctype scope resolution.
+
+[2026-02-26] Decision:
+We decided HR base-org resolution falls back to `Global Defaults.default_organization` when user default `organization` is missing.
+Reason: operational HR scope should still resolve to the organization tree baseline even when per-user defaults are incomplete.
+Impact: HR scope can inherit organization descendants from global default organization without Employee-linkage dependency.

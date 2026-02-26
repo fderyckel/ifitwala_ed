@@ -187,16 +187,29 @@ class TestEmployee(FrappeTestCase):
 
         self.assertEqual(scope, ["ORG-CHILD", "ORG-PARENT"])
 
-    def test_resolve_hr_base_org_uses_user_default_org_only(self):
+    def test_resolve_hr_base_org_uses_user_default_org_first(self):
         with (
             patch(
                 "ifitwala_ed.hr.doctype.employee.employee.frappe.defaults.get_user_default",
                 return_value="ORG-DEFAULT",
             ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_single_value", return_value="ORG-GLOBAL"),
         ):
             base_org = employee_controller._resolve_hr_base_org("hr.user@example.com")
 
         self.assertEqual(base_org, "ORG-DEFAULT")
+
+    def test_resolve_hr_base_org_falls_back_to_global_default_org(self):
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.defaults.get_user_default",
+                return_value=None,
+            ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_single_value", return_value="ORG-GLOBAL"),
+        ):
+            base_org = employee_controller._resolve_hr_base_org("hr.user@example.com")
+
+        self.assertEqual(base_org, "ORG-GLOBAL")
 
     def test_employee_tree_roots_include_visible_rows_with_out_of_scope_manager(self):
         all_visible = [

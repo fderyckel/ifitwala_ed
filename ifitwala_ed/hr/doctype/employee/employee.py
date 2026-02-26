@@ -973,9 +973,13 @@ def employee_has_permission(doc, ptype, user):
 
 
 def _resolve_hr_base_org(user: str) -> str | None:
-    """Resolve HR base org from user defaults only (no Employee-linkage dependency)."""
+    """Resolve HR base org from defaults only (no Employee-linkage dependency)."""
     org = frappe.defaults.get_user_default("organization", user=user)
-    return cstr(org).strip() or None
+    if cstr(org).strip():
+        return cstr(org).strip()
+
+    global_org = frappe.db.get_single_value("Global Defaults", "default_organization")
+    return cstr(global_org).strip() or None
 
 
 def _resolve_hr_org_scope(user: str) -> list[str]:
