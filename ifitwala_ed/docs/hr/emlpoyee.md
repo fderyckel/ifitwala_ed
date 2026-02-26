@@ -25,7 +25,7 @@ Permission scope for `Employee`:
 - `HR Manager` and `HR User` have scoped CRUD on Employee docs:
   - employees in their organization descendant scope
   - employees where `organization` is blank
-- HR organization scope resolution uses user default `organization`, then `Global Defaults.default_organization`, and expands explicit `User Permission` grants on `Organization`; if none resolves, only unassigned-organization Employee rows are visible to HR.
+- HR organization scope resolution uses persisted defaults (`DefaultValue`) for user `organization`, then `Global Defaults.default_organization`, and expands explicit `User Permission` grants on `Organization`; if none resolves, only unassigned-organization Employee rows are visible to HR.
 - `Academic Admin` has read-only Employee access scoped to the user default school.
 - `Employee` role has read-only access to their own Employee record only.
 
@@ -74,7 +74,7 @@ Current create flow:
 
 Role handling now follows managed sync:
 - on employee save, `sync_user_access_from_employee` computes effective roles/workspace from employee history + designation defaults.
-- on employee save, linked user defaults are aligned with Employee context when profile sync is allowed:
+- on employee save, linked user defaults are always aligned with Employee context:
   - `organization` default from `Employee.organization`
   - `school` default from `Employee.school`
 - on employee save, linked `User.enabled` is enforced from `Employee.employment_status`:
@@ -161,7 +161,12 @@ Impact: HR scope can inherit organization descendants from global default organi
 [2026-02-26] Decision:
 We decided Employee save must sync linked user default `organization` from `Employee.organization` (same pattern as school default sync).
 Reason: permissions use user/default organization scope; stale defaults can diverge from Employee form truth and produce unexpected scope behavior.
-Impact: updating Employee organization now updates linked user default organization when profile sync is authorized.
+Impact: updating Employee organization now updates linked user default organization on every save for linked users.
+
+[2026-02-26] Decision:
+We decided linked user default `organization`/`school` synchronization must not be blocked by profile-field sync authorization gates.
+Reason: defaults drive permission scope and must stay consistent with Employee truth regardless of who performs the valid Employee save.
+Impact: `Employee.on_update()` now always syncs user defaults for linked users, while `User` profile field sync remains permission-gated.
 
 [2026-02-26] Decision:
 We decided Employee permission hooks enforce role-specific scope rules explicitly:
@@ -170,3 +175,8 @@ We decided Employee permission hooks enforce role-specific scope rules explicitl
 - Employee: read-only own record
 Reason: this is the required product contract and prevents implicit fallback behavior from granting or denying the wrong access.
 Impact: list and form permissions are now consistent with the intended HR/academic/employee visibility model.
+
+[2026-02-26] Decision:
+We decided Employee permission scope resolution must read persisted defaults directly and avoid permission-time cache dependence.
+Reason: stale default/cache state can cause transient list/form visibility mismatches after organization/school scope updates.
+Impact: permission checks now resolve organization/school defaults from `DefaultValue` storage and compute descendant scope without permission-time cache reuse.

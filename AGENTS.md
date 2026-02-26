@@ -75,7 +75,19 @@ Agents MUST follow:
 
 Drift is a bug.
 
-### 2.1 Legacy Code Policy (Development)
+### 2.1 Documentation Authority Protocol (Non-Negotiable)
+
+* Documentation is the source of truth for behavior and architecture.
+* If documentation is ambiguous, improve/clarify documentation first; then align code to the clarified contract.
+* Agents MUST NOT change code in ways that alter documented behavior without an explicit change rationale and approval.
+* Required rationale format before such code changes:
+  * Pros
+  * Cons
+  * Blind spots
+  * Risks
+* Without that rationale and explicit approval, the agent must stop and wait.
+
+### 2.2 Legacy Code Policy (Development)
 
 * During development, do NOT introduce compatibility shims, duplicate flows, or fallback routes for legacy behavior unless explicitly approved for a production cutover.
 * Remove non-working, obsolete, or superseded code paths as changes are made.

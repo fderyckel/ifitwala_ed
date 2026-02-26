@@ -179,7 +179,7 @@ class TestEmployee(FrappeTestCase):
                 return_value=["ORG-PARENT"],
             ),
             patch(
-                "ifitwala_ed.hr.doctype.employee.employee.get_descendant_organizations",
+                "ifitwala_ed.hr.doctype.employee.employee._get_descendant_organizations_uncached",
                 return_value=["ORG-PARENT", "ORG-CHILD"],
             ),
         ):
@@ -190,7 +190,7 @@ class TestEmployee(FrappeTestCase):
     def test_resolve_hr_base_org_uses_user_default_org_first(self):
         with (
             patch(
-                "ifitwala_ed.hr.doctype.employee.employee.frappe.defaults.get_user_default",
+                "ifitwala_ed.hr.doctype.employee.employee._get_user_default_from_db",
                 return_value="ORG-DEFAULT",
             ),
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_single_value", return_value="ORG-GLOBAL"),
@@ -202,7 +202,7 @@ class TestEmployee(FrappeTestCase):
     def test_resolve_hr_base_org_falls_back_to_global_default_org(self):
         with (
             patch(
-                "ifitwala_ed.hr.doctype.employee.employee.frappe.defaults.get_user_default",
+                "ifitwala_ed.hr.doctype.employee.employee._get_user_default_from_db",
                 return_value=None,
             ),
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_single_value", return_value="ORG-GLOBAL"),
@@ -228,7 +228,7 @@ class TestEmployee(FrappeTestCase):
     def test_employee_pqc_academic_admin_remains_school_scoped(self):
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["Academic Admin"]),
-            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.defaults.get_user_default", return_value="SCH-ROOT"),
+            patch("ifitwala_ed.hr.doctype.employee.employee._get_user_default_from_db", return_value="SCH-ROOT"),
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.escape", side_effect=lambda v: f"'{v}'"),
         ):
             condition = employee_controller.get_permission_query_conditions(user="academic.admin@example.com")
@@ -241,7 +241,7 @@ class TestEmployee(FrappeTestCase):
 
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["Academic Admin"]),
-            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.defaults.get_user_default", return_value="SCH-ROOT"),
+            patch("ifitwala_ed.hr.doctype.employee.employee._get_user_default_from_db", return_value="SCH-ROOT"),
         ):
             self.assertTrue(employee_controller.employee_has_permission(allowed_doc, "read", "aa@example.com"))
             self.assertFalse(employee_controller.employee_has_permission(blocked_doc, "read", "aa@example.com"))
@@ -290,7 +290,7 @@ class TestEmployee(FrappeTestCase):
         emp.organization = "Ifitwala Education Org"
 
         with (
-            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.defaults.get_user_default", return_value=None),
+            patch("ifitwala_ed.hr.doctype.employee.employee._get_user_default_from_db", return_value=None),
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.defaults.set_user_default") as set_default,
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.cache") as cache_mock,
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.msgprint"),
@@ -307,7 +307,7 @@ class TestEmployee(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.hr.doctype.employee.employee.frappe.defaults.get_user_default",
+                "ifitwala_ed.hr.doctype.employee.employee._get_user_default_from_db",
                 return_value="Ifitwala Canopy Campus",
             ),
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.defaults.clear_default") as clear_default,
@@ -318,3 +318,26 @@ class TestEmployee(FrappeTestCase):
 
         clear_default.assert_called_once_with("organization", "staff@example.com")
         cache_mock.return_value.hdel.assert_called_once_with("user:staff@example.com", "defaults")
+
+    def test_on_update_syncs_defaults_even_when_profile_sync_not_allowed(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+
+        with (
+            patch.object(emp, "_reports_to_changed", return_value=False),
+            patch.object(emp, "reset_employee_emails_cache"),
+            patch.object(emp, "sync_employee_history"),
+            patch.object(emp, "_sync_staff_calendar"),
+            patch.object(emp, "_ensure_primary_contact"),
+            patch.object(emp, "_apply_designation_role"),
+            patch.object(emp, "_apply_approver_roles"),
+            patch.object(emp, "_can_sync_user_profile", return_value=False),
+            patch.object(emp, "update_user") as update_user,
+            patch.object(emp, "update_user_default_organization") as update_org,
+            patch.object(emp, "update_user_default_school") as update_school,
+        ):
+            emp.on_update()
+
+        update_user.assert_not_called()
+        update_org.assert_called_once()
+        update_school.assert_called_once()

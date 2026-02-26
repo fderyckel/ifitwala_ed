@@ -8,8 +8,6 @@ from frappe import _
 from frappe.utils import cint, cstr
 from frappe.utils.nestedset import NestedSet
 
-from ifitwala_ed.utilities.employee_utils import get_descendant_organizations
-
 VIRTUAL_ROOT = "All Organizations"
 HR_SCOPE_ROLES = {"HR Manager", "HR User"}
 
@@ -135,9 +133,9 @@ def add_node(**kwargs):
 
 
 def _resolve_hr_base_org(user: str) -> str | None:
-    org = frappe.defaults.get_user_default("organization", user=user)
-    if cstr(org).strip():
-        return cstr(org).strip()
+    org = _get_user_default_from_db(user, "organization")
+    if org:
+        return org
 
     global_org = frappe.db.get_single_value("Global Defaults", "default_organization")
     return cstr(global_org).strip() or None
@@ -148,7 +146,9 @@ def _resolve_hr_org_scope(user: str) -> list[str]:
 
     base_org = _resolve_hr_base_org(user)
     if base_org:
-        scope.update({cstr(org).strip() for org in (get_descendant_organizations(base_org) or []) if cstr(org).strip()})
+        scope.update(
+            {cstr(org).strip() for org in (_get_descendant_organizations_uncached(base_org) or []) if cstr(org).strip()}
+        )
 
     explicit_orgs = frappe.get_all(
         "User Permission",
@@ -160,10 +160,43 @@ def _resolve_hr_org_scope(user: str) -> list[str]:
         if not org_name:
             continue
         scope.update(
-            {cstr(item).strip() for item in (get_descendant_organizations(org_name) or []) if cstr(item).strip()}
+            {
+                cstr(item).strip()
+                for item in (_get_descendant_organizations_uncached(org_name) or [])
+                if cstr(item).strip()
+            }
         )
 
     return sorted(scope)
+
+
+def _get_user_default_from_db(user: str, key: str) -> str | None:
+    rows = frappe.get_all(
+        "DefaultValue",
+        filters={"parent": user, "defkey": key},
+        fields=["defvalue"],
+        order_by="modified desc, creation desc, name desc",
+        limit=1,
+    )
+    if not rows:
+        return None
+    return cstr(rows[0].get("defvalue")).strip() or None
+
+
+def _get_descendant_organizations_uncached(org: str) -> list[str]:
+    org = cstr(org).strip()
+    if not org:
+        return []
+
+    bounds = frappe.db.get_value("Organization", org, ["lft", "rgt"], as_dict=True)
+    if not bounds or bounds.lft is None or bounds.rgt is None:
+        return []
+
+    return frappe.get_all(
+        "Organization",
+        filters={"lft": (">=", bounds.lft), "rgt": ("<=", bounds.rgt)},
+        pluck="name",
+    )
 
 
 def get_permission_query_conditions(user=None):

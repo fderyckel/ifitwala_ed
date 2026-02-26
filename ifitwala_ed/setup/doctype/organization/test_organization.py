@@ -61,7 +61,7 @@ class TestOrganization(FrappeTestCase):
     def test_resolve_hr_base_org_uses_user_default_then_global(self):
         with (
             patch(
-                "ifitwala_ed.setup.doctype.organization.organization.frappe.defaults.get_user_default",
+                "ifitwala_ed.setup.doctype.organization.organization._get_user_default_from_db",
                 return_value="ORG-DEFAULT",
             ),
             patch(
@@ -73,7 +73,7 @@ class TestOrganization(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.setup.doctype.organization.organization.frappe.defaults.get_user_default",
+                "ifitwala_ed.setup.doctype.organization.organization._get_user_default_from_db",
                 return_value=None,
             ),
             patch(
@@ -91,7 +91,7 @@ class TestOrganization(FrappeTestCase):
                 return_value=["ORG-PARENT"],
             ),
             patch(
-                "ifitwala_ed.setup.doctype.organization.organization.get_descendant_organizations",
+                "ifitwala_ed.setup.doctype.organization.organization._get_descendant_organizations_uncached",
                 return_value=["ORG-PARENT", "ORG-CHILD"],
             ),
         ):
