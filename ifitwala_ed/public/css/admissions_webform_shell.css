@@ -353,7 +353,7 @@ body.ifitwala-public-webform .hide {
 }
 
 .ifitwala-public-webform .success-page {
-	display: none;
+	display: block;
 	margin-top: 1.25rem;
 	padding: 1.3rem 1.25rem;
 	border: 1px solid rgb(var(--if-border-rgb) / 0.9);
@@ -361,8 +361,8 @@ body.ifitwala-public-webform .hide {
 	background: rgb(255 255 255 / 0.95);
 }
 
-.ifitwala-public-webform.if-webform-submitted .success-page {
-	display: block;
+.ifitwala-public-webform .success-page.hide {
+	display: none !important;
 }
 
 .ifitwala-public-webform .success-page .success-header {

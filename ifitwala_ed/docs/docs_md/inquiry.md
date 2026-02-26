@@ -3,8 +3,8 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.3.4"
-last_change_date: "2026-02-24"
+version: "1.3.5"
+last_change_date: "2026-02-26"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
 seo_description: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
@@ -62,7 +62,7 @@ Allowed transitions are strictly server-validated:
   - custom action buttons (`Assign`, `Reassign`, `Mark Contacted`, `Qualify`, `Archive`, `Invite to Apply`)
   - `Mark Contacted` is available in `Assigned` state for both `Admission Officer` and `Admission Manager`
   - colored list indicators for workflow and SLA status
-- **Public web form**: `/apply/inquiry` creates Inquiry records from visitor submissions.
+- **Public web form**: `/apply/inquiry` creates Inquiry records from visitor submissions and shows a post-submit confirmation message; when Organization is selected, confirmation copy references that organization.
 - **Notifications**:
   - `Notify Admission Manager` on new Inquiry
   - `Inquiry Assigned` on assignee change

@@ -4,6 +4,11 @@
 	'use strict';
 
 	var APPLY_PREFIX = '/apply/';
+	var INQUIRY_ROUTE_PREFIX = '/apply/inquiry';
+	var INQUIRY_ORGANIZATION_STORAGE_KEY = 'ifitwala:inquiry:selected-organization';
+	var INQUIRY_SUCCESS_TITLE = 'Inquiry received';
+	var INQUIRY_SUCCESS_MESSAGE_DEFAULT =
+		'Your message has been received. A member of our team will get back to you soon.';
 	var SHELL_ROOT_ID = 'ifitwala-webform-shell-root';
 	var SHELL_FOOTER_ID = 'ifitwala-webform-shell-footer';
 	var SHELL_CSS_ID = 'ifitwala-webform-shell-css';
@@ -34,6 +39,120 @@
 			parts.push('Organization: ' + organization);
 		}
 		return parts.join(' | ');
+	}
+
+	function isInquiryRoute() {
+		var pathname = window.location.pathname || '';
+		return pathname.indexOf(INQUIRY_ROUTE_PREFIX) === 0;
+	}
+
+	function getInquiryOrganizationValue() {
+		var organizationInput = document.querySelector(
+			'.web-form [data-fieldname="organization"] input, ' +
+				'.web-form [data-fieldname="organization"] select, ' +
+				'.web-form input[name="organization"], ' +
+				'.web-form select[name="organization"]'
+		);
+
+		if (!organizationInput) {
+			return '';
+		}
+		return (organizationInput.value || '').trim();
+	}
+
+	function saveInquiryOrganizationValue(value) {
+		if (!value) {
+			return;
+		}
+		try {
+			window.sessionStorage.setItem(INQUIRY_ORGANIZATION_STORAGE_KEY, value);
+		} catch (error) {
+			// Ignore browser storage errors and keep the default success copy.
+		}
+	}
+
+	function clearInquiryOrganizationValue() {
+		try {
+			window.sessionStorage.removeItem(INQUIRY_ORGANIZATION_STORAGE_KEY);
+		} catch (error) {
+			// Ignore browser storage errors and keep runtime behavior unchanged.
+		}
+	}
+
+	function readInquiryOrganizationValue() {
+		try {
+			return (window.sessionStorage.getItem(INQUIRY_ORGANIZATION_STORAGE_KEY) || '').trim();
+		} catch (error) {
+			return '';
+		}
+	}
+
+	function buildInquirySuccessMessage(organization) {
+		if (!organization) {
+			return INQUIRY_SUCCESS_MESSAGE_DEFAULT;
+		}
+
+		return (
+			'Your message has been received. Someone from ' +
+			organization +
+			' will get back to you soon.'
+		);
+	}
+
+	function applyInquirySuccessCopy(organizationOverride) {
+		if (!isInquiryRoute()) {
+			return;
+		}
+
+		var successNode = document.querySelector('.success-page');
+		if (!successNode) {
+			return;
+		}
+
+		var successTitleNode = successNode.querySelector('.success-title');
+		var successMessageNode = successNode.querySelector('.success-message');
+		if (!successMessageNode) {
+			return;
+		}
+
+		var organization = '';
+		if (typeof organizationOverride === 'string') {
+			organization = organizationOverride.trim();
+		} else {
+			organization = (getInquiryOrganizationValue() || readInquiryOrganizationValue()).trim();
+		}
+		if (organization) {
+			saveInquiryOrganizationValue(organization);
+		} else {
+			clearInquiryOrganizationValue();
+		}
+
+		if (successTitleNode) {
+			successTitleNode.textContent = INQUIRY_SUCCESS_TITLE;
+		}
+		successMessageNode.textContent = buildInquirySuccessMessage(organization);
+	}
+
+	function bindInquirySubmitSuccessCopy() {
+		if (!isInquiryRoute()) {
+			return;
+		}
+
+		var formNode = document.querySelector('.web-form');
+		if (!formNode || formNode.getAttribute('data-if-inquiry-submit-bound') === '1') {
+			return;
+		}
+
+		formNode.setAttribute('data-if-inquiry-submit-bound', '1');
+		formNode.addEventListener('submit', function () {
+			var organization = getInquiryOrganizationValue();
+			if (organization) {
+				saveInquiryOrganizationValue(organization);
+			} else {
+				clearInquiryOrganizationValue();
+			}
+			applyInquirySuccessCopy(organization);
+		});
 	}
 
 	function buildShellHeader() {
@@ -239,6 +358,7 @@
 
 	function syncSubmissionState() {
 		var formNode = document.querySelector('.web-form');
+		var formContainerNode = document.querySelector('.web-form-container');
 		var successNode = document.querySelector('.success-page');
 
 		if (!successNode) {
@@ -246,16 +366,30 @@
 			return;
 		}
 
-		if (!formNode) {
+		if (!formNode && !formContainerNode) {
 			document.body.classList.add('if-webform-submitted');
 			return;
 		}
 
 		var hiddenByClass =
-			formNode.classList.contains('hide') || formNode.classList.contains('hidden');
-		var hiddenByAttr = formNode.getAttribute('aria-hidden') === 'true';
-		var hiddenByStyle = window.getComputedStyle(formNode).display === 'none';
-		var isSubmitted = hiddenByClass || hiddenByAttr || hiddenByStyle;
+			formNode && (formNode.classList.contains('hide') || formNode.classList.contains('hidden'));
+		var hiddenByAttr = formNode && formNode.getAttribute('aria-hidden') === 'true';
+		var hiddenByStyle = formNode && window.getComputedStyle(formNode).display === 'none';
+		var containerHiddenByClass =
+			formContainerNode &&
+			(formContainerNode.classList.contains('hide') ||
+				formContainerNode.classList.contains('hidden'));
+		var containerHiddenByAttr =
+			formContainerNode && formContainerNode.getAttribute('aria-hidden') === 'true';
+		var containerHiddenByStyle =
+			formContainerNode && window.getComputedStyle(formContainerNode).display === 'none';
+		var isSubmitted =
+			hiddenByClass ||
+			hiddenByAttr ||
+			hiddenByStyle ||
+			containerHiddenByClass ||
+			containerHiddenByAttr ||
+			containerHiddenByStyle;
 		document.body.classList.toggle('if-webform-submitted', isSubmitted);
 	}
 
@@ -282,6 +416,8 @@
 		normalizeSelectControls();
 		normalizeActionButtons();
 		hideRedundantFieldnameHints();
+		bindInquirySubmitSuccessCopy();
+		applyInquirySuccessCopy();
 		syncSubmissionState();
 
 		if (!document.getElementById(SHELL_ROOT_ID)) {

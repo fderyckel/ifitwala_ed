@@ -818,15 +818,29 @@ def get_children(doctype, parent=None, organization=None, is_root=False, is_tree
     # Children of a node vs top-level nodes
     if parent:
         filters.append(["reports_to", "=", parent])
+        employees = frappe.get_list(
+            doctype,
+            fields=fields,
+            filters=filters,
+            order_by="name",
+        )
     else:
-        filters.append(["reports_to", "=", ""])
-
-    employees = frappe.get_list(
-        doctype,
-        fields=fields,
-        filters=filters,
-        order_by="name",
-    )
+        # For scoped users, visible employees can all report to out-of-scope managers.
+        # In that case, treat "parent not visible" as a root so the tree doesn't appear empty.
+        root_fields = fields + ["reports_to"]
+        all_visible = frappe.get_list(
+            doctype,
+            fields=root_fields,
+            filters=filters,
+            order_by="name",
+        )
+        visible_names = {row.get("value") for row in all_visible if row.get("value")}
+        employees = []
+        for row in all_visible:
+            manager = cstr(row.get("reports_to")).strip()
+            if not manager or manager not in visible_names:
+                row.pop("reports_to", None)
+                employees.append(row)
 
     # Nothing to expand
     if not employees:
@@ -905,7 +919,7 @@ def get_permission_query_conditions(user=None):
 
     # HR: scope by Organization subtree + always include unassigned organization rows
     if roles & {"HR Manager", "HR User"}:
-        base_org = get_user_base_org(user)
+        base_org = _resolve_hr_base_org(user)
         if not base_org:
             return "IFNULL(`tabEmployee`.`organization`, '') = ''"
 
@@ -944,7 +958,7 @@ def employee_has_permission(doc, ptype, user):
             if not cstr(doc.organization).strip():
                 return True
 
-            base_org = get_user_base_org(user)
+            base_org = _resolve_hr_base_org(user)
             if not base_org:
                 return False
 
@@ -961,3 +975,28 @@ def employee_has_permission(doc, ptype, user):
 
     # Others fall back to standard perms
     return None
+
+
+def _resolve_hr_base_org(user: str) -> str | None:
+    """Resolve HR base org with safe fallbacks when Employee linkage is missing."""
+    base_org = get_user_base_org(user)
+    if base_org:
+        return base_org
+
+    rows = frappe.get_all(
+        "Employee",
+        filters={
+            "user_id": user,
+            "employment_status": ["in", ["Active", "Temporary Leave"]],
+        },
+        fields=["organization"],
+        order_by="modified desc",
+        limit=5,
+    )
+    fallback_org = next(
+        (cstr(row.get("organization")).strip() for row in rows if cstr(row.get("organization")).strip()), None
+    )
+    if fallback_org:
+        return fallback_org
+
+    return frappe.defaults.get_user_default("organization", user=user)

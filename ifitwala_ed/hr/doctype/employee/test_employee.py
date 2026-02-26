@@ -133,7 +133,7 @@ class TestEmployee(FrappeTestCase):
     def test_employee_pqc_hr_user_is_org_scoped_and_includes_unassigned(self):
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR User"]),
-            patch("ifitwala_ed.hr.doctype.employee.employee.get_user_base_org", return_value="ORG-ROOT"),
+            patch("ifitwala_ed.hr.doctype.employee.employee._resolve_hr_base_org", return_value="ORG-ROOT"),
             patch(
                 "ifitwala_ed.hr.doctype.employee.employee.get_descendant_organizations",
                 return_value=["ORG-ROOT", "ORG-CHILD"],
@@ -150,7 +150,7 @@ class TestEmployee(FrappeTestCase):
     def test_employee_pqc_hr_user_without_base_org_only_unassigned(self):
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR User"]),
-            patch("ifitwala_ed.hr.doctype.employee.employee.get_user_base_org", return_value=None),
+            patch("ifitwala_ed.hr.doctype.employee.employee._resolve_hr_base_org", return_value=None),
         ):
             condition = employee_controller.get_permission_query_conditions(user="hr.user@example.com")
 
@@ -163,7 +163,7 @@ class TestEmployee(FrappeTestCase):
 
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR Manager"]),
-            patch("ifitwala_ed.hr.doctype.employee.employee.get_user_base_org", return_value="ORG-ROOT"),
+            patch("ifitwala_ed.hr.doctype.employee.employee._resolve_hr_base_org", return_value="ORG-ROOT"),
             patch(
                 "ifitwala_ed.hr.doctype.employee.employee.get_descendant_organizations",
                 return_value=["ORG-ROOT", "ORG-CHILD"],
@@ -174,6 +174,20 @@ class TestEmployee(FrappeTestCase):
             self.assertTrue(
                 employee_controller.employee_has_permission(unassigned_doc, "read", "hr.manager@example.com")
             )
+
+    def test_employee_tree_roots_include_visible_rows_with_out_of_scope_manager(self):
+        all_visible = [
+            frappe._dict(value="EMP-0001", title="Rootless Child", reports_to="MGR-OUT"),
+            frappe._dict(value="EMP-0002", title="Top Root", reports_to=""),
+        ]
+
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_list", return_value=all_visible),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.sql", return_value=[]),
+        ):
+            rows = employee_controller.get_children("Employee", parent="", is_root=True)
+
+        self.assertEqual({row.get("value") for row in rows}, {"EMP-0001", "EMP-0002"})
 
     def test_employee_pqc_academic_admin_remains_school_scoped(self):
         with (

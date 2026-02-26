@@ -24,6 +24,7 @@ The document acts as the authoritative HR staff record. It also drives access-re
 Permission scope for `Employee`:
 - `HR Manager` and `HR User` are scoped by Organization descendant inheritance.
 - `HR Manager` and `HR User` can also access employees where `organization` is not yet filled.
+- HR base-organization resolution checks linked Employee context first, then falls back to user default `organization`; if neither resolves, only unassigned-organization Employee rows are visible to HR.
 - `Academic Admin` remains school-subtree scoped through permission query + doc checks.
 
 ### 1.1 Staff Portal Holiday Resolution (Portal Calendar Contract)
@@ -131,3 +132,8 @@ Impact: successful login now repairs the link and re-applies access sync before 
 We decided to keep `HR Manager` and `HR User` organization-subtree scoped, but include employees with empty `organization`.
 Reason: HR must remain org-scoped by descendant inheritance, while still being able to triage/fix employee records that are missing organization assignment.
 Impact: Employee permission hooks now allow HR access when `organization` is blank, and enforce subtree checks once organization is filled.
+
+[2026-02-26] Decision:
+We decided Employee tree root loading must surface visible scoped employees whose `reports_to` points to an out-of-scope manager.
+Reason: strict `reports_to = ''` root filtering can render an empty tree for scoped users even when they have valid Employee visibility.
+Impact: Employee tree root now treats "manager not visible in current scope" as a root candidate.
