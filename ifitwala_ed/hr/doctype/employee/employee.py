@@ -919,11 +919,7 @@ def get_permission_query_conditions(user=None):
 
     # HR: scope by Organization subtree + always include unassigned organization rows
     if roles & {"HR Manager", "HR User"}:
-        base_org = _resolve_hr_base_org(user)
-        if not base_org:
-            return "IFNULL(`tabEmployee`.`organization`, '') = ''"
-
-        orgs = get_descendant_organizations(base_org) or []
+        orgs = _resolve_hr_org_scope(user)
         if not orgs:
             return "IFNULL(`tabEmployee`.`organization`, '') = ''"
 
@@ -958,12 +954,11 @@ def employee_has_permission(doc, ptype, user):
             if not cstr(doc.organization).strip():
                 return True
 
-            base_org = _resolve_hr_base_org(user)
-            if not base_org:
+            orgs = set(_resolve_hr_org_scope(user))
+            if not orgs:
                 return False
 
-            desc = set(get_descendant_organizations(base_org) or [])
-            return doc.organization in desc
+            return doc.organization in orgs
 
         # Academic Admin → School subtree
         if "Academic Admin" in roles:
@@ -978,25 +973,30 @@ def employee_has_permission(doc, ptype, user):
 
 
 def _resolve_hr_base_org(user: str) -> str | None:
-    """Resolve HR base org with safe fallbacks when Employee linkage is missing."""
-    base_org = get_user_base_org(user)
+    """Resolve HR base org from user defaults only (no Employee-linkage dependency)."""
+    org = frappe.defaults.get_user_default("organization", user=user)
+    return cstr(org).strip() or None
+
+
+def _resolve_hr_org_scope(user: str) -> list[str]:
+    """Resolve full HR organization scope from default org + explicit user permissions."""
+    scope: set[str] = set()
+
+    base_org = _resolve_hr_base_org(user)
     if base_org:
-        return base_org
+        scope.update({cstr(org).strip() for org in (get_descendant_organizations(base_org) or []) if cstr(org).strip()})
 
-    rows = frappe.get_all(
-        "Employee",
-        filters={
-            "user_id": user,
-            "employment_status": ["in", ["Active", "Temporary Leave"]],
-        },
-        fields=["organization"],
-        order_by="modified desc",
-        limit=5,
+    explicit_orgs = frappe.get_all(
+        "User Permission",
+        filters={"user": user, "allow": "Organization"},
+        pluck="for_value",
     )
-    fallback_org = next(
-        (cstr(row.get("organization")).strip() for row in rows if cstr(row.get("organization")).strip()), None
-    )
-    if fallback_org:
-        return fallback_org
+    for org in explicit_orgs:
+        org_name = cstr(org).strip()
+        if not org_name:
+            continue
+        scope.update(
+            {cstr(item).strip() for item in (get_descendant_organizations(org_name) or []) if cstr(item).strip()}
+        )
 
-    return frappe.defaults.get_user_default("organization", user=user)
+    return sorted(scope)

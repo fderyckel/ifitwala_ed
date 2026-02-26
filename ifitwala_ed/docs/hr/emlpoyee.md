@@ -24,7 +24,7 @@ The document acts as the authoritative HR staff record. It also drives access-re
 Permission scope for `Employee`:
 - `HR Manager` and `HR User` are scoped by Organization descendant inheritance.
 - `HR Manager` and `HR User` can also access employees where `organization` is not yet filled.
-- HR base-organization resolution checks linked Employee context first, then falls back to user default `organization`; if neither resolves, only unassigned-organization Employee rows are visible to HR.
+- HR organization scope resolution uses user default `organization` and expands explicit `User Permission` grants on `Organization`; if none resolves, only unassigned-organization Employee rows are visible to HR.
 - `Academic Admin` remains school-subtree scoped through permission query + doc checks.
 
 ### 1.1 Staff Portal Holiday Resolution (Portal Calendar Contract)
@@ -137,3 +137,13 @@ Impact: Employee permission hooks now allow HR access when `organization` is bla
 We decided Employee tree root loading must surface visible scoped employees whose `reports_to` points to an out-of-scope manager.
 Reason: strict `reports_to = ''` root filtering can render an empty tree for scoped users even when they have valid Employee visibility.
 Impact: Employee tree root now treats "manager not visible in current scope" as a root candidate.
+
+[2026-02-26] Decision:
+We decided HR organization scope must also honor explicit `User Permission` grants on `Organization`.
+Reason: role-authorized HR users can be scoped operationally through defaults and explicit org permissions without depending on Employee linkage.
+Impact: Employee permission scope now unions descendants from default organization and descendants from explicit Organization User Permissions.
+
+[2026-02-26] Decision:
+We decided HR base-org resolution must not depend on linked Employee rows.
+Reason: HR doctype scope is an operator scope concern and should be driven by organization defaults/permissions, not employee linkage status.
+Impact: Employee linkage status no longer affects HR Employee doctype scope resolution.

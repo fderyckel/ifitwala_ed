@@ -133,10 +133,8 @@ class TestEmployee(FrappeTestCase):
     def test_employee_pqc_hr_user_is_org_scoped_and_includes_unassigned(self):
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR User"]),
-            patch("ifitwala_ed.hr.doctype.employee.employee._resolve_hr_base_org", return_value="ORG-ROOT"),
             patch(
-                "ifitwala_ed.hr.doctype.employee.employee.get_descendant_organizations",
-                return_value=["ORG-ROOT", "ORG-CHILD"],
+                "ifitwala_ed.hr.doctype.employee.employee._resolve_hr_org_scope", return_value=["ORG-ROOT", "ORG-CHILD"]
             ),
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.escape", side_effect=lambda v: f"'{v}'"),
         ):
@@ -150,7 +148,7 @@ class TestEmployee(FrappeTestCase):
     def test_employee_pqc_hr_user_without_base_org_only_unassigned(self):
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR User"]),
-            patch("ifitwala_ed.hr.doctype.employee.employee._resolve_hr_base_org", return_value=None),
+            patch("ifitwala_ed.hr.doctype.employee.employee._resolve_hr_org_scope", return_value=[]),
         ):
             condition = employee_controller.get_permission_query_conditions(user="hr.user@example.com")
 
@@ -163,10 +161,8 @@ class TestEmployee(FrappeTestCase):
 
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR Manager"]),
-            patch("ifitwala_ed.hr.doctype.employee.employee._resolve_hr_base_org", return_value="ORG-ROOT"),
             patch(
-                "ifitwala_ed.hr.doctype.employee.employee.get_descendant_organizations",
-                return_value=["ORG-ROOT", "ORG-CHILD"],
+                "ifitwala_ed.hr.doctype.employee.employee._resolve_hr_org_scope", return_value=["ORG-ROOT", "ORG-CHILD"]
             ),
         ):
             self.assertTrue(employee_controller.employee_has_permission(allowed_doc, "read", "hr.manager@example.com"))
@@ -174,6 +170,33 @@ class TestEmployee(FrappeTestCase):
             self.assertTrue(
                 employee_controller.employee_has_permission(unassigned_doc, "read", "hr.manager@example.com")
             )
+
+    def test_resolve_hr_org_scope_includes_user_permission_org_descendants(self):
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee._resolve_hr_base_org", return_value=None),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.get_all",
+                return_value=["ORG-PARENT"],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.get_descendant_organizations",
+                return_value=["ORG-PARENT", "ORG-CHILD"],
+            ),
+        ):
+            scope = employee_controller._resolve_hr_org_scope("hr.user@example.com")
+
+        self.assertEqual(scope, ["ORG-CHILD", "ORG-PARENT"])
+
+    def test_resolve_hr_base_org_uses_user_default_org_only(self):
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.defaults.get_user_default",
+                return_value="ORG-DEFAULT",
+            ),
+        ):
+            base_org = employee_controller._resolve_hr_base_org("hr.user@example.com")
+
+        self.assertEqual(base_org, "ORG-DEFAULT")
 
     def test_employee_tree_roots_include_visible_rows_with_out_of_scope_manager(self):
         all_visible = [
