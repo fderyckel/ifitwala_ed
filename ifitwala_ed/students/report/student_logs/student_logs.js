@@ -134,12 +134,12 @@ frappe.query_reports["Student Logs"] = {
 		// Status badge (screen)
 		if (column.fieldname === "follow_up_status" && value) {
 			const norm = String(value || "").trim().toLowerCase();
-			let color = "secondary";        // fallback
-			if (norm === "open")        color = "danger";   // red
-			if (norm === "in progress") color = "warning";  // orange
-			if (norm === "completed")   color = "success";  // green
-
-			return `<span class="badge bg-${color}">${value}</span>`;
+			let tone = "neutral";
+			if (norm === "open") tone = "open";
+			if (norm === "in progress") tone = "in-progress";
+			if (norm === "completed") tone = "completed";
+			const safe = frappe.utils.escape_html(String(value));
+			return `<span class="if-status-pill if-status-pill--${tone}">${safe}</span>`;
 		}
 
 		// visibility icons
@@ -192,8 +192,8 @@ function ensure_print_button(page) {
 	const $btn = page.add_inner_button(__("Print"), () => handle_report_print(), null);
 	if ($btn) {
 		$btn.attr("data-key", BTN_KEY);
-		// Bootstrap 4 blue
-		$btn.removeClass("btn-default btn-primary").addClass("btn-info btn-sm");
+		$btn.removeClass((_, cls) => ((cls || "").match(/\bbtn[^\s]*/g) || []).join(" "));
+		$btn.addClass("if-student-logs-print-btn");
 	}
 }
 
@@ -236,11 +236,60 @@ function inject_compact_css_once() {
 		}
 		.report-cell-ellipsis.wide{ max-width:340px; }
 
-		/* subtle de-emphasis */
-		.text-dim{ opacity:.8; }
+			/* subtle de-emphasis */
+			.text-dim{ opacity:.8; }
 
-		/* compact vertical rhythm */
-		.compact .dt-scrollable .dt-cell__content{ line-height:1.15; }
+			/* status pill variants for follow-up state */
+			.if-status-pill{
+				display:inline-flex;
+				align-items:center;
+				padding:0.12rem 0.52rem;
+				border-radius:999px;
+				font-size:0.75rem;
+				font-weight:600;
+				line-height:1.2;
+				border:1px solid transparent;
+			}
+			.if-status-pill--neutral{
+				background:#e2e8f0;
+				color:#334155;
+				border-color:#cbd5e1;
+			}
+			.if-status-pill--open{
+				background:#fee2e2;
+				color:#991b1b;
+				border-color:#fecaca;
+			}
+			.if-status-pill--in-progress{
+				background:#ffedd5;
+				color:#9a3412;
+				border-color:#fed7aa;
+			}
+			.if-status-pill--completed{
+				background:#dcfce7;
+				color:#166534;
+				border-color:#bbf7d0;
+			}
+
+			/* print action button */
+			.if-student-logs-print-btn{
+				background:#0ea5e9;
+				border:1px solid #0ea5e9;
+				color:#fff;
+				border-radius:0.5rem;
+				padding:0.32rem 0.7rem;
+				font-size:0.8rem;
+				font-weight:600;
+			}
+			.if-student-logs-print-btn:hover,
+			.if-student-logs-print-btn:focus{
+				background:#0284c7;
+				border-color:#0284c7;
+				color:#fff;
+			}
+
+			/* compact vertical rhythm */
+			.compact .dt-scrollable .dt-cell__content{ line-height:1.15; }
 		.compact .dt-header .dt-cell__content{ line-height:1.15; }
 	`;
 	document.head.appendChild(style);

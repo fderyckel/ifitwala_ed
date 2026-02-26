@@ -219,6 +219,8 @@ Rules:
   * **Vue 3**
   * **Tailwind CSS v4**
   * **frappe-ui**
+* Bootstrap is deprecated and treated as removed legacy (including `bootstrap-select` and Bootstrap class conventions like `btn-*`/`badge`).
+* Do not introduce or preserve Bootstrap assets/classes in new or touched code; refactor touched legacy UI to Tailwind v4 patterns or project-scoped semantic classes.
 * Legacy UI may exist:
 
   * It is tolerated

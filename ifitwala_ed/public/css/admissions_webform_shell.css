@@ -263,62 +263,6 @@ body.ifitwala-public-webform .hide {
 	display: none;
 }
 
-.ifitwala-public-webform .bootstrap-select > select,
-.ifitwala-public-webform select.selectpicker,
-.ifitwala-public-webform .bs-select-hidden,
-.ifitwala-public-webform select.bs-select-hidden {
-	display: none !important;
-	position: absolute !important;
-	left: -9999px !important;
-	width: 1px !important;
-	height: 1px !important;
-	min-height: 1px !important;
-	opacity: 0 !important;
-	pointer-events: none !important;
-	visibility: hidden !important;
-	overflow: hidden !important;
-}
-
-.ifitwala-public-webform .bootstrap-select select {
-	display: none !important;
-}
-
-.ifitwala-public-webform .bootstrap-select {
-	width: 100% !important;
-}
-
-.ifitwala-public-webform .bootstrap-select .dropdown-toggle {
-	position: relative;
-	width: 100%;
-	min-height: 2.75rem;
-	padding: 0.6rem 2.25rem 0.6rem 0.8rem;
-	font-size: 0.98rem;
-	line-height: 1.35;
-	border-radius: 0.75rem;
-	border: 1px solid rgb(var(--if-border-rgb) / 0.94);
-	background: rgb(255 255 255 / 0.92);
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 20 20'%3E%3Cpath fill='%23475569' d='M5.25 7.75a.75.75 0 0 1 1.06 0L10 11.44l3.69-3.69a.75.75 0 0 1 1.06 1.06l-4.22 4.22a.75.75 0 0 1-1.06 0L5.25 8.81a.75.75 0 0 1 0-1.06z'/%3E%3C/svg%3E");
-	background-repeat: no-repeat;
-	background-position: right 0.75rem center;
-	background-size: 0.8rem;
-	color: rgb(var(--if-ink-rgb) / 1);
-	box-shadow: none !important;
-}
-
-.ifitwala-public-webform .bootstrap-select .dropdown-toggle::after,
-.ifitwala-public-webform .bootstrap-select .dropdown-toggle .caret,
-.ifitwala-public-webform .bootstrap-select .dropdown-toggle .bs-caret {
-	display: none !important;
-}
-
-.ifitwala-public-webform .bootstrap-select .dropdown-toggle:focus {
-	outline: none !important;
-}
-
-.ifitwala-public-webform .bootstrap-select .dropdown-toggle .filter-option {
-	line-height: 1.45;
-}
-
 .ifitwala-public-webform .form-control:focus,
 .ifitwala-public-webform input:focus,
 .ifitwala-public-webform textarea:focus,
@@ -369,7 +313,7 @@ body.ifitwala-public-webform .hide {
 	border-top: 1px solid rgb(var(--if-border-rgb) / 0.82);
 }
 
-.ifitwala-public-webform .web-form-actions .btn {
+.ifitwala-public-webform .web-form-actions .if-wf-btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -389,20 +333,20 @@ body.ifitwala-public-webform .hide {
 		background-color 120ms ease;
 }
 
-.ifitwala-public-webform .web-form-actions .btn.btn-default:hover {
+.ifitwala-public-webform .web-form-actions .if-wf-btn--secondary:hover {
 	background: rgb(var(--if-sky-rgb) / 0.55);
 	border-color: rgb(var(--if-border-rgb) / 1);
 }
 
-.ifitwala-public-webform .web-form-actions .btn.btn-primary {
+.ifitwala-public-webform .web-form-actions .if-wf-btn--primary {
 	background: rgb(var(--if-leaf-rgb) / 1);
 	border-color: rgb(var(--if-leaf-rgb) / 0.96);
 	color: #fff;
 	box-shadow: 0 10px 20px -12px rgb(var(--if-leaf-rgb) / 0.65);
 }
 
-.ifitwala-public-webform .web-form-actions .btn.btn-primary:hover,
-.ifitwala-public-webform .web-form-actions .btn.btn-primary:focus {
+.ifitwala-public-webform .web-form-actions .if-wf-btn--primary:hover,
+.ifitwala-public-webform .web-form-actions .if-wf-btn--primary:focus {
 	background: rgb(var(--if-canopy-rgb) / 1);
 	border-color: rgb(var(--if-canopy-rgb) / 1);
 	transform: translateY(-1px);

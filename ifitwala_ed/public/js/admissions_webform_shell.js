@@ -122,6 +122,7 @@
 			var parsedSize = parseInt(rawSize || '0', 10);
 			var allowMultiple = select.classList.contains('if-webform-allow-multiple');
 
+			select.classList.add('if-webform-select');
 			select.classList.add('if-webform-single-select');
 
 			if (!allowMultiple && !Number.isNaN(parsedSize) && parsedSize > 1) {
@@ -132,9 +133,29 @@
 				select.setAttribute('size', '1');
 			}
 			select.style.overflowY = 'hidden';
-			if (select.classList.contains('bs-select-hidden')) {
-				select.classList.add('if-webform-hidden-meta');
+		}
+	}
+
+	function normalizeActionButtons() {
+		var buttonNodes = document.querySelectorAll('.web-form-actions button, .web-form-actions a');
+
+		for (var i = 0; i < buttonNodes.length; i++) {
+			var button = buttonNodes[i];
+			var label = (button.textContent || '').trim().toLowerCase();
+			var isPrimary = button.getAttribute('type') === 'submit' || label === 'submit';
+			var tokens = (button.className || '').split(/\s+/);
+			var keep = [];
+			for (var j = 0; j < tokens.length; j++) {
+				var token = tokens[j];
+				if (!token || token === 'btn' || token.indexOf('btn-') === 0) {
+					continue;
+				}
+				keep.push(token);
 			}
+			button.className = keep.join(' ');
+			button.classList.add('if-wf-btn');
+			button.classList.toggle('if-wf-btn--primary', isPrimary);
+			button.classList.toggle('if-wf-btn--secondary', !isPrimary);
 		}
 	}
 
@@ -197,7 +218,7 @@
 			}
 			if (
 				candidate.closest(
-					'label, .control-label, .btn, .dropdown-menu, .awesomplete, select, textarea, input'
+					'label, .control-label, .if-wf-btn, [role="listbox"], .awesomplete, select, textarea, input'
 				)
 			) {
 				continue;
@@ -259,6 +280,7 @@
 		document.body.classList.add('ifitwala-public-webform');
 		markFormContainer();
 		normalizeSelectControls();
+		normalizeActionButtons();
 		hideRedundantFieldnameHints();
 		syncSubmissionState();
 
