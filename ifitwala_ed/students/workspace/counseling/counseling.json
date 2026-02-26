@@ -1,6 +1,7 @@
 {
+ "app": "ifitwala_ed",
  "charts": [],
- "content": "[{\"id\":\"ZVxD6aaYYK\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Untriaged Referrals\",\"col\":4}},{\"id\":\"pBq6QswSgS\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Breaching SLA Referrals\",\"col\":4}},{\"id\":\"sfDgtdqeCF\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"New Today Referrals\",\"col\":4}},{\"id\":\"f817ATJ0jE\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Open Published Guidance Items\",\"col\":4}},{\"id\":\"JROi7Xwxdp\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Counselors</span>\",\"col\":12}},{\"id\":\"oyW_V2nxm8\",\"type\":\"card\",\"data\":{\"card_name\":\"Referrals & Logs\",\"col\":4}},{\"id\":\"QkUg1OjL7z\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"VJ7GsZz5B4\",\"type\":\"card\",\"data\":{\"card_name\":\"Org, School & HR\",\"col\":4}}]",
+ "content": "[{\"id\":\"JROi7Xwxdp\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Counselors</span>\",\"col\":12}},{\"id\":\"oyW_V2nxm8\",\"type\":\"card\",\"data\":{\"card_name\":\"Referrals & Logs\",\"col\":4}},{\"id\":\"QkUg1OjL7z\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"VJ7GsZz5B4\",\"type\":\"card\",\"data\":{\"card_name\":\"Org, School & HR\",\"col\":4}}]",
  "creation": "2025-09-02 14:31:44.962664",
  "custom_blocks": [],
  "docstatus": 0,
@@ -161,28 +162,11 @@
    "type": "Link"
   }
  ],
- "modified": "2026-01-31 11:43:30.716079",
+ "modified": "2026-02-25 15:48:41.113654",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Counseling",
- "number_cards": [
-  {
-   "label": "Untriaged Referrals",
-   "number_card_name": "Untriaged Referrals"
-  },
-  {
-   "label": "Open Published Guidance Items",
-   "number_card_name": "Open Published Guidance Items"
-  },
-  {
-   "label": "Breaching SLA Referrals",
-   "number_card_name": "Untriaged (Breaching SLA)"
-  },
-  {
-   "label": "New Today Referrals",
-   "number_card_name": "Untriaged (Today)"
-  }
- ],
+ "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
@@ -197,5 +181,6 @@
  ],
  "sequence_id": 3.0,
  "shortcuts": [],
- "title": "Counseling"
+ "title": "Counseling",
+ "type": "Workspace"
 }

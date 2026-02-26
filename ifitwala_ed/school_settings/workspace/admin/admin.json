@@ -1,6 +1,7 @@
 {
+ "app": "ifitwala_ed",
  "charts": [],
- "content": "[{\"id\":\"Lvt62_1P8I\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Portal\",\"col\":3}},{\"id\":\"OvNhvhv77w\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Admin Dashboard\",\"col\":3}},{\"id\":\"VB0uC-4x_2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Log Dashboard\",\"col\":3}},{\"id\":\"ZGOFPWekLC\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fzg1kF2Gr1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students, Schedule &amp; Enrollments</span>\",\"col\":12}},{\"id\":\"tTrzuyqMTY\",\"type\":\"card\",\"data\":{\"card_name\":\"Students \",\"col\":4}},{\"id\":\"VM1mCwF6pW\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs & Referrals Settings\",\"col\":4}},{\"id\":\"T0f0dXZid9\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"7sRer6iX3b\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}},{\"id\":\"XFxZlnRb64\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"IyyVAgBXo1\",\"type\":\"card\",\"data\":{\"card_name\":\"Attendance\",\"col\":4}},{\"id\":\"v679PLZBUN\",\"type\":\"card\",\"data\":{\"card_name\":\"Assessment\",\"col\":4}},{\"id\":\"xKozqy_a84\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"lXOrx_IXWL\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>General Settings</b></span>\",\"col\":12}},{\"id\":\"ESp5IOBb57\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"-wlMmbli5N\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & calendars\",\"col\":4}},{\"id\":\"mfg4YNdhgI\",\"type\":\"card\",\"data\":{\"card_name\":\"Governance\",\"col\":4}},{\"id\":\"a30-qjywzw\",\"type\":\"card\",\"data\":{\"card_name\":\"Admin tools\",\"col\":4}}]",
+ "content": "[{\"id\":\"Lvt62_1P8I\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Portal\",\"col\":3}},{\"id\":\"ZGOFPWekLC\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fzg1kF2Gr1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Students, Schedule &amp; Enrollments</span>\",\"col\":12}},{\"id\":\"tTrzuyqMTY\",\"type\":\"card\",\"data\":{\"card_name\":\"Students \",\"col\":4}},{\"id\":\"VM1mCwF6pW\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs & Referrals Settings\",\"col\":4}},{\"id\":\"T0f0dXZid9\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"7sRer6iX3b\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}},{\"id\":\"XFxZlnRb64\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"IyyVAgBXo1\",\"type\":\"card\",\"data\":{\"card_name\":\"Attendance\",\"col\":4}},{\"id\":\"v679PLZBUN\",\"type\":\"card\",\"data\":{\"card_name\":\"Assessment\",\"col\":4}},{\"id\":\"xKozqy_a84\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"lXOrx_IXWL\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>General Settings</b></span>\",\"col\":12}},{\"id\":\"ESp5IOBb57\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"-wlMmbli5N\",\"type\":\"card\",\"data\":{\"card_name\":\"Schools & calendars\",\"col\":4}},{\"id\":\"mfg4YNdhgI\",\"type\":\"card\",\"data\":{\"card_name\":\"Governance\",\"col\":4}},{\"id\":\"a30-qjywzw\",\"type\":\"card\",\"data\":{\"card_name\":\"Admin tools\",\"col\":4}}]",
  "creation": "2025-04-02 12:29:42.749017",
  "custom_blocks": [],
  "docstatus": 0,
@@ -310,16 +311,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Group's pictures",
-   "link_count": 0,
-   "link_to": "student_group_cards",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Tools",
    "link_count": 5,
    "link_type": "DocType",
@@ -553,7 +544,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-02-19 15:19:00.258918",
+ "modified": "2026-02-25 22:24:23.812170",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Admin",
@@ -587,21 +578,8 @@
    "label": "Portal",
    "type": "URL",
    "url": "/hub/staff"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Student Log Dashboard",
-   "link_to": "student-log-dashboard",
-   "type": "Page"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Admin Dashboard",
-   "link_to": "Current Enrollment Dashboard",
-   "type": "Dashboard"
   }
  ],
- "title": "Admin"
+ "title": "Admin",
+ "type": "Workspace"
 }

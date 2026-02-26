@@ -1,4 +1,5 @@
 {
+ "app": "ifitwala_ed",
  "charts": [],
  "content": "[{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Admission</span>\",\"col\":12}},{\"id\":\"HF-thlk3eW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inquiry\",\"col\":3}},{\"id\":\"LUFyfGeE1b\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Portal\",\"col\":3}},{\"id\":\"f0wL_y51U4\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b></b></span>\",\"col\":12}},{\"id\":\"TLatK8z_Re\",\"type\":\"card\",\"data\":{\"card_name\":\"Student Applicant\",\"col\":4}},{\"id\":\"jd11wlyF0B\",\"type\":\"card\",\"data\":{\"card_name\":\"Admin\",\"col\":4}},{\"id\":\"4WQiXIW_Ep\",\"type\":\"card\",\"data\":{\"card_name\":\"Governance\",\"col\":4}},{\"id\":\"R1w2Bk3i-2\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Website</b></span>\",\"col\":12}},{\"id\":\"WBi-BmGEah\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Website Page\",\"col\":3}},{\"id\":\"Bp4Fyt0v8X\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Website Block Definition\",\"col\":3}},{\"id\":\"ja84IlFvvQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Program Website Profile\",\"col\":3}},{\"id\":\"F57oAzqMP7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b></b></span>\",\"col\":12}},{\"id\":\"qrSyrkgXVt\",\"type\":\"card\",\"data\":{\"card_name\":\"Website Pages\",\"col\":4}},{\"id\":\"zTF1QpnPkh\",\"type\":\"card\",\"data\":{\"card_name\":\"CMS Settings\",\"col\":4}}]",
  "creation": "2025-06-23 20:21:38.876334",
@@ -123,8 +124,47 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Governance",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Institutional Policy",
+   "link_count": 0,
+   "link_to": "Institutional Policy",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Policy Acknowledgement",
+   "link_count": 0,
+   "link_to": "Policy Acknowledgement",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Policy Version",
+   "link_count": 0,
+   "link_to": "Policy Version",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Admin",
-   "link_count": 4,
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -162,9 +202,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Applicant Document",
+   "label": "Applicant Review Rule",
    "link_count": 0,
-   "link_to": "Applicant Document",
+   "link_to": "Applicant Review Rule",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -172,44 +212,15 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Governance",
-   "link_count": 3,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Institutional Policy",
+   "label": "Applicant Review Assignment",
    "link_count": 0,
-   "link_to": "Institutional Policy",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Policy Acknowledgement",
-   "link_count": 0,
-   "link_to": "Policy Acknowledgement",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Policy Version",
-   "link_count": 0,
-   "link_to": "Policy Version",
+   "link_to": "Applicant Review Assignment",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2026-02-19 15:20:06.863753",
+ "modified": "2026-02-25 15:55:42.013584",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission",
@@ -230,6 +241,9 @@
   },
   {
    "role": "Academic Admin"
+  },
+  {
+   "role": "Counselor"
   }
  ],
  "sequence_id": 5.0,
@@ -274,5 +288,6 @@
    "type": "DocType"
   }
  ],
- "title": "Admission"
+ "title": "Admission",
+ "type": "Workspace"
 }

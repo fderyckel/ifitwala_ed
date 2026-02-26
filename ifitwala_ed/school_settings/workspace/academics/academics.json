@@ -1,4 +1,5 @@
 {
+ "app": "ifitwala_ed",
  "charts": [],
  "content": "[{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Academics</span>\",\"col\":12}},{\"id\":\"Vc7yxTmAVu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Schedule\",\"col\":3}},{\"id\":\"qzNSr6v13S\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Events\",\"col\":3}},{\"id\":\"uR4H46u5Oe\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Task\",\"col\":3}},{\"id\":\"apaBo2gtj4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Todo\",\"col\":3}},{\"id\":\"v-EkbrgGdj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Portal\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}},{\"id\":\"PAMo4OTijX\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Dashboards\",\"col\":4}},{\"id\":\"-IjqqRYUVX\",\"type\":\"card\",\"data\":{\"card_name\":\"Org, School & HR\",\"col\":4}},{\"id\":\"aKVIXzj9LG\",\"type\":\"card\",\"data\":{\"card_name\":\"Collaboration\",\"col\":4}}]",
  "creation": "2025-05-01 09:35:08.920114",
@@ -269,7 +270,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-02-09 08:23:57.924424",
+ "modified": "2026-02-25 22:16:20.260113",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academics",
@@ -327,5 +328,6 @@
    "type": "Page"
   }
  ],
- "title": "Academics"
+ "title": "Academics",
+ "type": "Workspace"
 }
