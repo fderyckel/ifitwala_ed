@@ -345,6 +345,7 @@ Must:
 * pass resolved payload down
 * avoid child overlays refetching the same payload
 * never intercept or gate overlay close
+* Backend note (2026-02-26): keep `ifitwala_ed.api.focus.*` endpoint names stable; `api/focus.py` is now a compatibility facade over split `focus_*` modules.
 
 ---
 

@@ -340,6 +340,8 @@ If a modal works from one entry point but fails from another, this is a **design
 
 Assume evaluation order issues before assuming logic or typing errors.
 
+* Focus overlay rule: when adding a new Focus workflow, keep `FocusRouterOverlay` routing-only and preserve `ifitwala_ed.api.focus.*` endpoint paths by implementing server logic in split `ifitwala_ed/api/focus_*` modules behind `ifitwala_ed/api/focus.py`.
+
 ---
 
 ### 7.4 Historically-Derived Invariants (Read Carefully)
@@ -399,15 +401,15 @@ Inside the SPA:
 
 ❌ Forbidden
 
-* Hardcoded `/portal/...`
-* `window.location = '/portal/…'`
+* Hardcoded `/hub/...`
+* `window.location = '/hub/…'`
 
 ✅ Required
 
 * Named routes
 * Base-less paths (`/staff/...`, `/student/...`)
 
-Router base already includes `/portal`.
+Router base already includes `/hub`.
 
 ---
 
@@ -560,6 +562,55 @@ a single transaction
 server-owned idempotency
 
 You just moved this feature from “it works” to production-grade.
+
+---
+
+## 18. Incident-Derived Operational Guardrails
+
+### 18.1 Pre-Model Patch Safety (Non-Negotiable)
+
+For patches that run before model sync:
+
+* NEVER query or update newly introduced columns without guards.
+* MUST gate field access with:
+  * `frappe.db.table_exists(...)`
+  * `frappe.db.has_column(...)`
+* If a required column is missing, patch must degrade safely (no-op or fallback) and must NOT crash `bench migrate`.
+
+### 18.2 Desk Route Canonicalization (Non-Negotiable)
+
+For server-generated Desk links:
+
+* MUST use canonical Desk route slugs (hyphenated), not underscore slugs.
+* NEVER emit `/app/student_applicant/...`; MUST emit `/app/student-applicant/...`.
+* Any new URL builder for Desk routes must include an explicit canonicalization helper and regression check.
+
+### 18.3 Operational Dashboard Performance (Non-Negotiable)
+
+For staff dashboards/cockpits:
+
+* MUST NOT run per-record `get_doc(...)` + readiness methods in loops for list payloads.
+* MUST batch by concern (policies, documents, health, assignments) and assemble in memory.
+* If caching aggregate payloads, cache keys MUST include user + filter scope and use short TTL.
+
+### 18.4 Actionability Contract for Blockers (Non-Negotiable)
+
+When returning “missing/blocker” items from APIs:
+
+* Every blocker MUST include actionable target metadata:
+  * `target_doctype`
+  * `target_name` (when applicable)
+  * `target_url`
+  * `target_label`
+* UI MUST render blockers as direct actions (links/buttons), not static text-only warnings.
+
+### 18.5 Scheduler Observability & Isolation (Non-Negotiable)
+
+For scheduled jobs that mutate operational state:
+
+* MUST emit a run summary with processed/skipped/failed counts to logs and/or a stable cache key.
+* MUST isolate failures per doctype/work unit so one failure does not abort the full sweep.
+* MUST include overlap protection for frequent jobs (lock/guard) when race risk exists.
 
 ---
 

@@ -1,6 +1,6 @@
 // ifitwala_ed/ui-spa/src/composables/useAnalyticsSnapshotExport.ts
 
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { apiMethod } from '@/lib/frappe';
 
 type Primitive = string | number | boolean | null | undefined;
@@ -27,10 +27,10 @@ type ExportDashboardPdfResponse = {
 	content_base64: string;
 };
 
-const MAX_CANVAS_HEIGHT = 12000;
 const MAX_CAPTURE_WIDTH = 2200;
 const MAX_CAPTURE_HEIGHT = 4200;
 const CAPTURE_SCALE = 1.25;
+const CAPTURE_TIMEOUT_MS = 20000;
 
 function resolveSiteTimezone(): string {
 	const tzFromBoot =
@@ -160,7 +160,13 @@ function triggerDownload(dataUrl: string, filename: string) {
 	const link = document.createElement('a');
 	link.href = dataUrl;
 	link.download = filename;
-	link.click();
+	link.style.display = 'none';
+	document.body.appendChild(link);
+	try {
+		link.click();
+	} finally {
+		document.body.removeChild(link);
+	}
 }
 
 function triggerBlobDownload(blob: Blob, filename: string) {
@@ -168,8 +174,14 @@ function triggerBlobDownload(blob: Blob, filename: string) {
 	const link = document.createElement('a');
 	link.href = url;
 	link.download = filename;
-	link.click();
-	URL.revokeObjectURL(url);
+	link.style.display = 'none';
+	document.body.appendChild(link);
+	try {
+		link.click();
+	} finally {
+		document.body.removeChild(link);
+		window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+	}
 }
 
 function base64ToBlob(base64Data: string, mimeType: string) {
@@ -185,6 +197,20 @@ function messageForError(error: unknown, fallback: string): string {
 	if (error instanceof Error && error.message) return error.message;
 	if (typeof error === 'string' && error.trim()) return error.trim();
 	return fallback;
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+	let timeoutId = 0;
+	try {
+		return await Promise.race([
+			promise,
+			new Promise<T>((_, reject) => {
+				timeoutId = window.setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+			}),
+		]);
+	} finally {
+		if (timeoutId) window.clearTimeout(timeoutId);
+	}
 }
 
 export function useAnalyticsSnapshotExport(options: UseAnalyticsSnapshotExportOptions) {
@@ -222,17 +248,22 @@ export function useAnalyticsSnapshotExport(options: UseAnalyticsSnapshotExportOp
 				'Large dashboard detected. Export includes the first visible sections up to a safe height.';
 		}
 
-		const screenshot = await html2canvas(target, {
-			backgroundColor: '#ffffff',
-			scale: CAPTURE_SCALE,
-			useCORS: true,
-			width,
-			height,
-			windowWidth: width,
-			windowHeight: height,
-			scrollX: 0,
-			scrollY: 0,
-		});
+		await nextTick();
+		const screenshot = await withTimeout(
+			html2canvas(target, {
+				backgroundColor: '#ffffff',
+				scale: CAPTURE_SCALE,
+				useCORS: true,
+				width,
+				height,
+				windowWidth: width,
+				windowHeight: height,
+				scrollX: 0,
+				scrollY: 0,
+			}),
+			CAPTURE_TIMEOUT_MS,
+			'Snapshot capture timed out. Narrow filters or reduce the visible dashboard and retry.'
+		);
 
 		const composed = document.createElement('canvas');
 		const metadataHeight = 110 + Math.max(filters.length, 1) * 24;
@@ -274,7 +305,10 @@ export function useAnalyticsSnapshotExport(options: UseAnalyticsSnapshotExportOp
 			triggerDownload(dataUrl, `${slug}-${fileStamp}.png`);
 			actionMessage.value = `PNG exported (${snapshot.capturedAt} ${snapshot.timezone}).`;
 		} catch (error) {
-			actionMessage.value = messageForError(error, 'PNG export failed. Please try again.');
+			actionMessage.value = messageForError(
+				error,
+				'PNG export failed. Try reducing on-screen content and retry.'
+			);
 		} finally {
 			exportingPng.value = false;
 			exportLock.value = false;
@@ -316,7 +350,10 @@ export function useAnalyticsSnapshotExport(options: UseAnalyticsSnapshotExportOp
 			triggerBlobDownload(blob, response.file_name);
 			actionMessage.value = `PDF exported (${snapshot.capturedAt} ${snapshot.timezone}).`;
 		} catch (error) {
-			actionMessage.value = messageForError(error, 'PDF export failed. Please try again.');
+			actionMessage.value = messageForError(
+				error,
+				'PDF export failed. Try reducing on-screen content and retry.'
+			);
 		} finally {
 			exportingPdf.value = false;
 			exportLock.value = false;

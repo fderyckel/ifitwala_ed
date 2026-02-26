@@ -203,6 +203,7 @@ This keeps “server is authoritative” intact and prevents Focus from becoming
 **Rule**
 
 > Focus API is a router + aggregator. Workflows remain owned by their DocTypes/modules.
+> Implementation note (2026-02-26): `ifitwala_ed/api/focus.py` is a thin facade; core logic lives in `focus_shared.py`, `focus_listing.py`, `focus_context.py`, and `focus_actions_*.py` while public API paths stay `ifitwala_ed.api.focus.*`.
 
 ---
 

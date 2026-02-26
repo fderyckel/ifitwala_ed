@@ -23,6 +23,8 @@ from ifitwala_ed.api.users import STAFF_ROLES
 
 CACHE_TTL_SECONDS = 3600
 HR_ROLES = frozenset({"HR User", "HR Manager"})
+ROLE_INSTRUCTOR = "Instructor"
+ROLE_ACADEMIC_STAFF = "Academic Staff"
 ADMISSIONS_ANALYTICS_ROLES = frozenset(ADMISSIONS_ROLES | INQUIRY_ANALYTICS_ROLES | ENROLLMENT_ANALYTICS_ROLES)
 DEMOGRAPHICS_ANALYTICS_ROLES = frozenset(STUDENT_DEMOGRAPHICS_ANALYTICS_ROLES)
 
@@ -70,6 +72,8 @@ def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_
 
 def _build_staff_home_capabilities(roles: set[str]) -> dict[str, bool]:
     attendance_roles = set(ADMIN_ROLES) | set(COUNSELOR_ROLES) | set(INSTRUCTOR_ROLES)
+    has_instructor_role = ROLE_INSTRUCTOR in roles
+    has_academic_staff_role = ROLE_ACADEMIC_STAFF in roles
     return {
         "analytics_attendance": bool(roles & attendance_roles),
         "analytics_attendance_admin": bool(roles & set(ADMIN_ROLES)),
@@ -80,6 +84,9 @@ def _build_staff_home_capabilities(roles: set[str]) -> dict[str, bool]:
         "analytics_scheduling": bool(roles & (set(SCHEDULING_ROLES) | set(ADMIN_ROLES))),
         "analytics_policy_signatures": bool(roles & set(POLICY_SIGNATURE_ANALYTICS_ROLES)),
         "manage_policy_signatures": bool(roles & set(POLICY_SIGNATURE_MANAGER_ROLES)),
+        "quick_action_create_task": has_instructor_role,
+        "quick_action_gradebook": has_instructor_role,
+        "quick_action_student_log": has_academic_staff_role,
         "can_open_desk": bool(roles & set(STAFF_ROLES)),
     }
 

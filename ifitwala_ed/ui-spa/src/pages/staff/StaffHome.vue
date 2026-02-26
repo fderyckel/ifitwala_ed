@@ -61,7 +61,12 @@
 
 				<div class="grid gap-3">
 					<!-- Create task uses overlay stack (single overlay system) -->
-					<button type="button" class="action-tile group" @click="openCreateTask">
+					<button
+						v-if="userCapabilities.quick_action_create_task"
+						type="button"
+						class="action-tile group"
+						@click="openCreateTask"
+					>
 						<div class="action-tile__icon">
 							<FeatherIcon name="clipboard" class="h-6 w-6" />
 						</div>
@@ -80,7 +85,12 @@
 					</button>
 
 					<!-- Create student log uses overlay stack -->
-					<button type="button" class="action-tile group" @click="openStudentLog">
+					<button
+						v-if="userCapabilities.quick_action_student_log"
+						type="button"
+						class="action-tile group"
+						@click="openStudentLog"
+					>
 						<div class="action-tile__icon">
 							<FeatherIcon name="edit-3" class="h-6 w-6" />
 						</div>
@@ -98,32 +108,9 @@
 						/>
 					</button>
 
-					<button
-						v-if="userCapabilities.manage_policy_signatures"
-						type="button"
-						class="action-tile group"
-						@click="openPolicySignatureCampaign"
-					>
-						<div class="action-tile__icon">
-							<FeatherIcon name="file-text" class="h-6 w-6" />
-						</div>
-						<div class="flex-1 min-w-0">
-							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								Launch policy signature
-							</p>
-							<p class="truncate type-caption text-slate-token/70">
-								Create signature tasks by organization scope
-							</p>
-						</div>
-						<FeatherIcon
-							name="chevron-right"
-							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
-						/>
-					</button>
-
 					<!-- Standard Quick Actions (router links, not overlays) -->
 					<RouterLink
-						v-for="action in quickActions"
+						v-for="action in visibleQuickActions"
 						:key="action.label"
 						:to="action.to"
 						class="action-tile group"
@@ -146,6 +133,13 @@
 							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
 						/>
 					</RouterLink>
+
+					<p
+						v-if="!hasVisibleQuickActions"
+						class="rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 type-caption text-slate-token/80"
+					>
+						No quick actions are assigned to your current role.
+					</p>
 				</div>
 			</div>
 		</section>
@@ -347,14 +341,22 @@ const quickActions = [
 		caption: 'Capture evidence, notes, and marks',
 		icon: 'edit-3',
 		to: { name: 'staff-gradebook' },
-	},
-	{
-		label: 'Portfolio Review',
-		caption: 'Review student evidence feed',
-		icon: 'layers',
-		to: { name: 'staff-portfolio' },
+		capability: 'quick_action_gradebook',
 	},
 ];
+
+function isQuickActionVisible(action: { capability?: string }) {
+	if (!action.capability) return true;
+	return Boolean(userCapabilities.value[action.capability]);
+}
+
+const visibleQuickActions = computed(() => quickActions.filter(isQuickActionVisible));
+const hasVisibleQuickActions = computed(
+	() =>
+		Boolean(userCapabilities.value.quick_action_create_task) ||
+		Boolean(userCapabilities.value.quick_action_student_log) ||
+		visibleQuickActions.value.length > 0
+);
 
 /* FOCUS -------------------------------------------------------- */
 const overlay = useOverlayStack();
@@ -783,9 +785,5 @@ function openStudentLog() {
 	overlay.open('student-log-create', {
 		mode: 'school',
 	});
-}
-
-function openPolicySignatureCampaign() {
-	overlay.open('staff-policy-signature-campaign', {});
 }
 </script>
