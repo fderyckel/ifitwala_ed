@@ -46,18 +46,81 @@
 		</div>
 
 		<div class="card-surface p-4">
-			<div class="type-body font-medium">Policy text</div>
-			<div class="type-meta text-muted mt-1">
-				Review this policy version carefully before signing.
+			<div class="flex items-start justify-between gap-3">
+				<div>
+					<div class="type-body font-medium">Policy review</div>
+					<div class="type-meta text-muted mt-1">
+						Review changes first, then expand to full policy text if needed.
+					</div>
+				</div>
+				<div class="flex items-center gap-2">
+					<button
+						type="button"
+						class="btn btn-quiet"
+						:disabled="activeTab === 'changes' || !hasDiffHtml"
+						@click="activeTab = 'changes'"
+					>
+						Changes
+					</button>
+					<button
+						type="button"
+						class="btn btn-quiet"
+						:disabled="activeTab === 'full'"
+						@click="activeTab = 'full'"
+					>
+						Full policy
+					</button>
+				</div>
 			</div>
 
-			<div class="mt-3 rounded-xl border border-ink/10 bg-white p-3 max-h-80 overflow-auto">
+			<div
+				v-if="hasChangeSummary || hasChangeStats"
+				class="mt-3 rounded-xl border border-ink/10 bg-white p-3"
+			>
+				<div class="type-caption text-ink/70">What changed</div>
+				<div v-if="hasChangeStats" class="mt-2 flex flex-wrap gap-2">
+					<span class="type-meta rounded-full border border-ink/10 px-2 py-1">
+						Added {{ addedCount }}
+					</span>
+					<span class="type-meta rounded-full border border-ink/10 px-2 py-1">
+						Removed {{ removedCount }}
+					</span>
+					<span class="type-meta rounded-full border border-ink/10 px-2 py-1">
+						Modified {{ modifiedCount }}
+					</span>
+				</div>
+				<p v-if="hasChangeSummary" class="type-meta text-ink mt-2 whitespace-pre-wrap">
+					{{ changeSummary }}
+				</p>
+			</div>
+
+			<div
+				v-if="activeTab === 'changes'"
+				class="mt-3 rounded-xl border border-ink/10 bg-white p-3 max-h-80 overflow-auto"
+			>
+				<div
+					v-if="hasDiffHtml"
+					class="prose prose-sm max-w-none text-ink"
+					v-html="trustedHtml(policy?.diff_html || '')"
+				/>
+				<p v-else class="type-meta text-muted">
+					No amendment diff is available for this version. Review the full policy text.
+				</p>
+			</div>
+
+			<div v-else class="mt-3 rounded-xl border border-ink/10 bg-white p-3 max-h-80 overflow-auto">
 				<div
 					v-if="policy?.policy_text_html"
 					class="prose prose-sm max-w-none text-ink"
 					v-html="trustedHtml(policy.policy_text_html)"
 				/>
 				<p v-else class="type-meta text-muted">No policy text is available for this version.</p>
+			</div>
+
+			<div v-if="activeTab === 'changes' && hasDiffHtml" class="mt-2 flex justify-end">
+				<button type="button" class="btn btn-quiet" @click="activeTab = 'full'">
+					View full policy text
+				</button>
 			</div>
 		</div>
 
@@ -162,6 +225,7 @@ const actionError = ref<string | null>(null);
 const typedSignatureName = ref('');
 const attestationConfirmed = ref(false);
 const signatureTouched = ref(false);
+const activeTab = ref<'changes' | 'full'>('changes');
 
 const nowLabel = computed(() => new Date().toLocaleString());
 
@@ -192,6 +256,16 @@ const scopeLabel = computed(() => {
 	return parts.join(' • ');
 });
 
+const changeSummary = computed(() => (policy.value?.change_summary || '').trim());
+const addedCount = computed(() => Number(policy.value?.change_stats?.added || 0));
+const removedCount = computed(() => Number(policy.value?.change_stats?.removed || 0));
+const modifiedCount = computed(() => Number(policy.value?.change_stats?.modified || 0));
+const hasChangeStats = computed(
+	() => addedCount.value + removedCount.value + modifiedCount.value > 0
+);
+const hasChangeSummary = computed(() => Boolean(changeSummary.value));
+const hasDiffHtml = computed(() => Boolean((policy.value?.diff_html || '').trim()));
+
 function normalizeName(value: string): string {
 	return value.trim().replace(/\s+/g, ' ').toLowerCase();
 }
@@ -215,13 +289,15 @@ const canAcknowledge = computed(() => {
 watch(
 	() => props.context,
 	next => {
-		policy.value = next.policy_signature ?? null;
+		const nextPolicy = next.policy_signature ?? null;
+		policy.value = nextPolicy;
 		busy.value = false;
 		submittedOnce.value = false;
 		actionError.value = null;
 		typedSignatureName.value = '';
 		attestationConfirmed.value = false;
 		signatureTouched.value = false;
+		activeTab.value = (nextPolicy?.diff_html || '').trim() ? 'changes' : 'full';
 	},
 	{ immediate: true, deep: false }
 );
@@ -323,3 +399,46 @@ async function acknowledgePolicy() {
 	}
 }
 </script>
+
+<style scoped>
+:deep(.policy-diff) {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+:deep(.policy-diff-block) {
+	border: 1px solid rgb(var(--ink-rgb) / 0.1);
+	border-radius: 0.75rem;
+	padding: 0.75rem;
+	background: #fff;
+}
+
+:deep(.policy-diff-label) {
+	font-size: 0.75rem;
+	color: rgb(var(--ink-rgb) / 0.65);
+	margin-bottom: 0.375rem;
+}
+
+:deep(.policy-diff-block--added ins),
+:deep(.policy-diff-body-new ins) {
+	background: rgba(14, 165, 166, 0.12);
+	text-decoration: none;
+	padding: 0.05rem 0.2rem;
+	border-radius: 0.2rem;
+}
+
+:deep(.policy-diff-block--removed summary),
+:deep(.policy-diff-previous summary) {
+	cursor: pointer;
+	font-size: 0.75rem;
+	color: rgb(var(--ink-rgb) / 0.7);
+}
+
+:deep(.policy-diff-block--removed del),
+:deep(.policy-diff-body-old del) {
+	background: rgba(148, 163, 184, 0.16);
+	padding: 0.05rem 0.2rem;
+	border-radius: 0.2rem;
+}
+</style>

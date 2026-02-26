@@ -99,6 +99,14 @@ export type Response = {
     policy_title?: string | null
     policy_label?: string | null
     version_label?: string | null
+    amended_from?: string | null
+    change_summary?: string | null
+    diff_html?: string | null
+    change_stats?: {
+      added?: number | null
+      removed?: number | null
+      modified?: number | null
+    } | null
     effective_from?: string | null
     effective_to?: string | null
     policy_text_html?: string | null

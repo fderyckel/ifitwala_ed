@@ -3,9 +3,9 @@ title: "Policy Acknowledgement: Append-Only Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "1.2.0"
-last_change_date: "2026-02-25"
-summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, organization-scope validation, and staff policy-signature campaign workflows."
+version: "1.3.0"
+last_change_date: "2026-02-26"
+summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, organization-scope validation, and staff policy-signature workflows that present amendment diffs first."
 seo_title: "Policy Acknowledgement: Append-Only Consent Evidence"
 seo_description: "Record immutable who/what/when acknowledgement evidence with strict context, role, and organization-scope validation."
 ---
@@ -78,6 +78,7 @@ The internal workflow for staff policy signatures is campaign-based and scope-dr
 - Updated policy (new active `Policy Version` replacing prior version):
   - launch a fresh campaign for the new version; do not reuse prior acknowledgements.
   - prior acknowledgements remain immutable evidence for the old version.
+  - staff review flow defaults to amendment changes (`change_summary` + `diff_html`) before full text.
 - Scope changes (organization/school/group changes):
   - apply to future campaign launches only; existing acknowledgements are not recomputed.
 

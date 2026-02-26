@@ -8,7 +8,12 @@
  "field_order": [
   "institutional_policy",
   "version_label",
+  "amended_from",
+  "change_summary",
   "policy_text",
+  "diff_html",
+  "change_stats",
+  "text_locked",
   "effective_from",
   "effective_to",
   "approved_by",
@@ -32,11 +37,42 @@
    "reqd": 1
   },
   {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Policy Version"
+  },
+  {
+   "fieldname": "change_summary",
+   "fieldtype": "Small Text",
+   "label": "Change Summary"
+  },
+  {
    "fieldname": "policy_text",
    "fieldtype": "Text Editor",
    "in_list_view": 1,
    "label": "Policy Text",
    "reqd": 1
+  },
+  {
+   "fieldname": "diff_html",
+   "fieldtype": "Text Editor",
+   "label": "Diff HTML",
+   "read_only": 1
+  },
+  {
+   "fieldname": "change_stats",
+   "fieldtype": "Small Text",
+   "label": "Change Stats",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "text_locked",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Text Locked",
+   "read_only": 1
   },
   {
    "fieldname": "effective_from",
@@ -70,7 +106,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-19 22:28:41.403043",
+ "modified": "2026-02-19 22:28:43",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Policy Version",

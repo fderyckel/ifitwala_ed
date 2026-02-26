@@ -10,5 +10,11 @@ frappe.ui.form.on("Policy Version", {
 				institutional_policy: frm.doc.institutional_policy || "",
 			},
 		}));
+		frm.set_query("amended_from", () => ({
+			filters: {
+				institutional_policy: frm.doc.institutional_policy || "",
+				name: ["!=", frm.doc.name || ""],
+			},
+		}));
 	},
 });

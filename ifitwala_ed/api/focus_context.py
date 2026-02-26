@@ -427,6 +427,18 @@ def get_focus_context(
             or (policy_row.get("institutional_policy") or "").strip()
             or reference_name
         )
+        raw_change_stats = policy_row.get("change_stats")
+        parsed_change_stats = None
+        if isinstance(raw_change_stats, dict):
+            parsed_change_stats = raw_change_stats
+        elif raw_change_stats:
+            try:
+                maybe_stats = frappe.parse_json(raw_change_stats)
+            except Exception:
+                maybe_stats = None
+            if isinstance(maybe_stats, dict):
+                parsed_change_stats = maybe_stats
+
         return {
             "focus_item_id": focus_item_id,
             "action_type": action_type or ACTION_POLICY_STAFF_SIGN,
@@ -444,6 +456,10 @@ def get_focus_context(
                 "policy_title": policy_row.get("policy_title"),
                 "policy_label": policy_label,
                 "version_label": policy_row.get("version_label"),
+                "amended_from": policy_row.get("amended_from"),
+                "change_summary": policy_row.get("change_summary"),
+                "diff_html": policy_row.get("diff_html") or "",
+                "change_stats": parsed_change_stats,
                 "effective_from": str(policy_row.get("effective_from")) if policy_row.get("effective_from") else None,
                 "effective_to": str(policy_row.get("effective_to")) if policy_row.get("effective_to") else None,
                 "policy_text_html": policy_row.get("policy_text") or "",
