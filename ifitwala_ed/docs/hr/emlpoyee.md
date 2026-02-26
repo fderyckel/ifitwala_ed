@@ -22,7 +22,8 @@ Core flow:
 The document acts as the authoritative HR staff record. It also drives access-related behavior through history/designation and linked user updates.
 
 Permission scope for `Employee`:
-- `HR Manager` and `HR User` have global `Employee` access (subject to DocType role permissions).
+- `HR Manager` and `HR User` are scoped by Organization descendant inheritance.
+- `HR Manager` and `HR User` can also access employees where `organization` is not yet filled.
 - `Academic Admin` remains school-subtree scoped through permission query + doc checks.
 
 ### 1.1 Staff Portal Holiday Resolution (Portal Calendar Contract)
@@ -127,6 +128,6 @@ Reason: historical data can miss `Employee.user_id`, which produced false-negati
 Impact: successful login now repairs the link and re-applies access sync before role-based portal redirect is resolved.
 
 [2026-02-26] Decision:
-We decided to grant `HR Manager` and `HR User` global `Employee` visibility/doc access instead of organization-subtree scoping.
-Reason: HR operations require cross-organization employee access, and subtree checks were causing 403 form-load failures for valid HR roles.
-Impact: Employee permission hooks no longer narrow HR by base organization; `Academic Admin` remains school-scoped.
+We decided to keep `HR Manager` and `HR User` organization-subtree scoped, but include employees with empty `organization`.
+Reason: HR must remain org-scoped by descendant inheritance, while still being able to triage/fix employee records that are missing organization assignment.
+Impact: Employee permission hooks now allow HR access when `organization` is blank, and enforce subtree checks once organization is filled.

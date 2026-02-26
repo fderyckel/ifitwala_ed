@@ -130,16 +130,50 @@ class TestEmployee(FrappeTestCase):
         self.assertEqual(user_doc.enabled, 1)
         user_doc.save.assert_called_once_with(ignore_permissions=True)
 
-    def test_employee_pqc_hr_user_is_global(self):
-        with patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR User"]):
-            self.assertIsNone(employee_controller.get_permission_query_conditions(user="hr.user@example.com"))
+    def test_employee_pqc_hr_user_is_org_scoped_and_includes_unassigned(self):
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR User"]),
+            patch("ifitwala_ed.hr.doctype.employee.employee.get_user_base_org", return_value="ORG-ROOT"),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.get_descendant_organizations",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.escape", side_effect=lambda v: f"'{v}'"),
+        ):
+            condition = employee_controller.get_permission_query_conditions(user="hr.user@example.com")
 
-    def test_employee_has_permission_hr_manager_is_global(self):
-        doc = frappe._dict(organization="ORG-001", school="SCH-001")
+        self.assertEqual(
+            condition,
+            "(`tabEmployee`.`organization` IN ('ORG-ROOT', 'ORG-CHILD') OR IFNULL(`tabEmployee`.`organization`, '') = '')",
+        )
 
-        with patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR Manager"]):
-            self.assertTrue(employee_controller.employee_has_permission(doc, "read", "hr.manager@example.com"))
-            self.assertTrue(employee_controller.employee_has_permission(doc, "write", "hr.manager@example.com"))
+    def test_employee_pqc_hr_user_without_base_org_only_unassigned(self):
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR User"]),
+            patch("ifitwala_ed.hr.doctype.employee.employee.get_user_base_org", return_value=None),
+        ):
+            condition = employee_controller.get_permission_query_conditions(user="hr.user@example.com")
+
+        self.assertEqual(condition, "IFNULL(`tabEmployee`.`organization`, '') = ''")
+
+    def test_employee_has_permission_hr_manager_is_org_scoped_and_includes_unassigned(self):
+        allowed_doc = frappe._dict(organization="ORG-CHILD", school="SCH-001")
+        blocked_doc = frappe._dict(organization="ORG-OTHER", school="SCH-001")
+        unassigned_doc = frappe._dict(organization="", school="SCH-001")
+
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR Manager"]),
+            patch("ifitwala_ed.hr.doctype.employee.employee.get_user_base_org", return_value="ORG-ROOT"),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.get_descendant_organizations",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
+        ):
+            self.assertTrue(employee_controller.employee_has_permission(allowed_doc, "read", "hr.manager@example.com"))
+            self.assertFalse(employee_controller.employee_has_permission(blocked_doc, "read", "hr.manager@example.com"))
+            self.assertTrue(
+                employee_controller.employee_has_permission(unassigned_doc, "read", "hr.manager@example.com")
+            )
 
     def test_employee_pqc_academic_admin_remains_school_scoped(self):
         with (
