@@ -22,10 +22,12 @@ Core flow:
 The document acts as the authoritative HR staff record. It also drives access-related behavior through history/designation and linked user updates.
 
 Permission scope for `Employee`:
-- `HR Manager` and `HR User` are scoped by Organization descendant inheritance.
-- `HR Manager` and `HR User` can also access employees where `organization` is not yet filled.
+- `HR Manager` and `HR User` have scoped CRUD on Employee docs:
+  - employees in their organization descendant scope
+  - employees where `organization` is blank
 - HR organization scope resolution uses user default `organization`, then `Global Defaults.default_organization`, and expands explicit `User Permission` grants on `Organization`; if none resolves, only unassigned-organization Employee rows are visible to HR.
-- `Academic Admin` remains school-subtree scoped through permission query + doc checks.
+- `Academic Admin` has read-only Employee access scoped to the user default school.
+- `Employee` role has read-only access to their own Employee record only.
 
 ### 1.1 Staff Portal Holiday Resolution (Portal Calendar Contract)
 
@@ -72,6 +74,9 @@ Current create flow:
 
 Role handling now follows managed sync:
 - on employee save, `sync_user_access_from_employee` computes effective roles/workspace from employee history + designation defaults.
+- on employee save, linked user defaults are aligned with Employee context when profile sync is allowed:
+  - `organization` default from `Employee.organization`
+  - `school` default from `Employee.school`
 - on employee save, linked `User.enabled` is enforced from `Employee.employment_status`:
   - `Active` -> `enabled = 1`
   - any other status (`Temporary Leave`, `Suspended`, `Left`, or blank) -> `enabled = 0`
@@ -152,3 +157,16 @@ Impact: Employee linkage status no longer affects HR Employee doctype scope reso
 We decided HR base-org resolution falls back to `Global Defaults.default_organization` when user default `organization` is missing.
 Reason: operational HR scope should still resolve to the organization tree baseline even when per-user defaults are incomplete.
 Impact: HR scope can inherit organization descendants from global default organization without Employee-linkage dependency.
+
+[2026-02-26] Decision:
+We decided Employee save must sync linked user default `organization` from `Employee.organization` (same pattern as school default sync).
+Reason: permissions use user/default organization scope; stale defaults can diverge from Employee form truth and produce unexpected scope behavior.
+Impact: updating Employee organization now updates linked user default organization when profile sync is authorized.
+
+[2026-02-26] Decision:
+We decided Employee permission hooks enforce role-specific scope rules explicitly:
+- HR roles: scoped CRUD to org descendants + blank organization rows
+- Academic Admin: read-only on default school
+- Employee: read-only own record
+Reason: this is the required product contract and prevents implicit fallback behavior from granting or denying the wrong access.
+Impact: list and form permissions are now consistent with the intended HR/academic/employee visibility model.

@@ -57,7 +57,33 @@ The interdependence is structurally sound. However, ensuring it continues to ope
 
 ---
 
-## 5. Architectural Recommendations & Next Steps
+## 5. UX Friction & Unexploited Inheritance (Low Hanging Fruits)
+
+While the `NestedSet` structures are in place, several areas fail to fully leverage them, leading to UX friction or redundant data entry.
+
+### 1. Location Capacity Aggregation (Missed Inheritance)
+Currently, `location.py` (`validate_capacity_against_groups`) checks capacity strictly against `sgs.location = %s`. It **does not aggregate usage from child locations**.
+- **Impact**: If a parent building has a maximum capacity of 1000, booking its child rooms does not count towards the building's capacity.
+- **Low-Hanging Fruit**: Modify the query to aggregate active students across the location *and all its descendants*.
+
+### 2. Auto-Defaulting School Context on Record Creation
+Users frequently have to manually select their school when creating new records (`Term`, `Course`, `Program Enrollment`).
+- **Impact**: Repetitive data entry and risk of selecting the wrong tree node.
+- **Low-Hanging Fruit**: While `get_user_default_school()` exists in the backend, it should be mapped to the `onload` or `default` triggers in the UI forms. A user assigned to "South Campus" should have "South Campus" pre-filled automatically on all new school-scoped documents.
+
+### 3. Dynamic Inheritance vs. Static Copying
+In `program.py`, `inherit_assessment_categories` requires a manual button click to copy data from the parent program.
+- **Impact**: UX friction, duplicated data in the database, and out-of-sync children if the parent is updated later.
+- **Low-Hanging Fruit**: Implement dynamic fallback. If a child program has empty assessment categories, the system should dynamically resolve and use the nearest ancestor's categories at runtime without requiring a physical copy.
+
+### 4. Vue SPA Target: Tree-Select Components
+Throughout the Vue SPA and standard Frappe Desk filters, users pick from flat dropdown lists of Schools and Organizations.
+- **Impact**: Users must guess which node is a parent and which is a child.
+- **Low-Hanging Fruit**: Replace standard `Link` fields in Vue SPA filters with a hierarchical Tree-Select component. This visually represents the `NestedSet` (e.g., "Main Campus" with indented "Primary" and "Secondary"), making structural inheritance intuitive.
+
+---
+
+## 6. Architectural Recommendations & Next Steps
 
 1. **Refactor Standard Reports**: Audit all `.py` files inside the `ifitwala_ed/report/` directories. Replace `sa.school = %s` exact matches with SQL `IN (...)` conditions mapped to `get_descendant_schools(school_filter)`.
 2. **Fix `get_allowed_schools`**: Modify `school_settings_utils.py` so that when a `selected_school` is provided, it returns `[selected_school] + get_descendants_of("School", selected_school)` intersected with the user's total permitted scope.
