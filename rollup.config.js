@@ -15,6 +15,7 @@ const postcss = require('rollup-plugin-postcss');
 const terser = require('@rollup/plugin-terser');
 const { createHash } = require('crypto');
 const tailwind = require('@tailwindcss/postcss');
+const emitSourceMap = process.env.IFITWALA_ASSET_SOURCEMAPS === '1';
 
 // Resolve the app directory regardless of whether rollup runs from bench root
 // (/apps/ifitwala_ed) or the package directory (/apps/ifitwala_ed/ifitwala_ed).
@@ -78,7 +79,7 @@ module.exports = [
 		output: {
 			file: `${jsDest}/ifitwala_ed.bundle.js`,
 			format: "iife",
-			sourcemap: true,
+			sourcemap: emitSourceMap,
 		},
 		plugins: [
 			...basePlugins,
@@ -126,7 +127,7 @@ module.exports = [
 		output: {
 			file: `${jsDest}/ifitwala_site.${websiteJsHash}.bundle.js`,
 			format: 'iife',
-			sourcemap: true,
+			sourcemap: emitSourceMap,
 		},
 		plugins: [
 			...basePlugins,

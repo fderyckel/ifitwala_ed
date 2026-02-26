@@ -59,6 +59,12 @@ Over:
 * clever watchers
 * “it should work”
 
+### 0.3 Build & Asset Delivery Contract (LOCKED)
+
+* Canonical production build entrypoint is repo-root `yarn build`; it must compile Desk Rollup + `ui-spa` Vite in one run (and therefore through `bench build`).
+* Manual deployment runbooks must not rely on a second standalone `yarn --cwd ifitwala_ed/ui-spa build` step.
+* Production bundles must stay minified and hash-named where supported, with source maps disabled by default and enabled only for incident debugging.
+
 ---
 
 ## 1. File & Folder Structure (Locked)

@@ -229,11 +229,14 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
+          cache-dependency-path: |
+            yarn.lock
+            ifitwala_ed/ui-spa/yarn.lock
 
       - name: Install dependencies (root)
         run: yarn install --frozen-lockfile
 
-      - name: Build Rollup bundles
+      - name: Build unified assets (Desk + SPA)
         run: yarn build
 
   spa-typecheck-build:
@@ -259,6 +262,3 @@ jobs:
 
       - name: Type check
         run: yarn type-check
-
-      - name: Build SPA
-        run: yarn build

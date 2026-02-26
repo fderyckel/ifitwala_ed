@@ -215,12 +215,23 @@ bash scripts/contracts_guardrails.sh
 bash scripts/test_metrics.sh
 ```
 
+### Unified asset build (Desk + SPA)
+
+```bash
+yarn build
+# bench build also triggers the same app build pipeline
+```
+
+Production source maps are disabled by default. Enable only for incident debugging:
+
+```bash
+IFITWALA_ASSET_SOURCEMAPS=1 yarn build:desk
+```
+
 ### SPA checks
 
 ```bash
-cd ifitwala_ed/ui-spa
-yarn type-check
-yarn build
+yarn type-check:spa
 ```
 
 ### Required PR checks

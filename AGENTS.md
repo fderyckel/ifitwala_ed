@@ -219,6 +219,8 @@ Rules:
   * **Vue 3**
   * **Tailwind CSS v4**
   * **frappe-ui**
+* Build pipeline is unified: root `yarn build` (and `bench build`) must compile Desk Rollup and `ui-spa` Vite together in one run.
+* Asset governance for production: keep bundles minified/fingerprinted where supported and keep source maps off by default (opt-in only for incident debugging).
 * Bootstrap is deprecated and treated as removed legacy (including `bootstrap-select` and Bootstrap class conventions like `btn-*`/`badge`).
 * Do not introduce or preserve Bootstrap assets/classes in new or touched code; refactor touched legacy UI to Tailwind v4 patterns or project-scoped semantic classes.
 * Legacy UI may exist:
