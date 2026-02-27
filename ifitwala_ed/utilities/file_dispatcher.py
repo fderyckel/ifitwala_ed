@@ -56,7 +56,7 @@ def _validate_classification_payload(classification: Dict[str, Any]) -> None:
 def _get_next_version_number(*, primary_subject_type: str, primary_subject_id: str, slot: str) -> int:
     row = frappe.db.get_all(
         "File Classification",
-        fields=["max(version_number) as max_ver"],
+        fields=[{"MAX": "version_number", "as": "max_ver"}],
         filters={
             "primary_subject_type": primary_subject_type,
             "primary_subject_id": primary_subject_id,

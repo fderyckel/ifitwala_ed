@@ -180,3 +180,8 @@ Impact: list and form permissions are now consistent with the intended HR/academ
 We decided Employee permission scope resolution must read persisted defaults directly and avoid permission-time cache dependence.
 Reason: stale default/cache state can cause transient list/form visibility mismatches after organization/school scope updates.
 Impact: permission checks now resolve organization/school defaults from `DefaultValue` storage and compute descendant scope without permission-time cache reuse.
+
+[2026-02-26] Decision:
+We decided the `HR` workspace shortcut `Active Employee` must open `List` view (not `Tree`).
+Reason: tree-root rendering can show only top-level scoped rows (e.g., "4 of 31"), which misrepresents scoped Employee visibility and creates operational confusion.
+Impact: staff users opening `Active Employee` now land on full scoped list behavior consistent with report/image view results.

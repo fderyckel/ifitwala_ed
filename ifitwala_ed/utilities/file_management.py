@@ -202,7 +202,7 @@ def _get_next_version(slot: Tuple[str, str, str, str]) -> int:
 
     rows = frappe.db.get_all(
         "File",
-        fields=["max(custom_version_no) as max_ver"],
+        fields=[{"MAX": "custom_version_no", "as": "max_ver"}],
         filters={
             "attached_to_doctype": doctype,
             "attached_to_name": name,

@@ -105,6 +105,23 @@ def _ensure_file_on_disk(file_doc):
         frappe.throw(_("File could not be finalized on disk. Please retry the upload."))
 
 
+def _file_url_exists_on_disk(file_url: str | None, is_private: int | None = 0) -> bool:
+    if not file_url:
+        return False
+
+    if file_url.startswith("http"):
+        return True
+
+    rel_path = file_url.lstrip("/")
+    if rel_path.startswith("private/") or rel_path.startswith("public/"):
+        abs_path = frappe.utils.get_site_path(rel_path)
+    else:
+        base = "private" if is_private else "public"
+        abs_path = frappe.utils.get_site_path(base, rel_path)
+
+    return os.path.exists(abs_path)
+
+
 @frappe.whitelist()
 def upload_employee_image(employee: str | None = None, **_kwargs):
     employee = employee or _get_form_arg("employee") or frappe.form_dict.get("docname")
@@ -326,8 +343,28 @@ def get_employee_image_variants(employee: str):
     files = frappe.get_all(
         "File",
         filters={"name": ("in", file_names)},
-        fields=["name", "file_url"],
+        fields=["name", "file_url", "is_private"],
     )
-    file_urls = {row["name"]: row.get("file_url") for row in files}
+    file_map = {row["name"]: row for row in files}
 
-    return {row["slot"]: file_urls.get(row["file"]) for row in rows if row.get("slot")}
+    variants = {}
+    for row in rows:
+        slot = row.get("slot")
+        file_name = row.get("file")
+        if not (slot and file_name):
+            continue
+
+        file_row = file_map.get(file_name)
+        if not file_row:
+            continue
+
+        file_url = (file_row.get("file_url") or "").strip()
+        if not file_url:
+            continue
+
+        if not _file_url_exists_on_disk(file_url, file_row.get("is_private")):
+            continue
+
+        variants[slot] = file_url
+
+    return variants
