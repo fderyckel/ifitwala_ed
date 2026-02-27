@@ -187,7 +187,13 @@ const contentHtml = computed(() => props.content || '');
 const commentCount = computed(() => stats.value.comments_total ?? 0);
 
 function onContentClick(event: MouseEvent) {
-	const target = event.target;
+	const rawTarget = event.target;
+	const target =
+		rawTarget instanceof Element
+			? rawTarget
+			: rawTarget instanceof Node
+				? rawTarget.parentElement
+				: null;
 	if (target instanceof Element) {
 		const actionButton = target.closest('[data-policy-action]');
 		if (actionButton instanceof HTMLButtonElement) {
