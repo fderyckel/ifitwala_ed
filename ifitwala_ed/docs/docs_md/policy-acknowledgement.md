@@ -3,8 +3,8 @@ title: "Policy Acknowledgement: Append-Only Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "1.3.0"
-last_change_date: "2026-02-26"
+version: "1.4.0"
+last_change_date: "2026-02-27"
 summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, organization-scope validation, and staff policy-signature workflows that present amendment diffs first."
 seo_title: "Policy Acknowledgement: Append-Only Consent Evidence"
 seo_description: "Record immutable who/what/when acknowledgement evidence with strict context, role, and organization-scope validation."
@@ -33,8 +33,10 @@ seo_description: "Record immutable who/what/when acknowledgement evidence with s
 - Policy organization scope must apply to context organization.
 - Duplicate acknowledgements for same tuple are blocked:
   - `policy_version`, `acknowledged_by`, `context_doctype`, `context_name`
-- Document is append-only:
+- Document is append-only and ledger-submitted:
+  - auto-submitted on insert (`docstatus = 1`)
   - edit blocked
+  - cancel blocked
   - delete blocked
 - `acknowledged_at` is server-stamped at insert.
 
@@ -112,7 +114,7 @@ The internal workflow for staff policy signatures is campaign-based and scope-dr
 
 1. Resolve the active policy version for the user and business context.
 2. Insert acknowledgement for the current session user against explicit context fields.
-3. Prevent duplicates for the same version/user/context tuple.
+3. Prevent duplicates for the same version/user/context tuple (controller validation + database unique index).
 4. Keep the record append-only as durable consent evidence.
 
 <Callout type="warning" title="Identity rule">
@@ -136,11 +138,12 @@ Acknowledgements are immutable records. Corrections should be handled by new pol
   - `context_doctype` (`Data`)
   - `context_name` (`Data`)
   - `acknowledged_at` (`Datetime`)
-- **Lifecycle hooks in controller**: `before_insert`, `before_save`, `before_delete`, `after_insert`
+- **Lifecycle hooks in controller**: `before_insert`, `before_save`, `before_submit`, `before_update_after_submit`, `before_cancel`, `before_delete`, `after_insert`, `on_submit`
 - **Operational/public methods**: none beyond standard document behavior.
 
 - **DocType**: `Policy Acknowledgement` (`ifitwala_ed/governance/doctype/policy_acknowledgement/`)
 - **Autoname**: `hash`
+- **Is Submittable**: `Yes` (auto-submit on insert)
 - **Fields**:
   - `policy_version` (Link -> Policy Version, required)
   - `acknowledged_by` (Link -> User, required)
@@ -150,21 +153,27 @@ Acknowledgements are immutable records. Corrections should be handled by new pol
   - `acknowledged_at` (Datetime, required, read-only)
 - **Controller guards**:
   - `before_insert`: policy/version, user, context, role, uniqueness, and scope validation + timestamping
-  - `before_save`: block edits
+  - `before_save`: block edits except the draft->submitted transition
+  - `before_submit`: enforce draft->submitted transition only
+  - `before_update_after_submit`: block all post-submit edits
+  - `before_cancel`: block cancel
   - `before_delete`: block deletes
-  - `after_insert`: System Manager override comment when role matrix is bypassed
+  - `after_insert`: auto-submit to submitted evidence state
+  - `on_submit`: System Manager override comment when role matrix is bypassed
 
 ### Permission Matrix
 
 | Role | Read | Write | Create | Delete | Notes |
 |---|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes | Doctype permission allows edit/delete; controller blocks after insert/delete |
+| `System Manager` | Yes | Yes | Yes | No | Controller still blocks edit/cancel/delete lifecycle transitions |
 | `Guardian` | Yes | No | Yes | No | Runtime role/context checks apply |
 | `Student` | Yes | No | Yes | No | Runtime role/context checks apply |
-| `Academic Staff` | Yes | No | Yes | No | Runtime role/context checks apply |
+| `Academic Staff` | Yes | No | Yes | No | Runtime visibility is self staff context only |
 | `Admission Officer` | Yes | No | No | No | Read-only |
 | `Admission Manager` | Yes | No | No | No | Read-only |
 | `Admissions Applicant` | Yes | No | Yes | No | Must match applicant context linkage |
+
+Runtime visibility is enforced server-side via `permission_query_conditions` + `has_permission` hooks by role and context (organization/school scope, applicant linkage, guardian linkage, student self, staff self).
 
 ## Related Docs
 

@@ -251,13 +251,41 @@ Role authority (server-enforced):
 
 ### `before_save`
 
-**Always hard-fail**
+Hard-fail for edits, except submit transition.
 
 Acknowledgements are **immutable**.
 
 ```text
 Policy Acknowledgements are append-only and cannot be edited.
 ```
+
+---
+
+### `after_insert`
+
+Auto-submit acknowledgement records to submitted state (`docstatus = 1`) so legal evidence is finalized without extra user clicks.
+
+---
+
+### `before_submit`
+
+Allow only Draft -> Submitted transition (`docstatus: 0 -> 1`) and preserve immutable evidence fields.
+
+---
+
+### `before_update_after_submit`
+
+**Always hard-fail**
+
+Submitted acknowledgements are immutable.
+
+---
+
+### `before_cancel`
+
+**Always hard-fail**
+
+No cancel. No exceptions.
 
 ---
 

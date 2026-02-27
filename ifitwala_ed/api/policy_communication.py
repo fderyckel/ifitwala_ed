@@ -146,7 +146,9 @@ def _resolve_message_html(*, row: dict, override_html: str | None) -> str:
     stats = _parse_change_stats(row.get("change_stats"))
     policy_version = (row.get("policy_version") or "").strip()
     policy_url = f"#policy-inform?policy_version={quote(policy_version)}"
-    link_label = escape(_("Review policy in app"))
+    desk_url = f"/app/policy-version/{quote(policy_version)}"
+    inform_label = escape(_("Open Policy"))
+    desk_label = escape(_("Version in Desk"))
 
     message_parts = [
         f"<h3>{escape(policy_label)}" + (f" - Version {escape(version_label)}" if version_label else "") + "</h3>",
@@ -160,10 +162,15 @@ def _resolve_message_html(*, row: dict, override_html: str | None) -> str:
         message_parts.append("<hr><h4>Detailed changes</h4>")
         message_parts.append(diff_html)
     message_parts.append(
-        "<hr><p>"
-        + f'<a href="{policy_url}" data-policy-inform="1" data-policy-version="{escape(policy_version)}">'
-        + link_label
-        + "</a></p>"
+        "<hr>"
+        + '<div class="mt-3 flex flex-wrap justify-end gap-2">'
+        + f'<a href="{policy_url}" data-policy-inform="1" data-policy-version="{escape(policy_version)}" class="btn btn-primary">'
+        + inform_label
+        + "</a>"
+        + f'<a href="{desk_url}" data-policy-inform="0" class="btn btn-quiet" target="_blank" rel="noopener">'
+        + desk_label
+        + "</a>"
+        + "</div>"
     )
     return "".join(message_parts)
 

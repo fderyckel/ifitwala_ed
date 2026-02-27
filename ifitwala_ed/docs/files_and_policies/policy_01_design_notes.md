@@ -151,7 +151,7 @@ Override requires:
 | Admissions Officer | Applicant-scoped only |
 | Guardian           | Own + dependents      |
 | Student            | Own                   |
-| Academic Staff     | ❌                     |
+| Academic Staff     | Own staff records only |
 
 ---
 
@@ -160,6 +160,7 @@ Override requires:
 | Action                 | Anyone |
 | ---------------------- | ------ |
 | Edit acknowledgement   | ❌      |
+| Cancel acknowledgement | ❌      |
 | Revoke acknowledgement | ❌      |
 | Delete acknowledgement | ❌      |
 
@@ -483,8 +484,10 @@ Policy Acknowledgement
 
 ### Immutability rules
 
-* Entire document is **append-only**
+* Entire document is **append-only submitted evidence**
+* Auto-submit on insert (`docstatus = 1`)
 * No edits
+* No cancel
 * No deletion
 * No revocation
 
