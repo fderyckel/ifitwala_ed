@@ -19,6 +19,15 @@ ADMIN_ROLES_FULL = {"System Manager", "Academic Admin"}
 # Elevated audience rights: can target School Scope audiences with
 # Staff or Community recipients, and can choose Issuing School within their nested scope.
 ELEVATED_WIDE_AUDIENCE_ROLES = {"System Manager", "Academic Admin", "Assistant Admin"}
+# Allowed to target/publish School Scope audiences that include Staff or Community.
+# Kept separate from issuing-school elevation to avoid widening school-selection privileges.
+WIDE_AUDIENCE_RECIPIENT_ROLES = {
+    "System Manager",
+    "Academic Admin",
+    "Assistant Admin",
+    "HR Manager",
+    "Accounts Manager",
+}
 
 AUDIENCE_TARGET_MODES = {"School Scope", "Team", "Student Group"}
 RECIPIENT_TOGGLE_FIELDS = ("to_staff", "to_students", "to_guardians", "to_community")
@@ -383,7 +392,7 @@ class OrgCommunication(Document):
     def _enforce_role_restrictions_on_audiences(self):
         """Restrict School Scope rows with Staff/Community recipients to privileged roles."""
         user = frappe.session.user
-        is_wide_privileged = _user_has_any_role(user, ELEVATED_WIDE_AUDIENCE_ROLES)
+        is_wide_privileged = _user_has_any_role(user, WIDE_AUDIENCE_RECIPIENT_ROLES)
 
         if not self.audiences:
             return
@@ -398,7 +407,7 @@ class OrgCommunication(Document):
                 frappe.throw(
                     _(
                         "You are not allowed to target Staff or Community at School Scope. "
-                        "Only Academic Admin, Assistant Admin, or System Manager may do this."
+                        "Only Academic Admin, Assistant Admin, HR Manager, Accounts Manager, or System Manager may do this."
                     ),
                     title=_("Audience Not Allowed"),
                 )
@@ -410,7 +419,7 @@ class OrgCommunication(Document):
     def _enforce_status_rules(self):
         """Enforce basic rules around status + publish_from/publish_to."""
         user = frappe.session.user
-        is_admin = _user_has_any_role(user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES)
+        is_admin = _user_has_any_role(user, ADMIN_ROLES_FULL | WIDE_AUDIENCE_RECIPIENT_ROLES)
 
         now = now_datetime()
 
