@@ -1,0 +1,21 @@
+{
+ "app": "ifitwala_ed",
+ "bg_color": "gray",
+ "creation": "2026-02-27 17:53:51.930998",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "Link",
+ "idx": 0,
+ "label": "Academic",
+ "link_to": "Academics",
+ "link_type": "Workspace Sidebar",
+ "modified": "2026-02-27 20:18:06.909090",
+ "modified_by": "Administrator",
+ "name": "Academic",
+ "owner": "Administrator",
+ "restrict_removal": 1,
+ "roles": [],
+ "sidebar": "Academics",
+ "standard": 1
+}
