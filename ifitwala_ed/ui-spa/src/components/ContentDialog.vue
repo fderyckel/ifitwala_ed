@@ -66,7 +66,7 @@
 					<!-- BODY CONTENT: respects HTML from Org Communication.message -->
 					<div class="rounded-2xl border border-line-soft bg-white/85 p-5 shadow-soft">
 						<div class="prose prose-sm max-w-none text-slate-token/90">
-							<div v-html="contentHtml" @click="onContentClick"></div>
+							<div ref="contentRootEl" v-html="contentHtml" @click="onContentClick"></div>
 						</div>
 					</div>
 
@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { Button, FeatherIcon } from 'frappe-ui';
 import { getInteractionStats } from '@/utils/interactionStats';
 import {
@@ -167,6 +167,7 @@ const isOpen = computed({
 	get: () => props.modelValue,
 	set: (value: boolean) => emit('update:modelValue', value),
 });
+const contentRootEl = ref<HTMLElement | null>(null);
 
 const interaction = computed<InteractionSummary>(() => ({
 	counts: {},
@@ -186,9 +187,121 @@ const contentHtml = computed(() => props.content || '');
 const commentCount = computed(() => stats.value.comments_total ?? 0);
 
 function onContentClick(event: MouseEvent) {
+	const target = event.target;
+	if (target instanceof Element) {
+		const actionButton = target.closest('[data-policy-action]');
+		if (actionButton instanceof HTMLButtonElement) {
+			event.preventDefault();
+			const action = String(actionButton.getAttribute('data-policy-action') || '').trim();
+			const href = String(actionButton.getAttribute('data-policy-href') || '').trim();
+			const policyVersion =
+				String(actionButton.getAttribute('data-policy-version') || '').trim() ||
+				policyVersionFromHref(href);
+			const orgCommunication = String(
+				actionButton.getAttribute('data-org-communication') || ''
+			).trim();
+
+			if (action === 'desk' && href) {
+				window.open(href, '_blank', 'noopener');
+				return;
+			}
+			if (action === 'inform' && policyVersion) {
+				emit('policy-inform', {
+					policyVersion,
+					orgCommunication: orgCommunication || null,
+				});
+				return;
+			}
+		}
+	}
+
 	const payload = extractPolicyInformLinkFromClickEvent(event);
 	if (!payload) return;
 	event.preventDefault();
 	emit('policy-inform', payload);
 }
+
+function isPolicyInformHref(href: string): boolean {
+	return href.startsWith('#policy-inform');
+}
+
+function isPolicyDeskHref(href: string): boolean {
+	return /\/(?:app|desk)\/policy-version\//i.test(href);
+}
+
+function policyVersionFromHref(href: string): string {
+	const raw = String(href || '').trim();
+	if (!raw) return '';
+	if (raw.startsWith('#policy-inform')) {
+		const query = raw.split('?', 2)[1] || '';
+		return String(new URLSearchParams(query).get('policy_version') || '').trim();
+	}
+	const match = raw.match(/\/(?:app|desk)\/policy-version\/([^/?#]+)/i);
+	if (!match || !match[1]) return '';
+	try {
+		return decodeURIComponent(match[1]).trim();
+	} catch {
+		return String(match[1] || '').trim();
+	}
+}
+
+function getPolicyActionAnchors(root: HTMLElement): HTMLAnchorElement[] {
+	const anchors = Array.from(root.querySelectorAll('a')) as HTMLAnchorElement[];
+	return anchors.filter(anchor => {
+		const href = String(anchor.getAttribute('href') || '').trim();
+		return isPolicyInformHref(href) || isPolicyDeskHref(href);
+	});
+}
+
+function decoratePolicyActionLinks() {
+	const root = contentRootEl.value;
+	if (!root) return;
+
+	root.querySelectorAll('.if-policy-action-row').forEach(node => node.remove());
+
+	const anchors = getPolicyActionAnchors(root);
+	if (!anchors.length) return;
+
+	const row = document.createElement('div');
+	row.className = 'if-policy-action-row mt-3 flex flex-wrap justify-end gap-2';
+
+	for (const anchor of anchors) {
+		const href = String(anchor.getAttribute('href') || '').trim();
+		const isInform = isPolicyInformHref(href);
+		const policyVersion =
+			String(anchor.getAttribute('data-policy-version') || '').trim() ||
+			policyVersionFromHref(href);
+		const orgCommunication = String(anchor.getAttribute('data-org-communication') || '').trim();
+		const label =
+			(anchor.textContent || '').trim() || (isInform ? 'Open Policy' : 'Version in Desk');
+
+		const button = document.createElement('button');
+		button.type = 'button';
+		button.className = isInform ? 'btn btn-primary' : 'btn btn-quiet';
+		button.setAttribute('data-policy-action', isInform ? 'inform' : 'desk');
+		button.setAttribute('data-policy-href', href);
+		if (policyVersion) button.setAttribute('data-policy-version', policyVersion);
+		if (orgCommunication) button.setAttribute('data-org-communication', orgCommunication);
+		button.textContent = label;
+
+		const parent = anchor.parentElement;
+		anchor.remove();
+		row.appendChild(button);
+		if (parent && parent !== row && !parent.textContent?.trim()) {
+			parent.remove();
+		}
+	}
+
+	root.appendChild(row);
+}
+
+watch(
+	() => [props.modelValue, contentHtml.value],
+	async ([open]) => {
+		if (!open) return;
+		await nextTick();
+		decoratePolicyActionLinks();
+	},
+	{ immediate: true }
+);
 </script>

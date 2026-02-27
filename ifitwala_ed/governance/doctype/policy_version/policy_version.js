@@ -105,7 +105,8 @@ function buildPolicyMessageHtml(frm, policyMeta) {
 	const diffHtml = String(frm.doc.diff_html || "").trim();
 	const stats = parseChangeStats(frm.doc.change_stats);
 	const policyVersion = String(frm.doc.name || "").trim();
-	const route = `#policy-inform?policy_version=${encodeURIComponent(policyVersion)}`;
+	const policyInformRoute = `#policy-inform?policy_version=${encodeURIComponent(policyVersion)}`;
+	const deskRoute = `/app/policy-version/${encodeURIComponent(policyVersion)}`;
 
 	const parts = [
 		`<h3>${frappe.utils.escape_html(policyLabel)}${versionLabel ? ` - Version ${frappe.utils.escape_html(versionLabel)}` : ""}</h3>`,
@@ -121,7 +122,7 @@ function buildPolicyMessageHtml(frm, policyMeta) {
 		parts.push(diffHtml);
 	}
 	parts.push(
-		`<hr><p><a href="${route}" data-policy-inform="1" data-policy-version="${frappe.utils.escape_html(policyVersion)}">${__("Review policy in app")}</a></p>`
+		`<hr><div class="mt-3 flex flex-wrap justify-end gap-2"><a href="${policyInformRoute}" data-policy-inform="1" data-policy-version="${frappe.utils.escape_html(policyVersion)}" class="btn btn-primary">${__("Open Policy")}</a><a href="${deskRoute}" data-policy-inform="0" class="btn btn-quiet" target="_blank" rel="noopener">${__("Version in Desk")}</a></div>`
 	);
 
 	return parts.join("");
