@@ -128,9 +128,14 @@
 		}
 
 		if (successTitleNode) {
-			successTitleNode.textContent = INQUIRY_SUCCESS_TITLE;
+			if (successTitleNode.textContent !== INQUIRY_SUCCESS_TITLE) {
+				successTitleNode.textContent = INQUIRY_SUCCESS_TITLE;
+			}
 		}
-		successMessageNode.textContent = buildInquirySuccessMessage(organization);
+		var nextMessage = buildInquirySuccessMessage(organization);
+		if (successMessageNode.textContent !== nextMessage) {
+			successMessageNode.textContent = nextMessage;
+		}
 	}
 
 	function bindInquirySubmitSuccessCopy() {
@@ -417,8 +422,10 @@
 		normalizeActionButtons();
 		hideRedundantFieldnameHints();
 		bindInquirySubmitSuccessCopy();
-		applyInquirySuccessCopy();
 		syncSubmissionState();
+		if (document.body.classList.contains('if-webform-submitted')) {
+			applyInquirySuccessCopy();
+		}
 
 		if (!document.getElementById(SHELL_ROOT_ID)) {
 			var header = buildShellHeader();
