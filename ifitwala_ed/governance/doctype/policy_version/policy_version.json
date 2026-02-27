@@ -40,7 +40,8 @@
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
-   "options": "Policy Version"
+   "options": "Policy Version",
+	 "in_list_view": 1
   },
   {
    "fieldname": "change_summary",
@@ -106,7 +107,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-19 22:28:43",
+ "modified": "2026-02-19 22:28:51",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Policy Version",
