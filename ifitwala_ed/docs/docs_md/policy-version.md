@@ -3,7 +3,7 @@ title: "Policy Version: Legal Text Snapshot and Activation Gate"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.2.1"
+version: "1.2.3"
 last_change_date: "2026-02-27"
 summary: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version becomes active or acknowledged."
 seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
@@ -60,9 +60,16 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
    - copied `policy_text`
    - suggested next `version_label`
 3. Update `change_summary` and amended text in the new draft version.
-4. Activate one version at a time for live acknowledgement collection.
-5. Collect acknowledgements through portal/flows tied to this active version.
-6. When acknowledgements exist, treat core legal fields as lock-protected history.
+4. Use **Share Amendment** on the version form to open a communication modal that:
+   - creates a draft `Org Communication`
+   - defaults to one-week Morning Brief window
+   - reuses policy scope (school or organization-all-schools)
+   - preselects recipients from `Institutional Policy.applies_to` (editable before submit)
+   - supports recipient toggles (staff/students/guardians/community)
+   - can optionally trigger a staff signature campaign (off by default; staff policies only)
+5. Activate one version at a time for live acknowledgement collection.
+6. Collect acknowledgements through portal/flows tied to this active version.
+7. When acknowledgements exist, treat core legal fields as lock-protected history.
 
 <Callout type="warning" title="Lock after adoption">
 After first activation or acknowledgement, legal text mutation is restricted by controller guards to preserve consent integrity.
@@ -78,13 +85,15 @@ Use a new version row for policy changes. Keep old versions for audit continuity
 
 - **DocType schema file**: `ifitwala_ed/governance/doctype/policy_version/policy_version.json`
 - **Controller file**: `ifitwala_ed/governance/doctype/policy_version/policy_version.py`
+- **Workflow API**: `ifitwala_ed.api.policy_communication.create_policy_amendment_communication`
 - **Required fields (`reqd=1`)**:
   - `institutional_policy` (`Link` -> `Institutional Policy`)
   - `version_label` (`Data`)
   - `policy_text` (`Text Editor`)
   - `is_active` (`Check`)
 - **Lifecycle hooks in controller**: `before_insert`, `before_save`, `before_delete`
-- **Operational/public methods**: none beyond standard document behavior.
+- **Operational/public methods**:
+  - `create_policy_amendment_communication` (named workflow action for communication + optional signature campaign launch)
 
 - **DocType**: `Policy Version` (`ifitwala_ed/governance/doctype/policy_version/`)
 - **Autoname**: `hash`
