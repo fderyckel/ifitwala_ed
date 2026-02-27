@@ -3,8 +3,8 @@ title: "Policy Version: Legal Text Snapshot and Activation Gate"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.2.0"
-last_change_date: "2026-02-26"
+version: "1.2.1"
+last_change_date: "2026-02-27"
 summary: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version becomes active or acknowledged."
 seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
 seo_description: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version is active or acknowledged."
@@ -54,9 +54,15 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
 ## Lifecycle and Linked Documents
 
 1. Draft legal text under the parent `Institutional Policy`.
-2. Activate one version at a time for live acknowledgement collection.
-3. Collect acknowledgements through portal/flows tied to this active version.
-4. When acknowledgements exist, treat core legal fields as lock-protected history.
+2. For amendments, open an existing version in Desk and use **Create Amendment** to prefill:
+   - `institutional_policy`
+   - `amended_from`
+   - copied `policy_text`
+   - suggested next `version_label`
+3. Update `change_summary` and amended text in the new draft version.
+4. Activate one version at a time for live acknowledgement collection.
+5. Collect acknowledgements through portal/flows tied to this active version.
+6. When acknowledgements exist, treat core legal fields as lock-protected history.
 
 <Callout type="warning" title="Lock after adoption">
 After first activation or acknowledgement, legal text mutation is restricted by controller guards to preserve consent integrity.
