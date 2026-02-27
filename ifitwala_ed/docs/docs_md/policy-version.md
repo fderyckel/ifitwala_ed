@@ -3,7 +3,7 @@ title: "Policy Version: Legal Text Snapshot and Activation Gate"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.2.3"
+version: "1.2.4"
 last_change_date: "2026-02-27"
 summary: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version becomes active or acknowledged."
 seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
@@ -64,6 +64,7 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
    - creates a draft `Org Communication`
    - defaults to one-week Morning Brief window
    - reuses policy scope (school or organization-all-schools)
+   - for organization-all-schools, writes explicit audience rows for all schools in that organization
    - preselects recipients from `Institutional Policy.applies_to` (editable before submit)
    - supports recipient toggles (staff/students/guardians/community)
    - can optionally trigger a staff signature campaign (off by default; staff policies only)

@@ -117,6 +117,17 @@ def _resolve_org_root_school(organization: str) -> str:
     return (root.get("name") or "").strip()
 
 
+def _get_organization_schools(organization: str) -> list[str]:
+    schools = frappe.get_all(
+        "School",
+        filters={"organization": organization},
+        fields=["name"],
+        order_by="lft asc, name asc",
+        limit_page_length=0,
+    )
+    return [(row.get("name") or "").strip() for row in schools if (row.get("name") or "").strip()]
+
+
 def _resolve_message_html(*, row: dict, override_html: str | None) -> str:
     if (override_html or "").strip():
         return override_html
@@ -202,7 +213,7 @@ def create_policy_amendment_communication(
 
     team_row = None
     resolved_school = ""
-    audience_row: dict = {}
+    audience_rows: list[dict] = []
 
     if scope == SCOPE_TEAM:
         if not target_team:
@@ -235,25 +246,42 @@ def create_policy_amendment_communication(
         ):
             frappe.throw(_("Team scope supports Staff recipients only."))
 
-        audience_row = {
-            "target_mode": "Team",
-            "team": target_team,
-            **recipient_flags,
-        }
+        audience_rows = [
+            {
+                "target_mode": "Team",
+                "team": target_team,
+                **recipient_flags,
+            }
+        ]
     else:
         if scope == SCOPE_ORGANIZATION_ALL_SCHOOLS:
             resolved_school = _resolve_org_root_school(policy_organization)
+            org_schools = _get_organization_schools(policy_organization)
+            if not org_schools:
+                frappe.throw(_("No schools were found for this organization."))
+            audience_rows = [
+                {
+                    "target_mode": "School Scope",
+                    "school": school_name,
+                    "include_descendants": 0,
+                    **recipient_flags,
+                }
+                for school_name in org_schools
+            ]
         else:
             resolved_school = (target_school or policy_school or "").strip()
             if not resolved_school:
                 frappe.throw(_("School is required for School scope communication."))
 
-        audience_row = {
-            "target_mode": "School Scope",
-            "school": resolved_school,
-            "include_descendants": 1,
-            **recipient_flags,
-        }
+        if scope == SCOPE_SCHOOL:
+            audience_rows = [
+                {
+                    "target_mode": "School Scope",
+                    "school": resolved_school,
+                    "include_descendants": 1,
+                    **recipient_flags,
+                }
+            ]
 
     now_value = now_datetime()
     brief_start = getdate(brief_start_date) if brief_start_date else getdate(today())
@@ -298,7 +326,7 @@ def create_policy_amendment_communication(
                 f"Generated from Policy Version {policy_version}"
                 + (f" (amended from {row.get('amended_from')})" if row.get("amended_from") else "")
             ),
-            "audiences": [audience_row],
+            "audiences": audience_rows,
         }
     )
     communication_doc.insert()
@@ -329,5 +357,6 @@ def create_policy_amendment_communication(
         "organization": policy_organization,
         "school": resolved_school,
         "target_scope": scope,
+        "audience_count": len(audience_rows),
         "campaign": campaign_result,
     }
