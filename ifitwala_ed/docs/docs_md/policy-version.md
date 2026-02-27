@@ -3,7 +3,7 @@ title: "Policy Version: Legal Text Snapshot and Activation Gate"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.2.6"
+version: "1.2.8"
 last_change_date: "2026-02-27"
 summary: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version becomes active or acknowledged."
 seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
@@ -34,6 +34,9 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
 - `approved_by` (when set) must be an enabled system user with `Policy Version` write access and in policy scope:
   - school-scoped policy: approver must belong to the same school or an ancestor/parent school
   - organization-scoped policy: approver must belong to the same organization or an ancestor/parent organization
+- Runtime visibility is scope-enforced server-side through parent policy scope:
+  - parent policy organization must be in user organization lineage (`self + parents`)
+  - if parent policy is school-scoped, policy school must be in user school lineage (`self + parents`)
 - `policy_text` is editable only while Draft (`is_active = 0`) and no acknowledgements exist.
 - Lifecycle is controlled by `is_active` (not DocType submit/cancel workflow).
 - Once a version is activated, `policy_text` is permanently lock-protected (`text_locked = 1`) even if later deactivated.
@@ -69,6 +72,7 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
    - preselects recipients from `Institutional Policy.applies_to` with staff checked by default (editable before submit)
    - supports recipient toggles (staff/students/guardians/community)
    - can optionally trigger a staff signature campaign (off by default; staff policies only)
+   - embeds a policy link that opens the SPA `staff-policy-inform` overlay (read-only, close-only) from Morning Brief and Org Communication surfaces
 5. Activate one version at a time for live acknowledgement collection.
 6. Collect acknowledgements through portal/flows tied to this active version.
 7. When acknowledgements exist, treat core legal fields as lock-protected history.
@@ -134,6 +138,7 @@ Runtime controller rules:
 - `approved_by` options are filtered by a server link query so only write-capable users in valid policy scope are selectable.
 - `policy_text` becomes append-only once version is active or acknowledged; edits then require creating a new version.
 - Amended versions are first-class artifacts with human `change_summary` and stored paragraph diff (`diff_html` + `change_stats`).
+- Read/list visibility is enforced by `permission_query_conditions` + `has_permission` hooks via parent institutional policy scope.
 
 ## Related Docs
 

@@ -3,7 +3,7 @@ title: "Institutional Policy: Policy Identity and Scope Anchor"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "1.0.1"
+version: "1.0.2"
 last_change_date: "2026-02-27"
 summary: "Define policy identity, organization/school scope, and target audience so active policy versions can be resolved and acknowledged correctly."
 seo_title: "Institutional Policy: Policy Identity and Scope Anchor"
@@ -56,6 +56,9 @@ There is no separate "policy key catalog" DocType in the current model. Existing
 - `policy_category` must be one of the locked categories in governance utilities.
 - `school` must be inside policy organization scope (organization descendants allowed).
 - Deletion is blocked; policy should be deactivated instead (`is_active = 0`).
+- Runtime visibility is scope-enforced server-side:
+  - `organization` must be in user organization lineage (`self + parents`)
+  - if policy is school-scoped, `school` must be in user school lineage (`self + parents`)
 
 ## School Scope Resolution
 
@@ -143,6 +146,7 @@ Treat this record as long-lived identity. Version the legal text in [**Policy Ve
 Runtime controller rule:
 - Policy management is restricted to policy admins (`System Manager`, `Organization Admin`, `Accounts Manager`, `Admission Manager`, `Academic Admin`, `HR Manager`), regardless of Desk form visibility.
 - Controller role pass is necessary but not sufficient: user must also have DocType create/write permission for `Institutional Policy`.
+- Read/list visibility is enforced by `permission_query_conditions` + `has_permission` hooks, not client filtering.
 
 ## Related Docs
 

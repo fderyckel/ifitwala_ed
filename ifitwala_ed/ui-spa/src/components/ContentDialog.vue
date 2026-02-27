@@ -66,7 +66,7 @@
 					<!-- BODY CONTENT: respects HTML from Org Communication.message -->
 					<div class="rounded-2xl border border-line-soft bg-white/85 p-5 shadow-soft">
 						<div class="prose prose-sm max-w-none text-slate-token/90">
-							<div v-html="contentHtml"></div>
+							<div v-html="contentHtml" @click="onContentClick"></div>
 						</div>
 					</div>
 
@@ -126,6 +126,10 @@
 import { computed } from 'vue';
 import { Button, FeatherIcon } from 'frappe-ui';
 import { getInteractionStats } from '@/utils/interactionStats';
+import {
+	extractPolicyInformLinkFromClickEvent,
+	type PolicyInformLinkPayload,
+} from '@/utils/policyInformLink';
 import type { InteractionSummary } from '@/types/morning_brief';
 import type { ReactionCode } from '@/types/interactions';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
@@ -152,6 +156,7 @@ const emit = defineEmits<{
 	acknowledge: [];
 	'open-comments': [];
 	react: [ReactionCode];
+	'policy-inform': [PolicyInformLinkPayload];
 }>();
 
 const hasHeaderContent = computed(
@@ -179,4 +184,11 @@ const contentHtml = computed(() => props.content || '');
 
 // Comment count = thread entries (Comment + Question)
 const commentCount = computed(() => stats.value.comments_total ?? 0);
+
+function onContentClick(event: MouseEvent) {
+	const payload = extractPolicyInformLinkFromClickEvent(event);
+	if (!payload) return;
+	event.preventDefault();
+	emit('policy-inform', payload);
+}
 </script>

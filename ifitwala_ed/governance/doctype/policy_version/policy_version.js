@@ -104,7 +104,8 @@ function buildPolicyMessageHtml(frm, policyMeta) {
 	const summary = String(frm.doc.change_summary || "").trim();
 	const diffHtml = String(frm.doc.diff_html || "").trim();
 	const stats = parseChangeStats(frm.doc.change_stats);
-	const route = `/app/policy-version/${encodeURIComponent(String(frm.doc.name || "").trim())}`;
+	const policyVersion = String(frm.doc.name || "").trim();
+	const route = `#policy-inform?policy_version=${encodeURIComponent(policyVersion)}`;
 
 	const parts = [
 		`<h3>${frappe.utils.escape_html(policyLabel)}${versionLabel ? ` - Version ${frappe.utils.escape_html(versionLabel)}` : ""}</h3>`,
@@ -119,7 +120,9 @@ function buildPolicyMessageHtml(frm, policyMeta) {
 		parts.push("<hr><h4>Detailed changes</h4>");
 		parts.push(diffHtml);
 	}
-	parts.push(`<hr><p><a href="${route}">Open policy version in Desk</a></p>`);
+	parts.push(
+		`<hr><p><a href="${route}" data-policy-inform="1" data-policy-version="${frappe.utils.escape_html(policyVersion)}">${__("Review policy in app")}</a></p>`
+	);
 
 	return parts.join("");
 }

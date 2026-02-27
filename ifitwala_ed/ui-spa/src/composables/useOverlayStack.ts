@@ -12,6 +12,7 @@ export type OverlayType =
   | 'student-log-follow-up'
   | 'student-log-analytics-expand'
   | 'org-chart-person'
+  | 'staff-policy-inform'
   | 'staff-policy-signature-campaign'
   | 'focus-router'
   | 'class-hub-student-context'

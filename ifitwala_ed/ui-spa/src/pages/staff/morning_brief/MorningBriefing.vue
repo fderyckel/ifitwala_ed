@@ -583,6 +583,7 @@
 			@acknowledge="activeCommunication && acknowledgeAnnouncement(activeCommunication)"
 			@open-comments="activeCommunication && openInteractionThread(activeCommunication)"
 			@react="activeCommunication && reactToAnnouncement(activeCommunication, $event)"
+			@policy-inform="openPolicyInformOverlay"
 		/>
 
 		<!-- ANNOUNCEMENT CENTER DIALOG -->
@@ -711,6 +712,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { createResource, FeatherIcon, call, toast } from 'frappe-ui';
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import ContentDialog from '@/components/ContentDialog.vue';
 import GenericListDialog from '@/components/analytics/GenericListDialog.vue';
 import HistoryDialog from '@/components/analytics/HistoryDialog.vue';
@@ -733,6 +735,7 @@ import type {
 	ReactionCode,
 } from '@/types/morning_brief';
 import { canShowPublicInteractions } from '@/utils/orgCommunication';
+import type { PolicyInformLinkPayload } from '@/utils/policyInformLink';
 import type { OrgCommunicationListItem } from '@/types/orgCommunication';
 import { getInteractionStats } from '@/utils/interactionStats';
 
@@ -756,6 +759,7 @@ type ArrayWidgetKey =
 
 // State for Dialog
 const isContentDialogOpen = ref<boolean>(false);
+const overlay = useOverlayStack();
 const dialogContent = ref<DialogContent>({
 	title: '',
 	subtitle: '',
@@ -1037,6 +1041,20 @@ function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
 
 function openAnnouncementsDialog(): void {
 	showAnnouncementCenter.value = true;
+}
+
+function openPolicyInformOverlay(payload: PolicyInformLinkPayload): void {
+	const policyVersion = String(payload?.policyVersion || '').trim();
+	if (!policyVersion) return;
+	const communicationName =
+		String(payload?.orgCommunication || '').trim() ||
+		String(activeCommunication.value?.name || '').trim() ||
+		null;
+	isContentDialogOpen.value = false;
+	overlay.open('staff-policy-inform', {
+		policyVersion,
+		orgCommunication: communicationName,
+	});
 }
 
 function openCriticalIncidents(): void {

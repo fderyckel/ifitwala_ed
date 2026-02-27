@@ -9,7 +9,9 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, add_to_date, get_datetime, getdate, now_datetime, today
 
+from ifitwala_ed.api.org_comm_utils import check_audience_match
 from ifitwala_ed.api.policy_signature import launch_staff_policy_campaign
+from ifitwala_ed.governance.policy_scope_utils import is_policy_within_user_scope
 from ifitwala_ed.governance.policy_utils import ensure_policy_admin
 
 SCOPE_ORGANIZATION_ALL_SCHOOLS = "organization_all_schools"
@@ -142,7 +144,9 @@ def _resolve_message_html(*, row: dict, override_html: str | None) -> str:
     summary = (row.get("change_summary") or "").strip()
     diff_html = (row.get("diff_html") or "").strip()
     stats = _parse_change_stats(row.get("change_stats"))
-    policy_url = f"/app/policy-version/{quote((row.get('policy_version') or '').strip())}"
+    policy_version = (row.get("policy_version") or "").strip()
+    policy_url = f"#policy-inform?policy_version={quote(policy_version)}"
+    link_label = escape(_("Review policy in app"))
 
     message_parts = [
         f"<h3>{escape(policy_label)}" + (f" - Version {escape(version_label)}" if version_label else "") + "</h3>",
@@ -155,8 +159,29 @@ def _resolve_message_html(*, row: dict, override_html: str | None) -> str:
     if diff_html:
         message_parts.append("<hr><h4>Detailed changes</h4>")
         message_parts.append(diff_html)
-    message_parts.append(f'<hr><p><a href="{policy_url}">Open policy version in Desk</a></p>')
+    message_parts.append(
+        "<hr><p>"
+        + f'<a href="{policy_url}" data-policy-inform="1" data-policy-version="{escape(policy_version)}">'
+        + link_label
+        + "</a></p>"
+    )
     return "".join(message_parts)
+
+
+def _require_authenticated_user() -> str:
+    user = (frappe.session.user or "").strip()
+    if not user or user == "Guest":
+        frappe.throw(_("You must be logged in."), frappe.PermissionError)
+    return user
+
+
+def _get_active_employee_context(user: str) -> dict | None:
+    return frappe.db.get_value(
+        "Employee",
+        {"user_id": user, "employment_status": "Active"},
+        ["name", "school", "organization"],
+        as_dict=True,
+    )
 
 
 @frappe.whitelist()
@@ -359,4 +384,53 @@ def create_policy_amendment_communication(
         "target_scope": scope,
         "audience_count": len(audience_rows),
         "campaign": campaign_result,
+    }
+
+
+@frappe.whitelist()
+def get_policy_inform_payload(
+    *,
+    policy_version: str | None = None,
+    org_communication: str | None = None,
+):
+    user = _require_authenticated_user()
+    row = _policy_row((policy_version or "").strip())
+
+    policy_organization = (row.get("policy_organization") or "").strip()
+    policy_school = (row.get("policy_school") or "").strip()
+    if not is_policy_within_user_scope(
+        policy_organization=policy_organization,
+        policy_school=policy_school,
+        user=user,
+    ):
+        frappe.throw(_("You do not have permission to view this policy."), frappe.PermissionError)
+
+    org_communication = (org_communication or "").strip()
+    if org_communication:
+        roles = frappe.get_roles(user)
+        employee = _get_active_employee_context(user)
+        if not check_audience_match(org_communication, user, roles, employee):
+            frappe.throw(_("You do not have permission to view this communication."), frappe.PermissionError)
+
+    policy_label = (
+        (row.get("policy_title") or "").strip()
+        or (row.get("policy_key") or "").strip()
+        or (row.get("institutional_policy") or "").strip()
+        or (row.get("policy_version") or "").strip()
+    )
+
+    return {
+        "policy_version": (row.get("policy_version") or "").strip(),
+        "institutional_policy": (row.get("institutional_policy") or "").strip() or None,
+        "policy_key": (row.get("policy_key") or "").strip() or None,
+        "policy_title": (row.get("policy_title") or "").strip() or None,
+        "policy_label": policy_label,
+        "version_label": (row.get("version_label") or "").strip() or None,
+        "policy_organization": policy_organization or None,
+        "policy_school": policy_school or None,
+        "amended_from": (row.get("amended_from") or "").strip() or None,
+        "change_summary": (row.get("change_summary") or "").strip() or None,
+        "change_stats": _parse_change_stats(row.get("change_stats")),
+        "diff_html": row.get("diff_html") or "",
+        "policy_text_html": row.get("policy_text") or "",
     }
