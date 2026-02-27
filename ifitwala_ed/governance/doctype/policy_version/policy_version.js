@@ -43,8 +43,8 @@ frappe.ui.form.on("Policy Version", {
 			});
 		});
 
-		frm.add_custom_button(__("Share Amendment"), () => {
-			openShareAmendmentDialog(frm);
+		frm.add_custom_button(__("Share Policy"), () => {
+			openSharePolicyDialog(frm);
 		});
 	},
 });
@@ -127,13 +127,13 @@ function buildPolicyMessageHtml(frm, policyMeta) {
 function defaultRecipients(policyMeta) {
 	const appliesTo = String(policyMeta.applies_to || "").trim();
 	if (appliesTo === "Student") {
-		return { to_staff: 0, to_students: 1, to_guardians: 0, to_community: 0 };
+		return { to_staff: 1, to_students: 1, to_guardians: 0, to_community: 0 };
 	}
 	if (appliesTo === "Guardian") {
-		return { to_staff: 0, to_students: 0, to_guardians: 1, to_community: 0 };
+		return { to_staff: 1, to_students: 0, to_guardians: 1, to_community: 0 };
 	}
 	if (appliesTo === "Applicant") {
-		return { to_staff: 0, to_students: 1, to_guardians: 1, to_community: 0 };
+		return { to_staff: 1, to_students: 1, to_guardians: 1, to_community: 0 };
 	}
 	return { to_staff: 1, to_students: 0, to_guardians: 0, to_community: 0 };
 }
@@ -154,7 +154,7 @@ async function getInstitutionalPolicyMeta(policyName) {
 	return response?.message || {};
 }
 
-async function openShareAmendmentDialog(frm) {
+async function openSharePolicyDialog(frm) {
 	if (!frm.doc.name) return;
 	if (!frm.doc.policy_text || !String(frm.doc.policy_text).trim()) {
 		frappe.msgprint(__("Policy Text is required before sharing."));
@@ -243,9 +243,7 @@ async function openShareAmendmentDialog(frm) {
 
 			d.hide();
 			frappe.show_alert({
-				message: __(
-					"Draft communication created for Morning Brief and archive. Opened for final review."
-				),
+				message: __("Draft policy communication created. Opened for final review."),
 				indicator: "green",
 			});
 			frappe.set_route("Form", "Org Communication", commName);
@@ -262,7 +260,7 @@ async function openShareAmendmentDialog(frm) {
 	};
 
 	d = new frappe.ui.Dialog({
-		title: __("Share Policy Amendment"),
+		title: __("Share Policy"),
 		fields: [
 			{
 				fieldtype: "HTML",

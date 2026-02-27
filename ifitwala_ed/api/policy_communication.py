@@ -50,11 +50,11 @@ def _parse_change_stats(raw_stats) -> dict[str, int]:
 def _default_recipient_flags(applies_to: str | None) -> dict[str, int]:
     token = (applies_to or "").strip()
     if token == "Student":
-        return {"to_staff": 0, "to_students": 1, "to_guardians": 0, "to_community": 0}
+        return {"to_staff": 1, "to_students": 1, "to_guardians": 0, "to_community": 0}
     if token == "Guardian":
-        return {"to_staff": 0, "to_students": 0, "to_guardians": 1, "to_community": 0}
+        return {"to_staff": 1, "to_students": 0, "to_guardians": 1, "to_community": 0}
     if token == "Applicant":
-        return {"to_staff": 0, "to_students": 1, "to_guardians": 1, "to_community": 0}
+        return {"to_staff": 1, "to_students": 1, "to_guardians": 1, "to_community": 0}
     return {"to_staff": 1, "to_students": 0, "to_guardians": 0, "to_community": 0}
 
 

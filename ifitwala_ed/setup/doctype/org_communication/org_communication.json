@@ -89,14 +89,14 @@
    "fieldname": "school",
    "fieldtype": "Link",
    "label": "Issuing School",
-   "options": "School",
-   "reqd": 1
+   "options": "School"
   },
   {
    "fieldname": "organization",
    "fieldtype": "Link",
    "label": "Organization",
-   "options": "Organization"
+   "options": "Organization",
+   "reqd": 1
   },
   {
    "fieldname": "activity_context_section",

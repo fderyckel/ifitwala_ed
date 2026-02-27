@@ -3,7 +3,7 @@ title: "Organization: Legal Entity and Hierarchy Root"
 slug: organization
 category: Setup
 doc_order: 1
-version: "1.0.3"
+version: "1.0.4"
 last_change_date: "2026-02-27"
 summary: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, and website-school ownership."
 seo_title: "Organization: Legal Entity and Hierarchy Root"
@@ -35,7 +35,9 @@ seo_description: "Define legal entities as a NestedSet hierarchy and anchor scho
 - [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/):
   - context scope validation resolves organization alignment
 - `Org Communication`:
-  - when a staff user has no default school, issuing-school selection is constrained to schools under authorized organization descendants (including explicit organization user-permission grants)
+  - organization is required and defaults from the user organization scope (default organization, fallback employee organization)
+  - issuing school is optional; when set, it must belong to the selected organization or its descendants
+  - org-level communications (blank issuing school) are visible only inside authorized organization scope
 
 ## Technical Notes (IT)
 

@@ -3,7 +3,7 @@ title: "Policy Version: Legal Text Snapshot and Activation Gate"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.2.4"
+version: "1.2.6"
 last_change_date: "2026-02-27"
 summary: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version becomes active or acknowledged."
 seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
@@ -35,6 +35,7 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
   - school-scoped policy: approver must belong to the same school or an ancestor/parent school
   - organization-scoped policy: approver must belong to the same organization or an ancestor/parent organization
 - `policy_text` is editable only while Draft (`is_active = 0`) and no acknowledgements exist.
+- Lifecycle is controlled by `is_active` (not DocType submit/cancel workflow).
 - Once a version is activated, `policy_text` is permanently lock-protected (`text_locked = 1`) even if later deactivated.
 - Once any acknowledgement exists for a version:
   - legal/core fields are lock-protected (`policy_text`, `version_label`, `institutional_policy`, amendment/diff metadata).
@@ -60,12 +61,12 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
    - copied `policy_text`
    - suggested next `version_label`
 3. Update `change_summary` and amended text in the new draft version.
-4. Use **Share Amendment** on the version form to open a communication modal that:
+4. Use **Share Policy** on the version form to open a communication modal that:
    - creates a draft `Org Communication`
    - defaults to one-week Morning Brief window
    - reuses policy scope (school or organization-all-schools)
    - for organization-all-schools, writes explicit audience rows for all schools in that organization
-   - preselects recipients from `Institutional Policy.applies_to` (editable before submit)
+   - preselects recipients from `Institutional Policy.applies_to` with staff checked by default (editable before submit)
    - supports recipient toggles (staff/students/guardians/community)
    - can optionally trigger a staff signature campaign (off by default; staff policies only)
 5. Activate one version at a time for live acknowledgement collection.
