@@ -3,8 +3,8 @@ title: "Applicant Review Rule: Reviewer Scope Configuration"
 slug: applicant-review-rule
 category: Admission
 doc_order: 8
-version: "1.1.0"
-last_change_date: "2026-02-25"
+version: "1.1.1"
+last_change_date: "2026-02-28"
 summary: "Configure admissions review assignees by organization, school, optional program offering, and target type."
 seo_title: "Applicant Review Rule: Reviewer Scope Configuration"
 seo_description: "Configure admissions review assignees by organization, school, optional program offering, and target type."
@@ -43,6 +43,7 @@ Row rules:
 
 UI behavior:
 
+- In the `reviewers` child table, `reviewer_role` can be selected by users with `Applicant Review Rule` write access, even if they do not have direct `Role` read permission.
 - In the `reviewers` child table, `reviewer_user` link options are filtered by `reviewer_role` when a role is selected.
 - If no role is selected, `reviewer_user` shows the standard enabled-user query.
 

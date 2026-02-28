@@ -78,3 +78,30 @@ class ApplicantReviewRule(Document):
         if (row.reviewer_user or "").strip():
             return REVIEWER_MODE_SPECIFIC_USER
         return REVIEWER_MODE_ROLE_ONLY
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_reviewer_role_options(doctype, txt, searchfield, start, page_len, filters):
+    """Role link query for Applicant Review Rule reviewer rows."""
+    _ = (doctype, searchfield, filters)
+    if not frappe.has_permission("Applicant Review Rule", ptype="write"):
+        frappe.throw(_("Insufficient Permission for Applicant Review Rule"), frappe.PermissionError)
+
+    start = int(start or 0)
+    page_len = int(page_len or 20)
+    txt = (txt or "").strip()
+
+    role_filters = []
+    if txt:
+        role_filters.append(["name", "like", f"%{txt}%"])
+
+    return frappe.get_all(
+        "Role",
+        filters=role_filters,
+        fields=["name"],
+        order_by="name asc",
+        limit_start=start,
+        limit_page_length=page_len,
+        as_list=True,
+    )

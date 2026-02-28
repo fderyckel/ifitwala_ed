@@ -24,6 +24,12 @@ frappe.ui.form.on('Applicant Review Rule', {
 			};
 		});
 
+		frm.set_query('reviewer_role', 'reviewers', () => {
+			return {
+				query: 'ifitwala_ed.admission.doctype.applicant_review_rule.applicant_review_rule.get_reviewer_role_options',
+			};
+		});
+
 		frm.set_query('reviewer_user', 'reviewers', (_doc, cdt, cdn) => {
 			const row = locals[cdt]?.[cdn] || {};
 			const role = (row.reviewer_role || '').trim();

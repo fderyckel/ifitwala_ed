@@ -2,6 +2,7 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # See license.txt
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import frappe
@@ -18,6 +19,7 @@ from ifitwala_ed.api.admissions_portal import (
     invite_applicant,
     submit_application,
     update_applicant_profile,
+    upload_applicant_profile_image,
 )
 
 
@@ -453,6 +455,85 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(profile.get("student_nationality"), country)
         self.assertEqual(profile.get("student_first_language"), language)
 
+    def test_get_applicant_profile_includes_applicant_image(self):
+        image_url = f"/private/files/applicant-{frappe.generate_hash(length=6)}.png"
+        self.applicant.db_set("applicant_image", image_url, update_modified=False)
+        self.applicant.reload()
+
+        frappe.set_user(self.applicant_user)
+        profile_payload = get_applicant_profile(student_applicant=self.applicant.name)
+        self.assertEqual(profile_payload.get("applicant_image"), image_url)
+
+    def test_upload_applicant_profile_image_denies_other_applicant(self):
+        other = self._create_applicant(self.organization, self.school, applicant_user="")
+
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.PermissionError):
+            upload_applicant_profile_image(
+                student_applicant=other.name,
+                file_name="student.png",
+                content=self._tiny_png_base64(),
+            )
+
+    def test_upload_applicant_profile_image_denies_read_only_status(self):
+        self.applicant.db_set("application_status", "Submitted", update_modified=False)
+        self.applicant.reload()
+
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.PermissionError):
+            upload_applicant_profile_image(
+                student_applicant=self.applicant.name,
+                file_name="student.png",
+                content=self._tiny_png_base64(),
+            )
+
+    def test_upload_applicant_profile_image_creates_governed_file(self):
+        fake_file = SimpleNamespace(
+            name=f"FILE-{frappe.generate_hash(length=8)}",
+            file_url=f"/private/files/applicant-{frappe.generate_hash(length=6)}.png",
+            file_name="student.png",
+            file_size=128,
+            is_private=1,
+        )
+
+        frappe.set_user(self.applicant_user)
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.file_dispatcher.create_and_classify_file",
+                return_value=fake_file,
+            ) as mocked_dispatcher,
+            patch("ifitwala_ed.api.admissions_portal._ensure_file_on_disk"),
+        ):
+            payload = upload_applicant_profile_image(
+                student_applicant=self.applicant.name,
+                file_name="student.png",
+                content=self._tiny_png_base64(),
+            )
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("file_url"), fake_file.file_url)
+
+        self.applicant.reload()
+        self.assertEqual(self.applicant.applicant_image, fake_file.file_url)
+
+        self.assertEqual(mocked_dispatcher.call_count, 1)
+        kwargs = mocked_dispatcher.call_args.kwargs
+        self.assertEqual(kwargs["file_kwargs"]["attached_to_doctype"], "Student Applicant")
+        self.assertEqual(kwargs["file_kwargs"]["attached_to_name"], self.applicant.name)
+        self.assertEqual(kwargs["file_kwargs"]["attached_to_field"], "applicant_image")
+        self.assertEqual(kwargs["file_kwargs"]["is_private"], 1)
+
+        classification = kwargs["classification"]
+        self.assertEqual(classification["primary_subject_type"], "Student Applicant")
+        self.assertEqual(classification["primary_subject_id"], self.applicant.name)
+        self.assertEqual(classification["data_class"], "identity_image")
+        self.assertEqual(classification["purpose"], "applicant_profile_display")
+        self.assertEqual(classification["retention_policy"], "until_school_exit_plus_6m")
+        self.assertEqual(classification["slot"], "profile_image")
+        self.assertEqual(classification["organization"], self.organization)
+        self.assertEqual(classification["school"], self.school)
+        self.assertEqual(classification["upload_source"], "SPA")
+
     def test_update_applicant_profile_rejects_changing_admission_date(self):
         self.applicant.db_set("student_joining_date", "2026-01-10", update_modified=False)
         self.applicant.reload()
@@ -550,3 +631,6 @@ class TestSubmitApplication(FrappeTestCase):
         if not existing:
             return None
         return existing[0]["name"]
+
+    def _tiny_png_base64(self) -> str:
+        return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0b8AAAAASUVORK5CYII="

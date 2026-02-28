@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import base64
+import io
+import os
 
 import frappe
 from frappe import _
 from frappe.utils import cint, now_datetime
+from PIL import Image, UnidentifiedImageError
 
 from ifitwala_ed.admission import admissions_portal as admission_api
 from ifitwala_ed.admission.admission_utils import (
@@ -169,6 +172,43 @@ def _decode_base64_content(content_text: str | None) -> bytes:
         return base64.b64decode(content_text)
     except Exception:
         frappe.throw(_("Vaccination proof content must be base64-encoded."))
+
+
+def _decode_profile_image_content(content_text: str | None) -> bytes:
+    if not content_text:
+        frappe.throw(_("Profile image content is required."))
+    try:
+        content = base64.b64decode(content_text, validate=True)
+    except Exception:
+        frappe.throw(_("Profile image content must be base64-encoded."))
+    if not content:
+        frappe.throw(_("Profile image content is empty."))
+    return content
+
+
+def _validate_profile_image_content(content: bytes) -> None:
+    try:
+        with Image.open(io.BytesIO(content)) as img:
+            img.verify()
+    except (UnidentifiedImageError, OSError, ValueError):
+        frappe.throw(_("Uploaded profile image must be a valid image file."))
+
+
+def _ensure_file_on_disk(file_doc) -> None:
+    if not file_doc or not file_doc.file_url:
+        frappe.throw(_("File URL missing after upload."))
+    if file_doc.file_url.startswith("http"):
+        return
+
+    rel_path = file_doc.file_url.lstrip("/")
+    if rel_path.startswith("private/") or rel_path.startswith("public/"):
+        abs_path = frappe.utils.get_site_path(rel_path)
+    else:
+        base = "private" if file_doc.is_private else "public"
+        abs_path = frappe.utils.get_site_path(base, rel_path)
+
+    if not os.path.exists(abs_path):
+        frappe.throw(_("File could not be finalized on disk. Please retry the upload."))
 
 
 def _build_applicant_display_name(row: dict) -> str:
@@ -340,6 +380,18 @@ def _profile_completeness(profile_payload: dict) -> dict:
         if not value:
             missing.append(label)
     return {"ok": not missing, "missing": missing, "required": required}
+
+
+def _build_profile_payload(applicant) -> dict:
+    profile = _serialize_applicant_profile(applicant)
+    completeness = _profile_completeness(profile)
+    return {
+        "profile": profile,
+        "completeness": completeness,
+        "application_context": _application_context_payload(applicant),
+        "options": _profile_reference_options(),
+        "applicant_image": _as_text(applicant.get("applicant_image")).strip(),
+    }
 
 
 def _profile_reference_options() -> dict:
@@ -611,14 +663,7 @@ def get_applicant_profile(student_applicant: str | None = None):
     row = _ensure_applicant_match(student_applicant, user)
 
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
-    profile = _serialize_applicant_profile(applicant)
-    completeness = _profile_completeness(profile)
-    return {
-        "profile": profile,
-        "completeness": completeness,
-        "application_context": _application_context_payload(applicant),
-        "options": _profile_reference_options(),
-    }
+    return _build_profile_payload(applicant)
 
 
 @frappe.whitelist()
@@ -680,15 +725,79 @@ def update_applicant_profile(
 
     applicant.update(updates)
     applicant.save(ignore_permissions=True)
-    profile = _serialize_applicant_profile(applicant)
-    completeness = _profile_completeness(profile)
+    payload = _build_profile_payload(applicant)
+    payload["ok"] = True
+    return payload
+
+
+@frappe.whitelist()
+def upload_applicant_profile_image(
+    *,
+    student_applicant: str | None = None,
+    file_name: str | None = None,
+    content: str | None = None,
+):
+    user = _require_admissions_applicant()
+    row = _ensure_applicant_match(student_applicant, user)
+
+    is_read_only, reason = _read_only_for(_as_text(row.get("application_status")).strip())
+    if is_read_only:
+        frappe.throw(reason or _("This application is read-only."), frappe.PermissionError)
+
+    applicant_name = _as_text(row.get("name")).strip()
+    if not applicant_name:
+        frappe.throw(_("Applicant context is missing."))
+
+    upload_name = _as_text(file_name).strip()
+    if not upload_name:
+        frappe.throw(_("file_name is required."))
+
+    upload_content = _decode_profile_image_content(_as_text(content))
+    _validate_profile_image_content(upload_content)
+
+    applicant = frappe.get_doc("Student Applicant", applicant_name)
+    if not applicant.get("organization") or not applicant.get("school"):
+        frappe.throw(_("Organization and School are required for file classification."))
+
+    file_doc = file_dispatcher.create_and_classify_file(
+        file_kwargs={
+            "attached_to_doctype": "Student Applicant",
+            "attached_to_name": applicant.name,
+            "attached_to_field": "applicant_image",
+            "file_name": upload_name,
+            "content": upload_content,
+            "is_private": 1,
+        },
+        classification={
+            "primary_subject_type": "Student Applicant",
+            "primary_subject_id": applicant.name,
+            "data_class": "identity_image",
+            "purpose": "applicant_profile_display",
+            "retention_policy": "until_school_exit_plus_6m",
+            "slot": "profile_image",
+            "organization": applicant.organization,
+            "school": applicant.school,
+            "upload_source": "SPA",
+        },
+    )
+    _ensure_file_on_disk(file_doc)
+
+    frappe.db.set_value(
+        "Student Applicant",
+        applicant.name,
+        "applicant_image",
+        file_doc.file_url,
+        update_modified=False,
+    )
+    classification_name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
 
     return {
         "ok": True,
-        "profile": profile,
-        "completeness": completeness,
-        "application_context": _application_context_payload(applicant),
-        "options": _profile_reference_options(),
+        "file": file_doc.name,
+        "file_url": file_doc.file_url,
+        "file_name": file_doc.file_name,
+        "file_size": file_doc.file_size,
+        "classification": classification_name,
     }
 
 

@@ -19,6 +19,10 @@ import type {
   Response as DocumentTypesResponse,
 } from '@/types/contracts/admissions/list_applicant_document_types'
 import type { Request as UploadDocumentRequest, Response as UploadDocumentResponse } from '@/types/contracts/admissions/upload_applicant_document'
+import type {
+  Request as UploadApplicantProfileImageRequest,
+  Response as UploadApplicantProfileImageResponse,
+} from '@/types/contracts/admissions/upload_applicant_profile_image'
 import type { Request as PoliciesRequest, Response as PoliciesResponse } from '@/types/contracts/admissions/get_applicant_policies'
 import type { Request as AcknowledgePolicyRequest, Response as AcknowledgePolicyResponse } from '@/types/contracts/admissions/acknowledge_policy'
 import type { Request as SubmitRequest, Response as SubmitResponse } from '@/types/contracts/admissions/submit_application'
@@ -56,6 +60,12 @@ export function createAdmissionsService() {
 
   const updateProfileResource = createResource<UpdateProfileResponse>({
     url: 'ifitwala_ed.api.admissions_portal.update_applicant_profile',
+    method: 'POST',
+    auto: false,
+  })
+
+  const uploadApplicantProfileImageResource = createResource<UploadApplicantProfileImageResponse>({
+    url: 'ifitwala_ed.api.admissions_portal.upload_applicant_profile_image',
     method: 'POST',
     auto: false,
   })
@@ -124,6 +134,14 @@ export function createAdmissionsService() {
     return result
   }
 
+  async function uploadApplicantProfileImage(
+    payload: UploadApplicantProfileImageRequest
+  ): Promise<UploadApplicantProfileImageResponse> {
+    const result = await uploadApplicantProfileImageResource.submit(payload)
+    uiSignals.emit(SIGNAL_ADMISSIONS_PORTAL_INVALIDATE)
+    return result
+  }
+
   async function listDocuments(payload: DocumentsRequest = {}): Promise<DocumentsResponse> {
     return documentsResource.submit(payload)
   }
@@ -161,6 +179,7 @@ export function createAdmissionsService() {
     updateHealth,
     getProfile,
     updateProfile,
+    uploadApplicantProfileImage,
     listDocuments,
     listDocumentTypes,
     uploadDocument,

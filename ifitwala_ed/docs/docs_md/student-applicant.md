@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.6.8"
-last_change_date: "2026-02-24"
+version: "1.6.9"
+last_change_date: "2026-02-28"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
@@ -215,6 +215,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
 - **File governance**:
   - direct attachments blocked except `applicant_image`
   - governed upload endpoint: `ifitwala_ed.utilities.governed_uploads.upload_applicant_image`
+  - admissions portal self-upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_profile_image`
   - all other admissions docs routed via `Applicant Document` + file classification
 - **Governance policy engine**:
   - `Policy Acknowledgement.context_doctype = Student Applicant`
@@ -372,6 +373,9 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 - **Portal API endpoints** (`ifitwala_ed/api/admissions_portal.py`) used by portal pages/service:
   - `get_admissions_session`
   - `get_applicant_snapshot`
+  - `get_applicant_profile`
+  - `update_applicant_profile`
+  - `upload_applicant_profile_image`
   - `get_applicant_health`
   - `update_applicant_health`
   - `list_applicant_documents`

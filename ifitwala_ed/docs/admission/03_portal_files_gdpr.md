@@ -495,6 +495,51 @@ ApplicantSnapshot {
 
 ---
 
+## A.3.1 Applicant Profile DTO
+
+### Endpoints
+
+```
+GET  /api/admissions/profile/:applicant
+POST /api/admissions/profile/update
+POST /api/admissions/profile/image/upload
+```
+
+### Returns
+
+```ts
+ApplicantProfilePayload {
+  profile: ApplicantProfile
+  completeness: {
+    ok: boolean
+    missing: string[]
+    required: string[]
+  }
+  application_context: ApplicantApplicationContext
+  applicant_image: string
+  options: {
+    genders: string[]
+    residency_statuses: string[]
+    languages: Array<{ value: string; label: string }>
+    countries: Array<{ value: string; label: string }>
+  }
+}
+```
+
+### Rules
+
+* Profile update is applicant-scoped and server-validated.
+* Profile image upload is applicant-scoped and mutable-status only.
+* Profile image upload must route through dispatcher classification:
+  * `data_class = identity_image`
+  * `purpose = applicant_profile_display`
+  * `retention_policy = until_school_exit_plus_6m`
+  * `slot = profile_image`
+  * `upload_source = SPA`
+* Uploaded profile image remains private and stored on `Student Applicant.applicant_image`.
+
+---
+
 ## A.4 Applicant Health DTO
 
 ### Endpoints
@@ -726,6 +771,26 @@ No business logic.
 **Writes**
 
 * ❌ none
+
+---
+
+### `/admissions/profile`
+
+**Page:** `ApplicantProfile.vue`
+
+**Purpose**
+
+* Maintain student profile fields required for promotion
+* Upload/update applicant-owned student image
+
+**Reads**
+
+* `ApplicantProfilePayload`
+
+**Writes**
+
+* profile update
+* profile image upload (governed)
 
 ---
 

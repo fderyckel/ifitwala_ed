@@ -4,6 +4,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.admission.applicant_review_workflow import materialize_application_review_assignments
+from ifitwala_ed.admission.doctype.applicant_review_rule.applicant_review_rule import get_reviewer_role_options
 from ifitwala_ed.tests.factories.users import make_user
 
 
@@ -14,6 +15,7 @@ class TestApplicantReviewWorkflow(FrappeTestCase):
         self._ensure_role("Administrator", "Admission Manager")
         frappe.clear_cache(user="Administrator")
 
+        self.rule_editor_user = self._make_admissions_user("Admission Manager")
         self.reviewer_user = self._make_admissions_user("Admission Officer")
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
@@ -81,6 +83,17 @@ class TestApplicantReviewWorkflow(FrappeTestCase):
                 (self.reviewer_user, None),
             },
         )
+
+    def test_reviewer_role_query_allows_users_with_rule_write(self):
+        frappe.set_user(self.rule_editor_user)
+        rows = get_reviewer_role_options("Role", "Admission", "name", 0, 20, {})
+        role_names = {row[0] for row in rows}
+        self.assertIn("Admission Manager", role_names)
+
+    def test_reviewer_role_query_blocks_users_without_rule_write(self):
+        frappe.set_user(self.reviewer_user)
+        with self.assertRaises(frappe.PermissionError):
+            get_reviewer_role_options("Role", "", "name", 0, 20, {})
 
     def _ensure_role(self, user: str, role: str):
         if not frappe.db.exists("Role", role):

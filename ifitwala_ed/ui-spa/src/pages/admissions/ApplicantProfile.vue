@@ -12,7 +12,7 @@
 			<button
 				type="button"
 				class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
-				:disabled="isReadOnly || loading || saving || Boolean(error)"
+				:disabled="isReadOnly || loading || saving || uploadingImage || Boolean(error)"
 				@click="saveProfile"
 			>
 				<span v-if="saving">{{ __('Saving…') }}</span>
@@ -56,6 +56,83 @@
 						)
 					}}
 				</p>
+			</div>
+
+			<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+				<div class="flex flex-wrap items-start justify-between gap-4">
+					<div>
+						<p class="type-body-strong text-ink">{{ __('Student image') }}</p>
+						<p class="mt-1 type-caption text-ink/60">
+							{{ __('Upload a clear photo of the student for identity and profile use.') }}
+						</p>
+					</div>
+					<div class="flex flex-wrap items-center gap-2">
+						<input
+							ref="imageInput"
+							type="file"
+							accept="image/*"
+							class="hidden"
+							:disabled="isReadOnly || uploadingImage"
+							@change="onImageSelected"
+						/>
+						<button
+							type="button"
+							class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70 disabled:opacity-50"
+							:disabled="isReadOnly || uploadingImage"
+							@click="openImagePicker"
+						>
+							{{ __('Choose image') }}
+						</button>
+						<button
+							type="button"
+							class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+							:disabled="isReadOnly || uploadingImage || !selectedImageFile"
+							@click="uploadSelectedImage"
+						>
+							<span v-if="uploadingImage">{{ __('Uploading…') }}</span>
+							<span v-else>{{ __('Upload image') }}</span>
+						</button>
+					</div>
+				</div>
+
+				<p v-if="selectedImageFile" class="mt-2 type-caption text-ink/55">
+					{{ __('Selected') }}: {{ selectedImageFile.name }}
+				</p>
+
+				<div class="mt-4 flex flex-wrap items-center gap-4">
+					<div class="h-24 w-24 overflow-hidden rounded-2xl border border-border/70 bg-surface">
+						<img
+							v-if="applicantImage"
+							:src="applicantImage"
+							:alt="__('Student image')"
+							class="h-full w-full object-cover"
+						/>
+						<div
+							v-else
+							class="flex h-full w-full items-center justify-center type-caption text-ink/55"
+						>
+							{{ __('No image') }}
+						</div>
+					</div>
+					<div class="space-y-1">
+						<p class="type-caption text-ink/60">
+							{{
+								applicantImage
+									? __('Current image is saved.')
+									: __('No student image uploaded yet.')
+							}}
+						</p>
+						<a
+							v-if="applicantImage"
+							:href="applicantImage"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="type-caption text-ink/70 underline"
+						>
+							{{ __('Open image in new tab') }}
+						</a>
+					</div>
+				</div>
 			</div>
 
 			<div
@@ -274,8 +351,12 @@ const { session } = useAdmissionsSession();
 
 const loading = ref(false);
 const saving = ref(false);
+const uploadingImage = ref(false);
 const error = ref<string | null>(null);
 const actionError = ref('');
+const applicantImage = ref('');
+const selectedImageFile = ref<File | null>(null);
+const imageInput = ref<HTMLInputElement | null>(null);
 
 const profile = ref<ApplicantProfile>(createEmptyProfile());
 const options = ref<ApplicantProfileResponse['options']>(createEmptyOptions());
@@ -342,6 +423,9 @@ function applyPayload(payload: ApplicantProfileResponse) {
 	options.value = payload.options || createEmptyOptions();
 	completeness.value = payload.completeness || createEmptyCompleteness();
 	applicationContext.value = payload.application_context || createEmptyApplicationContext();
+	applicantImage.value = (payload.applicant_image || '').trim();
+	selectedImageFile.value = null;
+	if (imageInput.value) imageInput.value.value = '';
 }
 
 async function loadProfile() {
@@ -389,6 +473,78 @@ async function saveProfile() {
 		actionError.value = message;
 	} finally {
 		saving.value = false;
+	}
+}
+
+function openImagePicker() {
+	if (isReadOnly.value) {
+		actionError.value = __('This application is read-only.');
+		return;
+	}
+	imageInput.value?.click();
+}
+
+function onImageSelected(event: Event) {
+	const target = event.target as HTMLInputElement | null;
+	const file = target?.files?.[0] || null;
+	if (!file) {
+		selectedImageFile.value = null;
+		return;
+	}
+	if (!file.type || !file.type.startsWith('image/')) {
+		actionError.value = __('Please choose a valid image file.');
+		selectedImageFile.value = null;
+		if (target) target.value = '';
+		return;
+	}
+	actionError.value = '';
+	selectedImageFile.value = file;
+}
+
+async function readAsBase64(file: File): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onerror = () => reject(new Error('Unable to read file'));
+		reader.onload = () => {
+			const result = typeof reader.result === 'string' ? reader.result : '';
+			const parts = result.split(',');
+			resolve(parts.length > 1 ? parts[1] : result);
+		};
+		reader.readAsDataURL(file);
+	});
+}
+
+async function uploadSelectedImage() {
+	if (isReadOnly.value) {
+		actionError.value = __('This application is read-only.');
+		return;
+	}
+	if (error.value) {
+		actionError.value = __('Please reload profile information before uploading.');
+		return;
+	}
+	if (!selectedImageFile.value) {
+		actionError.value = __('Please choose an image to upload.');
+		return;
+	}
+
+	uploadingImage.value = true;
+	actionError.value = '';
+	try {
+		const content = await readAsBase64(selectedImageFile.value);
+		const payload = await service.uploadApplicantProfileImage({
+			file_name: selectedImageFile.value.name,
+			content,
+		});
+		applicantImage.value = (payload.file_url || '').trim();
+		selectedImageFile.value = null;
+		if (imageInput.value) imageInput.value.value = '';
+		await loadProfile();
+	} catch (err) {
+		const message = err instanceof Error ? err.message : __('Unable to upload image.');
+		actionError.value = message;
+	} finally {
+		uploadingImage.value = false;
 	}
 }
 
