@@ -541,7 +541,9 @@ def route_uploaded_file(doc, method: Optional[str] = None, context_override: Opt
     if meta.has_field("custom_logical_key"):
         values["custom_logical_key"] = getattr(doc, "custom_logical_key", None)
     if meta.has_field("custom_version_no"):
-        values["custom_version_no"] = getattr(doc, "custom_version_no", None)
+        custom_version_no = getattr(doc, "custom_version_no", None)
+        if custom_version_no is not None:
+            values["custom_version_no"] = custom_version_no
     if meta.has_field("custom_is_latest"):
         values["custom_is_latest"] = getattr(doc, "custom_is_latest", None)
 
