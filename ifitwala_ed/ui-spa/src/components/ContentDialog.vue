@@ -187,40 +187,6 @@ const contentHtml = computed(() => props.content || '');
 const commentCount = computed(() => stats.value.comments_total ?? 0);
 
 function onContentClick(event: MouseEvent) {
-	const rawTarget = event.target;
-	const target =
-		rawTarget instanceof Element
-			? rawTarget
-			: rawTarget instanceof Node
-				? rawTarget.parentElement
-				: null;
-	if (target instanceof Element) {
-		const actionButton = target.closest('[data-policy-action]');
-		if (actionButton instanceof HTMLButtonElement) {
-			event.preventDefault();
-			const action = String(actionButton.getAttribute('data-policy-action') || '').trim();
-			const href = String(actionButton.getAttribute('data-policy-href') || '').trim();
-			const policyVersion =
-				String(actionButton.getAttribute('data-policy-version') || '').trim() ||
-				policyVersionFromHref(href);
-			const orgCommunication = String(
-				actionButton.getAttribute('data-org-communication') || ''
-			).trim();
-
-			if (action === 'desk' && href) {
-				window.open(href, '_blank', 'noopener');
-				return;
-			}
-			if (action === 'inform' && policyVersion) {
-				emit('policy-inform', {
-					policyVersion,
-					orgCommunication: orgCommunication || null,
-				});
-				return;
-			}
-		}
-	}
-
 	const payload = extractPolicyInformLinkFromClickEvent(event);
 	if (!payload) return;
 	event.preventDefault();
@@ -273,26 +239,43 @@ function decoratePolicyActionLinks() {
 
 	for (const anchor of anchors) {
 		const href = String(anchor.getAttribute('href') || '').trim();
-		const isInform = isPolicyInformHref(href);
 		const policyVersion =
 			String(anchor.getAttribute('data-policy-version') || '').trim() ||
 			policyVersionFromHref(href);
 		const orgCommunication = String(anchor.getAttribute('data-org-communication') || '').trim();
-		const label =
-			(anchor.textContent || '').trim() || (isInform ? 'Open Policy' : 'Version in Desk');
+		const labelRaw = (anchor.textContent || '').trim();
+		const label = labelRaw.toLowerCase();
+		const marker = String(anchor.getAttribute('data-policy-inform') || '').trim();
+		const inferredInform =
+			marker === '1' ||
+			isPolicyInformHref(href) ||
+			(label.includes('open policy') && !label.includes('desk'));
+		const isInform = Boolean(inferredInform && policyVersion);
 
-		const button = document.createElement('button');
-		button.type = 'button';
-		button.className = isInform ? 'btn btn-primary' : 'btn btn-quiet';
-		button.setAttribute('data-policy-action', isInform ? 'inform' : 'desk');
-		button.setAttribute('data-policy-href', href);
-		if (policyVersion) button.setAttribute('data-policy-version', policyVersion);
-		if (orgCommunication) button.setAttribute('data-org-communication', orgCommunication);
-		button.textContent = label;
+		anchor.textContent = labelRaw || (isInform ? 'Open Policy' : 'Version in Desk');
+		if (isInform) {
+			anchor.setAttribute(
+				'href',
+				`#policy-inform?policy_version=${encodeURIComponent(policyVersion)}`
+			);
+			anchor.setAttribute('data-policy-inform', '1');
+			if (orgCommunication) anchor.setAttribute('data-org-communication', orgCommunication);
+			anchor.className =
+				'if-action type-button-label border-jacaranda/35 bg-jacaranda/10 text-jacaranda hover:border-jacaranda/60 hover:bg-jacaranda/15';
+			anchor.removeAttribute('target');
+			anchor.removeAttribute('rel');
+		} else {
+			if (policyVersion) {
+				anchor.setAttribute('href', `/app/policy-version/${encodeURIComponent(policyVersion)}`);
+			}
+			anchor.setAttribute('data-policy-inform', '0');
+			anchor.className = 'if-action type-button-label';
+			anchor.setAttribute('target', '_blank');
+			anchor.setAttribute('rel', 'noopener');
+		}
 
 		const parent = anchor.parentElement;
-		anchor.remove();
-		row.appendChild(button);
+		row.appendChild(anchor);
 		if (parent && parent !== row && !parent.textContent?.trim()) {
 			parent.remove();
 		}
