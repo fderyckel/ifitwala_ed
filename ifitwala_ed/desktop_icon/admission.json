@@ -1,0 +1,46 @@
+{
+ "app": "ifitwala_ed",
+ "bg_color": "blue",
+ "creation": "2026-02-28 09:22:39.388602",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "Link",
+ "idx": 0,
+ "label": "Admission",
+ "link_to": "Admission",
+ "link_type": "Workspace Sidebar",
+ "modified": "2026-02-28 09:26:05.841392",
+ "modified_by": "Administrator",
+ "name": "Admission",
+ "owner": "Administrator",
+ "restrict_removal": 1,
+ "roles": [
+  {
+   "role": "Admission Manager"
+  },
+  {
+   "role": "Admission Officer"
+  },
+  {
+   "role": "Administrator"
+  },
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Academic Assistant"
+  },
+  {
+   "role": "Marketing Manager"
+  },
+  {
+   "role": "Marketing User"
+  },
+  {
+   "role": "Accreditation Visitor"
+  }
+ ],
+ "sidebar": "Admission",
+ "standard": 1
+}
