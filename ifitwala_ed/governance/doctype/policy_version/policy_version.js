@@ -10,7 +10,7 @@ frappe.ui.form.on("Policy Version", {
 				institutional_policy: frm.doc.institutional_policy || "",
 			},
 		}));
-		frm.set_query("amended_from", () => ({
+		frm.set_query("based_on_version", () => ({
 			filters: {
 				institutional_policy: frm.doc.institutional_policy || "",
 				name: ["!=", frm.doc.name || ""],
@@ -27,7 +27,7 @@ frappe.ui.form.on("Policy Version", {
 
 			newDoc.institutional_policy = frm.doc.institutional_policy;
 			newDoc.version_label = suggestion;
-			newDoc.amended_from = frm.doc.name;
+			newDoc.based_on_version = frm.doc.name;
 			newDoc.change_summary = "";
 			newDoc.policy_text = frm.doc.policy_text || "";
 			newDoc.is_active = 0;

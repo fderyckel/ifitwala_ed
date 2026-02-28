@@ -99,7 +99,7 @@ export type Response = {
     policy_title?: string | null
     policy_label?: string | null
     version_label?: string | null
-    amended_from?: string | null
+    based_on_version?: string | null
     change_summary?: string | null
     diff_html?: string | null
     change_stats?: {

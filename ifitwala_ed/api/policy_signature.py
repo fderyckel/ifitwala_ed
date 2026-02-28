@@ -117,7 +117,7 @@ def get_policy_version_context(
             pv.name AS policy_version,
             pv.version_label,
             pv.policy_text,
-            pv.amended_from,
+            pv.based_on_version,
             pv.change_summary,
             pv.diff_html,
             pv.change_stats,

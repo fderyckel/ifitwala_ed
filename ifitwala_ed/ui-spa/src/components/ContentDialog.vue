@@ -198,12 +198,35 @@ function isPolicyInformHref(href: string): boolean {
 }
 
 function isPolicyDeskHref(href: string): boolean {
-	return /\/(?:app|desk)\/policy-version\//i.test(href);
+	return (
+		/\/(?:app|desk)\/policy-version\//i.test(href) ||
+		/#.*form\/policy(?:%20|\s)+version\//i.test(href) ||
+		/[?&](?:doctype=policy(?:%20|\+)+version|policy_version=|name=)/i.test(href)
+	);
 }
 
 function policyVersionFromHref(href: string): string {
 	const raw = String(href || '').trim();
 	if (!raw) return '';
+
+	try {
+		const normalized = new URL(raw, window.location.origin);
+		const policyVersionParam =
+			normalized.searchParams.get('policy_version') || normalized.searchParams.get('name');
+		if (policyVersionParam) return String(policyVersionParam).trim();
+
+		const hashRaw = String(normalized.hash || '');
+		const hash = hashRaw.startsWith('#') ? hashRaw.slice(1) : hashRaw;
+		if (hash) {
+			const formMatch = hash.match(/form\/policy(?:%20|\s)+version\/([^/?#]+)/i);
+			if (formMatch?.[1]) return decodeURIComponent(formMatch[1]).trim();
+			const appMatch = hash.match(/(?:app|desk)\/policy-version\/([^/?#]+)/i);
+			if (appMatch?.[1]) return decodeURIComponent(appMatch[1]).trim();
+		}
+	} catch {
+		// Fall through to regex-only parsing below.
+	}
+
 	if (raw.startsWith('#policy-inform')) {
 		const query = raw.split('?', 2)[1] || '';
 		return String(new URLSearchParams(query).get('policy_version') || '').trim();
@@ -221,7 +244,13 @@ function getPolicyActionAnchors(root: HTMLElement): HTMLAnchorElement[] {
 	const anchors = Array.from(root.querySelectorAll('a')) as HTMLAnchorElement[];
 	return anchors.filter(anchor => {
 		const href = String(anchor.getAttribute('href') || '').trim();
-		return isPolicyInformHref(href) || isPolicyDeskHref(href);
+		const label = (anchor.textContent || '').trim().toLowerCase();
+		return (
+			isPolicyInformHref(href) ||
+			isPolicyDeskHref(href) ||
+			Boolean(String(anchor.getAttribute('data-policy-version') || '').trim()) ||
+			(label.includes('policy') && (label.includes('desk') || label.includes('read')))
+		);
 	});
 }
 

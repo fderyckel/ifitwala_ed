@@ -73,7 +73,7 @@ class TestFocusPolicySignature(FrappeTestCase):
                 "doctype": "Policy Version",
                 "institutional_policy": self.policy.name,
                 "version_label": "v2",
-                "amended_from": self.base_policy_version.name,
+                "based_on_version": self.base_policy_version.name,
                 "change_summary": "Added stricter password and phishing reporting expectations.",
                 "policy_text": "<p>Security policy baseline updated</p><p>Report phishing within 24 hours.</p>",
                 "is_active": 1,
@@ -129,7 +129,7 @@ class TestFocusPolicySignature(FrappeTestCase):
         self.assertEqual(policy_ctx.get("policy_version"), self.policy_version.name)
         self.assertEqual(policy_ctx.get("employee"), self.employee.name)
         self.assertFalse(policy_ctx.get("is_acknowledged"))
-        self.assertEqual(policy_ctx.get("amended_from"), self.base_policy_version.name)
+        self.assertEqual(policy_ctx.get("based_on_version"), self.base_policy_version.name)
         self.assertTrue((policy_ctx.get("change_summary") or "").strip())
         self.assertIn("policy-diff", policy_ctx.get("diff_html") or "")
         self.assertIsInstance(policy_ctx.get("change_stats"), dict)

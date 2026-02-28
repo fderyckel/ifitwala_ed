@@ -90,9 +90,9 @@ policy_version.py
 1. `institutional_policy` must exist and be active
 2. `(institutional_policy, version_label)` must be unique
 3. `policy_text` must not be empty
-4. For every new version after first: `amended_from` is required
-5. `amended_from` must reference a version under the same `institutional_policy`
-6. If `amended_from` is set: `change_summary` is required
+4. For every new version after first: `based_on_version` is required
+5. `based_on_version` must reference a version under the same `institutional_policy`
+6. If `based_on_version` is set: `change_summary` is required before activation (draft save allowed)
 7. Server generates `diff_html` + `change_stats` from previous vs current text
 
 ---
@@ -138,7 +138,7 @@ If `has_ack`:
   * `policy_text`
   * `version_label`
   * `institutional_policy`
-  * `amended_from`
+  * `based_on_version`
   * `change_summary`
   * `diff_html`
   * `change_stats`

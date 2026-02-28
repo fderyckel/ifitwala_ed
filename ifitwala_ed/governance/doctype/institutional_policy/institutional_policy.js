@@ -27,7 +27,7 @@ frappe.ui.form.on("Institutional Policy", {
 				newDoc.effective_to = "";
 
 				if (baseVersion) {
-					newDoc.amended_from = baseVersion.name;
+					newDoc.based_on_version = baseVersion.name;
 					newDoc.policy_text = baseVersion.policy_text || "";
 					newDoc.change_summary = "";
 				} else {

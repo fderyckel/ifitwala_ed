@@ -382,7 +382,7 @@ class PolicyVersion(Document):
             "policy_text",
             "version_label",
             "institutional_policy",
-            "amended_from",
+            "based_on_version",
             "change_summary",
             "diff_html",
             "change_stats",
@@ -412,22 +412,22 @@ class PolicyVersion(Document):
         if not policy_name:
             return
 
-        amended_from = (self.amended_from or "").strip()
-        if amended_from:
-            if amended_from == self.name:
-                frappe.throw(_("Amended From cannot point to the same Policy Version."))
+        based_on_version = (self.based_on_version or "").strip()
+        if based_on_version:
+            if based_on_version == self.name:
+                frappe.throw(_("Based On Version cannot point to the same Policy Version."))
 
             amended_row = frappe.db.get_value(
                 "Policy Version",
-                amended_from,
+                based_on_version,
                 ["name", "institutional_policy"],
                 as_dict=True,
             )
             if not amended_row:
-                frappe.throw(_("Amended From must reference an existing Policy Version."))
+                frappe.throw(_("Based On Version must reference an existing Policy Version."))
 
             if (amended_row.get("institutional_policy") or "").strip() != policy_name:
-                frappe.throw(_("Amended From must belong to the same Institutional Policy."))
+                frappe.throw(_("Based On Version must belong to the same Institutional Policy."))
             return
 
         if not require_for_existing_policy:
@@ -441,13 +441,16 @@ class PolicyVersion(Document):
             },
         )
         if prior_version_exists:
-            frappe.throw(_("Amended From is required for every new Policy Version after the first one."))
+            frappe.throw(_("Based On Version is required for every new Policy Version after the first one."))
 
     def _validate_change_summary_requirement(self):
-        if not (self.amended_from or "").strip():
+        if not (self.based_on_version or "").strip():
+            return
+        # Draft amendments can be saved without summary; summary is mandatory when activating.
+        if not cint(self.is_active):
             return
         if not (self.change_summary or "").strip():
-            frappe.throw(_("Change Summary is required when Amended From is set."))
+            frappe.throw(_("Change Summary is required when Based On Version is set."))
 
     def _sync_text_lock_state(self, *, before, has_ack: bool):
         if cint(getattr(self, "text_locked", 0)):
@@ -468,15 +471,15 @@ class PolicyVersion(Document):
         if has_ack:
             return
 
-        amended_from = (self.amended_from or "").strip()
-        if not amended_from:
+        based_on_version = (self.based_on_version or "").strip()
+        if not based_on_version:
             self.diff_html = ""
             self.change_stats = ""
             return
 
-        previous_text = frappe.db.get_value("Policy Version", amended_from, "policy_text")
+        previous_text = frappe.db.get_value("Policy Version", based_on_version, "policy_text")
         if previous_text is None:
-            frappe.throw(_("Amended From policy text could not be resolved."))
+            frappe.throw(_("Based On Version policy text could not be resolved."))
 
         diff_html, stats = _build_policy_diff_html(previous_text, self.policy_text)
         if not (diff_html or "").strip():
@@ -489,7 +492,7 @@ class PolicyVersion(Document):
         if not cint(self.is_active):
             return
 
-        if not (self.amended_from or "").strip():
+        if not (self.based_on_version or "").strip():
             return
 
         if not (self.change_summary or "").strip():

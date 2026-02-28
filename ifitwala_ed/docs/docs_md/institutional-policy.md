@@ -3,8 +3,8 @@ title: "Institutional Policy: Policy Identity and Scope Anchor"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "1.0.2"
-last_change_date: "2026-02-27"
+version: "1.0.3"
+last_change_date: "2026-02-28"
 summary: "Define policy identity, organization/school scope, and target audience so active policy versions can be resolved and acknowledged correctly."
 seo_title: "Institutional Policy: Policy Identity and Scope Anchor"
 seo_description: "Define policy identity, organization/school scope, and target audience so active policy versions can be resolved and acknowledged correctly."
@@ -85,7 +85,7 @@ There is no separate "policy key catalog" DocType in the current model. Existing
 1. Create policy identity (`policy_key`) and audience/scope under the correct organization.
 2. Use **Create Policy Version** on the Institutional Policy form to open a prefilled draft:
    - first version: prefilled with `institutional_policy` + suggested `version_label` (`v1`)
-   - subsequent versions: prefilled as amendment from current active/latest version (`amended_from`, copied `policy_text`, suggested bumped `version_label`)
+   - subsequent versions: prefilled as amendment from current active/latest version (`based_on_version`, copied `policy_text`, suggested bumped `version_label`)
 3. Save and finalize the [**Policy Version**](/docs/en/policy-version/) legal text snapshot.
 4. Activate/deactivate policy identity based on institutional policy lifecycle.
 5. Collect acknowledgements through [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) using active versions only.

@@ -67,7 +67,7 @@ def _policy_row(policy_version: str) -> dict:
             pv.name AS policy_version,
             pv.version_label,
             pv.policy_text,
-            pv.amended_from,
+            pv.based_on_version,
             pv.change_summary,
             pv.diff_html,
             pv.change_stats,
@@ -356,7 +356,7 @@ def create_policy_amendment_communication(
             "message": _resolve_message_html(row=row, override_html=message_html),
             "internal_note": (
                 f"Generated from Policy Version {policy_version}"
-                + (f" (amended from {row.get('amended_from')})" if row.get("amended_from") else "")
+                + (f" (based on {row.get('based_on_version')})" if row.get("based_on_version") else "")
             ),
             "audiences": audience_rows,
         }
@@ -435,7 +435,7 @@ def get_policy_inform_payload(
         "version_label": (row.get("version_label") or "").strip() or None,
         "policy_organization": policy_organization or None,
         "policy_school": policy_school or None,
-        "amended_from": (row.get("amended_from") or "").strip() or None,
+        "based_on_version": (row.get("based_on_version") or "").strip() or None,
         "change_summary": (row.get("change_summary") or "").strip() or None,
         "change_stats": _parse_change_stats(row.get("change_stats")),
         "diff_html": row.get("diff_html") or "",

@@ -421,8 +421,8 @@ Policy Version
 | ---------------------- | --------------------------- | -------- | --------------------------------------------------------- |
 | `institutional_policy` | Link → Institutional Policy | ✅        | Immutable                                                 |
 | `version_label`        | Data                        | ✅        | Human version identifier                                  |
-| `amended_from`         | Link → Policy Version       | ✅*       | Required after first version; must belong to same policy  |
-| `change_summary`       | Small Text                  | ✅*       | Human summary required when `amended_from` is set         |
+| `based_on_version`         | Link → Policy Version       | ✅*       | Required after first version; must belong to same policy  |
+| `change_summary`       | Small Text                  | ✅*       | Required before activation when `based_on_version` is set      |
 | `policy_text`          | Text / HTML                 | ✅        | Editable only in Draft before lock                        |
 | `diff_html`            | Text / HTML                 | Auto      | Server-generated paragraph diff for amended versions      |
 | `change_stats`         | Small Text (JSON)           | Auto      | `{added,removed,modified}`                                |
@@ -433,7 +433,7 @@ Policy Version
 | `approved_on`          | Datetime                    | ❌        | Governance metadata                                       |
 | `is_active`            | Check                       | ✅        | Can be acknowledged                                       |
 
-`✅*` = required for versions after the first amendment boundary (`amended_from` set / prior version exists).
+`✅*` = amendment boundary requirement; for `change_summary`, drafts may save blank but activation requires value.
 
 ### Immutability rules
 
@@ -445,7 +445,7 @@ Once **any** Policy Acknowledgement exists:
 
 * `policy_text` → read-only
 * `version_label` → read-only
-* `amended_from`, `change_summary`, `diff_html`, `change_stats` → lock-protected
+* `based_on_version`, `change_summary`, `diff_html`, `change_stats` → lock-protected
 * record cannot be deleted
 * only System Manager override allowed (reason required)
 

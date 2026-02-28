@@ -9,7 +9,7 @@
  "field_order": [
   "institutional_policy",
   "version_label",
-  "amended_from",
+  "based_on_version",
   "change_summary",
   "policy_text",
   "diff_html",
@@ -38,10 +38,12 @@
    "reqd": 1
   },
   {
-   "fieldname": "amended_from",
+   "fieldname": "based_on_version",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Amended From",
+   "label": "Based On Version",
+   "oldfieldname": "amended_from",
+   "oldfieldtype": "Link",
    "options": "Policy Version"
   },
   {

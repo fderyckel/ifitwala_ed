@@ -456,7 +456,7 @@ def get_focus_context(
                 "policy_title": policy_row.get("policy_title"),
                 "policy_label": policy_label,
                 "version_label": policy_row.get("version_label"),
-                "amended_from": policy_row.get("amended_from"),
+                "based_on_version": policy_row.get("based_on_version"),
                 "change_summary": policy_row.get("change_summary"),
                 "diff_html": policy_row.get("diff_html") or "",
                 "change_stats": parsed_change_stats,

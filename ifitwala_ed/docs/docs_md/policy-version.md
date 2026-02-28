@@ -3,8 +3,8 @@ title: "Policy Version: Legal Text Snapshot and Activation Gate"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.2.8"
-last_change_date: "2026-02-27"
+version: "1.3.0"
+last_change_date: "2026-02-28"
 summary: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version becomes active or acknowledged."
 seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
 seo_description: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version is active or acknowledged."
@@ -25,10 +25,10 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
 - Parent `institutional_policy` must exist and be active.
 - `version_label` must be unique per institutional policy.
 - `policy_text` must be non-empty.
-- For every new version after the first, `amended_from` is required.
-- `amended_from` must point to a version under the same `institutional_policy`.
-- `change_summary` is required when `amended_from` is set.
-- `diff_html` and `change_stats` are generated server-side from `amended_from` -> current text.
+- For every new version after the first, `based_on_version` is required.
+- `based_on_version` must point to a version under the same `institutional_policy`.
+- `change_summary` is required before activating an amended version (draft amendments can be saved while summary is pending).
+- `diff_html` and `change_stats` are generated server-side from `based_on_version` -> current text.
 - Only one active version is allowed per institutional policy.
 - `institutional_policy` is immutable after insert.
 - `approved_by` (when set) must be an enabled system user with `Policy Version` write access and in policy scope:
@@ -60,7 +60,7 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
 1. Draft legal text under the parent `Institutional Policy`.
 2. For amendments, open an existing version in Desk and use **Create Amendment** to prefill:
    - `institutional_policy`
-   - `amended_from`
+   - `based_on_version`
    - copied `policy_text`
    - suggested next `version_label`
 3. Update `change_summary` and amended text in the new draft version.
@@ -106,8 +106,8 @@ Use a new version row for policy changes. Keep old versions for audit continuity
 - **Fields**:
   - `institutional_policy` (Link -> Institutional Policy, required)
   - `version_label` (Data, required)
-  - `amended_from` (Link -> Policy Version)
-  - `change_summary` (Small Text; required when amended)
+  - `based_on_version` (Link -> Policy Version)
+  - `change_summary` (Small Text; required for activation when amended)
   - `policy_text` (Text Editor, required)
   - `diff_html` (Text Editor; server-generated, read-only)
   - `change_stats` (Small Text JSON; server-generated, read-only)

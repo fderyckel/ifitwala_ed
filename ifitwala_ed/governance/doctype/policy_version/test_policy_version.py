@@ -210,7 +210,7 @@ class TestPolicyVersionAmendments(FrappeTestCase):
             policy_text="<p>Initial staff policy text.</p>",
             is_active=0,
         )
-        self.assertFalse(version.amended_from)
+        self.assertFalse(version.based_on_version)
         self.assertFalse(version.diff_html)
         self.assertFalse(version.change_stats)
 
@@ -244,7 +244,7 @@ class TestPolicyVersionAmendments(FrappeTestCase):
                 version_label="v2",
                 policy_text="<p>Initial policy text.</p><p>Added detail.</p>",
                 is_active=0,
-                amended_from=base.name,
+                based_on_version=base.name,
             )
 
     def test_amended_version_generates_diff_and_stats(self):
@@ -260,7 +260,7 @@ class TestPolicyVersionAmendments(FrappeTestCase):
             version_label="v2",
             policy_text="<p>Initial policy text updated.</p><p>Added new section.</p>",
             is_active=0,
-            amended_from=base.name,
+            based_on_version=base.name,
             change_summary="Updated opening paragraph and added a new section.",
         )
 
@@ -294,7 +294,7 @@ class TestPolicyVersionAmendments(FrappeTestCase):
                 version_label="v2",
                 policy_text="<p>Policy two amended text.</p>",
                 is_active=0,
-                amended_from=base_one.name,
+                based_on_version=base_one.name,
                 change_summary="Cross-policy link should fail.",
             )
 
@@ -429,7 +429,7 @@ class TestPolicyVersionAmendments(FrappeTestCase):
         version_label: str,
         policy_text: str,
         is_active: int,
-        amended_from: str | None = None,
+        based_on_version: str | None = None,
         change_summary: str | None = None,
     ):
         doc = frappe.get_doc(
@@ -439,7 +439,7 @@ class TestPolicyVersionAmendments(FrappeTestCase):
                 "version_label": version_label,
                 "policy_text": policy_text,
                 "is_active": is_active,
-                "amended_from": amended_from,
+                "based_on_version": based_on_version,
                 "change_summary": change_summary,
             }
         )

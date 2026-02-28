@@ -14,7 +14,7 @@ export type Response = {
 	version_label?: string | null;
 	policy_organization?: string | null;
 	policy_school?: string | null;
-	amended_from?: string | null;
+	based_on_version?: string | null;
 	change_summary?: string | null;
 	change_stats?: {
 		added?: number | null;
