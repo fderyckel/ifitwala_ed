@@ -215,6 +215,24 @@ bash scripts/contracts_guardrails.sh
 bash scripts/test_metrics.sh
 ```
 
+### Repo developer CLI (`codex`)
+
+Use the repo-local wrapper to run CI-aligned commands:
+
+```bash
+./scripts/codex doctor
+./scripts/codex lint
+./scripts/codex backend-smoke --site <your-site>
+./scripts/codex desk-build
+./scripts/codex spa-typecheck
+./scripts/codex ci --site <your-site>
+```
+
+Notes:
+- `backend-smoke` runs the same default smoke modules as `.github/workflows/ci.yml`.
+- `ci` runs lint + frontend checks + backend smoke unless skip flags are set.
+- Use `--dry-run` to print commands without executing.
+
 ### Unified asset build (Desk + SPA)
 
 ```bash

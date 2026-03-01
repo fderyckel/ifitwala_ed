@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# scripts/codex
+
+set -euo pipefail
+
+root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root_dir"
+
+exec python3 -m ifitwala_ed.codex_cli "$@"
