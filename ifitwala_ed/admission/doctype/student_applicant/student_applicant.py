@@ -1952,6 +1952,34 @@ class StudentApplicant(Document):
         count = frappe.db.count("Applicant Interview", {"student_applicant": self.name})
         return {"ok": count >= 1, "count": count, "items": rows}
 
+    def has_required_recommendations(self):
+        default_payload = {
+            "ok": False,
+            "required_total": 0,
+            "received_total": 0,
+            "requested_total": 0,
+            "missing": [_("Recommendation readiness could not be evaluated.")],
+            "rows": [],
+            "state": "pending",
+            "counts": {
+                "Expired": 0,
+                "Opened": 0,
+                "Revoked": 0,
+                "Sent": 0,
+                "Submitted": 0,
+            },
+        }
+        try:
+            from ifitwala_ed.api.recommendation_intake import get_recommendation_status_for_applicant
+
+            return get_recommendation_status_for_applicant(
+                student_applicant=self.name,
+                include_confidential=True,
+            )
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "Student Applicant Recommendation Readiness Failed")
+            return default_payload
+
     def get_review_assignments_summary(self):
         from ifitwala_ed.admission.applicant_review_workflow import get_review_assignments_summary
 
@@ -1964,9 +1992,18 @@ class StudentApplicant(Document):
         health = self.health_review_complete()
         interviews = self.has_required_interviews()
         profile = self.has_required_profile_information()
+        recommendations = self.has_required_recommendations()
         review_assignments = self.get_review_assignments_summary()
 
-        ready = all([policies.get("ok"), documents.get("ok"), health.get("ok"), profile.get("ok")])
+        ready = all(
+            [
+                policies.get("ok"),
+                documents.get("ok"),
+                health.get("ok"),
+                profile.get("ok"),
+                recommendations.get("ok"),
+            ]
+        )
         issues = []
         if not policies.get("ok"):
             policy_schema_error = getattr(self.flags, "policy_schema_error", None)
@@ -1997,6 +2034,16 @@ class StudentApplicant(Document):
                 issues.append(_("Missing profile information: {0}.").format(", ".join(missing)))
             else:
                 issues.append(_("Missing required profile information."))
+        if not recommendations.get("ok"):
+            missing_recommendations = recommendations.get("missing") or []
+            required_total = cint(recommendations.get("required_total") or 0)
+            received_total = cint(recommendations.get("received_total") or 0)
+            if missing_recommendations:
+                issues.append(_("Missing required recommendations: {0}.").format(", ".join(missing_recommendations)))
+            elif required_total > 0:
+                issues.append(
+                    _("Required recommendations received: {0} of {1}.").format(received_total, required_total)
+                )
 
         return {
             "policies": policies,
@@ -2004,6 +2051,7 @@ class StudentApplicant(Document):
             "health": health,
             "interviews": interviews,
             "profile": profile,
+            "recommendations": recommendations,
             "review_assignments": review_assignments,
             "ready": bool(ready),
             "issues": issues,

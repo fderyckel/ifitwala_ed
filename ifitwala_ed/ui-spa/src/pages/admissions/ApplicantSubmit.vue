@@ -165,6 +165,7 @@ const readinessItems = computed(() => {
 		{ label: __('Health information'), state: completeness.health },
 		{ label: __('Documents'), state: completeness.documents },
 		{ label: __('Policies'), state: completeness.policies },
+		{ label: __('Recommendations'), state: completeness.recommendations },
 	];
 	return items.map(item => ({
 		...item,

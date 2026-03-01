@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.7.0"
+version: "1.8.0"
 last_change_date: "2026-03-01"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -217,6 +217,12 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - governed upload endpoint: `ifitwala_ed.utilities.governed_uploads.upload_applicant_image`
   - admissions portal self-upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_profile_image`
   - all other admissions docs routed via `Applicant Document` + file classification
+- **Recommendation intake (runtime)**:
+  - external recommender submissions use a separate intake surface (`/admissions/recommendation/<token>`) and do not use applicant portal authentication
+  - supports multiple confidential letters per applicant using per-request `Applicant Document Item` slots (`item_key`)
+  - admissions creates/re-sends/revokes `Recommendation Request` records; recommender submission is sealed in `Recommendation Submission`
+  - applicant portal surfaces recommendation **status only** through snapshot completeness and status summary
+  - architecture and contract reference: `ifitwala_ed/docs/admission/recommendation_intake_architecture.md`
 - **Governance policy engine**:
   - `Policy Acknowledgement.context_doctype = Student Applicant`
   - policy readiness pulled from active Institutional Policy versions

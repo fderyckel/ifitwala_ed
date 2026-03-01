@@ -41,6 +41,7 @@ frappe.ui.form.on("Student Applicant", {
 		render_review_sections(frm);
 		add_decision_actions(frm);
 		add_portal_invite_action(frm);
+		add_recommendation_actions(frm);
 	},
 
 	setup_governed_image_upload(frm) {
@@ -234,6 +235,347 @@ function prompt_portal_invite(frm) {
 		});
 }
 
+const TERMINAL_RECOMMENDATION_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
+
+function add_recommendation_actions(frm) {
+	frm.remove_custom_button(__("Request Recommendation"), __("Actions"));
+	frm.remove_custom_button(__("Manage Recommendation Requests"), __("Actions"));
+	frm.remove_custom_button(__("Request Recommendation"));
+	frm.remove_custom_button(__("Manage Recommendation Requests"));
+
+	if (!frm.doc || frm.is_new()) {
+		return;
+	}
+
+	const status = String(frm.doc.application_status || "").trim();
+	if (TERMINAL_RECOMMENDATION_STATUSES.has(status)) {
+		return;
+	}
+
+	frm.add_custom_button(__("Request Recommendation"), () => {
+		prompt_create_recommendation_request(frm);
+	}, __("Actions"));
+
+	frm.add_custom_button(__("Manage Recommendation Requests"), () => {
+		open_recommendation_requests_dialog(frm);
+	}, __("Actions"));
+}
+
+function prompt_create_recommendation_request(frm) {
+	frappe.call({
+		method: "ifitwala_ed.api.recommendation_intake.list_recommendation_templates",
+		args: {
+			student_applicant: frm.doc.name,
+		},
+	})
+		.then((res) => {
+			const templates = Array.isArray(res?.message?.templates) ? res.message.templates : [];
+			if (!templates.length) {
+				frappe.msgprint(__("No active recommendation template is configured for this applicant scope."));
+				return;
+			}
+
+			const templateOptions = templates.map((row) => String(row?.name || "").trim()).filter(Boolean);
+			const byName = {};
+			templates.forEach((row) => {
+				const key = String(row?.name || "").trim();
+				if (key) {
+					byName[key] = row;
+				}
+			});
+
+			frappe.prompt(
+				[
+					{
+						label: __("Recommendation Template"),
+						fieldname: "recommendation_template",
+						fieldtype: "Select",
+						options: templateOptions.join("\n"),
+						default: templateOptions[0],
+						reqd: 1,
+					},
+					{
+						label: __("Recommender Name"),
+						fieldname: "recommender_name",
+						fieldtype: "Data",
+						reqd: 1,
+					},
+					{
+						label: __("Recommender Email"),
+						fieldname: "recommender_email",
+						fieldtype: "Data",
+						options: "Email",
+						reqd: 1,
+					},
+					{
+						label: __("Relationship to Applicant"),
+						fieldname: "recommender_relationship",
+						fieldtype: "Data",
+					},
+					{
+						label: __("Item Label"),
+						fieldname: "item_label",
+						fieldtype: "Data",
+						description: __("Optional label shown in Applicant Document item slot."),
+					},
+					{
+						label: __("Expires In (days)"),
+						fieldname: "expires_in_days",
+						fieldtype: "Int",
+						default: 14,
+						reqd: 1,
+					},
+					{
+						label: __("Send Email Now"),
+						fieldname: "send_email",
+						fieldtype: "Check",
+						default: 1,
+					},
+				],
+				(values) => {
+					const templateName = String(values.recommendation_template || "").trim();
+					const templateMeta = byName[templateName] || {};
+					const recommenderEmail = String(values.recommender_email || "").trim();
+					if (!templateName) {
+						frappe.msgprint(__("Please select a recommendation template."));
+						return;
+					}
+					if (!recommenderEmail) {
+						frappe.msgprint(__("Recommender Email is required."));
+						return;
+					}
+					frappe.call({
+						method: "ifitwala_ed.api.recommendation_intake.create_recommendation_request",
+						args: {
+							student_applicant: frm.doc.name,
+							recommendation_template: templateName,
+							recommender_name: String(values.recommender_name || "").trim(),
+							recommender_email: recommenderEmail,
+							recommender_relationship: String(values.recommender_relationship || "").trim(),
+							item_label: String(values.item_label || "").trim(),
+							expires_in_days: Number(values.expires_in_days || 14),
+							send_email: values.send_email ? 1 : 0,
+							client_request_id: `${Date.now()}_${Math.random().toString(16).slice(2, 14)}`,
+						},
+						freeze: true,
+						freeze_message: __("Creating recommendation request..."),
+					})
+						.then((response) => {
+							const payload = response?.message || {};
+							const intakeUrl = String(payload.intake_url || "").trim();
+							const emailSent = payload.email_sent !== false;
+							const parts = [
+								emailSent
+									? __("Recommendation request created and email sent.")
+									: __("Recommendation request created, but email could not be sent."),
+							];
+							const templateLabel = String(templateMeta.template_name || templateName);
+							parts.push(__("Template: {0}").replace("{0}", templateLabel));
+							if (intakeUrl) {
+								const safeUrl = frappe.utils.escape_html(intakeUrl);
+								parts.push(
+									`${__("Intake URL")}: <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeUrl}</a>`
+								);
+							}
+							frappe.msgprint({
+								title: __("Recommendation Request Created"),
+								message: `<div>${parts.join("<br>")}</div>`,
+								indicator: emailSent ? "green" : "orange",
+							});
+							render_review_sections(frm);
+						})
+						.catch((error) => {
+							frappe.msgprint(get_error_message(error, __("Unable to create recommendation request.")));
+						});
+				},
+				__("Request Recommendation"),
+				__("Create")
+			);
+		})
+		.catch((error) => {
+			frappe.msgprint(get_error_message(error, __("Unable to load recommendation templates.")));
+		});
+}
+
+function render_recommendation_requests_table(payload) {
+	const rows = Array.isArray(payload?.requests) ? payload.requests : [];
+	const summary = payload?.summary || {};
+	const counts = summary?.counts || {};
+
+	const summaryText = [
+		__("Submitted: {0}").replace("{0}", String(counts.Submitted || 0)),
+		__("Sent: {0}").replace("{0}", String(counts.Sent || 0)),
+		__("Opened: {0}").replace("{0}", String(counts.Opened || 0)),
+		__("Expired: {0}").replace("{0}", String(counts.Expired || 0)),
+		__("Revoked: {0}").replace("{0}", String(counts.Revoked || 0)),
+	].join(" · ");
+
+	if (!rows.length) {
+		return `
+			<div style="margin-bottom: 10px;">${escape_html(summaryText)}</div>
+			<div class="text-muted">${escape_html("No recommendation requests yet.")}</div>
+		`;
+	}
+
+	const body = rows.map((row) => {
+		const requestName = String(row?.name || "").trim();
+		const status = String(row?.request_status || "").trim() || "Sent";
+		const canResend = ["Sent", "Opened", "Expired"].includes(status);
+		const canRevoke = ["Sent", "Opened"].includes(status);
+		return `
+			<tr>
+				<td>${escape_html(String(row?.template_name || row?.recommendation_template || "Template"))}</td>
+				<td>${escape_html(String(row?.recommender_name || "—"))}</td>
+				<td>${escape_html(String(row?.recommender_email || "—"))}</td>
+				<td>${escape_html(status)}</td>
+				<td>${escape_html(format_datetime(row?.sent_on))}</td>
+				<td>${escape_html(format_datetime(row?.expires_on))}</td>
+				<td>
+					${canResend ? `<button type="button" class="btn btn-xs btn-default recommendation-action-btn" data-action="resend" data-request="${escape_html(requestName)}">${escape_html("Resend")}</button>` : ""}
+					${canRevoke ? `<button type="button" class="btn btn-xs btn-default recommendation-action-btn" data-action="revoke" data-request="${escape_html(requestName)}" style="margin-left: 6px;">${escape_html("Revoke")}</button>` : ""}
+				</td>
+			</tr>
+		`;
+	}).join("");
+
+	return `
+		<div style="margin-bottom: 10px;">${escape_html(summaryText)}</div>
+		<div class="table-responsive">
+			<table class="table table-bordered table-sm" style="margin-bottom: 0;">
+				<thead>
+					<tr>
+						<th>Template</th>
+						<th>Recommender</th>
+						<th>Email</th>
+						<th>Status</th>
+						<th>Sent On</th>
+						<th>Expires On</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>${body}</tbody>
+			</table>
+		</div>
+	`;
+}
+
+function open_recommendation_requests_dialog(frm) {
+	const dialog = new frappe.ui.Dialog({
+		title: __("Recommendation Requests"),
+		fields: [
+			{
+				fieldtype: "HTML",
+				fieldname: "body",
+			},
+		],
+		primary_action_label: __("Close"),
+		primary_action() {
+			dialog.hide();
+		},
+	});
+
+	const loadRows = () => {
+		dialog.fields_dict.body.$wrapper.html(`<div class="text-muted">${escape_html("Loading recommendation requests...")}</div>`);
+		return frappe.call({
+			method: "ifitwala_ed.api.recommendation_intake.list_recommendation_requests",
+			args: { student_applicant: frm.doc.name },
+		}).then((res) => {
+			const payload = res?.message || {};
+			dialog.fields_dict.body.$wrapper.html(render_recommendation_requests_table(payload));
+		}).catch((error) => {
+			dialog.fields_dict.body.$wrapper.html(
+				`<div class="text-danger">${escape_html(get_error_message(error, __("Unable to load recommendation requests.")))}</div>`
+			);
+		});
+	};
+
+	dialog.$wrapper.on("click", ".recommendation-action-btn", (event) => {
+		const target = event.currentTarget;
+		if (!(target instanceof HTMLElement)) {
+			return;
+		}
+		const action = String(target.getAttribute("data-action") || "").trim();
+		const requestName = String(target.getAttribute("data-request") || "").trim();
+		if (!action || !requestName) {
+			return;
+		}
+		if (action === "resend") {
+			frappe.call({
+				method: "ifitwala_ed.api.recommendation_intake.resend_recommendation_request",
+				args: {
+					recommendation_request: requestName,
+				},
+				freeze: true,
+				freeze_message: __("Resending recommendation request..."),
+			})
+				.then((res) => {
+					const payload = res?.message || {};
+					const intakeUrl = String(payload.intake_url || "").trim();
+					const safeUrl = intakeUrl ? frappe.utils.escape_html(intakeUrl) : "";
+					frappe.msgprint({
+						title: __("Recommendation Request Re-sent"),
+						message: intakeUrl
+							? `<div>${__("A new recommendation link was issued.")}<br>${__("Intake URL")}: <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeUrl}</a></div>`
+							: __("A new recommendation link was issued."),
+						indicator: "green",
+					});
+					loadRows();
+					render_review_sections(frm);
+				})
+				.catch((error) => {
+					frappe.msgprint(get_error_message(error, __("Unable to resend recommendation request.")));
+				});
+			return;
+		}
+
+		if (action === "revoke") {
+			frappe.confirm(__("Revoke this recommendation request?"), () => {
+				frappe.call({
+					method: "ifitwala_ed.api.recommendation_intake.revoke_recommendation_request",
+					args: {
+						recommendation_request: requestName,
+					},
+					freeze: true,
+					freeze_message: __("Revoking recommendation request..."),
+				})
+					.then(() => {
+						frappe.show_alert({ message: __("Recommendation request revoked."), indicator: "orange" });
+						loadRows();
+						render_review_sections(frm);
+					})
+					.catch((error) => {
+						frappe.msgprint(get_error_message(error, __("Unable to revoke recommendation request.")));
+					});
+			});
+		}
+	});
+
+	dialog.show();
+	loadRows();
+}
+
+function get_error_message(error, fallbackMessage) {
+	const fallback = String(fallbackMessage || "Unexpected error.");
+	if (!error) {
+		return fallback;
+	}
+	if (typeof error.message === "string" && error.message.trim()) {
+		return error.message;
+	}
+	const serverMessages = error?._server_messages;
+	if (Array.isArray(serverMessages) && serverMessages.length) {
+		try {
+			const first = JSON.parse(serverMessages[0]);
+			if (first && typeof first.message === "string" && first.message.trim()) {
+				return first.message;
+			}
+		} catch (_jsonError) {
+			return fallback;
+		}
+	}
+	return fallback;
+}
+
 function render_review_sections(frm) {
 	frm.call("get_readiness_snapshot")
 		.then((res) => {
@@ -272,6 +614,7 @@ function render_snapshot(data) {
 		render_line("Profile", render_ok_label(data.profile)),
 		render_line("Policies", render_ok_label(data.policies)),
 		render_line("Documents", render_ok_label(data.documents)),
+		render_line("Recommendations", render_ok_label(data.recommendations)),
 		render_line("Health", render_ok_label(data.health)),
 		render_line("Interviews", render_ok_label(data.interviews)),
 	].join("");

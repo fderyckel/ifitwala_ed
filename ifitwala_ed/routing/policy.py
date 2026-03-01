@@ -38,6 +38,8 @@ WEBSITE_ROUTE_RULES = [
     {"from_route": "/", "to_route": "index"},
     {"from_route": "/logout", "to_route": "logout"},
     {"from_route": "/admissions", "to_route": "admissions"},
+    {"from_route": "/admissions/recommendation", "to_route": "admissions/recommendation"},
+    {"from_route": "/admissions/recommendation/<path:token>", "to_route": "admissions/recommendation"},
     {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
     # Canonical portal namespace ingress.
     {"from_route": "/hub", "to_route": "hub"},

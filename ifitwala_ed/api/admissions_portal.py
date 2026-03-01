@@ -26,6 +26,7 @@ from ifitwala_ed.admission.admission_utils import (
     upsert_contact_email,
 )
 from ifitwala_ed.admission.applicant_review_workflow import materialize_health_review_assignments
+from ifitwala_ed.api.recommendation_intake import get_recommendation_status_for_applicant
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
@@ -537,6 +538,22 @@ def _completion_state_for_interviews(interviews: dict) -> str:
     return "optional"
 
 
+def _completion_state_for_recommendations(summary: dict) -> str:
+    state = (summary or {}).get("state")
+    if state in {"pending", "in_progress", "complete", "optional"}:
+        return state
+
+    required_total = max(0, cint((summary or {}).get("required_total") or 0))
+    received_total = max(0, cint((summary or {}).get("received_total") or 0))
+    if required_total <= 0:
+        return "optional"
+    if received_total >= required_total:
+        return "complete"
+    if received_total > 0:
+        return "in_progress"
+    return "pending"
+
+
 def _derive_next_actions(application_status: str, readiness: dict) -> list[dict]:
     if application_status not in PORTAL_EDITABLE_STATUSES:
         return []
@@ -547,6 +564,7 @@ def _derive_next_actions(application_status: str, readiness: dict) -> list[dict]
     documents = readiness.get("documents") or {}
     health = readiness.get("health") or {}
     profile = readiness.get("profile") or {}
+    recommendations = readiness.get("recommendations") or {}
 
     if not profile.get("ok"):
         actions.append(
@@ -600,6 +618,17 @@ def _derive_next_actions(application_status: str, readiness: dict) -> list[dict]
             }
         )
 
+    required_recommendations = max(0, cint(recommendations.get("required_total") or 0))
+    if required_recommendations > 0 and not recommendations.get("ok"):
+        actions.append(
+            {
+                "label": _("Check recommendation status"),
+                "route_name": "admissions-status",
+                "intent": "primary",
+                "is_blocking": True,
+            }
+        )
+
     return actions
 
 
@@ -642,8 +671,13 @@ def get_applicant_snapshot(student_applicant: str | None = None):
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
     readiness = applicant.get_readiness_snapshot()
     portal_health = _portal_health_state(applicant.name)
+    recommendation_status = get_recommendation_status_for_applicant(
+        student_applicant=applicant.name,
+        include_confidential=False,
+    )
     readiness_for_portal = dict(readiness)
     readiness_for_portal["health"] = portal_health
+    readiness_for_portal["recommendations"] = recommendation_status
 
     completeness = {
         "profile": _completion_state_for_requirement(
@@ -661,6 +695,7 @@ def get_applicant_snapshot(student_applicant: str | None = None):
             (readiness.get("policies") or {}).get("missing") or [],
         ),
         "interviews": _completion_state_for_interviews(readiness.get("interviews") or {}),
+        "recommendations": _completion_state_for_recommendations(recommendation_status),
     }
 
     portal_status = _portal_status_for(applicant.application_status)
@@ -677,6 +712,7 @@ def get_applicant_snapshot(student_applicant: str | None = None):
         "profile": _serialize_applicant_profile(applicant),
         "completeness": completeness,
         "next_actions": next_actions,
+        "recommendations_summary": recommendation_status,
     }
 
 

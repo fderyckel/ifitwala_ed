@@ -1007,6 +1007,25 @@ Admissions Applicant
   * Employee
 * Email may later match a Guardian, but **no implicit upgrade**
 
+### External Recommendation Intake (Implemented Extension)
+
+The admissions portal authentication contract above remains unchanged.
+
+For confidential recommender submissions, the system may add a **separate external intake surface** that is not applicant portal authentication:
+
+* No `Admissions Applicant` login/session is created for recommenders.
+* No Desk, Student, Guardian, or applicant-browsing access is granted.
+* A single-use, expiring link may authorize one recommendation submission only.
+* Token values must be stored hashed, with server-side expiry, consumption, and rate-limit guards.
+
+This extension is implemented with:
+
+* route: `/admissions/recommendation/<token>` (guest recommender intake)
+* API: `ifitwala_ed.api.recommendation_intake.*`
+* DocTypes: `Recommendation Template`, `Recommendation Request`, `Recommendation Submission`
+* applicant status-only surface: admissions snapshot `recommendations_summary` + `completeness.recommendations`
+* architecture contract: `docs/admission/recommendation_intake_architecture.md`
+
 ---
 
 ## C.4 Permission Model (DocType Matrix)

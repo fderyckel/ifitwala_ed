@@ -65,6 +65,21 @@ class TestAdmissionsPortalContracts(FrappeTestCase):
         self.assertEqual(upload_actions[0].get("label"), "Documents under review")
         self.assertFalse(bool(upload_actions[0].get("is_blocking")))
 
+    def test_next_actions_recommendation_status_is_blocking_when_required(self):
+        actions = _derive_next_actions(
+            "In Progress",
+            {
+                "profile": {"ok": True},
+                "policies": {"ok": True},
+                "health": {"ok": True},
+                "documents": {"ok": True, "missing": [], "unapproved": []},
+                "recommendations": {"ok": False, "required_total": 1},
+            },
+        )
+        recommendation_actions = [row for row in actions if row.get("route_name") == "admissions-status"]
+        self.assertEqual(len(recommendation_actions), 1)
+        self.assertTrue(bool(recommendation_actions[0].get("is_blocking")))
+
 
 class TestInviteApplicant(FrappeTestCase):
     def setUp(self):
@@ -433,6 +448,8 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertIn("profile", payload)
         self.assertIn("application_context", payload)
         self.assertIn("profile", payload.get("completeness") or {})
+        self.assertIn("recommendations", payload.get("completeness") or {})
+        self.assertIn("recommendations_summary", payload)
 
     def test_get_applicant_policies_includes_expected_signature_name(self):
         frappe.set_user(self.applicant_user)

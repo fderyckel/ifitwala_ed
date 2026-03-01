@@ -164,6 +164,7 @@ const completionCards = computed(() => {
 		{ key: 'health', label: __('Health information'), state: completeness.health },
 		{ key: 'documents', label: __('Documents'), state: completeness.documents },
 		{ key: 'policies', label: __('Policies'), state: completeness.policies },
+		{ key: 'recommendations', label: __('Recommendations'), state: completeness.recommendations },
 		{ key: 'interviews', label: __('Interviews'), state: completeness.interviews },
 	].map(card => ({
 		...card,

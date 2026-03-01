@@ -1,0 +1,175 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-03-01 00:00:00",
+ "description": "Immutable sealed recommendation submission payload linked to one recommendation request.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "recommendation_request",
+  "student_applicant",
+  "recommendation_template",
+  "applicant_document",
+  "applicant_document_item",
+  "recommender_name",
+  "recommender_email",
+  "answers_json",
+  "attestation_confirmed",
+  "has_file",
+  "submitted_on",
+  "source_ip",
+  "user_agent",
+  "idempotency_key"
+ ],
+ "fields": [
+  {
+   "fieldname": "recommendation_request",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Recommendation Request",
+   "options": "Recommendation Request",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "student_applicant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Student Applicant",
+   "options": "Student Applicant",
+   "reqd": 1
+  },
+  {
+   "fieldname": "recommendation_template",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Recommendation Template",
+   "options": "Recommendation Template"
+  },
+  {
+   "fieldname": "applicant_document",
+   "fieldtype": "Link",
+   "label": "Applicant Document",
+   "options": "Applicant Document"
+  },
+  {
+   "fieldname": "applicant_document_item",
+   "fieldtype": "Link",
+   "label": "Applicant Document Item",
+   "options": "Applicant Document Item"
+  },
+  {
+   "fieldname": "recommender_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Recommender Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "recommender_email",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Recommender Email",
+   "options": "Email",
+   "reqd": 1
+  },
+  {
+   "fieldname": "answers_json",
+   "fieldtype": "Code",
+   "label": "Answers JSON",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "attestation_confirmed",
+   "fieldtype": "Check",
+   "label": "Attestation Confirmed"
+  },
+  {
+   "default": "0",
+   "fieldname": "has_file",
+   "fieldtype": "Check",
+   "label": "Has File"
+  },
+  {
+   "fieldname": "submitted_on",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Submitted On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_ip",
+   "fieldtype": "Data",
+   "label": "Source IP",
+   "read_only": 1
+  },
+  {
+   "fieldname": "user_agent",
+   "fieldtype": "Small Text",
+   "label": "User Agent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "idempotency_key",
+   "fieldtype": "Data",
+   "label": "Idempotency Key",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-01 00:00:00",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Recommendation Submission",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
