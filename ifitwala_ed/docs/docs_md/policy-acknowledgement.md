@@ -3,8 +3,8 @@ title: "Policy Acknowledgement: Append-Only Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "1.4.0"
-last_change_date: "2026-02-27"
+version: "1.5.0"
+last_change_date: "2026-03-01"
 summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, organization-scope validation, and staff policy-signature workflows that present amendment diffs first."
 seo_title: "Policy Acknowledgement: Append-Only Consent Evidence"
 seo_description: "Record immutable who/what/when acknowledgement evidence with strict context, role, and organization-scope validation."
@@ -91,6 +91,14 @@ The internal workflow for staff policy signatures is campaign-based and scope-dr
   - legal attestation confirmation is required
 - One-click acknowledgement without attestation is rejected.
 
+### Electronic Signature Controls (Applicant Portal)
+
+- Admissions policy acknowledgement requires explicit e-sign payload:
+  - `typed_signature_name`
+  - `attestation_confirmed`
+- Signature is server-validated against the applicant identity context (expected signer name shown in portal UI).
+- One-click acknowledgement without typed signature + attestation is rejected.
+
 ## Where It Is Used Across the ERP
 
 - [**Student Applicant**](/docs/en/student-applicant/):
@@ -101,6 +109,9 @@ The internal workflow for staff policy signatures is campaign-based and scope-dr
     - `acknowledged_for = Applicant`
     - `context_doctype = Student Applicant`
     - `context_name = <applicant>`
+  - requires applicant electronic-signature fields:
+    - `typed_signature_name` (must match expected applicant signer name)
+    - `attestation_confirmed` (required true/1)
   - idempotent return when same acknowledgement already exists.
 - Policy-version immutability chain:
   - existence of any acknowledgement activates lock behavior in [**Policy Version**](/docs/en/policy-version/).

@@ -65,6 +65,59 @@
 							<div class="rounded-2xl border border-border/70 bg-white p-4 shadow-soft">
 								<div class="type-body text-ink/80 whitespace-pre-wrap" v-html="policyContent" />
 							</div>
+
+							<div class="rounded-2xl border border-border/70 bg-white p-4 shadow-soft space-y-3">
+								<div>
+									<p class="type-body-strong text-ink">{{ __('Electronic signature') }}</p>
+									<p class="mt-1 type-caption text-ink/65">
+										{{
+											__('Type your full name and confirm attestation before signing this policy.')
+										}}
+									</p>
+								</div>
+
+								<p class="type-caption text-ink/70">
+									{{ __('Expected signer name:') }}
+									<span class="type-body-strong text-ink">{{ expectedSignerLabel }}</span>
+								</p>
+
+								<label class="block space-y-1">
+									<span class="type-caption text-ink/70">{{
+										__('Type full name as electronic signature')
+									}}</span>
+									<input
+										v-model="typedSignatureName"
+										type="text"
+										class="if-input w-full"
+										:placeholder="__('Enter your full name')"
+										:disabled="isReadOnly || submitting"
+										@input="signatureTouched = true"
+									/>
+								</label>
+
+								<p
+									v-if="signatureTouched && typedSignatureName.trim() && !isTypedSignatureMatch"
+									class="type-caption text-ink/70"
+								>
+									{{ __('Typed signature must match exactly:') }} {{ expectedSignerLabel }}
+								</p>
+
+								<label class="flex items-start gap-2">
+									<input
+										v-model="attestationConfirmed"
+										type="checkbox"
+										class="mt-1 h-4 w-4"
+										:disabled="isReadOnly || submitting"
+									/>
+									<span class="type-caption text-ink/80">
+										{{
+											__(
+												'I confirm that typing my name is my electronic signature, and I have read, acknowledged, and agree to this policy.'
+											)
+										}}
+									</span>
+								</label>
+							</div>
 						</div>
 
 						<div
@@ -92,9 +145,9 @@
 									@click="submit"
 								>
 									<span v-if="submitting" class="inline-flex items-center gap-2">
-										<Spinner class="h-4 w-4" /> {{ __('Saving…') }}
+										<Spinner class="h-4 w-4" /> {{ __('Signing…') }}
 									</span>
-									<span v-else>{{ __('Acknowledge') }}</span>
+									<span v-else>{{ __('Sign and acknowledge policy') }}</span>
 								</button>
 							</div>
 						</div>
@@ -126,6 +179,7 @@ type PolicyPayload = {
 	name: string;
 	policy_version: string;
 	content_html: string;
+	expected_signer_name?: string;
 };
 
 const props = defineProps<{
@@ -142,6 +196,9 @@ const service = createAdmissionsService();
 
 const submitting = ref(false);
 const errorMessage = ref('');
+const typedSignatureName = ref('');
+const attestationConfirmed = ref(false);
+const signatureTouched = ref(false);
 
 const overlayStyle = computed(() => ({
 	zIndex: props.zIndex || 0,
@@ -150,6 +207,20 @@ const overlayStyle = computed(() => ({
 const isReadOnly = computed(() => Boolean(props.readOnly));
 const policyName = computed(() => props.policy?.name || '');
 const policyContent = computed(() => props.policy?.content_html || '');
+const expectedSignerLabel = computed(
+	() => String(props.policy?.expected_signer_name || '').trim() || __('Applicant record')
+);
+
+function normalizeName(value: string): string {
+	return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+const isTypedSignatureMatch = computed(() => {
+	const typed = normalizeName(typedSignatureName.value || '');
+	if (!typed) return false;
+	const expected = normalizeName(expectedSignerLabel.value || '');
+	return expected ? typed === expected : true;
+});
 
 function setError(err: unknown, fallback: string) {
 	const msg =
@@ -163,6 +234,12 @@ function setError(err: unknown, fallback: string) {
 
 function clearError() {
 	errorMessage.value = '';
+}
+
+function resetSignatureFields() {
+	typedSignatureName.value = '';
+	attestationConfirmed.value = false;
+	signatureTouched.value = false;
 }
 
 function emitClose(reason: CloseReason) {
@@ -196,6 +273,8 @@ watch(
 	() => props.open,
 	val => {
 		if (val) {
+			resetSignatureFields();
+			clearError();
 			document.addEventListener('keydown', onKeydown, true);
 		} else {
 			document.removeEventListener('keydown', onKeydown, true);
@@ -217,12 +296,27 @@ async function submit() {
 		setError('', __('Policy version is required.'));
 		return;
 	}
+	signatureTouched.value = true;
+	if (!typedSignatureName.value.trim()) {
+		setError('', __('Type your full name to provide your electronic signature.'));
+		return;
+	}
+	if (!isTypedSignatureMatch.value) {
+		setError('', `${__('Typed signature must match exactly:')} ${expectedSignerLabel.value}`);
+		return;
+	}
+	if (!attestationConfirmed.value) {
+		setError('', __('Confirm the legal attestation before signing.'));
+		return;
+	}
 
 	submitting.value = true;
 	clearError();
 	try {
 		await service.acknowledgePolicy({
 			policy_version: props.policy.policy_version,
+			typed_signature_name: typedSignatureName.value.trim(),
+			attestation_confirmed: attestationConfirmed.value ? 1 : 0,
 		});
 		emitClose('programmatic');
 		emit('done');

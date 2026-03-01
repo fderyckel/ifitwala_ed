@@ -30,7 +30,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Target Type",
-   "options": "Applicant Document\nApplicant Health Profile\nStudent Applicant",
+   "options": "Applicant Document\nApplicant Document Item\nApplicant Health Profile\nStudent Applicant",
    "reqd": 1,
    "search_index": 1
   },

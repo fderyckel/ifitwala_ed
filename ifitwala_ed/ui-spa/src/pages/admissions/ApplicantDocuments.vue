@@ -35,6 +35,7 @@
 				<p class="type-body-strong text-amber-900">{{ __('Notice') }}</p>
 				<p class="mt-1 type-caption text-amber-900/80">{{ actionError }}</p>
 			</div>
+
 			<div
 				v-if="requiredTotalCount"
 				class="rounded-2xl border border-border/70 bg-sand/30 px-4 py-4 shadow-soft"
@@ -54,6 +55,7 @@
 					</button>
 				</div>
 			</div>
+
 			<div
 				v-for="doc in displayDocuments"
 				:key="doc.key"
@@ -73,41 +75,75 @@
 							>
 								{{ doc.is_required ? __('Required') : __('Optional') }}
 							</span>
+							<span
+								v-if="doc.is_repeatable"
+								class="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 type-caption text-sky-900"
+							>
+								{{ __('Multiple files') }}
+							</span>
 						</div>
 						<p class="mt-1 type-caption" :class="doc.statusTone">{{ doc.statusLabel }}</p>
-						<p
-							v-if="doc.is_required && doc.statusKey !== 'approved'"
-							class="mt-1 type-caption text-ink/55"
-						>
-							{{ __('Needed before submission.') }}
-						</p>
-						<p v-if="doc.uploaded_at" class="mt-1 type-caption text-ink/55">
-							{{ __('Uploaded') }}: {{ doc.uploaded_at }}
+						<p v-if="doc.description" class="mt-1 type-caption text-ink/60">
+							{{ doc.description }}
 						</p>
 					</div>
 					<div class="flex items-center gap-3">
-						<a
-							v-if="doc.file_url"
-							:href="doc.file_url"
-							target="_blank"
-							rel="noopener"
-							class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70"
-						>
-							{{ __('View') }}
-						</a>
 						<button
 							type="button"
 							class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
-							:disabled="isReadOnly || !doc.document_type || !doc.canUpload"
-							@click="openUpload(doc)"
+							:disabled="isReadOnly || !doc.canAddItem"
+							@click="openUpload(doc, null)"
 						>
-							{{ doc.file_url ? __('Replace') : __('Upload') }}
+							{{ doc.items.length ? __('Add file') : __('Upload file') }}
 						</button>
 					</div>
 				</div>
-				<p v-if="doc.description" class="mt-2 type-caption text-ink/60">
-					{{ doc.description }}
-				</p>
+
+				<div v-if="doc.items.length" class="mt-4 space-y-3">
+					<div
+						v-for="item in doc.items"
+						:key="`${doc.key}:${item.name || item.item_key}`"
+						class="rounded-xl border border-border/60 bg-surface/50 px-3 py-3"
+					>
+						<div class="flex flex-wrap items-start justify-between gap-3">
+							<div>
+								<p class="type-body-strong text-ink">{{ item.item_label || item.item_key }}</p>
+								<p class="mt-1 type-caption" :class="statusToneFor(itemStatusKey(item))">
+									{{ itemStatusLabel(item) }}
+								</p>
+								<p v-if="item.uploaded_at" class="mt-1 type-caption text-ink/55">
+									{{ __('Uploaded') }}: {{ item.uploaded_at }}
+								</p>
+							</div>
+							<div class="flex items-center gap-2">
+								<a
+									v-if="item.file_url"
+									:href="item.file_url"
+									target="_blank"
+									rel="noopener"
+									class="rounded-full border border-border/70 bg-white px-3 py-1.5 type-caption text-ink/70"
+								>
+									{{ __('View') }}
+								</a>
+								<button
+									type="button"
+									class="rounded-full border border-border/70 bg-white px-3 py-1.5 type-caption text-ink/70 disabled:opacity-50"
+									:disabled="isReadOnly || !doc.canUpload"
+									@click="openUpload(doc, item)"
+								>
+									{{ __('Replace') }}
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div
+					v-else
+					class="mt-4 rounded-xl border border-dashed border-border/70 bg-surface/40 px-3 py-3"
+				>
+					<p class="type-caption text-ink/60">{{ __('No files uploaded yet.') }}</p>
+				</div>
 			</div>
 
 			<div
@@ -147,30 +183,50 @@ const actionError = ref('');
 
 const isReadOnly = computed(() => Boolean(session.value?.applicant?.is_read_only));
 
-function statusKeyFor(doc: ApplicantDocument | null, isRequired: boolean) {
-	if (!doc) return isRequired ? 'missing' : 'optional';
-	if (doc.review_status === 'Approved') return 'approved';
-	if (doc.review_status === 'Rejected') return 'rejected';
+type DisplayItem = {
+	name: string;
+	item_key: string;
+	item_label: string;
+	review_status: string;
+	uploaded_at?: string | null;
+	file_url?: string | null;
+	file_name?: string | null;
+};
+
+type DisplayDocument = {
+	key: string;
+	document_type: string;
+	label: string;
+	description: string;
+	is_required: boolean;
+	is_repeatable: boolean;
+	requiredCount: number;
+	uploadedCount: number;
+	approvedCount: number;
+	items: DisplayItem[];
+	statusKey: string;
+	statusLabel: string;
+	statusTone: string;
+	canUpload: boolean;
+	canAddItem: boolean;
+};
+
+function itemStatusKey(item: DisplayItem): string {
+	if (!item.file_url) return 'missing';
+	if (item.review_status === 'Approved') return 'approved';
+	if (item.review_status === 'Rejected') return 'rejected';
 	return 'pending';
 }
 
-function statusLabelFor(statusKey: string) {
-	switch (statusKey) {
-		case 'approved':
-			return __('Approved');
-		case 'rejected':
-			return __('Rejected');
-		case 'pending':
-			return __('Pending review');
-		case 'missing':
-			return __('Missing');
-		case 'optional':
-		default:
-			return __('Optional');
-	}
+function itemStatusLabel(item: DisplayItem): string {
+	const statusKey = itemStatusKey(item);
+	if (statusKey === 'approved') return __('Approved');
+	if (statusKey === 'rejected') return __('Rejected');
+	if (statusKey === 'pending') return __('Pending review');
+	return __('Missing');
 }
 
-function statusToneFor(statusKey: string) {
+function statusToneFor(statusKey: string): string {
 	switch (statusKey) {
 		case 'approved':
 			return 'text-leaf';
@@ -179,13 +235,12 @@ function statusToneFor(statusKey: string) {
 			return 'text-rose-700';
 		case 'pending':
 			return 'text-sun';
-		case 'optional':
 		default:
 			return 'text-ink/55';
 	}
 }
 
-function statusSortWeight(statusKey: string) {
+function statusSortWeight(statusKey: string): number {
 	switch (statusKey) {
 		case 'missing':
 			return 0;
@@ -195,52 +250,157 @@ function statusSortWeight(statusKey: string) {
 			return 2;
 		case 'approved':
 			return 3;
-		case 'optional':
 		default:
 			return 4;
 	}
 }
 
-const displayDocuments = computed(() => {
+function summarizeDocumentStatus(doc: {
+	is_required: boolean;
+	required_count: number;
+	uploaded_count: number;
+	approved_count: number;
+	has_rejected: boolean;
+}): { key: string; label: string } {
+	if (!doc.is_required) {
+		if (!doc.uploaded_count) return { key: 'optional', label: __('Optional') };
+		if (doc.approved_count >= doc.uploaded_count)
+			return { key: 'approved', label: __('Approved') };
+		if (doc.has_rejected) return { key: 'rejected', label: __('Needs replacement') };
+		return { key: 'pending', label: __('Pending review') };
+	}
+
+	if (doc.uploaded_count < doc.required_count) {
+		return {
+			key: 'missing',
+			label: __('Uploaded {0} of {1} required files.')
+				.replace('{0}', String(doc.uploaded_count))
+				.replace('{1}', String(doc.required_count)),
+		};
+	}
+	if (doc.approved_count < doc.required_count) {
+		if (doc.has_rejected) {
+			return {
+				key: 'rejected',
+				label: __('Approved {0} of {1} required files (replace rejected files).')
+					.replace('{0}', String(doc.approved_count))
+					.replace('{1}', String(doc.required_count)),
+			};
+		}
+		return {
+			key: 'pending',
+			label: __('Approved {0} of {1} required files.')
+				.replace('{0}', String(doc.approved_count))
+				.replace('{1}', String(doc.required_count)),
+		};
+	}
+
+	return {
+		key: 'approved',
+		label: __('Approved {0} of {1} required files.')
+			.replace('{0}', String(doc.approved_count))
+			.replace('{1}', String(doc.required_count)),
+	};
+}
+
+const displayDocuments = computed<DisplayDocument[]>(() => {
 	const docMap = new Map<string, ApplicantDocument>();
 	documents.value.forEach(doc => {
 		if (doc.document_type) docMap.set(doc.document_type, doc);
 	});
 
-	const items = documentTypes.value.map(docType => {
+	const items: DisplayDocument[] = documentTypes.value.map(docType => {
 		const doc = docMap.get(docType.name) || null;
-		const statusKey = statusKeyFor(doc, docType.is_required);
+		const documentItems: DisplayItem[] = ((doc?.items || []) as DisplayItem[]).map(row => ({
+			name: String(row.name || ''),
+			item_key: String(row.item_key || ''),
+			item_label: String(row.item_label || ''),
+			review_status: String(row.review_status || 'Pending'),
+			uploaded_at: row.uploaded_at || null,
+			file_url: row.file_url || null,
+			file_name: row.file_name || null,
+		}));
+
+		const requiredCount = docType.is_required
+			? docType.is_repeatable
+				? Math.max(1, Number(docType.min_items_required || 1))
+				: 1
+			: 0;
+		const uploadedCount = documentItems.filter(row => Boolean(row.file_url)).length;
+		const approvedCount = documentItems.filter(
+			row => Boolean(row.file_url) && row.review_status === 'Approved'
+		).length;
+		const hasRejected = documentItems.some(
+			row => Boolean(row.file_url) && row.review_status === 'Rejected'
+		);
+		const summary = summarizeDocumentStatus({
+			is_required: Boolean(docType.is_required),
+			required_count: requiredCount,
+			uploaded_count: uploadedCount,
+			approved_count: approvedCount,
+			has_rejected: hasRejected,
+		});
+
 		return {
 			key: docType.name,
 			document_type: docType.name,
 			label: docType.document_type_name || docType.code || docType.name,
 			description: docType.description,
-			is_required: docType.is_required,
-			file_url: doc?.file_url || null,
-			uploaded_at: doc?.uploaded_at || null,
-			statusKey,
-			statusLabel: statusLabelFor(statusKey),
-			statusTone: statusToneFor(statusKey),
+			is_required: Boolean(docType.is_required),
+			is_repeatable: Boolean(docType.is_repeatable),
+			requiredCount,
+			uploadedCount,
+			approvedCount,
+			items: documentItems,
+			statusKey: summary.key,
+			statusLabel: summary.label,
+			statusTone: statusToneFor(summary.key),
 			canUpload: true,
+			canAddItem: Boolean(docType.is_repeatable) || documentItems.length === 0,
 		};
 	});
 
-	// Include documents that aren't in the type list
 	documents.value.forEach(doc => {
 		if (!doc.document_type || items.find(item => item.document_type === doc.document_type)) return;
-		const statusKey = statusKeyFor(doc, false);
+		const documentItems: DisplayItem[] = ((doc.items || []) as DisplayItem[]).map(row => ({
+			name: String(row.name || ''),
+			item_key: String(row.item_key || ''),
+			item_label: String(row.item_label || ''),
+			review_status: String(row.review_status || 'Pending'),
+			uploaded_at: row.uploaded_at || null,
+			file_url: row.file_url || null,
+			file_name: row.file_name || null,
+		}));
+		const uploadedCount = documentItems.filter(row => Boolean(row.file_url)).length;
+		const approvedCount = documentItems.filter(
+			row => Boolean(row.file_url) && row.review_status === 'Approved'
+		).length;
+		const hasRejected = documentItems.some(
+			row => Boolean(row.file_url) && row.review_status === 'Rejected'
+		);
+		const summary = summarizeDocumentStatus({
+			is_required: false,
+			required_count: 0,
+			uploaded_count: uploadedCount,
+			approved_count: approvedCount,
+			has_rejected: hasRejected,
+		});
 		items.push({
 			key: doc.document_type,
 			document_type: doc.document_type,
 			label: doc.document_type,
 			description: '',
 			is_required: false,
-			file_url: doc.file_url || null,
-			uploaded_at: doc.uploaded_at || null,
-			statusKey,
-			statusLabel: statusLabelFor(statusKey),
-			statusTone: statusToneFor(statusKey),
+			is_repeatable: true,
+			requiredCount: 0,
+			uploadedCount,
+			approvedCount,
+			items: documentItems,
+			statusKey: summary.key,
+			statusLabel: summary.label,
+			statusTone: statusToneFor(summary.key),
 			canUpload: false,
+			canAddItem: false,
 		});
 	});
 
@@ -255,13 +415,13 @@ const displayDocuments = computed(() => {
 const requiredDocuments = computed(() => displayDocuments.value.filter(doc => doc.is_required));
 const requiredTotalCount = computed(() => requiredDocuments.value.length);
 const requiredApprovedCount = computed(
-	() => requiredDocuments.value.filter(doc => doc.statusKey === 'approved').length
+	() => requiredDocuments.value.filter(doc => doc.approvedCount >= doc.requiredCount).length
 );
 const requiredUploadedCount = computed(
-	() => requiredDocuments.value.filter(doc => doc.statusKey !== 'missing').length
+	() => requiredDocuments.value.filter(doc => doc.uploadedCount >= doc.requiredCount).length
 );
 const nextRequiredDoc = computed(
-	() => requiredDocuments.value.find(doc => doc.statusKey !== 'approved') || null
+	() => requiredDocuments.value.find(doc => doc.approvedCount < doc.requiredCount) || null
 );
 const requiredSummaryText = computed(() => {
 	const total = requiredTotalCount.value;
@@ -269,14 +429,14 @@ const requiredSummaryText = computed(() => {
 	const uploaded = requiredUploadedCount.value;
 	if (!total) return __('No required documents configured.');
 	if (uploaded < total) {
-		return __('Uploaded {0} of {1} required documents.')
+		return __('Uploaded complete files for {0} of {1} required document types.')
 			.replace('{0}', String(uploaded))
 			.replace('{1}', String(total));
 	}
 	if (approved < total) {
-		return __('All required documents uploaded. Awaiting admissions review.');
+		return __('All required files are uploaded. Admissions review is in progress.');
 	}
-	return __('Approved {0} of {1} required documents.')
+	return __('Approved {0} of {1} required document types.')
 		.replace('{0}', String(approved))
 		.replace('{1}', String(total));
 });
@@ -300,12 +460,7 @@ async function loadDocuments() {
 	}
 }
 
-function openUpload(doc: {
-	document_type: string;
-	label: string;
-	description?: string;
-	canUpload?: boolean;
-}) {
+function openUpload(doc: DisplayDocument, item: DisplayItem | null) {
 	if (isReadOnly.value) {
 		actionError.value = __('This application is read-only.');
 		return;
@@ -320,12 +475,20 @@ function openUpload(doc: {
 		actionError.value = __('This document can no longer be uploaded from the applicant portal.');
 		return;
 	}
+	if (!item && !doc.canAddItem) {
+		actionError.value = __('This document accepts one file. Use Replace on the existing item.');
+		return;
+	}
 	actionError.value = '';
 	overlay.open('admissions-document-upload', {
 		documentType: doc.document_type,
 		documentLabel: doc.label,
 		description: doc.description || '',
 		readOnly: isReadOnly.value,
+		applicantDocumentItem: item?.name || null,
+		itemKey: item?.item_key || null,
+		itemLabel: item?.item_label || '',
+		mode: item ? 'replace' : 'add',
 	});
 }
 
@@ -334,7 +497,7 @@ function openNextRequired() {
 		actionError.value = __('All required documents are already approved.');
 		return;
 	}
-	openUpload(nextRequiredDoc.value);
+	openUpload(nextRequiredDoc.value, null);
 }
 
 let unsubscribe: (() => void) | null = null;

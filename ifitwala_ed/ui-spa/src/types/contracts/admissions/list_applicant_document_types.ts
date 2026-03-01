@@ -11,6 +11,8 @@ export type Response = {
     document_type_name: string
     belongs_to: 'student' | 'guardian' | 'family' | ''
     is_required: boolean
+    is_repeatable: boolean
+    min_items_required: number
     description: string
   }>
 }

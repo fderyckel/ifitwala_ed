@@ -9,6 +9,7 @@ from frappe import _
 from ifitwala_ed.admission.applicant_review_workflow import (
     ASSIGNMENT_DOCTYPE,
     TARGET_DOCUMENT,
+    TARGET_DOCUMENT_ITEM,
     TARGET_HEALTH,
 )
 from ifitwala_ed.api.policy_signature import get_active_employee_for_user
@@ -255,7 +256,7 @@ def _assignment_title(row: dict) -> str:
     target_type = (row.get("target_type") or "").strip()
     applicant_name = _applicant_display_name_from_row(row)
 
-    if target_type == TARGET_DOCUMENT:
+    if target_type in {TARGET_DOCUMENT, TARGET_DOCUMENT_ITEM}:
         doc_label = (
             (row.get("document_label") or "").strip()
             or (row.get("document_type_code") or "").strip()
@@ -263,6 +264,9 @@ def _assignment_title(row: dict) -> str:
             or (row.get("document_type") or "").strip()
             or _("Document")
         )
+        if target_type == TARGET_DOCUMENT_ITEM:
+            item_label = (row.get("item_label") or "").strip() or (row.get("item_key") or "").strip() or _("Item")
+            doc_label = _("{0} — {1}").format(doc_label, item_label)
         return _("Review {0} — Applicant {1}").format(doc_label, applicant_name)
 
     if target_type == TARGET_HEALTH:

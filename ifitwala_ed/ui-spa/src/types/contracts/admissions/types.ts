@@ -51,9 +51,20 @@ export type ApplicantProfileCompleteness = {
 export type ApplicantDocument = {
   name: string
   document_type: string
-  review_status: 'Pending' | 'Approved' | 'Rejected'
+  review_status: 'Pending' | 'Approved' | 'Rejected' | 'Superseded'
   uploaded_at?: string | null
   file_url?: string | null
+  items?: Array<{
+    name?: string
+    item_key: string
+    item_label: string
+    review_status: 'Pending' | 'Approved' | 'Rejected' | 'Superseded'
+    reviewed_by?: string | null
+    reviewed_on?: string | null
+    uploaded_at?: string | null
+    file_url?: string | null
+    file_name?: string | null
+  }>
 }
 
 export type ApplicantPolicy = {
@@ -62,4 +73,5 @@ export type ApplicantPolicy = {
   content_html: string
   is_acknowledged: boolean
   acknowledged_at?: string | null
+  expected_signature_name: string
 }

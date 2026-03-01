@@ -160,6 +160,10 @@ def _as_bool(value) -> bool:
     return bool(_as_check(value))
 
 
+def _normalize_signature_name(value: str | None) -> str:
+    return " ".join((value or "").split()).casefold()
+
+
 def _coerce_vaccination_date(value) -> str | None:
     text = _as_text(value).strip()
     return text or None
@@ -265,6 +269,25 @@ def _upload_vaccination_proof(
     vaccination_row: dict,
     index: int,
 ) -> str:
+    health_doc_name = _as_text(getattr(health_doc, "name", "")).strip()
+    if not health_doc_name and hasattr(health_doc, "save"):
+        health_doc.save(ignore_permissions=True)
+        health_doc_name = _as_text(getattr(health_doc, "name", "")).strip()
+    if not health_doc_name:
+        frappe.log_error(
+            message=frappe.as_json(
+                {
+                    "error": "health_profile_name_missing_for_vaccination_upload",
+                    "health_doc_type": str(type(health_doc)),
+                    "health_doc_name": getattr(health_doc, "name", None),
+                    "applicant_row_name": applicant_row.get("name"),
+                    "vaccination_index": index,
+                }
+            ),
+            title="Applicant Health Upload Failed",
+        )
+        frappe.throw(_("Unable to attach vaccination proof because the health profile was not persisted."))
+
     content = _decode_base64_content(_as_text(vaccination_row.get("vaccination_proof_content")))
     file_name = (
         _as_text(vaccination_row.get("vaccination_proof_file_name")).strip() or f"vaccination_proof_{index + 1}.png"
@@ -274,7 +297,7 @@ def _upload_vaccination_proof(
     file_doc = file_dispatcher.create_and_classify_file(
         file_kwargs={
             "attached_to_doctype": "Applicant Health Profile",
-            "attached_to_name": health_doc.name,
+            "attached_to_name": health_doc_name,
             "attached_to_field": "vaccinations",
             "file_name": file_name,
             "content": content,
@@ -926,9 +949,22 @@ def update_applicant_health(
     declaration_confirmed = _as_bool(applicant_health_declared_complete)
 
     doc.update(updates)
-    if doc.is_new():
+    if doc.is_new() or not _as_text(doc.name).strip():
         # Vaccination proof uploads attach to this profile and require a persisted name.
         doc.save(ignore_permissions=True)
+    if not _as_text(doc.name).strip():
+        frappe.log_error(
+            message=frappe.as_json(
+                {
+                    "error": "health_profile_name_missing_after_save",
+                    "doc_type": str(type(doc)),
+                    "doc_name": getattr(doc, "name", None),
+                    "student_applicant": row.get("name"),
+                }
+            ),
+            title="Applicant Health Save Failed",
+        )
+        frappe.throw(_("Unable to save health information because the profile identifier is missing."))
 
     doc.set("vaccinations", [])
     for index, vaccination_row in enumerate(normalized_vaccinations):
@@ -990,7 +1026,7 @@ def list_applicant_documents(student_applicant: str | None = None):
     documents = frappe.get_all(
         "Applicant Document",
         filters={"student_applicant": row.get("name")},
-        fields=["name", "document_type", "review_status", "modified"],
+        fields=["name", "document_type", "review_status", "reviewed_by", "reviewed_on", "modified"],
         order_by="modified desc",
     )
 
@@ -998,7 +1034,42 @@ def list_applicant_documents(student_applicant: str | None = None):
         return {"documents": []}
 
     name_list = [d["name"] for d in documents]
-    file_rows = frappe.get_all(
+    item_rows = frappe.get_all(
+        "Applicant Document Item",
+        filters={"applicant_document": ["in", name_list]},
+        fields=[
+            "name",
+            "applicant_document",
+            "item_key",
+            "item_label",
+            "review_status",
+            "reviewed_by",
+            "reviewed_on",
+            "modified",
+        ],
+        order_by="modified desc",
+    )
+    item_names = [row_item.get("name") for row_item in item_rows if row_item.get("name")]
+
+    latest_file_by_item: dict[str, dict] = {}
+    if item_names:
+        item_file_rows = frappe.get_all(
+            "File",
+            filters={
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": ["in", item_names],
+            },
+            fields=["attached_to_name", "file_url", "file_name", "creation"],
+            order_by="creation desc",
+        )
+        for row_file in item_file_rows:
+            parent = row_file.get("attached_to_name")
+            if not parent or parent in latest_file_by_item:
+                continue
+            latest_file_by_item[parent] = row_file
+
+    legacy_latest_file_by_document: dict[str, dict] = {}
+    legacy_file_rows = frappe.get_all(
         "File",
         filters={
             "attached_to_doctype": "Applicant Document",
@@ -1007,24 +1078,73 @@ def list_applicant_documents(student_applicant: str | None = None):
         fields=["attached_to_name", "file_url", "file_name", "creation"],
         order_by="creation desc",
     )
-
-    latest_file: dict[str, dict] = {}
-    for row_file in file_rows:
+    for row_file in legacy_file_rows:
         parent = row_file.get("attached_to_name")
-        if not parent or parent in latest_file:
+        if not parent or parent in legacy_latest_file_by_document:
             continue
-        latest_file[parent] = row_file
+        legacy_latest_file_by_document[parent] = row_file
+
+    items_by_document: dict[str, list[dict]] = {}
+    for row_item in item_rows:
+        parent = row_item.get("applicant_document")
+        if not parent:
+            continue
+        latest_file = latest_file_by_item.get(row_item.get("name"), {})
+        items_by_document.setdefault(parent, []).append(
+            {
+                "name": row_item.get("name"),
+                "item_key": row_item.get("item_key"),
+                "item_label": row_item.get("item_label"),
+                "review_status": row_item.get("review_status") or "Pending",
+                "reviewed_by": row_item.get("reviewed_by"),
+                "reviewed_on": row_item.get("reviewed_on"),
+                "uploaded_at": latest_file.get("creation"),
+                "file_url": latest_file.get("file_url"),
+                "file_name": latest_file.get("file_name"),
+            }
+        )
 
     payload = []
     for doc in documents:
-        file_row = latest_file.get(doc["name"], {})
+        doc_name = doc.get("name")
+        items = items_by_document.get(doc_name, [])
+
+        if not items:
+            legacy_file = legacy_latest_file_by_document.get(doc_name, {})
+            if legacy_file:
+                items = [
+                    {
+                        "name": "",
+                        "item_key": "legacy",
+                        "item_label": _("Existing upload"),
+                        "review_status": doc.get("review_status") or "Pending",
+                        "reviewed_by": doc.get("reviewed_by"),
+                        "reviewed_on": doc.get("reviewed_on"),
+                        "uploaded_at": legacy_file.get("creation"),
+                        "file_url": legacy_file.get("file_url"),
+                        "file_name": legacy_file.get("file_name"),
+                    }
+                ]
+
+        latest_uploaded_at = None
+        latest_file_url = None
+        if items:
+            sorted_items = sorted(
+                items,
+                key=lambda row_item: row_item.get("uploaded_at") or "",
+                reverse=True,
+            )
+            latest_uploaded_at = sorted_items[0].get("uploaded_at")
+            latest_file_url = sorted_items[0].get("file_url")
+
         payload.append(
             {
-                "name": doc["name"],
+                "name": doc_name,
                 "document_type": doc.get("document_type"),
                 "review_status": doc.get("review_status") or "Pending",
-                "uploaded_at": file_row.get("creation"),
-                "file_url": file_row.get("file_url"),
+                "uploaded_at": latest_uploaded_at,
+                "file_url": latest_file_url,
+                "items": items,
             }
         )
 
@@ -1058,6 +1178,8 @@ def list_applicant_document_types(student_applicant: str | None = None):
             "document_type_name",
             "belongs_to",
             "is_required",
+            "is_repeatable",
+            "min_items_required",
             "description",
             "school",
             "organization",
@@ -1081,6 +1203,8 @@ def list_applicant_document_types(student_applicant: str | None = None):
                 "document_type_name": row_type.get("document_type_name"),
                 "belongs_to": row_type.get("belongs_to") or "",
                 "is_required": bool(row_type.get("is_required")),
+                "is_repeatable": bool(row_type.get("is_repeatable")),
+                "min_items_required": cint(row_type.get("min_items_required") or 1),
                 "description": row_type.get("description") or "",
             }
         )
@@ -1093,6 +1217,10 @@ def upload_applicant_document(
     *,
     student_applicant: str | None = None,
     document_type: str | None = None,
+    applicant_document_item: str | None = None,
+    item_key: str | None = None,
+    item_label: str | None = None,
+    client_request_id: str | None = None,
     file_name: str | None = None,
     content: str | None = None,
 ):
@@ -1101,6 +1229,8 @@ def upload_applicant_document(
 
     if not document_type:
         frappe.throw(_("document_type is required."))
+    if not applicant_document_item and not _as_text(item_key).strip() and not _as_text(item_label).strip():
+        frappe.throw(_("Provide a short description for this file."))
 
     if not content and not (getattr(frappe.request, "files", None) and frappe.request.files.get("file")):
         frappe.throw(_("File content is required."))
@@ -1160,6 +1290,10 @@ def upload_applicant_document(
     payload = {
         "student_applicant": row.get("name"),
         "document_type": document_type,
+        "applicant_document_item": applicant_document_item,
+        "item_key": _as_text(item_key).strip() or None,
+        "item_label": _as_text(item_label).strip() or None,
+        "client_request_id": _as_text(client_request_id).strip() or None,
         "upload_source": "SPA",
         "is_private": 1,
     }
@@ -1257,6 +1391,7 @@ def get_applicant_policies(student_applicant: str | None = None):
         fields=["policy_version", "acknowledged_at"],
     )
     ack_map = {row_ack["policy_version"]: row_ack.get("acknowledged_at") for row_ack in ack_rows}
+    expected_signature_name = _build_applicant_display_name(row)
 
     payload = []
     for row_policy in policies_source:
@@ -1270,6 +1405,7 @@ def get_applicant_policies(student_applicant: str | None = None):
                 "content_html": row_policy.get("policy_text") or "",
                 "is_acknowledged": bool(acknowledged_at),
                 "acknowledged_at": acknowledged_at,
+                "expected_signature_name": expected_signature_name,
             }
         )
 
@@ -1281,6 +1417,8 @@ def acknowledge_policy(
     *,
     policy_version: str | None = None,
     student_applicant: str | None = None,
+    typed_signature_name: str | None = None,
+    attestation_confirmed: int | str | bool | None = None,
 ):
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
@@ -1301,6 +1439,32 @@ def acknowledge_policy(
     )
     if existing:
         return {"ok": True, "acknowledged_at": existing.get("acknowledged_at")}
+
+    expected_signature_name = _build_applicant_display_name(row)
+    normalized_typed_name = _normalize_signature_name(typed_signature_name)
+    expected_candidates = {
+        normalized
+        for normalized in {
+            _normalize_signature_name(expected_signature_name),
+            _normalize_signature_name(row.get("name")),
+        }
+        if normalized
+    }
+
+    if not _as_bool(attestation_confirmed):
+        frappe.throw(
+            _("You must confirm the electronic signature attestation before signing."),
+            frappe.ValidationError,
+        )
+
+    if not normalized_typed_name:
+        frappe.throw(_("Type your full name as your electronic signature."), frappe.ValidationError)
+
+    if expected_candidates and normalized_typed_name not in expected_candidates:
+        frappe.throw(
+            _("Typed signature must match exactly: {0}").format(expected_signature_name),
+            frappe.ValidationError,
+        )
 
     doc = frappe.get_doc(
         {

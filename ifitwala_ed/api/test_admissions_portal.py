@@ -13,11 +13,14 @@ from ifitwala_ed.api.admissions_portal import (
     _portal_status_for,
     _read_only_for,
     _send_applicant_invite_email,
+    acknowledge_policy,
+    get_applicant_policies,
     get_applicant_profile,
     get_applicant_snapshot,
     get_invite_email_options,
     invite_applicant,
     submit_application,
+    update_applicant_health,
     update_applicant_profile,
     upload_applicant_profile_image,
 )
@@ -390,6 +393,10 @@ class TestSubmitApplication(FrappeTestCase):
         self.school = self._create_school(self.organization)
         self.applicant_user = self._create_applicant_user()
         self.applicant = self._create_applicant(self.organization, self.school, self.applicant_user)
+        self.policy_version = self._create_required_applicant_policy_version(
+            organization=self.organization,
+            school=self.school,
+        )
 
     def tearDown(self):
         frappe.set_user("Administrator")
@@ -426,6 +433,70 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertIn("profile", payload)
         self.assertIn("application_context", payload)
         self.assertIn("profile", payload.get("completeness") or {})
+
+    def test_get_applicant_policies_includes_expected_signature_name(self):
+        frappe.set_user(self.applicant_user)
+        payload = get_applicant_policies(student_applicant=self.applicant.name)
+        policies = payload.get("policies") or []
+        self.assertTrue(bool(policies))
+
+        expected_name = f"{self.applicant.first_name} {self.applicant.last_name}".strip()
+        target = next(
+            (row for row in policies if row.get("policy_version") == self.policy_version),
+            None,
+        )
+        self.assertTrue(bool(target))
+        self.assertEqual(target.get("expected_signature_name"), expected_name)
+
+    def test_acknowledge_policy_requires_attestation_confirmation(self):
+        frappe.set_user(self.applicant_user)
+        expected_name = f"{self.applicant.first_name} {self.applicant.last_name}".strip()
+
+        with self.assertRaises(frappe.ValidationError):
+            acknowledge_policy(
+                student_applicant=self.applicant.name,
+                policy_version=self.policy_version,
+                typed_signature_name=expected_name,
+                attestation_confirmed=0,
+            )
+
+    def test_acknowledge_policy_requires_matching_typed_signature(self):
+        frappe.set_user(self.applicant_user)
+
+        with self.assertRaises(frappe.ValidationError):
+            acknowledge_policy(
+                student_applicant=self.applicant.name,
+                policy_version=self.policy_version,
+                typed_signature_name="Wrong Name",
+                attestation_confirmed=1,
+            )
+
+    def test_acknowledge_policy_creates_row_for_valid_signature(self):
+        frappe.set_user(self.applicant_user)
+        expected_name = f"{self.applicant.first_name} {self.applicant.last_name}".strip()
+
+        payload = acknowledge_policy(
+            student_applicant=self.applicant.name,
+            policy_version=self.policy_version,
+            typed_signature_name=expected_name,
+            attestation_confirmed=1,
+        )
+        self.assertTrue(payload.get("ok"))
+        self.assertTrue(bool(payload.get("acknowledged_at")))
+
+        ack = frappe.db.get_value(
+            "Policy Acknowledgement",
+            {
+                "policy_version": self.policy_version,
+                "acknowledged_for": "Applicant",
+                "context_doctype": "Student Applicant",
+                "context_name": self.applicant.name,
+            },
+            ["name", "acknowledged_by"],
+            as_dict=True,
+        )
+        self.assertTrue(bool(ack))
+        self.assertEqual(ack.get("acknowledged_by"), self.applicant_user)
 
     def test_update_applicant_profile_persists_values(self):
         language = self._get_or_create_language_xtra()
@@ -545,6 +616,63 @@ class TestSubmitApplication(FrappeTestCase):
                 student_joining_date="2026-02-10",
             )
 
+    def test_update_applicant_health_vaccination_upload_attaches_with_persisted_profile_name(self):
+        captured: dict = {}
+        fake_file = SimpleNamespace(
+            name=f"FILE-{frappe.generate_hash(length=8)}",
+            file_url=f"/private/files/health-proof-{frappe.generate_hash(length=6)}.png",
+            file_name="mmr-proof.png",
+            file_size=128,
+            is_private=1,
+        )
+
+        def _capture_file_dispatch(*, file_kwargs, classification, context_override):
+            captured["file_kwargs"] = file_kwargs
+            captured["classification"] = classification
+            captured["context_override"] = context_override
+            return fake_file
+
+        frappe.set_user(self.applicant_user)
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.file_dispatcher.create_and_classify_file",
+                side_effect=_capture_file_dispatch,
+            ),
+            patch("ifitwala_ed.api.admissions_portal.materialize_health_review_assignments"),
+        ):
+            payload = update_applicant_health(
+                student_applicant=self.applicant.name,
+                blood_group="O Positive",
+                allergies=True,
+                food_allergies="No nuts",
+                applicant_health_declared_complete=False,
+                vaccinations=[
+                    {
+                        "vaccine_name": "MMR",
+                        "date": "2020-03-04",
+                        "vaccination_proof": "",
+                        "additional_notes": "",
+                        "vaccination_proof_content": self._tiny_png_base64(),
+                        "vaccination_proof_file_name": "mmr-proof.png",
+                    }
+                ],
+            )
+
+        self.assertTrue(payload.get("ok"))
+        self.assertIn("file_kwargs", captured)
+
+        health_name = frappe.db.get_value(
+            "Applicant Health Profile",
+            {"student_applicant": self.applicant.name},
+            "name",
+        )
+        self.assertTrue(bool(health_name))
+        self.assertIsInstance(captured["file_kwargs"]["attached_to_name"], str)
+        self.assertEqual(captured["file_kwargs"]["attached_to_name"], health_name)
+        self.assertEqual(captured["file_kwargs"]["attached_to_doctype"], "Applicant Health Profile")
+        self.assertEqual(captured["file_kwargs"]["attached_to_field"], "vaccinations")
+        self.assertEqual(captured["file_kwargs"]["is_private"], 1)
+
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):
             return
@@ -575,6 +703,33 @@ class TestSubmitApplication(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("School", doc.name))
         return doc.name
+
+    def _create_required_applicant_policy_version(self, *, organization: str, school: str) -> str:
+        policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"applicant_policy_{frappe.generate_hash(length=8)}",
+                "policy_title": "Applicant Portal Policy",
+                "policy_category": "Admissions",
+                "applies_to": "Applicant",
+                "organization": organization,
+                "school": school,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Institutional Policy", policy.name))
+
+        version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": policy.name,
+                "version_label": "v1",
+                "policy_text": "<p>Applicant consent text.</p>",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Policy Version", version.name))
+        return version.name
 
     def _create_applicant_user(self) -> str:
         email = f"portal-applicant-{frappe.generate_hash(length=8)}@example.com"

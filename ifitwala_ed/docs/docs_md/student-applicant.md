@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.6.9"
-last_change_date: "2026-02-28"
+version: "1.7.0"
+last_change_date: "2026-03-01"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
@@ -71,7 +71,7 @@ This is where admissions correctness is enforced. Client UX helps, but status tr
 - **Operations edge**: applicant timeline now records document upload/replace events and applicant-document review/edit events for fast audit trace.
 
 <Callout type="note" title="Digital signature scope">
-Current implementation is an explicit acknowledge action with timestamped audit trail. It does not capture a handwritten/typed signature artifact field.
+Applicant policy acknowledgement in portal requires explicit electronic-signature controls: typed signer name must match the expected applicant signer name, and legal attestation must be confirmed before server insert. Evidence remains the immutable `Policy Acknowledgement` record with server timestamp.
 </Callout>
 
 ## Operational Guardrails
@@ -389,7 +389,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - page launcher: `ui-spa/src/pages/admissions/ApplicantPolicies.vue`
   - overlay component: `ui-spa/src/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue`
   - acknowledgement submit: `admissionsService.acknowledgePolicy` -> `ifitwala_ed.api.admissions_portal.acknowledge_policy`
-  - behavior is explicit acknowledge + timestamped row insert; no signature artifact capture
+  - acknowledgement requires `typed_signature_name` + `attestation_confirmed` and server-validates typed name against expected applicant signer identity before insert
 
 ### Troubleshooting: `Policy schema mismatch` (`missing_column: applies_to`)
 

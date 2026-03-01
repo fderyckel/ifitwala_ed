@@ -12,6 +12,7 @@ from ifitwala_ed.governance.policy_scope_utils import is_policy_organization_app
 class ApplicantDocumentType(Document):
     def validate(self):
         self._validate_scope_coherence()
+        self._validate_repeatable_contract()
         self._validate_classification_contract()
 
     def _validate_scope_coherence(self):
@@ -78,3 +79,18 @@ class ApplicantDocumentType(Document):
         if missing:
             labels = ", ".join(fieldname.replace("classification_", "").replace("_", " ") for fieldname in missing)
             frappe.throw(_("Incomplete classification settings. Missing: {0}.").format(labels))
+
+    def _validate_repeatable_contract(self):
+        is_repeatable = cint(self.is_repeatable)
+        min_items_required = cint(self.min_items_required or 0)
+        is_required = cint(self.is_required)
+
+        if not is_repeatable:
+            self.min_items_required = 1
+            return
+
+        if min_items_required < 1:
+            self.min_items_required = 1
+
+        if is_required and cint(self.min_items_required or 0) < 1:
+            frappe.throw(_("Min Items Required must be at least 1 for required repeatable document types."))

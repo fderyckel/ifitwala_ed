@@ -375,18 +375,25 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
             sa.last_name,
             sa.school,
             sa.program_offering,
-            ad.document_type,
-            ad.document_label,
+            ifnull(ad_item.document_type, ad.document_type) as document_type,
+            ifnull(ad_item.document_label, ad.document_label) as document_label,
             adt.document_type_name,
-            adt.code as document_type_code
+            adt.code as document_type_code,
+            adi.item_key,
+            adi.item_label
         from `tabApplicant Review Assignment` a
         join `tabStudent Applicant` sa
           on sa.name = a.student_applicant
         left join `tabApplicant Document` ad
           on a.target_type = 'Applicant Document'
          and ad.name = a.target_name
+        left join `tabApplicant Document Item` adi
+          on a.target_type = 'Applicant Document Item'
+         and adi.name = a.target_name
+        left join `tabApplicant Document` ad_item
+          on ad_item.name = adi.applicant_document
         left join `tabApplicant Document Type` adt
-          on adt.name = ad.document_type
+          on adt.name = ifnull(ad_item.document_type, ad.document_type)
         where (%(open_only)s = 0 or a.status = 'Open')
           and (
                 a.assigned_to_user = %(user)s

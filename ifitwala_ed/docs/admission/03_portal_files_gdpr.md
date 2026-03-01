@@ -652,13 +652,23 @@ ApplicantDocument {
   document_type: string
   review_status: "Pending" | "Approved" | "Rejected"
   uploaded_at: datetime
+  items: ApplicantDocumentItem[]
+}
+
+ApplicantDocumentItem {
+  name: string
+  item_key: string
+  item_label: string
+  review_status: "Pending" | "Approved" | "Rejected" | "Superseded"
+  uploaded_at: datetime
+  file_url: string
 }
 ```
 
 ### Upload rules
 
-* Upload creates `Applicant Document`
-* File attached **only** to Applicant Document
+* Upload creates/uses `Applicant Document` (bucket) and creates/uses `Applicant Document Item` (per file entry)
+* File attached **only** to Applicant Document Item
 * No direct file uploads anywhere else
 * File Classification primary subject is always **Student Applicant**
 
@@ -678,7 +688,8 @@ POST /api/admissions/policies/acknowledge
 ```ts
 PolicyAcknowledgementPayload {
   policy_version: string
-  accepted: true
+  typed_signature_name: string
+  attestation_confirmed: 1
 }
 ```
 
@@ -837,7 +848,7 @@ No business logic.
 **Purpose**
 
 * Display required policies
-* Capture acknowledgements
+* Capture explicit electronic signatures + acknowledgements
 
 **Writes**
 

@@ -9,8 +9,12 @@ from frappe import _
 from frappe.utils import now_datetime
 
 from ifitwala_ed.admission.admission_utils import get_applicant_scope_ancestors
+from ifitwala_ed.admission.doctype.applicant_document.applicant_document import (
+    sync_applicant_document_review_from_items,
+)
 
 TARGET_DOCUMENT = "Applicant Document"
+TARGET_DOCUMENT_ITEM = "Applicant Document Item"
 TARGET_HEALTH = "Applicant Health Profile"
 TARGET_APPLICATION = "Student Applicant"
 ASSIGNMENT_DOCTYPE = "Applicant Review Assignment"
@@ -20,6 +24,7 @@ REVIEWER_MODE_SPECIFIC_USER = "Specific User"
 
 DECISION_OPTIONS_BY_TARGET = {
     TARGET_DOCUMENT: ["Approved", "Needs Follow-Up", "Rejected"],
+    TARGET_DOCUMENT_ITEM: ["Approved", "Needs Follow-Up", "Rejected"],
     TARGET_HEALTH: ["Cleared", "Needs Follow-Up"],
     TARGET_APPLICATION: ["Recommend Admit", "Recommend Waitlist", "Recommend Reject", "Needs Follow-Up"],
 }
@@ -139,7 +144,7 @@ def _query_matching_rule_rows(
           and organization in %(organizations)s
           and school in %(schools)s
     """
-    if target_type == TARGET_DOCUMENT:
+    if target_type in {TARGET_DOCUMENT, TARGET_DOCUMENT_ITEM}:
         if document_type:
             sql += " and (ifnull(document_type, '') = '' or document_type = %(document_type)s)"
             params["document_type"] = document_type
@@ -355,6 +360,38 @@ def materialize_document_review_assignments(
     )
 
 
+def materialize_document_item_review_assignments(
+    *, applicant_document_item: str, source_event: str = "document_item_uploaded"
+) -> list[str]:
+    row = frappe.db.sql(
+        """
+        select
+            i.name,
+            i.applicant_document,
+            d.student_applicant,
+            d.document_type
+        from `tabApplicant Document Item` i
+        join `tabApplicant Document` d
+          on d.name = i.applicant_document
+        where i.name = %(name)s
+        """,
+        {"name": applicant_document_item},
+        as_dict=True,
+    )
+    row = row[0] if row else {}
+    if not row:
+        return []
+
+    return materialize_review_assignments(
+        target_type=TARGET_DOCUMENT_ITEM,
+        target_name=row.get("name"),
+        student_applicant=row.get("student_applicant"),
+        source_event=source_event,
+        document_type=row.get("document_type"),
+        reopen_done=True,
+    )
+
+
 def materialize_health_review_assignments(
     *, applicant_health_profile: str, source_event: str = "health_submitted"
 ) -> list[str]:
@@ -411,6 +448,24 @@ def _update_target_review_fields(
                 "reviewed_on": now_ts,
             },
         )
+        return
+
+    if target_type == TARGET_DOCUMENT_ITEM:
+        review_status = DOCUMENT_REVIEW_STATUS_BY_DECISION.get(decision)
+        if not review_status:
+            frappe.throw(_("Invalid document item decision: {0}.").format(decision), frappe.ValidationError)
+        frappe.db.set_value(
+            TARGET_DOCUMENT_ITEM,
+            target_name,
+            {
+                "review_status": review_status,
+                "review_notes": clean_notes,
+                "reviewed_by": decided_by,
+                "reviewed_on": now_ts,
+            },
+        )
+        parent_name = frappe.db.get_value(TARGET_DOCUMENT_ITEM, target_name, "applicant_document")
+        sync_applicant_document_review_from_items(parent_name)
         return
 
     if target_type == TARGET_HEALTH:
@@ -479,6 +534,7 @@ def get_review_assignments_summary(*, student_applicant: str) -> dict:
     if not rows:
         return {
             TARGET_DOCUMENT: [],
+            TARGET_DOCUMENT_ITEM: [],
             TARGET_HEALTH: [],
             TARGET_APPLICATION: [],
         }
@@ -529,6 +585,40 @@ def get_review_assignments_summary(*, student_applicant: str) -> dict:
             )
             document_label_by_target[row.get("name")] = label
 
+    item_targets = [row.get("target_name") for row in rows if row.get("target_type") == TARGET_DOCUMENT_ITEM]
+    item_label_by_target: dict[str, str] = {}
+    if item_targets:
+        item_rows = frappe.db.sql(
+            """
+            select
+                i.name,
+                i.item_label,
+                i.item_key,
+                d.document_type,
+                d.document_label,
+                ifnull(dt.document_type_name, '') as document_type_name,
+                ifnull(dt.code, '') as document_type_code
+            from `tabApplicant Document Item` i
+            join `tabApplicant Document` d
+              on d.name = i.applicant_document
+            left join `tabApplicant Document Type` dt
+              on dt.name = d.document_type
+            where i.name in %(targets)s
+            """,
+            {"targets": tuple(item_targets)},
+            as_dict=True,
+        )
+        for row in item_rows:
+            doc_label = (
+                (row.get("document_label") or "").strip()
+                or (row.get("document_type_code") or "").strip()
+                or (row.get("document_type_name") or "").strip()
+                or (row.get("document_type") or "").strip()
+                or _("Document")
+            )
+            item_label = (row.get("item_label") or "").strip() or (row.get("item_key") or "").strip() or row.get("name")
+            item_label_by_target[row.get("name")] = _("{0} — {1}").format(doc_label, item_label)
+
     grouped: dict[str, list[dict]] = defaultdict(list)
 
     for row in rows:
@@ -543,6 +633,8 @@ def get_review_assignments_summary(*, student_applicant: str) -> dict:
         target_label = row.get("target_name")
         if target_type == TARGET_DOCUMENT:
             target_label = document_label_by_target.get(row.get("target_name")) or row.get("target_name")
+        elif target_type == TARGET_DOCUMENT_ITEM:
+            target_label = item_label_by_target.get(row.get("target_name")) or row.get("target_name")
         elif target_type == TARGET_HEALTH:
             target_label = _("Health Profile")
         elif target_type == TARGET_APPLICATION:
@@ -563,6 +655,7 @@ def get_review_assignments_summary(*, student_applicant: str) -> dict:
 
     return {
         TARGET_DOCUMENT: grouped.get(TARGET_DOCUMENT, []),
+        TARGET_DOCUMENT_ITEM: grouped.get(TARGET_DOCUMENT_ITEM, []),
         TARGET_HEALTH: grouped.get(TARGET_HEALTH, []),
         TARGET_APPLICATION: grouped.get(TARGET_APPLICATION, []),
     }

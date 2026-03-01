@@ -83,6 +83,52 @@ class TestApplicantDocumentType(FrappeTestCase):
         self.assertTrue(has_complete_applicant_document_type_classification({"code": "id_documents"}))
         self.assertFalse(has_complete_applicant_document_type_classification({"code": "custom_unmapped"}))
 
+    def test_non_repeatable_document_type_forces_min_items_to_one(self):
+        organization = self._create_organization("Admissions Org")
+        school = self._create_school(organization=organization, prefix="Admissions School")
+        doc = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Type",
+                "code": f"single_file_{frappe.generate_hash(length=6)}",
+                "document_type_name": "Single File",
+                "organization": organization,
+                "school": school,
+                "is_active": 1,
+                "is_repeatable": 0,
+                "min_items_required": 4,
+                "classification_slot": f"single_{frappe.generate_hash(length=4)}",
+                "classification_data_class": "administrative",
+                "classification_purpose": "administrative",
+                "classification_retention_policy": "until_program_end_plus_1y",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Type", doc.name))
+
+        self.assertEqual(int(doc.min_items_required), 1)
+
+    def test_repeatable_document_type_coerces_min_items_to_positive(self):
+        organization = self._create_organization("Admissions Org")
+        school = self._create_school(organization=organization, prefix="Admissions School")
+        doc = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Type",
+                "code": f"repeat_file_{frappe.generate_hash(length=6)}",
+                "document_type_name": "Repeatable File",
+                "organization": organization,
+                "school": school,
+                "is_active": 1,
+                "is_repeatable": 1,
+                "min_items_required": 0,
+                "classification_slot": f"repeat_{frappe.generate_hash(length=4)}",
+                "classification_data_class": "academic",
+                "classification_purpose": "academic_report",
+                "classification_retention_policy": "until_program_end_plus_1y",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Type", doc.name))
+
+        self.assertEqual(int(doc.min_items_required), 1)
+
     def test_school_scope_must_match_selected_organization_scope(self):
         root_org = self._create_organization("Root Org", is_group=1)
         child_org = self._create_organization("Child Org", parent=root_org)

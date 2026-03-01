@@ -10,6 +10,7 @@ from ifitwala_ed.admission.applicant_review_workflow import (
     DECISION_OPTIONS_BY_TARGET,
     TARGET_APPLICATION,
     TARGET_DOCUMENT,
+    TARGET_DOCUMENT_ITEM,
     TARGET_HEALTH,
 )
 from ifitwala_ed.api.focus_shared import (
@@ -262,6 +263,58 @@ def get_focus_context(
                 ),
                 "review_status": doc_row.get("review_status"),
                 "review_notes": doc_row.get("review_notes"),
+                "file_url": file_row.get("file_url"),
+                "file_name": file_row.get("file_name"),
+                "uploaded_at": str(file_row.get("creation")) if file_row.get("creation") else None,
+            }
+        elif target_type == TARGET_DOCUMENT_ITEM:
+            item_row = frappe.db.sql(
+                """
+                select
+                    i.name,
+                    i.item_key,
+                    i.item_label,
+                    i.review_status,
+                    i.review_notes,
+                    d.document_type,
+                    d.document_label,
+                    ifnull(dt.document_type_name, '') as document_type_name,
+                    ifnull(dt.code, '') as document_type_code
+                from `tabApplicant Document Item` i
+                join `tabApplicant Document` d
+                  on d.name = i.applicant_document
+                left join `tabApplicant Document Type` dt
+                  on dt.name = d.document_type
+                where i.name = %(name)s
+                """,
+                {"name": assignment_doc.target_name},
+                as_dict=True,
+            )
+            row_item = item_row[0] if item_row else {}
+            file_rows = frappe.get_all(
+                "File",
+                filters={
+                    "attached_to_doctype": TARGET_DOCUMENT_ITEM,
+                    "attached_to_name": assignment_doc.target_name,
+                },
+                fields=["file_url", "file_name", "creation"],
+                order_by="creation desc",
+                limit_page_length=1,
+            )
+            file_row = file_rows[0] if file_rows else {}
+            preview = {
+                "document_type": row_item.get("document_type"),
+                "document_label": (
+                    (row_item.get("document_label") or "").strip()
+                    or (row_item.get("document_type_code") or "").strip()
+                    or (row_item.get("document_type_name") or "").strip()
+                    or (row_item.get("document_type") or "").strip()
+                    or _("Document")
+                ),
+                "item_label": (row_item.get("item_label") or "").strip(),
+                "item_key": (row_item.get("item_key") or "").strip(),
+                "review_status": row_item.get("review_status"),
+                "review_notes": row_item.get("review_notes"),
                 "file_url": file_row.get("file_url"),
                 "file_name": file_row.get("file_name"),
                 "uploaded_at": str(file_row.get("creation")) if file_row.get("creation") else None,

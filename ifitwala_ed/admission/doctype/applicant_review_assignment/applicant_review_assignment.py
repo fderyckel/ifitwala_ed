@@ -5,11 +5,13 @@ from frappe import _
 from frappe.model.document import Document
 
 TARGET_DOCUMENT = "Applicant Document"
+TARGET_DOCUMENT_ITEM = "Applicant Document Item"
 TARGET_HEALTH = "Applicant Health Profile"
 TARGET_APPLICATION = "Student Applicant"
 
 DECISIONS_BY_TARGET = {
     TARGET_DOCUMENT: {"Approved", "Needs Follow-Up", "Rejected"},
+    TARGET_DOCUMENT_ITEM: {"Approved", "Needs Follow-Up", "Rejected"},
     TARGET_HEALTH: {"Cleared", "Needs Follow-Up"},
     TARGET_APPLICATION: {"Recommend Admit", "Recommend Waitlist", "Recommend Reject", "Needs Follow-Up"},
 }
@@ -86,6 +88,20 @@ class ApplicantReviewAssignment(Document):
 
         if target_type == TARGET_DOCUMENT:
             target_applicant = frappe.db.get_value("Applicant Document", target_name, "student_applicant")
+        elif target_type == TARGET_DOCUMENT_ITEM:
+            target_applicant = frappe.db.get_value(
+                "Applicant Document Item",
+                target_name,
+                ["name", "applicant_document"],
+                as_dict=True,
+            )
+            if not target_applicant:
+                frappe.throw(_("Invalid Applicant Document Item target: {0}.").format(target_name))
+            target_applicant = frappe.db.get_value(
+                "Applicant Document",
+                target_applicant.get("applicant_document"),
+                "student_applicant",
+            )
         elif target_type == TARGET_HEALTH:
             target_applicant = frappe.db.get_value("Applicant Health Profile", target_name, "student_applicant")
         elif target_type == TARGET_APPLICATION:

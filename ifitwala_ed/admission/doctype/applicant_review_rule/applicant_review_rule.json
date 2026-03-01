@@ -52,11 +52,11 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Target Type",
-   "options": "Applicant Document\nApplicant Health Profile\nStudent Applicant",
+   "options": "Applicant Document\nApplicant Document Item\nApplicant Health Profile\nStudent Applicant",
    "reqd": 1
   },
   {
-   "depends_on": "eval:doc.target_type==='Applicant Document'",
+   "depends_on": "eval:doc.target_type==='Applicant Document' || doc.target_type==='Applicant Document Item'",
    "description": "Optional. If set, this rule applies only to this Applicant Document Type.",
    "fieldname": "document_type",
    "fieldtype": "Link",

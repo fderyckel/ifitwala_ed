@@ -184,3 +184,73 @@ class ApplicantDocument(Document):
                 ),
                 title="Applicant document update timeline write failed",
             )
+
+
+def _latest_review_actor(rows: list[dict], target_status: str) -> tuple[str | None, str | None]:
+    matching = [row for row in rows if (row.get("review_status") or "").strip() == target_status]
+    if not matching:
+        return None, None
+    matching.sort(key=lambda row: row.get("reviewed_on") or "", reverse=True)
+    picked = matching[0]
+    return (picked.get("reviewed_by") or None, picked.get("reviewed_on") or None)
+
+
+def sync_applicant_document_review_from_items(applicant_document: str | None) -> dict:
+    parent_name = (applicant_document or "").strip()
+    if not parent_name:
+        return {}
+    if not frappe.db.exists("Applicant Document", parent_name):
+        return {}
+
+    item_rows = frappe.get_all(
+        "Applicant Document Item",
+        filters={"applicant_document": parent_name},
+        fields=["review_status", "reviewed_by", "reviewed_on"],
+    )
+    statuses = [(row.get("review_status") or "Pending").strip() for row in item_rows]
+
+    if not statuses:
+        target_status = "Pending"
+        reviewed_by = None
+        reviewed_on = None
+    elif any(status == "Rejected" for status in statuses):
+        target_status = "Rejected"
+        reviewed_by, reviewed_on = _latest_review_actor(item_rows, "Rejected")
+    elif all(status == "Approved" for status in statuses):
+        target_status = "Approved"
+        reviewed_by, reviewed_on = _latest_review_actor(item_rows, "Approved")
+    else:
+        target_status = "Pending"
+        reviewed_by = None
+        reviewed_on = None
+
+    current = (
+        frappe.db.get_value(
+            "Applicant Document",
+            parent_name,
+            ["review_status", "reviewed_by", "reviewed_on"],
+            as_dict=True,
+        )
+        or {}
+    )
+    updates = {}
+    if (current.get("review_status") or "Pending") != target_status:
+        updates["review_status"] = target_status
+    if (current.get("reviewed_by") or None) != reviewed_by:
+        updates["reviewed_by"] = reviewed_by
+    if (current.get("reviewed_on") or None) != reviewed_on:
+        updates["reviewed_on"] = reviewed_on
+
+    if updates:
+        frappe.db.set_value(
+            "Applicant Document",
+            parent_name,
+            updates,
+            update_modified=False,
+        )
+
+    return {
+        "review_status": target_status,
+        "reviewed_by": reviewed_by,
+        "reviewed_on": reviewed_on,
+    }

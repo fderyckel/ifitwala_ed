@@ -9,7 +9,7 @@ import os
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import now_datetime
+from frappe.utils import cint, now_datetime
 
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
@@ -1213,20 +1213,53 @@ class StudentApplicant(Document):
             return 0
 
         doc_names = [row.get("name") for row in docs if row.get("name")]
-        file_rows = frappe.get_all(
-            "File",
-            filters={
-                "attached_to_doctype": "Applicant Document",
-                "attached_to_name": ["in", doc_names],
-            },
-            fields=["name", "attached_to_name", "file_url", "file_name", "is_private", "creation"],
-            order_by="creation desc",
-        )
-        latest_file_by_doc = {}
-        for file_row in file_rows:
-            parent = file_row.get("attached_to_name")
-            if parent and parent not in latest_file_by_doc:
-                latest_file_by_doc[parent] = file_row
+        item_rows = []
+        if doc_names:
+            item_rows = frappe.get_all(
+                "Applicant Document Item",
+                filters={
+                    "applicant_document": ["in", doc_names],
+                    "review_status": "Approved",
+                },
+                fields=["name", "applicant_document", "item_key", "item_label", "review_status"],
+                order_by="modified desc",
+            )
+        items_by_doc = {}
+        for row_item in item_rows:
+            items_by_doc.setdefault(row_item.get("applicant_document"), []).append(row_item)
+
+        item_names = [row_item.get("name") for row_item in item_rows if row_item.get("name")]
+        latest_file_by_item = {}
+        if item_names:
+            file_rows = frappe.get_all(
+                "File",
+                filters={
+                    "attached_to_doctype": "Applicant Document Item",
+                    "attached_to_name": ["in", item_names],
+                },
+                fields=["name", "attached_to_name", "file_url", "file_name", "is_private", "creation"],
+                order_by="creation desc",
+            )
+            for file_row in file_rows:
+                parent = file_row.get("attached_to_name")
+                if parent and parent not in latest_file_by_item:
+                    latest_file_by_item[parent] = file_row
+
+        legacy_latest_file_by_doc = {}
+        if doc_names:
+            legacy_rows = frappe.get_all(
+                "File",
+                filters={
+                    "attached_to_doctype": "Applicant Document",
+                    "attached_to_name": ["in", doc_names],
+                },
+                fields=["name", "attached_to_name", "file_url", "file_name", "is_private", "creation"],
+                order_by="creation desc",
+            )
+            for file_row in legacy_rows:
+                parent = file_row.get("attached_to_name")
+                if parent and parent not in legacy_latest_file_by_doc:
+                    legacy_latest_file_by_doc[parent] = file_row
 
         document_type_names = sorted({row.get("document_type") for row in docs if row.get("document_type")})
         document_type_map = {}
@@ -1244,16 +1277,6 @@ class StudentApplicant(Document):
             if doc_row.get("promotion_target") and doc_row.get("promotion_target") != "Student":
                 continue
 
-            source = latest_file_by_doc.get(doc_row.get("name"))
-            if not source:
-                copy_errors.append(_("Missing file for Applicant Document {0}.").format(doc_row.get("name")))
-                continue
-
-            content = self._read_file_bytes(source)
-            if not content:
-                copy_errors.append(_("Could not read file for Applicant Document {0}.").format(doc_row.get("name")))
-                continue
-
             doc_type_code = document_type_map.get(doc_row.get("document_type")) or doc_row.get("document_type")
             slot_spec = get_applicant_document_slot_spec(
                 document_type=doc_row.get("document_type"),
@@ -1266,9 +1289,70 @@ class StudentApplicant(Document):
                     )
                 )
                 continue
-            slot_key = f"admissions_{frappe.scrub(doc_type_code or 'document')}"
-            filename = source.get("file_name") or os.path.basename(source.get("file_url") or "document")
 
+            item_group = items_by_doc.get(doc_row.get("name"), [])
+            if item_group:
+                for item in item_group:
+                    source = latest_file_by_item.get(item.get("name"))
+                    if not source:
+                        copy_errors.append(
+                            _("Missing file for Applicant Document Item {0}.").format(item.get("name") or _("Unknown"))
+                        )
+                        continue
+                    content = self._read_file_bytes(source)
+                    if not content:
+                        copy_errors.append(
+                            _("Could not read file for Applicant Document Item {0}.").format(
+                                item.get("name") or _("Unknown")
+                            )
+                        )
+                        continue
+                    item_key = (item.get("item_key") or item.get("name") or "item").strip()
+                    slot_key = f"admissions_{frappe.scrub(doc_type_code or 'document')}_{frappe.scrub(item_key)[:80]}"
+                    filename = source.get("file_name") or os.path.basename(source.get("file_url") or "document")
+
+                    try:
+                        file_dispatcher.create_and_classify_file(
+                            file_kwargs={
+                                "attached_to_doctype": "Student",
+                                "attached_to_name": student.name,
+                                "file_name": filename,
+                                "content": content,
+                                "is_private": 1 if source.get("is_private") else 0,
+                            },
+                            classification={
+                                "primary_subject_type": "Student",
+                                "primary_subject_id": student.name,
+                                "data_class": slot_spec["data_class"],
+                                "purpose": slot_spec["purpose"],
+                                "retention_policy": slot_spec["retention_policy"],
+                                "slot": slot_key,
+                                "organization": self.organization,
+                                "school": self.school,
+                                "source_file": source.get("name"),
+                                "upload_source": "API",
+                            },
+                        )
+                        copied_count += 1
+                    except Exception:
+                        copy_errors.append(
+                            _("Could not copy Applicant Document Item {0}.").format(item.get("name") or _("Unknown"))
+                        )
+                        frappe.log_error(frappe.get_traceback(), "Applicant Document Item Promotion Copy Failed")
+                continue
+
+            # Legacy fallback for records predating Applicant Document Item.
+            source = legacy_latest_file_by_doc.get(doc_row.get("name"))
+            if not source:
+                copy_errors.append(_("Missing file for Applicant Document {0}.").format(doc_row.get("name")))
+                continue
+            content = self._read_file_bytes(source)
+            if not content:
+                copy_errors.append(_("Could not read file for Applicant Document {0}.").format(doc_row.get("name")))
+                continue
+
+            slot_key = f"admissions_{frappe.scrub(doc_type_code or 'document')}_legacy"
+            filename = source.get("file_name") or os.path.basename(source.get("file_url") or "document")
             try:
                 file_dispatcher.create_and_classify_file(
                     file_kwargs={
@@ -1495,6 +1579,8 @@ class StudentApplicant(Document):
                 "code",
                 "document_type_name",
                 "is_required",
+                "is_repeatable",
+                "min_items_required",
                 "organization",
                 "school",
             ],
@@ -1521,6 +1607,12 @@ class StudentApplicant(Document):
         required_names = {
             row["name"]: (row["code"] or row["document_type_name"] or row["name"]) for row in required_types
         }
+        required_counts = {}
+        for row in required_types:
+            min_items_required = cint(row.get("min_items_required") or 1)
+            if not cint(row.get("is_repeatable")):
+                min_items_required = 1
+            required_counts[row["name"]] = max(1, min_items_required)
 
         document_rows = frappe.get_all(
             "Applicant Document",
@@ -1537,9 +1629,45 @@ class StudentApplicant(Document):
             order_by="modified desc",
         )
         document_names = [row.get("name") for row in document_rows if row.get("name")]
-        latest_file_by_document = {}
+        item_rows = []
         if document_names:
+            item_rows = frappe.get_all(
+                "Applicant Document Item",
+                filters={"applicant_document": ["in", document_names]},
+                fields=[
+                    "name",
+                    "applicant_document",
+                    "item_key",
+                    "item_label",
+                    "review_status",
+                    "reviewed_by",
+                    "reviewed_on",
+                    "modified",
+                ],
+                order_by="modified desc",
+            )
+
+        item_names = [row.get("name") for row in item_rows if row.get("name")]
+        latest_file_by_item = {}
+        if item_names:
             file_rows = frappe.get_all(
+                "File",
+                filters={
+                    "attached_to_doctype": "Applicant Document Item",
+                    "attached_to_name": ["in", item_names],
+                },
+                fields=["attached_to_name", "file_url", "file_name", "creation", "owner"],
+                order_by="creation desc",
+            )
+            for row_file in file_rows:
+                parent_name = row_file.get("attached_to_name")
+                if not parent_name or parent_name in latest_file_by_item:
+                    continue
+                latest_file_by_item[parent_name] = row_file
+
+        legacy_latest_file_by_document = {}
+        if document_names:
+            legacy_rows = frappe.get_all(
                 "File",
                 filters={
                     "attached_to_doctype": "Applicant Document",
@@ -1548,19 +1676,41 @@ class StudentApplicant(Document):
                 fields=["attached_to_name", "file_url", "file_name", "creation", "owner"],
                 order_by="creation desc",
             )
-            for row_file in file_rows:
+            for row_file in legacy_rows:
                 parent_name = row_file.get("attached_to_name")
-                if not parent_name or parent_name in latest_file_by_document:
+                if not parent_name or parent_name in legacy_latest_file_by_document:
                     continue
-                latest_file_by_document[parent_name] = row_file
+                legacy_latest_file_by_document[parent_name] = row_file
 
         documents_by_type = {row.get("document_type"): row for row in document_rows if row.get("document_type")}
+        items_by_document = {}
+        for row_item in item_rows:
+            parent = row_item.get("applicant_document")
+            if not parent:
+                continue
+            latest_file = latest_file_by_item.get(row_item.get("name"), {})
+            items_by_document.setdefault(parent, []).append(
+                {
+                    "name": row_item.get("name"),
+                    "item_key": row_item.get("item_key"),
+                    "item_label": row_item.get("item_label"),
+                    "review_status": row_item.get("review_status") or "Pending",
+                    "reviewed_by": row_item.get("reviewed_by"),
+                    "reviewed_on": row_item.get("reviewed_on"),
+                    "uploaded_by": latest_file.get("owner"),
+                    "uploaded_at": latest_file.get("creation"),
+                    "file_url": latest_file.get("file_url"),
+                    "file_name": latest_file.get("file_name"),
+                    "modified": row_item.get("modified"),
+                }
+            )
 
         missing = []
         unapproved = []
         required_rows = []
         for doc_type, label in required_names.items():
             document_row = documents_by_type.get(doc_type)
+            required_count = required_counts.get(doc_type, 1)
             if not document_row:
                 missing.append(label)
                 required_rows.append(
@@ -1569,6 +1719,9 @@ class StudentApplicant(Document):
                         "document_type": doc_type,
                         "label": label,
                         "is_required": True,
+                        "required_count": required_count,
+                        "uploaded_count": 0,
+                        "approved_count": 0,
                         "review_status": "Missing",
                         "reviewed_by": None,
                         "reviewed_on": None,
@@ -1577,28 +1730,67 @@ class StudentApplicant(Document):
                         "file_url": None,
                         "file_name": None,
                         "modified": None,
+                        "items": [],
                     }
                 )
                 continue
 
-            review_status = document_row.get("review_status") or "Pending"
-            if review_status != "Approved":
+            item_group = list(items_by_document.get(document_row.get("name"), []))
+            if not item_group:
+                legacy_file = legacy_latest_file_by_document.get(document_row.get("name"), {})
+                if legacy_file:
+                    item_group = [
+                        {
+                            "name": "",
+                            "item_key": "legacy",
+                            "item_label": _("Existing upload"),
+                            "review_status": document_row.get("review_status") or "Pending",
+                            "reviewed_by": document_row.get("reviewed_by"),
+                            "reviewed_on": document_row.get("reviewed_on"),
+                            "uploaded_by": legacy_file.get("owner"),
+                            "uploaded_at": legacy_file.get("creation"),
+                            "file_url": legacy_file.get("file_url"),
+                            "file_name": legacy_file.get("file_name"),
+                            "modified": document_row.get("modified"),
+                        }
+                    ]
+
+            uploaded_items = [row for row in item_group if row.get("file_url")]
+            approved_items = [row for row in uploaded_items if row.get("review_status") == "Approved"]
+            uploaded_count = len(uploaded_items)
+            approved_count = len(approved_items)
+
+            if uploaded_count < required_count:
+                missing.append(label)
+            elif approved_count < required_count:
                 unapproved.append(label)
-            latest_file = latest_file_by_document.get(document_row.get("name"), {})
+
+            review_status = document_row.get("review_status") or "Pending"
+            latest_uploaded_item = {}
+            if uploaded_items:
+                latest_uploaded_item = sorted(
+                    uploaded_items,
+                    key=lambda row_item: row_item.get("uploaded_at") or "",
+                    reverse=True,
+                )[0]
             required_rows.append(
                 {
                     "applicant_document": document_row.get("name"),
                     "document_type": doc_type,
                     "label": label,
                     "is_required": True,
+                    "required_count": required_count,
+                    "uploaded_count": uploaded_count,
+                    "approved_count": approved_count,
                     "review_status": review_status,
                     "reviewed_by": document_row.get("reviewed_by"),
                     "reviewed_on": document_row.get("reviewed_on"),
-                    "uploaded_by": latest_file.get("owner"),
-                    "uploaded_at": latest_file.get("creation"),
-                    "file_url": latest_file.get("file_url"),
-                    "file_name": latest_file.get("file_name"),
+                    "uploaded_by": latest_uploaded_item.get("uploaded_by"),
+                    "uploaded_at": latest_uploaded_item.get("uploaded_at"),
+                    "file_url": latest_uploaded_item.get("file_url"),
+                    "file_name": latest_uploaded_item.get("file_name"),
                     "modified": document_row.get("modified"),
+                    "items": item_group,
                 }
             )
 
@@ -1613,21 +1805,58 @@ class StudentApplicant(Document):
                 or document_type
                 or document_row.get("name")
             )
-            latest_file = latest_file_by_document.get(document_row.get("name"), {})
+            required_count = 1
+            if cint(meta.get("is_repeatable")):
+                required_count = max(1, cint(meta.get("min_items_required") or 1))
+
+            item_group = list(items_by_document.get(document_row.get("name"), []))
+            if not item_group:
+                legacy_file = legacy_latest_file_by_document.get(document_row.get("name"), {})
+                if legacy_file:
+                    item_group = [
+                        {
+                            "name": "",
+                            "item_key": "legacy",
+                            "item_label": _("Existing upload"),
+                            "review_status": document_row.get("review_status") or "Pending",
+                            "reviewed_by": document_row.get("reviewed_by"),
+                            "reviewed_on": document_row.get("reviewed_on"),
+                            "uploaded_by": legacy_file.get("owner"),
+                            "uploaded_at": legacy_file.get("creation"),
+                            "file_url": legacy_file.get("file_url"),
+                            "file_name": legacy_file.get("file_name"),
+                            "modified": document_row.get("modified"),
+                        }
+                    ]
+
+            uploaded_items = [row for row in item_group if row.get("file_url")]
+            approved_items = [row for row in uploaded_items if row.get("review_status") == "Approved"]
+            latest_uploaded_item = {}
+            if uploaded_items:
+                latest_uploaded_item = sorted(
+                    uploaded_items,
+                    key=lambda row_item: row_item.get("uploaded_at") or "",
+                    reverse=True,
+                )[0]
             uploaded_rows.append(
                 {
                     "applicant_document": document_row.get("name"),
                     "document_type": document_type,
                     "label": label,
                     "is_required": bool(meta.get("is_required")),
+                    "required_count": required_count if cint(meta.get("is_required")) else 0,
+                    "uploaded_count": len(uploaded_items),
+                    "approved_count": len(approved_items),
+                    "is_repeatable": bool(meta.get("is_repeatable")),
                     "review_status": document_row.get("review_status") or "Pending",
                     "reviewed_by": document_row.get("reviewed_by"),
                     "reviewed_on": document_row.get("reviewed_on"),
-                    "uploaded_by": latest_file.get("owner"),
-                    "uploaded_at": latest_file.get("creation"),
-                    "file_url": latest_file.get("file_url"),
-                    "file_name": latest_file.get("file_name"),
+                    "uploaded_by": latest_uploaded_item.get("uploaded_by"),
+                    "uploaded_at": latest_uploaded_item.get("uploaded_at"),
+                    "file_url": latest_uploaded_item.get("file_url"),
+                    "file_name": latest_uploaded_item.get("file_name"),
                     "modified": document_row.get("modified"),
+                    "items": item_group,
                 }
             )
 

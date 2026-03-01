@@ -16,6 +16,8 @@
   "classification_purpose",
   "classification_retention_policy",
   "is_required",
+  "is_repeatable",
+  "min_items_required",
   "is_active",
   "description"
  ],
@@ -79,6 +81,18 @@
    "fieldname": "is_required",
    "fieldtype": "Check",
    "label": "Is Required"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_repeatable",
+   "fieldtype": "Check",
+   "label": "Is Repeatable"
+  },
+  {
+   "default": "1",
+   "fieldname": "min_items_required",
+   "fieldtype": "Int",
+   "label": "Min Items Required"
   },
   {
    "default": "1",

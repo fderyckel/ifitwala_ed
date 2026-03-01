@@ -75,6 +75,23 @@
 								</p>
 							</div>
 
+							<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+								<label class="type-caption text-ink/70" for="item-label-input">
+									{{ __('File description') }}
+								</label>
+								<input
+									id="item-label-input"
+									v-model="itemLabelValue"
+									type="text"
+									class="mt-2 block w-full rounded-xl border border-border/70 px-3 py-2 type-caption text-ink"
+									:placeholder="__('Example: AISL transcript 2019')"
+									:disabled="isReadOnly || submitting"
+								/>
+								<p class="mt-2 type-caption text-ink/55">
+									{{ __('This label helps admissions review each uploaded file separately.') }}
+								</p>
+							</div>
+
 							<p v-if="description" class="type-caption text-ink/60">
 								{{ description }}
 							</p>
@@ -142,6 +159,10 @@ const props = defineProps<{
 	documentType?: string;
 	documentLabel?: string;
 	description?: string;
+	mode?: 'add' | 'replace';
+	applicantDocumentItem?: string | null;
+	itemKey?: string | null;
+	itemLabel?: string | null;
 	readOnly?: boolean;
 }>();
 const emit = defineEmits(['close', 'after-leave', 'done']);
@@ -152,6 +173,7 @@ const service = createAdmissionsService();
 const submitting = ref(false);
 const errorMessage = ref('');
 const selectedFile = ref<File | null>(null);
+const itemLabelValue = ref('');
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
@@ -162,6 +184,7 @@ const overlayStyle = computed(() => ({
 const isReadOnly = computed(() => Boolean(props.readOnly));
 const documentLabel = computed(() => props.documentLabel || '');
 const description = computed(() => props.description || '');
+const mode = computed(() => (props.mode === 'replace' ? 'replace' : 'add'));
 
 function setError(err: unknown, fallback: string) {
 	const raw =
@@ -200,6 +223,7 @@ function normalizeUploadErrorMessage(raw: string, fallback: string): string {
 
 function resetForm() {
 	selectedFile.value = null;
+	itemLabelValue.value = (props.itemLabel || '').trim();
 	if (fileInput.value) fileInput.value.value = '';
 }
 
@@ -280,13 +304,23 @@ async function submit() {
 		setError('', __('Please choose a file to upload.'));
 		return;
 	}
+	const trimmedItemLabel = itemLabelValue.value.trim();
+	if (!trimmedItemLabel) {
+		setError('', __('Please provide a short description for this file.'));
+		return;
+	}
 
 	submitting.value = true;
 	clearError();
 	try {
 		const content = await readAsBase64(selectedFile.value);
+		const clientRequestId = `admissions_upload_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 		await service.uploadDocument({
 			document_type: props.documentType,
+			applicant_document_item: props.applicantDocumentItem || null,
+			item_key: mode.value === 'replace' ? props.itemKey || null : null,
+			item_label: trimmedItemLabel,
+			client_request_id: clientRequestId,
 			file_name: selectedFile.value.name,
 			content,
 		});

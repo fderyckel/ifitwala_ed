@@ -52,7 +52,7 @@ export type Response = {
   }>
   review_assignment?: {
     name: string
-    target_type: 'Applicant Document' | 'Applicant Health Profile' | 'Student Applicant'
+    target_type: 'Applicant Document' | 'Applicant Document Item' | 'Applicant Health Profile' | 'Student Applicant'
     target_name: string
     student_applicant: string
     applicant_name?: string | null
@@ -73,6 +73,8 @@ export type Response = {
     preview?: {
       document_type?: string | null
       document_label?: string | null
+      item_label?: string | null
+      item_key?: string | null
       review_status?: string | null
       review_notes?: string | null
       file_url?: string | null

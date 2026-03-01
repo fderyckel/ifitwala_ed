@@ -3,6 +3,8 @@
 export type Request = {
   policy_version: string
   student_applicant?: string
+  typed_signature_name: string
+  attestation_confirmed: 0 | 1
 }
 
 export type Response = {
