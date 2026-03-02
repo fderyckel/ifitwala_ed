@@ -337,8 +337,8 @@ This portal is **not**:
 
 * a CMS
 * a Guardian preview
-* a messaging platform
-* a chat system
+* a general-purpose messaging platform
+* a real-time chat system
 * a workflow engine
 
 It is a **controlled data-completion surface**.
@@ -722,7 +722,26 @@ Family declares **“ready for review”**.
 
 ---
 
-## A.8 Explicitly Forbidden APIs
+## A.8 Admissions Communication Thread
+
+### Endpoints
+
+```
+POST /api/method/ifitwala_ed.api.admissions_communication.get_admissions_case_thread
+POST /api/method/ifitwala_ed.api.admissions_communication.send_admissions_case_message
+POST /api/method/ifitwala_ed.api.admissions_communication.mark_admissions_case_thread_read
+```
+
+### Rules
+
+* Context is `Student Applicant` only for applicant portal callers.
+* Applicant portal sends applicant-visible messages only.
+* Internal staff notes never render in applicant portal thread responses.
+* Read state is tracked per user/thread through `Portal Read Receipt`.
+
+---
+
+## A.9 Explicitly Forbidden APIs
 
 The portal must **never** call:
 
@@ -856,6 +875,25 @@ No business logic.
 
 ---
 
+### `/admissions/messages`
+
+**Page:** `ApplicantMessages.vue`
+
+**Purpose**
+
+* Applicant ↔ admissions case communication in-app
+* Keep communication attached to `Student Applicant` context
+
+**Reads**
+
+* Admissions case thread summary + message timeline
+
+**Writes**
+
+* Applicant-visible messages only
+
+---
+
 ### `/admissions/submit`
 
 **Page:** `ApplicantSubmit.vue`
@@ -921,14 +959,13 @@ No:
 
 * multi-applicant support
 * sibling switch
-* chat
-* messaging
 * staff notes
 * review UI
 * approval UI
 * promotion UI
 
-Those belong to **staff workspace**, not this portal.
+Messaging is intentionally shared between applicant portal and staff cockpit as the single case communication surface.
+Staff-only notes remain staff workspace concerns.
 
 ---
 

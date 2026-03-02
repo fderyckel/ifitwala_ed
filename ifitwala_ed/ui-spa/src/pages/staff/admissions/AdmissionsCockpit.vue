@@ -113,14 +113,23 @@
 										<p class="type-body-strong text-ink">{{ item.display_name }}</p>
 										<p class="type-caption text-slate-token/70">{{ item.name }}</p>
 									</div>
-									<a
-										:href="item.open_url"
-										target="_blank"
-										rel="noopener noreferrer"
-										class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
-									>
-										Open
-									</a>
+									<div class="flex items-center gap-1.5">
+										<button
+											type="button"
+											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											@click="openThread(item)"
+										>
+											Message
+										</button>
+										<a
+											:href="item.open_url"
+											target="_blank"
+											rel="noopener noreferrer"
+											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+										>
+											Open
+										</a>
+									</div>
 								</div>
 
 								<p class="mb-2 type-caption text-slate-token/80">
@@ -138,6 +147,21 @@
 									<span :class="pillClass(item.readiness.documents_ok)">Docs</span>
 									<span :class="pillClass(item.readiness.policies_ok)">Policies</span>
 									<span :class="pillClass(item.readiness.health_ok)">Health</span>
+									<span
+										v-if="(item.comms?.unread_count || 0) > 0"
+										class="rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700"
+									>
+										Comms · {{ item.comms?.unread_count || 0 }}
+									</span>
+								</div>
+
+								<div
+									v-if="item.comms?.last_message_preview"
+									class="mb-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1"
+								>
+									<p class="line-clamp-2 text-xs text-slate-token/80">
+										{{ item.comms?.last_message_preview }}
+									</p>
 								</div>
 
 								<div v-if="item.top_blockers.length" class="space-y-1">
@@ -166,6 +190,96 @@
 				</div>
 			</section>
 		</template>
+
+		<div
+			v-if="activeThreadCard"
+			class="fixed inset-0 z-50 flex items-stretch justify-end bg-slate-900/35"
+			@click.self="closeThread"
+		>
+			<section class="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl">
+				<header class="border-b border-slate-200 px-5 py-4">
+					<div class="flex items-start justify-between gap-3">
+						<div>
+							<p class="type-label text-canopy">Case Communication</p>
+							<p class="type-body-strong text-ink">{{ activeThreadCard.display_name }}</p>
+							<p class="type-caption text-slate-token/70">{{ activeThreadCard.name }}</p>
+						</div>
+						<button
+							type="button"
+							class="rounded-full border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-token hover:border-slate-400"
+							@click="closeThread"
+						>
+							Close
+						</button>
+					</div>
+				</header>
+
+				<div class="flex-1 overflow-y-auto px-5 py-4">
+					<p v-if="threadLoading" class="text-sm text-slate-500">Loading messages...</p>
+					<div
+						v-else-if="threadError"
+						class="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+					>
+						{{ threadError }}
+					</div>
+					<div
+						v-else-if="!threadMessages.length"
+						class="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-600"
+					>
+						No messages yet.
+					</div>
+					<div v-else class="space-y-2">
+						<article
+							v-for="message in threadMessages"
+							:key="`${message.name}-${message.created_at}`"
+							class="rounded-lg border px-3 py-2"
+							:class="messageClass(message.direction)"
+						>
+							<div class="flex items-center justify-between gap-3">
+								<p class="text-xs font-semibold text-slate-700">
+									{{ message.full_name || message.user }}
+								</p>
+								<p class="text-xs text-slate-500">{{ formatDate(message.created_at) }}</p>
+							</div>
+							<p class="mt-1 whitespace-pre-wrap text-sm text-slate-800">{{ message.body }}</p>
+						</article>
+					</div>
+				</div>
+
+				<footer class="border-t border-slate-200 px-5 py-4">
+					<p class="mb-1 text-xs font-semibold text-slate-700">Reply</p>
+					<textarea
+						v-model="threadDraft"
+						rows="4"
+						maxlength="300"
+						class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
+						placeholder="Write a message to applicant..."
+					/>
+					<div class="mt-2 flex items-center justify-between gap-3">
+						<label class="inline-flex items-center gap-2 text-xs text-slate-700">
+							<input
+								v-model="threadInternalNote"
+								type="checkbox"
+								class="h-4 w-4 rounded border-slate-300"
+							/>
+							<span>Internal note (not visible to applicant)</span>
+						</label>
+						<p class="text-xs text-slate-500">{{ threadDraft.length }}/300</p>
+					</div>
+					<p v-if="threadSendError" class="mt-2 text-xs text-rose-700">{{ threadSendError }}</p>
+					<div class="mt-3 flex justify-end">
+						<button
+							type="button"
+							class="rounded-full bg-canopy px-4 py-2 text-sm font-semibold text-white transition hover:bg-canopy/90 disabled:cursor-not-allowed disabled:opacity-50"
+							:disabled="threadSending"
+							@click="sendThreadMessage"
+						>
+							{{ threadSending ? 'Sending...' : 'Send' }}
+						</button>
+					</div>
+				</footer>
+			</section>
+		</div>
 	</div>
 </template>
 
@@ -174,7 +288,13 @@ import { computed, onMounted, ref, watch } from 'vue';
 
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
-import { getAdmissionsCockpitData } from '@/lib/admission';
+import {
+	getAdmissionsCaseThread,
+	getAdmissionsCockpitData,
+	markAdmissionsCaseRead,
+	sendAdmissionsCaseMessage,
+	type AdmissionsCaseMessage,
+} from '@/lib/admission';
 
 type CockpitCounts = {
 	active_applications: number;
@@ -182,6 +302,7 @@ type CockpitCounts = {
 	ready_for_decision: number;
 	accepted_pending_promotion: number;
 	my_open_assignments: number;
+	unread_applicant_replies: number;
 };
 
 type CockpitBlocker = {
@@ -214,6 +335,14 @@ type CockpitCard = {
 		target_url?: string;
 		target_label?: string;
 	}[];
+	comms?: {
+		thread_name?: string | null;
+		unread_count: number;
+		last_message_at?: string | null;
+		last_message_preview: string;
+		last_message_from?: 'applicant' | 'staff' | null;
+		needs_reply: boolean;
+	};
 };
 
 type CockpitColumn = {
@@ -236,6 +365,14 @@ const loading = ref(false);
 const error = ref('');
 const data = ref<CockpitPayload | null>(null);
 const activeBlocker = ref('');
+const activeThreadCard = ref<CockpitCard | null>(null);
+const threadLoading = ref(false);
+const threadError = ref('');
+const threadMessages = ref<AdmissionsCaseMessage[]>([]);
+const threadDraft = ref('');
+const threadInternalNote = ref(false);
+const threadSending = ref(false);
+const threadSendError = ref('');
 
 const filters = ref({
 	organization: '',
@@ -258,6 +395,7 @@ const kpiItems = computed(() => {
 		ready_for_decision: 0,
 		accepted_pending_promotion: 0,
 		my_open_assignments: 0,
+		unread_applicant_replies: 0,
 	};
 	return [
 		{ id: 'active', label: 'Active Applications', value: counts.active_applications },
@@ -269,6 +407,12 @@ const kpiItems = computed(() => {
 			value: counts.accepted_pending_promotion,
 		},
 		{ id: 'assignments', label: 'My Open Assignments', value: counts.my_open_assignments },
+		{
+			id: 'unread-replies',
+			label: 'Unread Applicant Replies',
+			value: counts.unread_applicant_replies,
+			hint: 'Comms Queue',
+		},
 	];
 });
 
@@ -294,6 +438,101 @@ function queueRefresh() {
 	refreshTimer = setTimeout(() => {
 		void refreshNow();
 	}, 300);
+}
+
+function messageClass(direction: AdmissionsCaseMessage['direction']) {
+	if (direction === 'ApplicantToStaff') {
+		return 'border-blue-300 bg-blue-50';
+	}
+	if (direction === 'Internal') {
+		return 'border-amber-300 bg-amber-50';
+	}
+	return 'border-emerald-300 bg-emerald-50';
+}
+
+function formatDate(value?: string | null) {
+	if (!value) {
+		return '—';
+	}
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) {
+		return value;
+	}
+	return date.toLocaleString();
+}
+
+async function loadThread(card: CockpitCard, markRead: boolean = true) {
+	threadLoading.value = true;
+	threadError.value = '';
+	try {
+		const payload = await getAdmissionsCaseThread({
+			context_doctype: 'Student Applicant',
+			context_name: card.name,
+			limit_start: 0,
+			limit_page_length: 200,
+		});
+		threadMessages.value = payload.messages || [];
+		if (markRead) {
+			await markAdmissionsCaseRead({
+				context_doctype: 'Student Applicant',
+				context_name: card.name,
+			});
+			queueRefresh();
+		}
+	} catch (err: any) {
+		threadError.value = err?.message || 'Could not load case communication.';
+	} finally {
+		threadLoading.value = false;
+	}
+}
+
+function openThread(card: CockpitCard) {
+	activeThreadCard.value = card;
+	threadDraft.value = '';
+	threadInternalNote.value = false;
+	threadSendError.value = '';
+	void loadThread(card, true);
+}
+
+function closeThread() {
+	activeThreadCard.value = null;
+	threadMessages.value = [];
+	threadDraft.value = '';
+	threadInternalNote.value = false;
+	threadSendError.value = '';
+}
+
+async function sendThreadMessage() {
+	const card = activeThreadCard.value;
+	if (!card) {
+		threadSendError.value = 'No applicant selected.';
+		return;
+	}
+	const body = threadDraft.value.trim();
+	if (!body) {
+		threadSendError.value = 'Please write a message before sending.';
+		return;
+	}
+
+	threadSendError.value = '';
+	threadSending.value = true;
+	try {
+		await sendAdmissionsCaseMessage({
+			context_doctype: 'Student Applicant',
+			context_name: card.name,
+			body,
+			applicant_visible: threadInternalNote.value ? 0 : 1,
+			client_request_id: `admissions_case_message_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+		});
+		threadDraft.value = '';
+		threadInternalNote.value = false;
+		await loadThread(card, false);
+		queueRefresh();
+	} catch (err: any) {
+		threadSendError.value = err?.message || 'Could not send message.';
+	} finally {
+		threadSending.value = false;
+	}
 }
 
 async function refreshNow() {

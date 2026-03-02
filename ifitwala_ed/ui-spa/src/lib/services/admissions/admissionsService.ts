@@ -26,6 +26,12 @@ import type {
 import type { Request as PoliciesRequest, Response as PoliciesResponse } from '@/types/contracts/admissions/get_applicant_policies'
 import type { Request as AcknowledgePolicyRequest, Response as AcknowledgePolicyResponse } from '@/types/contracts/admissions/acknowledge_policy'
 import type { Request as SubmitRequest, Response as SubmitResponse } from '@/types/contracts/admissions/submit_application'
+import type { Request as MessagesRequest, Response as MessagesResponse } from '@/types/contracts/admissions/get_applicant_messages'
+import type { Request as SendMessageRequest, Response as SendMessageResponse } from '@/types/contracts/admissions/send_applicant_message'
+import type {
+  Request as MarkMessagesReadRequest,
+  Response as MarkMessagesReadResponse,
+} from '@/types/contracts/admissions/mark_applicant_messages_read'
 
 export function createAdmissionsService() {
   const sessionResource = createResource<SessionResponse>({
@@ -106,6 +112,24 @@ export function createAdmissionsService() {
     auto: false,
   })
 
+  const messagesResource = createResource<MessagesResponse>({
+    url: 'ifitwala_ed.api.admissions_communication.get_admissions_case_thread',
+    method: 'POST',
+    auto: false,
+  })
+
+  const sendMessageResource = createResource<SendMessageResponse>({
+    url: 'ifitwala_ed.api.admissions_communication.send_admissions_case_message',
+    method: 'POST',
+    auto: false,
+  })
+
+  const markMessagesReadResource = createResource<MarkMessagesReadResponse>({
+    url: 'ifitwala_ed.api.admissions_communication.mark_admissions_case_thread_read',
+    method: 'POST',
+    auto: false,
+  })
+
   async function getSession(payload: SessionRequest = {}): Promise<SessionResponse> {
     return sessionResource.submit(payload)
   }
@@ -172,6 +196,20 @@ export function createAdmissionsService() {
     return result
   }
 
+  async function getMessages(payload: MessagesRequest = {}): Promise<MessagesResponse> {
+    return messagesResource.submit(payload)
+  }
+
+  async function sendMessage(payload: SendMessageRequest): Promise<SendMessageResponse> {
+    const result = await sendMessageResource.submit(payload)
+    uiSignals.emit(SIGNAL_ADMISSIONS_PORTAL_INVALIDATE)
+    return result
+  }
+
+  async function markMessagesRead(payload: MarkMessagesReadRequest = {}): Promise<MarkMessagesReadResponse> {
+    return markMessagesReadResource.submit(payload)
+  }
+
   return {
     getSession,
     getSnapshot,
@@ -186,5 +224,8 @@ export function createAdmissionsService() {
     listPolicies,
     acknowledgePolicy,
     submitApplication,
+    getMessages,
+    sendMessage,
+    markMessagesRead,
   }
 }

@@ -25,6 +25,9 @@
   "activity_booking",
   "column_break_activity_context",
   "activity_student_group",
+  "admission_context_section",
+  "admission_context_doctype",
+  "admission_context_name",
   "audience_section",
   "audiences",
   "section_break_dcte",
@@ -125,6 +128,25 @@
    "fieldtype": "Link",
    "label": "Activity Student Group",
    "options": "Student Group"
+  },
+  {
+   "fieldname": "admission_context_section",
+   "fieldtype": "Section Break",
+   "label": "Admission Context"
+  },
+  {
+   "description": "Optional admissions case context. Used to bind communication threads to Student Applicant or Inquiry records.",
+   "fieldname": "admission_context_doctype",
+   "fieldtype": "Select",
+   "label": "Admission Context DocType",
+   "options": "\nStudent Applicant\nInquiry"
+  },
+  {
+   "depends_on": "eval:doc.admission_context_doctype",
+   "fieldname": "admission_context_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Admission Context Name",
+   "options": "admission_context_doctype"
   },
   {
    "description": "Communication is visible from this time onwards.",

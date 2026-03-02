@@ -9,7 +9,7 @@ from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
 
 FAMILY_ROLES = {"Guardian"}
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
-STAFF_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
+STAFF_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager", "Nurse"}
 
 
 class ApplicantHealthProfile(Document):

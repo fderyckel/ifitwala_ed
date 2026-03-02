@@ -1,17 +1,16 @@
 # Admissions Residual Decisions
 
-Date: 2026-03-01
+Date: 2026-03-02
 
 This note replaces prior admission audit working files. Most audit items are implemented. The remaining items are explicit product/architecture decisions.
 
 ## 1) Admissions Communication Contract
 
-Decision required:
-- Introduce a first-class `Admissions Communication` artifact for applicant/inquiry lifecycle communications, or
-- Formally standardize on existing `Org Communication` patterns and update admission contracts/docs accordingly.
-
-Why this is still open:
-- Admission docs reference `Admissions Communication` surfaces, but no admissions-specific implementation path is currently present.
+Resolved on 2026-03-02:
+- Admissions communication now runs as applicant/staff case threads anchored to `Student Applicant` context.
+- Staff triage is surfaced in `Admissions Cockpit` via communication summaries (`unread`, `last preview`, `needs_reply`).
+- Applicant-facing communication is surfaced in portal route `/admissions/messages`.
+- Thread read/write APIs are centralized in `ifitwala_ed.api.admissions_communication`.
 
 ## 2) Student Direct-Creation Guard Policy
 

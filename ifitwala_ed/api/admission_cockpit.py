@@ -17,6 +17,7 @@ from ifitwala_ed.admission.admission_utils import (
     is_applicant_document_type_in_scope,
 )
 from ifitwala_ed.admission.doctype.student_applicant.student_applicant import STUDENT_PROFILE_REQUIRED_FIELD_LABELS
+from ifitwala_ed.api.admissions_communication import get_admissions_thread_summaries_for_applicants
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
@@ -958,6 +959,7 @@ def _empty_payload(organizations: list[str], schools: list[str]) -> dict:
             "ready_for_decision": 0,
             "accepted_pending_promotion": 0,
             "my_open_assignments": 0,
+            "unread_applicant_replies": 0,
         },
         "blockers": [],
         "columns": [{"id": col_id, "title": title, "items": []} for col_id, title in KANBAN_COLUMNS],
@@ -1074,6 +1076,7 @@ def get_admissions_cockpit_data(filters=None):
             "student_first_language",
             "student_nationality",
             "residency_status",
+            "applicant_user",
         ],
         order_by="modified desc",
         limit_page_length=fetch_limit,
@@ -1143,6 +1146,18 @@ def get_admissions_cockpit_data(filters=None):
         frappe.logger("admissions_cockpit", allow_site=True).exception("Admissions cockpit readiness batch failed.")
         readiness_by_applicant = {}
 
+    comms_summary_by_applicant: dict[str, dict]
+    try:
+        comms_summary_by_applicant = get_admissions_thread_summaries_for_applicants(
+            applicant_rows=applicant_rows,
+            user=user,
+        )
+    except Exception:
+        frappe.logger("admissions_cockpit", allow_site=True).exception(
+            "Admissions cockpit communication summary failed."
+        )
+        comms_summary_by_applicant = {}
+
     columns = {col_id: {"id": col_id, "title": title, "items": []} for col_id, title in KANBAN_COLUMNS}
     blocker_counts = {key: 0 for key in BLOCKER_LABELS}
     counts = {
@@ -1151,6 +1166,7 @@ def get_admissions_cockpit_data(filters=None):
         "ready_for_decision": 0,
         "accepted_pending_promotion": 0,
         "my_open_assignments": 0,
+        "unread_applicant_replies": 0,
     }
 
     for row in applicant_rows:
@@ -1160,6 +1176,7 @@ def get_admissions_cockpit_data(filters=None):
 
         assignee_stats = assignment_summary.get(applicant_name, {"open_total": 0, "open_for_me": 0})
         snapshot = readiness_by_applicant.get(applicant_name) or _empty_readiness_snapshot()
+        comms_summary = comms_summary_by_applicant.get(applicant_name) or {}
 
         ready = bool(snapshot.get("ready"))
         stage = _resolve_stage(_to_text(row.get("application_status")), ready)
@@ -1187,6 +1204,8 @@ def get_admissions_cockpit_data(filters=None):
 
         counts["active_applications"] += 1
         counts["my_open_assignments"] += assignee_stats.get("open_for_me", 0)
+        if bool(comms_summary.get("needs_reply")):
+            counts["unread_applicant_replies"] += cint(comms_summary.get("unread_count") or 0)
 
         card = {
             "name": applicant_name,
@@ -1217,6 +1236,14 @@ def get_admissions_cockpit_data(filters=None):
             "blockers": blockers,
             "issues": [str(item) for item in (snapshot.get("issues") or [])],
             "open_url": _doc_url("Student Applicant", applicant_name),
+            "comms": {
+                "thread_name": _to_text(comms_summary.get("thread_name")) or None,
+                "unread_count": cint(comms_summary.get("unread_count") or 0),
+                "last_message_at": comms_summary.get("last_message_at"),
+                "last_message_preview": _to_text(comms_summary.get("last_message_preview")),
+                "last_message_from": _to_text(comms_summary.get("last_message_from")) or None,
+                "needs_reply": bool(comms_summary.get("needs_reply")),
+            },
         }
 
         if stage in columns:

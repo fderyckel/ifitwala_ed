@@ -3,8 +3,8 @@ title: "Applicant Health Profile: Health Disclosure and Clearance"
 slug: applicant-health-profile
 category: Admission
 doc_order: 7
-version: "2.2.1"
-last_change_date: "2026-02-23"
+version: "2.2.2"
+last_change_date: "2026-03-02"
 summary: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
 seo_title: "Applicant Health Profile: Health Disclosure and Clearance"
 seo_description: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
@@ -91,7 +91,7 @@ Do not move applicants to final approval while health review remains unresolved;
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-02-21)
+### Latest Technical Snapshot (2026-03-02)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_health_profile/applicant_health_profile.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/applicant_health_profile/applicant_health_profile.py`
@@ -121,11 +121,12 @@ Do not move applicants to final approval while health review remains unresolved;
 | `Academic Admin` | Yes | Yes | Yes | Yes | Staff review role |
 | `Admission Manager` | Yes | Yes | Yes | Yes | Full Desk access |
 | `Admission Officer` | Yes | Yes | Yes | Yes | Full Desk access |
+| `Nurse` | Yes | Yes | Yes | Yes | Staff review role |
 | `Guardian` | Yes | Yes | Yes | No | Family-facing write allowed by DocType permissions |
 
 Runtime controller rules:
 - Family/applicant editing is allowed for non-promoted applicant phases (`Draft` through `Withdrawn`, excluding `Rejected`).
-- Review fields are staff-only.
+- Review fields are staff-only (`Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`, `Nurse`).
 - Terminal applicant states (`Rejected`, `Promoted`) are read-only.
 
 ## Reporting

@@ -902,3 +902,11 @@ def on_doctype_update():
         ["activity_student_group", "publish_from"],
         index_name="idx_org_comm_activity_group_publish",
     )
+    if frappe.db.has_column("Org Communication", "admission_context_doctype") and frappe.db.has_column(
+        "Org Communication", "admission_context_name"
+    ):
+        frappe.db.add_index(
+            "Org Communication",
+            ["admission_context_doctype", "admission_context_name", "creation"],
+            index_name="idx_org_comm_admission_context",
+        )

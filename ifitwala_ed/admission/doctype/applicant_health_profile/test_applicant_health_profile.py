@@ -56,6 +56,37 @@ class TestApplicantHealthProfile(FrappeTestCase):
         profile.save(ignore_permissions=True)
         self.assertEqual(profile.diet_requirements, "No peanuts")
 
+    def test_nurse_can_edit_health_review_fields(self):
+        frappe.db.set_value(
+            "Student Applicant",
+            self.applicant,
+            "application_status",
+            "Submitted",
+            update_modified=False,
+        )
+        frappe.set_user(self.user)
+        profile = frappe.get_doc(
+            {
+                "doctype": "Applicant Health Profile",
+                "student_applicant": self.applicant,
+                "blood_group": "A Positive",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Health Profile", profile.name))
+
+        nurse_user = self._create_user_with_role("Nurse")
+        frappe.clear_cache(user=nurse_user)
+        frappe.set_user(nurse_user)
+
+        profile.review_status = "Needs Follow-Up"
+        profile.review_notes = "Vaccination date is missing."
+        profile.save(ignore_permissions=True)
+
+        self.assertEqual(profile.review_status, "Needs Follow-Up")
+        self.assertEqual(profile.review_notes, "Vaccination date is missing.")
+        self.assertEqual(profile.reviewed_by, nurse_user)
+        self.assertIsNotNone(profile.reviewed_on)
+
     def _create_organization(self) -> str:
         doc = frappe.get_doc(
             {

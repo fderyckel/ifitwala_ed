@@ -75,3 +75,15 @@ export type ApplicantPolicy = {
   acknowledged_at?: string | null
   expected_signature_name: string
 }
+
+export type ApplicantMessage = {
+  name: string
+  user: string
+  full_name: string
+  body: string
+  direction: 'ApplicantToStaff' | 'StaffToApplicant' | 'Internal'
+  visibility: string
+  applicant_visible: boolean
+  created_at?: string | null
+  modified_at?: string | null
+}
