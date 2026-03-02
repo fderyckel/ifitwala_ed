@@ -81,14 +81,19 @@ These roles already exist conceptually in your system; this matrix assumes them.
 | Action                            | System Manager   | Org Admin | Policy Admin Managers* | School Admin | Others |
 | --------------------------------- | ---------------- | --------- | ---------------------- | ------------ | ------ |
 | Create new version                | ✅                | ✅         | ✅                      | ❌            | ❌      |
-| Edit text (pre-acknowledgement)   | ✅                | ✅         | ✅                      | ❌            | ❌      |
+| Edit text (draft only)            | ✅                | ✅         | ✅                      | ❌            | ❌      |
 | Activate version                  | ✅                | ✅         | ✅                      | ❌            | ❌      |
 | Supersede version                 | ✅                | ✅         | ✅                      | ❌            | ❌      |
-| Edit after acknowledgement exists | ⚠️ Override only | ❌         | ❌                      | ❌            | ❌      |
+| Edit text after activation        | ❌                | ❌         | ❌                      | ❌            | ❌      |
+| Edit after acknowledgement exists | ❌                | ❌         | ❌                      | ❌            | ❌      |
 | Delete version                    | ❌                | ❌         | ❌                      | ❌            | ❌      |
 
 ### Immutability rule (LOCKED)
 
+> `policy_text` is editable only while Draft (`is_active = 0`) and no acknowledgements exist.
+>
+> Once a version is activated, text becomes permanently lock-protected.
+>
 > Once **any** Policy Acknowledgement exists:
 >
 > * `policy_text` becomes **read-only**
@@ -146,7 +151,7 @@ Override requires:
 | Admissions Officer | Applicant-scoped only |
 | Guardian           | Own + dependents      |
 | Student            | Own                   |
-| Academic Staff     | ❌                     |
+| Academic Staff     | Own staff records only |
 
 ---
 
@@ -155,6 +160,7 @@ Override requires:
 | Action                 | Anyone |
 | ---------------------- | ------ |
 | Edit acknowledgement   | ❌      |
+| Cancel acknowledgement | ❌      |
 | Revoke acknowledgement | ❌      |
 | Delete acknowledgement | ❌      |
 
@@ -411,23 +417,35 @@ Policy Version
 
 ### Fields (authoritative)
 
-| Fieldname              | Type                        | Required | Notes                    |
-| ---------------------- | --------------------------- | -------- | ------------------------ |
-| `institutional_policy` | Link → Institutional Policy | ✅        | Immutable                |
-| `version_label`        | Data                        | ✅        | Human version identifier |
-| `policy_text`          | Text / HTML                 | ✅        | Frozen once acknowledged |
-| `effective_from`       | Date                        | ❌        | Optional                 |
-| `effective_to`         | Date                        | ❌        | Optional                 |
-| `approved_by`          | Link → User                 | ❌        | Governance metadata      |
-| `approved_on`          | Datetime                    | ❌        | Governance metadata      |
-| `is_active`            | Check                       | ✅        | Can be acknowledged      |
+| Fieldname              | Type                        | Required | Notes                                                     |
+| ---------------------- | --------------------------- | -------- | --------------------------------------------------------- |
+| `institutional_policy` | Link → Institutional Policy | ✅        | Immutable                                                 |
+| `version_label`        | Data                        | ✅        | Human version identifier                                  |
+| `based_on_version`         | Link → Policy Version       | ✅*       | Required after first version; must belong to same policy  |
+| `change_summary`       | Small Text                  | ✅*       | Required before activation when `based_on_version` is set      |
+| `policy_text`          | Text / HTML                 | ✅        | Editable only in Draft before lock                        |
+| `diff_html`            | Text / HTML                 | Auto      | Server-generated paragraph diff for amended versions      |
+| `change_stats`         | Small Text (JSON)           | Auto      | `{added,removed,modified}`                                |
+| `text_locked`          | Check (hidden)              | Auto      | Set on first activation or acknowledgement                |
+| `effective_from`       | Date                        | ❌        | Optional                                                  |
+| `effective_to`         | Date                        | ❌        | Optional                                                  |
+| `approved_by`          | Link → User                 | ❌        | Governance metadata                                       |
+| `approved_on`          | Datetime                    | ❌        | Governance metadata                                       |
+| `is_active`            | Check                       | ✅        | Can be acknowledged                                       |
+
+`✅*` = amendment boundary requirement; for `change_summary`, drafts may save blank but activation requires value.
 
 ### Immutability rules
+
+`policy_text` is editable only while Draft (`is_active = 0`) and no acknowledgements exist.
+
+After first activation, `text_locked = 1` and text remains lock-protected.
 
 Once **any** Policy Acknowledgement exists:
 
 * `policy_text` → read-only
 * `version_label` → read-only
+* `based_on_version`, `change_summary`, `diff_html`, `change_stats` → lock-protected
 * record cannot be deleted
 * only System Manager override allowed (reason required)
 
@@ -466,8 +484,10 @@ Policy Acknowledgement
 
 ### Immutability rules
 
-* Entire document is **append-only**
+* Entire document is **append-only submitted evidence**
+* Auto-submit on insert (`docstatus = 1`)
 * No edits
+* No cancel
 * No deletion
 * No revocation
 

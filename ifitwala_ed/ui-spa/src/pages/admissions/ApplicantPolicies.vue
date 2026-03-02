@@ -114,6 +114,7 @@ function openPolicy(policy: ApplicantPolicy) {
 			name: policy.name,
 			policy_version: policy.policy_version,
 			content_html: policy.content_html,
+			expected_signer_name: policy.expected_signature_name,
 		},
 		readOnly: isReadOnly.value,
 	});

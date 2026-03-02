@@ -65,7 +65,7 @@ frappe.query_reports["Enrollment Report"] = {
 	],
 
 	onload: function(report) {
-		frappe.breadcrumbs.add("School Settings", "Settings", "/app/admin");
+		frappe.breadcrumbs.add("School Settings", "Settings", "/desk/admin");
 		frappe.call({
 			method: "ifitwala_ed.school_settings.school_settings_utils.get_user_allowed_schools",
 			callback: function(r) {

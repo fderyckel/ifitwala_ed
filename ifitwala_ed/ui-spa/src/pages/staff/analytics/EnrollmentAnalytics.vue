@@ -1,11 +1,19 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/EnrollmentAnalytics.vue -->
 <template>
-	<div class="analytics-shell">
+	<div ref="snapshotRoot" class="analytics-shell">
 		<header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 			<div>
 				<h1 class="type-h2 text-canopy">Enrollment</h1>
 				<p class="text-xs text-slate-500">{{ scopeLabel }}</p>
 			</div>
+			<AnalyticsSnapshotActions
+				:exporting-png="snapshotExport.exportingPng"
+				:exporting-pdf="snapshotExport.exportingPdf"
+				:message="snapshotExport.actionMessage"
+				:disabled="dashboardResource.loading"
+				@export-png="snapshotExport.exportPng"
+				@export-pdf="snapshotExport.exportPdf"
+			/>
 		</header>
 
 		<FiltersBar class="analytics-filters">
@@ -153,11 +161,13 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { createResource } from 'frappe-ui';
 
+import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import StackedBarChart from '@/components/analytics/StackedBarChart.vue';
 import HorizontalBarTopN from '@/components/analytics/HorizontalBarTopN.vue';
 import SideDrawerList from '@/components/analytics/SideDrawerList.vue';
+import { useAnalyticsSnapshotExport } from '@/composables/useAnalyticsSnapshotExport';
 
 type CompareDimension = 'school' | 'program';
 type ChartMode = 'snapshot' | 'trend';
@@ -211,6 +221,7 @@ type SlicePayload = {
 
 const today = new Date().toISOString().slice(0, 10);
 const trendEnabled = false;
+const snapshotRoot = ref<HTMLElement | null>(null);
 
 const filters = reactive({
 	organization: null as string | null,
@@ -242,6 +253,25 @@ const initialized = ref(false);
 const syncing = ref(false);
 const lastPayloadKey = ref<string | null>(null);
 const pendingPayloadKey = ref<string | null>(null);
+
+const exportFilters = computed(() => ({
+	Organization: filters.organization || 'All',
+	School: filters.school || 'All',
+	'Academic Years': filters.academic_years,
+	'Compare Dimension': filters.compare_dimension,
+	'Chart Mode': filters.chart_mode,
+	'As-of Date': filters.as_of_date || 'Today',
+	Program: filters.program || 'All',
+	Cohort: filters.cohort || 'All',
+	'Program Offering': filters.program_offering || 'All',
+}));
+
+const snapshotExport = useAnalyticsSnapshotExport({
+	dashboardSlug: 'enrollment-analytics',
+	dashboardTitle: 'Enrollment Analytics',
+	getTarget: () => snapshotRoot.value,
+	getFilters: () => exportFilters.value,
+});
 
 const dashboardResource = createResource({
 	url: 'ifitwala_ed.api.enrollment_analytics.get_enrollment_dashboard',

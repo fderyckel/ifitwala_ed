@@ -22,10 +22,7 @@ def _make_public_web_form(name: str):
 
 def execute():
     # Ensure standard JSON definitions are loaded, then enforce live-site access flags.
-    for module, dt, docname in (
-        ("admission", "web_form", "inquiry"),
-        ("admission", "web_form", "registration_of_interest"),
-    ):
+    for module, dt, docname in (("admission", "web_form", "inquiry"),):
         try:
             frappe.reload_doc(module, dt, docname)
         except Exception:
@@ -33,4 +30,3 @@ def execute():
             pass
 
     _make_public_web_form("inquiry")
-    _make_public_web_form("registration-of-interest")

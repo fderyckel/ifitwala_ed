@@ -6,15 +6,11 @@ from ifitwala_ed.website.utils import normalize_route
 
 WEB_FORM_ROUTE_MAP = {
     "inquiry": "apply/inquiry",
-    "registration-of-interest": "apply/registration-of-interest",
 }
 
 
 def _reload_web_form_docs():
-    for module, dt, docname in (
-        ("admission", "web_form", "inquiry"),
-        ("admission", "web_form", "registration_of_interest"),
-    ):
+    for module, dt, docname in (("admission", "web_form", "inquiry"),):
         try:
             frappe.reload_doc(module, dt, docname)
         except Exception:
@@ -80,6 +76,13 @@ def _sync_school_website_page_routes():
 
 
 def _sync_school_admissions_cta_defaults():
+    if not frappe.db.table_exists("School"):
+        return
+
+    if not frappe.db.has_column("School", "admissions_inquiry_route"):
+        # Pre-model patch safety: some sites may not have synced this field yet.
+        return
+
     schools = frappe.get_all("School", fields=["name", "admissions_inquiry_route"])
     for school in schools:
         current = (school.admissions_inquiry_route or "").strip()

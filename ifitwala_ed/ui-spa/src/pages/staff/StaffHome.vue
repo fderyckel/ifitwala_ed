@@ -61,7 +61,12 @@
 
 				<div class="grid gap-3">
 					<!-- Create task uses overlay stack (single overlay system) -->
-					<button type="button" class="action-tile group" @click="openCreateTask">
+					<button
+						v-if="userCapabilities.quick_action_create_task"
+						type="button"
+						class="action-tile group"
+						@click="openCreateTask"
+					>
 						<div class="action-tile__icon">
 							<FeatherIcon name="clipboard" class="h-6 w-6" />
 						</div>
@@ -80,7 +85,12 @@
 					</button>
 
 					<!-- Create student log uses overlay stack -->
-					<button type="button" class="action-tile group" @click="openStudentLog">
+					<button
+						v-if="userCapabilities.quick_action_student_log"
+						type="button"
+						class="action-tile group"
+						@click="openStudentLog"
+					>
 						<div class="action-tile__icon">
 							<FeatherIcon name="edit-3" class="h-6 w-6" />
 						</div>
@@ -100,7 +110,7 @@
 
 					<!-- Standard Quick Actions (router links, not overlays) -->
 					<RouterLink
-						v-for="action in quickActions"
+						v-for="action in visibleQuickActions"
 						:key="action.label"
 						:to="action.to"
 						class="action-tile group"
@@ -123,6 +133,13 @@
 							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
 						/>
 					</RouterLink>
+
+					<p
+						v-if="!hasVisibleQuickActions"
+						class="rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 type-caption text-slate-token/80"
+					>
+						No quick actions are assigned to your current role.
+					</p>
 				</div>
 			</div>
 		</section>
@@ -324,14 +341,22 @@ const quickActions = [
 		caption: 'Capture evidence, notes, and marks',
 		icon: 'edit-3',
 		to: { name: 'staff-gradebook' },
-	},
-	{
-		label: 'Portfolio Review',
-		caption: 'Review student evidence feed',
-		icon: 'layers',
-		to: { name: 'staff-portfolio' },
+		capability: 'quick_action_gradebook',
 	},
 ];
+
+function isQuickActionVisible(action: { capability?: string }) {
+	if (!action.capability) return true;
+	return Boolean(userCapabilities.value[action.capability]);
+}
+
+const visibleQuickActions = computed(() => quickActions.filter(isQuickActionVisible));
+const hasVisibleQuickActions = computed(
+	() =>
+		Boolean(userCapabilities.value.quick_action_create_task) ||
+		Boolean(userCapabilities.value.quick_action_student_log) ||
+		visibleQuickActions.value.length > 0
+);
 
 /* FOCUS -------------------------------------------------------- */
 const overlay = useOverlayStack();
@@ -564,7 +589,7 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			{
 				label: 'Demographics Overview',
 				to: { name: 'student-demographic-analytics' },
-				capability: 'analytics_admissions',
+				capability: 'analytics_demographics',
 			},
 			{
 				label: 'Enrollment Analytics',
@@ -680,6 +705,11 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		icon: 'message-circle',
 		links: [
 			{
+				label: 'Admissions Cockpit',
+				to: { name: 'staff-admission-cockpit' },
+				capability: 'analytics_admissions',
+			},
+			{
 				label: 'Inquiries Analytics',
 				to: { name: 'staff-inquiry-analytics' },
 				capability: 'analytics_admissions',
@@ -703,8 +733,8 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			},
 			{
 				label: 'Policy Acknowledgments',
-				to: '/analytics/compliance/policy-acknowledgments',
-				capability: 'analytics_attendance_admin',
+				to: { name: 'staff-policy-signature-analytics' },
+				capability: 'analytics_policy_signatures',
 			},
 		],
 	},

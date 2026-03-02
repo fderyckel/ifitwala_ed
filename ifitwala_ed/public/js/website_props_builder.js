@@ -6,6 +6,13 @@
 			autoplay: true,
 			interval: 5000,
 			variant: 'default',
+			image_fade_mode: 'dark',
+			image_fade_opacity: 34,
+		},
+		section_carousel: {
+			layout: 'content_left',
+			autoplay: true,
+			interval: 5000,
 		},
 		admissions_overview: {
 			max_width: 'normal',

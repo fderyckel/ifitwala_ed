@@ -3,6 +3,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { createResource } from 'frappe-ui';
 
+import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import HorizontalBarTopN from '@/components/analytics/HorizontalBarTopN.vue';
@@ -12,6 +13,7 @@ import DonutSplit from '@/components/analytics/DonutSplit.vue';
 import HistogramBuckets from '@/components/analytics/HistogramBuckets.vue';
 import TagCloudBar from '@/components/analytics/TagCloudBar.vue';
 import SideDrawerList from '@/components/analytics/SideDrawerList.vue';
+import { useAnalyticsSnapshotExport } from '@/composables/useAnalyticsSnapshotExport';
 
 type ViewPreset = 'student' | 'admissions' | 'marketing';
 
@@ -87,6 +89,7 @@ const filters = ref<FilterState>({
 	cohort: null,
 	preset: 'student',
 });
+const snapshotRoot = ref<HTMLElement | null>(null);
 
 const filterMetaResource = createResource({
 	url: 'ifitwala_ed.api.student_demographics_dashboard.get_filter_meta',
@@ -97,6 +100,18 @@ const filterMetaResource = createResource({
 const filterMeta = computed(() => (filterMetaResource.data as any) || {});
 const schools = computed(() => filterMeta.value.schools || []);
 const cohorts = computed(() => filterMeta.value.cohorts || []);
+const exportFilters = computed(() => ({
+	School: filters.value.school || 'All',
+	Cohort: filters.value.cohort || 'All',
+	'View Preset': filters.value.preset,
+}));
+
+const snapshotExport = useAnalyticsSnapshotExport({
+	dashboardSlug: 'student-demographics',
+	dashboardTitle: 'Student Demographic Analytics',
+	getTarget: () => snapshotRoot.value,
+	getFilters: () => exportFilters.value,
+});
 
 watch(
 	filterMeta,
@@ -334,7 +349,7 @@ function setPreset(preset: ViewPreset) {
 </script>
 
 <template>
-	<div class="min-h-full px-4 py-4 md:px-6 lg:px-8">
+	<div ref="snapshotRoot" class="min-h-full px-4 py-4 md:px-6 lg:px-8">
 		<header class="flex flex-wrap items-center justify-between gap-3">
 			<div>
 				<h1 class="text-base font-semibold tracking-tight text-slate-900">
@@ -344,6 +359,14 @@ function setPreset(preset: ViewPreset) {
 					Active-student demographics for academic admin, admissions, and marketing.
 				</p>
 			</div>
+			<AnalyticsSnapshotActions
+				:exporting-png="snapshotExport.exportingPng"
+				:exporting-pdf="snapshotExport.exportingPdf"
+				:message="snapshotExport.actionMessage"
+				:disabled="dashboardResource.loading || accessDenied"
+				@export-png="snapshotExport.exportPng"
+				@export-pdf="snapshotExport.exportPdf"
+			/>
 		</header>
 
 		<div v-if="accessDenied" class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">

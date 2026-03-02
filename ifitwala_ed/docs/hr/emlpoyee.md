@@ -21,6 +21,14 @@ Core flow:
 
 The document acts as the authoritative HR staff record. It also drives access-related behavior through history/designation and linked user updates.
 
+Permission scope for `Employee`:
+- `HR Manager` and `HR User` have scoped CRUD on Employee docs:
+  - employees in their organization descendant scope
+  - employees where `organization` is blank
+- HR organization scope resolution uses persisted defaults (`DefaultValue`) for user `organization`, then `Global Defaults.default_organization`, and expands explicit `User Permission` grants on `Organization`; if none resolves, only unassigned-organization Employee rows are visible to HR.
+- `Academic Admin` has read-only Employee access scoped to the user default school.
+- `Employee` role has read-only access to their own Employee record only.
+
 ### 1.1 Staff Portal Holiday Resolution (Portal Calendar Contract)
 
 For staff portal calendar reads, holiday resolution follows this server-owned precedence:
@@ -66,6 +74,9 @@ Current create flow:
 
 Role handling now follows managed sync:
 - on employee save, `sync_user_access_from_employee` computes effective roles/workspace from employee history + designation defaults.
+- on employee save, linked user defaults are always aligned with Employee context:
+  - `organization` default from `Employee.organization`
+  - `school` default from `Employee.school`
 - on employee save, linked `User.enabled` is enforced from `Employee.employment_status`:
   - `Active` -> `enabled = 1`
   - any other status (`Temporary Leave`, `Suspended`, `Left`, or blank) -> `enabled = 0`
@@ -121,3 +132,56 @@ Impact: the employee sync hook now toggles `User.enabled` automatically and bloc
 We decided to self-heal missing active Employee-to-User links at login when there is exactly one unambiguous active match on `employee_professional_email`.
 Reason: historical data can miss `Employee.user_id`, which produced false-negative staff redirects and sent active staff users to the student portal.
 Impact: successful login now repairs the link and re-applies access sync before role-based portal redirect is resolved.
+
+[2026-02-26] Decision:
+We decided to keep `HR Manager` and `HR User` organization-subtree scoped, but include employees with empty `organization`.
+Reason: HR must remain org-scoped by descendant inheritance, while still being able to triage/fix employee records that are missing organization assignment.
+Impact: Employee permission hooks now allow HR access when `organization` is blank, and enforce subtree checks once organization is filled.
+
+[2026-02-26] Decision:
+We decided Employee tree root loading must surface visible scoped employees whose `reports_to` points to an out-of-scope manager.
+Reason: strict `reports_to = ''` root filtering can render an empty tree for scoped users even when they have valid Employee visibility.
+Impact: Employee tree root now treats "manager not visible in current scope" as a root candidate.
+
+[2026-02-26] Decision:
+We decided HR organization scope must also honor explicit `User Permission` grants on `Organization`.
+Reason: role-authorized HR users can be scoped operationally through defaults and explicit org permissions without depending on Employee linkage.
+Impact: Employee permission scope now unions descendants from default organization and descendants from explicit Organization User Permissions.
+
+[2026-02-26] Decision:
+We decided HR base-org resolution must not depend on linked Employee rows.
+Reason: HR doctype scope is an operator scope concern and should be driven by organization defaults/permissions, not employee linkage status.
+Impact: Employee linkage status no longer affects HR Employee doctype scope resolution.
+
+[2026-02-26] Decision:
+We decided HR base-org resolution falls back to `Global Defaults.default_organization` when user default `organization` is missing.
+Reason: operational HR scope should still resolve to the organization tree baseline even when per-user defaults are incomplete.
+Impact: HR scope can inherit organization descendants from global default organization without Employee-linkage dependency.
+
+[2026-02-26] Decision:
+We decided Employee save must sync linked user default `organization` from `Employee.organization` (same pattern as school default sync).
+Reason: permissions use user/default organization scope; stale defaults can diverge from Employee form truth and produce unexpected scope behavior.
+Impact: updating Employee organization now updates linked user default organization on every save for linked users.
+
+[2026-02-26] Decision:
+We decided linked user default `organization`/`school` synchronization must not be blocked by profile-field sync authorization gates.
+Reason: defaults drive permission scope and must stay consistent with Employee truth regardless of who performs the valid Employee save.
+Impact: `Employee.on_update()` now always syncs user defaults for linked users, while `User` profile field sync remains permission-gated.
+
+[2026-02-26] Decision:
+We decided Employee permission hooks enforce role-specific scope rules explicitly:
+- HR roles: scoped CRUD to org descendants + blank organization rows
+- Academic Admin: read-only on default school
+- Employee: read-only own record
+Reason: this is the required product contract and prevents implicit fallback behavior from granting or denying the wrong access.
+Impact: list and form permissions are now consistent with the intended HR/academic/employee visibility model.
+
+[2026-02-26] Decision:
+We decided Employee permission scope resolution must read persisted defaults directly and avoid permission-time cache dependence.
+Reason: stale default/cache state can cause transient list/form visibility mismatches after organization/school scope updates.
+Impact: permission checks now resolve organization/school defaults from `DefaultValue` storage and compute descendant scope without permission-time cache reuse.
+
+[2026-02-26] Decision:
+We decided the `HR` workspace shortcut `Active Employee` must open `List` view (not `Tree`).
+Reason: tree-root rendering can show only top-level scoped rows (e.g., "4 of 31"), which misrepresents scoped Employee visibility and creates operational confusion.
+Impact: staff users opening `Active Employee` now land on full scoped list behavior consistent with report/image view results.

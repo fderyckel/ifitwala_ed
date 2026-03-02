@@ -101,16 +101,38 @@ function ensure_org_comm_context(frm) {
 function setup_issuing_school_field(frm) {
 	const ctx = frm._org_comm_ctx || {};
 	const default_school = ctx.default_school || null;
+	const default_organization = ctx.default_organization || null;
 	const allowed_schools = ctx.allowed_schools || [];
+	const allowed_organizations = ctx.allowed_organizations || [];
 	const is_privileged = !!ctx.is_privileged;
+	const can_select_school = !!ctx.can_select_school;
+	const lock_to_default_school = !!ctx.lock_to_default_school;
 
-	// Organization is controlled server-side from School
-	if (frm.fields_dict.organization) {
-		frm.set_df_property('organization', 'read_only', 1);
+	if (!frm.doc.organization && default_organization) {
+		frm.set_value('organization', default_organization);
 	}
 
-	if (!is_privileged) {
-		// Non-privileged staff: Issuing School = default school, read-only
+	if (frm.fields_dict.organization) {
+		frm.set_df_property('organization', 'read_only', 0);
+		frm.set_df_property(
+			'organization',
+			'description',
+			__('Organization is required and defaults from your user scope.')
+		);
+
+		if (allowed_organizations && allowed_organizations.length) {
+			frm.set_query('organization', () => {
+				return {
+					filters: {
+						name: ['in', allowed_organizations]
+					}
+				};
+			});
+		}
+	}
+
+	if (lock_to_default_school) {
+		// Non-privileged staff with default school: lock to default school
 		if (default_school && frm.doc.school !== default_school) {
 			frm.set_value('school', default_school);
 		}
@@ -119,11 +141,13 @@ function setup_issuing_school_field(frm) {
 			frm.set_df_property(
 				'school',
 				'description',
-				__('Issuing School is fixed to your default school.')
+				__('Issuing School is fixed to your default school when your school scope is locked.')
 			);
 		}
-	} else {
-		// Privileged roles: can choose Issuing School within their tree
+	} else if (can_select_school || is_privileged) {
+		// Selectable mode:
+		// - privileged roles (existing behavior)
+		// - non-privileged users with org-scoped school selection (no default school)
 		if (!frm.doc.school && default_school) {
 			frm.set_value('school', default_school);
 		}
@@ -133,7 +157,9 @@ function setup_issuing_school_field(frm) {
 			frm.set_df_property(
 				'school',
 				'description',
-				__('Choose the school issuing this communication (within your scope).')
+				is_privileged
+					? __('Optional issuing school (within your scope). Leave blank for organization-level communication.')
+					: __('Optional issuing school from your organization scope.')
 			);
 
 			if (allowed_schools && allowed_schools.length) {
@@ -146,6 +172,13 @@ function setup_issuing_school_field(frm) {
 				});
 			}
 		}
+	} else if (frm.fields_dict.school) {
+		frm.set_df_property('school', 'read_only', 1);
+		frm.set_df_property(
+			'school',
+			'description',
+			__('No issuing school scope is configured. Use organization-level communication or ask admin to configure school scope.')
+		);
 	}
 }
 

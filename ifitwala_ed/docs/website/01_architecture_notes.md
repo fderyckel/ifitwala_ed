@@ -18,11 +18,10 @@
 | `/schools/<school_slug>/...` | Custom website renderer | School marketing pages |
 | `/apply/...` | Native Frappe Web Forms | Public admissions entry forms |
 | `/inquiry` | Legacy redirect | `301` to `/apply/inquiry` |
-| `/registration-of-interest` | Legacy redirect | `301` to `/apply/registration-of-interest` |
 | `/admissions/...` | SPA | Authenticated admissions applicant portal |
-| `/portal/...` | Portal SPA | Canonical authenticated portals |
+| `/hub/...` | Portal SPA | Canonical authenticated portals |
 | `/logout` | Website route (`www/logout`) | Canonical logout endpoint; clears session then redirects |
-| `/app` | Desk | ERP/desk surface |
+| `/desk` | Desk | ERP/desk surface |
 
 Rules:
 * No root catch-all.

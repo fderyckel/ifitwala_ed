@@ -3,6 +3,8 @@ title: "Task Outcome: The Official Student-Level Assessment Record"
 slug: task-outcome
 category: Assessment
 doc_order: 7
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Maintain one authoritative outcome per student per delivery, with official scores/grades, criterion truth, statuses, and publication controls."
 seo_title: "Task Outcome: The Official Student-Level Assessment Record"
 seo_description: "Maintain one authoritative outcome per student per delivery, with official scores/grades, criterion truth, statuses, and publication controls."

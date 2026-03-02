@@ -79,7 +79,6 @@
   {
    "fieldname": "organization_logo",
    "fieldtype": "Attach Image",
-   "hidden": 1,
    "label": "Organization Logo"
   },
   {
@@ -184,6 +183,13 @@
    "select": 1,
    "share": 1,
    "write": 1
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "select": 1
   },
   {
    "create": 1,

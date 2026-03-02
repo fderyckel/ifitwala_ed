@@ -69,7 +69,7 @@ class TestAdmissionsPortalRoute(FrappeTestCase):
         try:
             with self.assertRaises(frappe.Redirect):
                 get_context(frappe._dict())
-            self.assertEqual(frappe.local.flags.redirect_location, "/portal/staff")
+            self.assertEqual(frappe.local.flags.redirect_location, "/hub/staff")
         finally:
             frappe.set_user("Administrator")
             self._restore_request(original_request)
@@ -81,7 +81,7 @@ class TestAdmissionsPortalRoute(FrappeTestCase):
         try:
             with self.assertRaises(frappe.Redirect):
                 get_context(frappe._dict())
-            self.assertEqual(frappe.local.flags.redirect_location, "/portal/staff")
+            self.assertEqual(frappe.local.flags.redirect_location, "/hub/staff")
         finally:
             frappe.set_user("Administrator")
             self._restore_request(original_request)

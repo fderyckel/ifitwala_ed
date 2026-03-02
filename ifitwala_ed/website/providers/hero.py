@@ -4,6 +4,8 @@ from frappe.utils import cint
 
 from ifitwala_ed.website.utils import build_image_variants, validate_cta_link
 
+FADE_MODES = {"none", "dark", "primary", "accent"}
+
 
 def get_context(*, school, page, block_props):
     """
@@ -35,6 +37,11 @@ def get_context(*, school, page, block_props):
             )
 
     image = build_image_variants(block_props.get("background_image"), "school")
+    image_fade_mode = (block_props.get("image_fade_mode") or "dark").strip().lower()
+    if image_fade_mode not in FADE_MODES:
+        image_fade_mode = "dark"
+    image_fade_opacity = min(max(cint(block_props.get("image_fade_opacity") or 34), 0), 90)
+
     return {
         "data": {
             "title": block_props.get("title"),
@@ -46,5 +53,7 @@ def get_context(*, school, page, block_props):
             "cta_label": block_props.get("cta_label"),
             "cta_link": validate_cta_link(block_props.get("cta_link")),
             "variant": block_props.get("variant") or "default",
+            "image_fade_mode": image_fade_mode,
+            "image_fade_opacity": image_fade_opacity,
         }
     }

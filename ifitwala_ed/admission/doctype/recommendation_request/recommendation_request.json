@@ -1,0 +1,277 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-03-01 00:00:00",
+ "description": "Tracks one recommender invitation and one confidential recommendation submission request.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "student_applicant",
+  "recommendation_template",
+  "target_document_type",
+  "applicant_document",
+  "applicant_document_item",
+  "item_key",
+  "item_label",
+  "request_status",
+  "recommender_name",
+  "recommender_email",
+  "recommender_relationship",
+  "expires_on",
+  "sent_on",
+  "opened_on",
+  "consumed_on",
+  "resend_count",
+  "token_hash",
+  "token_hint",
+  "otp_enforced",
+  "otp_code_hash",
+  "otp_expires_on",
+  "otp_verified_on",
+  "otp_send_count",
+  "otp_failed_attempts",
+  "template_snapshot_json",
+  "submission"
+ ],
+ "fields": [
+  {
+   "fieldname": "student_applicant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Student Applicant",
+   "options": "Student Applicant",
+   "reqd": 1
+  },
+  {
+   "fieldname": "recommendation_template",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Recommendation Template",
+   "options": "Recommendation Template",
+   "reqd": 1
+  },
+  {
+   "fieldname": "target_document_type",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Target Document Type",
+   "options": "Applicant Document Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applicant_document",
+   "fieldtype": "Link",
+   "label": "Applicant Document",
+   "options": "Applicant Document",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applicant_document_item",
+   "fieldtype": "Link",
+   "label": "Applicant Document Item",
+   "options": "Applicant Document Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_key",
+   "fieldtype": "Data",
+   "label": "Item Key",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_label",
+   "fieldtype": "Data",
+   "label": "Item Label"
+  },
+  {
+   "default": "Sent",
+   "fieldname": "request_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Request Status",
+   "options": "Sent\nOpened\nSubmitted\nRevoked\nExpired",
+   "read_only": 1
+  },
+  {
+   "fieldname": "recommender_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Recommender Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "recommender_email",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Recommender Email",
+   "options": "Email",
+   "reqd": 1
+  },
+  {
+   "fieldname": "recommender_relationship",
+   "fieldtype": "Data",
+   "label": "Relationship to Applicant"
+  },
+  {
+   "fieldname": "expires_on",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Expires On",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sent_on",
+   "fieldtype": "Datetime",
+   "label": "Sent On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "opened_on",
+   "fieldtype": "Datetime",
+   "label": "Opened On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "consumed_on",
+   "fieldtype": "Datetime",
+   "label": "Consumed On",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "resend_count",
+   "fieldtype": "Int",
+   "label": "Resend Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "token_hash",
+   "fieldtype": "Data",
+   "label": "Token Hash",
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "token_hint",
+   "fieldtype": "Data",
+   "label": "Token Hint",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "otp_enforced",
+   "fieldtype": "Check",
+   "label": "OTP Enforced",
+   "read_only": 1
+  },
+  {
+   "fieldname": "otp_code_hash",
+   "fieldtype": "Data",
+   "label": "OTP Code Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "otp_expires_on",
+   "fieldtype": "Datetime",
+   "label": "OTP Expires On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "otp_verified_on",
+   "fieldtype": "Datetime",
+   "label": "OTP Verified On",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "otp_send_count",
+   "fieldtype": "Int",
+   "label": "OTP Send Count",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "otp_failed_attempts",
+   "fieldtype": "Int",
+   "label": "OTP Failed Attempts",
+   "read_only": 1
+  },
+  {
+   "fieldname": "template_snapshot_json",
+   "fieldtype": "Code",
+   "label": "Template Snapshot JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "submission",
+   "fieldtype": "Link",
+   "label": "Submission",
+   "options": "Recommendation Submission",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-01 00:00:00",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Recommendation Request",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

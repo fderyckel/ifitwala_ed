@@ -3,6 +3,8 @@ title: "Assessment Criteria: Defining What Good Work Looks Like"
 slug: assessment-criteria
 category: Assessment
 doc_order: 2
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Create reusable criteria and performance levels that power rubric-based grading across tasks, outcomes, moderation, and reporting."
 seo_title: "Assessment Criteria: Defining What Good Work Looks Like"
 seo_description: "Create reusable criteria and performance levels that power rubric-based grading across tasks, outcomes, moderation, and reporting."

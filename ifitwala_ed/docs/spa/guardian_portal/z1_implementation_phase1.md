@@ -234,7 +234,7 @@ Responsibilities:
 * Render zones in order
 * Handle empty states
 * Progressive disclosure for details (expand inline, “View all” links)
-* No hardcoded `/portal/` prefix in internal navigation (router base already uses it)
+* No hardcoded `/hub/` prefix in internal navigation (router base already uses it)
 
 ---
 

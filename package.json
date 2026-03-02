@@ -12,8 +12,11 @@
     "url": "https://github.com/fderyckel/ifitwala_ed/issues"
   },
   "scripts": {
-    "build": "rollup -c",
-    "bench-build": "yarn build && bench build",
+    "build": "yarn build:desk && yarn build:spa",
+    "build:desk": "NODE_ENV=production rollup -c",
+    "build:spa": "yarn --cwd ifitwala_ed/ui-spa install --frozen-lockfile --check-files && yarn --cwd ifitwala_ed/ui-spa build",
+    "type-check:spa": "yarn --cwd ifitwala_ed/ui-spa type-check",
+    "bench-build": "bench build",
     "hierarchy": "rollup -c --watch --configPlugin rollup-plugin-postcss --environment WATCH_HIERARCHY"
   },
   "devDependencies": {

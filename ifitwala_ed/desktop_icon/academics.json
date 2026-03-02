@@ -1,0 +1,34 @@
+{
+ "app": "ifitwala_ed",
+ "bg_color": "blue",
+ "creation": "2026-02-28 09:24:34.153409",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "Link",
+ "idx": 0,
+ "label": "Academics",
+ "link_to": "Academics",
+ "link_type": "Workspace Sidebar",
+ "modified": "2026-02-28 09:25:00.396892",
+ "modified_by": "Administrator",
+ "name": "Academics",
+ "owner": "Administrator",
+ "restrict_removal": 1,
+ "roles": [
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Academic Assistant"
+  },
+  {
+   "role": "Academic Staff"
+  },
+  {
+   "role": "Administrator"
+  }
+ ],
+ "sidebar": "Academics",
+ "standard": 1
+}

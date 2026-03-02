@@ -83,7 +83,8 @@
    "in_standard_filter": 1,
    "label": "Workflow State",
    "options": "New\nAssigned\nContacted\nQualified\nArchived",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "sla_status",
@@ -145,13 +146,15 @@
    "fieldname": "first_contact_due_on",
    "fieldtype": "Date",
    "label": "First Contact Deadline",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "followup_due_on",
    "fieldtype": "Date",
    "label": "Follow-up Deadline",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "first_contacted_at",

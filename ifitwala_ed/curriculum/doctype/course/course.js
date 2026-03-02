@@ -162,7 +162,7 @@ function show_units_dialog(rows) {
 		const statusBadge = r.unit_status
 			? `<span class="badge bg-light text-muted ms-2">${frappe.utils.escape_html(r.unit_status)}</span>`
 			: "";
-		const link = `<a href="/app/learning-unit/${encodeURIComponent(r.name)}" target="_blank">${frappe.utils.escape_html(r.unit_name)}</a>`;
+		const link = `<a href="/desk/learning-unit/${encodeURIComponent(r.name)}" target="_blank">${frappe.utils.escape_html(r.unit_name)}</a>`;
 		return `<li class="list-group-item d-flex align-items-center justify-content-between">
 			<div>${orderBadge}${link}${statusBadge}</div>
 		</li>`;

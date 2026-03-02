@@ -14,6 +14,7 @@ export type Response = {
   profile: ApplicantProfile
   completeness: ApplicantProfileCompleteness
   application_context: ApplicantApplicationContext
+  applicant_image?: string
   options: {
     genders: string[]
     residency_statuses: string[]

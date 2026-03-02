@@ -253,7 +253,11 @@
 							class="prose prose-slate max-w-none bg-white/80 rounded-2xl border border-line-soft shadow-soft p-6"
 						>
 							<div v-if="fullContentLoading" class="py-10 text-center"><LoadingIndicator /></div>
-							<div v-else v-html="fullContent?.message || selectedComm.snippet"></div>
+							<div
+								v-else
+								v-html="fullContent?.message || selectedComm.snippet"
+								@click="onDetailContentClick"
+							></div>
 						</div>
 					</div>
 
@@ -313,11 +317,16 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Badge, Button, FeatherIcon, FormControl, LoadingIndicator, toast } from 'frappe-ui';
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
 import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import { type ArchiveFilters, type OrgCommunicationListItem } from '@/types/orgCommunication';
 import { type InteractionSummary, type InteractionThreadRow } from '@/types/morning_brief';
+import {
+	extractPolicyInformLinkFromClickEvent,
+	type PolicyInformLinkPayload,
+} from '@/utils/policyInformLink';
 import type { ReactionCode } from '@/types/interactions';
 import type { Response as OrgCommunicationItemResponse } from '@/types/contracts/org_communication_archive/get_org_communication_item';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
@@ -339,6 +348,7 @@ const DATE_RANGES = [
 
 const archiveService = createOrgCommunicationArchiveService();
 const interactionService = createCommunicationInteractionService();
+const overlay = useOverlayStack();
 
 const filters = ref<ArchiveFilters>({
 	search_text: '',
@@ -971,5 +981,23 @@ function getPriorityColor(priority: string) {
 		default:
 			return 'gray';
 	}
+}
+
+function onDetailContentClick(event: MouseEvent) {
+	const payload: PolicyInformLinkPayload | null = extractPolicyInformLinkFromClickEvent(event);
+	if (!payload) return;
+	event.preventDefault();
+
+	const policyVersion = String(payload.policyVersion || '').trim();
+	if (!policyVersion) return;
+	const orgCommunication =
+		String(payload.orgCommunication || '').trim() ||
+		String(selectedComm.value?.name || '').trim() ||
+		null;
+
+	overlay.open('staff-policy-inform', {
+		policyVersion,
+		orgCommunication,
+	});
 }
 </script>

@@ -52,6 +52,8 @@ import StudentLogFollowUpOverlay from '@/overlays/student/StudentLogFollowUpOver
 import FocusRouterOverlay from '@/overlays/focus/FocusRouterOverlay.vue';
 import StudentLogAnalyticsExpandOverlay from '@/overlays/analytics/StudentLogAnalyticsExpandOverlay.vue';
 import OrganizationChartPersonOverlay from '@/overlays/staff/OrganizationChartPersonOverlay.vue';
+import StaffPolicyInformOverlay from '@/overlays/staff/StaffPolicyInformOverlay.vue';
+import StaffPolicyCampaignOverlay from '@/overlays/staff/StaffPolicyCampaignOverlay.vue';
 import StudentContextOverlay from '@/components/overlays/class-hub/StudentContextOverlay.vue';
 import QuickEvidenceOverlay from '@/components/overlays/class-hub/QuickEvidenceOverlay.vue';
 import QuickCFUOverlay from '@/components/overlays/class-hub/QuickCFUOverlay.vue';
@@ -185,6 +187,10 @@ function resolveComponent(type: OverlayType) {
 			return StudentLogAnalyticsExpandOverlay;
 		case 'org-chart-person':
 			return OrganizationChartPersonOverlay;
+		case 'staff-policy-inform':
+			return StaffPolicyInformOverlay;
+		case 'staff-policy-signature-campaign':
+			return StaffPolicyCampaignOverlay;
 		case 'focus-router':
 			return FocusRouterOverlay;
 		case 'class-hub-student-context':

@@ -1,0 +1,72 @@
+{
+ "app": "ifitwala_ed",
+ "creation": "2026-02-24 15:17:38.480604",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "header_icon": "color-review-points",
+ "idx": 1,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Home",
+   "link_to": "Academics",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Task",
+   "link_to": "Task",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Todo",
+   "link_to": "ToDo",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "School Events",
+   "link_to": "School Event",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Schedule",
+   "link_to": "schedule_calendar",
+   "link_type": "Page",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-02-27 19:53:37.214069",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "Academics",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "Academics"
+}

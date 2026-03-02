@@ -90,7 +90,7 @@
 					:key="stu.student"
 					class="rounded-2xl bg-white p-3 shadow-sm transition hover:-translate-y-0.5"
 				>
-					<a :href="`/app/student/${stu.student}`" target="_blank" rel="noopener" class="block">
+					<a :href="`/desk/student/${stu.student}`" target="_blank" rel="noopener" class="block">
 						<img
 							:src="thumb(stu.student_image)"
 							:alt="`Photo of ${stu.student_name}`"
@@ -488,7 +488,7 @@ async function openSSG(stu: StudentEntry) {
 }
 
 function openCase(caseName: string) {
-	window.open(`/app/Referral%20Case/${encodeURIComponent(caseName)}`, '_blank', 'noopener');
+	window.open(`/desk/referral-case/${encodeURIComponent(caseName)}`, '_blank', 'noopener');
 }
 
 function neatDate(dt?: string) {

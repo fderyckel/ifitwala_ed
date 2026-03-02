@@ -59,6 +59,12 @@ Over:
 * clever watchers
 * “it should work”
 
+### 0.3 Build & Asset Delivery Contract (LOCKED)
+
+* Canonical production build entrypoint is repo-root `yarn build`; it must compile Desk Rollup + `ui-spa` Vite in one run (and therefore through `bench build`).
+* Manual deployment runbooks must not rely on a second standalone `yarn --cwd ifitwala_ed/ui-spa build` step.
+* Production bundles must stay minified and hash-named where supported, with source maps disabled by default and enabled only for incident debugging.
+
 ---
 
 ## 1. File & Folder Structure (Locked)
@@ -297,8 +303,8 @@ For Student/Guardian SPA shell navigation:
 * `PortalSidebar.vue` remains the single navigation component for this shell.
 * Desktop uses a persistent rail pattern (collapsed/expanded), never full hide.
 * Mobile uses an overlay drawer pattern (hamburger + backdrop), never desktop rail behavior.
-* Canonical portal URLs are namespaced under `/portal/*` while internal SPA route paths stay base-less (`/student/*`, `/guardian/*`, `/staff/*`), and router history base is `/portal`.
-* All portal links must stay named-route based (`{ name: '...' }`) with no hardcoded `/portal/...` paths.
+* Canonical portal URLs are namespaced under `/hub/*` while internal SPA route paths stay base-less (`/student/*`, `/guardian/*`, `/staff/*`), and router history base is `/hub`.
+* All portal links must stay named-route based (`{ name: '...' }`) with no hardcoded `/hub/...` paths.
 
 State ownership:
 

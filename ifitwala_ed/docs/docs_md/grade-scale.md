@@ -3,6 +3,8 @@ title: "Grade Scale: Converting Scores into Institutional Meaning"
 slug: grade-scale
 category: Assessment
 doc_order: 3
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Define grade boundaries once and apply them consistently across tasks, outcomes, moderation, and term reporting."
 seo_title: "Grade Scale: Converting Scores into Institutional Meaning"
 seo_description: "Define grade boundaries once and apply them consistently across tasks, outcomes, moderation, and term reporting."

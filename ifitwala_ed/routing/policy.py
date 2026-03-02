@@ -7,7 +7,7 @@ from urllib.parse import quote
 import frappe
 
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
-CANONICAL_PORTAL_PREFIX = "/portal"
+CANONICAL_PORTAL_PREFIX = "/hub"
 
 PORTAL_SECTION_PRIORITY = ("staff", "student", "guardian")
 PORTAL_SECTION_LABELS = {
@@ -38,10 +38,12 @@ WEBSITE_ROUTE_RULES = [
     {"from_route": "/", "to_route": "index"},
     {"from_route": "/logout", "to_route": "logout"},
     {"from_route": "/admissions", "to_route": "admissions"},
+    {"from_route": "/admissions/recommendation", "to_route": "admissions/recommendation"},
+    {"from_route": "/admissions/recommendation/<path:token>", "to_route": "admissions/recommendation"},
     {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
     # Canonical portal namespace ingress.
-    {"from_route": "/portal", "to_route": "portal"},
-    {"from_route": "/portal/<path:subpath>", "to_route": "portal"},
+    {"from_route": "/hub", "to_route": "hub"},
+    {"from_route": "/hub/<path:subpath>", "to_route": "hub"},
     {"from_route": "/portfolio/share/<path:token>", "to_route": "portfolio/share"},
     {"from_route": "/schools", "to_route": "index"},
     {"from_route": "/schools/<path:route>", "to_route": "website"},
@@ -51,11 +53,6 @@ WEBSITE_ROUTE_RULES = [
 
 WEBSITE_REDIRECTS = [
     {"source": "/inquiry", "target": "/apply/inquiry", "redirect_http_status": 301},
-    {
-        "source": "/registration-of-interest",
-        "target": "/apply/registration-of-interest",
-        "redirect_http_status": 301,
-    },
 ]
 
 
@@ -82,7 +79,8 @@ def resolve_section_from_path(path: str | None) -> str | None:
     if len(segments) < 2:
         return None
 
-    if segments[0] != "portal":
+    prefix_segment = (CANONICAL_PORTAL_PREFIX or "/").strip("/").split("/", 1)[0]
+    if not prefix_segment or segments[0] != prefix_segment:
         return None
 
     section = segments[1]

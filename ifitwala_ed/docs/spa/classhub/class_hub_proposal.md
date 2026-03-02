@@ -435,6 +435,6 @@ I can’t responsibly assume these without checking the actual JSON you uploaded
 * [ ] One ClassHub page renders bundle data (no inference)
 * [ ] Student cards uniform size grid
 * [ ] Overlays: Student Context, Quick Evidence, Quick CFU
-* [ ] No internal links with `/portal/` prefix
+* [ ] No internal links with `/hub/` prefix
 
 ---

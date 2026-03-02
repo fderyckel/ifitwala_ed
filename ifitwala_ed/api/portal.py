@@ -10,16 +10,23 @@ from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
 from ifitwala_ed.api.attendance import ADMIN_ROLES, COUNSELOR_ROLES, INSTRUCTOR_ROLES
 from ifitwala_ed.api.enrollment_analytics import ALLOWED_ANALYTICS_ROLES as ENROLLMENT_ANALYTICS_ROLES
 from ifitwala_ed.api.inquiry import ALLOWED_ANALYTICS_ROLES as INQUIRY_ANALYTICS_ROLES
+from ifitwala_ed.api.policy_signature import (
+    POLICY_SIGNATURE_ANALYTICS_ROLES,
+    POLICY_SIGNATURE_MANAGER_ROLES,
+)
 from ifitwala_ed.api.room_utilization import ANALYTICS_ROLES as SCHEDULING_ROLES
-from ifitwala_ed.api.student_demographics_dashboard import ALLOWED_ANALYTICS_ROLES as DEMOGRAPHICS_ANALYTICS_ROLES
+from ifitwala_ed.api.student_demographics_dashboard import (
+    ALLOWED_ANALYTICS_ROLES as STUDENT_DEMOGRAPHICS_ANALYTICS_ROLES,
+)
 from ifitwala_ed.api.student_log_dashboard import ALLOWED_ANALYTICS_ROLES as WELLBEING_ANALYTICS_ROLES
 from ifitwala_ed.api.users import STAFF_ROLES
 
 CACHE_TTL_SECONDS = 3600
 HR_ROLES = frozenset({"HR User", "HR Manager"})
-ADMISSIONS_ANALYTICS_ROLES = frozenset(
-    ADMISSIONS_ROLES | INQUIRY_ANALYTICS_ROLES | ENROLLMENT_ANALYTICS_ROLES | DEMOGRAPHICS_ANALYTICS_ROLES
-)
+ROLE_INSTRUCTOR = "Instructor"
+ROLE_ACADEMIC_STAFF = "Academic Staff"
+ADMISSIONS_ANALYTICS_ROLES = frozenset(ADMISSIONS_ROLES | INQUIRY_ANALYTICS_ROLES | ENROLLMENT_ANALYTICS_ROLES)
+DEMOGRAPHICS_ANALYTICS_ROLES = frozenset(STUDENT_DEMOGRAPHICS_ANALYTICS_ROLES)
 
 
 def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_name: str | None) -> str:
@@ -65,13 +72,21 @@ def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_
 
 def _build_staff_home_capabilities(roles: set[str]) -> dict[str, bool]:
     attendance_roles = set(ADMIN_ROLES) | set(COUNSELOR_ROLES) | set(INSTRUCTOR_ROLES)
+    has_instructor_role = ROLE_INSTRUCTOR in roles
+    has_academic_staff_role = ROLE_ACADEMIC_STAFF in roles
     return {
         "analytics_attendance": bool(roles & attendance_roles),
         "analytics_attendance_admin": bool(roles & set(ADMIN_ROLES)),
         "analytics_wellbeing": bool(roles & set(WELLBEING_ANALYTICS_ROLES)),
         "analytics_hr": bool(roles & (set(HR_ROLES) | set(ADMIN_ROLES))),
         "analytics_admissions": bool(roles & set(ADMISSIONS_ANALYTICS_ROLES)),
+        "analytics_demographics": bool(roles & set(DEMOGRAPHICS_ANALYTICS_ROLES)),
         "analytics_scheduling": bool(roles & (set(SCHEDULING_ROLES) | set(ADMIN_ROLES))),
+        "analytics_policy_signatures": bool(roles & set(POLICY_SIGNATURE_ANALYTICS_ROLES)),
+        "manage_policy_signatures": bool(roles & set(POLICY_SIGNATURE_MANAGER_ROLES)),
+        "quick_action_create_task": has_instructor_role,
+        "quick_action_gradebook": has_instructor_role,
+        "quick_action_student_log": has_academic_staff_role,
         "can_open_desk": bool(roles & set(STAFF_ROLES)),
     }
 
@@ -139,7 +154,7 @@ def get_staff_home_header():
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
     cache = frappe.cache()
-    cache_key = f"staff_home:header:v3:{user}"
+    cache_key = f"staff_home:header:v4:{user}"
     cached = cache.get_value(cache_key)
     if cached:
         try:

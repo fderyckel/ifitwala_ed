@@ -11,6 +11,7 @@ from datetime import date
 import frappe
 from frappe.utils import getdate, nowdate
 
+from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
 from ifitwala_ed.utilities.employee_utils import get_user_base_school
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -19,11 +20,12 @@ ALLOWED_ANALYTICS_ROLES = {
     "Pastoral Lead",
     "Counsellor",
     "Curriculum Coordinator",
-    "Admissions Officer",
+    "Accreditation Visitor",
+    "Marketing User",
     "Marketing Manager",
     "System Manager",
     "Administrator",
-}
+} | ADMISSIONS_ROLES
 
 
 def _ensure_demographics_access(user: str | None = None) -> str:

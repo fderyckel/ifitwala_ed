@@ -108,6 +108,22 @@ Used by:
 									@done="onWorkflowDone"
 									@request-refresh="reload"
 								/>
+								<ApplicantReviewAssignmentAction
+									v-else-if="isApplicantReviewAction && ctx"
+									:focus-item-id="resolvedFocusItemId"
+									:context="ctx"
+									@close="requestClose"
+									@done="onWorkflowDone"
+									@request-refresh="reload"
+								/>
+								<StaffPolicyAcknowledgeAction
+									v-else-if="isStaffPolicyAcknowledgeAction && ctx"
+									:focus-item-id="resolvedFocusItemId"
+									:context="ctx"
+									@close="requestClose"
+									@done="onWorkflowDone"
+									@request-refresh="reload"
+								/>
 
 								<!-- Not implemented -->
 								<div v-else class="card-panel p-5">
@@ -158,6 +174,8 @@ import { Button, FeatherIcon } from 'frappe-ui';
 
 import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue';
 import InquiryFollowUpAction from '@/components/focus/InquiryFollowUpAction.vue';
+import ApplicantReviewAssignmentAction from '@/components/focus/ApplicantReviewAssignmentAction.vue';
+import StaffPolicyAcknowledgeAction from '@/components/focus/StaffPolicyAcknowledgeAction.vue';
 import { createFocusService } from '@/lib/services/focus/focusService';
 
 import type {
@@ -237,6 +255,15 @@ const headerTitle = computed(() => {
 	if (referenceDoctype.value === 'Inquiry') {
 		return 'Inquiry follow-up';
 	}
+	if (referenceDoctype.value === 'Applicant Review Assignment') {
+		const targetType = ctx.value?.review_assignment?.target_type;
+		if (targetType === 'Applicant Document') return 'Document review';
+		if (targetType === 'Applicant Health Profile') return 'Health review';
+		return 'Application review';
+	}
+	if (referenceDoctype.value === 'Policy Version') {
+		return 'Acknowledge policy';
+	}
 	return 'Focus';
 });
 
@@ -250,6 +277,8 @@ const headerSubtitle = computed(() => {
 const headerKicker = computed(() => {
 	if (referenceDoctype.value === 'Student Log') return 'Student wellbeing';
 	if (referenceDoctype.value === 'Inquiry') return 'Admissions';
+	if (referenceDoctype.value === 'Applicant Review Assignment') return 'Admissions review';
+	if (referenceDoctype.value === 'Policy Version') return 'Compliance';
 	return 'Focus';
 });
 
@@ -267,6 +296,18 @@ const isInquiryFocusFollowUp = computed(() => {
 	if (referenceDoctype.value !== 'Inquiry') return false;
 	if (!actionType.value) return false;
 	return actionType.value === 'inquiry.follow_up.act.first_contact';
+});
+
+const isApplicantReviewAction = computed(() => {
+	if (referenceDoctype.value !== 'Applicant Review Assignment') return false;
+	if (!actionType.value) return false;
+	return actionType.value === 'applicant_review.assignment.decide';
+});
+
+const isStaffPolicyAcknowledgeAction = computed(() => {
+	if (referenceDoctype.value !== 'Policy Version') return false;
+	if (!actionType.value) return false;
+	return actionType.value === 'policy_acknowledgement.staff.sign';
 });
 
 /* API ---------------------------------------------------------- */

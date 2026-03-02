@@ -4,8 +4,12 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-from ifitwala_ed.governance.policy_scope_utils import is_school_within_policy_organization_scope
-from ifitwala_ed.governance.policy_utils import POLICY_CATEGORIES, ensure_policy_admin
+from ifitwala_ed.governance.policy_scope_utils import (
+    get_user_policy_scope,
+    is_policy_within_user_scope,
+    is_school_within_policy_organization_scope,
+)
+from ifitwala_ed.governance.policy_utils import POLICY_CATEGORIES, ensure_policy_admin, is_system_manager
 
 
 class InstitutionalPolicy(Document):
@@ -77,3 +81,62 @@ class InstitutionalPolicy(Document):
     def _validate_policy_category(self):
         if not self.policy_category or self.policy_category not in POLICY_CATEGORIES:
             frappe.throw(_("Policy Category must be one of: {0}.").format(", ".join(POLICY_CATEGORIES)))
+
+
+def _escaped_in(values: list[str]) -> str:
+    cleaned = [(value or "").strip() for value in values if (value or "").strip()]
+    if not cleaned:
+        return ""
+    return ", ".join(frappe.db.escape(value) for value in cleaned)
+
+
+def get_permission_query_conditions(user: str | None = None) -> str | None:
+    user = user or frappe.session.user
+    if user == "Administrator" or is_system_manager(user):
+        return None
+
+    organization_scope, school_scope = get_user_policy_scope(user)
+    organizations_sql = _escaped_in(organization_scope)
+    if not organizations_sql:
+        return "1=0"
+
+    school_sql = _escaped_in(school_scope)
+    if school_sql:
+        school_condition = (
+            "(ifnull(`tabInstitutional Policy`.`school`, '') = '' "
+            f"OR `tabInstitutional Policy`.`school` in ({school_sql}))"
+        )
+    else:
+        school_condition = "ifnull(`tabInstitutional Policy`.`school`, '') = ''"
+
+    return f"`tabInstitutional Policy`.`organization` in ({organizations_sql}) AND {school_condition}"
+
+
+def has_permission(doc: "InstitutionalPolicy", user: str | None = None, ptype: str | None = None) -> bool:
+    user = user or frappe.session.user
+    if user == "Administrator" or is_system_manager(user):
+        return True
+
+    if not doc:
+        return True
+
+    if isinstance(doc, str):
+        row = frappe.db.get_value(
+            "Institutional Policy",
+            doc,
+            ["organization", "school"],
+            as_dict=True,
+        )
+        if not row:
+            return False
+        policy_organization = (row.get("organization") or "").strip()
+        policy_school = (row.get("school") or "").strip()
+    else:
+        policy_organization = (getattr(doc, "organization", None) or "").strip()
+        policy_school = (getattr(doc, "school", None) or "").strip()
+
+    return is_policy_within_user_scope(
+        policy_organization=policy_organization,
+        policy_school=policy_school,
+        user=user,
+    )

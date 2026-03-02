@@ -5,12 +5,14 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint
 
+from ifitwala_ed.admission.admission_utils import get_default_applicant_document_type_spec
 from ifitwala_ed.governance.policy_scope_utils import is_policy_organization_applicable_to_context
 
 
 class ApplicantDocumentType(Document):
     def validate(self):
         self._validate_scope_coherence()
+        self._validate_repeatable_contract()
         self._validate_classification_contract()
 
     def _validate_scope_coherence(self):
@@ -45,8 +47,15 @@ class ApplicantDocumentType(Document):
 
         provided = [fieldname for fieldname, value in values.items() if value]
         missing = [fieldname for fieldname, value in values.items() if not value]
+        defaults = get_default_applicant_document_type_spec(doc_type_code=self.code)
 
         if not provided:
+            if defaults:
+                self.classification_slot = defaults["slot"]
+                self.classification_data_class = defaults["data_class"]
+                self.classification_purpose = defaults["purpose"]
+                self.classification_retention_policy = defaults["retention_policy"]
+                return
             if cint(self.is_active):
                 frappe.throw(
                     _(
@@ -56,6 +65,32 @@ class ApplicantDocumentType(Document):
                 )
             return
 
+        if missing and defaults:
+            if not values["classification_slot"]:
+                self.classification_slot = defaults["slot"]
+            if not values["classification_data_class"]:
+                self.classification_data_class = defaults["data_class"]
+            if not values["classification_purpose"]:
+                self.classification_purpose = defaults["purpose"]
+            if not values["classification_retention_policy"]:
+                self.classification_retention_policy = defaults["retention_policy"]
+            return
+
         if missing:
             labels = ", ".join(fieldname.replace("classification_", "").replace("_", " ") for fieldname in missing)
             frappe.throw(_("Incomplete classification settings. Missing: {0}.").format(labels))
+
+    def _validate_repeatable_contract(self):
+        is_repeatable = cint(self.is_repeatable)
+        min_items_required = cint(self.min_items_required or 0)
+        is_required = cint(self.is_required)
+
+        if not is_repeatable:
+            self.min_items_required = 1
+            return
+
+        if min_items_required < 1:
+            self.min_items_required = 1
+
+        if is_required and cint(self.min_items_required or 0) < 1:
+            frappe.throw(_("Min Items Required must be at least 1 for required repeatable document types."))

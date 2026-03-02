@@ -3,6 +3,8 @@ title: "Task Delivery: Turning a Task into a Real Teaching Event"
 slug: task-delivery
 category: Assessment
 doc_order: 5
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Assign a task to a specific student group with dates, grading mode, and evidence rules, then generate student outcomes at scale."
 seo_title: "Task Delivery: Turning a Task into a Real Teaching Event"
 seo_description: "Assign a task to a specific student group with dates, grading mode, and evidence rules, then generate student outcomes at scale."

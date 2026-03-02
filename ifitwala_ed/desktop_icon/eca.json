@@ -1,0 +1,20 @@
+{
+ "app": "ifitwala_ed",
+ "bg_color": "blue",
+ "creation": "2026-02-27 20:17:21.657703",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "Link",
+ "idx": 0,
+ "label": "ECA",
+ "link_to": "ECA",
+ "link_type": "Workspace Sidebar",
+ "modified": "2026-02-27 20:17:26.190095",
+ "modified_by": "Administrator",
+ "name": "ECA",
+ "owner": "Administrator",
+ "restrict_removal": 0,
+ "roles": [],
+ "standard": 1
+}

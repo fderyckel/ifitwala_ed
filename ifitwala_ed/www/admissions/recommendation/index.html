@@ -1,0 +1,484 @@
+{% if noindex %}
+<meta name="robots" content="noindex,nofollow,noarchive" />
+{% endif %}
+
+<div id="recommendation-intake-root" style="max-width: 860px; margin: 28px auto; padding: 0 16px; font-family: Helvetica, Arial, sans-serif;">
+  <section style="border: 1px solid #e6e8ec; border-radius: 16px; background: #ffffff; padding: 20px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);">
+    <h1 style="margin: 0; font-size: 28px; line-height: 1.2; color: #122339;">Recommendation Letter</h1>
+    <p style="margin: 8px 0 0 0; color: #4f5f73;" id="subtitle">Submit your recommendation confidentially.</p>
+
+    <div id="status-banner" style="display: none; margin-top: 14px; border-radius: 12px; padding: 12px 14px;"></div>
+
+    <div id="loading" style="margin-top: 18px; color: #4f5f73;">Loading request...</div>
+
+    <form id="recommendation-form" style="display: none; margin-top: 18px;">
+      <div style="display: grid; gap: 10px; margin-bottom: 16px;">
+        <div style="display: grid; gap: 4px;">
+          <label style="font-weight: 600; color: #22354d;">Recommender</label>
+          <div id="recommender-meta" style="font-size: 14px; color: #4f5f73;"></div>
+        </div>
+        <div style="display: grid; gap: 4px;">
+          <label style="font-weight: 600; color: #22354d;">Expires on</label>
+          <div id="expires-on" style="font-size: 14px; color: #4f5f73;"></div>
+        </div>
+      </div>
+
+      <div id="otp-section" style="display: none; border: 1px solid #d8e4f4; border-radius: 12px; background: #f5f9ff; padding: 12px; margin-bottom: 16px;">
+        <p style="margin: 0 0 10px 0; color: #22354d; font-size: 14px;">Email verification is required before submission.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+          <button id="send-otp-btn" type="button" style="border: 1px solid #8cb3e8; background: #ffffff; color: #1f4f8f; border-radius: 999px; padding: 8px 14px; cursor: pointer;">
+            Send OTP
+          </button>
+          <input id="otp-code" type="text" inputmode="numeric" maxlength="6" placeholder="Enter 6-digit code" style="border: 1px solid #c9d2de; border-radius: 10px; padding: 8px 10px; width: 190px;" />
+          <button id="verify-otp-btn" type="button" style="border: 1px solid #8cb3e8; background: #ffffff; color: #1f4f8f; border-radius: 999px; padding: 8px 14px; cursor: pointer;">
+            Verify OTP
+          </button>
+        </div>
+        <p id="otp-status" style="margin: 10px 0 0 0; color: #4f5f73; font-size: 13px;"></p>
+      </div>
+
+      <div id="dynamic-fields" style="display: grid; gap: 14px;"></div>
+
+      <div id="file-section" style="display: none; margin-top: 16px;">
+        <label for="recommendation-file" style="display: block; font-weight: 600; color: #22354d; margin-bottom: 4px;">Attachment (PDF or document)</label>
+        <input id="recommendation-file" type="file" style="display: block;" />
+        <p id="file-help" style="margin: 6px 0 0 0; color: #4f5f73; font-size: 13px;"></p>
+      </div>
+
+      <label style="display: flex; gap: 8px; align-items: flex-start; margin-top: 16px; color: #22354d; font-size: 14px;">
+        <input id="attestation" type="checkbox" style="margin-top: 3px;" />
+        <span>I confirm this recommendation is accurate and provided in good faith.</span>
+      </label>
+
+      <div style="margin-top: 16px; display: flex; gap: 10px; align-items: center;">
+        <button id="submit-btn" type="submit" style="border: none; background: #122339; color: white; border-radius: 999px; padding: 10px 18px; cursor: pointer;">
+          Submit Recommendation
+        </button>
+        <span id="submit-status" style="font-size: 13px; color: #4f5f73;"></span>
+      </div>
+    </form>
+  </section>
+</div>
+
+<script>
+(function () {
+  const token = {{ recommendation_token | tojson }};
+  const tokenMissing = {{ token_missing | tojson }};
+
+  const formEl = document.getElementById("recommendation-form");
+  const loadingEl = document.getElementById("loading");
+  const statusBannerEl = document.getElementById("status-banner");
+  const subtitleEl = document.getElementById("subtitle");
+  const recommenderMetaEl = document.getElementById("recommender-meta");
+  const expiresOnEl = document.getElementById("expires-on");
+  const fieldsEl = document.getElementById("dynamic-fields");
+  const fileSectionEl = document.getElementById("file-section");
+  const fileHelpEl = document.getElementById("file-help");
+  const fileInputEl = document.getElementById("recommendation-file");
+  const attestationEl = document.getElementById("attestation");
+  const submitBtnEl = document.getElementById("submit-btn");
+  const submitStatusEl = document.getElementById("submit-status");
+
+  const otpSectionEl = document.getElementById("otp-section");
+  const sendOtpBtnEl = document.getElementById("send-otp-btn");
+  const verifyOtpBtnEl = document.getElementById("verify-otp-btn");
+  const otpCodeEl = document.getElementById("otp-code");
+  const otpStatusEl = document.getElementById("otp-status");
+
+  let latestPayload = null;
+
+  function messageFromServerPayload(payload) {
+    if (!payload) return "Request failed.";
+    if (typeof payload.message === "string" && payload.message.trim()) return payload.message.trim();
+    if (typeof payload._error_message === "string" && payload._error_message.trim()) return payload._error_message.trim();
+    if (Array.isArray(payload._server_messages) && payload._server_messages.length) {
+      try {
+        const first = JSON.parse(payload._server_messages[0]);
+        if (first && typeof first.message === "string" && first.message.trim()) return first.message.trim();
+      } catch (_error) {}
+    }
+    return "Request failed.";
+  }
+
+  async function callApi(method, payload) {
+    const response = await fetch(`/api/method/${method}`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload || {}),
+    });
+
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (_error) {
+      throw new Error("Unexpected server response.");
+    }
+
+    if (!response.ok || data.exc || data.exception) {
+      throw new Error(messageFromServerPayload(data));
+    }
+    return data.message;
+  }
+
+  function showBanner(text, tone) {
+    const tones = {
+      success: {
+        border: "1px solid #9fd9b5",
+        background: "#edf9f1",
+        color: "#1d6a35",
+      },
+      warning: {
+        border: "1px solid #f2cf88",
+        background: "#fff8e9",
+        color: "#8a6100",
+      },
+      error: {
+        border: "1px solid #efb8b8",
+        background: "#fdecec",
+        color: "#9d2525",
+      },
+      info: {
+        border: "1px solid #cdd8e8",
+        background: "#f7f9fc",
+        color: "#22354d",
+      },
+    };
+    const selected = tones[tone] || tones.info;
+    statusBannerEl.style.display = "block";
+    statusBannerEl.style.border = selected.border;
+    statusBannerEl.style.background = selected.background;
+    statusBannerEl.style.color = selected.color;
+    statusBannerEl.textContent = text;
+  }
+
+  function hideBanner() {
+    statusBannerEl.style.display = "none";
+    statusBannerEl.textContent = "";
+  }
+
+  function fieldId(fieldKey) {
+    return `field_${fieldKey}`;
+  }
+
+  function renderFields(fields) {
+    fieldsEl.innerHTML = "";
+    (fields || []).forEach((field) => {
+      const wrapper = document.createElement("div");
+      wrapper.style.display = "grid";
+      wrapper.style.gap = "4px";
+
+      const label = document.createElement("label");
+      label.setAttribute("for", fieldId(field.field_key));
+      label.style.fontWeight = "600";
+      label.style.color = "#22354d";
+      label.textContent = field.label + (field.is_required ? " *" : "");
+      wrapper.appendChild(label);
+
+      let input;
+      if (field.field_type === "Long Text" || field.field_type === "Small Text") {
+        input = document.createElement("textarea");
+        input.rows = field.field_type === "Long Text" ? 6 : 3;
+      } else if (field.field_type === "Select") {
+        input = document.createElement("select");
+        const emptyOption = document.createElement("option");
+        emptyOption.value = "";
+        emptyOption.textContent = "Select";
+        input.appendChild(emptyOption);
+        (field.options || []).forEach((optionLabel) => {
+          const optionEl = document.createElement("option");
+          optionEl.value = optionLabel;
+          optionEl.textContent = optionLabel;
+          input.appendChild(optionEl);
+        });
+      } else if (field.field_type === "Check") {
+        input = document.createElement("input");
+        input.type = "checkbox";
+        input.style.width = "16px";
+        input.style.height = "16px";
+      } else {
+        input = document.createElement("input");
+        input.type = "text";
+      }
+
+      input.id = fieldId(field.field_key);
+      input.dataset.fieldKey = field.field_key;
+      input.dataset.fieldType = field.field_type;
+      input.dataset.required = field.is_required ? "1" : "0";
+
+      if (field.field_type !== "Check") {
+        input.style.border = "1px solid #c9d2de";
+        input.style.borderRadius = "10px";
+        input.style.padding = "8px 10px";
+      }
+
+      wrapper.appendChild(input);
+
+      if (field.help_text) {
+        const help = document.createElement("p");
+        help.textContent = field.help_text;
+        help.style.margin = "0";
+        help.style.fontSize = "13px";
+        help.style.color = "#4f5f73";
+        wrapper.appendChild(help);
+      }
+
+      fieldsEl.appendChild(wrapper);
+    });
+  }
+
+  function setOtpSection(payload) {
+    const request = payload && payload.request ? payload.request : {};
+    const requiresOtp = Boolean(request.otp_enforced);
+    const verified = Boolean(request.otp_verified);
+    if (!requiresOtp) {
+      otpSectionEl.style.display = "none";
+      otpStatusEl.textContent = "";
+      return;
+    }
+
+    otpSectionEl.style.display = "block";
+    if (verified) {
+      otpStatusEl.textContent = "OTP verified.";
+      otpStatusEl.style.color = "#1d6a35";
+      sendOtpBtnEl.disabled = true;
+      verifyOtpBtnEl.disabled = true;
+      otpCodeEl.disabled = true;
+    } else {
+      otpStatusEl.textContent = "";
+      sendOtpBtnEl.disabled = false;
+      verifyOtpBtnEl.disabled = false;
+      otpCodeEl.disabled = false;
+    }
+  }
+
+  function setFileSection(payload) {
+    const template = payload && payload.template ? payload.template : {};
+    const allow = Boolean(template.allow_file_upload);
+    const required = Boolean(template.file_upload_required);
+    fileSectionEl.style.display = allow ? "block" : "none";
+    if (!allow) {
+      fileInputEl.value = "";
+      fileHelpEl.textContent = "";
+      return;
+    }
+    fileHelpEl.textContent = required
+      ? "File upload is required for this recommendation."
+      : "File upload is optional.";
+  }
+
+  function setBusy(isBusy, message) {
+    submitBtnEl.disabled = Boolean(isBusy);
+    submitStatusEl.textContent = message || "";
+  }
+
+  function readAnswers() {
+    const answers = {};
+    const fields = fieldsEl.querySelectorAll("[data-field-key]");
+    for (const fieldEl of fields) {
+      const fieldKey = fieldEl.dataset.fieldKey || "";
+      const fieldType = fieldEl.dataset.fieldType || "Data";
+      const required = fieldEl.dataset.required === "1";
+
+      if (!fieldKey) continue;
+
+      let value;
+      if (fieldType === "Check") {
+        value = Boolean(fieldEl.checked);
+      } else {
+        value = String(fieldEl.value || "").trim();
+      }
+
+      if (required) {
+        if (fieldType === "Check" && !value) {
+          throw new Error(`Required field is missing: ${fieldKey}`);
+        }
+        if (fieldType !== "Check" && !value) {
+          throw new Error(`Required field is missing: ${fieldKey}`);
+        }
+      }
+
+      answers[fieldKey] = value;
+    }
+
+    return answers;
+  }
+
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) {
+        resolve({ content: null, file_name: null });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Unable to read selected file."));
+      reader.onload = () => {
+        const result = String(reader.result || "");
+        const idx = result.indexOf(",");
+        if (idx === -1) {
+          reject(new Error("Invalid file encoding."));
+          return;
+        }
+        resolve({
+          content: result.slice(idx + 1),
+          file_name: file.name,
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function loadPayload() {
+    hideBanner();
+
+    if (tokenMissing || !token) {
+      loadingEl.style.display = "none";
+      formEl.style.display = "none";
+      showBanner("This recommendation link is invalid.", "error");
+      return;
+    }
+
+    loadingEl.style.display = "block";
+    formEl.style.display = "none";
+
+    try {
+      const payload = await callApi("ifitwala_ed.api.recommendation_intake.get_recommendation_intake_payload", {
+        token,
+      });
+      latestPayload = payload;
+
+      if (payload.status === "submitted") {
+        loadingEl.style.display = "none";
+        formEl.style.display = "none";
+        showBanner("This recommendation was already submitted.", "success");
+        return;
+      }
+
+      const request = payload.request || {};
+      const template = payload.template || {};
+
+      subtitleEl.textContent = (template.template_name || "Recommendation") + " submission";
+      recommenderMetaEl.textContent = `${request.recommender_name || ""} (${request.recommender_email || ""})`;
+      expiresOnEl.textContent = String(request.expires_on || "-");
+
+      renderFields(template.fields || []);
+      setOtpSection(payload);
+      setFileSection(payload);
+
+      loadingEl.style.display = "none";
+      formEl.style.display = "block";
+      hideBanner();
+    } catch (error) {
+      loadingEl.style.display = "none";
+      formEl.style.display = "none";
+      showBanner(error instanceof Error ? error.message : "Unable to load recommendation request.", "error");
+    }
+  }
+
+  sendOtpBtnEl.addEventListener("click", async () => {
+    otpStatusEl.textContent = "Sending OTP...";
+    otpStatusEl.style.color = "#4f5f73";
+    sendOtpBtnEl.disabled = true;
+    try {
+      await callApi("ifitwala_ed.api.recommendation_intake.send_recommendation_otp", { token });
+      otpStatusEl.textContent = "OTP sent. Check your email.";
+      otpStatusEl.style.color = "#1f4f8f";
+    } catch (error) {
+      otpStatusEl.textContent = error instanceof Error ? error.message : "Unable to send OTP.";
+      otpStatusEl.style.color = "#9d2525";
+    } finally {
+      if (!otpCodeEl.disabled) {
+        sendOtpBtnEl.disabled = false;
+      }
+    }
+  });
+
+  verifyOtpBtnEl.addEventListener("click", async () => {
+    const otpCode = String(otpCodeEl.value || "").trim();
+    if (!otpCode) {
+      otpStatusEl.textContent = "Enter the 6-digit OTP code.";
+      otpStatusEl.style.color = "#9d2525";
+      return;
+    }
+
+    verifyOtpBtnEl.disabled = true;
+    otpStatusEl.textContent = "Verifying OTP...";
+    otpStatusEl.style.color = "#4f5f73";
+
+    try {
+      await callApi("ifitwala_ed.api.recommendation_intake.verify_recommendation_otp", {
+        token,
+        otp_code: otpCode,
+      });
+      otpStatusEl.textContent = "OTP verified.";
+      otpStatusEl.style.color = "#1d6a35";
+      await loadPayload();
+    } catch (error) {
+      otpStatusEl.textContent = error instanceof Error ? error.message : "OTP verification failed.";
+      otpStatusEl.style.color = "#9d2525";
+    } finally {
+      if (!otpCodeEl.disabled) {
+        verifyOtpBtnEl.disabled = false;
+      }
+    }
+  });
+
+  formEl.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    hideBanner();
+
+    if (!attestationEl.checked) {
+      showBanner("You must confirm the attestation before submitting.", "warning");
+      return;
+    }
+
+    let answers;
+    try {
+      answers = readAnswers();
+    } catch (error) {
+      showBanner(error instanceof Error ? error.message : "Please complete required fields.", "warning");
+      return;
+    }
+
+    setBusy(true, "Submitting...");
+    try {
+      const file = fileInputEl.files && fileInputEl.files[0] ? fileInputEl.files[0] : null;
+      const filePayload = await readFileAsBase64(file);
+      const payload = {
+        token,
+        answers,
+        attestation_confirmed: true,
+        client_request_id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      };
+      if (filePayload.content) {
+        payload.content = filePayload.content;
+        payload.file_name = filePayload.file_name;
+      }
+
+      const needsOtp = Boolean(latestPayload && latestPayload.request && latestPayload.request.otp_enforced);
+      const otpVerified = Boolean(latestPayload && latestPayload.request && latestPayload.request.otp_verified);
+      if (needsOtp && !otpVerified) {
+        const otpCode = String(otpCodeEl.value || "").trim();
+        if (!otpCode) {
+          throw new Error("OTP code is required before submission.");
+        }
+        payload.otp_code = otpCode;
+      }
+
+      await callApi("ifitwala_ed.api.recommendation_intake.submit_recommendation", payload);
+      showBanner("Recommendation submitted successfully.", "success");
+      formEl.style.display = "none";
+      subtitleEl.textContent = "Submission complete";
+    } catch (error) {
+      showBanner(error instanceof Error ? error.message : "Unable to submit recommendation.", "error");
+    } finally {
+      setBusy(false, "");
+    }
+  });
+
+  loadPayload();
+})();
+</script>

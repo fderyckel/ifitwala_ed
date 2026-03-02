@@ -22,6 +22,7 @@ export default defineConfig({
 		outDir: path.resolve(__dirname, '../public/vite'),
 		emptyOutDir: true,
 		manifest: true,
+		sourcemap: false,
 		rollupOptions: {
 			input: {
 				'src/apps/portal/main.ts': path.resolve(__dirname, 'src/apps/portal/main.ts'),

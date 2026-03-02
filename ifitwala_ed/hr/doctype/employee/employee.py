@@ -15,9 +15,7 @@ from frappe.utils.nestedset import NestedSet
 from ifitwala_ed.utilities.employee_utils import (
     get_descendant_organizations,
     get_user_base_org,
-    get_user_base_school,
 )
-from ifitwala_ed.utilities.school_tree import get_descendant_schools
 from ifitwala_ed.utilities.transaction_base import delete_events
 
 
@@ -119,8 +117,11 @@ class Employee(NestedSet):
         # ---------------------------------------------------------
         # 3) User profile sync (STRICTLY gated)
         # ---------------------------------------------------------
-        if self.user_id and self._can_sync_user_profile():
-            self.update_user()
+        if self.user_id:
+            if self._can_sync_user_profile():
+                self.update_user()
+            # Keep permission-driving defaults aligned regardless of profile sync gate.
+            self.update_user_default_organization()
             self.update_user_default_school()
 
     def on_trash(self):
@@ -283,7 +284,7 @@ class Employee(NestedSet):
             return  # No linked user to update
 
         # Get the current default school for this user
-        current_default = frappe.defaults.get_user_default("school", self.user_id)
+        current_default = _get_user_default_from_db(self.user_id, "school")
 
         # Set the default if missing and a school is already filled
         if not current_default and self.school:
@@ -307,6 +308,34 @@ class Employee(NestedSet):
             frappe.defaults.set_user_default("school", self.school, self.user_id)
             frappe.cache().hdel("user:" + self.user_id, "defaults")
             frappe.msgprint(_("Default school set to {0} for user {1}.").format(self.school, self.user_id))
+
+    def update_user_default_organization(self):
+        """Set or update the default organization for the user linked to this employee."""
+        if not self.user_id:
+            return  # No linked user to update
+
+        current_default = _get_user_default_from_db(self.user_id, "organization")
+        target_org = cstr(self.organization).strip()
+
+        if not current_default and target_org:
+            frappe.defaults.set_user_default("organization", target_org, self.user_id)
+            frappe.cache().hdel("user:" + self.user_id, "defaults")
+            frappe.msgprint(
+                _("Default organization set to {0} for user {1} (first-time setup).").format(target_org, self.user_id)
+            )
+            return
+
+        if not target_org:
+            if current_default:
+                frappe.defaults.clear_default("organization", self.user_id)
+                frappe.cache().hdel("user:" + self.user_id, "defaults")
+                frappe.msgprint(_("Default organization cleared for user {0}.").format(self.user_id))
+            return
+
+        if target_org != current_default:
+            frappe.defaults.set_user_default("organization", target_org, self.user_id)
+            frappe.cache().hdel("user:" + self.user_id, "defaults")
+            frappe.msgprint(_("Default organization set to {0} for user {1}.").format(target_org, self.user_id))
 
     def validate_employee_history(self):
         """Validate history rows:
@@ -740,8 +769,6 @@ def create_user(employee, user=None, email=None):
             frappe.throw(_("Only HR can create users from Employee."), frappe.PermissionError)
 
         # Resolve caller's base org
-        from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
-
         base_org = get_user_base_org(caller)
         if not base_org:
             frappe.throw(
@@ -820,15 +847,29 @@ def get_children(doctype, parent=None, organization=None, is_root=False, is_tree
     # Children of a node vs top-level nodes
     if parent:
         filters.append(["reports_to", "=", parent])
+        employees = frappe.get_list(
+            doctype,
+            fields=fields,
+            filters=filters,
+            order_by="name",
+        )
     else:
-        filters.append(["reports_to", "=", ""])
-
-    employees = frappe.get_list(
-        doctype,
-        fields=fields,
-        filters=filters,
-        order_by="name",
-    )
+        # For scoped users, visible employees can all report to out-of-scope managers.
+        # In that case, treat "parent not visible" as a root so the tree doesn't appear empty.
+        root_fields = fields + ["reports_to"]
+        all_visible = frappe.get_list(
+            doctype,
+            fields=root_fields,
+            filters=filters,
+            order_by="name",
+        )
+        visible_names = {row.get("value") for row in all_visible if row.get("value")}
+        employees = []
+        for row in all_visible:
+            manager = cstr(row.get("reports_to")).strip()
+            if not manager or manager not in visible_names:
+                row.pop("reports_to", None)
+                employees.append(row)
 
     # Nothing to expand
     if not employees:
@@ -901,55 +942,167 @@ def get_permission_query_conditions(user=None):
 
     roles = set(frappe.get_roles(user))
 
-    # HR: scope by Organization subtree
-    if roles & {"HR Manager", "HR User"}:
-        base_org = get_user_base_org(user)
-        if not base_org:
-            return None
-        orgs = get_descendant_organizations(base_org) or []
-        if not orgs:
-            return "1=0"
-        vals = ", ".join(frappe.db.escape(o) for o in orgs)
-        return f"`tabEmployee`.`organization` IN ({vals})"
+    # System Manager has full visibility
+    if "System Manager" in roles:
+        return None
 
-    # Academic Admin: scope by School subtree
+    # HR: scope by Organization subtree + always include unassigned organization rows
+    if roles & {"HR Manager", "HR User"}:
+        orgs = _resolve_hr_org_scope(user)
+        if not orgs:
+            return "IFNULL(`tabEmployee`.`organization`, '') = ''"
+
+        vals = ", ".join(frappe.db.escape(o) for o in orgs)
+        return f"(`tabEmployee`.`organization` IN ({vals}) OR IFNULL(`tabEmployee`.`organization`, '') = '')"
+
+    # Academic Admin: scope by default school only
     if "Academic Admin" in roles:
-        base_school = get_user_base_school(user)
-        if not base_school:
-            return None
-        schools = get_descendant_schools(base_school) or []
-        if not schools:
+        default_school = _get_user_default_from_db(user, "school")
+        if not default_school:
             return "1=0"
-        vals = ", ".join(frappe.db.escape(s) for s in schools)
-        return f"`tabEmployee`.`school` IN ({vals})"
+        return f"`tabEmployee`.`school` = {frappe.db.escape(default_school)}"
+
+    # Employee: own record only
+    if "Employee" in roles:
+        own_employee = _resolve_self_employee(user)
+        if not own_employee:
+            return "1=0"
+        return f"`tabEmployee`.`name` = {frappe.db.escape(own_employee)}"
 
     return None
 
 
-def employee_has_permission(doc, ptype, user):
+def employee_has_permission(doc=None, ptype=None, user=None):
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return False
+
+    ptype = ptype or "read"
+
     # System Manager full access
     if "System Manager" in frappe.get_roles(user):
         return True
 
     roles = set(frappe.get_roles(user))
+    read_like = {"read", "report", "export", "print"}
+    scoped_crud = read_like | {"write", "delete", "create", "submit", "cancel", "amend"}
 
-    # Read-like checks (list/report/export/print/open)
-    if ptype in {"read", "report", "export", "print"}:
-        # HR → Organization subtree
-        if roles & {"HR Manager", "HR User"}:
-            base_org = get_user_base_org(user)
-            if not base_org:
-                return None
-            desc = set(get_descendant_organizations(base_org) or [])
-            return doc.organization in desc
+    # HR -> Organization subtree + unassigned organization rows
+    if roles & {"HR Manager", "HR User"} and ptype in scoped_crud:
+        if doc is None:
+            return True
+        if not cstr(doc.organization).strip():
+            return True
+        orgs = set(_resolve_hr_org_scope(user))
+        if not orgs:
+            return False
+        return doc.organization in orgs
 
-        # Academic Admin → School subtree
-        if "Academic Admin" in roles:
-            base_school = get_user_base_school(user)
-            if not base_school:
-                return None
-            desc = set(get_descendant_schools(base_school) or [])
-            return doc.school in desc
+    # Academic Admin -> read only, default school only
+    if "Academic Admin" in roles:
+        if ptype not in read_like:
+            return False
+        default_school = _get_user_default_from_db(user, "school")
+        if doc is None:
+            return bool(default_school)
+        return bool(default_school and cstr(doc.school).strip() == default_school)
+
+    # Employee -> read only own record
+    if "Employee" in roles:
+        if ptype not in read_like:
+            return False
+        own_employee = _resolve_self_employee(user)
+        if doc is None:
+            return bool(own_employee)
+        if not own_employee:
+            return False
+        return doc.name == own_employee or cstr(doc.user_id).strip() == user
 
     # Others fall back to standard perms
     return None
+
+
+def _resolve_hr_base_org(user: str) -> str | None:
+    """Resolve HR base org from persistent defaults only (no Employee-linkage dependency)."""
+    org = _get_user_default_from_db(user, "organization")
+    if org:
+        return org
+
+    global_org = frappe.db.get_single_value("Global Defaults", "default_organization")
+    return cstr(global_org).strip() or None
+
+
+def _resolve_hr_org_scope(user: str) -> list[str]:
+    """Resolve full HR organization scope from default org + explicit user permissions."""
+    scope: set[str] = set()
+
+    base_org = _resolve_hr_base_org(user)
+    if base_org:
+        scope.update(
+            {cstr(org).strip() for org in (_get_descendant_organizations_uncached(base_org) or []) if cstr(org).strip()}
+        )
+
+    explicit_orgs = frappe.get_all(
+        "User Permission",
+        filters={"user": user, "allow": "Organization"},
+        pluck="for_value",
+    )
+    for org in explicit_orgs:
+        org_name = cstr(org).strip()
+        if not org_name:
+            continue
+        scope.update(
+            {
+                cstr(item).strip()
+                for item in (_get_descendant_organizations_uncached(org_name) or [])
+                if cstr(item).strip()
+            }
+        )
+
+    return sorted(scope)
+
+
+def _get_user_default_from_db(user: str, key: str) -> str | None:
+    rows = frappe.get_all(
+        "DefaultValue",
+        filters={"parent": user, "defkey": key},
+        fields=["defvalue"],
+        order_by="modified desc, creation desc, name desc",
+        limit=1,
+    )
+    if not rows:
+        return None
+    return cstr(rows[0].get("defvalue")).strip() or None
+
+
+def _get_descendant_organizations_uncached(org: str) -> list[str]:
+    org = cstr(org).strip()
+    if not org:
+        return []
+
+    bounds = frappe.db.get_value("Organization", org, ["lft", "rgt"], as_dict=True)
+    if not bounds or bounds.lft is None or bounds.rgt is None:
+        return []
+
+    return frappe.get_all(
+        "Organization",
+        filters={"lft": (">=", bounds.lft), "rgt": ("<=", bounds.rgt)},
+        pluck="name",
+    )
+
+
+def _resolve_self_employee(user: str) -> str | None:
+    rows = frappe.get_all(
+        "Employee",
+        filters={"user_id": user},
+        fields=["name", "employment_status"],
+        order_by="modified desc",
+        limit=5,
+    )
+    active = next(
+        (cstr(row.get("name")).strip() for row in rows if cstr(row.get("employment_status")).strip() == "Active"),
+        None,
+    )
+    if active:
+        return active
+    return next((cstr(row.get("name")).strip() for row in rows if cstr(row.get("name")).strip()), None)

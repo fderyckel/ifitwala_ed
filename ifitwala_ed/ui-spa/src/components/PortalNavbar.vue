@@ -69,7 +69,7 @@
 										<p class="text-sm font-medium text-gray-900 truncate">{{ user.email }}</p>
 									</div>
 									<a
-										href="/app/user-profile"
+										href="/desk/user-profile"
 										class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
 									>
 										My Profile

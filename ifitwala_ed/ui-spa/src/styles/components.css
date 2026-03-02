@@ -1477,6 +1477,36 @@
 		border-color: rgb(var(--border-rgb) / 0.8);
 	}
 
+	.analytics-export-actions {
+		@apply flex flex-wrap items-center justify-end gap-2;
+	}
+
+	.analytics-export-button {
+		@apply inline-flex items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold transition;
+		border-color: rgb(var(--canopy-rgb) / 0.28);
+		background: rgb(var(--canopy-rgb) / 1);
+		color: #fff;
+	}
+
+	.analytics-export-button:hover:not(:disabled) {
+		filter: brightness(0.95);
+	}
+
+	.analytics-export-button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.analytics-export-button--secondary {
+		background: rgb(var(--surface-rgb) / 1);
+		color: rgb(var(--canopy-rgb) / 1);
+	}
+
+	.analytics-export-message {
+		@apply w-full text-right text-[11px];
+		color: rgb(var(--slate-rgb) / 0.75);
+	}
+
 	/* ============================================================
      SCOPED FILTER SKIN
      ============================================================ */

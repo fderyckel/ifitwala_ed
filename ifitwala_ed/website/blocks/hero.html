@@ -4,7 +4,7 @@
 
 <section class="block-hero" data-hero-style="{{ theme.hero_style or 'classic' }}">
 	{% if slides %}
-		<div class="relative w-full overflow-hidden" data-carousel data-interval="{{ data.interval }}" data-autoplay="{{ data.autoplay }}">
+		<div class="relative w-full h-[68vh] min-h-[420px] max-h-[780px] overflow-hidden" data-carousel data-interval="{{ data.interval }}" data-autoplay="{{ data.autoplay }}">
 			{% for slide in slides %}
 				<div class="absolute inset-0 transition-opacity duration-700 {{ 'opacity-100 z-10' if loop.index == 1 else 'opacity-0 z-0' }}" data-carousel-slide>
 					{% if slide.image and slide.image.original %}
@@ -15,9 +15,16 @@
 							slide.image.thumb,
 							slide.image.original,
 							slide.alt or data.title or "Hero image",
-							"w-full h-[60vh] object-cover",
+							"w-full h-full object-cover",
 							fallback="carousel"
 						) }}
+					{% endif %}
+					{% if data.image_fade_mode != "none" and data.image_fade_opacity > 0 %}
+						<div
+							class="hero-image-fade pointer-events-none absolute inset-0"
+							data-fade-mode="{{ data.image_fade_mode }}"
+							style="opacity: {{ (data.image_fade_opacity or 0) / 100 }}"
+						></div>
 					{% endif %}
 					{% if slide.caption %}
 						<div class="absolute bottom-4 right-4 max-w-[60%] rounded bg-black/60 px-3 py-2 text-sm text-white">
@@ -34,7 +41,7 @@
 			</button>
 		</div>
 	{% elif data.image and data.image.original %}
-		<div class="w-full overflow-hidden">
+		<div class="relative w-full h-[68vh] min-h-[420px] max-h-[780px] overflow-hidden">
 			{{ img_macro.smart_image(
 				data.image.hero,
 				data.image.medium,
@@ -42,9 +49,16 @@
 				data.image.thumb,
 				data.image.original,
 				data.title or "Hero image",
-				"w-full h-[60vh] object-cover",
+				"w-full h-full object-cover",
 				fallback="carousel"
 			) }}
+			{% if data.image_fade_mode != "none" and data.image_fade_opacity > 0 %}
+				<div
+					class="hero-image-fade pointer-events-none absolute inset-0"
+					data-fade-mode="{{ data.image_fade_mode }}"
+					style="opacity: {{ (data.image_fade_opacity or 0) / 100 }}"
+				></div>
+			{% endif %}
 		</div>
 	{% endif %}
 

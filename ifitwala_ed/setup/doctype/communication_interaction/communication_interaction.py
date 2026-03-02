@@ -462,6 +462,7 @@ def upsert_communication_interaction(
     intent_type: str | None = None,
     reaction_code: str | None = None,
     note: str | None = None,
+    visibility: str | None = None,
     surface: str | None = None,
     student_group: str | None = None,
     program: str | None = None,
@@ -516,6 +517,9 @@ def upsert_communication_interaction(
 
     if note is not None:
         doc.note = note
+
+    if visibility is not None:
+        doc.visibility = visibility
 
     if surface is not None:
         doc.surface = surface

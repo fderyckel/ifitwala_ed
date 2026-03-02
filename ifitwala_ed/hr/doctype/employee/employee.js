@@ -247,20 +247,17 @@ frappe.ui.form.on("Employee", {
       method: "ifitwala_ed.utilities.governed_uploads.get_employee_image_variants",
       args: { employee: frm.doc.name },
     }).then((res) => {
-      const preferred = res?.message?.profile_image_thumb;
-      const candidates = ifitwala_ed.hr.get_employee_image_variant_candidates(
+      const variants = res?.message || {};
+      const candidates = [...new Set([
+        variants.profile_image_thumb,
+        variants.profile_image_card,
+        variants.profile_image_medium,
+        variants.profile_image,
         originalUrl,
-        "thumb",
-        frm.doc.name,
-        preferred
-      );
+      ].filter(Boolean))];
       applyWithCandidates(candidates);
     }).catch(() => {
-      const candidates = ifitwala_ed.hr.get_employee_image_variant_candidates(
-        originalUrl,
-        "thumb",
-        frm.doc.name
-      );
+      const candidates = [originalUrl];
       applyWithCandidates(candidates);
     });
   },
@@ -340,67 +337,6 @@ frappe.ui.form.on("Employee", {
     }
   },
 });
-
-// ------------------------------------------------------------
-// Private helpers (namespaced, no globals)
-// ------------------------------------------------------------
-
-ifitwala_ed.hr.get_employee_image_variant_candidates = function (fileUrl, sizeLabel, docname, preferredUrl) {
-  if (!fileUrl) return [];
-
-  const cleaned = String(fileUrl).trim();
-  if (!cleaned || cleaned.startsWith("http")) return [];
-
-  const filename = cleaned.split("/").pop() || "";
-  if (!filename) return [];
-
-  if (cleaned.includes("/gallery_resized/")) {
-    return [cleaned];
-  }
-
-  const lower = filename.toLowerCase();
-  if (
-    lower.startsWith("hero_")
-    || lower.startsWith("medium_")
-    || lower.startsWith("card_")
-    || lower.startsWith("thumb_")
-  ) {
-    return [cleaned];
-  }
-
-  const base = filename.replace(/\.[^/.]+$/, "");
-  const slugBase = base
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  if (!slugBase) return [];
-
-  const size = sizeLabel || "thumb";
-  const candidates = [];
-
-  if (preferredUrl) {
-    candidates.push(preferredUrl);
-  }
-
-  if (docname) {
-    candidates.push(`/files/Employee/${docname}/${size}_${slugBase}.webp`);
-  }
-
-  if (cleaned.includes("/Employee/")) {
-    const baseDir = cleaned.substring(0, cleaned.lastIndexOf("/"));
-    candidates.push(`${baseDir}/${size}_${slugBase}.webp`);
-  }
-
-  candidates.push(`/files/gallery_resized/employee/${size}_${slugBase}.webp`);
-  candidates.push(`/files/${size}_${slugBase}.webp`);
-
-  const seen = new Set();
-  return candidates.filter((url) => {
-    if (!url || seen.has(url)) return false;
-    seen.add(url);
-    return true;
-  });
-};
 
 /**
  * Lock the rendered Contact/Address UI so it behaves as "display-only".

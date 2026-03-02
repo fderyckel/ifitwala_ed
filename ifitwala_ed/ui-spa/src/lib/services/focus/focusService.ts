@@ -25,6 +25,22 @@ import type {
 	Request as MarkInquiryContactedRequest,
 	Response as MarkInquiryContactedResponse,
 } from '@/types/contracts/focus/mark_inquiry_contacted'
+import type {
+	Request as SubmitApplicantReviewAssignmentRequest,
+	Response as SubmitApplicantReviewAssignmentResponse,
+} from '@/types/contracts/focus/submit_applicant_review_assignment'
+import type {
+	Request as ClaimApplicantReviewAssignmentRequest,
+	Response as ClaimApplicantReviewAssignmentResponse,
+} from '@/types/contracts/focus/claim_applicant_review_assignment'
+import type {
+	Request as ReassignApplicantReviewAssignmentRequest,
+	Response as ReassignApplicantReviewAssignmentResponse,
+} from '@/types/contracts/focus/reassign_applicant_review_assignment'
+import type {
+	Request as AcknowledgeStaffPolicyRequest,
+	Response as AcknowledgeStaffPolicyResponse,
+} from '@/types/contracts/focus/acknowledge_staff_policy'
 
 /**
  * Focus Service (A+ — LOCKED)
@@ -62,6 +78,33 @@ export function createFocusService() {
 
 	const markInquiryContactedResource = createResource<MarkInquiryContactedResponse>({
 		url: 'ifitwala_ed.api.focus.mark_inquiry_contacted',
+		method: 'POST',
+		auto: false,
+	})
+
+	const submitApplicantReviewAssignmentResource =
+		createResource<SubmitApplicantReviewAssignmentResponse>({
+			url: 'ifitwala_ed.api.focus.submit_applicant_review_assignment',
+			method: 'POST',
+			auto: false,
+		})
+
+	const claimApplicantReviewAssignmentResource =
+		createResource<ClaimApplicantReviewAssignmentResponse>({
+			url: 'ifitwala_ed.api.focus.claim_applicant_review_assignment',
+			method: 'POST',
+			auto: false,
+		})
+
+	const reassignApplicantReviewAssignmentResource =
+		createResource<ReassignApplicantReviewAssignmentResponse>({
+			url: 'ifitwala_ed.api.focus.reassign_applicant_review_assignment',
+			method: 'POST',
+			auto: false,
+		})
+
+	const acknowledgeStaffPolicyResource = createResource<AcknowledgeStaffPolicyResponse>({
+		url: 'ifitwala_ed.api.focus.acknowledge_staff_policy',
 		method: 'POST',
 		auto: false,
 	})
@@ -116,10 +159,62 @@ export function createFocusService() {
 		return response
 	}
 
+	async function submitApplicantReviewAssignment(
+		payload: SubmitApplicantReviewAssignmentRequest
+	): Promise<SubmitApplicantReviewAssignmentResponse> {
+		const response = await submitApplicantReviewAssignmentResource.submit(payload)
+
+		if (response.status === 'processed' || response.status === 'already_processed') {
+			uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+		}
+
+		return response
+	}
+
+	async function claimApplicantReviewAssignment(
+		payload: ClaimApplicantReviewAssignmentRequest
+	): Promise<ClaimApplicantReviewAssignmentResponse> {
+		const response = await claimApplicantReviewAssignmentResource.submit(payload)
+
+		if (response.status === 'processed' || response.status === 'already_processed') {
+			uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+		}
+
+		return response
+	}
+
+	async function reassignApplicantReviewAssignment(
+		payload: ReassignApplicantReviewAssignmentRequest
+	): Promise<ReassignApplicantReviewAssignmentResponse> {
+		const response = await reassignApplicantReviewAssignmentResource.submit(payload)
+
+		if (response.status === 'processed' || response.status === 'already_processed') {
+			uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+		}
+
+		return response
+	}
+
+	async function acknowledgeStaffPolicy(
+		payload: AcknowledgeStaffPolicyRequest
+	): Promise<AcknowledgeStaffPolicyResponse> {
+		const response = await acknowledgeStaffPolicyResource.submit(payload)
+
+		if (response.status === 'processed' || response.status === 'already_processed') {
+			uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+		}
+
+		return response
+	}
+
 	return {
 		getFocusContext,
 		submitStudentLogFollowUp,
 		reviewStudentLogOutcome,
 		markInquiryContacted,
+		submitApplicantReviewAssignment,
+		claimApplicantReviewAssignment,
+		reassignApplicantReviewAssignment,
+		acknowledgeStaffPolicy,
 	}
 }

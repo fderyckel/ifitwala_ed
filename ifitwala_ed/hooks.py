@@ -45,11 +45,9 @@ app_include_js = ["/assets/ifitwala_ed/js/ifitwala_ed.bundle.js", "/assets/ifitw
 # webform_include_css = {"doctype": "public/css/doctype.css"}
 webform_include_css = {
     "Inquiry": "public/css/admissions_webform_shell.css",
-    "Registration of Interest": "public/css/admissions_webform_shell.css",
 }
 webform_include_js = {
     "Inquiry": "public/js/admissions_webform_shell.js",
-    "Registration of Interest": "public/js/admissions_webform_shell.js",
 }
 
 # include js in page
@@ -80,7 +78,7 @@ website_redirects = WEBSITE_REDIRECTS
 
 # Home Pages
 # ----------
-# Neutralize sticky login redirect-to=/app before login page/scripts execute.
+# Neutralize sticky login redirect-to=/desk (and legacy /app) before login page/scripts execute.
 before_request = [
     "ifitwala_ed.api.users.sanitize_login_redirect_param",
     "ifitwala_ed.api.users.redirect_non_staff_away_from_desk",
@@ -92,14 +90,14 @@ on_session_creation = "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_se
 # Resolve website home directly from the same canonical role policy.
 get_website_user_home_page = "ifitwala_ed.api.users.get_website_user_home_page"
 # application home page (will override Website Settings)
-# home_page = "/portal"
+# home_page = "/hub"
 
 # website user home page (by Role)
 role_home_page = {
-    "Desk User": "/portal/staff",
-    "Employee": "/portal/staff",
-    "Student": "/portal/student",
-    "Guardian": "/portal/guardian",
+    "Desk User": "/hub/staff",
+    "Employee": "/hub/staff",
+    "Student": "/hub/student",
+    "Guardian": "/hub/guardian",
 }
 
 # Generators
@@ -157,6 +155,7 @@ calendars = ["School Event", "School Calendar", "Leave Application"]
 # Permissions evaluated in scripted ways
 
 permission_query_conditions = {
+    "Organization": "ifitwala_ed.setup.doctype.organization.organization.get_permission_query_conditions",
     "Contact": "ifitwala_ed.utilities.contact_utils.contact_permission_query_conditions",
     "Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_permission_query_conditions",
     "Instructor": "ifitwala_ed.schedule.doctype.instructor.instructor.get_permission_query_conditions",
@@ -167,6 +166,9 @@ permission_query_conditions = {
     "Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.get_permission_query_conditions",
     "Activity Booking": "ifitwala_ed.eca.doctype.activity_booking.activity_booking.get_permission_query_conditions",
     "Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.get_permission_query_conditions",
+    "Institutional Policy": "ifitwala_ed.governance.doctype.institutional_policy.institutional_policy.get_permission_query_conditions",
+    "Policy Version": "ifitwala_ed.governance.doctype.policy_version.policy_version.get_permission_query_conditions",
+    "Policy Acknowledgement": "ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement.get_permission_query_conditions",
     "Leave Application": "ifitwala_ed.hr.leave_permissions.leave_application_pqc",
     "Leave Allocation": "ifitwala_ed.hr.leave_permissions.leave_allocation_pqc",
     "Leave Policy": "ifitwala_ed.hr.leave_permissions.leave_policy_pqc",
@@ -180,6 +182,7 @@ permission_query_conditions = {
 }
 
 has_permission = {
+    "Organization": "ifitwala_ed.setup.doctype.organization.organization.has_permission",
     "Contact": "ifitwala_ed.utilities.contact_utils.contact_has_permission",
     "Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.has_permission",
     "Instructor": "ifitwala_ed.schedule.doctype.instructor.instructor.has_permission",
@@ -190,6 +193,9 @@ has_permission = {
     "Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.has_permission",
     "Activity Booking": "ifitwala_ed.eca.doctype.activity_booking.activity_booking.has_permission",
     "Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.has_permission",
+    "Institutional Policy": "ifitwala_ed.governance.doctype.institutional_policy.institutional_policy.has_permission",
+    "Policy Version": "ifitwala_ed.governance.doctype.policy_version.policy_version.has_permission",
+    "Policy Acknowledgement": "ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement.has_permission",
     "Leave Application": "ifitwala_ed.hr.leave_permissions.leave_application_has_permission",
     "Leave Allocation": "ifitwala_ed.hr.leave_permissions.leave_allocation_has_permission",
     "Leave Policy": "ifitwala_ed.hr.leave_permissions.leave_policy_has_permission",
@@ -271,7 +277,7 @@ doc_events = {
 
 scheduler_events = {
     "hourly": [
-        "ifitwala_ed.admission.admission_utils.check_sla_breaches",
+        "ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep",
         "ifitwala_ed.schedule.attendance_jobs.prewarm_meeting_dates_hourly_guard",
     ],
     "daily": [

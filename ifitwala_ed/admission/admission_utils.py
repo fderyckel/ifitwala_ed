@@ -8,7 +8,7 @@ import frappe
 from frappe import _
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.desk.form.assign_to import remove as remove_assignment
-from frappe.utils import add_days, getdate, now, nowdate, validate_email_address
+from frappe.utils import add_days, cint, getdate, now, nowdate, validate_email_address
 from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
 
 from ifitwala_ed.governance.policy_scope_utils import (
@@ -27,8 +27,80 @@ APPLICANT_DOCUMENT_CLASSIFICATION_FIELDS = (
 )
 
 
+APPLICANT_DOCUMENT_CODE_CLASSIFICATION_MAP = {
+    "passport": {
+        "slot": "identity_passport",
+        "data_class": "legal",
+        "purpose": "identification_document",
+        "retention_policy": "until_school_exit_plus_6m",
+    },
+    "id_documents": {
+        "slot": "identity_passport",
+        "data_class": "legal",
+        "purpose": "identification_document",
+        "retention_policy": "until_school_exit_plus_6m",
+    },
+    "birth_certificate": {
+        "slot": "identity_birth_cert",
+        "data_class": "legal",
+        "purpose": "identification_document",
+        "retention_policy": "until_school_exit_plus_6m",
+    },
+    "health_record": {
+        "slot": "health_record",
+        "data_class": "safeguarding",
+        "purpose": "medical_record",
+        "retention_policy": "until_school_exit_plus_6m",
+    },
+    "transcript": {
+        "slot": "prior_transcript",
+        "data_class": "academic",
+        "purpose": "academic_report",
+        "retention_policy": "until_program_end_plus_1y",
+    },
+    "transcripts": {
+        "slot": "prior_transcript",
+        "data_class": "academic",
+        "purpose": "academic_report",
+        "retention_policy": "until_program_end_plus_1y",
+    },
+    "report_card": {
+        "slot": "prior_transcript",
+        "data_class": "academic",
+        "purpose": "academic_report",
+        "retention_policy": "until_program_end_plus_1y",
+    },
+    "photo": {
+        "slot": "family_photo",
+        "data_class": "administrative",
+        "purpose": "applicant_profile_display",
+        "retention_policy": "immediate_on_request",
+    },
+    "application_form": {
+        "slot": "application_form",
+        "data_class": "administrative",
+        "purpose": "administrative",
+        "retention_policy": "until_program_end_plus_1y",
+    },
+}
+
+SLA_SWEEP_LOCK_KEY = "admissions:sla_sweep:lock"
+SLA_SWEEP_STATUS_CACHE_KEY = "admissions:sla_sweep:last_run"
+
+
 def _normalize_scope_value(value: str | None) -> str:
     return (value or "").strip()
+
+
+def _normalize_document_type_code(value: str | None) -> str:
+    return frappe.scrub(_normalize_scope_value(value))
+
+
+def get_default_applicant_document_type_spec(*, doc_type_code: str | None = None) -> dict:
+    lookup = _normalize_document_type_code(doc_type_code)
+    if not lookup:
+        return {}
+    return dict(APPLICANT_DOCUMENT_CODE_CLASSIFICATION_MAP.get(lookup) or {})
 
 
 def get_applicant_scope_ancestors(*, organization: str | None, school: str | None) -> tuple[list[str], list[str]]:
@@ -78,7 +150,16 @@ def _format_doc_type_spec_from_row(row: dict | None) -> dict:
 
 
 def has_complete_applicant_document_type_classification(row: dict | None) -> bool:
-    return bool(_format_doc_type_spec_from_row(row))
+    spec = _format_doc_type_spec_from_row(row)
+    if spec:
+        return True
+    if not row:
+        return False
+    return bool(
+        get_default_applicant_document_type_spec(
+            doc_type_code=row.get("code") or row.get("name"),
+        )
+    )
 
 
 def get_applicant_document_slot_spec(*, document_type: str | None = None, doc_type_code: str | None = None) -> dict:
@@ -108,7 +189,12 @@ def get_applicant_document_slot_spec(*, document_type: str | None = None, doc_ty
             APPLICANT_DOCUMENT_CLASSIFICATION_FIELDS,
             as_dict=True,
         )
-    return _format_doc_type_spec_from_row(row)
+    explicit = _format_doc_type_spec_from_row(row)
+    if explicit:
+        return explicit
+    return get_default_applicant_document_type_spec(
+        doc_type_code=lookup_code or lookup_name,
+    )
 
 
 def ensure_admissions_permission(user: str | None = None) -> str:
@@ -131,9 +217,7 @@ def notify_admission_manager(doc):
         return
 
     state = (doc.workflow_state or "").strip()
-    is_new_submission = (doc.doctype == "Inquiry" and state == "New") or (
-        doc.doctype == "Registration of Interest" and state == "New Inquiry"
-    )
+    is_new_submission = doc.doctype == "Inquiry" and state == "New"
     if not is_new_submission:
         return
 
@@ -160,90 +244,172 @@ def notify_admission_manager(doc):
 def check_sla_breaches():
     """
     Recompute SLA statuses using efficient SQL updates.
-    Applies to Inquiry + Registration of Interest.
+    Applies to Inquiry.
     """
     logger = frappe.logger("sla_breaches", allow_site=True)
+    cache = frappe.cache()
     today = getdate()
-
     contacted_states = ("Contacted", "Qualified", "Archived")
-    doc_types = ["Inquiry", "Registration of Interest"]
+    doc_types = ["Inquiry"]
+    summary = {
+        "started_at": now(),
+        "today": str(today),
+        "processed": [],
+        "skipped": [],
+        "failed": [],
+    }
 
-    for doctype in doc_types:
-        if not frappe.db.table_exists(doctype):
-            continue
+    with cache.lock(SLA_SWEEP_LOCK_KEY, timeout=55):
+        for doctype in doc_types:
+            if not frappe.db.table_exists(doctype):
+                summary["skipped"].append({"doctype": doctype, "reason": "table_missing"})
+                continue
 
-        params = {"today": today}
+            has_workflow_state = frappe.db.has_column(doctype, "workflow_state")
+            has_sla_status = frappe.db.has_column(doctype, "sla_status")
+            has_first_contact_due = frappe.db.has_column(doctype, "first_contact_due_on")
+            has_followup_due = frappe.db.has_column(doctype, "followup_due_on")
+            has_submitted_at = frappe.db.has_column(doctype, "submitted_at")
 
-        # 1) Mark Overdue
-        frappe.db.sql(
-            f"""
-            UPDATE `tab{doctype}`
-               SET sla_status = '🔴 Overdue'
-             WHERE docstatus = 0
-               AND (
-                 (workflow_state NOT IN {contacted_states}
-                  AND first_contact_due_on IS NOT NULL
-                  AND first_contact_due_on < %(today)s)
-                 OR
-                 (workflow_state = 'Assigned'
-                  AND followup_due_on IS NOT NULL
-                  AND followup_due_on < %(today)s)
-               )
-               AND sla_status != '🔴 Overdue'
-        """,
-            params,
-        )
+            if not has_workflow_state or not has_sla_status:
+                summary["skipped"].append(
+                    {
+                        "doctype": doctype,
+                        "reason": "required_columns_missing",
+                        "workflow_state": bool(has_workflow_state),
+                        "sla_status": bool(has_sla_status),
+                    }
+                )
+                continue
 
-        # 2) Mark Due Today
-        frappe.db.sql(
-            f"""
-            UPDATE `tab{doctype}`
-               SET sla_status = '🟡 Due Today'
-             WHERE docstatus = 0
-               AND (
-                 (workflow_state NOT IN {contacted_states}
-                  AND first_contact_due_on = %(today)s)
-                 OR
-                 (workflow_state = 'Assigned'
-                  AND followup_due_on = %(today)s)
-               )
-               AND sla_status != '🟡 Due Today'
-        """,
-            params,
-        )
+            if not has_first_contact_due and not has_followup_due:
+                summary["skipped"].append(
+                    {
+                        "doctype": doctype,
+                        "reason": "due_columns_missing",
+                    }
+                )
+                continue
 
-        # 3) Mark Upcoming
-        frappe.db.sql(
-            f"""
-            UPDATE `tab{doctype}`
-               SET sla_status = '⚪ Upcoming'
-             WHERE docstatus = 0
-               AND (
-                 (workflow_state NOT IN {contacted_states}
-                  AND first_contact_due_on > %(today)s)
-                 OR
-                 (workflow_state = 'Assigned'
-                  AND followup_due_on > %(today)s)
-               )
-               AND sla_status != '⚪ Upcoming'
-        """,
-            params,
-        )
+            workflow_state_expr = "COALESCE(workflow_state, 'New')"
+            overdue_clauses = []
+            due_today_clauses = []
+            upcoming_clauses = []
 
-        # 4) Everything else = On Track
-        frappe.db.sql(f"""
-            UPDATE `tab{doctype}`
-               SET sla_status = '✅ On Track'
-             WHERE docstatus = 0
-               AND (
-                 workflow_state IN {contacted_states}
-                 OR (first_contact_due_on IS NULL AND followup_due_on IS NULL)
-               )
-               AND sla_status != '✅ On Track'
-        """)
+            if has_first_contact_due:
+                overdue_clauses.append(
+                    f"({workflow_state_expr} NOT IN {contacted_states} "
+                    "AND first_contact_due_on IS NOT NULL "
+                    "AND first_contact_due_on < %(today)s)"
+                )
+                due_today_clauses.append(
+                    f"({workflow_state_expr} NOT IN {contacted_states} AND first_contact_due_on = %(today)s)"
+                )
+                upcoming_clauses.append(
+                    f"({workflow_state_expr} NOT IN {contacted_states} AND first_contact_due_on > %(today)s)"
+                )
 
-    frappe.db.commit()
-    logger.info("SLA sweep done.")
+            if has_followup_due:
+                overdue_clauses.append(
+                    f"({workflow_state_expr} = 'Assigned' "
+                    "AND followup_due_on IS NOT NULL "
+                    "AND followup_due_on < %(today)s)"
+                )
+                due_today_clauses.append(f"({workflow_state_expr} = 'Assigned' AND followup_due_on = %(today)s)")
+                upcoming_clauses.append(f"({workflow_state_expr} = 'Assigned' AND followup_due_on > %(today)s)")
+
+            on_track_clauses = [f"{workflow_state_expr} IN {contacted_states}"]
+            if has_first_contact_due and has_followup_due:
+                on_track_clauses.append("(first_contact_due_on IS NULL AND followup_due_on IS NULL)")
+            elif has_first_contact_due:
+                on_track_clauses.append("first_contact_due_on IS NULL")
+            elif has_followup_due:
+                on_track_clauses.append("followup_due_on IS NULL")
+
+            params = {"today": today}
+            try:
+                # Backfill missing first-contact due dates for legacy rows so scheduler can manage them.
+                if has_first_contact_due:
+                    first_contact_sla_days = cint(_get_first_contact_sla_days_default()) or 7
+                    base_date_expr = (
+                        "COALESCE(DATE(submitted_at), DATE(creation), %(today)s)"
+                        if has_submitted_at
+                        else "COALESCE(DATE(creation), %(today)s)"
+                    )
+                    frappe.db.sql(
+                        f"""
+                        UPDATE `tab{doctype}`
+                           SET first_contact_due_on = DATE_ADD({base_date_expr}, INTERVAL {first_contact_sla_days} DAY)
+                         WHERE docstatus = 0
+                           AND first_contact_due_on IS NULL
+                           AND {workflow_state_expr} NOT IN {contacted_states}
+                        """,
+                        params,
+                    )
+
+                # 1) Mark Overdue
+                frappe.db.sql(
+                    f"""
+                    UPDATE `tab{doctype}`
+                       SET sla_status = '🔴 Overdue'
+                     WHERE docstatus = 0
+                       AND ({" OR ".join(overdue_clauses)})
+                       AND sla_status != '🔴 Overdue'
+                    """,
+                    params,
+                )
+
+                # 2) Mark Due Today
+                frappe.db.sql(
+                    f"""
+                    UPDATE `tab{doctype}`
+                       SET sla_status = '🟡 Due Today'
+                     WHERE docstatus = 0
+                       AND ({" OR ".join(due_today_clauses)})
+                       AND sla_status != '🟡 Due Today'
+                    """,
+                    params,
+                )
+
+                # 3) Mark Upcoming
+                frappe.db.sql(
+                    f"""
+                    UPDATE `tab{doctype}`
+                       SET sla_status = '⚪ Upcoming'
+                     WHERE docstatus = 0
+                       AND ({" OR ".join(upcoming_clauses)})
+                       AND sla_status != '⚪ Upcoming'
+                    """,
+                    params,
+                )
+
+                # 4) Everything else = On Track
+                frappe.db.sql(
+                    f"""
+                    UPDATE `tab{doctype}`
+                       SET sla_status = '✅ On Track'
+                     WHERE docstatus = 0
+                       AND ({" OR ".join(on_track_clauses)})
+                       AND sla_status != '✅ On Track'
+                    """
+                )
+                frappe.db.commit()
+                summary["processed"].append(
+                    {
+                        "doctype": doctype,
+                        "first_contact_due_on": bool(has_first_contact_due),
+                        "followup_due_on": bool(has_followup_due),
+                    }
+                )
+            except Exception:
+                frappe.db.rollback()
+                summary["failed"].append({"doctype": doctype})
+                logger.exception("SLA sweep failed for doctype %s", doctype)
+
+    summary["finished_at"] = now()
+    cache.set_value(SLA_SWEEP_STATUS_CACHE_KEY, frappe.as_json(summary), expires_in_sec=86400)
+    logger.info("SLA sweep done: %s", frappe.as_json(summary))
+    return summary
 
 
 def _create_native_assignment(
@@ -387,6 +553,78 @@ def upsert_contact_email(contact_name: str, email: str, *, set_primary_if_missin
         contact.save(ignore_permissions=True)
 
     return email
+
+
+def ensure_contact_dynamic_link(*, contact_name: str, link_doctype: str, link_name: str) -> bool:
+    contact_name = (contact_name or "").strip()
+    link_doctype = (link_doctype or "").strip()
+    link_name = (link_name or "").strip()
+
+    if not contact_name:
+        frappe.throw(_("Contact is required."))
+    if not link_doctype:
+        frappe.throw(_("Link DocType is required."))
+    if not link_name:
+        frappe.throw(_("Link name is required."))
+    if not frappe.db.exists("Contact", contact_name):
+        frappe.throw(_("Invalid Contact: {0}").format(contact_name))
+
+    link_exists = frappe.db.exists(
+        "Dynamic Link",
+        {
+            "parenttype": "Contact",
+            "parentfield": "links",
+            "parent": contact_name,
+            "link_doctype": link_doctype,
+            "link_name": link_name,
+        },
+    )
+    if link_exists:
+        return False
+
+    contact = frappe.get_doc("Contact", contact_name)
+    contact.append("links", {"link_doctype": link_doctype, "link_name": link_name})
+    contact.save(ignore_permissions=True)
+    return True
+
+
+def sync_student_applicant_contact_binding(*, student_applicant: str, contact_name: str | None = None) -> dict:
+    student_applicant = (student_applicant or "").strip()
+    if not student_applicant:
+        frappe.throw(_("Student Applicant is required."))
+
+    applicant = frappe.get_doc("Student Applicant", student_applicant)
+    resolved_contact = (contact_name or applicant.get("applicant_contact") or "").strip()
+    if not resolved_contact:
+        return {"contact": None, "link_added": False, "emails_synced": []}
+    if not frappe.db.exists("Contact", resolved_contact):
+        frappe.throw(_("Invalid Contact: {0}").format(resolved_contact))
+
+    link_added = ensure_contact_dynamic_link(
+        contact_name=resolved_contact,
+        link_doctype="Student Applicant",
+        link_name=applicant.name,
+    )
+
+    seen: set[str] = set()
+    emails_synced: list[str] = []
+    for value in (
+        applicant.get("applicant_email"),
+        applicant.get("portal_account_email"),
+        applicant.get("applicant_user"),
+    ):
+        normalized = normalize_email_value(value)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        upsert_contact_email(resolved_contact, normalized, set_primary_if_missing=True)
+        emails_synced.append(normalized)
+
+    return {
+        "contact": resolved_contact,
+        "link_added": link_added,
+        "emails_synced": emails_synced,
+    }
 
 
 def ensure_contact_for_email(
@@ -699,7 +937,7 @@ def on_todo_update_close_marks_contacted(doc, method=None):
     if doc.status != "Closed":
         return
     # Only for our doctypes
-    if doc.reference_type not in ("Inquiry", "Registration of Interest"):
+    if doc.reference_type != "Inquiry":
         return
     if not doc.reference_name:
         return
@@ -710,10 +948,7 @@ def on_todo_update_close_marks_contacted(doc, method=None):
         return
 
     state = (ref.workflow_state or "New").strip()
-    if ref.doctype == "Inquiry":
-        pre_contact_states = {"New", "Assigned"}
-    else:
-        pre_contact_states = {"New Inquiry", "New", "Assigned"}
+    pre_contact_states = {"New", "Assigned"}
 
     # Only flip from pre-contact states
     if state not in pre_contact_states:
@@ -784,6 +1019,26 @@ def from_inquiry_invite(
         "name",
     )
     if existing:
+        existing_applicant = frappe.get_doc("Student Applicant", existing)
+        changed = False
+        if inquiry_contact and not existing_applicant.applicant_contact:
+            existing_applicant.flags.from_contact_sync = True
+            existing_applicant.applicant_contact = inquiry_contact
+            changed = True
+
+        existing_applicant_email = normalize_email_value(existing_applicant.applicant_email)
+        if inquiry_email and not existing_applicant_email:
+            existing_applicant.flags.from_contact_sync = True
+            existing_applicant.applicant_email = inquiry_email
+            changed = True
+
+        if changed:
+            existing_applicant.save(ignore_permissions=True)
+
+        sync_student_applicant_contact_binding(
+            student_applicant=existing,
+            contact_name=inquiry_contact or existing_applicant.applicant_contact,
+        )
         return existing
 
     # ------------------------------------------------------------------
@@ -836,6 +1091,7 @@ def from_inquiry_invite(
     applicant.flags.from_contact_sync = True
 
     applicant.insert(ignore_permissions=True)
+    sync_student_applicant_contact_binding(student_applicant=applicant.name, contact_name=inquiry_contact)
 
     # ------------------------------------------------------------------
     # Audit trail

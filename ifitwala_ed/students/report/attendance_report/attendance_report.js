@@ -113,10 +113,10 @@ frappe.query_reports["Attendance Report"] = {
 		value = default_formatter(value, row, column, data);
 
 		// clickable name
-    if (column.fieldname === "student_label" && data && data.student) {
-        const url = `/app/student/${data.student}`;
-        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${value}</a>`;
-    }
+	    if (column.fieldname === "student_label" && data && data.student) {
+	        const url = `/desk/student/${data.student}`;
+	        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${value}</a>`;
+	    }
 
 		// % Present with raw value
 		if (column.fieldname === "percentage_present" && data && data.percentage_present !== undefined) {

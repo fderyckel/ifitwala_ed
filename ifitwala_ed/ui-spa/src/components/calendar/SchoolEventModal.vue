@@ -306,9 +306,15 @@ const referenceLink = computed(() => {
 	if (!resolvedEvent.value?.reference_type || !resolvedEvent.value.reference_name) {
 		return '';
 	}
-	const doctype = encodeURIComponent(resolvedEvent.value.reference_type);
+	const doctype = String(resolvedEvent.value.reference_type || '')
+		.trim()
+		.toLowerCase()
+		.replace(/_/g, ' ')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	if (!doctype) return '';
 	const name = encodeURIComponent(resolvedEvent.value.reference_name);
-	return `/app/${doctype}/${name}`;
+	return `/desk/${encodeURIComponent(doctype)}/${name}`;
 });
 
 function safeDate(value?: string | null) {

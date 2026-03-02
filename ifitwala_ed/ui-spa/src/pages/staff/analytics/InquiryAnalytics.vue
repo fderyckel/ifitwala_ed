@@ -1,9 +1,17 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue -->
 <template>
-	<div class="flex flex-col gap-6 p-6">
+	<div ref="snapshotRoot" class="flex flex-col gap-6 p-6">
 		<header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<h1 class="type-h2 text-canopy">Inquiry Analytics</h1>
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+				<AnalyticsSnapshotActions
+					:exporting-png="snapshotExport.exportingPng"
+					:exporting-pdf="snapshotExport.exportingPdf"
+					:message="snapshotExport.actionMessage"
+					:disabled="loading"
+					@export-png="snapshotExport.exportPng"
+					@export-pdf="snapshotExport.exportPdf"
+				/>
 				<DateRangePills
 					v-model="filters.date_preset"
 					:items="DATE_RANGES"
@@ -178,16 +186,19 @@ import {
 	searchAdmissionUsers,
 	searchAcademicYears,
 } from '@/lib/admission';
+import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import StatsTile from '@/components/analytics/StatsTile.vue';
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
 import HorizontalBarTopN from '@/components/analytics/HorizontalBarTopN.vue';
 import DateRangePills from '@/components/filters/DateRangePills.vue';
+import { useAnalyticsSnapshotExport } from '@/composables/useAnalyticsSnapshotExport';
 
 // -- State --
 const loading = ref(false);
 const data = ref<any>(null);
+const snapshotRoot = ref<HTMLElement | null>(null);
 
 const DATE_RANGES = [
 	{ label: 'Last 7 Days', value: '7d' },
@@ -208,6 +219,26 @@ const filters = ref({
 	sla_status: '',
 	organization: '',
 	school: '',
+});
+
+const exportFilters = computed(() => ({
+	'Date Mode': filters.value.date_mode,
+	'Date Preset': filters.value.date_preset || 'None',
+	'From Date': filters.value.from_date || 'None',
+	'To Date': filters.value.to_date || 'None',
+	'Academic Year': filters.value.academic_year || 'All',
+	Organization: filters.value.organization || 'All',
+	School: filters.value.school || 'All',
+	Assignee: filters.value.assigned_to || 'All',
+	'Inquiry Type': filters.value.type_of_inquiry || 'All',
+	'SLA Status': filters.value.sla_status || 'All',
+}));
+
+const snapshotExport = useAnalyticsSnapshotExport({
+	dashboardSlug: 'inquiry-analytics',
+	dashboardTitle: 'Inquiry Analytics',
+	getTarget: () => snapshotRoot.value,
+	getFilters: () => exportFilters.value,
 });
 
 // Options

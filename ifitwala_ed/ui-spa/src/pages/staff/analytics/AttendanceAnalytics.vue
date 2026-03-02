@@ -4,8 +4,10 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 import AnalyticsCard from '@/components/analytics/AnalyticsCard.vue';
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
+import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import StatsTile from '@/components/analytics/StatsTile.vue';
+import { useAnalyticsSnapshotExport } from '@/composables/useAnalyticsSnapshotExport';
 import DateRangePills from '@/components/filters/DateRangePills.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import { SIGNAL_ATTENDANCE_INVALIDATE, uiSignals } from '@/lib/uiSignals';
@@ -43,6 +45,7 @@ const filtersReady = ref(false);
 const isLoading = ref(false);
 const pageError = ref<string | null>(null);
 const actionError = ref<string | null>(null);
+const snapshotRoot = ref<HTMLElement | null>(null);
 
 const roleClass = ref<AttendanceRoleClass | null>(null);
 const meta = ref<AttendanceMeta | null>(null);
@@ -104,6 +107,24 @@ const roleHeading = computed(() => {
 	if (isCounselor.value) return 'Counselor / Pastoral Lens';
 	if (isAdmin.value) return 'Academic Admin Lens';
 	return 'Role Lens';
+});
+
+const exportFilters = computed(() => ({
+	School: filters.school || 'All',
+	Program: filters.program || 'All',
+	'Student Group': filters.student_group || 'All',
+	Window: preset.value,
+	'From Date': filters.start_date || 'Term start',
+	'To Date': filters.end_date || 'Term end',
+	'Attendance Mode': filters.whole_day === 1 ? 'Whole Day' : 'By Block',
+	'Activities Lens': filters.activity_only === 1 ? 'On' : 'Off',
+}));
+
+const snapshotExport = useAnalyticsSnapshotExport({
+	dashboardSlug: 'attendance-analytics',
+	dashboardTitle: 'Attendance Analytics',
+	getTarget: () => snapshotRoot.value,
+	getFilters: () => exportFilters.value,
 });
 
 const kpiItems = computed(() => {
@@ -600,7 +621,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div class="analytics-shell attendance-analytics-shell">
+	<div ref="snapshotRoot" class="analytics-shell attendance-analytics-shell">
 		<header class="flex flex-wrap items-end justify-between gap-3">
 			<div>
 				<h1 class="type-h2 text-canopy">Attendance Analytics</h1>
@@ -608,7 +629,17 @@ onBeforeUnmount(() => {
 					Pattern-first attendance intelligence with role-aware framing.
 				</p>
 			</div>
-			<StatsTile :label="roleHeading" :value="meta?.window_source || 'window'" tone="info" />
+			<div class="flex flex-col items-end gap-2">
+				<StatsTile :label="roleHeading" :value="meta?.window_source || 'window'" tone="info" />
+				<AnalyticsSnapshotActions
+					:exporting-png="snapshotExport.exportingPng"
+					:exporting-pdf="snapshotExport.exportingPdf"
+					:message="snapshotExport.actionMessage"
+					:disabled="isLoading"
+					@export-png="snapshotExport.exportPng"
+					@export-pdf="snapshotExport.exportPdf"
+				/>
+			</div>
 		</header>
 
 		<FiltersBar>

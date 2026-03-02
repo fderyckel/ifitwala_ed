@@ -1,0 +1,28 @@
+{
+ "app": "ifitwala_ed",
+ "creation": "2026-02-24 15:17:38.652672",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "header_icon": "aperture",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "volleyball",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Home",
+   "link_to": "ECA",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-02-27 21:27:10.702979",
+ "modified_by": "Administrator",
+ "name": "ECA",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "ECA"
+}

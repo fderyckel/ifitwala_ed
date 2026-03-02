@@ -18,7 +18,7 @@
    "in_list_view": 1,
    "in_preview": 1,
    "label": "Block Type",
-   "options": "hero\nadmissions_overview\nadmissions_steps\nadmission_cta\nfaq\nprogram_intro\nprogram_list\nrich_text\ncontent_snippet\nleadership\ncta",
+   "options": "hero\nadmissions_overview\nadmissions_steps\nadmission_cta\nfaq\nprogram_intro\nprogram_list\nrich_text\nsection_carousel\ncontent_snippet\nleadership\ncta",
    "reqd": 1
   },
   {

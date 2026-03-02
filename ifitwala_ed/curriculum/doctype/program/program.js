@@ -41,6 +41,7 @@ frappe.ui.form.on("Program", {
 		// --- NEW: add the blue button on the Assessment Categories grid toolbar ---
 		const grid = frm.fields_dict?.assessment_categories?.grid;
 		if (grid && !frm.__inherit_btn_added) {
+			_inject_program_button_style_once();
 			const $btn = grid.add_custom_button(__("Inherit from Parent"), async () => {
 				if (!frm.doc.parent_program) {
 					frappe.msgprint({
@@ -84,10 +85,8 @@ frappe.ui.form.on("Program", {
 				});
 			});
 
-			// Force Bootstrap blue styling on v15
-			$btn.addClass("btn btn-primary btn-sm");
-			// Some themes add a secondary class; ensure it's gone
-			$btn.removeClass("btn-default btn-secondary");
+			$btn.removeClass((_, cls) => ((cls || "").match(/\bbtn[^\s]*/g) || []).join(" "));
+			$btn.addClass("if-program-grid-action");
 			frm.__inherit_btn_added = true;
 		}
 
@@ -143,6 +142,55 @@ frappe.ui.form.on("Program Course", {
 // -------------------------------------------------------------
 // Helpers (client) — keep light; server remains source of truth
 // -------------------------------------------------------------
+
+function _inject_program_button_style_once() {
+	const STYLE_ID = "if-program-grid-action-css";
+	if (document.getElementById(STYLE_ID)) return;
+
+	const style = document.createElement("style");
+	style.id = STYLE_ID;
+	style.textContent = `
+		.if-program-grid-action{
+			background: #1d4ed8;
+			border: 1px solid #1d4ed8;
+			color: #fff;
+			border-radius: 0.5rem;
+			padding: 0.32rem 0.72rem;
+			font-size: 0.8rem;
+			font-weight: 600;
+		}
+		.if-program-grid-action:hover,
+		.if-program-grid-action:focus{
+			background: #1e40af;
+			border-color: #1e40af;
+			color: #fff;
+		}
+		.if-program-weight-pill{
+			padding: 0.18rem 0.55rem;
+			border-radius: 999px;
+			font-size: 0.78rem;
+			font-weight: 600;
+			line-height: 1.2;
+			border: 1px solid transparent;
+		}
+		.if-program-weight-pill--neutral{
+			background: #e2e8f0;
+			border-color: #cbd5e1;
+			color: #334155;
+		}
+		.if-program-weight-pill--danger{
+			background: #fee2e2;
+			border-color: #fecaca;
+			color: #991b1b;
+		}
+		.if-program-weight-pill--success{
+			background: #dcfce7;
+			border-color: #bbf7d0;
+			color: #166534;
+		}
+	`;
+	document.head.appendChild(style);
+}
 
 function _bind_weight_handlers(frm) {
 	const grid = frm.fields_dict?.assessment_categories?.grid;
@@ -202,6 +250,7 @@ function _bind_weight_handlers(frm) {
 }
 
 function _update_remaining_weight_badge(frm) {
+	_inject_program_button_style_once();
 	const rows = frm.doc.assessment_categories || [];
 	const total = rows
 		.filter(r => cint(r.active) === 1)
@@ -234,18 +283,24 @@ function _update_remaining_weight_badge(frm) {
 	}
 
 	const $badge = $(
-		`<span class="badge bg-secondary remaining-weight-badge"
-			style="margin-left:8px; display:inline-flex; align-items:center; white-space:nowrap;">
-			${__("Active Total")} : <b>${total.toFixed(2)}</b>%
-		</span>`
+		`<span class="if-program-weight-pill if-program-weight-pill--neutral remaining-weight-badge"
+				style="margin-left:8px; display:inline-flex; align-items:center; white-space:nowrap;">
+				${__("Active Total")} : <b>${total.toFixed(2)}</b>%
+			</span>`
 	);
 	host.append($badge);
 
 	// Visual hint: if Points ON and total==100 → green; if >100 → red; else grey.
 	const pointsOn = cint(frm.doc.points) === 1;
 	$badge
-		.removeClass("bg-secondary bg-danger bg-success")
-		.addClass(total > 100.0001 ? "bg-danger" : (pointsOn && Math.abs(total - 100) < 0.0001 ? "bg-success" : "bg-secondary"));
+		.removeClass("if-program-weight-pill--neutral if-program-weight-pill--danger if-program-weight-pill--success")
+		.addClass(
+			total > 100.0001
+				? "if-program-weight-pill--danger"
+				: pointsOn && Math.abs(total - 100) < 0.0001
+					? "if-program-weight-pill--success"
+					: "if-program-weight-pill--neutral"
+		);
 }
 
 // NEW: with multi-scheme, only enforce weight rules if Points is enabled.

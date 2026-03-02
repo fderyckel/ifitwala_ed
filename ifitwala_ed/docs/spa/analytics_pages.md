@@ -278,6 +278,23 @@ Aggregation MUST respect these constraints **before grouping**.
 
 ---
 
+### 4.4 Capability split: Admissions vs Demographics
+
+StaffHome capabilities MUST keep these concerns separate:
+
+* `analytics_admissions` → Admissions Cockpit, Inquiry Analytics, admissions workflows.
+* `analytics_demographics` → Student Demographic Analytics only.
+
+Why this is locked:
+
+* prevents unrelated link exposure
+* avoids role-based UI dead-ends
+* keeps route discoverability aligned with endpoint permissions
+
+Do not reuse admissions capability as a proxy for demographics visibility.
+
+---
+
 ## 5. Visual & UX Rules
 
 ### 5.1 No optimistic analytics
@@ -316,6 +333,27 @@ Never:
 * reuse previous chart
 * show partial results
 * silently fallback
+
+---
+
+### 5.4 Snapshot export contract (PNG + PDF)
+
+All staff analytics dashboards MUST expose a unified snapshot export action.
+
+Mandatory rules:
+
+* Export formats: PNG and PDF.
+* Export must include what is currently visible on the dashboard surface.
+* Export metadata must include:
+  * snapshot timestamp
+  * site timezone
+  * active filter set (label + value)
+* Export failures MUST be user-visible (inline message and/or toast). Silent failure is a defect.
+
+Implementation notes:
+
+* Use shared export UI/component so styling stays consistent across dashboards.
+* Keep export behavior in a shared composable/service; page code only maps its filter state.
 
 ---
 

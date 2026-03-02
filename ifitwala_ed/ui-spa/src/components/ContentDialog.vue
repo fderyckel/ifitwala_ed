@@ -66,7 +66,7 @@
 					<!-- BODY CONTENT: respects HTML from Org Communication.message -->
 					<div class="rounded-2xl border border-line-soft bg-white/85 p-5 shadow-soft">
 						<div class="prose prose-sm max-w-none text-slate-token/90">
-							<div v-html="contentHtml"></div>
+							<div ref="contentRootEl" v-html="contentHtml" @click="onContentClick"></div>
 						</div>
 					</div>
 
@@ -123,9 +123,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { Button, FeatherIcon } from 'frappe-ui';
 import { getInteractionStats } from '@/utils/interactionStats';
+import {
+	extractPolicyInformLinkFromClickEvent,
+	type PolicyInformLinkPayload,
+} from '@/utils/policyInformLink';
 import type { InteractionSummary } from '@/types/morning_brief';
 import type { ReactionCode } from '@/types/interactions';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
@@ -152,6 +156,7 @@ const emit = defineEmits<{
 	acknowledge: [];
 	'open-comments': [];
 	react: [ReactionCode];
+	'policy-inform': [PolicyInformLinkPayload];
 }>();
 
 const hasHeaderContent = computed(
@@ -162,6 +167,7 @@ const isOpen = computed({
 	get: () => props.modelValue,
 	set: (value: boolean) => emit('update:modelValue', value),
 });
+const contentRootEl = ref<HTMLElement | null>(null);
 
 const interaction = computed<InteractionSummary>(() => ({
 	counts: {},
@@ -179,4 +185,145 @@ const contentHtml = computed(() => props.content || '');
 
 // Comment count = thread entries (Comment + Question)
 const commentCount = computed(() => stats.value.comments_total ?? 0);
+
+function onContentClick(event: MouseEvent) {
+	const payload = extractPolicyInformLinkFromClickEvent(event);
+	if (!payload) return;
+	event.preventDefault();
+	emit('policy-inform', payload);
+}
+
+function isPolicyInformHref(href: string): boolean {
+	return href.startsWith('#policy-inform');
+}
+
+function isPolicyDeskHref(href: string): boolean {
+	return (
+		/\/(?:app|desk)\/policy-version\//i.test(href) ||
+		/#.*form\/policy(?:%20|\s)+version\//i.test(href) ||
+		/[?&](?:doctype=policy(?:%20|\+)+version|policy_version=|name=)/i.test(href)
+	);
+}
+
+function policyVersionFromHref(href: string): string {
+	const raw = String(href || '').trim();
+	if (!raw) return '';
+
+	try {
+		const normalized = new URL(raw, window.location.origin);
+		const policyVersionParam =
+			normalized.searchParams.get('policy_version') || normalized.searchParams.get('name');
+		if (policyVersionParam) return String(policyVersionParam).trim();
+
+		const hashRaw = String(normalized.hash || '');
+		const hash = hashRaw.startsWith('#') ? hashRaw.slice(1) : hashRaw;
+		if (hash) {
+			const formMatch = hash.match(/form\/policy(?:%20|\s)+version\/([^/?#]+)/i);
+			if (formMatch?.[1]) return decodeURIComponent(formMatch[1]).trim();
+			const appMatch = hash.match(/(?:app|desk)\/policy-version\/([^/?#]+)/i);
+			if (appMatch?.[1]) return decodeURIComponent(appMatch[1]).trim();
+		}
+	} catch {
+		// Fall through to regex-only parsing below.
+	}
+
+	if (raw.startsWith('#policy-inform')) {
+		const query = raw.split('?', 2)[1] || '';
+		return String(new URLSearchParams(query).get('policy_version') || '').trim();
+	}
+	const match = raw.match(/\/(?:app|desk)\/policy-version\/([^/?#]+)/i);
+	if (!match || !match[1]) return '';
+	try {
+		return decodeURIComponent(match[1]).trim();
+	} catch {
+		return String(match[1] || '').trim();
+	}
+}
+
+function getPolicyActionAnchors(root: HTMLElement): HTMLAnchorElement[] {
+	const anchors = Array.from(root.querySelectorAll('a')) as HTMLAnchorElement[];
+	return anchors.filter(anchor => {
+		const href = String(anchor.getAttribute('href') || '').trim();
+		const label = (anchor.textContent || '').trim().toLowerCase();
+		return (
+			isPolicyInformHref(href) ||
+			isPolicyDeskHref(href) ||
+			Boolean(String(anchor.getAttribute('data-policy-version') || '').trim()) ||
+			(label.includes('policy') && (label.includes('desk') || label.includes('read')))
+		);
+	});
+}
+
+function decoratePolicyActionLinks() {
+	const root = contentRootEl.value;
+	if (!root) return;
+
+	root.querySelectorAll('.if-policy-action-row').forEach(node => node.remove());
+
+	const anchors = getPolicyActionAnchors(root);
+	if (!anchors.length) return;
+
+	let policyVersion = '';
+	let orgCommunication = '';
+	for (const anchor of anchors) {
+		if (!policyVersion) {
+			const href = String(anchor.getAttribute('href') || '').trim();
+			policyVersion =
+				String(anchor.getAttribute('data-policy-version') || '').trim() ||
+				policyVersionFromHref(href);
+		}
+		if (!orgCommunication) {
+			orgCommunication = String(anchor.getAttribute('data-org-communication') || '').trim();
+		}
+	}
+	if (!policyVersion) return;
+
+	for (const anchor of anchors) {
+		const parent = anchor.parentElement;
+		anchor.remove();
+		if (parent && !parent.textContent?.trim()) {
+			parent.remove();
+		}
+	}
+
+	const row = document.createElement('div');
+	row.className = 'if-policy-action-row not-prose mt-3 flex flex-wrap justify-end gap-2';
+
+	const morningBriefJacarandaButton =
+		'rounded-full border px-3 py-1 text-xs font-semibold transition-all border-jacaranda bg-jacaranda/5 text-jacaranda shadow-sm hover:bg-jacaranda/10';
+
+	const readPolicy = document.createElement('a');
+	readPolicy.textContent = 'Read Policy';
+	readPolicy.setAttribute(
+		'href',
+		`#policy-inform?policy_version=${encodeURIComponent(policyVersion)}`
+	);
+	readPolicy.setAttribute('data-policy-inform', '1');
+	readPolicy.setAttribute('data-policy-version', policyVersion);
+	if (orgCommunication) readPolicy.setAttribute('data-org-communication', orgCommunication);
+	readPolicy.className = morningBriefJacarandaButton;
+
+	const openDesk = document.createElement('a');
+	openDesk.textContent = 'Open Policy in Desk';
+	openDesk.setAttribute('href', `/app/policy-version/${encodeURIComponent(policyVersion)}`);
+	openDesk.setAttribute('data-policy-inform', '0');
+	openDesk.setAttribute('data-policy-version', policyVersion);
+	openDesk.setAttribute('target', '_blank');
+	openDesk.setAttribute('rel', 'noopener');
+	openDesk.className = morningBriefJacarandaButton;
+
+	row.appendChild(readPolicy);
+	row.appendChild(openDesk);
+	root.appendChild(row);
+}
+
+watch(
+	() => [props.modelValue, contentHtml.value],
+	async ([open]) => {
+		if (!open) return;
+		await nextTick();
+		decoratePolicyActionLinks();
+	},
+	{ immediate: true }
+);
 </script>

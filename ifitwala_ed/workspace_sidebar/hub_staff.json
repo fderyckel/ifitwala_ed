@@ -1,0 +1,28 @@
+{
+ "app": "ifitwala_ed",
+ "creation": "2026-02-27 07:13:45.977827",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "header_icon": "anvil",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "tick",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Hub",
+   "link_type": "URL",
+   "show_arrow": 0,
+   "type": "Link",
+   "url": "./hub/staff"
+  }
+ ],
+ "modified": "2026-02-27 14:14:54.125445",
+ "modified_by": "Administrator",
+ "name": "Hub Staff",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "Hub Staff"
+}

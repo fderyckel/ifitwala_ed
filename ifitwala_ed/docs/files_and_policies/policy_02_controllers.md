@@ -90,6 +90,10 @@ policy_version.py
 1. `institutional_policy` must exist and be active
 2. `(institutional_policy, version_label)` must be unique
 3. `policy_text` must not be empty
+4. For every new version after first: `based_on_version` is required
+5. `based_on_version` must reference a version under the same `institutional_policy`
+6. If `based_on_version` is set: `change_summary` is required before activation (draft save allowed)
+7. Server generates `diff_html` + `change_stats` from previous vs current text
 
 ---
 
@@ -108,7 +112,24 @@ has_ack = frappe.db.exists(
 
 ---
 
-#### Step 2 — Immutability once acknowledged
+#### Step 2 — Text lock lifecycle (Draft -> Real artifact)
+
+`policy_text` is editable only when:
+
+* `is_active = 0`
+* no acknowledgements exist
+* `text_locked = 0`
+
+`text_locked` is server-set to `1` on first activation (and remains locked after deactivation).
+
+If text changes after lock:
+
+* hard-fail
+* require creating a new `Policy Version` amendment
+
+---
+
+#### Step 3 — Immutability once acknowledged
 
 If `has_ack`:
 
@@ -117,22 +138,27 @@ If `has_ack`:
   * `policy_text`
   * `version_label`
   * `institutional_policy`
+  * `based_on_version`
+  * `change_summary`
+  * `diff_html`
+  * `change_stats`
 
 Unless:
 
 * User has role **System Manager**
 * AND `override_reason` is provided (mandatory)
 
-> PowerSchool equivalent: “legal text lock”
+> PowerSchool equivalent: “legal text lock + immutable amendment artifact”
 
 ---
 
-#### Step 3 — Activation discipline
+#### Step 4 — Activation discipline
 
 If setting `is_active = 1`:
 
 * Ensure parent `Institutional Policy.is_active = 1`
 * Ensure no **other active version** exists **for same policy**
+* If amended: require `change_summary`, `diff_html`, and valid `change_stats`
 
 You may:
 
@@ -142,6 +168,20 @@ You may:
 
 **Recommendation (PowerSchool-style):**
 👉 hard-fail, require explicit supersede action later.
+
+---
+
+#### Step 5 — `approved_by` authority and scope
+
+If `approved_by` is set:
+
+* Must be an enabled **System User**
+* Must have **write** access to `Policy Version`
+* Scope enforcement:
+  * If policy has `school`: user must belong to that school or an ancestor (parent) school
+  * If policy is org-scoped only: user must belong to that organization or an ancestor organization
+
+Desk link options for `approved_by` are server-filtered to this same rule.
 
 ---
 
@@ -211,13 +251,41 @@ Role authority (server-enforced):
 
 ### `before_save`
 
-**Always hard-fail**
+Hard-fail for edits, except submit transition.
 
 Acknowledgements are **immutable**.
 
 ```text
 Policy Acknowledgements are append-only and cannot be edited.
 ```
+
+---
+
+### `after_insert`
+
+Auto-submit acknowledgement records to submitted state (`docstatus = 1`) so legal evidence is finalized without extra user clicks.
+
+---
+
+### `before_submit`
+
+Allow only Draft -> Submitted transition (`docstatus: 0 -> 1`) and preserve immutable evidence fields.
+
+---
+
+### `before_update_after_submit`
+
+**Always hard-fail**
+
+Submitted acknowledgements are immutable.
+
+---
+
+### `before_cancel`
+
+**Always hard-fail**
+
+No cancel. No exceptions.
 
 ---
 

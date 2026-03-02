@@ -5,10 +5,11 @@
 
 import frappe
 from frappe import _
-from frappe.utils import cint
+from frappe.utils import cint, cstr
 from frappe.utils.nestedset import NestedSet
 
 VIRTUAL_ROOT = "All Organizations"
+HR_SCOPE_ROLES = {"HR Manager", "HR User"}
 
 
 class Organization(NestedSet):
@@ -57,11 +58,28 @@ def get_children(doctype, parent=None, is_root=False, **kwargs):
     filters.update({"name": ["!=", VIRTUAL_ROOT]})
 
     if is_root or not parent or parent == VIRTUAL_ROOT:
-        # cover NULL, empty string, and legacy 'VIRTUAL_ROOT'
-        filters.update({"parent_organization": ["in", [None, "", VIRTUAL_ROOT]]})
-    else:
-        filters.update({"parent_organization": parent})
+        rows = frappe.get_all(
+            "Organization",
+            fields=[
+                "name as value",
+                "organization_name as title",
+                "is_group as expandable",
+                "parent_organization",
+            ],
+            order_by="lft asc",
+            filters=filters,
+        )
+        visible_names = {row.get("value") for row in rows if row.get("value")}
+        root_rows = []
+        for row in rows:
+            parent_name = cstr(row.get("parent_organization")).strip()
+            if not parent_name or parent_name == VIRTUAL_ROOT or parent_name not in visible_names:
+                row["expandable"] = 1 if row.get("expandable") else 0
+                row.pop("parent_organization", None)
+                root_rows.append(row)
+        return root_rows
 
+    filters.update({"parent_organization": parent})
     rows = frappe.get_all(
         "Organization",
         fields=[
@@ -73,9 +91,8 @@ def get_children(doctype, parent=None, is_root=False, **kwargs):
         filters=filters,
     )
 
-    # normalize expandable to 0/1 for the tree widget
-    for r in rows:
-        r["expandable"] = 1 if r.get("expandable") else 0
+    for row in rows:
+        row["expandable"] = 1 if row.get("expandable") else 0
     return rows
 
 
@@ -113,3 +130,104 @@ def add_node(**kwargs):
     )
     doc.insert()
     return {"name": doc.name}
+
+
+def _resolve_hr_base_org(user: str) -> str | None:
+    org = _get_user_default_from_db(user, "organization")
+    if org:
+        return org
+
+    global_org = frappe.db.get_single_value("Global Defaults", "default_organization")
+    return cstr(global_org).strip() or None
+
+
+def _resolve_hr_org_scope(user: str) -> list[str]:
+    scope: set[str] = set()
+
+    base_org = _resolve_hr_base_org(user)
+    if base_org:
+        scope.update(
+            {cstr(org).strip() for org in (_get_descendant_organizations_uncached(base_org) or []) if cstr(org).strip()}
+        )
+
+    explicit_orgs = frappe.get_all(
+        "User Permission",
+        filters={"user": user, "allow": "Organization"},
+        pluck="for_value",
+    )
+    for org in explicit_orgs:
+        org_name = cstr(org).strip()
+        if not org_name:
+            continue
+        scope.update(
+            {
+                cstr(item).strip()
+                for item in (_get_descendant_organizations_uncached(org_name) or [])
+                if cstr(item).strip()
+            }
+        )
+
+    return sorted(scope)
+
+
+def _get_user_default_from_db(user: str, key: str) -> str | None:
+    rows = frappe.get_all(
+        "DefaultValue",
+        filters={"parent": user, "defkey": key},
+        fields=["defvalue"],
+        order_by="modified desc, creation desc, name desc",
+        limit=1,
+    )
+    if not rows:
+        return None
+    return cstr(rows[0].get("defvalue")).strip() or None
+
+
+def _get_descendant_organizations_uncached(org: str) -> list[str]:
+    org = cstr(org).strip()
+    if not org:
+        return []
+
+    bounds = frappe.db.get_value("Organization", org, ["lft", "rgt"], as_dict=True)
+    if not bounds or bounds.lft is None or bounds.rgt is None:
+        return []
+
+    return frappe.get_all(
+        "Organization",
+        filters={"lft": (">=", bounds.lft), "rgt": ("<=", bounds.rgt)},
+        pluck="name",
+    )
+
+
+def get_permission_query_conditions(user=None):
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return None
+
+    roles = set(frappe.get_roles(user))
+    if "System Manager" in roles:
+        return None
+
+    if roles & HR_SCOPE_ROLES:
+        orgs = _resolve_hr_org_scope(user)
+        if not orgs:
+            return "1=0"
+        vals = ", ".join(frappe.db.escape(org) for org in orgs)
+        return f"`tabOrganization`.`name` IN ({vals})"
+
+    return None
+
+
+def has_permission(doc, ptype=None, user=None):
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return False
+
+    roles = set(frappe.get_roles(user))
+    if "System Manager" in roles:
+        return True
+
+    if roles & HR_SCOPE_ROLES and (ptype or "read") in {"read", "report", "export", "print"}:
+        return doc.name in set(_resolve_hr_org_scope(user))
+
+    return None

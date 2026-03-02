@@ -8,7 +8,7 @@ export type FocusPermissions = {
 }
 
 /**
- * Student Log (v1) payload contract.
+ * Focus payload contract.
  * Keep this small: only the fields the UI actively uses.
  * Allow extension without breaking by adding an index signature.
  */
@@ -22,6 +22,10 @@ export type StudentLogFocusPayload = {
 	subject_name?: string | null
 	school?: string | null
 	organization?: string | null
+	applicant_name?: string | null
+	student_applicant?: string | null
+	target_type?: string | null
+	target_name?: string | null
 
 	// Allow future enrichment without TS fights
 	[k: string]: any

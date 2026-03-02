@@ -239,7 +239,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-02-19 15:21:44.691915",
+ "modified": "2026-02-19 15:21:47",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",
@@ -266,7 +266,7 @@
  "shortcuts": [
   {
    "color": "Green",
-   "doc_view": "Tree",
+   "doc_view": "List",
    "label": "Active Employee",
    "link_to": "Employee",
    "stats_filter": "[[\"Employee\",\"employment_status\",\"=\",\"Active\",false]]",

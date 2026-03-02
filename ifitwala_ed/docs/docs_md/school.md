@@ -3,6 +3,8 @@ title: "School: Academic Scope and Hierarchy Node"
 slug: school
 category: School Settings
 doc_order: 1
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Define schools as a NestedSet hierarchy anchored to an Organization for admissions, academics, calendars, and policy scope."
 seo_title: "School: Academic Scope and Hierarchy Node"
 seo_description: "Define schools as a NestedSet hierarchy anchored to an Organization for admissions, academics, calendars, and policy scope."

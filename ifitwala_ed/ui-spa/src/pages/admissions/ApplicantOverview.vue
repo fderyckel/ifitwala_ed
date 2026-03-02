@@ -164,6 +164,7 @@ const completionCards = computed(() => {
 		{ key: 'health', label: __('Health information'), state: completeness.health },
 		{ key: 'documents', label: __('Documents'), state: completeness.documents },
 		{ key: 'policies', label: __('Policies'), state: completeness.policies },
+		{ key: 'recommendations', label: __('Recommendations'), state: completeness.recommendations },
 		{ key: 'interviews', label: __('Interviews'), state: completeness.interviews },
 	].map(card => ({
 		...card,
@@ -200,6 +201,11 @@ const profileRows = computed(() => {
 			key: 'preferred_name',
 			label: __('Preferred name'),
 			value: displayText(profile.student_preferred_name),
+		},
+		{
+			key: 'admission_date',
+			label: __('Admission date'),
+			value: displayText(profile.student_joining_date),
 		},
 		{
 			key: 'date_of_birth',

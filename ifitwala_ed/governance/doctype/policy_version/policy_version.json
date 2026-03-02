@@ -3,12 +3,18 @@
  "allow_rename": 1,
  "autoname": "hash",
  "creation": "2026-02-01 00:00:00",
+ "description": "The policy itself",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "institutional_policy",
   "version_label",
+  "based_on_version",
+  "change_summary",
   "policy_text",
+  "diff_html",
+  "change_stats",
+  "text_locked",
   "effective_from",
   "effective_to",
   "approved_by",
@@ -32,11 +38,45 @@
    "reqd": 1
   },
   {
+   "fieldname": "based_on_version",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Based On Version",
+   "oldfieldname": "amended_from",
+   "oldfieldtype": "Link",
+   "options": "Policy Version"
+  },
+  {
+   "fieldname": "change_summary",
+   "fieldtype": "Small Text",
+   "label": "Change Summary"
+  },
+  {
    "fieldname": "policy_text",
    "fieldtype": "Text Editor",
    "in_list_view": 1,
    "label": "Policy Text",
    "reqd": 1
+  },
+  {
+   "fieldname": "diff_html",
+   "fieldtype": "Text Editor",
+   "label": "Diff HTML",
+   "read_only": 1
+  },
+  {
+   "fieldname": "change_stats",
+   "fieldtype": "Small Text",
+   "label": "Change Stats",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "text_locked",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Text Locked",
+   "read_only": 1
   },
   {
    "fieldname": "effective_from",
@@ -70,7 +110,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-19 22:28:41.403043",
+ "modified": "2026-02-27 15:32:18.095719",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Policy Version",
@@ -148,6 +188,11 @@
    "role": "HR Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
   }
  ],
  "row_format": "Dynamic",

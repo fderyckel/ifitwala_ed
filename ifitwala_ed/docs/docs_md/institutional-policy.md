@@ -3,6 +3,8 @@ title: "Institutional Policy: Policy Identity and Scope Anchor"
 slug: institutional-policy
 category: Governance
 doc_order: 1
+version: "1.0.3"
+last_change_date: "2026-02-28"
 summary: "Define policy identity, organization/school scope, and target audience so active policy versions can be resolved and acknowledged correctly."
 seo_title: "Institutional Policy: Policy Identity and Scope Anchor"
 seo_description: "Define policy identity, organization/school scope, and target audience so active policy versions can be resolved and acknowledged correctly."
@@ -54,6 +56,9 @@ There is no separate "policy key catalog" DocType in the current model. Existing
 - `policy_category` must be one of the locked categories in governance utilities.
 - `school` must be inside policy organization scope (organization descendants allowed).
 - Deletion is blocked; policy should be deactivated instead (`is_active = 0`).
+- Runtime visibility is scope-enforced server-side:
+  - `organization` must be in user organization lineage (`self + parents`)
+  - if policy is school-scoped, `school` must be in user school lineage (`self + parents`)
 
 ## School Scope Resolution
 
@@ -78,9 +83,12 @@ There is no separate "policy key catalog" DocType in the current model. Existing
 ## Lifecycle and Linked Documents
 
 1. Create policy identity (`policy_key`) and audience/scope under the correct organization.
-2. Create one or more [**Policy Version**](/docs/en/policy-version/) rows as legal text snapshots under this policy.
-3. Activate/deactivate policy identity based on institutional policy lifecycle.
-4. Collect acknowledgements through [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) using active versions only.
+2. Use **Create Policy Version** on the Institutional Policy form to open a prefilled draft:
+   - first version: prefilled with `institutional_policy` + suggested `version_label` (`v1`)
+   - subsequent versions: prefilled as amendment from current active/latest version (`based_on_version`, copied `policy_text`, suggested bumped `version_label`)
+3. Save and finalize the [**Policy Version**](/docs/en/policy-version/) legal text snapshot.
+4. Activate/deactivate policy identity based on institutional policy lifecycle.
+5. Collect acknowledgements through [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) using active versions only.
 
 <Callout type="warning" title="Scope integrity">
 Policy scope is organization-sensitive. Wrong scope setup causes downstream acknowledgement and readiness mismatches.
@@ -104,7 +112,8 @@ Treat this record as long-lived identity. Version the legal text in [**Policy Ve
   - `organization` (`Link` -> [**Organization**](/docs/en/organization/))
   - `is_active` (`Check`)
 - **Lifecycle hooks in controller**: `before_insert`, `before_save`, `before_delete`
-- **Operational/public methods**: none beyond standard document behavior.
+- **Desk action**:
+  - `Create Policy Version` button creates a prefilled `Policy Version` draft from policy context.
 
 - **DocType**: `Institutional Policy` (`ifitwala_ed/governance/doctype/institutional_policy/`)
 - **Autoname**: `hash`
@@ -137,6 +146,7 @@ Treat this record as long-lived identity. Version the legal text in [**Policy Ve
 Runtime controller rule:
 - Policy management is restricted to policy admins (`System Manager`, `Organization Admin`, `Accounts Manager`, `Admission Manager`, `Academic Admin`, `HR Manager`), regardless of Desk form visibility.
 - Controller role pass is necessary but not sufficient: user must also have DocType create/write permission for `Institutional Policy`.
+- Read/list visibility is enforced by `permission_query_conditions` + `has_permission` hooks, not client filtering.
 
 ## Related Docs
 

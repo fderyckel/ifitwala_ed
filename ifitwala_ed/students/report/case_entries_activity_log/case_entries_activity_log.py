@@ -9,7 +9,7 @@ from datetime import date, timedelta
 
 import frappe
 from frappe import _
-from frappe.utils import formatdate, getdate, strip_html
+from frappe.utils import formatdate, get_link_to_form, getdate, strip_html
 
 ENTRY_LOCAL_EXPR = "CONVERT_TZ(rce.entry_datetime, 'UTC', %(site_tz)s)"
 
@@ -78,10 +78,7 @@ def execute(filters=None):
         # Linked student name
         full = r.get("student_full_name") or r.get("student") or ""
         sid = r.get("student") or ""
-        r["student_link"] = (
-            f'<a href="/app/student/{frappe.utils.escape_html(sid)}" target="_blank" rel="noopener">'
-            f"{frappe.utils.escape_html(full)}</a>"
-        )
+        r["student_link"] = get_link_to_form("Student", sid, label=full) if sid else frappe.utils.escape_html(full)
 
         # Case manager display: Employee > User.full_name > user id
         cm_emp = (r.get("employee_full_name") or "").strip()

@@ -1,0 +1,77 @@
+{
+ "app": "ifitwala_ed",
+ "creation": "2026-02-24 15:17:38.603247",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "header_icon": "filter",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Home",
+   "link_to": "Admission",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Website Block Definition",
+   "link_to": "Website Block Definition",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "School Website Page",
+   "link_to": "School Website Page",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Program Website Profile",
+   "link_to": "Program Website Profile",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Inquiry",
+   "link_to": "Inquiry",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-02-27 19:54:07.707914",
+ "modified_by": "Administrator",
+ "module": "School Site",
+ "name": "Admission",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "Admission"
+}

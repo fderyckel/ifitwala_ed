@@ -1,6 +1,6 @@
 <template>
 	<div class="rounded-2xl bg-white p-3 shadow-sm transition hover:-translate-y-0.5">
-		<a :href="`/app/student/${student.student}`" target="_blank" rel="noopener" class="block">
+		<a :href="`/desk/student/${student.student}`" target="_blank" rel="noopener" class="block">
 			<img
 				:src="thumb(student.student_image)"
 				:alt="`Photo of ${student.student_name}`"
@@ -13,7 +13,7 @@
 		<!-- Name row + icons -->
 		<div class="mt-2 flex items-center gap-1">
 			<a
-				:href="`/app/student/${student.student}`"
+				:href="`/desk/student/${student.student}`"
 				target="_blank"
 				rel="noopener"
 				class="truncate text-sm font-semibold leading-tight hover:underline"

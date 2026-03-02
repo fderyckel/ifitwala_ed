@@ -53,7 +53,7 @@ class TestApplicantInterview(FrappeTestCase):
         )
         payload = "\n".join(row.get("content") or "" for row in comments)
         self.assertIn(interview.name, payload)
-        self.assertIn("/app/applicant-interview/", payload)
+        self.assertIn("/desk/applicant-interview/", payload)
 
     def test_insert_creates_only_recorded_comment(self):
         interview = frappe.get_doc(
@@ -108,7 +108,7 @@ class TestApplicantInterview(FrappeTestCase):
             order_by="creation asc",
             limit_page_length=50,
         )
-        marker = f"/app/applicant-interview/{interview_name}"
+        marker = f"/desk/applicant-interview/{interview_name}"
         return [row for row in comments if marker in (row.get("content") or "")]
 
     def _create_organization(self) -> str:

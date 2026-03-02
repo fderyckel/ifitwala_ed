@@ -944,9 +944,9 @@ Applicant Document  ←── FILES LIVE HERE
 
 These rules define correctness.
 
-1. Every uploaded admissions file **must** be attached to an `Applicant Document`
-2. An `Applicant Document` represents **one logical document type**
-3. Files under one Applicant Document form a **versioned slot**
+1. Every uploaded admissions file **must** be attached to an `Applicant Document Item`
+2. An `Applicant Document` represents **one logical document type bucket**
+3. Each `Applicant Document Item` is one logical file slot under that bucket
 4. Promotion eligibility is decided **here**, not in File utilities
 5. Rejected documents are **never deleted automatically**
 
@@ -995,11 +995,12 @@ These rules define correctness.
 
 These are **not form fields**, but conceptual bindings:
 
-* One Applicant Document = one **logical file slot**
+* One Applicant Document = one **logical document bucket**
+* One Applicant Document Item = one **logical file slot**
 * Slot key:
 
   ```
-  (Student Applicant, document_type)
+  (Student Applicant, document_type, item_key)
   ```
 
 ---
@@ -1008,8 +1009,8 @@ These are **not form fields**, but conceptual bindings:
 
 ### 5.1 Where files attach
 
-* `File.attached_to_doctype = "Applicant Document"`
-* `File.attached_to_name = applicant_document.name`
+* `File.attached_to_doctype = "Applicant Document Item"`
+* `File.attached_to_name = applicant_document_item.name`
 
 Direct attachment to `Student Applicant` is **invalid** (UI + server validation).
 
@@ -1044,7 +1045,7 @@ This enables:
 
 ## 6. Versioning Rules
 
-* Versioning is **always enabled** for Applicant Documents
+* Versioning is **always enabled** for Applicant Document Items
 * Every upload creates a new version
 * Only one file per slot is marked `custom_is_latest = 1`
 * Rejected documents may still have newer versions uploaded
@@ -1065,7 +1066,7 @@ This enables:
   (student_applicant, document_type) must be unique
   ```
 
-  → Multiple files = versions, not multiple rows
+  → Multiple concurrent files are modeled as **multiple Applicant Document Items**; versions remain per item slot
 
 ---
 

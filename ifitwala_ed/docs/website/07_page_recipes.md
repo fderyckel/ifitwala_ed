@@ -2,7 +2,7 @@
 # Page Recipes (Current Baseline)
 
 **Audience:** Marketing, admissions, and website managers
-**Status (February 12, 2026):** Synced with implemented website editor and renderer behavior
+**Status (February 25, 2026):** Synced with implemented website editor and renderer behavior, including utility links, floating inquiry CTA, and `section_carousel`
 **Goal:** Low-friction page composition using currently supported blocks
 
 ---
@@ -13,10 +13,14 @@
 * Route input for `School Website Page` is school-relative (`/`, `about`, `admissions`, `about/team`).
 * Publication is workflow-driven (`Draft -> In Review -> Approved -> Published`).
 * Allowed blocks depend on context:
-  * `School Website Page` (Standard): `hero`, `rich_text`, `program_list`, `leadership`, `cta`, `faq`, `content_snippet`
+  * `School Website Page` (Standard): `hero`, `rich_text`, `section_carousel`, `program_list`, `leadership`, `cta`, `faq`, `content_snippet`
   * `School Website Page` (Admissions): Standard + `admissions_overview`, `admissions_steps`, `admission_cta`
   * `Program Website Profile`: Standard + `program_intro`
   * `Website Story`: Standard blocks only
+* Website shell utility actions are now first-class:
+  * `Other Organizations` link
+  * `Portal Login` link
+  * floating `Let's Talk` bubble to inquiry route
 
 ---
 
@@ -63,9 +67,10 @@ Suggested block order:
 
 1. `hero`
 2. `rich_text`
-3. `leadership`
+3. `section_carousel` (optional, repeatable)
 4. `faq` (optional)
-5. `cta`
+5. `leadership`
+6. `cta`
 
 Example `rich_text` props:
 
@@ -73,6 +78,24 @@ Example `rich_text` props:
 {
   "content_html": "<h2>Our History</h2><p>Founded in 1998...</p><h2>Mission</h2><p>We build confident, compassionate learners.</p>",
   "max_width": "wide"
+}
+```
+
+Example `section_carousel` props:
+
+```json
+{
+  "heading": "Activities",
+  "content_html": "<p>Students engage in arts, sports, and service throughout the year.</p>",
+  "layout": "content_right",
+  "items": [
+    { "image": "/files/activity_01.jpg", "caption": "Athletics", "alt": "Students on field" },
+    { "image": "/files/activity_02.jpg", "caption": "Creative arts", "alt": "Students in arts studio" }
+  ],
+  "autoplay": true,
+  "interval": 5000,
+  "cta_label": "Learn More",
+  "cta_link": "/schools/iss/activities"
 }
 ```
 
@@ -165,7 +188,26 @@ Notes:
 
 ---
 
-## 6) Editor Workflow Recipe
+## 6) Long-Scroll Feature Page Recipe (`route = experience` or `route = school-life`)
+
+Suggested block order:
+
+1. `hero`
+2. `rich_text`
+3. `section_carousel`
+4. `section_carousel`
+5. `section_carousel`
+6. `cta`
+
+Notes:
+
+* Use alternating `layout` (`content_left`, `content_right`) for visual rhythm.
+* Keep each section carousel to 2-5 images for clarity.
+* Set `hero.image_fade_mode` + `hero.image_fade_opacity` to ensure heading contrast over full-width imagery.
+
+---
+
+## 7) Editor Workflow Recipe
 
 For marketing collaboration:
 
@@ -183,10 +225,10 @@ Minimum pre-publish checklist:
 
 ---
 
-## 7) Theme and Motion Recipe (D1/D2)
+## 8) Theme and Motion Recipe (D1/D2)
 
 * Theme tokens are managed in `Website Theme Profile` (scope: School -> Organization -> Global).
 * Motion enhancements are optional and non-critical:
   * shared: `/assets/ifitwala_ed/js/ifitwala_site.bundle.js`
-  * block scripts: `hero`, `admission_cta`
+  * block scripts: `hero`, `admission_cta`, `section_carousel`
 * Content remains fully server-rendered and SEO-safe without JS.

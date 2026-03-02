@@ -321,7 +321,7 @@ const popoverBody = computed(() => {
 const fallbackColor = '#2563eb';
 
 function studentLink(studentId: string) {
-	return `/app/student/${studentId}`;
+	return `/desk/student/${studentId}`;
 }
 
 function displayName(student: StudentRosterEntry) {

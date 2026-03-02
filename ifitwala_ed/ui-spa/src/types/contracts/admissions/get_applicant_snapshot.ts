@@ -27,6 +27,23 @@ export type Response = {
     documents: CompletionState
     policies: CompletionState
     interviews: CompletionState
+    recommendations: CompletionState
   }
   next_actions: NextAction[]
+  recommendations_summary: {
+    ok: boolean
+    required_total: number
+    received_total: number
+    requested_total: number
+    missing: string[]
+    state: CompletionState
+    rows: Array<{
+      recommendation_template: string
+      template_name: string
+      minimum_required: number
+      submitted_count: number
+      requested_count: number
+    }>
+    counts: Record<string, number>
+  }
 }

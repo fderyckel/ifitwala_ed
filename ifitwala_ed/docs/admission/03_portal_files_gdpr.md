@@ -227,9 +227,9 @@ Admissions Portal lives under **its own SPA base**, e.g.:
 
 It must **not** live under:
 
-* `/portal/student`
-* `/portal/guardian`
-* `/portal/staff`
+* `/hub/student`
+* `/hub/guardian`
+* `/hub/staff`
 
 This avoids:
 
@@ -337,8 +337,8 @@ This portal is **not**:
 
 * a CMS
 * a Guardian preview
-* a messaging platform
-* a chat system
+* a general-purpose messaging platform
+* a real-time chat system
 * a workflow engine
 
 It is a **controlled data-completion surface**.
@@ -495,6 +495,51 @@ ApplicantSnapshot {
 
 ---
 
+## A.3.1 Applicant Profile DTO
+
+### Endpoints
+
+```
+GET  /api/admissions/profile/:applicant
+POST /api/admissions/profile/update
+POST /api/admissions/profile/image/upload
+```
+
+### Returns
+
+```ts
+ApplicantProfilePayload {
+  profile: ApplicantProfile
+  completeness: {
+    ok: boolean
+    missing: string[]
+    required: string[]
+  }
+  application_context: ApplicantApplicationContext
+  applicant_image: string
+  options: {
+    genders: string[]
+    residency_statuses: string[]
+    languages: Array<{ value: string; label: string }>
+    countries: Array<{ value: string; label: string }>
+  }
+}
+```
+
+### Rules
+
+* Profile update is applicant-scoped and server-validated.
+* Profile image upload is applicant-scoped and mutable-status only.
+* Profile image upload must route through dispatcher classification:
+  * `data_class = identity_image`
+  * `purpose = applicant_profile_display`
+  * `retention_policy = until_school_exit_plus_6m`
+  * `slot = profile_image`
+  * `upload_source = SPA`
+* Uploaded profile image remains private and stored on `Student Applicant.applicant_image`.
+
+---
+
 ## A.4 Applicant Health DTO
 
 ### Endpoints
@@ -607,13 +652,23 @@ ApplicantDocument {
   document_type: string
   review_status: "Pending" | "Approved" | "Rejected"
   uploaded_at: datetime
+  items: ApplicantDocumentItem[]
+}
+
+ApplicantDocumentItem {
+  name: string
+  item_key: string
+  item_label: string
+  review_status: "Pending" | "Approved" | "Rejected" | "Superseded"
+  uploaded_at: datetime
+  file_url: string
 }
 ```
 
 ### Upload rules
 
-* Upload creates `Applicant Document`
-* File attached **only** to Applicant Document
+* Upload creates/uses `Applicant Document` (bucket) and creates/uses `Applicant Document Item` (per file entry)
+* File attached **only** to Applicant Document Item
 * No direct file uploads anywhere else
 * File Classification primary subject is always **Student Applicant**
 
@@ -633,7 +688,8 @@ POST /api/admissions/policies/acknowledge
 ```ts
 PolicyAcknowledgementPayload {
   policy_version: string
-  accepted: true
+  typed_signature_name: string
+  attestation_confirmed: 1
 }
 ```
 
@@ -666,7 +722,26 @@ Family declares **“ready for review”**.
 
 ---
 
-## A.8 Explicitly Forbidden APIs
+## A.8 Admissions Communication Thread
+
+### Endpoints
+
+```
+POST /api/method/ifitwala_ed.api.admissions_communication.get_admissions_case_thread
+POST /api/method/ifitwala_ed.api.admissions_communication.send_admissions_case_message
+POST /api/method/ifitwala_ed.api.admissions_communication.mark_admissions_case_thread_read
+```
+
+### Rules
+
+* Context is `Student Applicant` only for applicant portal callers.
+* Applicant portal sends applicant-visible messages only.
+* Internal staff notes never render in applicant portal thread responses.
+* Read state is tracked per user/thread through `Portal Read Receipt`.
+
+---
+
+## A.9 Explicitly Forbidden APIs
 
 The portal must **never** call:
 
@@ -729,6 +804,26 @@ No business logic.
 
 ---
 
+### `/admissions/profile`
+
+**Page:** `ApplicantProfile.vue`
+
+**Purpose**
+
+* Maintain student profile fields required for promotion
+* Upload/update applicant-owned student image
+
+**Reads**
+
+* `ApplicantProfilePayload`
+
+**Writes**
+
+* profile update
+* profile image upload (governed)
+
+---
+
 ### `/admissions/health`
 
 **Page:** `ApplicantHealth.vue`
@@ -772,11 +867,30 @@ No business logic.
 **Purpose**
 
 * Display required policies
-* Capture acknowledgements
+* Capture explicit electronic signatures + acknowledgements
 
 **Writes**
 
 * PolicyAcknowledgement only
+
+---
+
+### `/admissions/messages`
+
+**Page:** `ApplicantMessages.vue`
+
+**Purpose**
+
+* Applicant ↔ admissions case communication in-app
+* Keep communication attached to `Student Applicant` context
+
+**Reads**
+
+* Admissions case thread summary + message timeline
+
+**Writes**
+
+* Applicant-visible messages only
 
 ---
 
@@ -845,14 +959,13 @@ No:
 
 * multi-applicant support
 * sibling switch
-* chat
-* messaging
 * staff notes
 * review UI
 * approval UI
 * promotion UI
 
-Those belong to **staff workspace**, not this portal.
+Messaging is intentionally shared between applicant portal and staff cockpit as the single case communication surface.
+Staff-only notes remain staff workspace concerns.
 
 ---
 
@@ -969,6 +1082,7 @@ Permissions alone are **insufficient**.
 
   * application_status ∈ {Invited, In Progress, Missing Info}
 * Only specific fields writable (no status, no governance fields)
+* `student_joining_date` (Admission Date) is admissions-office-owned and portal read-only
 
 #### Applicant Document
 
@@ -1029,10 +1143,10 @@ No overrides.
 ### Forbidden Routes
 
 ```
-/portal/*
+/hub/*
 /student/*
 /guardian/*
-/app/*
+/desk/*
 ```
 
 Any attempt → redirect to login.
@@ -1510,7 +1624,7 @@ Families NEVER see or touch:
 | Portal Section | Backing Object | Family Action |
 |---------------|---------------|---------------|
 | Applicant Overview | Student Applicant | Read |
-| Personal Details | Student Applicant | Write (until submission) |
+| Personal Details | Student Applicant | Write (until submission, except Admission Date) |
 | Guardians | Applicant Guardian | Write |
 | Health Information | Applicant Health Profile | Write |
 | Documents | Applicant Document | Upload only |

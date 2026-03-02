@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import base64
+import io
+import os
 
 import frappe
 from frappe import _
 from frappe.utils import cint, now_datetime
+from PIL import Image, UnidentifiedImageError
 
 from ifitwala_ed.admission import admissions_portal as admission_api
 from ifitwala_ed.admission.admission_utils import (
@@ -19,8 +22,11 @@ from ifitwala_ed.admission.admission_utils import (
     has_complete_applicant_document_type_classification,
     is_applicant_document_type_in_scope,
     normalize_email_value,
+    sync_student_applicant_contact_binding,
     upsert_contact_email,
 )
+from ifitwala_ed.admission.applicant_review_workflow import materialize_health_review_assignments
+from ifitwala_ed.api.recommendation_intake import get_recommendation_status_for_applicant
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
@@ -109,7 +115,6 @@ APPLICANT_PROFILE_REQUIRED_FIELD_LABELS = (
     ("student_date_of_birth", "Date of Birth"),
     ("student_gender", "Student Gender"),
     ("student_mobile_number", "Mobile Number"),
-    ("student_joining_date", "Joining Date"),
     ("student_first_language", "First Language"),
     ("student_nationality", "Nationality"),
     ("residency_status", "Residency Status"),
@@ -156,6 +161,10 @@ def _as_bool(value) -> bool:
     return bool(_as_check(value))
 
 
+def _normalize_signature_name(value: str | None) -> str:
+    return " ".join((value or "").split()).casefold()
+
+
 def _coerce_vaccination_date(value) -> str | None:
     text = _as_text(value).strip()
     return text or None
@@ -168,6 +177,43 @@ def _decode_base64_content(content_text: str | None) -> bytes:
         return base64.b64decode(content_text)
     except Exception:
         frappe.throw(_("Vaccination proof content must be base64-encoded."))
+
+
+def _decode_profile_image_content(content_text: str | None) -> bytes:
+    if not content_text:
+        frappe.throw(_("Profile image content is required."))
+    try:
+        content = base64.b64decode(content_text, validate=True)
+    except Exception:
+        frappe.throw(_("Profile image content must be base64-encoded."))
+    if not content:
+        frappe.throw(_("Profile image content is empty."))
+    return content
+
+
+def _validate_profile_image_content(content: bytes) -> None:
+    try:
+        with Image.open(io.BytesIO(content)) as img:
+            img.verify()
+    except (UnidentifiedImageError, OSError, ValueError):
+        frappe.throw(_("Uploaded profile image must be a valid image file."))
+
+
+def _ensure_file_on_disk(file_doc) -> None:
+    if not file_doc or not file_doc.file_url:
+        frappe.throw(_("File URL missing after upload."))
+    if file_doc.file_url.startswith("http"):
+        return
+
+    rel_path = file_doc.file_url.lstrip("/")
+    if rel_path.startswith("private/") or rel_path.startswith("public/"):
+        abs_path = frappe.utils.get_site_path(rel_path)
+    else:
+        base = "private" if file_doc.is_private else "public"
+        abs_path = frappe.utils.get_site_path(base, rel_path)
+
+    if not os.path.exists(abs_path):
+        frappe.throw(_("File could not be finalized on disk. Please retry the upload."))
 
 
 def _build_applicant_display_name(row: dict) -> str:
@@ -224,6 +270,25 @@ def _upload_vaccination_proof(
     vaccination_row: dict,
     index: int,
 ) -> str:
+    health_doc_name = _as_text(getattr(health_doc, "name", "")).strip()
+    if not health_doc_name and hasattr(health_doc, "save"):
+        health_doc.save(ignore_permissions=True)
+        health_doc_name = _as_text(getattr(health_doc, "name", "")).strip()
+    if not health_doc_name:
+        frappe.log_error(
+            message=frappe.as_json(
+                {
+                    "error": "health_profile_name_missing_for_vaccination_upload",
+                    "health_doc_type": str(type(health_doc)),
+                    "health_doc_name": getattr(health_doc, "name", None),
+                    "applicant_row_name": applicant_row.get("name"),
+                    "vaccination_index": index,
+                }
+            ),
+            title="Applicant Health Upload Failed",
+        )
+        frappe.throw(_("Unable to attach vaccination proof because the health profile was not persisted."))
+
     content = _decode_base64_content(_as_text(vaccination_row.get("vaccination_proof_content")))
     file_name = (
         _as_text(vaccination_row.get("vaccination_proof_file_name")).strip() or f"vaccination_proof_{index + 1}.png"
@@ -233,7 +298,7 @@ def _upload_vaccination_proof(
     file_doc = file_dispatcher.create_and_classify_file(
         file_kwargs={
             "attached_to_doctype": "Applicant Health Profile",
-            "attached_to_name": health_doc.name,
+            "attached_to_name": health_doc_name,
             "attached_to_field": "vaccinations",
             "file_name": file_name,
             "content": content,
@@ -339,6 +404,18 @@ def _profile_completeness(profile_payload: dict) -> dict:
         if not value:
             missing.append(label)
     return {"ok": not missing, "missing": missing, "required": required}
+
+
+def _build_profile_payload(applicant) -> dict:
+    profile = _serialize_applicant_profile(applicant)
+    completeness = _profile_completeness(profile)
+    return {
+        "profile": profile,
+        "completeness": completeness,
+        "application_context": _application_context_payload(applicant),
+        "options": _profile_reference_options(),
+        "applicant_image": _as_text(applicant.get("applicant_image")).strip(),
+    }
 
 
 def _profile_reference_options() -> dict:
@@ -461,6 +538,22 @@ def _completion_state_for_interviews(interviews: dict) -> str:
     return "optional"
 
 
+def _completion_state_for_recommendations(summary: dict) -> str:
+    state = (summary or {}).get("state")
+    if state in {"pending", "in_progress", "complete", "optional"}:
+        return state
+
+    required_total = max(0, cint((summary or {}).get("required_total") or 0))
+    received_total = max(0, cint((summary or {}).get("received_total") or 0))
+    if required_total <= 0:
+        return "optional"
+    if received_total >= required_total:
+        return "complete"
+    if received_total > 0:
+        return "in_progress"
+    return "pending"
+
+
 def _derive_next_actions(application_status: str, readiness: dict) -> list[dict]:
     if application_status not in PORTAL_EDITABLE_STATUSES:
         return []
@@ -471,6 +564,7 @@ def _derive_next_actions(application_status: str, readiness: dict) -> list[dict]
     documents = readiness.get("documents") or {}
     health = readiness.get("health") or {}
     profile = readiness.get("profile") or {}
+    recommendations = readiness.get("recommendations") or {}
 
     if not profile.get("ok"):
         actions.append(
@@ -493,20 +587,43 @@ def _derive_next_actions(application_status: str, readiness: dict) -> list[dict]
         )
 
     if not documents.get("ok"):
-        actions.append(
-            {
-                "label": _("Upload required documents"),
-                "route_name": "admissions-documents",
-                "intent": "primary",
-                "is_blocking": True,
-            }
-        )
+        missing_docs = documents.get("missing") or []
+        unapproved_docs = documents.get("unapproved") or []
+        if missing_docs:
+            actions.append(
+                {
+                    "label": _("Upload required documents"),
+                    "route_name": "admissions-documents",
+                    "intent": "primary",
+                    "is_blocking": True,
+                }
+            )
+        elif unapproved_docs:
+            actions.append(
+                {
+                    "label": _("Documents under review"),
+                    "route_name": "admissions-documents",
+                    "intent": "default",
+                    "is_blocking": False,
+                }
+            )
 
     if not health.get("ok"):
         actions.append(
             {
                 "label": _("Complete health information"),
                 "route_name": "admissions-health",
+                "intent": "primary",
+                "is_blocking": True,
+            }
+        )
+
+    required_recommendations = max(0, cint(recommendations.get("required_total") or 0))
+    if required_recommendations > 0 and not recommendations.get("ok"):
+        actions.append(
+            {
+                "label": _("Check recommendation status"),
+                "route_name": "admissions-status",
                 "intent": "primary",
                 "is_blocking": True,
             }
@@ -554,8 +671,13 @@ def get_applicant_snapshot(student_applicant: str | None = None):
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
     readiness = applicant.get_readiness_snapshot()
     portal_health = _portal_health_state(applicant.name)
+    recommendation_status = get_recommendation_status_for_applicant(
+        student_applicant=applicant.name,
+        include_confidential=False,
+    )
     readiness_for_portal = dict(readiness)
     readiness_for_portal["health"] = portal_health
+    readiness_for_portal["recommendations"] = recommendation_status
 
     completeness = {
         "profile": _completion_state_for_requirement(
@@ -573,6 +695,7 @@ def get_applicant_snapshot(student_applicant: str | None = None):
             (readiness.get("policies") or {}).get("missing") or [],
         ),
         "interviews": _completion_state_for_interviews(readiness.get("interviews") or {}),
+        "recommendations": _completion_state_for_recommendations(recommendation_status),
     }
 
     portal_status = _portal_status_for(applicant.application_status)
@@ -589,6 +712,7 @@ def get_applicant_snapshot(student_applicant: str | None = None):
         "profile": _serialize_applicant_profile(applicant),
         "completeness": completeness,
         "next_actions": next_actions,
+        "recommendations_summary": recommendation_status,
     }
 
 
@@ -598,14 +722,7 @@ def get_applicant_profile(student_applicant: str | None = None):
     row = _ensure_applicant_match(student_applicant, user)
 
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
-    profile = _serialize_applicant_profile(applicant)
-    completeness = _profile_completeness(profile)
-    return {
-        "profile": profile,
-        "completeness": completeness,
-        "application_context": _application_context_payload(applicant),
-        "options": _profile_reference_options(),
-    }
+    return _build_profile_payload(applicant)
 
 
 @frappe.whitelist()
@@ -627,6 +744,11 @@ def update_applicant_profile(
     row = _ensure_applicant_match(student_applicant, user)
 
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
+    incoming_joining_date = _as_text(student_joining_date).strip() if student_joining_date is not None else None
+    existing_joining_date = _as_text(applicant.get("student_joining_date")).strip()
+    if incoming_joining_date is not None and incoming_joining_date != existing_joining_date:
+        frappe.throw(_("Admission Date can only be set by the admissions office."), frappe.PermissionError)
+
     updates = {
         "student_preferred_name": _as_text(
             applicant.get("student_preferred_name") if student_preferred_name is None else student_preferred_name
@@ -640,9 +762,7 @@ def update_applicant_profile(
         "student_mobile_number": _as_text(
             applicant.get("student_mobile_number") if student_mobile_number is None else student_mobile_number
         ).strip(),
-        "student_joining_date": _as_text(
-            applicant.get("student_joining_date") if student_joining_date is None else student_joining_date
-        ).strip(),
+        "student_joining_date": existing_joining_date,
         "student_first_language": _as_text(
             applicant.get("student_first_language") if student_first_language is None else student_first_language
         ).strip(),
@@ -664,15 +784,79 @@ def update_applicant_profile(
 
     applicant.update(updates)
     applicant.save(ignore_permissions=True)
-    profile = _serialize_applicant_profile(applicant)
-    completeness = _profile_completeness(profile)
+    payload = _build_profile_payload(applicant)
+    payload["ok"] = True
+    return payload
+
+
+@frappe.whitelist()
+def upload_applicant_profile_image(
+    *,
+    student_applicant: str | None = None,
+    file_name: str | None = None,
+    content: str | None = None,
+):
+    user = _require_admissions_applicant()
+    row = _ensure_applicant_match(student_applicant, user)
+
+    is_read_only, reason = _read_only_for(_as_text(row.get("application_status")).strip())
+    if is_read_only:
+        frappe.throw(reason or _("This application is read-only."), frappe.PermissionError)
+
+    applicant_name = _as_text(row.get("name")).strip()
+    if not applicant_name:
+        frappe.throw(_("Applicant context is missing."))
+
+    upload_name = _as_text(file_name).strip()
+    if not upload_name:
+        frappe.throw(_("file_name is required."))
+
+    upload_content = _decode_profile_image_content(_as_text(content))
+    _validate_profile_image_content(upload_content)
+
+    applicant = frappe.get_doc("Student Applicant", applicant_name)
+    if not applicant.get("organization") or not applicant.get("school"):
+        frappe.throw(_("Organization and School are required for file classification."))
+
+    file_doc = file_dispatcher.create_and_classify_file(
+        file_kwargs={
+            "attached_to_doctype": "Student Applicant",
+            "attached_to_name": applicant.name,
+            "attached_to_field": "applicant_image",
+            "file_name": upload_name,
+            "content": upload_content,
+            "is_private": 1,
+        },
+        classification={
+            "primary_subject_type": "Student Applicant",
+            "primary_subject_id": applicant.name,
+            "data_class": "identity_image",
+            "purpose": "applicant_profile_display",
+            "retention_policy": "until_school_exit_plus_6m",
+            "slot": "profile_image",
+            "organization": applicant.organization,
+            "school": applicant.school,
+            "upload_source": "SPA",
+        },
+    )
+    _ensure_file_on_disk(file_doc)
+
+    frappe.db.set_value(
+        "Student Applicant",
+        applicant.name,
+        "applicant_image",
+        file_doc.file_url,
+        update_modified=False,
+    )
+    classification_name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
 
     return {
         "ok": True,
-        "profile": profile,
-        "completeness": completeness,
-        "application_context": _application_context_payload(applicant),
-        "options": _profile_reference_options(),
+        "file": file_doc.name,
+        "file_url": file_doc.file_url,
+        "file_name": file_doc.file_name,
+        "file_size": file_doc.file_size,
+        "classification": classification_name,
     }
 
 
@@ -748,6 +932,11 @@ def update_applicant_health(
                 "student_applicant": row.get("name"),
             }
         )
+    has_declaration_column = _has_health_declaration_column()
+    if has_declaration_column:
+        previous_declared_complete = bool(cint(doc.get("applicant_health_declared_complete")))
+    else:
+        previous_declared_complete = bool(_portal_health_state(row.get("name")).get("ok"))
 
     updates = {
         "blood_group": _as_text(blood_group),
@@ -794,12 +983,24 @@ def update_applicant_health(
         normalized_vaccinations = _normalize_vaccinations(vaccinations)
     declaration_provided = applicant_health_declared_complete is not None
     declaration_confirmed = _as_bool(applicant_health_declared_complete)
-    has_declaration_column = _has_health_declaration_column()
 
     doc.update(updates)
-    if doc.is_new():
+    if doc.is_new() or not _as_text(doc.name).strip():
         # Vaccination proof uploads attach to this profile and require a persisted name.
         doc.save(ignore_permissions=True)
+    if not _as_text(doc.name).strip():
+        frappe.log_error(
+            message=frappe.as_json(
+                {
+                    "error": "health_profile_name_missing_after_save",
+                    "doc_type": str(type(doc)),
+                    "doc_name": getattr(doc, "name", None),
+                    "student_applicant": row.get("name"),
+                }
+            ),
+            title="Applicant Health Save Failed",
+        )
+        frappe.throw(_("Unable to save health information because the profile identifier is missing."))
 
     doc.set("vaccinations", [])
     for index, vaccination_row in enumerate(normalized_vaccinations):
@@ -841,6 +1042,12 @@ def update_applicant_health(
     else:
         declared_complete = bool(_portal_health_state(row.get("name")).get("ok"))
 
+    if has_declaration_column and declared_complete and not previous_declared_complete:
+        materialize_health_review_assignments(
+            applicant_health_profile=doc.name,
+            source_event="health_submitted",
+        )
+
     return {
         "ok": True,
         "applicant_health_declared_complete": declared_complete,
@@ -855,7 +1062,7 @@ def list_applicant_documents(student_applicant: str | None = None):
     documents = frappe.get_all(
         "Applicant Document",
         filters={"student_applicant": row.get("name")},
-        fields=["name", "document_type", "review_status", "modified"],
+        fields=["name", "document_type", "review_status", "reviewed_by", "reviewed_on", "modified"],
         order_by="modified desc",
     )
 
@@ -863,7 +1070,42 @@ def list_applicant_documents(student_applicant: str | None = None):
         return {"documents": []}
 
     name_list = [d["name"] for d in documents]
-    file_rows = frappe.get_all(
+    item_rows = frappe.get_all(
+        "Applicant Document Item",
+        filters={"applicant_document": ["in", name_list]},
+        fields=[
+            "name",
+            "applicant_document",
+            "item_key",
+            "item_label",
+            "review_status",
+            "reviewed_by",
+            "reviewed_on",
+            "modified",
+        ],
+        order_by="modified desc",
+    )
+    item_names = [row_item.get("name") for row_item in item_rows if row_item.get("name")]
+
+    latest_file_by_item: dict[str, dict] = {}
+    if item_names:
+        item_file_rows = frappe.get_all(
+            "File",
+            filters={
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": ["in", item_names],
+            },
+            fields=["attached_to_name", "file_url", "file_name", "creation"],
+            order_by="creation desc",
+        )
+        for row_file in item_file_rows:
+            parent = row_file.get("attached_to_name")
+            if not parent or parent in latest_file_by_item:
+                continue
+            latest_file_by_item[parent] = row_file
+
+    legacy_latest_file_by_document: dict[str, dict] = {}
+    legacy_file_rows = frappe.get_all(
         "File",
         filters={
             "attached_to_doctype": "Applicant Document",
@@ -872,24 +1114,73 @@ def list_applicant_documents(student_applicant: str | None = None):
         fields=["attached_to_name", "file_url", "file_name", "creation"],
         order_by="creation desc",
     )
-
-    latest_file: dict[str, dict] = {}
-    for row_file in file_rows:
+    for row_file in legacy_file_rows:
         parent = row_file.get("attached_to_name")
-        if not parent or parent in latest_file:
+        if not parent or parent in legacy_latest_file_by_document:
             continue
-        latest_file[parent] = row_file
+        legacy_latest_file_by_document[parent] = row_file
+
+    items_by_document: dict[str, list[dict]] = {}
+    for row_item in item_rows:
+        parent = row_item.get("applicant_document")
+        if not parent:
+            continue
+        latest_file = latest_file_by_item.get(row_item.get("name"), {})
+        items_by_document.setdefault(parent, []).append(
+            {
+                "name": row_item.get("name"),
+                "item_key": row_item.get("item_key"),
+                "item_label": row_item.get("item_label"),
+                "review_status": row_item.get("review_status") or "Pending",
+                "reviewed_by": row_item.get("reviewed_by"),
+                "reviewed_on": row_item.get("reviewed_on"),
+                "uploaded_at": latest_file.get("creation"),
+                "file_url": latest_file.get("file_url"),
+                "file_name": latest_file.get("file_name"),
+            }
+        )
 
     payload = []
     for doc in documents:
-        file_row = latest_file.get(doc["name"], {})
+        doc_name = doc.get("name")
+        items = items_by_document.get(doc_name, [])
+
+        if not items:
+            legacy_file = legacy_latest_file_by_document.get(doc_name, {})
+            if legacy_file:
+                items = [
+                    {
+                        "name": "",
+                        "item_key": "legacy",
+                        "item_label": _("Existing upload"),
+                        "review_status": doc.get("review_status") or "Pending",
+                        "reviewed_by": doc.get("reviewed_by"),
+                        "reviewed_on": doc.get("reviewed_on"),
+                        "uploaded_at": legacy_file.get("creation"),
+                        "file_url": legacy_file.get("file_url"),
+                        "file_name": legacy_file.get("file_name"),
+                    }
+                ]
+
+        latest_uploaded_at = None
+        latest_file_url = None
+        if items:
+            sorted_items = sorted(
+                items,
+                key=lambda row_item: row_item.get("uploaded_at") or "",
+                reverse=True,
+            )
+            latest_uploaded_at = sorted_items[0].get("uploaded_at")
+            latest_file_url = sorted_items[0].get("file_url")
+
         payload.append(
             {
-                "name": doc["name"],
+                "name": doc_name,
                 "document_type": doc.get("document_type"),
                 "review_status": doc.get("review_status") or "Pending",
-                "uploaded_at": file_row.get("creation"),
-                "file_url": file_row.get("file_url"),
+                "uploaded_at": latest_uploaded_at,
+                "file_url": latest_file_url,
+                "items": items,
             }
         )
 
@@ -923,13 +1214,11 @@ def list_applicant_document_types(student_applicant: str | None = None):
             "document_type_name",
             "belongs_to",
             "is_required",
+            "is_repeatable",
+            "min_items_required",
             "description",
             "school",
             "organization",
-            "classification_slot",
-            "classification_data_class",
-            "classification_purpose",
-            "classification_retention_policy",
         ],
         order_by="is_required desc, document_type_name asc",
     )
@@ -943,8 +1232,6 @@ def list_applicant_document_types(student_applicant: str | None = None):
             applicant_school_ancestors=applicant_school_ancestors,
         ):
             continue
-        if not has_complete_applicant_document_type_classification(row_type):
-            continue
         payload.append(
             {
                 "name": row_type.get("name"),
@@ -952,6 +1239,8 @@ def list_applicant_document_types(student_applicant: str | None = None):
                 "document_type_name": row_type.get("document_type_name"),
                 "belongs_to": row_type.get("belongs_to") or "",
                 "is_required": bool(row_type.get("is_required")),
+                "is_repeatable": bool(row_type.get("is_repeatable")),
+                "min_items_required": cint(row_type.get("min_items_required") or 1),
                 "description": row_type.get("description") or "",
             }
         )
@@ -964,6 +1253,10 @@ def upload_applicant_document(
     *,
     student_applicant: str | None = None,
     document_type: str | None = None,
+    applicant_document_item: str | None = None,
+    item_key: str | None = None,
+    item_label: str | None = None,
+    client_request_id: str | None = None,
     file_name: str | None = None,
     content: str | None = None,
 ):
@@ -972,6 +1265,8 @@ def upload_applicant_document(
 
     if not document_type:
         frappe.throw(_("document_type is required."))
+    if not applicant_document_item and not _as_text(item_key).strip() and not _as_text(item_label).strip():
+        frappe.throw(_("Provide a short description for this file."))
 
     if not content and not (getattr(frappe.request, "files", None) and frappe.request.files.get("file")):
         frappe.throw(_("File content is required."))
@@ -1009,14 +1304,34 @@ def upload_applicant_document(
         frappe.throw(_("Document type is outside the Applicant scope."))
 
     if not has_complete_applicant_document_type_classification(doc_type_row):
-        frappe.throw(_("This document type is not configured for uploads. Please contact the admissions office."))
+        missing_labels = []
+        for fieldname, label in (
+            ("classification_slot", "slot"),
+            ("classification_data_class", "data class"),
+            ("classification_purpose", "purpose"),
+            ("classification_retention_policy", "retention policy"),
+        ):
+            if not _as_text(doc_type_row.get(fieldname)).strip():
+                missing_labels.append(label)
+        doc_type_label = _as_text(doc_type_row.get("code") or document_type).strip() or _("Unknown")
+        if missing_labels:
+            frappe.throw(
+                _("This document type is not configured for uploads ({0}). Missing: {1}.").format(
+                    doc_type_label,
+                    ", ".join(missing_labels),
+                )
+            )
+        frappe.throw(_("This document type is not configured for uploads ({0}).").format(doc_type_label))
 
     payload = {
         "student_applicant": row.get("name"),
         "document_type": document_type,
+        "applicant_document_item": applicant_document_item,
+        "item_key": _as_text(item_key).strip() or None,
+        "item_label": _as_text(item_label).strip() or None,
+        "client_request_id": _as_text(client_request_id).strip() or None,
         "upload_source": "SPA",
         "is_private": 1,
-        "ignore_permissions": 1,
     }
 
     if content:
@@ -1112,6 +1427,7 @@ def get_applicant_policies(student_applicant: str | None = None):
         fields=["policy_version", "acknowledged_at"],
     )
     ack_map = {row_ack["policy_version"]: row_ack.get("acknowledged_at") for row_ack in ack_rows}
+    expected_signature_name = _build_applicant_display_name(row)
 
     payload = []
     for row_policy in policies_source:
@@ -1125,6 +1441,7 @@ def get_applicant_policies(student_applicant: str | None = None):
                 "content_html": row_policy.get("policy_text") or "",
                 "is_acknowledged": bool(acknowledged_at),
                 "acknowledged_at": acknowledged_at,
+                "expected_signature_name": expected_signature_name,
             }
         )
 
@@ -1136,6 +1453,8 @@ def acknowledge_policy(
     *,
     policy_version: str | None = None,
     student_applicant: str | None = None,
+    typed_signature_name: str | None = None,
+    attestation_confirmed: int | str | bool | None = None,
 ):
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
@@ -1156,6 +1475,32 @@ def acknowledge_policy(
     )
     if existing:
         return {"ok": True, "acknowledged_at": existing.get("acknowledged_at")}
+
+    expected_signature_name = _build_applicant_display_name(row)
+    normalized_typed_name = _normalize_signature_name(typed_signature_name)
+    expected_candidates = {
+        normalized
+        for normalized in {
+            _normalize_signature_name(expected_signature_name),
+            _normalize_signature_name(row.get("name")),
+        }
+        if normalized
+    }
+
+    if not _as_bool(attestation_confirmed):
+        frappe.throw(
+            _("You must confirm the electronic signature attestation before signing."),
+            frappe.ValidationError,
+        )
+
+    if not normalized_typed_name:
+        frappe.throw(_("Type your full name as your electronic signature."), frappe.ValidationError)
+
+    if expected_candidates and normalized_typed_name not in expected_candidates:
+        frappe.throw(
+            _("Typed signature must match exactly: {0}").format(expected_signature_name),
+            frappe.ValidationError,
+        )
 
     doc = frappe.get_doc(
         {
@@ -1376,6 +1721,10 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
             applicant._set_status("Invited", "Applicant invited", permission_checker=None)
         else:
             applicant.save(ignore_permissions=True)
+        sync_student_applicant_contact_binding(
+            student_applicant=applicant.name,
+            contact_name=contact_name,
+        )
 
         email_sent = _send_applicant_invite_email(user_doc, email)
         applicant.add_comment(
@@ -1434,6 +1783,10 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         applicant._set_status("Invited", "Applicant invited", permission_checker=None)
     else:
         applicant.save(ignore_permissions=True)
+    sync_student_applicant_contact_binding(
+        student_applicant=applicant.name,
+        contact_name=contact_name,
+    )
 
     applicant.add_comment(
         "Comment",

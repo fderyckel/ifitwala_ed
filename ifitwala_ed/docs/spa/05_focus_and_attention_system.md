@@ -161,6 +161,9 @@ Example action types:
 * `student_log.follow_up.act.submit` → mounts `StudentLogFollowUpAction.vue` (assignee mode)
 * `student_log.follow_up.review.decide` → mounts `StudentLogReviewOutcome.vue` (author mode)
 * `inquiry.follow_up.act.first_contact` → mounts `InquiryFollowUpAction.vue` (assignee mode)
+* `applicant_review.assignment.decide` → mounts `ApplicantReviewAssignmentAction.vue` (assignee mode)
+* `policy_acknowledgement.staff.sign` → mounts `StaffPolicyAcknowledgeAction.vue` (assignee mode)
+  * includes typed full-name signature + legal attestation before submit
 
 Later:
 
@@ -200,6 +203,7 @@ This keeps “server is authoritative” intact and prevents Focus from becoming
 **Rule**
 
 > Focus API is a router + aggregator. Workflows remain owned by their DocTypes/modules.
+> Implementation note (2026-02-26): `ifitwala_ed/api/focus.py` is a thin facade; core logic lives in `focus_shared.py`, `focus_listing.py`, `focus_context.py`, and `focus_actions_*.py` while public API paths stay `ifitwala_ed.api.focus.*`.
 
 ---
 
@@ -322,7 +326,14 @@ Behavior:
 * Extended `focus.list` and `focus.get_context` with Inquiry while preserving contract shape
 * Added named endpoint `focus.mark_inquiry_contacted` with assignee + permission + idempotency guards
 
-### Phase 3 — Student Referral / Meetings
+### Phase 3 — Staff Policy Signature (delivered)
+
+* Added `action_type` `policy_acknowledgement.staff.sign`
+* Added `StaffPolicyAcknowledgeAction.vue` routed by `FocusRouterOverlay.vue`
+* Extended `focus.list` and `focus.get_context` with `Policy Version` focus items (staff only)
+* Added named endpoint `focus.acknowledge_staff_policy` with assignment, scope, and idempotency guards
+
+### Phase 4 — Student Referral / Meetings
 
 * Same pattern
 

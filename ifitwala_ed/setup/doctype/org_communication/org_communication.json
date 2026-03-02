@@ -18,13 +18,16 @@
   "column_break_qwio",
   "publish_from",
   "publish_to",
-  "school",
   "organization",
+  "school",
   "activity_context_section",
   "activity_program_offering",
   "activity_booking",
   "column_break_activity_context",
   "activity_student_group",
+  "admission_context_section",
+  "admission_context_doctype",
+  "admission_context_name",
   "audience_section",
   "audiences",
   "section_break_dcte",
@@ -89,14 +92,14 @@
    "fieldname": "school",
    "fieldtype": "Link",
    "label": "Issuing School",
-   "options": "School",
-   "reqd": 1
+   "options": "School"
   },
   {
    "fieldname": "organization",
    "fieldtype": "Link",
    "label": "Organization",
-   "options": "Organization"
+   "options": "Organization",
+   "reqd": 1
   },
   {
    "fieldname": "activity_context_section",
@@ -125,6 +128,25 @@
    "fieldtype": "Link",
    "label": "Activity Student Group",
    "options": "Student Group"
+  },
+  {
+   "fieldname": "admission_context_section",
+   "fieldtype": "Section Break",
+   "label": "Admission Context"
+  },
+  {
+   "description": "Optional admissions case context. Used to bind communication threads to Student Applicant or Inquiry records.",
+   "fieldname": "admission_context_doctype",
+   "fieldtype": "Select",
+   "label": "Admission Context DocType",
+   "options": "\nStudent Applicant\nInquiry"
+  },
+  {
+   "depends_on": "eval:doc.admission_context_doctype",
+   "fieldname": "admission_context_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Admission Context Name",
+   "options": "admission_context_doctype"
   },
   {
    "description": "Communication is visible from this time onwards.",
@@ -228,7 +250,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-08 21:58:47",
+ "modified": "2026-02-28 23:20:38.123805",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Org Communication",

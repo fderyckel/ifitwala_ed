@@ -130,6 +130,27 @@ class TestSchoolWebsitePage(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             validate_page_blocks(page)
 
+    def test_validate_page_blocks_allows_section_carousel_for_standard_school_page(self):
+        page = frappe._dict(
+            {
+                "doctype": "School Website Page",
+                "page_type": "Standard",
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Home"}, order=1),
+                    _row(
+                        block_type="section_carousel",
+                        props={
+                            "heading": "Activities",
+                            "content_html": "<p>Explore activities.</p>",
+                            "items": [{"image": "/files/activity-1.jpg", "caption": "Sports Day"}],
+                        },
+                        order=2,
+                    ),
+                ],
+            }
+        )
+        validate_page_blocks(page)
+
     def test_validate_page_blocks_allows_admissions_blocks_for_admissions_page(self):
         page = frappe._dict(
             {

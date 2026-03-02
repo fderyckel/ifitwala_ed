@@ -62,6 +62,26 @@
 				</div>
 			</div>
 
+			<div
+				v-if="documentsUnderReview"
+				class="rounded-2xl border border-leaf/40 bg-leaf/10 px-4 py-3"
+			>
+				<p class="type-body-strong text-emerald-900">{{ __('Awaiting admissions review') }}</p>
+				<p class="mt-1 type-caption text-emerald-900/80">
+					{{
+						__(
+							'All required documents are uploaded. You can submit now while admissions reviews your files.'
+						)
+					}}
+				</p>
+				<RouterLink
+					:to="{ name: 'admissions-documents' }"
+					class="mt-3 inline-flex rounded-full border border-leaf/40 bg-white px-4 py-2 type-caption text-emerald-900"
+				>
+					{{ __('View document statuses') }}
+				</RouterLink>
+			</div>
+
 			<div class="flex flex-wrap items-center gap-3">
 				<button
 					type="button"
@@ -72,7 +92,7 @@
 					{{ __('Submit application') }}
 				</button>
 				<RouterLink
-					v-if="!isReady"
+					v-if="!isReady && blockingActions.length"
 					:to="{ name: firstBlockingRouteName }"
 					class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70"
 				>
@@ -112,6 +132,16 @@ const blockingActions = computed<NextAction[]>(() => {
 	return actions.filter(action => action.is_blocking);
 });
 
+const documentsUnderReview = computed(() => {
+	const actions = snapshot.value?.next_actions || [];
+	return actions.some(
+		action =>
+			action.route_name === 'admissions-documents' &&
+			!action.is_blocking &&
+			snapshot.value?.completeness?.documents === 'in_progress'
+	);
+});
+
 const isReady = computed(() => {
 	return blockingActions.value.length === 0;
 });
@@ -135,6 +165,7 @@ const readinessItems = computed(() => {
 		{ label: __('Health information'), state: completeness.health },
 		{ label: __('Documents'), state: completeness.documents },
 		{ label: __('Policies'), state: completeness.policies },
+		{ label: __('Recommendations'), state: completeness.recommendations },
 	];
 	return items.map(item => ({
 		...item,

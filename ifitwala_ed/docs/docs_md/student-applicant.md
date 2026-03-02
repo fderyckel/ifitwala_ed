@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.6.0"
-last_change_date: "2026-02-23"
+version: "1.8.0"
+last_change_date: "2026-03-01"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
@@ -38,7 +38,10 @@ If no policy rows match those rules, policy acknowledgement is not required for 
 Use the applicant readiness outputs, not guesswork:
 
 1. Desk `Student Applicant` form:
-   - `Policies Summary` shows missing policy keys/titles when required acknowledgements are outstanding.
+   - `Policies Summary` shows a policy matrix with status, signer(s), signed timestamp, and version link.
+   - `Documents Summary` shows required-vs-uploaded document tables (missing items, uploader, upload date, reviewer, and links).
+   - `Health Summary` shows cleared/pending state, health profile link, reviewer metadata, and declaration metadata.
+   - `Review Assignments Summary` shows completed reviewer decisions across Documents, Health, and Overall Application.
    - `Review Snapshot` includes readiness issues from `get_readiness_snapshot`.
 2. Approval action:
    - `Approve` is blocked by server guard (`approve_application` -> `_validate_ready_for_approval`) until required policy acknowledgements are complete.
@@ -65,9 +68,10 @@ This is where admissions correctness is enforced. Client UX helps, but status tr
 - **Paperless edge**: policy acknowledgement is handled in-portal with a permanent `Policy Acknowledgement` record (`acknowledged_by`, `acknowledged_at`, `policy_version`, context binding).
 - **Speed edge**: inquiry invite flow pre-fills applicant identity and intent fields, then admissions staff focus on review and decision instead of retyping.
 - **Compliance edge**: admissions files are routed through governed records (`Applicant Document`) instead of random direct attachments on the applicant.
+- **Operations edge**: applicant timeline now records document upload/replace events and applicant-document review/edit events for fast audit trace.
 
 <Callout type="note" title="Digital signature scope">
-Current implementation is an explicit acknowledge action with timestamped audit trail. It does not capture a handwritten/typed signature artifact field.
+Applicant policy acknowledgement in portal requires explicit electronic-signature controls: typed signer name must match the expected applicant signer name, and legal attestation must be confirmed before server insert. Evidence remains the immutable `Policy Acknowledgement` record with server timestamp.
 </Callout>
 
 ## Operational Guardrails
@@ -110,6 +114,7 @@ Current implementation is an explicit acknowledge action with timestamped audit 
   - creates `Student Applicant` directly in `Invited`
   - pre-fills identity and inquiry intent fields
   - ensures Inquiry has a linked `Contact` and carries it to `Student Applicant.applicant_contact`
+  - ensures Contact has a `Dynamic Link` to the created/reused `Student Applicant` (idempotent sync)
   - derives `Student Applicant.applicant_email` from Contact email rows
   - does **not** by itself guarantee portal login access until an applicant `User` is linked
 
@@ -131,6 +136,7 @@ Behavior in code:
 - email is normalized to lower-case and trimmed before processing
 - invite email is validated against applicant contact ownership (cross-contact drift is blocked)
 - invite email is upserted into `Contact Email` for the applicant contact
+- applicant contact is kept linked to `Student Applicant` via Contact `Dynamic Link` (idempotent sync)
 - if user does not exist, a `User` is created with that email
 - role `Admissions Applicant` is ensured on that user
 - invited user is forced `enabled = 1` so login is not blocked by disabled account state
@@ -202,18 +208,31 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - website entry `/admissions` (`ifitwala_ed/www/admissions/index.py`)
   - SPA pages: overview, profile, documents, health, policies, submit
   - API service: `ifitwala_ed.api.admissions_portal.*`
+  - next-actions contract: document upload is blocking only when required docs are missing; uploaded docs pending review are surfaced as under-review (non-blocking) for applicants, and Submit page shows an explicit "Awaiting admissions review" banner while still allowing submission
 - **Promotion linkage**:
   - `Student.student_applicant` link
   - `promote_to_student` creates/links `Student`
 - **File governance**:
   - direct attachments blocked except `applicant_image`
   - governed upload endpoint: `ifitwala_ed.utilities.governed_uploads.upload_applicant_image`
+  - admissions portal self-upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_profile_image`
   - all other admissions docs routed via `Applicant Document` + file classification
+- **Recommendation intake (runtime)**:
+  - external recommender submissions use a separate intake surface (`/admissions/recommendation/<token>`) and do not use applicant portal authentication
+  - supports multiple confidential letters per applicant using per-request `Applicant Document Item` slots (`item_key`)
+  - admissions creates/re-sends/revokes `Recommendation Request` records; recommender submission is sealed in `Recommendation Submission`
+  - applicant portal surfaces recommendation **status only** through snapshot completeness and status summary
+  - architecture and contract reference: `ifitwala_ed/docs/admission/recommendation_intake_architecture.md`
 - **Governance policy engine**:
   - `Policy Acknowledgement.context_doctype = Student Applicant`
   - policy readiness pulled from active Institutional Policy versions
 - **Operational dashboards**:
   - morning brief admissions pulse (`tabStudent Applicant` weekly status counts)
+  - staff admissions cockpit route `/staff/admission-cockpit` (`ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`)
+  - admissions cockpit API `ifitwala_ed.api.admission_cockpit.get_admissions_cockpit_data` (applicant-stage Kanban + blocker strip)
+- **Reviewer workflow**:
+  - submission trigger creates Overall Application review assignments (`application_status` transition to `Submitted`)
+  - desk shows completed assignment decisions in `review_assignments_summary`
   - staff morning brief surface (`ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`) renders applicant status breakdown
 - **Schedule module touchpoint**:
   - Program Enrollment Tool offers `Student Applicant` as a source option in UI.
@@ -258,7 +277,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 
 ### Required for approval-readiness path
 
-1. Required `Applicant Document Type` records are configured (`is_required = 1`, `is_active = 1`) for the organization/school ancestor scope you expect (parent-scope document types apply to descendants), and each required type has complete upload classification fields.
+1. Required `Applicant Document Type` records are configured (`is_required = 1`, `is_active = 1`) for the organization/school ancestor scope you expect (parent-scope document types apply to descendants).
 2. Applicant has corresponding `Applicant Document` rows and required ones reach `review_status = Approved`.
 3. `Applicant Health Profile.review_status = Cleared`.
 4. Applicant profile information required for Student promotion is complete.
@@ -360,6 +379,9 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 - **Portal API endpoints** (`ifitwala_ed/api/admissions_portal.py`) used by portal pages/service:
   - `get_admissions_session`
   - `get_applicant_snapshot`
+  - `get_applicant_profile`
+  - `update_applicant_profile`
+  - `upload_applicant_profile_image`
   - `get_applicant_health`
   - `update_applicant_health`
   - `list_applicant_documents`
@@ -373,7 +395,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - page launcher: `ui-spa/src/pages/admissions/ApplicantPolicies.vue`
   - overlay component: `ui-spa/src/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue`
   - acknowledgement submit: `admissionsService.acknowledgePolicy` -> `ifitwala_ed.api.admissions_portal.acknowledge_policy`
-  - behavior is explicit acknowledge + timestamped row insert; no signature artifact capture
+  - acknowledgement requires `typed_signature_name` + `attestation_confirmed` and server-validates typed name against expected applicant signer identity before insert
 
 ### Troubleshooting: `Policy schema mismatch` (`missing_column: applies_to`)
 

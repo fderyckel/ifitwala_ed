@@ -10,6 +10,7 @@ import frappe
 from ifitwala_ed.routing.policy import (
     ADMISSIONS_APPLICANT_ROLE,
     STAFF_PORTAL_ROLES,
+    canonical_path_for_section,
     has_active_employee_profile,
     has_staff_portal_access,
     resolve_login_redirect_path,
@@ -18,6 +19,7 @@ from ifitwala_ed.routing.policy import (
 # Backwards-compatible export used by existing modules/tests.
 STAFF_ROLES = STAFF_PORTAL_ROLES
 PORTAL_ONLY_ROLES = frozenset({"Student", "Guardian", ADMISSIONS_APPLICANT_ROLE})
+DESK_PATHS = ("/desk", "/app")
 
 
 def _get_request_safe():
@@ -71,7 +73,10 @@ def _is_desk_path(path_or_url: str | None) -> bool:
         return False
     parsed = urlsplit(raw)
     path = str(parsed.path or raw).strip()
-    return path == "/app" or path.startswith("/app/")
+    for prefix in DESK_PATHS:
+        if path == prefix or path.startswith(f"{prefix}/"):
+            return True
+    return False
 
 
 def _raise_request_redirect(target: str) -> None:
@@ -92,7 +97,7 @@ def _raise_request_redirect(target: str) -> None:
 
 def sanitize_login_redirect_param() -> None:
     """
-    Guard against sticky Desk redirects (?redirect-to=/app or /app/*) on /login.
+    Guard against sticky Desk redirects (?redirect-to=/desk or legacy /app) on /login.
 
     Frappe's login frontend can prioritize this query parameter over backend
     home-page resolution. We strip only this one value to preserve explicit
@@ -139,10 +144,10 @@ def _resolve_portal_only_redirect_path(*, roles: set[str]) -> str:
     if ADMISSIONS_APPLICANT_ROLE in roles:
         return "/admissions"
     if "Student" in roles:
-        return "/portal/student"
+        return canonical_path_for_section("student")
     if "Guardian" in roles:
-        return "/portal/guardian"
-    return "/portal/student"
+        return canonical_path_for_section("guardian")
+    return canonical_path_for_section("student")
 
 
 def redirect_non_staff_away_from_desk() -> None:
@@ -177,8 +182,8 @@ def redirect_non_staff_away_from_desk() -> None:
         _raise_request_redirect(_resolve_portal_only_redirect_path(roles=roles))
 
     target = _resolve_login_redirect_path(user=user, roles=roles)
-    if target == "/portal/staff":
-        target = "/portal/student"
+    if target == canonical_path_for_section("staff"):
+        target = canonical_path_for_section("student")
     _raise_request_redirect(target)
 
 
@@ -317,11 +322,11 @@ def _resolve_login_redirect_path(*, user: str, roles: set) -> str:
     Resolve the appropriate portal path based on user roles.
 
     Priority order (locked):
-    1. Active Employee profile or staff role -> /portal/staff
+    1. Active Employee profile or staff role -> /hub/staff
     2. Admissions Applicant -> /admissions
-    3. Student -> /portal/student
-    4. Guardian -> /portal/guardian
-    5. Fallback -> /portal/staff
+    3. Student -> /hub/student
+    4. Guardian -> /hub/guardian
+    5. Fallback -> /hub/staff
     """
     return resolve_login_redirect_path(user=user, roles=roles)
 
@@ -331,11 +336,11 @@ def redirect_user_to_entry_portal(login_manager=None, *, hook_source: str = "log
     Login redirect handler: Routes users to role-appropriate portal entry point.
 
     Policy:
-    - Active employees and staff-role users -> /portal/staff
+    - Active employees and staff-role users -> /hub/staff
     - Admissions Applicants -> /admissions
-    - Students -> /portal/student
-    - Guardians -> /portal/guardian
-    - Fallback -> /portal/staff
+    - Students -> /hub/student
+    - Guardians -> /hub/guardian
+    - Fallback -> /hub/staff
 
     Login redirect is response-only (no User DocType writes in login flow).
     The same handler is bound to both on_login and on_session_creation so the
@@ -359,7 +364,7 @@ def redirect_user_to_entry_portal(login_manager=None, *, hook_source: str = "log
             login_manager=login_manager,
         )
 
-    # Force canonical portal target even when login was initiated with /app.
+    # Force canonical portal target even when login was initiated with Desk URLs.
     _set_login_redirect_state(path=path, login_manager=login_manager)
     if _is_login_flow_request():
         _emit_login_redirect_trace(

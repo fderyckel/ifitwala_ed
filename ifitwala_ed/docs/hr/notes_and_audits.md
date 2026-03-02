@@ -23,7 +23,8 @@ Employee profile images uploaded via governed flow were saved, but the left colu
 3. **Governed derivatives**: Employee derivatives (thumb/card/medium) are created via dispatcher and classified with:
    - `source_file` set to the original
    - slots: `profile_image_thumb`, `profile_image_card`, `profile_image_medium`
-4. **UI canonicalization**: Employee form requests the canonical derivative URLs from the server and falls back only if needed.
+4. **UI canonicalization**: Employee form uses only canonical derivative URLs returned by the server (no client-side path guessing).
+5. **Variant priority**: Employee image loading order is `profile_image_thumb` → `profile_image_card` → `profile_image_medium` → `profile_image` (original only as last fallback).
 
 ## Preventive Rules (Actionable)
 1. **Never guess URLs in UI**: always use server-provided canonical URLs for display.

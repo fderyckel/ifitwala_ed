@@ -3,6 +3,8 @@ title: "Task Rubric Version: Freezing Criteria at Delivery Time"
 slug: task-rubric-version
 category: Assessment
 doc_order: 6
+version: "1.0.0"
+last_change_date: "2026-02-25"
 summary: "Snapshot rubric criteria per delivery so grading remains historically stable even if the master task rubric changes later."
 seo_title: "Task Rubric Version: Freezing Criteria at Delivery Time"
 seo_description: "Snapshot rubric criteria per delivery so grading remains historically stable even if the master task rubric changes later."

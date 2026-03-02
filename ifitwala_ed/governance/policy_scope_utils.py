@@ -7,6 +7,7 @@ from collections.abc import Sequence
 import frappe
 from frappe.utils.nestedset import get_ancestors_of
 
+from ifitwala_ed.utilities.employee_utils import get_user_base_org, get_user_base_school
 from ifitwala_ed.utilities.school_tree import get_school_lineage
 
 CACHE_TTL = 600  # seconds
@@ -18,6 +19,62 @@ def _cache_key(kind: str, organization: str) -> str:
 
 def _school_cache_key(kind: str, school: str) -> str:
     return f"policy_scope:{kind}:{school}"
+
+
+def _get_user_default_value(user: str, key: str) -> str | None:
+    row = frappe.db.get_value(
+        "DefaultValue",
+        {"parent": user, "defkey": key},
+        "defvalue",
+    )
+    value = (row or "").strip()
+    return value or None
+
+
+def get_user_policy_scope(user: str | None = None) -> tuple[list[str], list[str]]:
+    """
+    Return user scope as (organization_ancestors_with_self, school_ancestors_with_self).
+
+    Context resolution order:
+    - Active Employee organization/school
+    - User defaults (DefaultValue.organization / DefaultValue.school)
+    """
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return [], []
+
+    organization = (get_user_base_org(user) or "").strip() or (_get_user_default_value(user, "organization") or "")
+    school = (get_user_base_school(user) or "").strip() or (_get_user_default_value(user, "school") or "")
+
+    organization_scope = get_organization_ancestors_including_self(organization)
+    school_scope = get_school_ancestors_including_self(school)
+    return organization_scope, school_scope
+
+
+def is_policy_within_user_scope(
+    *,
+    policy_organization: str | None,
+    policy_school: str | None,
+    user: str | None = None,
+) -> bool:
+    """
+    True if the policy is visible for user scope:
+    - organization must be in user's org ancestors
+    - school-scoped policy additionally requires policy school in user's school ancestors
+    """
+    policy_organization = (policy_organization or "").strip()
+    policy_school = (policy_school or "").strip()
+    if not policy_organization:
+        return False
+
+    organization_scope, school_scope = get_user_policy_scope(user)
+    if policy_organization not in set(organization_scope):
+        return False
+
+    if not policy_school:
+        return True
+
+    return policy_school in set(school_scope)
 
 
 def get_organization_ancestors_including_self(organization: str | None) -> list[str]:

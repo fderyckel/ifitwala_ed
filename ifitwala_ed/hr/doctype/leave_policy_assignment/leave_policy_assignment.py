@@ -20,6 +20,7 @@ from frappe.utils import (
     get_link_to_form,
     get_quarter_ending,
     get_quarter_start,
+    get_url_to_list,
     get_year_ending,
     get_year_start,
     getdate,
@@ -469,10 +470,10 @@ def show_assignment_submission_status(failed):
 
     msg = _("Failed to submit some leave policy assignments:")
     msg += " " + comma_and(assignment_list, False) + "<hr>"
-    msg += (
-        _("Check {0} for more details")
-        .format("<a href='/app/List/Error Log?reference_doctype=Leave Policy Assignment'>{0}</a>")
-        .format(_("Error Log"))
+    msg += _("Check {0} for more details").format(
+        "<a href='{0}?reference_doctype=Leave Policy Assignment'>{1}</a>".format(
+            get_url_to_list("Error Log"), _("Error Log")
+        )
     )
 
     frappe.msgprint(
