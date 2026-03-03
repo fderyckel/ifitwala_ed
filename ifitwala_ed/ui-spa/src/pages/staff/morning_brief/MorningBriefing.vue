@@ -1017,10 +1017,9 @@ function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
 		applause: 'Celebration',
 		question: 'Question',
 		concern: 'Concern',
-		other: 'Other',
 	};
 
-	const intent_type = reactionIntentMap[reaction] || 'Other';
+	const intent_type = reactionIntentMap[reaction];
 
 	call(
 		'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',

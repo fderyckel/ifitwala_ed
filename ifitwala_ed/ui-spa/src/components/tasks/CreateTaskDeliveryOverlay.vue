@@ -407,7 +407,9 @@ const taskTypeOptions = [
 	{ label: 'Other', value: 'Other' },
 ];
 
-const deliveryOptions = [
+type DeliveryMode = CreateTaskDeliveryInput['delivery_mode'];
+
+const deliveryOptions: Array<{ label: string; value: DeliveryMode; help: string }> = [
 	{
 		label: 'Just post it',
 		value: 'Assign Only',
@@ -420,7 +422,6 @@ const deliveryOptions = [
 	},
 	{ label: 'Collect and assess', value: 'Assess', help: 'Collect evidence and grade it.' },
 ];
-type DeliveryMode = (typeof deliveryOptions)[number]['value'];
 
 const gradingOptions = [
 	{ label: 'Points', value: 'Points', help: 'Score work with a numeric total.' },

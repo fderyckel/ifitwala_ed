@@ -161,7 +161,7 @@ def _has_rule_result(payload, required_course, rule, result):
 
 def _setup_enrollment_context(
     score,
-    capacity=None,
+    capacity=30,
     seat_policy=None,
     enrollment_rules=None,
     program_course_level=None,

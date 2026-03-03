@@ -165,7 +165,7 @@ def _find_course(result, course):
 
 def _setup_context(
     score,
-    capacity=None,
+    capacity=30,
     repeatable=1,
     concurrency_ok=0,
     include_result=True,

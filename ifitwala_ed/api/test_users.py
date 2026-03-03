@@ -114,6 +114,7 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Mixed"
         user.last_name = "Roles"
         user.enabled = 1
+        user.user_type = "System User"
         _append_role(user, "Employee")
         _append_role(user, "Admissions Applicant")
         user.insert(ignore_permissions=True)
@@ -228,6 +229,7 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Staff"
         user.last_name = "Admissions"
         user.enabled = 1
+        user.user_type = "System User"
         _append_role(user, "Employee")
         _append_role(user, "Admissions Applicant")
         user.insert(ignore_permissions=True)

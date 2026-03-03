@@ -185,6 +185,7 @@ import {
 	getInquiryTypes,
 	searchAdmissionUsers,
 	searchAcademicYears,
+	type DashboardFilters,
 } from '@/lib/admission';
 import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
@@ -208,7 +209,7 @@ const DATE_RANGES = [
 	{ label: 'All Time', value: 'all' },
 ] as const;
 
-const filters = ref({
+const filters = ref<DashboardFilters>({
 	date_mode: 'preset',
 	date_preset: '90d',
 	academic_year: '',

@@ -26,7 +26,8 @@ fi
 
 # Only lib/frappe.ts may call frappeRequest directly.
 if rg -n -P "(?<![\\w\\.])frappeRequest\\s*\\(" "$spa_dir" \
-  --glob '!lib/frappe.ts'; then
+  --glob '!lib/frappe.ts' \
+  --glob '!**/*.d.ts'; then
   echo "ERROR: frappeRequest() usage found outside lib/frappe.ts"
   exit 1
 fi
