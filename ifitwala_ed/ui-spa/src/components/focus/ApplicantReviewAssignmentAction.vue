@@ -149,7 +149,7 @@
 				>
 					<div class="type-meta text-muted">
 						{{ row.reviewer || 'Reviewer' }} • {{ row.decision || '—' }} •
-						{{ row.decided_on || '—' }}
+						{{ formatReviewTimestamp(row.decided_on) }}
 					</div>
 					<div v-if="row.notes" class="type-body mt-1">{{ row.notes }}</div>
 				</div>
@@ -260,6 +260,63 @@ function newClientRequestId(prefix = 'applicant_review') {
 function errorMessage(err: unknown): string {
 	if (err instanceof Error && err.message) return err.message;
 	return __('Please try again.');
+}
+
+function resolveAppLocale(): string | undefined {
+	if (typeof window === 'undefined') return undefined;
+	const globalAny = window as unknown as Record<string, any>;
+	const bootLang = String(globalAny.frappe?.boot?.lang || '').trim();
+	if (bootLang) return bootLang.replace('_', '-');
+	const htmlLang = document.documentElement.lang?.trim();
+	if (htmlLang) return htmlLang.replace('_', '-');
+	return navigator.languages?.[0] || navigator.language || undefined;
+}
+
+function resolveSiteTimeZone(): string | undefined {
+	if (typeof window === 'undefined') return undefined;
+	const globalAny = window as unknown as Record<string, any>;
+	const siteTz = String(globalAny.frappe?.boot?.sysdefaults?.time_zone || '').trim();
+	return siteTz || undefined;
+}
+
+function parseDateTime(value: string): Date | null {
+	const raw = String(value || '').trim();
+	if (!raw) return null;
+	const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+	const parsed = new Date(normalized);
+	if (!Number.isNaN(parsed.getTime())) return parsed;
+	const fallback = new Date(raw);
+	return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function formatReviewTimestamp(value?: string | null): string {
+	if (!value) return '—';
+	const parsed = parseDateTime(value);
+	if (!parsed) return value;
+
+	try {
+		const formatter = new Intl.DateTimeFormat(resolveAppLocale(), {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'short',
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false,
+			timeZone: resolveSiteTimeZone(),
+		});
+		const parts = formatter.formatToParts(parsed);
+		const weekday = parts.find(part => part.type === 'weekday')?.value;
+		const day = parts.find(part => part.type === 'day')?.value;
+		const month = parts.find(part => part.type === 'month')?.value;
+		const hour = parts.find(part => part.type === 'hour')?.value;
+		const minute = parts.find(part => part.type === 'minute')?.value;
+		if (weekday && day && month && hour && minute) {
+			return `${weekday} ${day} ${month} ${hour}:${minute}`;
+		}
+		return formatter.format(parsed);
+	} catch {
+		return value;
+	}
 }
 
 async function submitDecision() {

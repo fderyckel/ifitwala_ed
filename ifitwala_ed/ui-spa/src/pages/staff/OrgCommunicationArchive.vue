@@ -318,6 +318,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Badge, Button, FeatherIcon, FormControl, LoadingIndicator, toast } from 'frappe-ui';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { formatLocalizedDate, formatLocalizedDateTime } from '@/lib/datetime';
 import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
 import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals';
@@ -933,26 +934,26 @@ onBeforeUnmount(() => {
 
 function formatDate(date: string | null, fmt = 'DD MMM') {
 	if (!date) return '';
-	const d = new Date(date);
-	if (isNaN(d.getTime())) return '';
-
 	if (fmt === 'DD MMM') {
-		return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+		return formatLocalizedDate(date, { day: '2-digit', month: 'short', fallback: '' });
 	}
 	if (fmt === 'DD MMMM YYYY') {
-		return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+		return formatLocalizedDate(date, {
+			day: '2-digit',
+			month: 'long',
+			includeYear: true,
+			fallback: '',
+		});
 	}
 	if (fmt === 'DD MMM HH:mm') {
-		return d.toLocaleDateString('en-GB', {
+		return formatLocalizedDateTime(date, {
 			day: '2-digit',
 			month: 'short',
-			hour: '2-digit',
-			minute: '2-digit',
-			hour12: false,
+			fallback: '',
 		});
 	}
 
-	return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+	return formatLocalizedDate(date, { day: '2-digit', month: 'short', fallback: '' });
 }
 
 function getPriorityClass(priority: string) {

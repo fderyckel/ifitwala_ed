@@ -21,13 +21,14 @@
 						Signer: {{ expectedSignerLabel }}
 					</div>
 					<div v-if="policy?.todo_due_date" class="type-meta text-muted mt-1">
-						Due: {{ policy.todo_due_date }}
+						Due: {{ formatLocalizedDate(policy.todo_due_date, { includeWeekday: true }) }}
 					</div>
 					<div
 						v-if="policy?.is_acknowledged && policy?.acknowledged_at"
 						class="type-meta text-muted mt-1"
 					>
-						Already acknowledged on {{ policy.acknowledged_at }}
+						Already acknowledged on
+						{{ formatLocalizedDateTime(policy.acknowledged_at, { includeWeekday: true }) }}
 					</div>
 				</div>
 
@@ -199,6 +200,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
+import { formatLocalizedDate, formatLocalizedDateTime } from '@/lib/datetime';
 import { __ } from '@/lib/i18n';
 import { createFocusService } from '@/lib/services/focus/focusService';
 
@@ -227,7 +229,7 @@ const attestationConfirmed = ref(false);
 const signatureTouched = ref(false);
 const activeTab = ref<'changes' | 'full'>('changes');
 
-const nowLabel = computed(() => new Date().toLocaleString());
+const nowLabel = computed(() => formatLocalizedDateTime(new Date(), { includeWeekday: true }));
 
 const policyTitle = computed(() => {
 	return (
