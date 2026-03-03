@@ -591,6 +591,7 @@ class TestSubmitApplication(FrappeTestCase):
                 return_value=fake_file,
             ) as mocked_dispatcher,
             patch("ifitwala_ed.api.admissions_portal._ensure_file_on_disk"),
+            patch("ifitwala_ed.api.admissions_portal._validate_profile_image_content"),
         ):
             payload = upload_applicant_profile_image(
                 student_applicant=self.applicant.name,
