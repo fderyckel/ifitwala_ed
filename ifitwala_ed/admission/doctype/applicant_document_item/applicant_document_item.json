@@ -8,9 +8,10 @@
  "engine": "InnoDB",
  "field_order": [
   "applicant_document",
+  "review_status",
   "item_key",
   "item_label",
-  "review_status",
+  "column_break_w6l7",
   "reviewed_by",
   "reviewed_on",
   "review_notes"
@@ -63,14 +64,19 @@
    "fieldname": "review_notes",
    "fieldtype": "Text",
    "label": "Review Notes"
+  },
+  {
+   "fieldname": "column_break_w6l7",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-01 00:00:00",
+ "modified": "2026-03-03 14:56:15.660479",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Document Item",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {
