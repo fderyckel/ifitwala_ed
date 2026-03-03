@@ -279,6 +279,252 @@
 	}
 
 	/* ============================================================
+     ADMISSIONS OVERVIEW (APPLICANT PORTAL)
+     ============================================================ */
+	.admissions-overview {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.admissions-overview__header {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+
+	.admissions-overview__content {
+		display: flex;
+		flex-direction: column;
+		gap: 1.25rem;
+	}
+
+	.admissions-overview__state-card {
+		border-radius: var(--radius-xl);
+		border: 1px solid rgb(var(--border-rgb) / 0.72);
+		background: rgb(var(--surface-rgb) / 0.95);
+		padding: 1rem;
+	}
+
+	.admissions-overview__state-inline {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+	}
+
+	.admissions-overview__error-card {
+		border-radius: var(--radius-xl);
+		border: 1px solid rgb(254 205 211 / 1);
+		background: rgb(255 241 242 / 1);
+		padding: 0.9rem 1rem;
+	}
+
+	.admissions-overview__error-text {
+		margin-top: 0.35rem;
+	}
+
+	.admissions-overview__retry-button {
+		margin-top: 0.8rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 9999px;
+		border: 1px solid rgb(254 205 211 / 1);
+		background: rgb(var(--surface-strong-rgb) / 1);
+		padding: 0.45rem 0.95rem;
+		color: rgb(136 19 55 / 1);
+	}
+
+	.admissions-overview__summary-grid,
+	.admissions-overview__completion-grid {
+		display: grid;
+		gap: 0.9rem;
+	}
+
+	@media (min-width: 768px) {
+		.admissions-overview__summary-grid,
+		.admissions-overview__completion-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	.admissions-overview__panel,
+	.admissions-overview__completion-section {
+		border-radius: 1.35rem;
+		border: 1px solid rgb(var(--border-rgb) / 0.86);
+		background:
+			radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / 0.42), transparent 62%),
+			rgb(var(--surface-strong-rgb) / 0.98);
+		box-shadow: var(--shadow-soft);
+		padding: 1rem;
+	}
+
+	.admissions-overview__panel-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.admissions-overview__data-rows {
+		margin-top: 0.85rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.65rem;
+	}
+
+	.admissions-overview__data-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.55rem 0.8rem;
+		border-radius: 0.95rem;
+		border: 1px solid rgb(var(--border-rgb) / 0.74);
+		background: rgb(var(--surface-rgb) / 0.8);
+		padding: 0.7rem 0.85rem;
+	}
+
+	.admissions-overview__data-label {
+		color: rgb(var(--slate-rgb) / 0.8);
+	}
+
+	.admissions-overview__data-value {
+		margin-left: auto;
+		color: rgb(var(--ink-rgb) / 0.8);
+		text-align: right;
+	}
+
+	.admissions-overview__open-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 9999px;
+		border: 1px solid rgb(var(--ink-rgb) / 0.08);
+		background: rgb(var(--ink-rgb) / 1);
+		padding: 0.45rem 0.95rem;
+		color: rgb(var(--surface-strong-rgb) / 1);
+		transition:
+			transform 120ms ease,
+			box-shadow 120ms ease,
+			background-color 120ms ease;
+	}
+
+	.admissions-overview__open-button:hover {
+		background: rgb(var(--canopy-rgb) / 0.95);
+		box-shadow: 0 7px 18px rgb(var(--ink-rgb) / 0.16);
+		transform: translateY(-1px);
+	}
+
+	.admissions-overview__open-button:focus-visible {
+		outline: none;
+		box-shadow: var(--focus-ring);
+	}
+
+	.admissions-overview__panel--actions {
+		padding-bottom: 1.15rem;
+	}
+
+	.admissions-overview__section-title {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+
+	.admissions-overview__empty-note {
+		margin-top: 0.8rem;
+	}
+
+	.admissions-overview__action-list {
+		margin-top: 0.8rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.admissions-overview__action-item {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.8rem;
+		border-radius: 1rem;
+		border: 1px solid rgb(var(--border-rgb) / 0.86);
+		background: linear-gradient(
+			90deg,
+			rgb(var(--leaf-rgb) / 0.12) 0,
+			rgb(var(--leaf-rgb) / 0.12) 0.25rem,
+			rgb(var(--surface-rgb) / 0.86) 0.25rem
+		);
+		padding: 0.85rem 0.95rem;
+	}
+
+	.admissions-overview__action-copy {
+		display: flex;
+		min-width: 0;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+
+	.admissions-overview__completion-section {
+		display: flex;
+		flex-direction: column;
+		gap: 0.8rem;
+	}
+
+	.admissions-overview__completion-card {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.7rem;
+		border-radius: 1rem;
+		border: 1px solid rgb(var(--border-rgb) / 0.84);
+		background: rgb(var(--surface-rgb) / 0.8);
+		padding: 0.9rem 0.95rem;
+	}
+
+	.admissions-overview__status-pill {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 9999px;
+		border: 1px solid transparent;
+		padding: 0.28rem 0.7rem;
+		white-space: nowrap;
+	}
+
+	.admissions-overview__status-pill--complete {
+		border-color: rgb(var(--leaf-rgb) / 0.38);
+		background: rgb(var(--leaf-rgb) / 0.12);
+		color: rgb(var(--canopy-rgb) / 1);
+	}
+
+	.admissions-overview__status-pill--in-progress {
+		border-color: rgb(var(--clay-rgb) / 0.32);
+		background: rgb(var(--sand-rgb) / 0.72);
+		color: rgb(var(--clay-rgb) / 1);
+	}
+
+	.admissions-overview__status-pill--pending {
+		border-color: rgb(var(--border-rgb) / 1);
+		background: rgb(var(--surface-strong-rgb) / 1);
+		color: rgb(var(--slate-rgb) / 0.85);
+	}
+
+	.admissions-overview__status-pill--optional {
+		border-color: rgb(var(--sky-rgb) / 1);
+		background: rgb(var(--sky-rgb) / 0.72);
+		color: rgb(var(--slate-rgb) / 0.85);
+	}
+
+	@media (max-width: 767px) {
+		.admissions-overview__completion-card {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+	}
+
+	/* ============================================================
      LIST ROWS (FOCUS LIST, ETC.)
      ============================================================ */
 	.if-list-row {

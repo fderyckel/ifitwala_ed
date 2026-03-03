@@ -1019,6 +1019,10 @@ class StudentApplicant(Document):
         for fieldname in HEALTH_PROFILE_COPY_FIELDS:
             student_patient.set(fieldname, profile.get(fieldname))
 
+        # File attachments require a persisted parent name; ensure new patients are inserted first.
+        if not student_patient.name:
+            student_patient.insert(ignore_permissions=True)
+
         student_patient.set("vaccinations", [])
         for index, row in enumerate(profile.get("vaccinations") or []):
             proof_url = self._copy_health_vaccination_proof_to_student(
