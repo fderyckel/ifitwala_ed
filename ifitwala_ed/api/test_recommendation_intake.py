@@ -219,7 +219,7 @@ class TestRecommendationIntake(FrappeTestCase):
             {
                 "doctype": "School",
                 "school_name": f"Rec School {frappe.generate_hash(length=6)}",
-                "abbr": f"RS{frappe.generate_hash(length=4)}",
+                "abbr": f"RS{frappe.generate_hash(length=3)}",
                 "organization": organization,
             }
         ).insert(ignore_permissions=True)
@@ -235,9 +235,11 @@ class TestRecommendationIntake(FrappeTestCase):
                 "organization": organization,
                 "school": school,
                 "application_status": "Draft",
-                "applicant_user": applicant_user,
             }
         ).insert(ignore_permissions=True)
+        applicant.flags.from_applicant_invite = True
+        applicant.applicant_user = applicant_user
+        applicant.save(ignore_permissions=True)
         applicant.db_set("application_status", "In Progress", update_modified=False)
         applicant.reload()
         self._created.append(("Student Applicant", applicant.name))

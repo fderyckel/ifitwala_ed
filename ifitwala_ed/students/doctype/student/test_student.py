@@ -16,7 +16,7 @@ class TestStudent(FrappeTestCase):
         }
 
     def test_direct_creation_is_blocked_without_applicant_or_import_context(self):
-        doc = frappe.get_doc({**self._student_payload(), "allow_direct_creation": 1})
+        doc = frappe.get_doc(self._student_payload())
         with self.assertRaises(frappe.ValidationError):
             doc.insert(ignore_permissions=True)
 

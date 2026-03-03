@@ -282,6 +282,29 @@ class TestStudentApplicant(FrappeTestCase):
             frappe.set_user(self.staff_user.name)
         self._created.append(("Applicant Document", applicant_doc.name))
 
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_doc.name,
+                "item_key": "required_1",
+                "item_label": "Required Document",
+                "review_status": "Approved",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "required.pdf",
+                "is_private": 1,
+                "content": b"required-file",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+
         approved_payload = applicant.has_required_documents()
         self.assertTrue(approved_payload.get("ok"))
         self.assertNotIn(code, approved_payload.get("missing") or [])

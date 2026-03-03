@@ -195,7 +195,7 @@ def _validate_profile_image_content(content: bytes) -> None:
     try:
         with Image.open(io.BytesIO(content)) as img:
             img.verify()
-    except (UnidentifiedImageError, OSError, ValueError):
+    except (UnidentifiedImageError, OSError, ValueError, SyntaxError):
         frappe.throw(_("Uploaded profile image must be a valid image file."))
 
 

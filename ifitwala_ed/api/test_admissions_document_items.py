@@ -147,9 +147,11 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
                 "organization": organization,
                 "school": school,
                 "application_status": "Draft",
-                "applicant_user": applicant_user,
             }
         ).insert(ignore_permissions=True)
+        doc.flags.from_applicant_invite = True
+        doc.applicant_user = applicant_user
+        doc.save(ignore_permissions=True)
         self._created.append(("Student Applicant", doc.name))
         return doc
 

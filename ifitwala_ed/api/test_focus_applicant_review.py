@@ -91,9 +91,11 @@ class TestFocusApplicantReview(FrappeTestCase):
         self.assertEqual((self.assignment.assigned_to_user or "").strip(), self.reviewer_two)
         self.assertEqual((self.assignment.assigned_to_role or "").strip(), "")
 
+        frappe.set_user(self.reviewer_two)
         items_two = list_focus_items(open_only=1, limit=50, offset=0)
         self.assertTrue(any(row.get("reference_name") == self.assignment.name for row in items_two))
 
+        frappe.set_user(self.reviewer_one)
         items_one = list_focus_items(open_only=1, limit=50, offset=0)
         self.assertFalse(any(row.get("reference_name") == self.assignment.name for row in items_one))
 

@@ -70,6 +70,7 @@ class TestPortalRoute(FrappeTestCase):
 
     def test_staff_with_admissions_role_hitting_student_namespace_redirects_to_staff_home(self):
         user = self._create_user("staff-admissions", roles=["Administrator", "Admissions Applicant"])
+        self._create_employee(user.name)
         original_request = self._set_request_path("/hub/student")
         frappe.set_user(user.name)
         try:
