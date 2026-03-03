@@ -34,7 +34,7 @@ jobs:
 
       - name: Init nightly bench
         run: |
-          bench init --frappe-branch version-15 frappe-bench
+          bench init --frappe-branch version-16 frappe-bench
           cd frappe-bench
           bench get-app ifitwala_ed "$GITHUB_WORKSPACE"
 
@@ -71,7 +71,7 @@ jobs:
 
       - name: Init nightly bench
         run: |
-          bench init --frappe-branch version-15 frappe-bench
+          bench init --frappe-branch version-16 frappe-bench
           cd frappe-bench
           bench get-app ifitwala_ed "$GITHUB_WORKSPACE"
 

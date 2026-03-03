@@ -30,6 +30,10 @@ All PRs targeting `main` must pass:
 5. `spa-typecheck-build`
 - Verifies SPA type-check and build.
 
+## 2.1 Framework baseline
+
+CI benches are initialized against **Frappe `version-16`**.
+
 ## 3. Nightly policy
 
 Nightly workflow (`.github/workflows/nightly.yml`) runs on self-hosted GCE runner labels.

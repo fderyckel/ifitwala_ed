@@ -183,7 +183,7 @@ Ifitwala_Ed relies on the battle-tested security foundations of the **Frappe Fra
 
 Ifitwala_Ed is **Open Source by design**. We believe institutions should own their infrastructure.
 
-* **Backend:** [Frappe Framework](https://frappe.io) (Python/MariaDB/Redis)
+* **Backend:** [Frappe Framework](https://frappe.io) v16 (Python/MariaDB/Redis)
 * **Frontend:** Vue 3, Tailwind CSS, Frappe UI
 * **License:** GPL-3.0
 

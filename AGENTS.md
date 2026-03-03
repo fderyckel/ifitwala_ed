@@ -33,6 +33,14 @@ Agents must operate with a **product manager mindset** and prioritize friction r
 
 ---
 
+## 0.2 Framework Baseline (Non-Negotiable)
+
+* Runtime baseline is **Frappe Framework v16**.
+* Any workflow, script, or setup instruction that pins framework branch/version must target **`version-16`**.
+* Agents must treat older branch pins (for example `version-15`) as drift and update them when encountered.
+
+---
+
 ## 1. Operating Discipline
 
 ### 1.1 Mandatory Workflow
