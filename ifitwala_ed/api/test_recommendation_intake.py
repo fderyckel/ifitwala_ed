@@ -237,9 +237,7 @@ class TestRecommendationIntake(FrappeTestCase):
                 "application_status": "Draft",
             }
         ).insert(ignore_permissions=True)
-        applicant.flags.from_applicant_invite = True
-        applicant.applicant_user = applicant_user
-        applicant.save(ignore_permissions=True)
+        applicant.db_set("applicant_user", applicant_user, update_modified=False)
         applicant.db_set("application_status", "In Progress", update_modified=False)
         applicant.reload()
         self._created.append(("Student Applicant", applicant.name))

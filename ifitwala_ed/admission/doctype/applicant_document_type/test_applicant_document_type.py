@@ -55,7 +55,7 @@ class TestApplicantDocumentType(FrappeTestCase):
             ).insert(ignore_permissions=True)
 
     def test_active_mapped_code_autofills_classification_fields(self):
-        if frappe.db.exists("Applicant Document Type", "id_documents"):
+        if frappe.db.exists("Applicant Document Type", {"code": "id_documents"}):
             self.skipTest("id_documents exists on site; skipping mapped autofill test.")
 
         organization = self._create_organization("Admissions Org")
@@ -69,6 +69,10 @@ class TestApplicantDocumentType(FrappeTestCase):
                 "organization": organization,
                 "school": school,
                 "is_active": 1,
+                "classification_slot": "",
+                "classification_data_class": "",
+                "classification_purpose": "",
+                "classification_retention_policy": "",
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Type", doc.name))

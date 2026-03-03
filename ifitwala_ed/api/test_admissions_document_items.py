@@ -35,7 +35,7 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
             document_type=self.document_type,
             item_key="aisl_2019",
             item_label="AISL transcript 2019",
-            file_name="aisl-2019.pdf",
+            file_name="aisl-2019.txt",
             content=self._tiny_file_base64(),
         )
 
@@ -61,7 +61,7 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
             document_type=self.document_type,
             item_key="aisl_2019",
             item_label="AISL transcript 2019",
-            file_name="aisl-2019.pdf",
+            file_name="aisl-2019.txt",
             content=self._tiny_file_base64(),
         )
         upload_applicant_document(
@@ -69,7 +69,7 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
             document_type=self.document_type,
             item_key="isl_2020",
             item_label="ISL transcript 2020",
-            file_name="isl-2020.pdf",
+            file_name="isl-2020.txt",
             content=self._tiny_file_base64(),
         )
 
@@ -89,7 +89,7 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
             upload_applicant_document(
                 student_applicant=self.applicant.name,
                 document_type=self.document_type,
-                file_name="unknown.pdf",
+                file_name="unknown.txt",
                 content=self._tiny_file_base64(),
             )
 
@@ -149,9 +149,9 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
                 "application_status": "Draft",
             }
         ).insert(ignore_permissions=True)
-        doc.flags.from_applicant_invite = True
-        doc.applicant_user = applicant_user
-        doc.save(ignore_permissions=True)
+        doc.db_set("applicant_user", applicant_user, update_modified=False)
+        doc.db_set("application_status", "Invited", update_modified=False)
+        doc.reload()
         self._created.append(("Student Applicant", doc.name))
         return doc
 

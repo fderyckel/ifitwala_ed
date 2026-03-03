@@ -298,7 +298,7 @@ class TestStudentApplicant(FrappeTestCase):
                 "doctype": "File",
                 "attached_to_doctype": "Applicant Document Item",
                 "attached_to_name": item.name,
-                "file_name": "required.pdf",
+                "file_name": "required.txt",
                 "is_private": 1,
                 "content": b"required-file",
             }
@@ -363,19 +363,13 @@ class TestStudentApplicant(FrappeTestCase):
 
     def test_misconfigured_required_document_type_is_still_required_in_readiness(self):
         code = f"misconfigured_req_{frappe.generate_hash(length=6)}"
-        doc_type = frappe.get_doc(
-            {
-                "doctype": "Applicant Document Type",
-                "code": code,
-                "document_type_name": f"Type {code}",
-                "organization": self.org,
-                "school": self.parent_school,
-                "is_required": 1,
-                "is_active": 0,
-            }
-        ).insert(ignore_permissions=True)
-        self._created.append(("Applicant Document Type", doc_type.name))
-        frappe.db.set_value("Applicant Document Type", doc_type.name, "is_active", 1, update_modified=False)
+        doc_type = self._create_applicant_document_type(
+            code=code,
+            school=self.parent_school,
+            is_required=1,
+            is_active=1,
+        )
+        frappe.db.set_value("Applicant Document Type", doc_type, "classification_slot", "", update_modified=False)
 
         applicant = self._create_student_applicant()
         payload = applicant.has_required_documents()
