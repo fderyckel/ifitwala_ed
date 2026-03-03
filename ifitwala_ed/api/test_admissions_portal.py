@@ -805,4 +805,4 @@ class TestSubmitApplication(FrappeTestCase):
         return existing[0]["name"]
 
     def _tiny_png_base64(self) -> str:
-        return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAwUBAO+Xf4YAAAAASUVORK5CYII="
+        return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+tmxoAAAAASUVORK5CYII="

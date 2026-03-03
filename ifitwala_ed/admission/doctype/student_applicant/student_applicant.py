@@ -352,6 +352,15 @@ class StudentApplicant(Document):
                 frappe.throw(_("Edits are not allowed when status is {0}.").format(status_for_edit))
             return
 
+        # Staff precedence: if a user has admissions roles, evaluate against staff rules
+        # even when they also carry family/applicant roles (common in test/dev admins).
+        if is_admissions:
+            if not rules["staff"] and self._has_changes(before):
+                if getattr(self.flags, "allow_status_change", False) and self._only_status_changed(before):
+                    return
+                frappe.throw(_("Edits are not allowed when status is {0}.").format(status_for_edit))
+            return
+
         if not is_admissions and not is_family and not is_applicant:
             if self._has_changes(before):
                 frappe.throw(_("You do not have permission to edit this Applicant."))
@@ -368,12 +377,6 @@ class StudentApplicant(Document):
             if not rules["family"] and self._has_changes(before):
                 frappe.throw(_("Family edits are not allowed when status is {0}.").format(status_for_edit))
             return
-
-        if is_admissions and not rules["staff"]:
-            if self._has_changes(before):
-                if getattr(self.flags, "allow_status_change", False) and self._only_status_changed(before):
-                    return
-                frappe.throw(_("Edits are not allowed when status is {0}.").format(status_for_edit))
 
     def _has_changes(self, before, ignore_fields=None):
         ignore = set(ignore_fields or [])
