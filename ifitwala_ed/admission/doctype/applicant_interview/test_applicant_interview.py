@@ -3,6 +3,9 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import schedule_applicant_interview
+from ifitwala_ed.utilities.employee_booking import upsert_employee_booking
+
 
 class TestApplicantInterview(FrappeTestCase):
     def setUp(self):
@@ -97,6 +100,83 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertEqual(len([row for row in comments_after if "Interview recorded:" in (row.get("content") or "")]), 1)
         self.assertEqual(len([row for row in comments_after if "Interview updated:" in (row.get("content") or "")]), 1)
 
+    def test_schedule_applicant_interview_creates_linked_school_event(self):
+        interviewer = self._create_user("scheduler")
+        employee = self._create_employee(interviewer, first_name="Case", last_name="Scheduler")
+
+        payload = schedule_applicant_interview(
+            student_applicant=self.applicant.name,
+            interview_start="2030-05-01 10:00:00",
+            duration_minutes=45,
+            primary_interviewer=interviewer.name,
+            interviewer_users=[interviewer.name],
+            interview_type="Student",
+            mode="In Person",
+            confidentiality_level="Admissions Team",
+            notes="Bring all prior records.",
+        )
+
+        self.assertTrue(payload.get("ok"))
+        interview_name = payload.get("interview")
+        school_event_name = payload.get("school_event")
+        self.assertTrue(interview_name)
+        self.assertTrue(school_event_name)
+        self._created.append(("School Event", school_event_name))
+        self._created.append(("Applicant Interview", interview_name))
+
+        interview = frappe.get_doc("Applicant Interview", interview_name)
+        self.assertEqual(interview.school_event, school_event_name)
+        self.assertEqual(interview.interview_start.strftime("%H:%M:%S"), "10:00:00")
+        self.assertEqual(interview.interview_end.strftime("%H:%M:%S"), "10:45:00")
+        self.assertEqual(interview.interview_date.isoformat(), "2030-05-01")
+        self.assertEqual(interview.interviewers[0].interviewer, interviewer.name)
+
+        school_event = frappe.get_doc("School Event", school_event_name)
+        self.assertEqual(school_event.reference_type, "Applicant Interview")
+        self.assertEqual(school_event.reference_name, interview_name)
+        self.assertEqual(school_event.event_category, "Appointment")
+        self.assertEqual(len(school_event.participants), 1)
+        self.assertEqual(school_event.participants[0].participant, interviewer.name)
+        self.assertEqual(len(school_event.audience), 1)
+        self.assertEqual(school_event.audience[0].audience_type, "Custom Users")
+
+        self.assertEqual(employee.user_id, interviewer.name)
+
+    def test_schedule_applicant_interview_returns_conflicts_with_suggestions(self):
+        interviewer = self._create_user("conflict")
+        employee = self._create_employee(interviewer, first_name="Case", last_name="Conflict")
+
+        booking_name = upsert_employee_booking(
+            employee=employee.name,
+            start="2030-05-02 09:00:00",
+            end="2030-05-02 10:00:00",
+            source_doctype="Student Applicant",
+            source_name=self.applicant.name,
+            booking_type="Other",
+            blocks_availability=1,
+            school=self.school,
+        )
+        if booking_name:
+            self._created.append(("Employee Booking", booking_name))
+
+        before_count = frappe.db.count("Applicant Interview", {"student_applicant": self.applicant.name})
+        payload = schedule_applicant_interview(
+            student_applicant=self.applicant.name,
+            interview_start="2030-05-02 09:15:00",
+            duration_minutes=30,
+            primary_interviewer=interviewer.name,
+            interviewer_users=[interviewer.name],
+            suggestion_window_start_time="08:00:00",
+            suggestion_window_end_time="12:00:00",
+        )
+        after_count = frappe.db.count("Applicant Interview", {"student_applicant": self.applicant.name})
+
+        self.assertFalse(payload.get("ok"))
+        self.assertEqual(payload.get("code"), "EMPLOYEE_CONFLICT")
+        self.assertGreaterEqual(len(payload.get("conflicts") or []), 1)
+        self.assertGreaterEqual(len(payload.get("suggestions") or []), 1)
+        self.assertEqual(before_count, after_count)
+
     def _comments_for_interview(self, interview_name: str):
         comments = frappe.get_all(
             "Comment",
@@ -133,6 +213,37 @@ class TestApplicantInterview(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("School", doc.name))
         return doc.name
+
+    def _create_user(self, label: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "User",
+                "email": f"{label}-{frappe.generate_hash(length=8)}@example.com",
+                "first_name": "Interview",
+                "last_name": "User",
+                "enabled": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("User", doc.name))
+        return doc
+
+    def _create_employee(self, user, *, first_name: str, last_name: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": first_name,
+                "employee_last_name": last_name,
+                "employee_gender": "Male",
+                "employee_professional_email": user.email,
+                "date_of_joining": "2028-01-01",
+                "employment_status": "Active",
+                "organization": self.organization,
+                "school": self.school,
+                "user_id": user.name,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Employee", doc.name))
+        return doc
 
     def _create_applicant(self, organization: str, school: str):
         doc = frappe.get_doc(

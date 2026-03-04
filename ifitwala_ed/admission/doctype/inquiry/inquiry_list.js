@@ -7,20 +7,7 @@
 frappe.listview_settings['Inquiry'] = {
 	// ensure these fields are loaded into the list view
 	add_fields: ["sla_status", "workflow_state", "first_contact_due_on", "followup_due_on"],
-
-	// primary row indicator: use the stored sla_status value
-	get_indicator: function (doc) {
-		// Map SLA status to colours
-		const slaColourMap = {
-			'🔴 Overdue': 'red',
-			'🟡 Due Today': 'orange',
-			'⚪ Upcoming': 'blue',
-			'✅ On Track': 'green'
-		};
-		const label = doc.sla_status || __('⚪ Upcoming');
-		const colour = slaColourMap[doc.sla_status] || 'blue';
-		return [label, colour, ['sla_status','= ', label]];
-	},
+	filters: [["workflow_state", "!=", "Archived"]],
 
 	// formatters allow us to colour individual columns
 	formatters: {
@@ -34,6 +21,24 @@ frappe.listview_settings['Inquiry'] = {
 			};
 			const colour = colourMap[value] || 'gray';
 			return `<span class="indicator-pill ${colour}">${value}</span>`;
+		},
+		first_contact_due_on: function (value) {
+			const rawValue = String(value || '').trim();
+			if (!rawValue) {
+				return '<span class="text-muted">—</span>';
+			}
+
+			const today = frappe.datetime.get_today();
+			const display = frappe.datetime.str_to_user(rawValue);
+
+			let colour = 'blue';
+			if (rawValue < today) {
+				colour = 'red';
+			} else if (rawValue === today) {
+				colour = 'orange';
+			}
+
+			return `<span class="indicator-pill ${colour}">${frappe.utils.escape_html(display)}</span>`;
 		},
 
 		// colour the workflow_state column

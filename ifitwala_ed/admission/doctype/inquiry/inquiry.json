@@ -145,6 +145,7 @@
   {
    "fieldname": "first_contact_due_on",
    "fieldtype": "Date",
+   "in_list_view": 1,
    "label": "First Contact Deadline",
    "read_only": 1,
    "search_index": 1

@@ -3,8 +3,8 @@ title: "Applicant Interview: Structured Interview Evidence"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.1.0"
-last_change_date: "2026-02-20"
+version: "1.2.0"
+last_change_date: "2026-03-04"
 summary: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
 seo_title: "Applicant Interview: Structured Interview Evidence"
 seo_description: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
@@ -20,11 +20,12 @@ seo_description: "Record interview evidence, participants, and outcomes with aud
 
 ## What It Captures
 
-- Interview date and mode (`In Person`, `Online`, `Phone`)
+- Interview date plus scheduled time window (`interview_start` / `interview_end`) and mode (`In Person`, `Online`, `Phone`)
 - Interview type (`Family`, `Student`, `Joint`)
 - Confidentiality level
 - Outcome impression
 - Notes
+- Linked scheduling artifact (`school_event`) when created through the scheduling API
 
 ## Child Table (Included in Parent)
 
@@ -44,9 +45,12 @@ Controller logic remains on the parent doctype; child table controller is intent
 ## Lifecycle and Linked Documents
 
 1. Create one interview record per interview event for the applicant.
-2. Capture date, mode, participants, confidentiality level, and structured notes/outcome.
-3. Update interview records as evidence evolves; timeline comments keep a visible audit trail.
-4. Interview completion contributes to applicant readiness and admissions decision confidence.
+2. Capture date/time, mode, participants, confidentiality level, and structured notes/outcome.
+3. Preferred scheduling path uses `schedule_applicant_interview(...)` to atomically create:
+   - `Applicant Interview` (admissions evidence)
+   - linked `School Event` (calendar projection with participant audience)
+4. Update interview records as evidence evolves; timeline comments keep a visible audit trail.
+5. Interview completion contributes to applicant readiness and admissions decision confidence.
 
 <Callout type="tip" title="Operational pattern">
 Use separate interview rows for separate interactions instead of continuously overwriting one row.
@@ -55,6 +59,16 @@ Use separate interview rows for separate interactions instead of continuously ov
 <Callout type="info" title="Architecture rule">
 Interviewers are child rows for structure only; workflow logic and validations are enforced in the parent doctype.
 </Callout>
+
+## Reporting
+
+- No dedicated Script/Query Report currently declares this doctype as `ref_doctype`.
+
+## Related Docs
+
+- [**Student Applicant**](/docs/en/student-applicant/) - readiness and decision flow
+- [**Applicant Health Profile**](/docs/en/applicant-health-profile/) - health review component
+- [**Applicant Document**](/docs/en/applicant-document/) - file review component
 
 ## Technical Notes (IT)
 
@@ -65,8 +79,18 @@ Interviewers are child rows for structure only; workflow logic and validations a
 - **Required fields (`reqd=1`)**:
   - `student_applicant` (`Link` -> `Student Applicant`)
   - `interview_date` (`Date`)
+- **Scheduling fields**:
+  - `interview_start` (`Datetime`, optional but paired with `interview_end`)
+  - `interview_end` (`Datetime`, optional but paired with `interview_start`)
+  - `school_event` (`Link` -> `School Event`, read-only)
+- **Datetime invariant**:
+  - when either `interview_start` or `interview_end` is set, both are required
+  - `interview_end` must be strictly after `interview_start`
+  - `interview_date` is synchronized from `interview_start` when start is present
 - **Lifecycle hooks in controller**: `validate`, `after_insert`, `on_update`
-- **Operational/public methods**: none beyond standard document behavior.
+- **Operational/public methods**:
+  - `schedule_applicant_interview(...)`
+  - `suggest_interview_slots(...)`
 
 - **DocType**: `Applicant Interview` (`ifitwala_ed/admission/doctype/applicant_interview/`)
 - **Autoname**: `hash`
@@ -76,6 +100,13 @@ Interviewers are child rows for structure only; workflow logic and validations a
 - **Student Applicant integration**:
   - readiness snapshot uses `has_required_interviews()`
   - create/update posts audit comments onto applicant timeline with clickable interview links
+- **Scheduling projection**:
+  - interview scheduling API creates linked `School Event` rows with:
+    - `reference_type = "Applicant Interview"`
+    - `reference_name = <interview name>`
+    - audience row `Custom Users`
+    - participants = selected interviewer users (employee-facing calendar surfacing)
+  - applicants without `applicant_user` are still schedulable; applicant user participation is not required for calendar projection
 - **Key hooks**:
   - `validate`: permission + applicant-state guard
   - `after_insert`: audit comment "Interview recorded"
@@ -96,13 +127,3 @@ Interviewers are child rows for structure only; workflow logic and validations a
 Runtime controller rule:
 - Only staff roles can manage records (`Admission` roles + `Academic Admin` + `System Manager`).
 - Records are blocked when linked applicant is in terminal states (`Rejected`, `Promoted`).
-
-## Reporting
-
-- No dedicated Script/Query Report currently declares this doctype as `ref_doctype`.
-
-## Related Docs
-
-- [**Student Applicant**](/docs/en/student-applicant/) - readiness and decision flow
-- [**Applicant Health Profile**](/docs/en/applicant-health-profile/) - health review component
-- [**Applicant Document**](/docs/en/applicant-document/) - file review component

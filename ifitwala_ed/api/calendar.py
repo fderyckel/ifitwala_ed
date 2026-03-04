@@ -1177,7 +1177,9 @@ def _collect_school_events(
     visibility_clauses = ["sep.participant IS NOT NULL"]
     if allowed_schools:
         params["schools"] = allowed_schools
-        visibility_clauses.append("se.school IN %(schools)s")
+        visibility_clauses.append(
+            "(COALESCE(se.reference_type, '') != 'Applicant Interview' AND se.school IN %(schools)s)"
+        )
     visibility_sql = " OR ".join(visibility_clauses)
 
     rows = frappe.db.sql(
@@ -1510,6 +1512,18 @@ def _any_student_has_active_group_membership(student_names: set[str], group_name
 
 
 def _school_event_access_allowed(event_doc, user: str) -> bool:
+    if (event_doc.reference_type or "").strip() == "Applicant Interview":
+        user_roles = set(frappe.get_roles(user))
+        if user == "Administrator" or "System Manager" in user_roles or "Academic Admin" in user_roles:
+            return True
+
+        return bool(
+            frappe.db.exists(
+                "School Event Participant",
+                {"parent": event_doc.name, "parenttype": "School Event", "participant": user},
+            )
+        )
+
     if frappe.has_permission("School Event", doc=event_doc, ptype="read"):
         return True
 

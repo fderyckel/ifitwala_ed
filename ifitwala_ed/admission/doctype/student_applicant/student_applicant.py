@@ -9,7 +9,7 @@ import os
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint, now_datetime
+from frappe.utils import cint, get_datetime, now_datetime
 
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
@@ -1952,12 +1952,22 @@ class StudentApplicant(Document):
         rows = frappe.get_all(
             "Applicant Interview",
             filters={"student_applicant": self.name},
-            fields=["name", "interview_date", "interview_type"],
-            order_by="interview_date desc, modified desc",
-            limit_page_length=5,
+            fields=["name", "interview_date", "interview_start", "interview_end", "interview_type"],
+            order_by="modified desc",
+            limit_page_length=20,
+        )
+        rows.sort(
+            key=lambda row: (
+                get_datetime(row.get("interview_start"))
+                if row.get("interview_start")
+                else get_datetime(f"{row.get('interview_date')} 00:00:00")
+                if row.get("interview_date")
+                else get_datetime("1900-01-01 00:00:00")
+            ),
+            reverse=True,
         )
         count = frappe.db.count("Applicant Interview", {"student_applicant": self.name})
-        return {"ok": count >= 1, "count": count, "items": rows}
+        return {"ok": count >= 1, "count": count, "items": rows[:5]}
 
     def has_required_recommendations(self):
         default_payload = {

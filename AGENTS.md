@@ -539,6 +539,9 @@ Front matter rule for markdown docs under `ifitwala_ed/docs/docs_md/`:
 * Any time a doc is changed, agent MUST:
   * increment/update `version`
   * set `last_change_date` to the actual change date (`YYYY-MM-DD`)
+* Section-order rule:
+  * `## Technical Notes (IT)` MUST be the final top-level section in the document.
+  * No top-level sections may appear after `## Technical Notes (IT)`.
 
 ---
 

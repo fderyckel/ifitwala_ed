@@ -10,12 +10,15 @@
   "student_applicant",
   "interview_type",
   "interview_date",
+  "interview_start",
+  "interview_end",
   "mode",
   "confidentiality_level",
   "interviewers",
   "column_break_y3fd",
   "outcome_impression",
-  "notes"
+  "notes",
+  "school_event"
  ],
  "fields": [
   {
@@ -42,6 +45,18 @@
    "in_standard_filter": 1,
    "label": "Interview Date",
    "reqd": 1
+  },
+  {
+   "fieldname": "interview_start",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Interview Start"
+  },
+  {
+   "fieldname": "interview_end",
+   "fieldtype": "Datetime",
+   "label": "Interview End"
   },
   {
    "fieldname": "mode",
@@ -77,11 +92,19 @@
    "fieldname": "notes",
    "fieldtype": "Text Editor",
    "label": "Notes"
+  },
+  {
+   "fieldname": "school_event",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "School Event",
+   "options": "School Event",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-22 08:10:54.379073",
+ "modified": "2026-02-23 08:10:57",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Interview",
@@ -162,7 +185,7 @@
   }
  ],
  "row_format": "Dynamic",
- "search_fields": "student_applicant, interview_type",
+ "search_fields": "student_applicant, interview_type, school_event",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

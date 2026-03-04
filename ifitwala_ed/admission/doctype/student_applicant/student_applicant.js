@@ -42,6 +42,7 @@ frappe.ui.form.on("Student Applicant", {
 		add_decision_actions(frm);
 		add_portal_invite_action(frm);
 		add_recommendation_actions(frm);
+		add_schedule_interview_action(frm);
 	},
 
 	setup_governed_image_upload(frm) {
@@ -125,6 +126,353 @@ frappe.ui.form.on("Student Applicant", {
 });
 
 const TERMINAL_PORTAL_INVITE_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
+const TERMINAL_INTERVIEW_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
+
+function add_schedule_interview_action(frm) {
+	frm.remove_custom_button(__("Schedule Interview"), __("Actions"));
+	frm.remove_custom_button(__("Schedule Interview"));
+
+	if (!frm.doc || frm.is_new()) {
+		return;
+	}
+
+	const status = String(frm.doc.application_status || "").trim();
+	if (TERMINAL_INTERVIEW_STATUSES.has(status)) {
+		return;
+	}
+
+	frm.add_custom_button(__("Schedule Interview"), () => open_schedule_interview_dialog(frm), __("Actions"));
+}
+
+function open_schedule_interview_dialog(frm) {
+	const d = new frappe.ui.Dialog({
+		title: __("Schedule Interview"),
+		size: "large",
+		fields: [
+			{
+				fieldname: "interview_date",
+				fieldtype: "Date",
+				label: __("Interview Date"),
+				reqd: 1,
+				default: frappe.datetime.get_today(),
+			},
+			{
+				fieldname: "start_time",
+				fieldtype: "Time",
+				label: __("Start Time"),
+				reqd: 1,
+				default: "09:00:00",
+			},
+			{
+				fieldname: "duration_minutes",
+				fieldtype: "Int",
+				label: __("Duration (minutes)"),
+				reqd: 1,
+				default: 30,
+			},
+			{
+				fieldname: "column_break_interview_time",
+				fieldtype: "Column Break",
+			},
+			{
+				fieldname: "suggestion_window_start_time",
+				fieldtype: "Time",
+				label: __("Search Window Start"),
+				default: "07:00:00",
+			},
+			{
+				fieldname: "suggestion_window_end_time",
+				fieldtype: "Time",
+				label: __("Search Window End"),
+				default: "17:00:00",
+			},
+			{
+				fieldname: "section_break_people",
+				fieldtype: "Section Break",
+			},
+			{
+				fieldname: "primary_interviewer",
+				fieldtype: "Link",
+				options: "User",
+				label: __("Primary Interviewer"),
+				reqd: 1,
+				default: frappe.session.user,
+				get_query: () => ({ filters: { enabled: 1 } }),
+			},
+			{
+				fieldname: "additional_interviewers",
+				fieldtype: "MultiSelectPills",
+				label: __("Additional Interviewers"),
+				description: __("Optional. Add more employee interviewers."),
+				get_data: (txt) => frappe.db.get_link_options("User", txt, { enabled: 1 }),
+			},
+			{
+				fieldname: "column_break_people",
+				fieldtype: "Column Break",
+			},
+			{
+				fieldname: "interview_type",
+				fieldtype: "Select",
+				label: __("Interview Type"),
+				options: "Family\nStudent\nJoint",
+				default: "Student",
+			},
+			{
+				fieldname: "mode",
+				fieldtype: "Select",
+				label: __("Mode"),
+				options: "In Person\nOnline\nPhone",
+				default: "In Person",
+			},
+			{
+				fieldname: "confidentiality_level",
+				fieldtype: "Select",
+				label: __("Confidentiality Level"),
+				options: "Admissions Team\nLeadership Only",
+			},
+			{
+				fieldname: "notes",
+				fieldtype: "Small Text",
+				label: __("Notes"),
+			},
+			{
+				fieldname: "suggestions_html",
+				fieldtype: "HTML",
+				label: __("Suggested Free Times"),
+			},
+		],
+		primary_action_label: __("Schedule"),
+		primary_action(values) {
+			const interviewDate = String(values.interview_date || "").trim();
+			const startTime = String(values.start_time || "").trim();
+			const duration = Number(values.duration_minutes || 0);
+			if (!interviewDate || !startTime) {
+				frappe.msgprint(__("Interview date and start time are required."));
+				return;
+			}
+			if (!duration || duration <= 0) {
+				frappe.msgprint(__("Duration must be a positive number."));
+				return;
+			}
+
+			const interviewerUsers = collect_interviewer_users(values);
+			if (!interviewerUsers.length) {
+				frappe.msgprint(__("Please select at least one interviewer."));
+				return;
+			}
+
+			const interviewStart = `${interviewDate} ${startTime}`;
+
+			d.disable_primary_action();
+			frappe.call({
+				method: "ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.schedule_applicant_interview",
+				args: {
+					student_applicant: frm.doc.name,
+					interview_start: interviewStart,
+					duration_minutes: duration,
+					interview_type: values.interview_type,
+					mode: values.mode,
+					confidentiality_level: values.confidentiality_level,
+					notes: values.notes,
+					primary_interviewer: values.primary_interviewer,
+					interviewer_users: interviewerUsers,
+					suggestion_window_start_time: values.suggestion_window_start_time,
+					suggestion_window_end_time: values.suggestion_window_end_time,
+				},
+				freeze: true,
+				freeze_message: __("Scheduling interview..."),
+			})
+				.then((res) => {
+					const payload = res?.message || {};
+					if (payload.ok) {
+						frappe.show_alert({
+							message: __("Interview scheduled."),
+							indicator: "green",
+						});
+						d.hide();
+						frm.reload_doc();
+						return;
+					}
+
+					if (payload.code === "EMPLOYEE_CONFLICT") {
+						render_suggestion_results(d, payload.suggestions || []);
+						apply_first_suggestion(d, payload.suggestions || []);
+						const conflictLabel = format_conflict_lines(payload.conflicts || []);
+						frappe.msgprint({
+							title: __("Interviewer Unavailable"),
+							indicator: "orange",
+							message: `
+								<p>${__("One or more interviewers are already booked.")}</p>
+								${conflictLabel}
+								<p>${__("A suggested free time (if available) has been applied in the dialog.")}</p>
+							`,
+						});
+						return;
+					}
+
+					frappe.msgprint({
+						title: __("Unable to schedule interview"),
+						indicator: "red",
+						message: payload.message || __("Please review the form and try again."),
+					});
+				})
+				.catch((err) => {
+					frappe.msgprint({
+						title: __("Unable to schedule interview"),
+						indicator: "red",
+						message: err?.message || __("Please try again."),
+					});
+				})
+				.always(() => {
+					d.enable_primary_action();
+				});
+		},
+	});
+
+	d.set_secondary_action(__("Suggest Free Times"), () => {
+		const values = d.get_values();
+		const interviewDate = String(values?.interview_date || "").trim();
+		const duration = Number(values?.duration_minutes || 0);
+		const interviewerUsers = collect_interviewer_users(values || {});
+
+		if (!interviewDate) {
+			frappe.msgprint(__("Select an interview date first."));
+			return;
+		}
+		if (!duration || duration <= 0) {
+			frappe.msgprint(__("Duration must be a positive number."));
+			return;
+		}
+		if (!interviewerUsers.length) {
+			frappe.msgprint(__("Select at least one interviewer first."));
+			return;
+		}
+
+		frappe.call({
+			method: "ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.suggest_interview_slots",
+			args: {
+				interview_date: interviewDate,
+				primary_interviewer: values.primary_interviewer,
+				interviewer_users: interviewerUsers,
+				duration_minutes: duration,
+				window_start_time: values.suggestion_window_start_time,
+				window_end_time: values.suggestion_window_end_time,
+			},
+			freeze: true,
+			freeze_message: __("Finding free times..."),
+		})
+			.then((res) => {
+				const payload = res?.message || {};
+				const suggestions = Array.isArray(payload.slots) ? payload.slots : [];
+				render_suggestion_results(d, suggestions);
+				apply_first_suggestion(d, suggestions);
+
+				if (!suggestions.length) {
+					frappe.msgprint({
+						title: __("No free time found"),
+						indicator: "orange",
+						message: __("No common free slots were found in the selected search window."),
+					});
+				}
+			})
+			.catch((err) => {
+				frappe.msgprint({
+					title: __("Unable to fetch suggestions"),
+					indicator: "red",
+					message: err?.message || __("Please try again."),
+				});
+			});
+	});
+
+	render_suggestion_results(d, []);
+	d.show();
+}
+
+function collect_interviewer_users(values) {
+	const out = [];
+	const pushIf = (raw) => {
+		const value = String(raw || "").trim();
+		if (value) {
+			out.push(value);
+		}
+	};
+
+	pushIf(values.primary_interviewer);
+
+	const additional = values.additional_interviewers;
+	if (Array.isArray(additional)) {
+		additional.forEach(pushIf);
+	} else if (typeof additional === "string") {
+		additional
+			.split(",")
+			.map(part => part.trim())
+			.filter(Boolean)
+			.forEach(pushIf);
+	}
+
+	return [...new Set(out)];
+}
+
+function render_suggestion_results(dialog, suggestions) {
+	const field = dialog.get_field("suggestions_html");
+	if (!field || !field.$wrapper) {
+		return;
+	}
+
+	if (!Array.isArray(suggestions) || !suggestions.length) {
+		field.$wrapper.html(`<div class="text-muted small">${__("No suggestions yet.")}</div>`);
+		return;
+	}
+
+	const rows = suggestions
+		.map((slot) => {
+			const label = escape_html(String(slot?.label || ""));
+			return `<li>${label}</li>`;
+		})
+		.join("");
+
+	field.$wrapper.html(`
+		<div class="small">
+			<div style="margin-bottom: 4px;">${__("Suggested common free slots")}:</div>
+			<ol style="padding-left: 18px; margin: 0;">${rows}</ol>
+		</div>
+	`);
+}
+
+function apply_first_suggestion(dialog, suggestions) {
+	if (!Array.isArray(suggestions) || !suggestions.length) {
+		return;
+	}
+	const first = suggestions[0];
+	const start = String(first?.start || "");
+	if (!start || start.length < 16) {
+		return;
+	}
+	const datePart = start.slice(0, 10);
+	const timePart = start.slice(11, 19);
+	dialog.set_value("interview_date", datePart);
+	dialog.set_value("start_time", timePart);
+}
+
+function format_conflict_lines(conflicts) {
+	if (!Array.isArray(conflicts) || !conflicts.length) {
+		return "";
+	}
+	const items = conflicts
+		.slice(0, 10)
+		.map((row) => {
+			const employee = escape_html(String(row?.employee_name || row?.employee || "Employee"));
+			const sourceDoctype = escape_html(String(row?.source_doctype || ""));
+			const sourceName = escape_html(String(row?.source_name || ""));
+			const bookingType = escape_html(String(row?.booking_type || "Booking"));
+			const startLabel = escape_html(String(row?.start_label || ""));
+			const endLabel = escape_html(String(row?.end_label || ""));
+			return `<li><strong>${employee}</strong>: ${bookingType} (${sourceDoctype} ${sourceName}) ${startLabel} - ${endLabel}</li>`;
+		})
+		.join("");
+
+	return `<ul style="margin-top: 8px; padding-left: 18px;">${items}</ul>`;
+}
 
 function add_portal_invite_action(frm) {
 	frm.remove_custom_button(__("Invite Applicant Portal"), __("Actions"));
@@ -697,9 +1045,15 @@ function render_interview_links(items) {
 				return "";
 			}
 			const date = String(row?.interview_date || "").trim();
+			const interviewStart = String(row?.interview_start || "").trim();
+			const interviewEnd = String(row?.interview_end || "").trim();
 			const type = String(row?.interview_type || "").trim();
 			const pieces = [name];
-			if (date) {
+			if (interviewStart) {
+				const compactStart = interviewStart.replace("T", " ").slice(0, 16);
+				const compactEnd = interviewEnd ? interviewEnd.replace("T", " ").slice(11, 16) : "";
+				pieces.push(compactEnd ? `${compactStart}-${compactEnd}` : compactStart);
+			} else if (date) {
 				pieces.push(date);
 			}
 			if (type) {

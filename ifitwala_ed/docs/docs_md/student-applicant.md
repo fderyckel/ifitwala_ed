@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.8.0"
-last_change_date: "2026-03-01"
+version: "1.9.0"
+last_change_date: "2026-03-04"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
@@ -304,6 +304,18 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   </Step>
 </Steps>
 
+## Reporting and Analytics
+
+- No dedicated Script/Query Report declares `Student Applicant` as `ref_doctype`.
+- Current analytics are API/widget driven (admissions portal completeness + morning brief pulse).
+
+## Related Docs
+
+<RelatedDocs
+  slugs="inquiry,applicant-document-type,applicant-document,applicant-health-profile,applicant-interview,institutional-policy,policy-version,policy-acknowledgement"
+  title="Related Applicant Lifecycle Docs"
+/>
+
 ## Technical Notes (IT)
 
 ### Latest Technical Snapshot (2026-02-21)
@@ -359,7 +371,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - `has_required_documents()` -> blocking
   - `health_review_complete()` -> blocking
   - `has_required_interviews()` -> tracked; not currently part of blocking `ready` boolean
-  - interview summary shows recent interview links for direct navigation from applicant review section
+  - interview summary shows recent interview links with datetime context (`interview_start` when present, else `interview_date`) for direct navigation from applicant review section
 - **Promotion side-effects (`promote_to_student`)**:
   - creates/links `Student`, writes `Student.student_applicant`, then sets applicant status to `Promoted`
   - creates/syncs `Student Patient` from Applicant Health Profile data
@@ -440,15 +452,3 @@ Runtime controller rules (server):
 - Terminal states (`Rejected`, `Promoted`) are locked except explicit System Manager override flow.
 - `inquiry`, `student`, `applicant_user`, `applicant_contact`, and `portal_account_email` are immutable and only set through named flows.
 - Direct `File` clutter is blocked on this doctype except `applicant_image`; admissions evidence belongs on [**Applicant Document**](/docs/en/applicant-document/).
-
-## Reporting and Analytics
-
-- No dedicated Script/Query Report declares `Student Applicant` as `ref_doctype`.
-- Current analytics are API/widget driven (admissions portal completeness + morning brief pulse).
-
-## Related Docs
-
-<RelatedDocs
-  slugs="inquiry,applicant-document-type,applicant-document,applicant-health-profile,applicant-interview,institutional-policy,policy-version,policy-acknowledgement"
-  title="Related Applicant Lifecycle Docs"
-/>
