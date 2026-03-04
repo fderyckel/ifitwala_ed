@@ -12,7 +12,14 @@
 			<button
 				type="button"
 				class="rounded-full bg-ink px-4 py-2 type-caption text-white shadow-soft disabled:opacity-50"
-				:disabled="isReadOnly || loading || saving || uploadingImage || Boolean(error)"
+				:disabled="
+					isReadOnly ||
+					loading ||
+					saving ||
+					uploadingImage ||
+					uploadingGuardianImageIndex !== null ||
+					Boolean(error)
+				"
 				@click="saveProfile"
 			>
 				<span v-if="saving">{{ __('Saving…') }}</span>
@@ -452,20 +459,22 @@
 							</label>
 
 							<label class="block">
-								<span class="type-caption text-ink/60">{{ __('First name') }}</span>
+								<span class="type-caption text-ink/60">{{ __('First name *') }}</span>
 								<input
 									v-model="guardian.guardian_first_name"
 									type="text"
+									required
 									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
 
 							<label class="block">
-								<span class="type-caption text-ink/60">{{ __('Last name') }}</span>
+								<span class="type-caption text-ink/60">{{ __('Last name *') }}</span>
 								<input
 									v-model="guardian.guardian_last_name"
 									type="text"
+									required
 									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								/>
@@ -482,20 +491,22 @@
 							</label>
 
 							<label class="block">
-								<span class="type-caption text-ink/60">{{ __('Personal email') }}</span>
+								<span class="type-caption text-ink/60">{{ __('Personal email *') }}</span>
 								<input
 									v-model="guardian.guardian_email"
 									type="email"
+									required
 									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
 
 							<label class="block">
-								<span class="type-caption text-ink/60">{{ __('Mobile phone') }}</span>
+								<span class="type-caption text-ink/60">{{ __('Mobile phone *') }}</span>
 								<input
 									v-model="guardian.guardian_mobile_phone"
 									type="text"
+									required
 									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								/>
@@ -559,15 +570,73 @@
 								/>
 							</label>
 
-							<label class="block">
-								<span class="type-caption text-ink/60">{{ __('Photo URL') }}</span>
-								<input
-									v-model="guardian.guardian_image"
-									type="text"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
-									:disabled="isReadOnly || saving"
-								/>
-							</label>
+							<div class="block md:col-span-2">
+								<p class="type-caption text-ink/60">{{ __('Photo *') }}</p>
+								<div class="mt-2 flex flex-wrap items-center gap-2">
+									<input
+										:ref="element => setGuardianImageInputRef(idx, element)"
+										type="file"
+										accept="image/*"
+										class="hidden"
+										:disabled="isReadOnly || saving || uploadingGuardianImageIndex === idx"
+										@change="event => onGuardianImageSelected(idx, event)"
+									/>
+									<button
+										type="button"
+										class="rounded-full border border-border/70 bg-white px-3 py-2 type-caption text-ink/70 disabled:opacity-50"
+										:disabled="isReadOnly || saving || uploadingGuardianImageIndex === idx"
+										@click="openGuardianImagePicker(idx)"
+									>
+										{{ __('Choose photo') }}
+									</button>
+									<button
+										type="button"
+										class="rounded-full bg-ink px-3 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+										:disabled="
+											isReadOnly ||
+											saving ||
+											uploadingGuardianImageIndex === idx ||
+											!selectedGuardianImageFileName(idx)
+										"
+										@click="uploadGuardianImage(idx)"
+									>
+										<span v-if="uploadingGuardianImageIndex === idx">
+											{{ __('Uploading…') }}
+										</span>
+										<span v-else>{{ __('Upload photo') }}</span>
+									</button>
+								</div>
+								<p v-if="selectedGuardianImageFileName(idx)" class="mt-2 type-caption text-ink/55">
+									{{ __('Selected') }}: {{ selectedGuardianImageFileName(idx) }}
+								</p>
+								<div class="mt-3 flex flex-wrap items-center gap-3">
+									<div
+										class="h-14 w-14 overflow-hidden rounded-xl border border-border/70 bg-surface"
+									>
+										<img
+											v-if="guardian.guardian_image"
+											:src="guardian.guardian_image"
+											:alt="__('Guardian photo')"
+											class="h-full w-full object-cover"
+										/>
+										<div
+											v-else
+											class="flex h-full w-full items-center justify-center type-caption text-ink/55"
+										>
+											{{ __('No photo') }}
+										</div>
+									</div>
+									<a
+										v-if="guardian.guardian_image"
+										:href="guardian.guardian_image"
+										target="_blank"
+										rel="noopener noreferrer"
+										class="type-caption text-ink/70 underline"
+									>
+										{{ __('Open photo') }}
+									</a>
+								</div>
+							</div>
 
 							<label class="block">
 								<span class="type-caption text-ink/60">{{ __('User ID') }}</span>
@@ -653,6 +722,9 @@ const actionError = ref('');
 const applicantImage = ref('');
 const selectedImageFile = ref<File | null>(null);
 const imageInput = ref<HTMLInputElement | null>(null);
+const selectedGuardianImageFiles = ref<Record<number, File | null>>({});
+const guardianImageInputs = ref<Record<number, HTMLInputElement | null>>({});
+const uploadingGuardianImageIndex = ref<number | null>(null);
 
 const profile = ref<ApplicantProfile>(createEmptyProfile());
 const guardians = ref<ApplicantGuardianProfile[]>([]);
@@ -715,6 +787,12 @@ function createEmptyApplicationContext(): ApplicantProfileResponse['application_
 function displayText(value: unknown): string {
 	const text = typeof value === 'string' ? value.trim() : String(value || '').trim();
 	return text || __('Not provided');
+}
+
+function clearGuardianImageUploadState() {
+	selectedGuardianImageFiles.value = {};
+	guardianImageInputs.value = {};
+	uploadingGuardianImageIndex.value = null;
 }
 
 function createEmptyGuardian(): ApplicantGuardianProfile {
@@ -825,6 +903,90 @@ function removeGuardianRow(index: number) {
 		return;
 	}
 	guardians.value = guardians.value.filter((_item, idx) => idx !== index);
+	clearGuardianImageUploadState();
+}
+
+function setGuardianImageInputRef(index: number, element: unknown) {
+	if (element instanceof HTMLInputElement) {
+		guardianImageInputs.value[index] = element;
+		return;
+	}
+	delete guardianImageInputs.value[index];
+}
+
+function selectedGuardianImageFileName(index: number): string {
+	return selectedGuardianImageFiles.value[index]?.name || '';
+}
+
+function openGuardianImagePicker(index: number) {
+	if (isReadOnly.value) {
+		actionError.value = __('This application is read-only.');
+		return;
+	}
+	guardianImageInputs.value[index]?.click();
+}
+
+function onGuardianImageSelected(index: number, event: Event) {
+	const target = event.target as HTMLInputElement | null;
+	const file = target?.files?.[0] || null;
+	if (!file) {
+		delete selectedGuardianImageFiles.value[index];
+		return;
+	}
+	if (!file.type || !file.type.startsWith('image/')) {
+		actionError.value = __('Please choose a valid image file.');
+		delete selectedGuardianImageFiles.value[index];
+		if (target) target.value = '';
+		return;
+	}
+	actionError.value = '';
+	selectedGuardianImageFiles.value[index] = file;
+}
+
+async function uploadGuardianImage(index: number) {
+	if (isReadOnly.value) {
+		actionError.value = __('This application is read-only.');
+		return;
+	}
+	if (error.value) {
+		actionError.value = __('Please reload profile information before uploading.');
+		return;
+	}
+	const file = selectedGuardianImageFiles.value[index] || null;
+	if (!file) {
+		actionError.value = __('Please choose an image to upload.');
+		return;
+	}
+	if (!guardians.value[index]) {
+		actionError.value = __('Guardian row is no longer available. Please retry.');
+		return;
+	}
+
+	uploadingGuardianImageIndex.value = index;
+	actionError.value = '';
+	try {
+		const content = await readAsBase64(file);
+		const payload = await service.uploadApplicantGuardianImage({
+			file_name: file.name,
+			content,
+		});
+		const fileUrl = String(payload.file_url || '').trim();
+		if (!fileUrl) {
+			throw new Error(__('Unable to upload guardian image.'));
+		}
+		guardians.value[index] = normalizeGuardianRow({
+			...guardians.value[index],
+			guardian_image: fileUrl,
+		});
+		delete selectedGuardianImageFiles.value[index];
+		const input = guardianImageInputs.value[index];
+		if (input) input.value = '';
+	} catch (err) {
+		const message = err instanceof Error ? err.message : __('Unable to upload guardian image.');
+		actionError.value = message;
+	} finally {
+		uploadingGuardianImageIndex.value = null;
+	}
 }
 
 function applyPayload(payload: ApplicantProfileResponse) {
@@ -839,6 +1001,7 @@ function applyPayload(payload: ApplicantProfileResponse) {
 	guardians.value = ((payload.guardians || []) as ApplicantGuardianProfile[]).map(row =>
 		normalizeGuardianRow(row)
 	);
+	clearGuardianImageUploadState();
 	applicantImage.value = (payload.applicant_image || '').trim();
 	selectedImageFile.value = null;
 	if (imageInput.value) imageInput.value.value = '';

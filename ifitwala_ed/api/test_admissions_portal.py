@@ -22,6 +22,7 @@ from ifitwala_ed.api.admissions_portal import (
     submit_application,
     update_applicant_health,
     update_applicant_profile,
+    upload_applicant_guardian_image,
     upload_applicant_profile_image,
 )
 
@@ -570,6 +571,7 @@ class TestSubmitApplication(FrappeTestCase):
                     "guardian_email": guardian_email,
                     "guardian_mobile_phone": "+14155550101",
                     "guardian_gender": "Female",
+                    "guardian_image": "/private/files/guardian-mina.png",
                 }
             ],
         )
@@ -627,6 +629,64 @@ class TestSubmitApplication(FrappeTestCase):
                         "guardian_last_name": "Family",
                         "guardian_email": foreign_email,
                         "guardian_mobile_phone": "+14155550102",
+                        "guardian_image": "/private/files/guardian-other.png",
+                    }
+                ],
+            )
+
+    def test_update_applicant_profile_rejects_invalid_guardian_email(self):
+        self._set_guardians_section_setting(1)
+
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.ValidationError):
+            update_applicant_profile(
+                student_applicant=self.applicant.name,
+                guardians=[
+                    {
+                        "relationship": "Mother",
+                        "guardian_first_name": "Mina",
+                        "guardian_last_name": "Portal",
+                        "guardian_email": "not-an-email",
+                        "guardian_mobile_phone": "+14155550102",
+                        "guardian_image": "/private/files/guardian.png",
+                    }
+                ],
+            )
+
+    def test_update_applicant_profile_rejects_invalid_guardian_phone(self):
+        self._set_guardians_section_setting(1)
+
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.ValidationError):
+            update_applicant_profile(
+                student_applicant=self.applicant.name,
+                guardians=[
+                    {
+                        "relationship": "Father",
+                        "guardian_first_name": "Jean",
+                        "guardian_last_name": "Portal",
+                        "guardian_email": f"guardian-{frappe.generate_hash(length=8)}@example.com",
+                        "guardian_mobile_phone": "bad-phone",
+                        "guardian_image": "/private/files/guardian.png",
+                    }
+                ],
+            )
+
+    def test_update_applicant_profile_rejects_missing_guardian_image(self):
+        self._set_guardians_section_setting(1)
+
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.ValidationError):
+            update_applicant_profile(
+                student_applicant=self.applicant.name,
+                guardians=[
+                    {
+                        "relationship": "Mother",
+                        "guardian_first_name": "Mina",
+                        "guardian_last_name": "Portal",
+                        "guardian_email": f"guardian-{frappe.generate_hash(length=8)}@example.com",
+                        "guardian_mobile_phone": "+14155550102",
+                        "guardian_image": "",
                     }
                 ],
             )
@@ -707,6 +767,51 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(classification["purpose"], "applicant_profile_display")
         self.assertEqual(classification["retention_policy"], "until_school_exit_plus_6m")
         self.assertEqual(classification["slot"], "profile_image")
+        self.assertEqual(classification["organization"], self.organization)
+        self.assertEqual(classification["school"], self.school)
+        self.assertEqual(classification["upload_source"], "SPA")
+
+    def test_upload_applicant_guardian_image_creates_governed_file(self):
+        fake_file = SimpleNamespace(
+            name=f"FILE-{frappe.generate_hash(length=8)}",
+            file_url=f"/private/files/guardian-{frappe.generate_hash(length=6)}.png",
+            file_name="guardian.png",
+            file_size=256,
+            is_private=1,
+        )
+
+        frappe.set_user(self.applicant_user)
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.file_dispatcher.create_and_classify_file",
+                return_value=fake_file,
+            ) as mocked_dispatcher,
+            patch("ifitwala_ed.api.admissions_portal._ensure_file_on_disk"),
+            patch("ifitwala_ed.api.admissions_portal._validate_profile_image_content"),
+        ):
+            payload = upload_applicant_guardian_image(
+                student_applicant=self.applicant.name,
+                file_name="guardian.png",
+                content=self._tiny_png_base64(),
+            )
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("file_url"), fake_file.file_url)
+        self.assertEqual(mocked_dispatcher.call_count, 1)
+
+        kwargs = mocked_dispatcher.call_args.kwargs
+        self.assertEqual(kwargs["file_kwargs"]["attached_to_doctype"], "Student Applicant")
+        self.assertEqual(kwargs["file_kwargs"]["attached_to_name"], self.applicant.name)
+        self.assertEqual(kwargs["file_kwargs"]["attached_to_field"], "guardians")
+        self.assertEqual(kwargs["file_kwargs"]["is_private"], 1)
+
+        classification = kwargs["classification"]
+        self.assertEqual(classification["primary_subject_type"], "Student Applicant")
+        self.assertEqual(classification["primary_subject_id"], self.applicant.name)
+        self.assertEqual(classification["data_class"], "identity_image")
+        self.assertEqual(classification["purpose"], "applicant_profile_display")
+        self.assertEqual(classification["retention_policy"], "until_school_exit_plus_6m")
+        self.assertEqual(classification["slot"], "guardian_profile_image")
         self.assertEqual(classification["organization"], self.organization)
         self.assertEqual(classification["school"], self.school)
         self.assertEqual(classification["upload_source"], "SPA")

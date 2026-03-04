@@ -23,6 +23,10 @@ import type {
   Request as UploadApplicantProfileImageRequest,
   Response as UploadApplicantProfileImageResponse,
 } from '@/types/contracts/admissions/upload_applicant_profile_image'
+import type {
+  Request as UploadApplicantGuardianImageRequest,
+  Response as UploadApplicantGuardianImageResponse,
+} from '@/types/contracts/admissions/upload_applicant_guardian_image'
 import type { Request as PoliciesRequest, Response as PoliciesResponse } from '@/types/contracts/admissions/get_applicant_policies'
 import type { Request as AcknowledgePolicyRequest, Response as AcknowledgePolicyResponse } from '@/types/contracts/admissions/acknowledge_policy'
 import type { Request as SubmitRequest, Response as SubmitResponse } from '@/types/contracts/admissions/submit_application'
@@ -72,6 +76,12 @@ export function createAdmissionsService() {
 
   const uploadApplicantProfileImageResource = createResource<UploadApplicantProfileImageResponse>({
     url: 'ifitwala_ed.api.admissions_portal.upload_applicant_profile_image',
+    method: 'POST',
+    auto: false,
+  })
+
+  const uploadApplicantGuardianImageResource = createResource<UploadApplicantGuardianImageResponse>({
+    url: 'ifitwala_ed.api.admissions_portal.upload_applicant_guardian_image',
     method: 'POST',
     auto: false,
   })
@@ -166,6 +176,13 @@ export function createAdmissionsService() {
     return result
   }
 
+  async function uploadApplicantGuardianImage(
+    payload: UploadApplicantGuardianImageRequest
+  ): Promise<UploadApplicantGuardianImageResponse> {
+    const result = await uploadApplicantGuardianImageResource.submit(payload)
+    return result
+  }
+
   async function listDocuments(payload: DocumentsRequest = {}): Promise<DocumentsResponse> {
     return documentsResource.submit(payload)
   }
@@ -218,6 +235,7 @@ export function createAdmissionsService() {
     getProfile,
     updateProfile,
     uploadApplicantProfileImage,
+    uploadApplicantGuardianImage,
     listDocuments,
     listDocumentTypes,
     uploadDocument,

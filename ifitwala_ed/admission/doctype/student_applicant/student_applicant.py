@@ -133,7 +133,6 @@ STUDENT_PROFILE_REQUIRED_FIELD_LABELS = (
     ("student_date_of_birth", "Date of Birth"),
     ("student_gender", "Student Gender"),
     ("student_mobile_number", "Mobile Number"),
-    ("student_joining_date", "Joining Date"),
     ("student_first_language", "First Language"),
     ("student_nationality", "Nationality"),
     ("residency_status", "Residency Status"),
@@ -656,6 +655,8 @@ class StudentApplicant(Document):
 
         if self.application_status != "Approved":
             frappe.throw(_("Applicant must be Approved before promotion."))
+        if not self.student_joining_date:
+            frappe.throw(_("Joining Date is required before promotion to Student."))
 
         if self.student:
             self._copy_health_profile_to_student_patient(self.student, require_profile=False)

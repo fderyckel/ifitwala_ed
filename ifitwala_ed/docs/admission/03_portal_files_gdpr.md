@@ -503,6 +503,7 @@ ApplicantSnapshot {
 GET  /api/admissions/profile/:applicant
 POST /api/admissions/profile/update
 POST /api/admissions/profile/image/upload
+POST /api/admissions/profile/guardian/image/upload
 ```
 
 ### Returns
@@ -529,6 +530,10 @@ ApplicantProfilePayload {
 ### Rules
 
 * Profile update is applicant-scoped and server-validated.
+* Guardian rows (when enabled) are applicant-scoped and server-validated:
+  * required per row: first name, last name, personal email, mobile phone, photo
+  * personal/work emails must pass email validation
+  * mobile/work phones must pass phone validation
 * Profile image upload is applicant-scoped and mutable-status only.
 * Profile image upload must route through dispatcher classification:
   * `data_class = identity_image`
@@ -537,6 +542,7 @@ ApplicantProfilePayload {
   * `slot = profile_image`
   * `upload_source = SPA`
 * Uploaded profile image remains private and stored on `Student Applicant.applicant_image`.
+* Guardian photo upload remains private and returns a canonical file URL used by `Student Applicant Guardian.guardian_image`.
 
 ---
 
@@ -810,7 +816,7 @@ No business logic.
 
 **Purpose**
 
-* Maintain student profile fields required for promotion
+* Maintain student profile fields required for promotion (excluding Joining Date)
 * Upload/update applicant-owned student image
 
 **Reads**
@@ -1082,7 +1088,7 @@ Permissions alone are **insufficient**.
 
   * application_status ∈ {Invited, In Progress, Missing Info}
 * Only specific fields writable (no status, no governance fields)
-* `student_joining_date` (Admission Date) is admissions-office-owned and portal read-only
+* `student_joining_date` (Joining Date) is not part of portal profile workflow; admissions office must set it before promotion
 
 #### Applicant Document
 
@@ -1624,7 +1630,7 @@ Families NEVER see or touch:
 | Portal Section | Backing Object | Family Action |
 |---------------|---------------|---------------|
 | Applicant Overview | Student Applicant | Read |
-| Personal Details | Student Applicant | Write (until submission, except Admission Date) |
+| Personal Details | Student Applicant | Write (until submission; Joining Date excluded from portal workflow) |
 | Guardians | Applicant Guardian | Write |
 | Health Information | Applicant Health Profile | Write |
 | Documents | Applicant Document | Upload only |

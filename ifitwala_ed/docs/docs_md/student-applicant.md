@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.10.0"
+version: "1.11.1"
 last_change_date: "2026-03-04"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, policies, and guardian intake/contact carry-over."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -195,6 +195,8 @@ If email delivery fails, portal linkage still succeeds (`User` + role + applican
 - `can_consent`
 - guardian identity/profile fields mirrored from `Guardian` (`salutation`, names, email, mobile, work fields, guardian flags)
 - `use_applicant_contact` to explicitly reuse `Student Applicant.applicant_contact` for a guardian row
+- applicant portal save validation enforces required guardian fields per row: first name, last name, personal email, mobile phone, and photo
+- guardian personal/work emails are validated as email format; guardian mobile/work phones are validated as phone format
 
 No standalone child-doc page is required; behavior is owned by the parent lifecycle.
 
@@ -219,6 +221,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - direct attachments blocked except `applicant_image`
   - governed upload endpoint: `ifitwala_ed.utilities.governed_uploads.upload_applicant_image`
   - admissions portal self-upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_profile_image`
+  - admissions portal guardian photo upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_guardian_image`
   - all other admissions docs routed via `Applicant Document` + file classification
 - **Recommendation intake (runtime)**:
   - external recommender submissions use a separate intake surface (`/admissions/recommendation/<token>`) and do not use applicant portal authentication

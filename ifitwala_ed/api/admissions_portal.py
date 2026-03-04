@@ -8,7 +8,7 @@ import os
 
 import frappe
 from frappe import _
-from frappe.utils import cint, now_datetime
+from frappe.utils import cint, now_datetime, validate_email_address, validate_phone_number
 from PIL import Image, UnidentifiedImageError
 
 from ifitwala_ed.admission import admissions_portal as admission_api
@@ -186,6 +186,13 @@ APPLICANT_GUARDIAN_TEXT_FIELDS = (
     "guardian_designation",
 )
 APPLICANT_GUARDIAN_FIELDS = ("name",) + APPLICANT_GUARDIAN_TEXT_FIELDS + APPLICANT_GUARDIAN_CHECK_FIELDS
+APPLICANT_GUARDIAN_REQUIRED_FIELD_LABELS = (
+    ("guardian_first_name", "Guardian First Name"),
+    ("guardian_last_name", "Guardian Last Name"),
+    ("guardian_email", "Guardian Personal Email"),
+    ("guardian_mobile_phone", "Guardian Mobile Phone"),
+    ("guardian_image", "Guardian Photo"),
+)
 
 
 def _has_health_declaration_column() -> bool:
@@ -599,6 +606,48 @@ def _guardian_row_is_empty(row: dict) -> bool:
     return not any(_as_text(row.get(fieldname)).strip() for fieldname in identity_fields)
 
 
+def _validate_guardian_profile_row(row: dict) -> dict:
+    missing_labels = [
+        _(label)
+        for fieldname, label in APPLICANT_GUARDIAN_REQUIRED_FIELD_LABELS
+        if not _as_text(row.get(fieldname)).strip()
+    ]
+    if missing_labels:
+        frappe.throw(_("Each guardian must include: {0}.").format(", ".join(missing_labels)))
+
+    guardian_email = normalize_email_value(row.get("guardian_email"))
+    try:
+        validate_email_address(guardian_email, True)
+    except Exception:
+        frappe.throw(_("Guardian personal email must be a valid email address."))
+    row["guardian_email"] = guardian_email
+
+    guardian_work_email = normalize_email_value(row.get("guardian_work_email"))
+    if guardian_work_email:
+        try:
+            validate_email_address(guardian_work_email, True)
+        except Exception:
+            frappe.throw(_("Guardian work email must be a valid email address."))
+    row["guardian_work_email"] = guardian_work_email
+
+    guardian_mobile_phone = _as_text(row.get("guardian_mobile_phone")).strip()
+    try:
+        validate_phone_number(guardian_mobile_phone, throw=True)
+    except Exception:
+        frappe.throw(_("Guardian mobile phone must be a valid phone number."))
+    row["guardian_mobile_phone"] = guardian_mobile_phone
+
+    guardian_work_phone = _as_text(row.get("guardian_work_phone")).strip()
+    if guardian_work_phone:
+        try:
+            validate_phone_number(guardian_work_phone, throw=True)
+        except Exception:
+            frappe.throw(_("Guardian work phone must be a valid phone number."))
+    row["guardian_work_phone"] = guardian_work_phone
+
+    return row
+
+
 def _contact_is_linked_to_applicant(*, contact_name: str, applicant_name: str) -> bool:
     if not contact_name or not applicant_name:
         return False
@@ -824,6 +873,7 @@ def _apply_guardians_to_applicant(*, applicant, guardians_payload: list[dict]):
                 frappe.throw(_("Invalid Guardian: {0}.").format(guardian_name))
             guardian_doc = frappe.get_doc("Guardian", guardian_name)
             row = _hydrate_guardian_row_from_guardian_doc(row_payload=row, guardian_doc=guardian_doc)
+        row = _validate_guardian_profile_row(row)
 
         existing_contact_name = _as_text(row.get("contact")).strip()
         if not existing_contact_name and existing_row:
@@ -1277,6 +1327,69 @@ def upload_applicant_profile_image(
         file_doc.file_url,
         update_modified=False,
     )
+    classification_name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
+
+    return {
+        "ok": True,
+        "file": file_doc.name,
+        "file_url": file_doc.file_url,
+        "file_name": file_doc.file_name,
+        "file_size": file_doc.file_size,
+        "classification": classification_name,
+    }
+
+
+@frappe.whitelist()
+def upload_applicant_guardian_image(
+    *,
+    student_applicant: str | None = None,
+    file_name: str | None = None,
+    content: str | None = None,
+):
+    user = _require_admissions_applicant()
+    row = _ensure_applicant_match(student_applicant, user)
+
+    is_read_only, reason = _read_only_for(_as_text(row.get("application_status")).strip())
+    if is_read_only:
+        frappe.throw(reason or _("This application is read-only."), frappe.PermissionError)
+
+    applicant_name = _as_text(row.get("name")).strip()
+    if not applicant_name:
+        frappe.throw(_("Applicant context is missing."))
+
+    upload_name = _as_text(file_name).strip()
+    if not upload_name:
+        frappe.throw(_("file_name is required."))
+
+    upload_content = _decode_profile_image_content(_as_text(content))
+    _validate_profile_image_content(upload_content)
+
+    applicant = frappe.get_doc("Student Applicant", applicant_name)
+    if not applicant.get("organization") or not applicant.get("school"):
+        frappe.throw(_("Organization and School are required for file classification."))
+
+    file_doc = file_dispatcher.create_and_classify_file(
+        file_kwargs={
+            "attached_to_doctype": "Student Applicant",
+            "attached_to_name": applicant.name,
+            "attached_to_field": "guardians",
+            "file_name": upload_name,
+            "content": upload_content,
+            "is_private": 1,
+        },
+        classification={
+            "primary_subject_type": "Student Applicant",
+            "primary_subject_id": applicant.name,
+            "data_class": "identity_image",
+            "purpose": "applicant_profile_display",
+            "retention_policy": "until_school_exit_plus_6m",
+            "slot": "guardian_profile_image",
+            "organization": applicant.organization,
+            "school": applicant.school,
+            "upload_source": "SPA",
+        },
+    )
+    _ensure_file_on_disk(file_doc)
     classification_name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
 
     return {

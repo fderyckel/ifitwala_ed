@@ -327,61 +327,61 @@ function open_schedule_interview_dialog(frm) {
 					d.enable_primary_action();
 				});
 		},
-	});
+		secondary_action_label: __("Suggest Free Times"),
+		secondary_action() {
+			const values = d.get_values();
+			const interviewDate = String(values?.interview_date || "").trim();
+			const duration = Number(values?.duration_minutes || 0);
+			const interviewerUsers = collect_interviewer_users(values || {});
 
-	d.set_secondary_action(__("Suggest Free Times"), () => {
-		const values = d.get_values();
-		const interviewDate = String(values?.interview_date || "").trim();
-		const duration = Number(values?.duration_minutes || 0);
-		const interviewerUsers = collect_interviewer_users(values || {});
+			if (!interviewDate) {
+				frappe.msgprint(__("Select an interview date first."));
+				return;
+			}
+			if (!duration || duration <= 0) {
+				frappe.msgprint(__("Duration must be a positive number."));
+				return;
+			}
+			if (!interviewerUsers.length) {
+				frappe.msgprint(__("Select at least one interviewer first."));
+				return;
+			}
 
-		if (!interviewDate) {
-			frappe.msgprint(__("Select an interview date first."));
-			return;
-		}
-		if (!duration || duration <= 0) {
-			frappe.msgprint(__("Duration must be a positive number."));
-			return;
-		}
-		if (!interviewerUsers.length) {
-			frappe.msgprint(__("Select at least one interviewer first."));
-			return;
-		}
-
-		frappe.call({
-			method: "ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.suggest_interview_slots",
-			args: {
-				interview_date: interviewDate,
-				primary_interviewer: values.primary_interviewer,
-				interviewer_users: interviewerUsers,
-				duration_minutes: duration,
-				window_start_time: values.suggestion_window_start_time,
-				window_end_time: values.suggestion_window_end_time,
-			},
-			freeze: true,
-			freeze_message: __("Finding free times..."),
-		})
-			.then((res) => {
-				const payload = res?.message || {};
-				const suggestions = Array.isArray(payload.slots) ? payload.slots : [];
-				render_suggestion_results(d, suggestions);
-				apply_first_suggestion(d, suggestions);
-
-				if (!suggestions.length) {
-					frappe.msgprint({
-						title: __("No free time found"),
-						indicator: "orange",
-						message: __("No common free slots were found in the selected search window."),
-					});
-				}
+			frappe.call({
+				method: "ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.suggest_interview_slots",
+				args: {
+					interview_date: interviewDate,
+					primary_interviewer: values.primary_interviewer,
+					interviewer_users: interviewerUsers,
+					duration_minutes: duration,
+					window_start_time: values.suggestion_window_start_time,
+					window_end_time: values.suggestion_window_end_time,
+				},
+				freeze: true,
+				freeze_message: __("Finding free times..."),
 			})
-			.catch((err) => {
-				frappe.msgprint({
-					title: __("Unable to fetch suggestions"),
-					indicator: "red",
-					message: err?.message || __("Please try again."),
+				.then((res) => {
+					const payload = res?.message || {};
+					const suggestions = Array.isArray(payload.slots) ? payload.slots : [];
+					render_suggestion_results(d, suggestions);
+					apply_first_suggestion(d, suggestions);
+
+					if (!suggestions.length) {
+						frappe.msgprint({
+							title: __("No free time found"),
+							indicator: "orange",
+							message: __("No common free slots were found in the selected search window."),
+						});
+					}
+				})
+				.catch((err) => {
+					frappe.msgprint({
+						title: __("Unable to fetch suggestions"),
+						indicator: "red",
+						message: err?.message || __("Please try again."),
+					});
 				});
-			});
+		},
 	});
 
 	render_suggestion_results(d, []);

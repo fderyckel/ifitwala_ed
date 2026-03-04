@@ -320,6 +320,17 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertIn("Date of Birth", payload.get("missing") or [])
         self.assertIn("First Language", payload.get("missing") or [])
         self.assertIn("Nationality", payload.get("missing") or [])
+        self.assertNotIn("Joining Date", payload.get("missing") or [])
+
+    def test_promotion_requires_joining_date(self):
+        applicant = self._create_student_applicant()
+        self._create_applicant_health_profile(applicant.name)
+
+        applicant.db_set("application_status", "Approved", update_modified=False)
+        applicant.reload()
+
+        with self.assertRaises(frappe.ValidationError):
+            applicant.promote_to_student()
 
     def test_promotion_copies_profile_information_to_student(self):
         language = self._get_or_create_language_xtra()

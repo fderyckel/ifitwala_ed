@@ -80,7 +80,7 @@
 				<div class="mt-3 flex justify-end">
 					<button
 						type="button"
-						class="rounded-full bg-canopy px-4 py-2 text-sm font-semibold text-white transition hover:bg-canopy/90 disabled:cursor-not-allowed disabled:opacity-50"
+						class="inline-flex items-center justify-center rounded-full border border-ink/10 bg-ink px-4 py-2 type-caption text-white shadow-soft transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
 						:disabled="sending || !canSend"
 						@click="sendMessage"
 					>

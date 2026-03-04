@@ -1072,7 +1072,6 @@ def get_admissions_cockpit_data(filters=None):
             "student_date_of_birth",
             "student_gender",
             "student_mobile_number",
-            "student_joining_date",
             "student_first_language",
             "student_nationality",
             "residency_status",

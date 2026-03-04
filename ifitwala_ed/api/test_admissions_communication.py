@@ -3,10 +3,16 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import now_datetime
 
-from ifitwala_ed.api.admissions_communication import get_admissions_thread_summaries_for_applicants
+from ifitwala_ed.api import admissions_communication
+from ifitwala_ed.api.admissions_communication import (
+    _require_actor_context,
+    _session_user,
+    get_admissions_thread_summaries_for_applicants,
+)
 
 
 class TestAdmissionsCommunicationSummaries(FrappeTestCase):
@@ -127,3 +133,19 @@ class TestAdmissionsCommunicationSummaries(FrappeTestCase):
         self.assertEqual(row["unread_count"], 0)
         self.assertEqual(row["last_message_from"], "staff")
         self.assertFalse(bool(row["needs_reply"]))
+
+
+class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
+    def test_session_user_treats_none_literal_as_unauthenticated(self):
+        with patch("ifitwala_ed.api.admissions_communication.frappe.session.user", "None"):
+            self.assertEqual(_session_user(), "")
+
+    def test_require_actor_context_rejects_invalid_session_user(self):
+        with patch("ifitwala_ed.api.admissions_communication.frappe.session.user", "None"):
+            with self.assertRaises(frappe.PermissionError):
+                _require_actor_context(context_doctype="Student Applicant", context_name="APP-0001")
+
+    def test_case_thread_endpoints_allow_guest_to_reach_auth_guard(self):
+        self.assertTrue(bool(getattr(admissions_communication.send_admissions_case_message, "allow_guest", False)))
+        self.assertTrue(bool(getattr(admissions_communication.get_admissions_case_thread, "allow_guest", False)))
+        self.assertTrue(bool(getattr(admissions_communication.mark_admissions_case_thread_read, "allow_guest", False)))

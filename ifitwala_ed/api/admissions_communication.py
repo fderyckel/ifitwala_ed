@@ -31,10 +31,20 @@ THREAD_COMMUNICATION_TYPE = "Information"
 THREAD_INTERACTION_MODE = "Structured Feedback"
 THREAD_STATUS = "Published"
 THREAD_PORTAL_SURFACE = "Desk"
+INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
 
 
 def _to_text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _session_user() -> str:
+    user = _to_text(getattr(frappe.session, "user", None))
+    if not user:
+        return ""
+    if user.lower() in INVALID_SESSION_USERS:
+        return ""
+    return user
 
 
 def _normalize_context(context_doctype: str | None, context_name: str | None) -> tuple[str, str]:
@@ -68,7 +78,7 @@ def _next_thread_title(context_doctype: str, context_name: str) -> str:
 
 @contextmanager
 def _as_user(user: str):
-    current_user = _to_text(frappe.session.user)
+    current_user = _session_user()
     target_user = _to_text(user)
     if not target_user or current_user == target_user:
         yield
@@ -99,8 +109,8 @@ def _resolve_student_applicant_row(applicant_name: str) -> dict:
 
 
 def _require_actor_context(*, context_doctype: str, context_name: str) -> dict:
-    user = _to_text(frappe.session.user)
-    if not user or user == "Guest":
+    user = _session_user()
+    if not user:
         frappe.throw(_("You need to sign in to access admissions communications."), frappe.PermissionError)
 
     roles = set(frappe.get_roles(user))
@@ -387,7 +397,7 @@ def _count_unread_messages(*, thread_name: str, applicant_user: str, actor_user:
     return cint((count_row[0] or {}).get("unread_count") or 0)
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def send_admissions_case_message(
     *,
     context_doctype: str | None = None,
@@ -453,7 +463,7 @@ def send_admissions_case_message(
     return response
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_admissions_case_thread(
     *,
     context_doctype: str | None = None,
@@ -541,7 +551,7 @@ def get_admissions_case_thread(
     }
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def mark_admissions_case_thread_read(
     *,
     context_doctype: str | None = None,

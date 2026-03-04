@@ -9,6 +9,9 @@ from ifitwala_ed.api.focus_actions_applicant_review import (
     claim_applicant_review_assignment as _claim_applicant_review_assignment,
 )
 from ifitwala_ed.api.focus_actions_applicant_review import (
+    download_applicant_review_file as _download_applicant_review_file,
+)
+from ifitwala_ed.api.focus_actions_applicant_review import (
     reassign_applicant_review_assignment as _reassign_applicant_review_assignment,
 )
 from ifitwala_ed.api.focus_actions_applicant_review import (
@@ -43,6 +46,7 @@ __all__ = [
     "mark_inquiry_contacted",
     "acknowledge_staff_policy",
     "claim_applicant_review_assignment",
+    "download_applicant_review_file",
     "reassign_applicant_review_assignment",
     "submit_applicant_review_assignment",
 ]
@@ -134,6 +138,17 @@ def claim_applicant_review_assignment(
         assignment=assignment,
         focus_item_id=focus_item_id,
         client_request_id=client_request_id,
+    )
+
+
+@frappe.whitelist()
+def download_applicant_review_file(
+    assignment: str | None = None,
+    focus_item_id: str | None = None,
+):
+    return _download_applicant_review_file(
+        assignment=assignment,
+        focus_item_id=focus_item_id,
     )
 
 
