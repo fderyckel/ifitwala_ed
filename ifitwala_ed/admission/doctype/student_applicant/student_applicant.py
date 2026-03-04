@@ -14,6 +14,8 @@ from frappe.utils import cint, get_datetime, now_datetime
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     ensure_admissions_permission,
+    ensure_contact_dynamic_link,
+    ensure_contact_for_email,
     get_applicant_document_slot_spec,
     get_applicant_scope_ancestors,
     get_contact_primary_email,
@@ -751,10 +753,16 @@ class StudentApplicant(Document):
         for spec in guardian_specs:
             guardian = spec["guardian"]
             relationship = spec["relationship"]
+            contact_name = (spec.get("contact") or "").strip() or None
             user_name = self._ensure_guardian_user_and_roles(guardian)
             if user_name:
                 touched_users.add(user_name)
-            linked_guardians.append({"guardian": guardian, "relationship": relationship})
+            self._ensure_guardian_contact_links(
+                guardian=guardian,
+                student=student,
+                contact_name=contact_name,
+            )
+            linked_guardians.append({"guardian": guardian, "relationship": relationship, "contact": contact_name})
 
         added_guardians = self._ensure_student_guardian_links(student, linked_guardians)
 
@@ -816,21 +824,155 @@ class StudentApplicant(Document):
         seen = set()
         for row in rows:
             guardian_name = (row.get("guardian") or "").strip()
-            if not guardian_name or guardian_name in seen:
+            relationship = (row.get("relationship") or "").strip() or "Other"
+            contact_name = (row.get("contact") or "").strip() or None
+
+            if guardian_name:
+                if not frappe.db.exists("Guardian", guardian_name):
+                    frappe.throw(_("Guardian {0} does not exist.").format(guardian_name))
+                guardian_doc = frappe.get_doc("Guardian", guardian_name)
+                key = guardian_doc.name
+                if key in seen:
+                    continue
+                seen.add(key)
+                resolved.append(
+                    {
+                        "guardian": guardian_doc,
+                        "relationship": relationship,
+                        "contact": contact_name,
+                    }
+                )
                 continue
-            if not frappe.db.exists("Guardian", guardian_name):
-                frappe.throw(_("Guardian {0} does not exist.").format(guardian_name))
-            seen.add(guardian_name)
-            resolved.append(
-                {
-                    "guardian": frappe.get_doc("Guardian", guardian_name),
-                    "relationship": row.get("relationship") or "Other",
-                }
-            )
+
+            if self._is_empty_applicant_guardian_row(row):
+                continue
+
+            row_spec = self._create_or_reuse_guardian_from_profile_row(row)
+            key = row_spec["guardian"].name
+            if key in seen:
+                continue
+            seen.add(key)
+            row_spec["relationship"] = relationship
+            if contact_name and not row_spec.get("contact"):
+                row_spec["contact"] = contact_name
+            resolved.append(row_spec)
+
         if resolved:
             return resolved
         fallback = self._create_or_reuse_guardian_from_contact()
         return [fallback]
+
+    def _is_empty_applicant_guardian_row(self, row) -> bool:
+        fields = (
+            "guardian_first_name",
+            "guardian_last_name",
+            "guardian_email",
+            "guardian_mobile_phone",
+            "salutation",
+            "guardian_work_email",
+            "guardian_work_phone",
+            "employment_sector",
+            "work_place",
+            "guardian_designation",
+            "guardian_image",
+        )
+        return not any((row.get(field) or "").strip() for field in fields)
+
+    def _create_or_reuse_guardian_from_profile_row(self, row) -> dict:
+        first_name = (row.get("guardian_first_name") or "").strip()
+        last_name = (row.get("guardian_last_name") or "").strip()
+        email = normalize_email_value(row.get("guardian_email"))
+        mobile = (row.get("guardian_mobile_phone") or "").strip()
+
+        if not first_name:
+            frappe.throw(_("Guardian first name is required in applicant guardians."))
+        if not last_name:
+            frappe.throw(_("Guardian last name is required in applicant guardians."))
+        if not email:
+            frappe.throw(_("Guardian personal email is required in applicant guardians."))
+        if not mobile:
+            frappe.throw(_("Guardian mobile phone is required in applicant guardians."))
+
+        existing = frappe.db.get_value("Guardian", {"guardian_email": email}, "name")
+        if existing:
+            guardian = frappe.get_doc("Guardian", existing)
+            changed = False
+            if (guardian.guardian_first_name or "").strip() != first_name:
+                guardian.guardian_first_name = first_name
+                changed = True
+            if (guardian.guardian_last_name or "").strip() != last_name:
+                guardian.guardian_last_name = last_name
+                changed = True
+            if not (guardian.guardian_mobile_phone or "").strip():
+                guardian.guardian_mobile_phone = mobile
+                changed = True
+
+            profile_field_map = (
+                ("salutation", "salutation"),
+                ("guardian_gender", "guardian_gender"),
+                ("guardian_work_email", "guardian_work_email"),
+                ("guardian_work_phone", "guardian_work_phone"),
+                ("employment_sector", "employment_sector"),
+                ("work_place", "work_place"),
+                ("guardian_designation", "guardian_designation"),
+                ("guardian_image", "guardian_image"),
+            )
+            for row_field, guardian_field in profile_field_map:
+                incoming = (row.get(row_field) or "").strip()
+                if incoming and not (guardian.get(guardian_field) or "").strip():
+                    guardian.set(guardian_field, incoming)
+                    changed = True
+
+            incoming_primary = cint(row.get("is_primary_guardian") or 0)
+            if incoming_primary and cint(guardian.get("is_primary_guardian") or 0) != 1:
+                guardian.is_primary_guardian = 1
+                changed = True
+
+            incoming_financial = cint(row.get("is_financial_guardian") or 0)
+            if incoming_financial and cint(guardian.get("is_financial_guardian") or 0) != 1:
+                guardian.is_financial_guardian = 1
+                changed = True
+
+            if changed:
+                guardian.save(ignore_permissions=True)
+
+            contact_name = (row.get("contact") or "").strip() or None
+            if not contact_name:
+                contact_name = (
+                    frappe.db.get_value(
+                        "Contact Email",
+                        {"email_id": email},
+                        "parent",
+                    )
+                    or None
+                )
+            return {"guardian": guardian, "relationship": row.get("relationship") or "Other", "contact": contact_name}
+
+        guardian = frappe.get_doc(
+            {
+                "doctype": "Guardian",
+                "salutation": (row.get("salutation") or "").strip() or None,
+                "guardian_first_name": first_name,
+                "guardian_last_name": last_name,
+                "guardian_gender": (row.get("guardian_gender") or "").strip() or None,
+                "guardian_email": email,
+                "guardian_mobile_phone": mobile,
+                "guardian_work_email": (row.get("guardian_work_email") or "").strip() or None,
+                "guardian_work_phone": (row.get("guardian_work_phone") or "").strip() or None,
+                "employment_sector": (row.get("employment_sector") or "").strip() or None,
+                "work_place": (row.get("work_place") or "").strip() or None,
+                "guardian_designation": (row.get("guardian_designation") or "").strip() or None,
+                "guardian_image": (row.get("guardian_image") or "").strip() or None,
+                "is_primary_guardian": cint(row.get("is_primary_guardian") or 0),
+                "is_financial_guardian": cint(row.get("is_financial_guardian") or 0),
+            }
+        ).insert(ignore_permissions=True)
+
+        return {
+            "guardian": guardian,
+            "relationship": row.get("relationship") or "Other",
+            "contact": (row.get("contact") or "").strip() or None,
+        }
 
     def _create_or_reuse_guardian_from_contact(self) -> dict:
         email = normalize_email_value(self.applicant_email) or normalize_email_value(self.portal_account_email)
@@ -870,7 +1012,11 @@ class StudentApplicant(Document):
             if not guardian.guardian_mobile_phone:
                 guardian.guardian_mobile_phone = mobile
                 guardian.save(ignore_permissions=True)
-            return {"guardian": guardian, "relationship": "Other"}
+            return {
+                "guardian": guardian,
+                "relationship": "Other",
+                "contact": (self.applicant_contact or "").strip() or None,
+            }
 
         first_name = (contact_first_name or "").strip() or (self.first_name or "").strip() or _("Guardian")
         last_name = (contact_last_name or "").strip() or (self.last_name or "").strip() or _("Contact")
@@ -883,7 +1029,48 @@ class StudentApplicant(Document):
                 "guardian_mobile_phone": mobile,
             }
         ).insert(ignore_permissions=True)
-        return {"guardian": guardian, "relationship": "Other"}
+        return {
+            "guardian": guardian,
+            "relationship": "Other",
+            "contact": (self.applicant_contact or "").strip() or None,
+        }
+
+    def _ensure_guardian_contact_links(self, *, guardian, student, contact_name: str | None = None):
+        resolved_contact = (contact_name or "").strip()
+        if not resolved_contact:
+            resolved_contact = (
+                frappe.db.get_value(
+                    "Contact Email",
+                    {"email_id": normalize_email_value(guardian.guardian_email)},
+                    "parent",
+                )
+                or ""
+            ).strip()
+        if not resolved_contact:
+            resolved_contact = ensure_contact_for_email(
+                first_name=guardian.guardian_first_name,
+                last_name=guardian.guardian_last_name,
+                email=guardian.guardian_email,
+                phone=guardian.guardian_mobile_phone,
+            )
+        if not resolved_contact:
+            return
+
+        ensure_contact_dynamic_link(
+            contact_name=resolved_contact,
+            link_doctype="Student Applicant",
+            link_name=self.name,
+        )
+        ensure_contact_dynamic_link(
+            contact_name=resolved_contact,
+            link_doctype="Guardian",
+            link_name=guardian.name,
+        )
+        ensure_contact_dynamic_link(
+            contact_name=resolved_contact,
+            link_doctype="Student",
+            link_name=student.name,
+        )
 
     def _ensure_guardian_user_and_roles(self, guardian):
         if not guardian.user:

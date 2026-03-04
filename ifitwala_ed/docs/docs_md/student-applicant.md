@@ -3,11 +3,11 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.9.0"
+version: "1.10.0"
 last_change_date: "2026-03-04"
-summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
+summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, policies, and guardian intake/contact carry-over."
 seo_title: "Student Applicant: The Admission Record of Truth"
-seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
+seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, policies, and guardian intake/contact carry-over."
 ---
 
 ## Student Applicant: The Admission Record of Truth
@@ -189,9 +189,12 @@ If email delivery fails, portal linkage still succeeds (`User` + role + applican
 `guardians` uses child table **Student Applicant Guardian**:
 
 - `guardian` -> `Guardian`
+- `contact` -> `Contact` (tracked guardian contact used for carry-over)
 - `relationship` (Mother/Father/etc.)
 - `is_primary`
 - `can_consent`
+- guardian identity/profile fields mirrored from `Guardian` (`salutation`, names, email, mobile, work fields, guardian flags)
+- `use_applicant_contact` to explicitly reuse `Student Applicant.applicant_contact` for a guardian row
 
 No standalone child-doc page is required; behavior is owned by the parent lifecycle.
 
@@ -318,7 +321,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-02-21)
+### Latest Technical Snapshot (2026-03-04)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
@@ -341,6 +344,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - pages:
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantOverview.vue`
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantHealth.vue`
+    - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantProfile.vue` (includes optional guardian intake section controlled by Admission Settings)
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantPolicies.vue`
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantSubmit.vue`
@@ -384,6 +388,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - requires an active `Program Enrollment` for the promoted student
   - provisions/links Guardian + Student access identities and roles
   - links guardians to Student in canonical Student guardian rows
+  - links tracked guardian Contact rows to `Student Applicant`, `Guardian`, and promoted `Student`
   - is idempotent (re-run does not duplicate users or guardian links)
 - **Link query endpoints**:
   - `academic_year_intent_query`

@@ -331,6 +331,299 @@
 					</label>
 				</div>
 			</div>
+
+			<div
+				v-if="guardiansEnabled"
+				class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft"
+			>
+				<div class="flex flex-wrap items-start justify-between gap-3">
+					<div>
+						<p class="type-body-strong text-ink">{{ __('Guardians') }}</p>
+						<p class="mt-1 type-caption text-ink/60">
+							{{
+								__('Add one or more guardians and their contact details for promotion readiness.')
+							}}
+						</p>
+					</div>
+					<button
+						type="button"
+						class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70 disabled:opacity-50"
+						:disabled="isReadOnly || saving"
+						@click="addGuardianRow"
+					>
+						{{ __('Add guardian') }}
+					</button>
+				</div>
+
+				<div v-if="!guardians.length" class="mt-4 rounded-xl border border-border/60 px-3 py-3">
+					<p class="type-body text-ink/70">{{ __('No guardians added yet.') }}</p>
+				</div>
+
+				<div v-else class="mt-4 space-y-4">
+					<div
+						v-for="(guardian, idx) in guardians"
+						:key="guardian.name || `guardian-${idx}`"
+						class="rounded-xl border border-border/60 bg-surface/40 px-3 py-3"
+					>
+						<div class="flex flex-wrap items-center justify-between gap-3">
+							<p class="type-body-strong text-ink">
+								{{ __('Guardian #{0}').replace('{0}', String(idx + 1)) }}
+							</p>
+							<button
+								type="button"
+								class="rounded-full border border-rose-200 bg-white px-3 py-1 type-caption text-rose-700 disabled:opacity-50"
+								:disabled="isReadOnly || saving"
+								@click="removeGuardianRow(idx)"
+							>
+								{{ __('Remove') }}
+							</button>
+						</div>
+
+						<div class="mt-3 grid gap-4 md:grid-cols-2">
+							<label class="block md:col-span-2">
+								<span class="type-caption text-ink/60">{{ __('Relationship to student') }}</span>
+								<select
+									v-model="guardian.relationship"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								>
+									<option value="">{{ __('Select') }}</option>
+									<option
+										v-for="item in options.guardian_relationships || []"
+										:key="`rel-${idx}-${item}`"
+										:value="item"
+									>
+										{{ item }}
+									</option>
+								</select>
+							</label>
+
+							<label class="flex items-center gap-2 md:col-span-2">
+								<input
+									v-model="guardian.use_applicant_contact"
+									type="checkbox"
+									class="h-4 w-4 rounded border-border/70"
+									:disabled="isReadOnly || saving"
+								/>
+								<span class="type-caption text-ink/70">{{
+									__('Use applicant contact for this guardian')
+								}}</span>
+							</label>
+
+							<div class="md:col-span-2">
+								<p class="type-caption text-ink/60">{{ __('Tracked contact') }}</p>
+								<p class="mt-1 type-body text-ink/80">{{ displayText(guardian.contact) }}</p>
+							</div>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('Salutation') }}</span>
+								<select
+									v-model="guardian.salutation"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								>
+									<option value="">{{ __('Select') }}</option>
+									<option
+										v-for="item in options.salutations || []"
+										:key="`sal-${idx}-${item.value}`"
+										:value="item.value"
+									>
+										{{ item.label }}
+									</option>
+								</select>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('Gender') }}</span>
+								<select
+									v-model="guardian.guardian_gender"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								>
+									<option value="">{{ __('Select') }}</option>
+									<option
+										v-for="item in options.guardian_genders || []"
+										:key="`gg-${idx}-${item}`"
+										:value="item"
+									>
+										{{ item }}
+									</option>
+								</select>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('First name') }}</span>
+								<input
+									v-model="guardian.guardian_first_name"
+									type="text"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								/>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('Last name') }}</span>
+								<input
+									v-model="guardian.guardian_last_name"
+									type="text"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								/>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('Full name') }}</span>
+								<input
+									v-model="guardian.guardian_full_name"
+									type="text"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink/70 focus:outline-none"
+									disabled
+								/>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('Personal email') }}</span>
+								<input
+									v-model="guardian.guardian_email"
+									type="email"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								/>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('Mobile phone') }}</span>
+								<input
+									v-model="guardian.guardian_mobile_phone"
+									type="text"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								/>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('Employment sector') }}</span>
+								<select
+									v-model="guardian.employment_sector"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								>
+									<option value="">{{ __('Select') }}</option>
+									<option
+										v-for="item in options.guardian_employment_sectors || []"
+										:key="`ges-${idx}-${item}`"
+										:value="item"
+									>
+										{{ item }}
+									</option>
+								</select>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('Work place') }}</span>
+								<input
+									v-model="guardian.work_place"
+									type="text"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								/>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('Designation at work') }}</span>
+								<input
+									v-model="guardian.guardian_designation"
+									type="text"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								/>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('Work email') }}</span>
+								<input
+									v-model="guardian.guardian_work_email"
+									type="email"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								/>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('Work phone') }}</span>
+								<input
+									v-model="guardian.guardian_work_phone"
+									type="text"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								/>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('Photo URL') }}</span>
+								<input
+									v-model="guardian.guardian_image"
+									type="text"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									:disabled="isReadOnly || saving"
+								/>
+							</label>
+
+							<label class="block">
+								<span class="type-caption text-ink/60">{{ __('User ID') }}</span>
+								<input
+									v-model="guardian.user"
+									type="text"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink/70 focus:outline-none"
+									disabled
+								/>
+							</label>
+
+							<label class="flex items-center gap-2">
+								<input
+									v-model="guardian.is_primary"
+									type="checkbox"
+									class="h-4 w-4 rounded border-border/70"
+									:disabled="isReadOnly || saving"
+								/>
+								<span class="type-caption text-ink/70">{{
+									__('Primary relationship contact')
+								}}</span>
+							</label>
+
+							<label class="flex items-center gap-2">
+								<input
+									v-model="guardian.can_consent"
+									type="checkbox"
+									class="h-4 w-4 rounded border-border/70"
+									:disabled="isReadOnly || saving"
+								/>
+								<span class="type-caption text-ink/70">{{ __('Can consent') }}</span>
+							</label>
+
+							<label class="flex items-center gap-2">
+								<input
+									v-model="guardian.is_primary_guardian"
+									type="checkbox"
+									class="h-4 w-4 rounded border-border/70"
+									:disabled="isReadOnly || saving"
+								/>
+								<span class="type-caption text-ink/70">{{ __('Is primary guardian') }}</span>
+							</label>
+
+							<label class="flex items-center gap-2">
+								<input
+									v-model="guardian.is_financial_guardian"
+									type="checkbox"
+									class="h-4 w-4 rounded border-border/70"
+									:disabled="isReadOnly || saving"
+								/>
+								<span class="type-caption text-ink/70">{{ __('Is financial guardian') }}</span>
+							</label>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 </template>
@@ -344,7 +637,10 @@ import { useAdmissionsSession } from '@/composables/useAdmissionsSession';
 import { __ } from '@/lib/i18n';
 import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals';
 import type { Response as ApplicantProfileResponse } from '@/types/contracts/admissions/get_applicant_profile';
-import type { ApplicantProfile } from '@/types/contracts/admissions/types';
+import type {
+	ApplicantGuardianProfile,
+	ApplicantProfile,
+} from '@/types/contracts/admissions/types';
 
 const service = createAdmissionsService();
 const { session } = useAdmissionsSession();
@@ -359,6 +655,8 @@ const selectedImageFile = ref<File | null>(null);
 const imageInput = ref<HTMLInputElement | null>(null);
 
 const profile = ref<ApplicantProfile>(createEmptyProfile());
+const guardians = ref<ApplicantGuardianProfile[]>([]);
+const guardiansEnabled = ref(false);
 const options = ref<ApplicantProfileResponse['options']>(createEmptyOptions());
 const completeness = ref<ApplicantProfileResponse['completeness']>(createEmptyCompleteness());
 const applicationContext = ref<ApplicantProfileResponse['application_context']>(
@@ -388,6 +686,10 @@ function createEmptyOptions(): ApplicantProfileResponse['options'] {
 		residency_statuses: [],
 		languages: [],
 		countries: [],
+		guardian_relationships: [],
+		guardian_genders: [],
+		guardian_employment_sectors: [],
+		salutations: [],
 	};
 }
 
@@ -415,6 +717,116 @@ function displayText(value: unknown): string {
 	return text || __('Not provided');
 }
 
+function createEmptyGuardian(): ApplicantGuardianProfile {
+	return {
+		name: '',
+		guardian: '',
+		contact: '',
+		use_applicant_contact: false,
+		relationship: 'Other',
+		is_primary: false,
+		can_consent: true,
+		salutation: '',
+		guardian_full_name: '',
+		guardian_first_name: '',
+		guardian_last_name: '',
+		guardian_gender: '',
+		guardian_mobile_phone: '',
+		guardian_email: '',
+		guardian_work_email: '',
+		guardian_work_phone: '',
+		guardian_image: '',
+		user: '',
+		is_primary_guardian: false,
+		is_financial_guardian: false,
+		employment_sector: '',
+		work_place: '',
+		guardian_designation: '',
+	};
+}
+
+function normalizeBoolean(value: unknown, fallback = false): boolean {
+	if (typeof value === 'boolean') return value;
+	if (typeof value === 'number') return value !== 0;
+	const normalized = String(value || '')
+		.trim()
+		.toLowerCase();
+	if (!normalized) return fallback;
+	return ['1', 'true', 'yes', 'on'].includes(normalized);
+}
+
+function normalizeGuardianRow(
+	input: ApplicantGuardianProfile | null | undefined
+): ApplicantGuardianProfile {
+	const row = input || {};
+	return {
+		...createEmptyGuardian(),
+		...row,
+		name: String(row.name || '').trim(),
+		guardian: String(row.guardian || '').trim(),
+		contact: String(row.contact || '').trim(),
+		relationship: String(row.relationship || '').trim() || 'Other',
+		salutation: String(row.salutation || '').trim(),
+		guardian_full_name: String(row.guardian_full_name || '').trim(),
+		guardian_first_name: String(row.guardian_first_name || '').trim(),
+		guardian_last_name: String(row.guardian_last_name || '').trim(),
+		guardian_gender: String(row.guardian_gender || '').trim(),
+		guardian_mobile_phone: String(row.guardian_mobile_phone || '').trim(),
+		guardian_email: String(row.guardian_email || '').trim(),
+		guardian_work_email: String(row.guardian_work_email || '').trim(),
+		guardian_work_phone: String(row.guardian_work_phone || '').trim(),
+		guardian_image: String(row.guardian_image || '').trim(),
+		user: String(row.user || '').trim(),
+		employment_sector: String(row.employment_sector || '').trim(),
+		work_place: String(row.work_place || '').trim(),
+		guardian_designation: String(row.guardian_designation || '').trim(),
+		use_applicant_contact: normalizeBoolean(row.use_applicant_contact, false),
+		is_primary: normalizeBoolean(row.is_primary, false),
+		can_consent: normalizeBoolean(row.can_consent, true),
+		is_primary_guardian: normalizeBoolean(row.is_primary_guardian, false),
+		is_financial_guardian: normalizeBoolean(row.is_financial_guardian, false),
+	};
+}
+
+function guardianRowIsEmpty(row: ApplicantGuardianProfile): boolean {
+	return !(
+		String(row.guardian || '').trim() ||
+		String(row.guardian_first_name || '').trim() ||
+		String(row.guardian_last_name || '').trim() ||
+		String(row.guardian_email || '').trim() ||
+		String(row.guardian_mobile_phone || '').trim() ||
+		String(row.salutation || '').trim() ||
+		String(row.guardian_work_email || '').trim() ||
+		String(row.guardian_work_phone || '').trim() ||
+		String(row.employment_sector || '').trim() ||
+		String(row.work_place || '').trim() ||
+		String(row.guardian_designation || '').trim() ||
+		String(row.guardian_image || '').trim()
+	);
+}
+
+function guardianRowsForSubmit(): ApplicantGuardianProfile[] {
+	return guardians.value
+		.map(row => normalizeGuardianRow(row))
+		.filter(row => !guardianRowIsEmpty(row));
+}
+
+function addGuardianRow() {
+	if (isReadOnly.value) {
+		actionError.value = __('This application is read-only.');
+		return;
+	}
+	guardians.value = [...guardians.value, createEmptyGuardian()];
+}
+
+function removeGuardianRow(index: number) {
+	if (isReadOnly.value) {
+		actionError.value = __('This application is read-only.');
+		return;
+	}
+	guardians.value = guardians.value.filter((_item, idx) => idx !== index);
+}
+
 function applyPayload(payload: ApplicantProfileResponse) {
 	profile.value = {
 		...createEmptyProfile(),
@@ -423,6 +835,10 @@ function applyPayload(payload: ApplicantProfileResponse) {
 	options.value = payload.options || createEmptyOptions();
 	completeness.value = payload.completeness || createEmptyCompleteness();
 	applicationContext.value = payload.application_context || createEmptyApplicationContext();
+	guardiansEnabled.value = Boolean(payload.guardian_section_enabled);
+	guardians.value = ((payload.guardians || []) as ApplicantGuardianProfile[]).map(row =>
+		normalizeGuardianRow(row)
+	);
 	applicantImage.value = (payload.applicant_image || '').trim();
 	selectedImageFile.value = null;
 	if (imageInput.value) imageInput.value.value = '';
@@ -466,6 +882,7 @@ async function saveProfile() {
 			student_nationality: profile.value.student_nationality || '',
 			student_second_nationality: profile.value.student_second_nationality || '',
 			residency_status: profile.value.residency_status || '',
+			guardians: guardiansEnabled.value ? guardianRowsForSubmit() : [],
 		});
 		applyPayload(payload);
 	} catch (err) {

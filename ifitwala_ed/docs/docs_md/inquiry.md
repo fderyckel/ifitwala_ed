@@ -3,7 +3,7 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.3.6"
+version: "1.3.7"
 last_change_date: "2026-03-04"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
@@ -35,7 +35,7 @@ Inquiry gives teams visibility on response speed and ownership so no inbound req
 |---|---|---|
 | `New` | First capture, not yet assigned | Set automatically on insert if empty (`after_insert`). |
 | `Assigned` | Owner set, follow-up deadline active | Reached through assignment flows (`assign_inquiry` / `reassign_inquiry` -> `mark_assigned`) with admissions permission and a valid admissions assignee. |
-| `Contacted` | First outreach completed | Reached from `New` or `Assigned` through `mark_contacted` with admissions permission. Can also be triggered by ToDo-close automation when the current assignee closes the linked task. |
+| `Contacted` | First outreach completed | Reached from `New` or `Assigned` through `mark_contacted` with admissions permission. Can also be triggered by ToDo-close automation when the current assignee closes the linked task. `assigned_to` remains populated as the latest assignee for reporting/distribution analysis. |
 | `Qualified` | Confirmed as admissions-ready | Reached only from `Contacted` through `mark_qualified` with admissions permission. |
 | `Archived` | Closed terminal state | Reached from any non-archived state through `archive` with admissions permission. |
 
@@ -51,6 +51,7 @@ Allowed transitions are strictly server-validated:
 
 <DoDont doTitle="Do" dontTitle="Don't">
   <Do>Use `Assign`/`Reassign` actions so ownership, SLA fields, and ToDo artifacts stay consistent.</Do>
+  <Do>Treat `Assigned To` as the latest assignee history field; it persists after `Contacted` and updates on reassignment.</Do>
   <Do>Move state with named actions (`Mark Contacted`, `Qualify`, `Archive`) so server transition rules and metrics are enforced.</Do>
   <Dont>Manually edit workflow fields to skip required transitions.</Dont>
   <Dont>Treat every inquiry as admissions conversion; convert only when it is actually admissions-relevant.</Dont>
@@ -119,7 +120,7 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-02-21)
+### Latest Technical Snapshot (2026-03-04)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/inquiry/inquiry.py`
@@ -127,6 +128,7 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
 - **Lifecycle hooks in controller**: `validate`, `before_insert`, `after_insert`, `before_save`
 - **Operational/public methods**: `mark_assigned`, `mark_qualified`, `archive`, `invite_to_apply`, `set_contact_metrics`, `create_contact_from_inquiry`, `mark_contacted`
 - **Workflow-state contract**: only canonical Inquiry states are accepted (`New`, `Assigned`, `Contacted`, `Qualified`, `Archived`); no legacy state alias normalization in Inquiry controller or Inquiry Desk/list scripts.
+- **Assignment contract**: `assigned_to` is retained as the latest assignee across workflow states (including `Contacted`) and changes only through assignment/reassignment actions.
 
 - **DocType**: `Inquiry` (`ifitwala_ed/admission/doctype/inquiry/`)
 - **Autoname**: `INQ-{YYYY}-{MM}-{DD}-{##}`

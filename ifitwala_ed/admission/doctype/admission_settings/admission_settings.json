@@ -13,7 +13,9 @@
   "todo_color",
   "column_break_af5a",
   "sla_enabled",
-  "sla_check_interval_hours"
+  "sla_check_interval_hours",
+  "portal_section",
+  "show_guardians_in_admissions_profile"
  ],
  "fields": [
   {
@@ -55,6 +57,18 @@
   {
    "fieldname": "column_break_af5a",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "portal_section",
+   "fieldtype": "Section Break",
+   "label": "Admissions Portal"
+  },
+  {
+   "default": "0",
+   "description": "If enabled, applicant-facing profile page shows guardian intake rows.",
+   "fieldname": "show_guardians_in_admissions_profile",
+   "fieldtype": "Check",
+   "label": "Show Guardians In Admissions Profile"
   }
  ],
  "grid_page_length": 50,

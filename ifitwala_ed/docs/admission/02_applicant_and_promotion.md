@@ -708,9 +708,8 @@ Create a **pre-student health container** linked to admissions, then sync it to 
 
 **Why**
 
-* There is no authoritative guardian→applicant relationship in the current schema
-* Allowing Guardian-for-Applicant would be legally indefensible
-* This keeps the system internally consistent and auditable
+* Guardian→applicant relationships are now captured explicitly, but policy acknowledgement authority still remains Applicant-only until policy enforcement upgrade is explicitly enabled.
+* This keeps legal acknowledgement ownership deterministic and auditable in current admissions operations.
 
 **What Codex implements**
 
@@ -718,7 +717,7 @@ Create a **pre-student health container** linked to admissions, then sync it to 
 * Update docs to explicitly state this rule
 * Remove/clarify any wording implying guardian consent during admissions
 
-#### Phase 2 — Introduce explicit Applicant–Guardian relationship (FUTURE)
+#### Phase 2 — Explicit Applicant–Guardian relationship (IMPLEMENTED)
 
 **What is added**
 
@@ -728,10 +727,13 @@ DocType: `Student Applicant Guardian`
 
 Fields:
 
-* `guardian` (Link → Guardian, required)
+* `guardian` (Link → Guardian, optional for pre-promotion capture)
+* `contact` (Link → Contact, tracked for carry-over)
+* `use_applicant_contact` (checkbox)
 * `relationship` (Select, same options as `Student Guardian.relation`)
 * `is_primary` (checkbox)
 * `can_consent` (checkbox, default = true)
+* guardian profile fields mirrored from `Guardian` (name/email/mobile/work/flags)
 
 **What this enables**
 
@@ -743,11 +745,11 @@ Fields:
   * Primary vs secondary guardians
   * Consent eligibility flags
 
-**What Codex does NOT do yet**
+**What remains intentionally unchanged**
 
-* Do not infer guardian authority
-* Do not backfill historical data
-* Do not change Phase-1 acknowledgements
+* Do not infer guardian policy authority from `applicant_user`
+* Do not auto-backfill historical consent authority decisions
+* Keep current Applicant-only acknowledgement enforcement unless policy workflow is explicitly upgraded
 
 #### Phase 3 — Upgrade policy enforcement logic (AFTER Phase 2)
 
@@ -1175,8 +1177,8 @@ Policy acknowledgements during admissions are therefore:
 * **Acknowledged for:** Applicant
 * **Acknowledged by:** Admissions Applicant user only
 
-The system does **not** currently record guardian relationships at the applicant stage.
-As a result:
+The system now records guardian relationships at the applicant stage via `Student Applicant Guardian` rows.
+Current policy behavior remains:
 
 * Guardian roles are **not permitted** to acknowledge policies for Applicants
 * Guardian authority is **not inferred** from `applicant_user`
@@ -1184,19 +1186,13 @@ As a result:
 
 This model is valid for lightweight admissions flows and ensures internal consistency and auditability.
 
-### Known Limitation (Phase 1)
+### Current limitation (acknowledgement authority)
 
-The system does not currently model:
-
-* guardian→applicant relationships
-* multiple guardians
-* guardian-specific consent authority during admissions
-
-This limitation is acknowledged and documented.
+Even with explicit guardian rows, policy acknowledgements for applicant context remain Applicant-only in the current operational phase.
 
 ### Phase 2 — Explicit Applicant–Guardian model (definition)
 
-Phase 2 introduces a **new, explicit relationship** between a `Student Applicant` and one or more `Guardian` records.
+Phase 2 provides an explicit relationship between a `Student Applicant` and one or more `Guardian` records.
 
 New child table on `Student Applicant`:
 
@@ -1204,10 +1200,13 @@ DocType: `Student Applicant Guardian`
 
 Fields:
 
-* `guardian` (Link → Guardian, required)
+* `guardian` (Link → Guardian, optional for pre-promotion capture)
+* `contact` (Link → Contact)
+* `use_applicant_contact` (checkbox)
 * `relationship` (Select, same options as `Student Guardian.relation`)
 * `is_primary` (checkbox)
 * `can_consent` (checkbox, default = true)
+* guardian profile fields mirrored from `Guardian`
 
 This mirrors the existing Student ↔ Guardian model and removes all implicit assumptions about who is allowed to act during admissions.
 

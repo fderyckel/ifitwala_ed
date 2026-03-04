@@ -3,11 +3,11 @@ title: "Admission Settings: Admissions SLA and Assignment Policy"
 slug: admission-settings
 category: Admission
 doc_order: 1
-version: "1.2.1"
+version: "1.3.0"
 last_change_date: "2026-03-04"
-summary: "Define admissions SLA windows and assignment task color defaults used by Inquiry assignment, scheduler recompute, and dashboard horizons."
+summary: "Define admissions SLA windows, assignment task color defaults, and admissions-portal guardian section visibility."
 seo_title: "Admission Settings: Admissions SLA and Assignment Policy"
-seo_description: "Define admissions SLA windows and assignment task color defaults used by Inquiry assignment, scheduler recompute, and dashboard horizons."
+seo_description: "Define admissions SLA windows, assignment task color defaults, and admissions-portal guardian section visibility."
 ---
 
 ## Before You Start (Prerequisites)
@@ -16,17 +16,18 @@ seo_description: "Define admissions SLA windows and assignment task color defaul
 - Confirm your admissions intake flow is using [**Inquiry**](/docs/en/inquiry/), because these settings are consumed from Inquiry services.
 - Align SLA day windows and assignment color conventions with operations leadership before changing values in production.
 
-`Admission Settings` is a Single DocType that stores operational defaults for admissions SLA deadlines and assignment ToDo styling.
+`Admission Settings` is a Single DocType that stores operational defaults for admissions SLA deadlines, assignment ToDo styling, and admissions portal profile surface toggles.
 
 ## Authoritative Contract
 
-This doctype owns five configuration fields:
+This doctype owns six configuration fields:
 
 - `first_contact_sla_days`: days from inquiry submission to first-contact due date.
 - `followup_sla_days`: days from assignment to follow-up due date.
 - `todo_color`: color used when creating assignment ToDo rows from admissions assignment actions.
 - `sla_enabled`: boolean setting stored in the doc.
 - `sla_check_interval_hours`: integer setting stored in the doc.
+- `show_guardians_in_admissions_profile`: boolean toggle to show/hide guardian intake rows in `/admissions/profile`.
 
 ## How to Read the Two SLAs
 
@@ -55,6 +56,7 @@ This shows why `followup_sla_days` does not need to be less than `first_contact_
 2. First-contact and follow-up SLA dates are derived from these settings in admissions utility flows, not from per-user preferences.
 3. Assignment ToDo color falls back to `"blue"` when `todo_color` is empty during assignment/reassignment calls.
 4. Current scheduler execution is hourly via hooks; `sla_enabled` and `sla_check_interval_hours` are currently stored settings and are not used to gate or reschedule that hook path.
+5. Guardian intake in admissions portal profile is controlled by `show_guardians_in_admissions_profile`; when disabled, applicant portal profile payload omits editable guardian rows.
 
 ## Where It Is Used Across the ERP
 
@@ -108,6 +110,7 @@ Treat SLA value updates as policy changes. Mid-cycle edits can shift operational
   - `todo_color` (`Color`)
   - `sla_enabled` (`Check`, default `0`)
   - `sla_check_interval_hours` (`Int`)
+  - `show_guardians_in_admissions_profile` (`Check`, default `0`)
 - **Runtime consumers**:
   - `ifitwala_ed/admission/admission_utils.py`
     - `_get_first_contact_sla_days_default`
@@ -117,6 +120,9 @@ Treat SLA value updates as policy changes. Mid-cycle edits can shift operational
     - `check_sla_breaches` (first-contact due date backfill)
   - `ifitwala_ed/api/inquiry.py`
     - `get_dashboard_data` reads `followup_sla_days` for upcoming horizon
+  - `ifitwala_ed/api/admissions_portal.py`
+    - `_guardians_feature_enabled` controls whether `/admissions/profile` payload exposes guardian intake rows
+    - `update_applicant_profile` applies guardian rows only when the setting is enabled
   - `ifitwala_ed/hooks.py`
     - hourly scheduler entrypoint: `ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep`
 - **Operational nuance**:

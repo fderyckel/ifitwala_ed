@@ -807,6 +807,7 @@ No business logic.
 
 * Maintain student profile fields required for promotion
 * Upload/update applicant-owned student image
+* Optionally maintain one-or-more guardian intake rows when enabled in `Admission Settings.show_guardians_in_admissions_profile`
 
 **Reads**
 
@@ -815,6 +816,7 @@ No business logic.
 **Writes**
 
 * profile update
+* guardian intake row update (when enabled)
 * profile image upload (governed)
 
 ---

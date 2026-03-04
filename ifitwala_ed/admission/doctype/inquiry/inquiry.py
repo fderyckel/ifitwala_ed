@@ -324,9 +324,8 @@ class Inquiry(Document):
         # 🔎 Stamp response-time metrics immediately after state flip
         self.set_contact_metrics()
 
-        # Optionally clear assignment on the doc
-        if cint(complete_todo) and prev_assignee:
-            self.db_set("assigned_to", None, update_modified=False)
+        # Keep assigned_to as persistent assignee history for reporting/distribution analytics.
+        # complete_todo controls ToDo closure only, not assignee field erasure.
 
         # Recompute SLA and persist
         update_sla_status(self)

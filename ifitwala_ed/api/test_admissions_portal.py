@@ -404,6 +404,10 @@ class TestSubmitApplication(FrappeTestCase):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._ensure_role("Admissions Applicant")
+        self._guardians_setting_before = frappe.db.get_single_value(
+            "Admission Settings",
+            "show_guardians_in_admissions_profile",
+        )
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
         self.applicant_user = self._create_applicant_user()
@@ -415,6 +419,11 @@ class TestSubmitApplication(FrappeTestCase):
 
     def tearDown(self):
         frappe.set_user("Administrator")
+        frappe.db.set_single_value(
+            "Admission Settings",
+            "show_guardians_in_admissions_profile",
+            self._guardians_setting_before or 0,
+        )
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
@@ -542,6 +551,85 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(profile.get("student_preferred_name"), "Portal Preferred")
         self.assertEqual(profile.get("student_nationality"), country)
         self.assertEqual(profile.get("student_first_language"), language)
+
+    def test_update_applicant_profile_persists_guardians_when_enabled(self):
+        self._set_guardians_section_setting(1)
+        guardian_email = f"guardian-{frappe.generate_hash(length=8)}@example.com"
+
+        frappe.set_user(self.applicant_user)
+        payload = update_applicant_profile(
+            student_applicant=self.applicant.name,
+            guardians=[
+                {
+                    "relationship": "Mother",
+                    "can_consent": 1,
+                    "is_primary": 1,
+                    "use_applicant_contact": 0,
+                    "guardian_first_name": "Mina",
+                    "guardian_last_name": "Portal",
+                    "guardian_email": guardian_email,
+                    "guardian_mobile_phone": "+14155550101",
+                    "guardian_gender": "Female",
+                }
+            ],
+        )
+        self.assertTrue(payload.get("ok"))
+        self.assertTrue(bool(payload.get("guardian_section_enabled")))
+        guardians = payload.get("guardians") or []
+        self.assertEqual(len(guardians), 1)
+        self.assertEqual((guardians[0].get("guardian_email") or "").strip(), guardian_email)
+        self.assertTrue(bool((guardians[0].get("contact") or "").strip()))
+
+        self.applicant.reload()
+        rows = self.applicant.get("guardians") or []
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].guardian_first_name, "Mina")
+        self.assertEqual(rows[0].guardian_last_name, "Portal")
+        self.assertEqual((rows[0].guardian_email or "").strip(), guardian_email)
+        self.assertTrue(bool((rows[0].contact or "").strip()))
+
+        self.assertTrue(
+            bool(
+                frappe.db.exists(
+                    "Dynamic Link",
+                    {
+                        "parenttype": "Contact",
+                        "parentfield": "links",
+                        "parent": rows[0].contact,
+                        "link_doctype": "Student Applicant",
+                        "link_name": self.applicant.name,
+                    },
+                )
+            )
+        )
+
+    def test_update_applicant_profile_rejects_unlinked_contact_email_for_guardian(self):
+        self._set_guardians_section_setting(1)
+        foreign_email = f"foreign-{frappe.generate_hash(length=8)}@example.com"
+        contact = frappe.get_doc(
+            {
+                "doctype": "Contact",
+                "first_name": "Foreign",
+                "last_name": "Contact",
+                "email_ids": [{"email_id": foreign_email, "is_primary": 1}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Contact", contact.name))
+
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.ValidationError):
+            update_applicant_profile(
+                student_applicant=self.applicant.name,
+                guardians=[
+                    {
+                        "relationship": "Father",
+                        "guardian_first_name": "Other",
+                        "guardian_last_name": "Family",
+                        "guardian_email": foreign_email,
+                        "guardian_mobile_phone": "+14155550102",
+                    }
+                ],
+            )
 
     def test_get_applicant_profile_includes_applicant_image(self):
         image_url = f"/private/files/applicant-{frappe.generate_hash(length=6)}.png"
@@ -781,6 +869,13 @@ class TestSubmitApplication(FrappeTestCase):
         doc.reload()
         self._created.append(("Student Applicant", doc.name))
         return doc
+
+    def _set_guardians_section_setting(self, value: int):
+        frappe.db.set_single_value(
+            "Admission Settings",
+            "show_guardians_in_admissions_profile",
+            1 if int(value or 0) else 0,
+        )
 
     def _get_or_create_language_xtra(self) -> str:
         existing = frappe.get_all("Language Xtra", filters={"enabled": 1}, fields=["name"], limit=1)

@@ -508,6 +508,75 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertIn("Student", role_names)
         self.assertNotIn("Admissions Applicant", role_names)
 
+    def test_upgrade_identity_creates_guardian_from_applicant_guardian_profile_row(self):
+        applicant = self._create_student_applicant()
+        self._create_applicant_health_profile(applicant.name)
+
+        guardian_email = f"guardian-{frappe.generate_hash(length=8)}@example.com"
+        applicant.append(
+            "guardians",
+            {
+                "relationship": "Father",
+                "can_consent": 1,
+                "guardian_first_name": "Profile",
+                "guardian_last_name": "Guardian",
+                "guardian_email": guardian_email,
+                "guardian_mobile_phone": "+14155550155",
+                "guardian_gender": "Male",
+            },
+        )
+        applicant.save(ignore_permissions=True)
+
+        applicant.db_set("application_status", "Invited", update_modified=False)
+        applicant.reload()
+        applicant.mark_in_progress()
+        applicant.submit_application()
+        applicant.mark_under_review()
+        applicant.db_set("application_status", "Approved", update_modified=False)
+        applicant.reload()
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+
+        original_exists = frappe.db.exists
+
+        def exists_with_enrollment(doctype, filters=None, *args, **kwargs):
+            if doctype == "Program Enrollment" and isinstance(filters, dict):
+                if filters.get("student") == student_name and int(filters.get("archived") or 0) == 0:
+                    return "PE-MOCK-0002"
+            return original_exists(doctype, filters, *args, **kwargs)
+
+        with patch.object(frappe.db, "exists", side_effect=exists_with_enrollment):
+            result = applicant.upgrade_identity()
+
+        self.assertTrue(result.get("ok"))
+        self.assertEqual(len(result.get("guardians_linked") or []), 1)
+
+        guardian_name = frappe.db.get_value("Guardian", {"guardian_email": guardian_email}, "name")
+        self.assertTrue(bool(guardian_name))
+        self._created.append(("Guardian", guardian_name))
+
+        student = frappe.get_doc("Student", student_name)
+        linked_guardians = [row.guardian for row in (student.get("guardians") or [])]
+        self.assertIn(guardian_name, linked_guardians)
+
+        contact_name = frappe.db.get_value("Contact Email", {"email_id": guardian_email}, "parent")
+        self.assertTrue(bool(contact_name))
+        self.assertTrue(
+            bool(
+                frappe.db.exists(
+                    "Dynamic Link",
+                    {
+                        "parenttype": "Contact",
+                        "parentfield": "links",
+                        "parent": contact_name,
+                        "link_doctype": "Student",
+                        "link_name": student_name,
+                    },
+                )
+            )
+        )
+
     def _ensure_admissions_role(self, user, role):
         if not frappe.db.exists("Role", role):
             frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)

@@ -542,6 +542,9 @@ Front matter rule for markdown docs under `ifitwala_ed/docs/docs_md/`:
 * Section-order rule:
   * `## Technical Notes (IT)` MUST be the final top-level section in the document.
   * No top-level sections may appear after `## Technical Notes (IT)`.
+* Figure-anchor preservation rule:
+  * Preserve documentation figure tags exactly as written (for example `[[fig:1 size=auto]]`).
+  * Agents MUST NOT remove, rename, or reformat these tags because they map to screenshots/photos in the docs pipeline.
 
 ---
 

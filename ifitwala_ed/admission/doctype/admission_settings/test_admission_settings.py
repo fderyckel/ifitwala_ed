@@ -19,3 +19,13 @@ class TestAdmissionSettings(FrappeTestCase):
         self.assertEqual(updated_settings.sla_enabled, 1)
 
         frappe.db.set_single_value("Admission Settings", "sla_enabled", original_sla)
+
+    def test_guardians_profile_setting_roundtrip(self):
+        original_value = frappe.db.get_single_value("Admission Settings", "show_guardians_in_admissions_profile")
+        frappe.db.set_single_value("Admission Settings", "show_guardians_in_admissions_profile", 1)
+        self.assertEqual(frappe.db.get_single_value("Admission Settings", "show_guardians_in_admissions_profile"), 1)
+        frappe.db.set_single_value(
+            "Admission Settings",
+            "show_guardians_in_admissions_profile",
+            original_value or 0,
+        )

@@ -7,19 +7,56 @@
  "engine": "InnoDB",
  "field_order": [
   "guardian",
+  "contact",
+  "use_applicant_contact",
   "relationship",
   "is_primary",
-  "can_consent"
+  "can_consent",
+  "section_break_profile",
+  "salutation",
+  "guardian_full_name",
+  "guardian_first_name",
+  "guardian_last_name",
+  "guardian_gender",
+  "guardian_mobile_phone",
+  "guardian_email",
+  "column_break_profile",
+  "user",
+  "guardian_image",
+  "is_primary_guardian",
+  "is_financial_guardian",
+  "work_details_section",
+  "employment_sector",
+  "work_place",
+  "guardian_designation",
+  "column_break_work",
+  "guardian_work_email",
+  "guardian_work_phone"
  ],
  "fields": [
   {
-   "columns": 5,
+   "columns": 4,
    "fieldname": "guardian",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Guardian",
-   "options": "Guardian",
-   "reqd": 1
+   "options": "Guardian"
+  },
+  {
+   "columns": 4,
+   "fieldname": "contact",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Contact",
+   "options": "Contact",
+   "read_only": 1
+  },
+  {
+   "columns": 4,
+   "default": "0",
+   "fieldname": "use_applicant_contact",
+   "fieldtype": "Check",
+   "label": "Use Applicant Contact"
   },
   {
    "columns": 4,
@@ -45,6 +82,114 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Can Consent"
+  },
+  {
+   "fieldname": "section_break_profile",
+   "fieldtype": "Section Break",
+   "label": "Guardian Profile"
+  },
+  {
+   "fieldname": "salutation",
+   "fieldtype": "Link",
+   "label": "Salutation",
+   "options": "Salutation"
+  },
+  {
+   "fieldname": "guardian_full_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Full Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "guardian_first_name",
+   "fieldtype": "Data",
+   "label": "First Name"
+  },
+  {
+   "fieldname": "guardian_last_name",
+   "fieldtype": "Data",
+   "label": "Last Name"
+  },
+  {
+   "fieldname": "guardian_gender",
+   "fieldtype": "Select",
+   "label": "Gender",
+   "options": "Female\nMale\nOther\nPrefer Not To Say"
+  },
+  {
+   "fieldname": "guardian_mobile_phone",
+   "fieldtype": "Data",
+   "label": "Mobile Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "guardian_email",
+   "fieldtype": "Data",
+   "label": "Personal Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "column_break_profile",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User ID",
+   "options": "User"
+  },
+  {
+   "fieldname": "guardian_image",
+   "fieldtype": "Attach Image",
+   "label": "Photo"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_primary_guardian",
+   "fieldtype": "Check",
+   "label": "Is Primary Guardian"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_financial_guardian",
+   "fieldtype": "Check",
+   "label": "Is Financial Guardian"
+  },
+  {
+   "fieldname": "work_details_section",
+   "fieldtype": "Section Break",
+   "label": "Work Details"
+  },
+  {
+   "fieldname": "employment_sector",
+   "fieldtype": "Select",
+   "label": "Employment Sector",
+   "options": "Corporate \u2013 Finance / Banking\nCorporate \u2013 Tech / IT\nCorporate \u2013 Manufacturing\nCorporate \u2013 Retail / FMCG\nCorporate \u2013 Hospitality / Tourism\nCorporate \u2013 Logistics / Transport\nCorporate \u2013 Construction / Engineering\nCorporate \u2013 Real Estate / Property\nHealthcare / Medical\nEducation\nGovernment\nEmbassy / Diplomatic Corps\nNGO / Non-Profit\nArmed Forces\nCreative Industries (Media / Design / Arts)\nSelf-Employed\nFreelance / Consultant\nHomemaker\nRetired\nOther"
+  },
+  {
+   "fieldname": "work_place",
+   "fieldtype": "Data",
+   "label": "Work Place"
+  },
+  {
+   "fieldname": "guardian_designation",
+   "fieldtype": "Data",
+   "label": "Designation at Work"
+  },
+  {
+   "fieldname": "column_break_work",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "guardian_work_email",
+   "fieldtype": "Data",
+   "label": "Work Email"
+  },
+  {
+   "fieldname": "guardian_work_phone",
+   "fieldtype": "Data",
+   "label": "Work Phone"
   }
  ],
  "index_web_pages_for_search": 1,

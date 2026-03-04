@@ -181,6 +181,22 @@ class TestInquiry(FrappeTestCase):
             )
         )
 
+    def test_mark_contacted_complete_todo_keeps_assigned_to(self):
+        inquiry = self._make_inquiry()
+        assignee = "Administrator"
+
+        inquiry.db_set("workflow_state", "Assigned", update_modified=False)
+        inquiry.db_set("assigned_to", assignee, update_modified=False)
+        inquiry.db_set("followup_due_on", frappe.utils.nowdate(), update_modified=False)
+        inquiry.reload()
+
+        with patch("ifitwala_ed.admission.doctype.inquiry.inquiry.ensure_admissions_permission", return_value=assignee):
+            inquiry.mark_contacted(complete_todo=1)
+
+        inquiry.reload()
+        self.assertEqual(inquiry.workflow_state, "Contacted")
+        self.assertEqual(inquiry.assigned_to, assignee)
+
     def _make_organization(self, prefix: str, parent: str | None = None, is_group: int = 0) -> str:
         doc = frappe.get_doc(
             {
