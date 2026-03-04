@@ -26,8 +26,8 @@ class RecommendationTemplate(Document):
         self.school = (self.school or "").strip()
         self.target_document_type = (self.target_document_type or "").strip()
         self.description = (self.description or "").strip()
-        self.minimum_required = max(0, cint(self.minimum_required or 0))
-        self.maximum_allowed = max(1, cint(self.maximum_allowed or 1))
+        self.minimum_required = cint(self.minimum_required or 0)
+        self.maximum_allowed = cint(self.maximum_allowed or 1)
 
     def _validate_scope(self):
         if not self.organization or not self.school:

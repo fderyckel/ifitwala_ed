@@ -17,6 +17,9 @@ class TestStudentApplicant(FrappeTestCase):
         self._ensure_role("Admissions Applicant")
         self._ensure_role("Student")
         self._ensure_role("Guardian")
+        self._ensure_gender("Female")
+        self._ensure_gender("Male")
+        self._ensure_gender("Other")
         self._ensure_admissions_role("Administrator", "Admission Manager")
         frappe.clear_cache(user="Administrator")
         self.staff_user = self._create_user("Admissions", "Staff", add_role="Admission Manager")
@@ -598,6 +601,19 @@ class TestStudentApplicant(FrappeTestCase):
             return
         frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)
         self._created.append(("Role", role))
+
+    def _ensure_gender(self, gender_name: str):
+        if frappe.db.exists("Gender", gender_name):
+            return
+        now = frappe.utils.now()
+        frappe.db.sql(
+            """
+            INSERT INTO `tabGender` (`name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `idx`)
+            VALUES (%s, %s, %s, %s, %s, 0, 0)
+            """,
+            (gender_name, now, now, "Administrator", "Administrator"),
+        )
+        self._created.append(("Gender", gender_name))
 
     def _create_org(self):
         name = f"Org-{frappe.generate_hash(length=6)}"

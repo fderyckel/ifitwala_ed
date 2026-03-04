@@ -27,6 +27,7 @@ Key fields:
 - `organization`, `school`
 - `target_document_type` (`Applicant Document Type`)
 - `minimum_required`, `maximum_allowed`
+  - limits are strict-validated (`minimum_required >= 0`, `maximum_allowed >= 1`, `minimum_required <= maximum_allowed`); invalid values are rejected, not auto-normalized
 - `allow_file_upload`, `file_upload_required`
 - `otp_enforced`
 - `applicant_can_view_status`
