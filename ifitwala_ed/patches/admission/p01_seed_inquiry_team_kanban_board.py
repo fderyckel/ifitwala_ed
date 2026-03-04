@@ -18,10 +18,23 @@ BOARD_CARD_FIELDS = [
 BOARD_FILTERS = [[BOARD_DOCTYPE, "workflow_state", "!=", "Archived"]]
 
 COLUMN_INDICATORS = {
-    "🔴 Overdue": "red",
-    "🟡 Due Today": "orange",
-    "⚪ Upcoming": "blue",
-    "✅ On Track": "green",
+    "🔴 Overdue": "Red",
+    "🟡 Due Today": "Orange",
+    "⚪ Upcoming": "Blue",
+    "✅ On Track": "Green",
+}
+
+VALID_INDICATORS = {
+    "Blue",
+    "Cyan",
+    "Gray",
+    "Green",
+    "Light Blue",
+    "Orange",
+    "Pink",
+    "Purple",
+    "Red",
+    "Yellow",
 }
 
 
@@ -86,7 +99,9 @@ def _apply_board_settings(board_name: str) -> None:
     if indicator_supported:
         for column in board.columns or []:
             target_indicator = COLUMN_INDICATORS.get((column.column_name or "").strip())
-            if target_indicator and (column.indicator or "").strip() != target_indicator:
+            if target_indicator not in VALID_INDICATORS:
+                continue
+            if (column.indicator or "").strip() != target_indicator:
                 column.indicator = target_indicator
                 changed = True
 
