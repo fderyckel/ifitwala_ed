@@ -364,4 +364,8 @@ class Inquiry(Document):
                 if todo_name:
                     frappe.db.set_value("ToDo", todo_name, "status", "Closed", update_modified=False)
 
+            # Keep assignment history on Inquiry even when native assignment cleanup runs.
+            self.db_set("assigned_to", prev_assignee, update_modified=False)
+            self.assigned_to = prev_assignee
+
         return {"ok": True}

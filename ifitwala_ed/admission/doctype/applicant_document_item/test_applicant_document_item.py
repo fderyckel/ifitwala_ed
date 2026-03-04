@@ -31,12 +31,19 @@ class TestApplicantDocumentItem(FrappeTestCase):
     def test_missing_or_invalid_applicant_document_throws_error(self):
         frappe.set_user(self.admission_officer_user)
         with self.assertRaises(frappe.ValidationError):
-            doc = frappe.get_doc({"doctype": "Applicant Document Item", "item_key": "some_key"})
+            doc = frappe.get_doc(
+                {"doctype": "Applicant Document Item", "item_key": "some_key", "item_label": "Some Key"}
+            )
             doc.insert(ignore_permissions=True)
 
         with self.assertRaises(frappe.ValidationError):
             doc = frappe.get_doc(
-                {"doctype": "Applicant Document Item", "applicant_document": "Invalid Doc", "item_key": "some_key"}
+                {
+                    "doctype": "Applicant Document Item",
+                    "applicant_document": "Invalid Doc",
+                    "item_key": "some_key",
+                    "item_label": "Some Key",
+                }
             )
             doc.insert(ignore_permissions=True)
 
@@ -47,6 +54,7 @@ class TestApplicantDocumentItem(FrappeTestCase):
                 "doctype": "Applicant Document Item",
                 "applicant_document": self.applicant_document,
                 "item_key": "unique_key_1",
+                "item_label": "Unique Key 1",
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Item", doc1.name))
@@ -57,6 +65,7 @@ class TestApplicantDocumentItem(FrappeTestCase):
                     "doctype": "Applicant Document Item",
                     "applicant_document": self.applicant_document,
                     "item_key": "unique_key_1",
+                    "item_label": "Unique Key 1 Duplicate",
                 }
             )
             doc2.insert(ignore_permissions=True)
@@ -68,6 +77,7 @@ class TestApplicantDocumentItem(FrappeTestCase):
                 "doctype": "Applicant Document Item",
                 "applicant_document": self.applicant_document,
                 "item_key": "applicant_file",
+                "item_label": "Applicant File",
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Item", doc.name))
@@ -253,7 +263,12 @@ class TestApplicantDocumentItem(FrappeTestCase):
     def _create_item(self, item_key: str):
         frappe.set_user("Administrator")
         doc = frappe.get_doc(
-            {"doctype": "Applicant Document Item", "applicant_document": self.applicant_document, "item_key": item_key}
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": self.applicant_document,
+                "item_key": item_key,
+                "item_label": item_key.replace("_", " ").title(),
+            }
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Item", doc.name))
         return doc
