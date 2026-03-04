@@ -667,7 +667,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			{
 				label: 'Organizational Chart',
 				to: { name: 'staff-organization-chart' },
-				capability: 'analytics_hr',
 			},
 			{ label: 'Leave Balance', to: '/analytics/staff/leave-balance', capability: 'analytics_hr' },
 			{
