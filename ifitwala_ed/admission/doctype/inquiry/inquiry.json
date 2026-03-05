@@ -200,12 +200,13 @@
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2026-02-22 08:04:16.722104",
+ "modified": "2026-03-05 08:55:41.050115",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",
- "naming_rule": "Expression",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
