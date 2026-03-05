@@ -301,8 +301,10 @@
 
 	.admissions-overview__state-card {
 		border-radius: var(--radius-xl);
-		border: 1px solid rgb(var(--border-rgb) / 0.72);
-		background: rgb(var(--surface-rgb) / 0.95);
+		border: 1px solid rgb(var(--sand-rgb) / 0.68);
+		background:
+			radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / 0.56), transparent 64%),
+			rgb(var(--surface-rgb) / 0.92);
 		padding: 1rem;
 	}
 
@@ -351,10 +353,11 @@
 	.admissions-overview__panel,
 	.admissions-overview__completion-section {
 		border-radius: 1.35rem;
-		border: 1px solid rgb(var(--border-rgb) / 0.86);
+		border: 1px solid rgb(var(--sand-rgb) / 0.64);
 		background:
-			radial-gradient(circle at 0% 0%, rgb(var(--sky-rgb) / 0.42), transparent 62%),
-			rgb(var(--surface-strong-rgb) / 0.98);
+			radial-gradient(circle at 0% 0%, rgb(var(--leaf-rgb) / 0.12), transparent 58%),
+			radial-gradient(circle at 100% 0%, rgb(var(--jacaranda-rgb) / 0.1), transparent 62%),
+			rgb(var(--surface-rgb) / 0.94);
 		box-shadow: var(--shadow-soft);
 		padding: 1rem;
 	}
@@ -380,8 +383,8 @@
 		justify-content: space-between;
 		gap: 0.55rem 0.8rem;
 		border-radius: 0.95rem;
-		border: 1px solid rgb(var(--border-rgb) / 0.74);
-		background: rgb(var(--surface-rgb) / 0.8);
+		border: 1px solid rgb(var(--sand-rgb) / 0.64);
+		background: rgb(var(--surface-rgb) / 0.9);
 		padding: 0.7rem 0.85rem;
 	}
 
@@ -449,12 +452,12 @@
 		justify-content: space-between;
 		gap: 0.8rem;
 		border-radius: 1rem;
-		border: 1px solid rgb(var(--border-rgb) / 0.86);
+		border: 1px solid rgb(var(--sand-rgb) / 0.62);
 		background: linear-gradient(
 			90deg,
 			rgb(var(--leaf-rgb) / 0.12) 0,
 			rgb(var(--leaf-rgb) / 0.12) 0.25rem,
-			rgb(var(--surface-rgb) / 0.86) 0.25rem
+			rgb(var(--surface-rgb) / 0.9) 0.25rem
 		);
 		padding: 0.85rem 0.95rem;
 	}
@@ -478,8 +481,8 @@
 		justify-content: space-between;
 		gap: 0.7rem;
 		border-radius: 1rem;
-		border: 1px solid rgb(var(--border-rgb) / 0.84);
-		background: rgb(var(--surface-rgb) / 0.8);
+		border: 1px solid rgb(var(--sand-rgb) / 0.62);
+		background: rgb(var(--surface-rgb) / 0.9);
 		padding: 0.9rem 0.95rem;
 	}
 
@@ -507,7 +510,7 @@
 
 	.admissions-overview__status-pill--pending {
 		border-color: rgb(var(--border-rgb) / 1);
-		background: rgb(var(--surface-strong-rgb) / 1);
+		background: rgb(var(--surface-rgb) / 0.92);
 		color: rgb(var(--slate-rgb) / 0.85);
 	}
 

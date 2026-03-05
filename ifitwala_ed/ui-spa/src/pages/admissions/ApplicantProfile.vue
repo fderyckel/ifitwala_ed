@@ -39,7 +39,7 @@
 			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
 			<button
 				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900"
+				class="mt-3 rounded-full border border-rose-200 bg-surface px-4 py-2 type-caption text-rose-900"
 				@click="loadProfile"
 			>
 				{{ __('Try again') }}
@@ -65,7 +65,7 @@
 				</p>
 			</div>
 
-			<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+			<div class="rounded-2xl border border-border/70 bg-surface px-4 py-4 shadow-soft">
 				<div class="flex flex-wrap items-start justify-between gap-4">
 					<div>
 						<p class="type-body-strong text-ink">{{ __('Student image') }}</p>
@@ -84,7 +84,7 @@
 						/>
 						<button
 							type="button"
-							class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70 disabled:opacity-50"
+							class="rounded-full border border-border/70 bg-surface px-4 py-2 type-caption text-ink/70 disabled:opacity-50"
 							:disabled="isReadOnly || uploadingImage"
 							@click="openImagePicker"
 						>
@@ -165,7 +165,7 @@
 				</p>
 			</div>
 
-			<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+			<div class="rounded-2xl border border-border/70 bg-surface px-4 py-4 shadow-soft">
 				<p class="type-body-strong text-ink">{{ __('Application details') }}</p>
 				<div class="mt-3 grid gap-3 md:grid-cols-2">
 					<div>
@@ -191,7 +191,7 @@
 				</div>
 			</div>
 
-			<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
+			<div class="rounded-2xl border border-border/70 bg-surface px-4 py-4 shadow-soft">
 				<p class="type-body-strong text-ink">{{ __('Student profile') }}</p>
 				<div class="mt-4 grid gap-4 md:grid-cols-2">
 					<label class="block">
@@ -199,7 +199,7 @@
 						<input
 							v-model="profile.student_preferred_name"
 							type="text"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 							:disabled="isReadOnly || saving"
 						/>
 					</label>
@@ -209,7 +209,7 @@
 						<input
 							v-model="profile.student_date_of_birth"
 							type="date"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 							:disabled="isReadOnly || saving"
 						/>
 					</label>
@@ -218,7 +218,7 @@
 						<span class="type-caption text-ink/60">{{ __('Gender') }}</span>
 						<select
 							v-model="profile.student_gender"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 							:disabled="isReadOnly || saving"
 						>
 							<option value="">{{ __('Select') }}</option>
@@ -233,7 +233,7 @@
 						<input
 							v-model="profile.student_mobile_number"
 							type="text"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 							:disabled="isReadOnly || saving"
 						/>
 					</label>
@@ -243,7 +243,7 @@
 						<input
 							v-model="profile.student_joining_date"
 							type="date"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 							disabled
 						/>
 						<p class="mt-1 type-caption text-ink/55">
@@ -255,7 +255,7 @@
 						<span class="type-caption text-ink/60">{{ __('Residency status') }}</span>
 						<select
 							v-model="profile.residency_status"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 							:disabled="isReadOnly || saving"
 						>
 							<option value="">{{ __('Select') }}</option>
@@ -269,7 +269,7 @@
 						<span class="type-caption text-ink/60">{{ __('First language') }}</span>
 						<select
 							v-model="profile.student_first_language"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 							:disabled="isReadOnly || saving"
 						>
 							<option value="">{{ __('Select') }}</option>
@@ -287,7 +287,7 @@
 						<span class="type-caption text-ink/60">{{ __('Second language') }}</span>
 						<select
 							v-model="profile.student_second_language"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 							:disabled="isReadOnly || saving"
 						>
 							<option value="">{{ __('Select') }}</option>
@@ -305,7 +305,7 @@
 						<span class="type-caption text-ink/60">{{ __('Nationality') }}</span>
 						<select
 							v-model="profile.student_nationality"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 							:disabled="isReadOnly || saving"
 						>
 							<option value="">{{ __('Select') }}</option>
@@ -323,7 +323,7 @@
 						<span class="type-caption text-ink/60">{{ __('Second nationality') }}</span>
 						<select
 							v-model="profile.student_second_nationality"
-							class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+							class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 							:disabled="isReadOnly || saving"
 						>
 							<option value="">{{ __('Select') }}</option>
@@ -341,7 +341,7 @@
 
 			<div
 				v-if="guardiansEnabled"
-				class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft"
+				class="rounded-2xl border border-border/70 bg-surface px-4 py-4 shadow-soft"
 			>
 				<div class="flex flex-wrap items-start justify-between gap-3">
 					<div>
@@ -354,7 +354,7 @@
 					</div>
 					<button
 						type="button"
-						class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70 disabled:opacity-50"
+						class="rounded-full border border-border/70 bg-surface px-4 py-2 type-caption text-ink/70 disabled:opacity-50"
 						:disabled="isReadOnly || saving"
 						@click="addGuardianRow"
 					>
@@ -378,7 +378,7 @@
 							</p>
 							<button
 								type="button"
-								class="rounded-full border border-rose-200 bg-white px-3 py-1 type-caption text-rose-700 disabled:opacity-50"
+								class="rounded-full border border-rose-200 bg-surface px-3 py-1 type-caption text-rose-700 disabled:opacity-50"
 								:disabled="isReadOnly || saving"
 								@click="removeGuardianRow(idx)"
 							>
@@ -391,7 +391,7 @@
 								<span class="type-caption text-ink/60">{{ __('Relationship to student') }}</span>
 								<select
 									v-model="guardian.relationship"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								>
 									<option value="">{{ __('Select') }}</option>
@@ -426,7 +426,7 @@
 								<span class="type-caption text-ink/60">{{ __('Salutation') }}</span>
 								<select
 									v-model="guardian.salutation"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								>
 									<option value="">{{ __('Select') }}</option>
@@ -444,7 +444,7 @@
 								<span class="type-caption text-ink/60">{{ __('Gender') }}</span>
 								<select
 									v-model="guardian.guardian_gender"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								>
 									<option value="">{{ __('Select') }}</option>
@@ -464,7 +464,7 @@
 									v-model="guardian.guardian_first_name"
 									type="text"
 									required
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -475,7 +475,7 @@
 									v-model="guardian.guardian_last_name"
 									type="text"
 									required
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -485,7 +485,7 @@
 								<input
 									v-model="guardian.guardian_full_name"
 									type="text"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink/70 focus:outline-none"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink/70 focus:outline-none"
 									disabled
 								/>
 							</label>
@@ -496,7 +496,7 @@
 									v-model="guardian.guardian_email"
 									type="email"
 									required
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -507,7 +507,7 @@
 									v-model="guardian.guardian_mobile_phone"
 									type="text"
 									required
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -516,7 +516,7 @@
 								<span class="type-caption text-ink/60">{{ __('Employment sector') }}</span>
 								<select
 									v-model="guardian.employment_sector"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								>
 									<option value="">{{ __('Select') }}</option>
@@ -535,7 +535,7 @@
 								<input
 									v-model="guardian.work_place"
 									type="text"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -545,7 +545,7 @@
 								<input
 									v-model="guardian.guardian_designation"
 									type="text"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -555,7 +555,7 @@
 								<input
 									v-model="guardian.guardian_work_email"
 									type="email"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -565,7 +565,7 @@
 								<input
 									v-model="guardian.guardian_work_phone"
 									type="text"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
 									:disabled="isReadOnly || saving"
 								/>
 							</label>
@@ -583,7 +583,7 @@
 									/>
 									<button
 										type="button"
-										class="rounded-full border border-border/70 bg-white px-3 py-2 type-caption text-ink/70 disabled:opacity-50"
+										class="rounded-full border border-border/70 bg-surface px-3 py-2 type-caption text-ink/70 disabled:opacity-50"
 										:disabled="isReadOnly || saving || uploadingGuardianImageIndex === idx"
 										@click="openGuardianImagePicker(idx)"
 									>
@@ -643,7 +643,7 @@
 								<input
 									v-model="guardian.user"
 									type="text"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 type-body text-ink/70 focus:outline-none"
+									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink/70 focus:outline-none"
 									disabled
 								/>
 							</label>

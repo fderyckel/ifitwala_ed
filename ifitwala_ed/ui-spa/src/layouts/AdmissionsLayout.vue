@@ -1,10 +1,10 @@
 <!-- ifitwala_ed/ui-spa/src/layouts/AdmissionsLayout.vue -->
 
 <template>
-	<div
-		class="min-h-screen flex flex-col text-ink bg-gradient-to-b from-sand/90 via-surface-soft/95 to-white bg-[radial-gradient(circle_at_10%_0,rgb(var(--leaf-rgb)/0.10),transparent_55%)]"
-	>
-		<header class="border-b border-border/70 bg-white/85 backdrop-blur sticky top-0 z-30">
+	<div class="ifitwala-theme admissions-layout text-ink">
+		<header
+			class="sticky top-0 z-30 border-b border-[rgb(var(--sand-rgb)/0.4)] bg-surface-glass backdrop-blur-xl"
+		>
 			<div class="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 					<div>
@@ -36,7 +36,7 @@
 		<div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 flex-1">
 			<div
 				v-if="loading"
-				class="rounded-3xl border border-border/70 bg-white px-6 py-10 shadow-soft"
+				class="rounded-3xl border border-border/70 bg-surface px-6 py-10 shadow-soft"
 			>
 				<div class="flex items-center gap-3">
 					<Spinner class="h-5 w-5" />
@@ -61,7 +61,7 @@
 
 			<div v-else class="flex flex-col gap-6 lg:flex-row">
 				<aside class="lg:w-60">
-					<nav class="rounded-3xl border border-border/70 bg-white p-4 shadow-soft">
+					<nav class="rounded-3xl border border-border/70 bg-surface p-4 shadow-soft">
 						<p class="type-caption text-ink/60 mb-3">{{ __('Application') }}</p>
 						<div class="flex flex-col gap-2">
 							<RouterLink
@@ -91,14 +91,16 @@
 						</p>
 					</div>
 
-					<div class="rounded-3xl border border-border/70 bg-white px-6 py-6 shadow-soft">
+					<div class="rounded-3xl border border-border/70 bg-surface px-6 py-6 shadow-soft">
 						<slot />
 					</div>
 				</main>
 			</div>
 		</div>
 
-		<footer class="border-t border-border/70 bg-white/80 backdrop-blur px-4 py-6 sm:px-6 lg:px-8">
+		<footer
+			class="border-t border-[rgb(var(--sand-rgb)/0.4)] bg-surface-glass backdrop-blur-xl px-4 py-6 sm:px-6 lg:px-8"
+		>
 			<div class="mx-auto max-w-6xl flex flex-col gap-2 text-ink/60">
 				<p class="type-caption">{{ __('Need help? Contact the admissions office.') }}</p>
 				<p class="type-caption">{{ __('Ifitwala Admissions Portal') }}</p>

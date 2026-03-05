@@ -2497,11 +2497,16 @@ Prevent **any other path** to Student creation.
   * Block creation unless:
 
     * via `promote_applicant`
-    * OR explicit migration flag
+    * OR Data Import row has `allow_direct_creation = 1`
+    * OR explicit migration / patch context
+
+### Import requirement
+
+* For `frappe.flags.in_import`, each Student row must include `allow_direct_creation = 1`
+* Missing/zero value must hard-fail import
 
 ### Flags respected
 
-* `frappe.flags.in_import`
 * `frappe.flags.in_migration`
 * `frappe.flags.in_patch`
 
@@ -2872,12 +2877,13 @@ In `students/doctype/student/student.py`:
 
 ```python
 def before_insert(self):
-    if not (
-        frappe.flags.in_import
-        or frappe.flags.in_migration
-        or frappe.flags.in_patch
-    ):
-        frappe.throw(_("Students must be created via Applicant promotion."))
+    if frappe.flags.in_import and int(self.allow_direct_creation or 0) != 1:
+        frappe.throw(_("Student Data Import requires allow_direct_creation=1 on each row."))
+    if self.student_applicant:
+        return
+    if frappe.flags.in_migration or frappe.flags.in_patch or int(self.allow_direct_creation or 0) == 1:
+        return
+    frappe.throw(_("Students must be created via Applicant promotion."))
 ```
 
 ### Promotion path responsibility
@@ -3013,4 +3019,4 @@ If you want, next step we can:
 * Promotion is **atomic** (all‑or‑nothing)
 * Promotion is **idempotent** (re‑run does not duplicate Student/Student Patient/data copies)
 * Applicant becomes **permanently read‑only** after promotion
-* Creation source guard: Student creation is allowed only via Applicant promotion, except explicit migration/import flags.
+* Creation source guard: Student creation is allowed only via Applicant promotion, except explicit migration/patch or `allow_direct_creation=1` bypasses; Data Import requires `allow_direct_creation=1`.

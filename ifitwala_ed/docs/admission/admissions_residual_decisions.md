@@ -14,12 +14,10 @@ Resolved on 2026-03-02:
 
 ## 2) Student Direct-Creation Guard Policy
 
-Decision required:
-- Keep `allow_direct_creation` as an explicit exceptional bypass, or
-- Remove that bypass and enforce promotion/import/migration/patch-only creation.
-
-Why this is still open:
-- Current Student controller allows `allow_direct_creation`, while some Phase 03 audit language states stricter creation constraints.
+Resolved on 2026-03-05:
+- Keep `allow_direct_creation` as an explicit exceptional bypass.
+- Enforce creation-source guard at Student insert time (not every update save).
+- Data Import now requires `allow_direct_creation = 1` on each Student row; missing/zero values fail import.
 
 ## 3) Optional UX/Performance Follow-Up
 
