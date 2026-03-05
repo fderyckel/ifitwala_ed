@@ -114,6 +114,7 @@ class TestInquiry(FrappeTestCase):
         self.assertTrue(bool(linked.applicant_contact))
         self.assertEqual(linked.applicant_email, inquiry_email)
         self.assertEqual(frappe.db.get_value("Inquiry", inquiry.name, "contact"), linked.applicant_contact)
+        self.assertEqual(frappe.db.get_value("Inquiry", inquiry.name, "student_applicant"), applicant_name)
         self.assertTrue(
             bool(
                 frappe.db.exists(
@@ -158,6 +159,8 @@ class TestInquiry(FrappeTestCase):
         if dynamic_link_name:
             frappe.delete_doc("Dynamic Link", dynamic_link_name, force=1, ignore_permissions=True)
 
+        frappe.db.set_value("Inquiry", inquiry.name, "student_applicant", None, update_modified=False)
+
         with patch("ifitwala_ed.admission.admission_utils.ensure_admissions_permission", return_value="Administrator"):
             existing_name = from_inquiry_invite(
                 inquiry_name=inquiry.name,
@@ -166,6 +169,7 @@ class TestInquiry(FrappeTestCase):
             )
 
         self.assertEqual(existing_name, applicant_name)
+        self.assertEqual(frappe.db.get_value("Inquiry", inquiry.name, "student_applicant"), applicant_name)
         self.assertTrue(
             bool(
                 frappe.db.exists(

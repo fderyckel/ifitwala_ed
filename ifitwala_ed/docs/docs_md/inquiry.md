@@ -3,8 +3,8 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.3.7"
-last_change_date: "2026-03-04"
+version: "1.3.8"
+last_change_date: "2026-03-05"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
 seo_description: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
@@ -20,7 +20,7 @@ seo_description: "Capture, assign, and track incoming website inquiries with SLA
 
 ## What It Solves
 
-- Centralizes inbound questions from web forms and staff-created records.
+- Centralizes inbound questions from community users and prospective applicants.
 - Assigns ownership to admissions officers and managers when operational follow-up is needed.
 - Tracks first-contact and follow-up deadlines with SLA status.
 - Supports optional conversion to [**Student Applicant**](/docs/en/student-applicant/) only when the inquiry is admissions-related.
@@ -82,6 +82,7 @@ Allowed transitions are strictly server-validated:
   - Desk invite action calls `ifitwala_ed.admission.admission_utils.from_inquiry_invite`
   - conversion ensures Inquiry has a `Contact` anchor and carries it into `Student Applicant.applicant_contact` when conversion is requested
   - conversion also ensures Contact has a `Dynamic Link` to the created/reused `Student Applicant` (idempotent sync)
+  - conversion atomically binds `Inquiry.student_applicant` to the created/reused `Student Applicant` (idempotent, no relink overwrite)
   - derived applicant email on Student Applicant comes from Contact email rows
   - this conversion step still does not create the portal `User`; portal invite is a separate button on Student Applicant
 - **Analytics surface**:
@@ -120,7 +121,7 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-04)
+### Latest Technical Snapshot (2026-03-05)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/inquiry/inquiry.py`
@@ -162,6 +163,7 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
   - document method `invite_to_apply` enforces `Qualified` state
   - Desk quick action currently uses `from_inquiry_invite`, available from `Contacted` and `Qualified` in client logic
   - Invite payload validation enforces selected School belongs to selected Organization (Organization NestedSet ancestry)
+  - `from_inquiry_invite` now serializes per-Inquiry conversion with a cache lock and always binds `Inquiry.student_applicant` to the resolved applicant
 - **Utility endpoints** (`ifitwala_ed/admission/admission_utils.py`):
   - `assign_inquiry`
   - `reassign_inquiry`

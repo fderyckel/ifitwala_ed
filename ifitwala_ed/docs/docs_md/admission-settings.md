@@ -20,6 +20,8 @@ seo_description: "Define admissions SLA windows, assignment task color defaults,
 
 ## Authoritative Contract
 
+[[fig:fig-1 size=auto]]
+
 This doctype owns six configuration fields:
 
 - `first_contact_sla_days`: days from inquiry submission to first-contact due date.

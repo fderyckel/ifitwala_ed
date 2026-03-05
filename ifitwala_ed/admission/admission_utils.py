@@ -86,6 +86,7 @@ APPLICANT_DOCUMENT_CODE_CLASSIFICATION_MAP = {
 
 SLA_SWEEP_LOCK_KEY = "admissions:sla_sweep:lock"
 SLA_SWEEP_STATUS_CACHE_KEY = "admissions:sla_sweep:last_run"
+INQUIRY_INVITE_LOCK_KEY_PREFIX = "admissions:inquiry_invite:lock"
 
 
 def _normalize_scope_value(value: str | None) -> str:
@@ -709,6 +710,39 @@ def _get_first_contact_sla_days_default():
     return frappe.get_cached_value("Admission Settings", None, "first_contact_sla_days") or 7
 
 
+def _inquiry_invite_lock_key(inquiry_name: str) -> str:
+    return f"{INQUIRY_INVITE_LOCK_KEY_PREFIX}:{inquiry_name}"
+
+
+def bind_inquiry_student_applicant(*, inquiry_name: str, student_applicant: str) -> bool:
+    inquiry_name = (inquiry_name or "").strip()
+    student_applicant = (student_applicant or "").strip()
+
+    if not inquiry_name:
+        frappe.throw(_("Inquiry name is required."))
+    if not student_applicant:
+        frappe.throw(_("Student Applicant is required."))
+    if not frappe.db.exists("Inquiry", inquiry_name):
+        frappe.throw(_("Invalid Inquiry: {0}").format(inquiry_name))
+    if not frappe.db.exists("Student Applicant", student_applicant):
+        frappe.throw(_("Invalid Student Applicant: {0}").format(student_applicant))
+
+    current = (frappe.db.get_value("Inquiry", inquiry_name, "student_applicant") or "").strip()
+    if current and current != student_applicant:
+        frappe.throw(
+            _("Inquiry {0} is already linked to Student Applicant {1}; cannot relink to {2}.").format(
+                frappe.bold(inquiry_name),
+                frappe.bold(current),
+                frappe.bold(student_applicant),
+            )
+        )
+    if current == student_applicant:
+        return False
+
+    frappe.db.set_value("Inquiry", inquiry_name, "student_applicant", student_applicant, update_modified=False)
+    return True
+
+
 def set_inquiry_deadlines(doc):
     if not getattr(doc, "first_contact_due_on", None):
         base = getdate(doc.submitted_at) if getattr(doc, "submitted_at", None) else getdate(nowdate())
@@ -990,6 +1024,10 @@ def from_inquiry_invite(
     # ------------------------------------------------------------------
     # Validate inputs
     # ------------------------------------------------------------------
+    inquiry_name = (inquiry_name or "").strip()
+    school = (school or "").strip()
+    organization = (organization or "").strip() or None
+
     if not inquiry_name:
         frappe.throw(_("Inquiry name is required."))
 
@@ -1003,106 +1041,108 @@ def from_inquiry_invite(
     if not school_org:
         frappe.throw(_("Selected School does not have an Organization."))
 
-    # ------------------------------------------------------------------
-    # Load Inquiry (READ-ONLY usage)
-    # ------------------------------------------------------------------
-    inquiry = frappe.get_doc("Inquiry", inquiry_name)
-    inquiry_contact = ensure_inquiry_contact(inquiry)
-    inquiry_email = get_contact_primary_email(inquiry_contact)
+    lock_key = _inquiry_invite_lock_key(inquiry_name)
+    with frappe.cache().lock(lock_key, timeout=30):
+        # ------------------------------------------------------------------
+        # Load Inquiry (READ-ONLY usage)
+        # ------------------------------------------------------------------
+        inquiry = frappe.get_doc("Inquiry", inquiry_name)
+        inquiry_contact = ensure_inquiry_contact(inquiry)
+        inquiry_email = get_contact_primary_email(inquiry_contact)
 
-    # ------------------------------------------------------------------
-    # Prevent duplicate Applicants per Inquiry
-    # ------------------------------------------------------------------
-    existing = frappe.db.get_value(
-        "Student Applicant",
-        {"inquiry": inquiry.name},
-        "name",
-    )
-    if existing:
-        existing_applicant = frappe.get_doc("Student Applicant", existing)
-        changed = False
-        if inquiry_contact and not existing_applicant.applicant_contact:
-            existing_applicant.flags.from_contact_sync = True
-            existing_applicant.applicant_contact = inquiry_contact
-            changed = True
-
-        existing_applicant_email = normalize_email_value(existing_applicant.applicant_email)
-        if inquiry_email and not existing_applicant_email:
-            existing_applicant.flags.from_contact_sync = True
-            existing_applicant.applicant_email = inquiry_email
-            changed = True
-
-        if changed:
-            existing_applicant.save(ignore_permissions=True)
-
-        sync_student_applicant_contact_binding(
-            student_applicant=existing,
-            contact_name=inquiry_contact or existing_applicant.applicant_contact,
+        # ------------------------------------------------------------------
+        # Prevent duplicate Applicants per Inquiry
+        # ------------------------------------------------------------------
+        existing = frappe.db.get_value(
+            "Student Applicant",
+            {"inquiry": inquiry.name},
+            "name",
         )
-        return existing
+        if existing:
+            existing_applicant = frappe.get_doc("Student Applicant", existing)
+            changed = False
+            if inquiry_contact and not existing_applicant.applicant_contact:
+                existing_applicant.flags.from_contact_sync = True
+                existing_applicant.applicant_contact = inquiry_contact
+                changed = True
 
-    # ------------------------------------------------------------------
-    # Resolve organization (explicit or derived)
-    # ------------------------------------------------------------------
-    if not organization:
-        organization = school_org
+            existing_applicant_email = normalize_email_value(existing_applicant.applicant_email)
+            if inquiry_email and not existing_applicant_email:
+                existing_applicant.flags.from_contact_sync = True
+                existing_applicant.applicant_email = inquiry_email
+                changed = True
 
-    organization = (organization or "").strip()
+            if changed:
+                existing_applicant.save(ignore_permissions=True)
 
-    if not organization:
-        frappe.throw(_("Organization must be provided or derivable from the selected School."))
+            sync_student_applicant_contact_binding(
+                student_applicant=existing,
+                contact_name=inquiry_contact or existing_applicant.applicant_contact,
+            )
+            bind_inquiry_student_applicant(inquiry_name=inquiry.name, student_applicant=existing)
+            return existing
 
-    if not frappe.db.exists("Organization", organization):
-        frappe.throw(_("Invalid Organization: {0}").format(organization))
+        # ------------------------------------------------------------------
+        # Resolve organization (explicit or derived)
+        # ------------------------------------------------------------------
+        if not organization:
+            organization = school_org
 
-    if not _school_belongs_to_organization_scope(school, organization):
-        frappe.throw(_("Selected School does not belong to the selected Organization."))
+        if not organization:
+            frappe.throw(_("Organization must be provided or derivable from the selected School."))
 
-    # ------------------------------------------------------------------
-    # Create Student Applicant (institutional commitment point)
-    # ------------------------------------------------------------------
-    applicant = frappe.get_doc(
-        {
-            "doctype": "Student Applicant",
-            # Identity (best-effort, editable later)
-            "first_name": inquiry.get("first_name"),
-            "last_name": inquiry.get("last_name"),
-            # Institutional anchoring (IMMUTABLE after creation)
-            "school": school,
-            "organization": organization,
-            # Admissions intent (NOT enrollment)
-            "program": inquiry.get("program"),
-            "academic_year": inquiry.get("academic_year"),
-            "term": inquiry.get("term"),
-            # Traceability
-            "inquiry": inquiry.name,
-            # Contact anchor
-            "applicant_contact": inquiry_contact,
-            "applicant_email": inquiry_email,
-            # Lifecycle
-            "application_status": "Invited",
-        }
-    )
+        if not frappe.db.exists("Organization", organization):
+            frappe.throw(_("Invalid Organization: {0}").format(organization))
 
-    # Explicit lifecycle flags (used by Applicant controller)
-    applicant.flags.from_inquiry_invite = True
-    applicant.flags.allow_status_change = True
-    applicant.flags.status_change_source = "from_inquiry_invite"
-    applicant.flags.from_contact_sync = True
+        if not _school_belongs_to_organization_scope(school, organization):
+            frappe.throw(_("Selected School does not belong to the selected Organization."))
 
-    applicant.insert(ignore_permissions=True)
-    sync_student_applicant_contact_binding(student_applicant=applicant.name, contact_name=inquiry_contact)
+        # ------------------------------------------------------------------
+        # Create Student Applicant (institutional commitment point)
+        # ------------------------------------------------------------------
+        applicant = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                # Identity (best-effort, editable later)
+                "first_name": inquiry.get("first_name"),
+                "last_name": inquiry.get("last_name"),
+                # Institutional anchoring (IMMUTABLE after creation)
+                "school": school,
+                "organization": organization,
+                # Admissions intent (NOT enrollment)
+                "program": inquiry.get("program"),
+                "academic_year": inquiry.get("academic_year"),
+                "term": inquiry.get("term"),
+                # Traceability
+                "inquiry": inquiry.name,
+                # Contact anchor
+                "applicant_contact": inquiry_contact,
+                "applicant_email": inquiry_email,
+                # Lifecycle
+                "application_status": "Invited",
+            }
+        )
 
-    # ------------------------------------------------------------------
-    # Audit trail
-    # ------------------------------------------------------------------
-    applicant.add_comment(
-        "Comment",
-        text=_("Applicant invited from Inquiry {0} for School {1} by {2}.").format(
-            frappe.bold(inquiry.name),
-            frappe.bold(school),
-            frappe.bold(frappe.session.user),
-        ),
-    )
+        # Explicit lifecycle flags (used by Applicant controller)
+        applicant.flags.from_inquiry_invite = True
+        applicant.flags.allow_status_change = True
+        applicant.flags.status_change_source = "from_inquiry_invite"
+        applicant.flags.from_contact_sync = True
 
-    return applicant.name
+        applicant.insert(ignore_permissions=True)
+        sync_student_applicant_contact_binding(student_applicant=applicant.name, contact_name=inquiry_contact)
+        bind_inquiry_student_applicant(inquiry_name=inquiry.name, student_applicant=applicant.name)
+
+        # ------------------------------------------------------------------
+        # Audit trail
+        # ------------------------------------------------------------------
+        applicant.add_comment(
+            "Comment",
+            text=_("Applicant invited from Inquiry {0} for School {1} by {2}.").format(
+                frappe.bold(inquiry.name),
+                frappe.bold(school),
+                frappe.bold(frappe.session.user),
+            ),
+        )
+
+        return applicant.name
