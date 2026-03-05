@@ -3,6 +3,7 @@
 import { api } from '@/lib/client'
 
 import type {
+	ApplicantWorkspaceResponse,
 	InterviewWorkspaceResponse,
 	SaveMyInterviewFeedbackRequest,
 	SaveMyInterviewFeedbackResponse,
@@ -12,6 +13,12 @@ export async function getInterviewWorkspace(interview: string): Promise<Intervie
 	return api('ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.get_interview_workspace', {
 		interview,
 	}) as Promise<InterviewWorkspaceResponse>
+}
+
+export async function getApplicantWorkspace(studentApplicant: string): Promise<ApplicantWorkspaceResponse> {
+	return api('ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.get_applicant_workspace', {
+		student_applicant: studentApplicant,
+	}) as Promise<ApplicantWorkspaceResponse>
 }
 
 export async function saveMyInterviewFeedback(

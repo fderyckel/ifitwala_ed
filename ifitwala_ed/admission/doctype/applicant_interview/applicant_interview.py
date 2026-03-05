@@ -37,6 +37,7 @@ INTERVIEW_FEEDBACK_FIELDS = (
 INTERVIEW_FEEDBACK_STATUS = {"Draft", "Submitted"}
 INTERVIEW_TIMELINE_LIMIT = 8
 INTERVIEW_WORKSPACE_DOC_LIMIT = 30
+INTERVIEW_WORKSPACE_INTERVIEW_LIMIT = 20
 INTERVIEW_FEEDBACK_DOCTYPE = "Applicant Interview Feedback"
 
 
@@ -481,6 +482,30 @@ def get_interview_workspace(*, interview: str):
 
 
 @frappe.whitelist()
+def get_applicant_workspace(*, student_applicant: str):
+    applicant_name = (student_applicant or "").strip()
+    if not applicant_name:
+        frappe.throw(_("Student Applicant is required."), title=_("Missing Applicant"))
+
+    _assert_applicant_workspace_permission(student_applicant=applicant_name)
+
+    applicant_row = _get_applicant_workspace_context(applicant_name)
+    timeline_rows = _load_applicant_timeline(applicant_name)
+    document_payload = _load_applicant_documents_for_workspace(applicant_name)
+    recommendation_payload = _load_recommendations_for_workspace(applicant_name)
+    interview_rows = _load_interviews_for_applicant_workspace(student_applicant=applicant_name)
+
+    return {
+        "ok": True,
+        "applicant": applicant_row,
+        "timeline": timeline_rows,
+        "documents": document_payload,
+        "recommendations": recommendation_payload,
+        "interviews": interview_rows,
+    }
+
+
+@frappe.whitelist()
 def save_my_interview_feedback(
     *,
     interview: str,
@@ -643,6 +668,18 @@ def _assert_interview_workspace_permission(
     frappe.throw(
         _("You do not have permission to {0} this interview workspace.").format(action), frappe.PermissionError
     )
+
+
+def _assert_applicant_workspace_permission(*, student_applicant: str, user: str | None = None) -> None:
+    current_user = (user or frappe.session.user or "").strip()
+    if not current_user or current_user == "Guest":
+        frappe.throw(_("Please sign in to continue."), frappe.PermissionError)
+
+    if not _is_interview_privileged_user(current_user):
+        frappe.throw(_("You do not have permission to view this applicant workspace."), frappe.PermissionError)
+
+    if not has_scoped_staff_access_to_student_applicant(user=current_user, student_applicant=student_applicant):
+        frappe.throw(_("You do not have permission to view this applicant workspace."), frappe.PermissionError)
 
 
 def _normalize_feedback_status(value: str | None) -> str:
@@ -1086,6 +1123,89 @@ def _load_recommendations_for_workspace(student_applicant: str) -> dict:
         "requests": requests,
         "submissions": submissions,
     }
+
+
+def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[dict]:
+    rows = frappe.get_all(
+        "Applicant Interview",
+        filters={"student_applicant": student_applicant},
+        fields=[
+            "name",
+            "interview_type",
+            "mode",
+            "confidentiality_level",
+            "interview_date",
+            "interview_start",
+            "interview_end",
+            "school_event",
+            "modified",
+        ],
+        order_by="interview_start desc, modified desc",
+        limit_page_length=INTERVIEW_WORKSPACE_INTERVIEW_LIMIT,
+        ignore_permissions=True,
+    )
+    if not rows:
+        return []
+
+    interview_names = [row.get("name") for row in rows if row.get("name")]
+    if not interview_names:
+        return []
+
+    interviewer_rows = frappe.get_all(
+        "Applicant Interviewer",
+        filters={
+            "parent": ["in", interview_names],
+            "parenttype": "Applicant Interview",
+            "parentfield": "interviewers",
+        },
+        fields=["parent", "interviewer", "idx"],
+        order_by="parent asc, idx asc",
+        limit_page_length=max(50, INTERVIEW_WORKSPACE_INTERVIEW_LIMIT * 4),
+        ignore_permissions=True,
+    )
+    users = [row.get("interviewer") for row in interviewer_rows if row.get("interviewer")]
+    user_map = _user_display_map(users)
+
+    users_by_interview: dict[str, list[str]] = {}
+    for row in interviewer_rows:
+        interview_name = (row.get("parent") or "").strip()
+        interviewer_user = (row.get("interviewer") or "").strip()
+        if not interview_name or not interviewer_user:
+            continue
+        users_by_interview.setdefault(interview_name, []).append(interviewer_user)
+
+    payload: list[dict] = []
+    for row in rows:
+        interview_name = (row.get("name") or "").strip()
+        if not interview_name:
+            continue
+        interviewer_users = users_by_interview.get(interview_name, [])
+        payload.append(
+            {
+                "name": interview_name,
+                "student_applicant": student_applicant,
+                "interview_type": row.get("interview_type"),
+                "mode": row.get("mode"),
+                "confidentiality_level": row.get("confidentiality_level"),
+                "interview_date": str(row.get("interview_date")) if row.get("interview_date") else None,
+                "interview_start": row.get("interview_start"),
+                "interview_end": row.get("interview_end"),
+                "interview_start_label": format_datetime(row.get("interview_start"))
+                if row.get("interview_start")
+                else None,
+                "interview_end_label": format_datetime(row.get("interview_end")) if row.get("interview_end") else None,
+                "school_event": row.get("school_event"),
+                "interviewers": [
+                    {
+                        "user": interviewer_user,
+                        "name": user_map.get(interviewer_user) or interviewer_user,
+                    }
+                    for interviewer_user in interviewer_users
+                ],
+            }
+        )
+
+    return payload
 
 
 def _load_feedback_panel_for_workspace(*, interview_name: str) -> dict:

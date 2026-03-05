@@ -3,7 +3,7 @@ title: "Applicant Interview: Structured Interview Evidence"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.5.0"
+version: "1.6.0"
 last_change_date: "2026-03-05"
 summary: "Record interview evidence, participants, calendar projection, and per-interviewer feedback with audit trail comments on the Student Applicant timeline."
 seo_title: "Applicant Interview: Structured Interview Evidence"
@@ -51,7 +51,9 @@ Controller logic remains on the parent doctype; child table controller is intent
 3. Preferred scheduling path uses `schedule_applicant_interview(...)` to atomically create:
    - `Applicant Interview` (admissions evidence)
    - linked `School Event` (calendar projection with participant audience)
-4. Interviewers open the event from StaffHome calendar and use `InterviewWorkspaceOverlay` for applicant brief, documents, recommendations, timeline, and personal feedback.
+4. Staff can open the same `InterviewWorkspaceOverlay` from two entry points:
+   - StaffHome calendar (`School Event.reference_type = Applicant Interview`) in interview mode
+   - Admissions Cockpit applicant card in applicant mode (file summary + interview list, then drill into a selected interview)
 5. Feedback is saved per interviewer via `Applicant Interview Feedback` (`Draft` / `Submitted`).
 6. Update interview records as evidence evolves; timeline comments keep a visible audit trail.
 7. Interview completion contributes to applicant readiness and admissions decision confidence.
@@ -97,6 +99,7 @@ Interviewers are child rows for structure only; workflow logic and validations a
   - `schedule_applicant_interview(...)`
   - `suggest_interview_slots(...)`
   - `get_interview_workspace(...)`
+  - `get_applicant_workspace(...)`
   - `save_my_interview_feedback(...)`
   - `get_permission_query_conditions(...)`
   - `has_permission(...)`

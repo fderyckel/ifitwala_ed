@@ -110,7 +110,13 @@
 							>
 								<div class="mb-2 flex items-start justify-between gap-2">
 									<div>
-										<p class="type-body-strong text-ink">{{ item.display_name }}</p>
+										<button
+											type="button"
+											class="type-body-strong text-ink text-left hover:underline"
+											@click="openApplicantWorkspace(item)"
+										>
+											{{ item.display_name }}
+										</button>
 										<p class="type-caption text-slate-token/70">{{ item.name }}</p>
 									</div>
 									<div class="flex items-center gap-1.5">
@@ -292,6 +298,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import {
@@ -371,6 +378,7 @@ type CockpitPayload = {
 const loading = ref(false);
 const error = ref('');
 const data = ref<CockpitPayload | null>(null);
+const overlay = useOverlayStack();
 const activeBlocker = ref('');
 const activeThreadCard = ref<CockpitCard | null>(null);
 const threadLoading = ref(false);
@@ -505,6 +513,19 @@ function formatDate(value?: string | null) {
 		return value;
 	}
 	return date.toLocaleString();
+}
+
+function openApplicantWorkspace(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = 'Applicant reference is missing for workspace open.';
+		return;
+	}
+
+	overlay.open('admissions-interview-workspace', {
+		mode: 'applicant',
+		studentApplicant: applicantName,
+	});
 }
 
 async function loadThread(card: CockpitCard, markRead: boolean = true) {

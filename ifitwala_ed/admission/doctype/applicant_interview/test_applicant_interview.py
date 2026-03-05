@@ -4,6 +4,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import (
+    get_applicant_workspace,
     get_interview_workspace,
     save_my_interview_feedback,
     schedule_applicant_interview,
@@ -415,6 +416,40 @@ class TestApplicantInterview(FrappeTestCase):
         )
         with self.assertRaises(frappe.PermissionError):
             get_interview_workspace(interview=interview.name)
+
+    def test_transfer_school_academic_admin_can_read_applicant_workspace(self):
+        academic_admin = self._create_user("transfer_file_admin", roles=["Academic Admin"])
+        self._create_employee(
+            academic_admin,
+            first_name="Transfer",
+            last_name="FileAdmin",
+            school=self.transfer_school,
+        )
+
+        self._link_applicant_to_student(anchor_school=self.transfer_school)
+        self._create_interview_for_applicant(
+            date="2030-06-10",
+            start="2030-06-10 10:00:00",
+            end="2030-06-10 10:30:00",
+            interview_type="Student",
+        )
+
+        frappe.set_user(academic_admin.name)
+        payload = get_applicant_workspace(student_applicant=self.applicant.name)
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("applicant", {}).get("name"), self.applicant.name)
+        self.assertGreaterEqual(len(payload.get("interviews") or []), 1)
+
+    def test_transfer_school_non_privileged_staff_cannot_read_applicant_workspace(self):
+        staff_user = self._create_user("transfer_file_staff", roles=["Academic Assistant"])
+        self._create_employee(staff_user, first_name="Transfer", last_name="FileStaff", school=self.transfer_school)
+
+        self._link_applicant_to_student(anchor_school=self.transfer_school)
+        frappe.set_user(staff_user.name)
+
+        with self.assertRaises(frappe.PermissionError):
+            get_applicant_workspace(student_applicant=self.applicant.name)
 
     def _comments_for_interview(self, interview_name: str):
         comments = frappe.get_all(

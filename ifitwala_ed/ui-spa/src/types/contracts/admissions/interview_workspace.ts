@@ -169,6 +169,22 @@ export interface InterviewWorkspaceResponse {
 	feedback: InterviewWorkspaceFeedbackPayload
 }
 
+export interface ApplicantWorkspaceResponse {
+	ok: boolean
+	applicant: InterviewWorkspaceApplicant
+	timeline: InterviewWorkspaceTimelineRow[]
+	documents: {
+		rows: InterviewWorkspaceDocument[]
+		count: number
+	}
+	recommendations: {
+		summary: InterviewWorkspaceRecommendationSummary
+		requests: InterviewWorkspaceRecommendationRequest[]
+		submissions: InterviewWorkspaceRecommendationSubmission[]
+	}
+	interviews: InterviewWorkspaceInterview[]
+}
+
 export interface SaveMyInterviewFeedbackRequest {
 	interview: string
 	strengths?: string
