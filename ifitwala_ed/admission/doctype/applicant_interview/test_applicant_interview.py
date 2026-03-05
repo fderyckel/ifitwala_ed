@@ -16,6 +16,7 @@ class TestApplicantInterview(FrappeTestCase):
         self.applicant = self._create_applicant(self.organization, self.school)
 
     def tearDown(self):
+        frappe.set_user("Administrator")
         if self.applicant and self.applicant.name:
             comments = frappe.get_all(
                 "Comment",
@@ -176,6 +177,84 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertGreaterEqual(len(payload.get("conflicts") or []), 1)
         self.assertGreaterEqual(len(payload.get("suggestions") or []), 1)
         self.assertEqual(before_count, after_count)
+
+    def test_assigned_interviewer_without_admissions_role_can_access_and_update(self):
+        interviewer = self._create_user("interviewer_access")
+        self._create_employee(interviewer, first_name="Case", last_name="Interviewer")
+
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": "2030-06-01",
+                "interview_start": "2030-06-01 09:00:00",
+                "interview_end": "2030-06-01 09:30:00",
+                "interview_type": "Student",
+                "interviewers": [{"interviewer": interviewer.name}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        frappe.set_user(interviewer.name)
+        interviewer_roles = set(frappe.get_roles(interviewer.name))
+        self.assertFalse(
+            interviewer_roles & {"Admission Officer", "Admission Manager", "Academic Admin", "System Manager"}
+        )
+
+        self.assertTrue(
+            frappe.has_permission("Applicant Interview", ptype="read", doc=interview.name, user=interviewer.name)
+        )
+        self.assertTrue(
+            frappe.has_permission("Applicant Interview", ptype="write", doc=interview.name, user=interviewer.name)
+        )
+        self.assertFalse(frappe.has_permission("Applicant Interview", ptype="create", user=interviewer.name))
+
+        rows = frappe.get_list("Applicant Interview", fields=["name"], filters={"name": interview.name})
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].get("name"), interview.name)
+
+        loaded = frappe.get_doc("Applicant Interview", interview.name)
+        loaded.notes = "Interviewer note update"
+        loaded.outcome_impression = "Positive"
+        loaded.save()
+
+        refreshed = frappe.get_doc("Applicant Interview", interview.name)
+        self.assertEqual(refreshed.notes, "Interviewer note update")
+        self.assertEqual(refreshed.outcome_impression, "Positive")
+
+        loaded = frappe.get_doc("Applicant Interview", interview.name)
+        loaded.mode = "Online"
+        with self.assertRaises(frappe.PermissionError):
+            loaded.save()
+
+    def test_non_interviewer_cannot_access_interview(self):
+        interviewer = self._create_user("listed_interviewer")
+        self._create_employee(interviewer, first_name="Listed", last_name="Interviewer")
+        outsider = self._create_user("not_listed")
+        self._create_employee(outsider, first_name="Not", last_name="Listed")
+
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": "2030-06-02",
+                "interview_start": "2030-06-02 11:00:00",
+                "interview_end": "2030-06-02 11:30:00",
+                "interview_type": "Student",
+                "interviewers": [{"interviewer": interviewer.name}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        frappe.set_user(outsider.name)
+        self.assertFalse(
+            frappe.has_permission("Applicant Interview", ptype="read", doc=interview.name, user=outsider.name)
+        )
+        self.assertFalse(
+            frappe.has_permission("Applicant Interview", ptype="write", doc=interview.name, user=outsider.name)
+        )
+        rows = frappe.get_list("Applicant Interview", fields=["name"], filters={"name": interview.name})
+        self.assertEqual(rows, [])
 
     def _comments_for_interview(self, interview_name: str):
         comments = frappe.get_all(

@@ -201,6 +201,44 @@ class TestInquiry(FrappeTestCase):
         self.assertEqual(inquiry.workflow_state, "Contacted")
         self.assertEqual(inquiry.assigned_to, assignee)
 
+    def test_mark_contacted_allows_assigned_non_admissions_user(self):
+        inquiry = self._make_inquiry()
+        assignee = make_user()
+
+        inquiry.db_set("workflow_state", "Assigned", update_modified=False)
+        inquiry.db_set("assigned_to", assignee.name, update_modified=False)
+        inquiry.db_set("followup_due_on", frappe.utils.nowdate(), update_modified=False)
+        inquiry.reload()
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user(assignee.name)
+            inquiry.mark_contacted(complete_todo=0)
+        finally:
+            frappe.set_user(previous_user)
+
+        inquiry.reload()
+        self.assertEqual(inquiry.workflow_state, "Contacted")
+        self.assertEqual(inquiry.assigned_to, assignee.name)
+
+    def test_mark_contacted_rejects_unassigned_non_admissions_user(self):
+        inquiry = self._make_inquiry()
+        assignee = make_user()
+        other = make_user()
+
+        inquiry.db_set("workflow_state", "Assigned", update_modified=False)
+        inquiry.db_set("assigned_to", assignee.name, update_modified=False)
+        inquiry.db_set("followup_due_on", frappe.utils.nowdate(), update_modified=False)
+        inquiry.reload()
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user(other.name)
+            with self.assertRaises(frappe.PermissionError):
+                inquiry.mark_contacted(complete_todo=0)
+        finally:
+            frappe.set_user(previous_user)
+
     def _make_organization(self, prefix: str, parent: str | None = None, is_group: int = 0) -> str:
         doc = frappe.get_doc(
             {

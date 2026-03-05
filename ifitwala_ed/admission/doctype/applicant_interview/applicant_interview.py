@@ -21,6 +21,7 @@ DEFAULT_SUGGESTION_WINDOW_END = "17:00:00"
 DEFAULT_SUGGESTION_LIMIT = 8
 DEFAULT_SUGGESTION_STEP_MINUTES = 15
 INTERVIEW_EVENT_REFERENCE_TYPE = "Applicant Interview"
+INTERVIEWER_SELF_EDITABLE_FIELDS = frozenset({"notes", "outcome_impression"})
 
 
 class ApplicantInterview(Document):
@@ -29,6 +30,7 @@ class ApplicantInterview(Document):
         self._validate_applicant_state()
         self._validate_time_window()
         self._sync_interview_date_from_start()
+        self._validate_interviewer_edit_scope()
 
     def after_insert(self):
         self._add_audit_comment("Interview recorded")
@@ -42,7 +44,50 @@ class ApplicantInterview(Document):
         self._add_audit_comment("Interview updated")
 
     def _validate_permissions(self):
-        _assert_manage_interview_permission()
+        _assert_manage_interview_permission(
+            allow_interviewer_write=not self.is_new(),
+            interview_name=self.name if not self.is_new() else None,
+        )
+
+    def _validate_interviewer_edit_scope(self):
+        user = frappe.session.user
+        if self.is_new() or _is_interview_privileged_user(user):
+            return
+
+        if not _is_interviewer_on_interview(user=user, interview_name=self.name):
+            return
+
+        before = self.get_doc_before_save()
+        if not before:
+            return
+
+        protected_fieldnames = (
+            "student_applicant",
+            "interview_type",
+            "interview_date",
+            "interview_start",
+            "interview_end",
+            "mode",
+            "confidentiality_level",
+            "school_event",
+        )
+
+        for fieldname in protected_fieldnames:
+            if _coerce_compare_value(getattr(before, fieldname, None)) != _coerce_compare_value(
+                getattr(self, fieldname, None)
+            ):
+                frappe.throw(
+                    _("Interviewers can only edit: {0}.").format(", ".join(sorted(INTERVIEWER_SELF_EDITABLE_FIELDS))),
+                    frappe.PermissionError,
+                )
+
+        before_interviewers = _normalized_interviewer_rows(before.get("interviewers") or [])
+        current_interviewers = _normalized_interviewer_rows(self.get("interviewers") or [])
+        if before_interviewers != current_interviewers:
+            frappe.throw(
+                _("Interviewers can only edit: {0}.").format(", ".join(sorted(INTERVIEWER_SELF_EDITABLE_FIELDS))),
+                frappe.PermissionError,
+            )
 
     def _validate_applicant_state(self):
         if not self.student_applicant:
@@ -169,6 +214,65 @@ def suggest_interview_slots(
         },
         "slots": slots,
     }
+
+
+def get_permission_query_conditions(user: str | None = None) -> str | None:
+    user = (user or frappe.session.user or "").strip()
+    if not user or user == "Guest":
+        return "1=0"
+    if _is_interview_privileged_user(user):
+        return None
+
+    escaped_user = frappe.db.escape(user)
+    return (
+        "exists ("
+        "select 1 from `tabApplicant Interviewer` ai "
+        "where ai.parent = `tabApplicant Interview`.`name` "
+        "and ai.parenttype = 'Applicant Interview' "
+        "and ai.parentfield = 'interviewers' "
+        f"and ai.interviewer = {escaped_user}"
+        ")"
+    )
+
+
+def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bool:
+    user = (user or frappe.session.user or "").strip()
+    op = (ptype or "read").lower()
+    if not user or user == "Guest":
+        return False
+    if _is_interview_privileged_user(user):
+        return True
+
+    read_like = {"read", "report", "export", "print", "email"}
+    if op == "create" or op == "delete" or op == "submit":
+        return False
+    if op not in read_like and op != "write":
+        return False
+
+    if not doc:
+        if op not in read_like:
+            return False
+        return bool(
+            frappe.db.exists(
+                "Applicant Interviewer",
+                {
+                    "parenttype": "Applicant Interview",
+                    "parentfield": "interviewers",
+                    "interviewer": user,
+                },
+            )
+        )
+
+    if isinstance(doc, str):
+        interview_name = (doc or "").strip()
+    elif isinstance(doc, dict):
+        interview_name = (doc.get("name") or "").strip()
+    else:
+        interview_name = (getattr(doc, "name", None) or "").strip()
+    if not interview_name:
+        return False
+
+    return _is_interviewer_on_interview(user=user, interview_name=interview_name)
 
 
 @frappe.whitelist()
@@ -317,10 +421,72 @@ def schedule_applicant_interview(
     }
 
 
-def _assert_manage_interview_permission() -> None:
-    user_roles = set(frappe.get_roles(frappe.session.user))
-    if not user_roles & STAFF_ROLES:
+def _assert_manage_interview_permission(
+    *,
+    allow_interviewer_write: bool = False,
+    interview_name: str | None = None,
+    user: str | None = None,
+) -> None:
+    current_user = (user or frappe.session.user or "").strip()
+    if not current_user or current_user == "Guest":
         frappe.throw(_("You do not have permission to manage Applicant Interviews."), frappe.PermissionError)
+
+    if _is_interview_privileged_user(current_user):
+        return
+
+    if allow_interviewer_write and interview_name:
+        if _is_interviewer_on_interview(user=current_user, interview_name=interview_name):
+            return
+
+    frappe.throw(_("You do not have permission to manage Applicant Interviews."), frappe.PermissionError)
+
+
+def _is_interview_privileged_user(user: str) -> bool:
+    if not user:
+        return False
+    roles = set(frappe.get_roles(user))
+    return user == "Administrator" or bool(roles & STAFF_ROLES)
+
+
+def _is_interviewer_on_interview(*, user: str, interview_name: str) -> bool:
+    resolved_user = (user or "").strip()
+    resolved_name = (interview_name or "").strip()
+    if not resolved_user or not resolved_name:
+        return False
+    return bool(
+        frappe.db.exists(
+            "Applicant Interviewer",
+            {
+                "parent": resolved_name,
+                "parenttype": "Applicant Interview",
+                "parentfield": "interviewers",
+                "interviewer": resolved_user,
+            },
+        )
+    )
+
+
+def _normalized_interviewer_rows(rows: Sequence[frappe._dict] | Sequence[dict] | Sequence[Document]) -> list[str]:
+    users = []
+    for row in rows or []:
+        if isinstance(row, dict):
+            user = (row.get("interviewer") or "").strip()
+        else:
+            user = (getattr(row, "interviewer", None) or "").strip()
+        if user:
+            users.append(user)
+    return sorted(set(users))
+
+
+def _coerce_compare_value(value):
+    if value is None:
+        return ""
+    if hasattr(value, "isoformat"):
+        try:
+            return value.isoformat()
+        except Exception:
+            pass
+    return str(value).strip()
 
 
 def _get_applicant_context(student_applicant: str | None) -> frappe._dict:

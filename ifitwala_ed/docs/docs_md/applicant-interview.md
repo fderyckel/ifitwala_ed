@@ -3,8 +3,8 @@ title: "Applicant Interview: Structured Interview Evidence"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.2.0"
-last_change_date: "2026-03-04"
+version: "1.3.0"
+last_change_date: "2026-03-05"
 summary: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
 seo_title: "Applicant Interview: Structured Interview Evidence"
 seo_description: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
@@ -91,6 +91,8 @@ Interviewers are child rows for structure only; workflow logic and validations a
 - **Operational/public methods**:
   - `schedule_applicant_interview(...)`
   - `suggest_interview_slots(...)`
+  - `get_permission_query_conditions(...)`
+  - `has_permission(...)`
 
 - **DocType**: `Applicant Interview` (`ifitwala_ed/admission/doctype/applicant_interview/`)
 - **Autoname**: `hash`
@@ -123,7 +125,10 @@ Interviewers are child rows for structure only; workflow logic and validations a
 | `Academic Admin` | Yes | Yes | Yes | Yes | Full Desk access |
 | `Admission Manager` | Yes | Yes | Yes | Yes | Full Desk access |
 | `Admission Officer` | Yes | Yes | Yes | Yes | Full Desk access |
+| `Interviewer` (listed in `interviewers`) | Yes (row-level) | Yes (row-level, restricted fields) | No | No | Can access only interviews where they are listed |
 
 Runtime controller rule:
-- Only staff roles can manage records (`Admission` roles + `Academic Admin` + `System Manager`).
+- Staff roles (`Admission` roles + `Academic Admin` + `System Manager`) keep full create/update/delete access.
+- Non-admissions employees listed in `interviewers` can read/write only their assigned interview rows.
+- Interviewer write scope is restricted to `notes` and `outcome_impression`; schedule/participant fields stay staff-managed.
 - Records are blocked when linked applicant is in terminal states (`Rejected`, `Promoted`).

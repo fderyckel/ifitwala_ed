@@ -26,6 +26,7 @@
   "workflow_state",
   "sla_status",
   "assigned_to",
+  "assignment_lane",
   "student_applicant",
   "column_break_w8a0",
   "submitted_at",
@@ -33,8 +34,12 @@
   "followup_due_on",
   "first_contacted_at",
   "assigned_at",
+  "intake_assigned_at",
+  "resolver_assigned_at",
   "response_hours_first_contact",
-  "response_hours_from_assign"
+  "response_hours_from_assign",
+  "intake_response_hours",
+  "resolver_response_hours"
  ],
  "fields": [
   {
@@ -106,6 +111,15 @@
    "read_only": 1
   },
   {
+   "fieldname": "assignment_lane",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Assignment Lane",
+   "options": "Admission\nStaff",
+   "read_only": 1
+  },
+  {
    "fieldname": "phone_number",
    "fieldtype": "Data",
    "label": "Phone Number",
@@ -171,6 +185,18 @@
    "read_only": 1
   },
   {
+   "fieldname": "intake_assigned_at",
+   "fieldtype": "Datetime",
+   "label": "Intake Assigned At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "resolver_assigned_at",
+   "fieldtype": "Datetime",
+   "label": "Resolver Assigned At",
+   "read_only": 1
+  },
+  {
    "fieldname": "response_hours_first_contact",
    "fieldtype": "Float",
    "label": "Time after first contact",
@@ -181,6 +207,20 @@
    "fieldname": "response_hours_from_assign",
    "fieldtype": "Float",
    "label": "time after assigned",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "intake_response_hours",
+   "fieldtype": "Float",
+   "label": "Intake Response Hours",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "resolver_response_hours",
+   "fieldtype": "Float",
+   "label": "Resolver Response Hours",
    "precision": "2",
    "read_only": 1
   },
@@ -207,7 +247,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2026-03-05 12:40:31.280311",
+ "modified": "2026-03-05 12:40:37",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",

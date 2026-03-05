@@ -8,13 +8,14 @@ import frappe
 from frappe import _
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.desk.form.assign_to import remove as remove_assignment
-from frappe.utils import add_days, cint, getdate, now, nowdate, validate_email_address
+from frappe.utils import add_days, cint, get_datetime, getdate, now, now_datetime, nowdate, validate_email_address
 from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
 
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
 )
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ADMISSIONS_ROLES = {"Admission Manager", "Admission Officer"}
 
@@ -87,6 +88,7 @@ APPLICANT_DOCUMENT_CODE_CLASSIFICATION_MAP = {
 SLA_SWEEP_LOCK_KEY = "admissions:sla_sweep:lock"
 SLA_SWEEP_STATUS_CACHE_KEY = "admissions:sla_sweep:last_run"
 INQUIRY_INVITE_LOCK_KEY_PREFIX = "admissions:inquiry_invite:lock"
+INQUIRY_ASSIGNMENT_LANES = {"Admission", "Staff"}
 
 
 def _normalize_scope_value(value: str | None) -> str:
@@ -466,6 +468,109 @@ def _validate_admissions_assignee(user: str) -> None:
         frappe.throw(_("Assignee must be an active user with the 'Admission Officer' or 'Admission Manager' role."))
 
 
+def _normalize_inquiry_assignment_lane(lane: str | None) -> str | None:
+    value = (lane or "").strip()
+    if not value:
+        return None
+
+    normalized = value.lower()
+    if normalized == "admission":
+        return "Admission"
+    if normalized == "staff":
+        return "Staff"
+    frappe.throw(_("Invalid Inquiry assignment lane: {0}.").format(value))
+    return None
+
+
+def _resolve_inquiry_assignment_lane_for_user(*, user: str, requested_lane: str | None = None) -> str:
+    user = (user or "").strip()
+    if not user:
+        frappe.throw(_("Assignee is required."))
+
+    roles = set(frappe.get_roles(user))
+    derived_lane = "Admission" if roles & ADMISSIONS_ROLES else "Staff"
+    requested = _normalize_inquiry_assignment_lane(requested_lane)
+    if requested and requested != derived_lane:
+        frappe.throw(
+            _("Assignee {0} belongs to lane {1}; requested lane {2} is not allowed.").format(
+                frappe.bold(user),
+                frappe.bold(derived_lane),
+                frappe.bold(requested),
+            )
+        )
+    return requested or derived_lane
+
+
+def _hours_between(start_dt, end_dt) -> float:
+    start = get_datetime(start_dt)
+    end = get_datetime(end_dt)
+    return round((end - start).total_seconds() / 3600.0, 2)
+
+
+def _active_employee_scope_row(user: str) -> dict:
+    user = (user or "").strip()
+    if not user:
+        frappe.throw(_("Assignee is required."))
+    row = frappe.db.get_value(
+        "Employee",
+        {"user_id": user, "employment_status": "Active"},
+        ["name", "organization", "school"],
+        as_dict=True,
+    )
+    if not row:
+        frappe.throw(_("Assignee must have an active Employee profile linked to this User account."))
+    return row
+
+
+def _validate_inquiry_assignee_scope(user: str, inquiry_doc) -> dict:
+    user = (user or "").strip()
+    if not user:
+        frappe.throw(_("Assignee is required."))
+
+    enabled = frappe.db.get_value("User", user, "enabled")
+    if not enabled:
+        frappe.throw(_("Assignee must be an enabled user."))
+
+    employee = _active_employee_scope_row(user)
+    inquiry_org = (inquiry_doc.get("organization") or "").strip()
+    inquiry_school = (inquiry_doc.get("school") or "").strip()
+
+    if inquiry_org:
+        org_scope = _get_organization_scope(inquiry_org)
+        if not org_scope:
+            frappe.throw(_("Invalid Inquiry Organization scope: {0}.").format(inquiry_org))
+        if (employee.get("organization") or "").strip() not in set(org_scope):
+            frappe.throw(
+                _("Assignee must belong to Organization {0} or one of its descendants.").format(
+                    frappe.bold(inquiry_org)
+                )
+            )
+
+    if inquiry_school:
+        school_scope = get_descendant_schools(inquiry_school) or []
+        if not school_scope:
+            frappe.throw(_("Invalid Inquiry School scope: {0}.").format(inquiry_school))
+        if (employee.get("school") or "").strip() not in set(school_scope):
+            frappe.throw(
+                _("Assignee must belong to School {0} or one of its descendants.").format(frappe.bold(inquiry_school))
+            )
+
+    return employee
+
+
+def _stamp_inquiry_lane_metrics_on_assignment(doc, assignment_lane: str) -> None:
+    ts = now_datetime()
+    doc.assignment_lane = assignment_lane
+    doc.resolver_assigned_at = ts
+
+    if not getattr(doc, "intake_assigned_at", None):
+        doc.intake_assigned_at = ts
+
+    if not getattr(doc, "intake_response_hours", None):
+        baseline = doc.submitted_at or doc.creation or ts
+        doc.intake_response_hours = _hours_between(baseline, ts)
+
+
 def _get_organization_scope(organization: str | None) -> list[str]:
     organization = (organization or "").strip()
     if not organization:
@@ -772,11 +877,12 @@ def update_sla_status(doc):
 
 
 @frappe.whitelist()
-def assign_inquiry(doctype, docname, assigned_to):
+def assign_inquiry(doctype, docname, assigned_to, assignment_lane: str | None = None):
     ensure_admissions_permission()
     doc = frappe.get_doc(doctype, docname)
 
-    _validate_admissions_assignee(assigned_to)
+    _validate_inquiry_assignee_scope(assigned_to, doc)
+    resolved_lane = _resolve_inquiry_assignment_lane_for_user(user=assigned_to, requested_lane=assignment_lane)
 
     # Prevent double-assign in our custom field
     if doc.assigned_to:
@@ -798,6 +904,7 @@ def assign_inquiry(doctype, docname, assigned_to):
     followup_due = add_days(nowdate(), settings.followup_sla_days or 1)
     doc.assigned_to = assigned_to
     doc.followup_due_on = followup_due
+    _stamp_inquiry_lane_metrics_on_assignment(doc, resolved_lane)
 
     doc.mark_assigned(add_comment=False)
 
@@ -821,7 +928,7 @@ def assign_inquiry(doctype, docname, assigned_to):
         doc.add_comment(
             "Comment",
             text=frappe._(
-                f"Assigned to <b>{assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}. "
+                f"Assigned to <b>{assigned_to}</b> ({resolved_lane} lane) by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}. "
                 f"See follow-up task: {todo_link}"
             ),
         )
@@ -829,17 +936,17 @@ def assign_inquiry(doctype, docname, assigned_to):
         doc.add_comment(
             "Comment",
             text=frappe._(
-                f"Assigned to <b>{assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
+                f"Assigned to <b>{assigned_to}</b> ({resolved_lane} lane) by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
             ),
         )
 
     notify_user(assigned_to, "🆕 You have been assigned a new inquiry.", doc)
 
-    return {"assigned_to": assigned_to, "todo": todo_name}
+    return {"assigned_to": assigned_to, "assignment_lane": resolved_lane, "todo": todo_name}
 
 
 @frappe.whitelist()
-def reassign_inquiry(doctype, docname, new_assigned_to):
+def reassign_inquiry(doctype, docname, new_assigned_to, assignment_lane: str | None = None):
     ensure_admissions_permission()
     doc = frappe.get_doc(doctype, docname)
 
@@ -849,7 +956,8 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
     if doc.assigned_to == new_assigned_to:
         frappe.throw("This inquiry is already assigned to this user.")
 
-    _validate_admissions_assignee(new_assigned_to)
+    _validate_inquiry_assignee_scope(new_assigned_to, doc)
+    resolved_lane = _resolve_inquiry_assignment_lane_for_user(user=new_assigned_to, requested_lane=assignment_lane)
 
     settings = frappe.get_cached_doc("Admission Settings")
     prev_assigned = doc.assigned_to
@@ -863,6 +971,7 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
     followup_due = add_days(nowdate(), settings.followup_sla_days or 1)
     doc.assigned_to = new_assigned_to
     doc.followup_due_on = followup_due
+    _stamp_inquiry_lane_metrics_on_assignment(doc, resolved_lane)
 
     doc.mark_assigned(add_comment=False)
 
@@ -904,7 +1013,7 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
         doc.add_comment(
             "Comment",
             text=frappe._(
-                f"Reassigned to <b>{new_assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}. "
+                f"Reassigned to <b>{new_assigned_to}</b> ({resolved_lane} lane) by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}. "
                 f"New follow-up task: {todo_link}"
             ),
         )
@@ -912,13 +1021,13 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
         doc.add_comment(
             "Comment",
             text=frappe._(
-                f"Reassigned to <b>{new_assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
+                f"Reassigned to <b>{new_assigned_to}</b> ({resolved_lane} lane) by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
             ),
         )
 
     notify_user(new_assigned_to, "🆕 You have been assigned a new inquiry (reassignment).", doc)
 
-    return {"reassigned_to": new_assigned_to, "todo": new_todo}
+    return {"reassigned_to": new_assigned_to, "assignment_lane": resolved_lane, "todo": new_todo}
 
 
 @frappe.whitelist()
@@ -937,6 +1046,57 @@ def get_admission_officers(doctype, txt, searchfield, start, page_len, filters):
     """,
         (f"%{txt}%", page_len, start),
     )
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_inquiry_assignees(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
+    ensure_admissions_permission()
+    filters = filters or {}
+    organization = (filters.get("organization") or "").strip()
+    school = (filters.get("school") or "").strip()
+
+    org_scope = _get_organization_scope(organization) if organization else []
+    if organization and not org_scope:
+        return []
+
+    school_scope = get_descendant_schools(school) if school else []
+    if school and not school_scope:
+        return []
+
+    where = ["u.enabled = 1", "ifnull(e.employment_status, '') = 'Active'", "ifnull(e.user_id, '') <> ''"]
+    params = {
+        "txt": f"%{txt or ''}%",
+        "start": int(start or 0),
+        "page_len": int(page_len or 20),
+    }
+    if org_scope:
+        where.append("e.organization IN %(org_scope)s")
+        params["org_scope"] = tuple(org_scope)
+    if school_scope:
+        where.append("e.school IN %(school_scope)s")
+        params["school_scope"] = tuple(school_scope)
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            u.name,
+            COALESCE(NULLIF(u.full_name, ''), NULLIF(e.employee_full_name, ''), u.name) AS full_name
+        FROM `tabUser` u
+        JOIN `tabEmployee` e ON e.user_id = u.name
+        WHERE {" AND ".join(where)}
+          AND (
+            u.name LIKE %(txt)s
+            OR u.full_name LIKE %(txt)s
+            OR e.employee_full_name LIKE %(txt)s
+          )
+        ORDER BY full_name ASC, u.name ASC
+        LIMIT %(start)s, %(page_len)s
+        """,
+        params,
+        as_list=True,
+    )
+    return rows
 
 
 @frappe.whitelist()

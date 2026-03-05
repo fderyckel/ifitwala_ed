@@ -3,7 +3,7 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.3.8"
+version: "1.4.1"
 last_change_date: "2026-03-05"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
@@ -14,14 +14,14 @@ seo_description: "Capture, assign, and track incoming website inquiries with SLA
 
 - Configure [**Admission Settings**](/docs/en/admission-settings/) first so that SLA and assignment behaviors are available.
 - Ensure [**Organization**](/docs/en/organization/) and [**School**](/docs/en/school/) master data exist for scoped inquiries.
-- Ensure admissions users are set up before assignment/reassignment workflows begin.
+- Ensure admissions triage users and scoped staff `Employee` records (`user_id`, `organization`, `school`) are set up before assignment/reassignment workflows begin.
 
 `Inquiry` is the general inbound intake record for website visitors. It can represent admission interest, general questions, media requests, or any other first-contact message that needs managed follow-up.
 
 ## What It Solves
 
 - Centralizes inbound questions from community users and prospective applicants.
-- Assigns ownership to admissions officers and managers when operational follow-up is needed.
+- Assigns ownership to scoped staff users when operational follow-up is needed.
 - Tracks first-contact and follow-up deadlines with SLA status.
 - Supports optional conversion to [**Student Applicant**](/docs/en/student-applicant/) only when the inquiry is admissions-related.
 
@@ -34,8 +34,8 @@ Inquiry gives teams visibility on response speed and ownership so no inbound req
 | State | Meaning | How It Is Reached (Conditions) |
 |---|---|---|
 | `New` | First capture, not yet assigned | Set automatically on insert if empty (`after_insert`). |
-| `Assigned` | Owner set, follow-up deadline active | Reached through assignment flows (`assign_inquiry` / `reassign_inquiry` -> `mark_assigned`) with admissions permission and a valid admissions assignee. |
-| `Contacted` | First outreach completed | Reached from `New` or `Assigned` through `mark_contacted` with admissions permission. Can also be triggered by ToDo-close automation when the current assignee closes the linked task. `assigned_to` remains populated as the latest assignee for reporting/distribution analysis. |
+| `Assigned` | Owner set, follow-up deadline active | Reached through assignment flows (`assign_inquiry` / `reassign_inquiry` -> `mark_assigned`) with admissions permission and a valid scoped active `Employee.user_id` assignee. |
+| `Contacted` | First outreach completed | Reached from `New` or `Assigned` through `mark_contacted` by Admissions/System users or by the current assigned user. Can also be triggered by ToDo-close automation when the current assignee closes the linked task. `assigned_to` remains populated as the latest assignee for reporting/distribution analysis. |
 | `Qualified` | Confirmed as admissions-ready | Reached only from `Contacted` through `mark_qualified` with admissions permission. |
 | `Archived` | Closed terminal state | Reached from any non-archived state through `archive` with admissions permission. |
 
@@ -61,7 +61,10 @@ Allowed transitions are strictly server-validated:
 
 - **Desk form + list view**:
   - custom action buttons (`Assign`, `Reassign`, `Mark Contacted`, `Qualify`, `Archive`, `Invite to Apply`)
+  - `School` field link picker is client-filtered by selected `Organization` (includes descendant organizations)
+  - assignee picker in `Assign`/`Reassign` is server-scoped to active `Employee.user_id` within Inquiry organization/school scope
   - `Mark Contacted` is available in `Assigned` state for both `Admission Officer` and `Admission Manager`
+  - when the current session user is the assigned owner, `Mark Contacted` is also available even without admissions roles
   - list defaults to active pipeline (`workflow_state != Archived`)
   - visible deadline cue on `First Contact Deadline` (pill-highlighted for due/overdue urgency)
   - colored list pills for workflow and SLA status
@@ -73,6 +76,7 @@ Allowed transitions are strictly server-validated:
 - **ToDo integration**:
   - assignment/reassignment creates native ToDo tasks
   - closing the related ToDo can auto-mark Inquiry as contacted
+  - assignment snapshots current `assignment_lane` (`Admission` or `Staff`) and resolver assignment timestamp for lane KPI slicing
 - **Staff focus overlay (SPA)**:
   - assigned inquiries appear in Staff Home "Your Focus"
   - action type `inquiry.follow_up.act.first_contact` routes to the inquiry follow-up focus action
@@ -119,6 +123,18 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
 `Invite to Apply` on Inquiry creates the `Student Applicant` record in `Invited` and links Contact anchor fields, but it does not provision applicant portal login credentials. After conversion, open the applicant and use `Actions` -> `Invite Applicant Portal` (or `Resend Portal Invite`) to pick/add a Contact email and trigger `invite_applicant(student_applicant, email)`.
 </Callout>
 
+## Reporting and Analytics
+
+- No Script/Query Report currently declares `Inquiry` as `ref_doctype`.
+- Operational analytics are delivered through API + SPA analytics page, not a classic Desk report object.
+
+## Related Docs
+
+<RelatedDocs
+  slugs="admission-settings,organization,student-applicant"
+  title="Continue With Related Admission Docs"
+/>
+
 ## Technical Notes (IT)
 
 ### Latest Technical Snapshot (2026-03-05)
@@ -130,11 +146,15 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
 - **Operational/public methods**: `mark_assigned`, `mark_qualified`, `archive`, `invite_to_apply`, `set_contact_metrics`, `create_contact_from_inquiry`, `mark_contacted`
 - **Workflow-state contract**: only canonical Inquiry states are accepted (`New`, `Assigned`, `Contacted`, `Qualified`, `Archived`); no legacy state alias normalization in Inquiry controller or Inquiry Desk/list scripts.
 - **Assignment contract**: `assigned_to` is retained as the latest assignee across workflow states (including `Contacted`) and changes only through assignment/reassignment actions.
+- **Completion permission contract**: `mark_contacted` can be executed by Admissions/System users and by the current assigned user.
+- **Record visibility contract**: non-privileged users are query-scoped to assigned Inquiry rows (`assigned_to = session user`) through hooks.
 
 - **DocType**: `Inquiry` (`ifitwala_ed/admission/doctype/inquiry/`)
 - **Autoname**: `INQ-{YYYY}-{MM}-{DD}-{##}`
 - **Desk surfaces**:
   - form actions in `ifitwala_ed/admission/doctype/inquiry/inquiry.js`
+  - desk form `school` link query uses `school_by_organization_scope_query` when `organization` is selected
+  - desk form assignee link query uses `get_inquiry_assignees` with inquiry org/school scope filters
   - list indicators in `ifitwala_ed/admission/doctype/inquiry/inquiry_list.js`
   - workspace shortcut/card in `ifitwala_ed/admission/workspace/admission/admission.json`
 - **Web form surface**:
@@ -153,6 +173,7 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
   - Organization/School hierarchy consistency check
   - strict workflow transition guard
   - `student_applicant` link immutability
+  - assignee scope guard for assignment/reassignment (`Employee` active + inquiry organization/school subtree)
 - **Whitelisted methods on document**:
   - `mark_qualified`
   - `archive`
@@ -168,6 +189,7 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
   - `assign_inquiry`
   - `reassign_inquiry`
   - `get_admission_officers`
+  - `get_inquiry_assignees`
   - `school_by_organization_scope_query`
   - `from_inquiry_invite`
 - **Analytics API endpoints** (`ifitwala_ed/api/inquiry.py`):
@@ -191,16 +213,4 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
 | `Admission Officer` | Yes | Yes | Yes | Yes | Full Desk access |
 | `Academic Admin` | Yes | No | No | No | Read-only in DocType permissions |
 
-Action-level guard in server code: lifecycle and assignment methods enforce admissions-role checks.
-
-## Reporting and Analytics
-
-- No Script/Query Report currently declares `Inquiry` as `ref_doctype`.
-- Operational analytics are delivered through API + SPA analytics page, not a classic Desk report object.
-
-## Related Docs
-
-<RelatedDocs
-  slugs="admission-settings,organization,student-applicant"
-  title="Continue With Related Admission Docs"
-/>
+Action-level guard in server code: assignment/reassignment require admissions permissions; contact completion allows Admissions/System and the current assigned user.

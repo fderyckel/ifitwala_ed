@@ -24,6 +24,7 @@ export type DashboardFilters = {
   academic_year?: string
   type_of_inquiry?: string
   assigned_to?: string
+  assignment_lane?: 'Admission' | 'Staff' | ''
   sla_status?: string // 'Overdue', 'Due Today', 'Upcoming'
   organization?: string
   school?: string
