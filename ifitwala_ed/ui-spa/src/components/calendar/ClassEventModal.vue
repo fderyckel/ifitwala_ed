@@ -28,7 +28,7 @@
 				<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
 			</TransitionChild>
 
-			<div class="if-overlay__wrap">
+			<div class="if-overlay__wrap" @click.self="emitClose('backdrop')">
 				<TransitionChild
 					as="template"
 					enter="if-overlay__panel-enter"

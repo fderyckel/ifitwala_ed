@@ -397,7 +397,8 @@
 											<span
 												:class="{
 													'text-leaf font-medium':
-														studentStates[student.task_student]?.status === 'Graded',
+														studentStates[student.task_student]?.status === 'Finalized' ||
+														studentStates[student.task_student]?.status === 'Released',
 												}"
 											>
 												{{ studentStates[student.task_student]?.status || '—' }}
@@ -564,6 +565,7 @@
 											>
 										</div>
 										<FormControl
+											v-if="criterion.levels && criterion.levels.length"
 											type="select"
 											size="sm"
 											:options="criterion.levels"
@@ -576,6 +578,56 @@
 											"
 											@update:modelValue="
 												level => onCriterionLevelChanged(student.task_student, criterion, level)
+											"
+										/>
+										<FormControl
+											v-else
+											type="text"
+											size="sm"
+											placeholder="Level"
+											:model-value="
+												getCriterionState(student.task_student, criterion.assessment_criteria)
+													?.level ?? ''
+											"
+											@update:modelValue="
+												level => onCriterionLevelChanged(student.task_student, criterion, level)
+											"
+										/>
+										<FormControl
+											type="number"
+											size="sm"
+											:step="0.1"
+											:min="0"
+											placeholder="Points"
+											:model-value="
+												getCriterionState(student.task_student, criterion.assessment_criteria)
+													?.level_points ?? 0
+											"
+											@update:modelValue="
+												value =>
+													onCriterionPointsChanged(
+														student.task_student,
+														criterion.assessment_criteria,
+														value
+													)
+											"
+										/>
+										<FormControl
+											type="textarea"
+											rows="2"
+											size="sm"
+											placeholder="Criterion feedback"
+											:model-value="
+												getCriterionState(student.task_student, criterion.assessment_criteria)
+													?.feedback || ''
+											"
+											@update:modelValue="
+												value =>
+													onCriterionFeedbackChanged(
+														student.task_student,
+														criterion.assessment_criteria,
+														value
+													)
 											"
 										/>
 										<div class="flex items-center justify-between text-xs">
@@ -632,63 +684,25 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import {
-	Button,
-	FormControl,
-	Badge,
-	FeatherIcon,
-	Spinner,
-	call,
-	toast,
-	createResource,
-} from 'frappe-ui';
+import { Button, FormControl, Badge, FeatherIcon, Spinner, toast } from 'frappe-ui';
+import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
+import { createStudentAttendanceService } from '@/lib/services/studentAttendance/studentAttendanceService';
+import type { FetchSchoolFilterContextResponse } from '@/types/contracts/studentAttendance';
+import type { GroupSummary as GradebookGroupSummary } from '@/types/contracts/gradebook/fetch_groups';
+import type { TaskSummary as GradebookTaskSummary } from '@/types/contracts/gradebook/fetch_group_tasks';
+import type {
+	TaskPayload as GradebookTaskPayload,
+	CriterionPayload as GradebookCriterionPayload,
+	StudentRow as GradebookStudentRow,
+} from '@/types/contracts/gradebook/get_task_gradebook';
+import type { Response as UpdateTaskStudentResponse } from '@/types/contracts/gradebook/update_task_student';
 
 /* TYPE DEFINITIONS ------------------------------------------------ */
 
-interface GroupSummary {
-	name: string;
-	label: string;
-	school?: string | null;
-	program?: string | null;
-	course?: string | null;
-	cohort?: string | null;
-	academic_year?: string | null;
-}
-
-interface TaskSummary {
-	name: string;
-	title: string;
-	due_date?: string | null;
-	status?: string | null;
-	points?: number;
-	binary?: number;
-	criteria?: number;
-	observations?: number;
-	max_points?: number;
-	task_type?: string | null;
-	delivery_type?: string | null;
-}
-
-interface TaskPayload {
-	name: string;
-	title: string;
-	student_group: string;
-	due_date?: string | null;
-	points: number;
-	binary: number;
-	criteria: number;
-	observations: number;
-	max_points: number;
-	task_type?: string | null;
-	delivery_type?: string | null;
-}
-
-interface CriterionPayload {
-	assessment_criteria: string;
-	criteria_name: string;
-	criteria_weighting: number;
-	levels: { level: string; points: number }[];
-}
+type GroupSummary = GradebookGroupSummary;
+type TaskSummary = GradebookTaskSummary;
+type TaskPayload = GradebookTaskPayload;
+type CriterionPayload = GradebookCriterionPayload;
 
 interface StudentCriterionState {
 	assessment_criteria: string;
@@ -697,26 +711,7 @@ interface StudentCriterionState {
 	feedback: string;
 }
 
-interface StudentRow {
-	task_student: string;
-	student: string;
-	student_name: string;
-	student_id?: string | null;
-	student_image?: string | null;
-	status?: string | null;
-	complete: number;
-	mark_awarded: number | null;
-	feedback?: string | null;
-	visible_to_student: number;
-	visible_to_guardian: number;
-	updated_on?: string | null;
-	criteria_scores: {
-		assessment_criteria: string;
-		level: string | number | null;
-		level_points: number;
-		feedback?: string | null;
-	}[];
-}
+type StudentRow = GradebookStudentRow;
 
 interface StudentState {
 	status: string;
@@ -736,6 +731,8 @@ interface StudentState {
 /* STATE --------------------------------------------------------- */
 const route = useRoute();
 const router = useRouter();
+const gradebookService = createGradebookService();
+const studentAttendanceService = createStudentAttendanceService();
 
 // Filtering state
 const filters = reactive({
@@ -749,7 +746,8 @@ const filters = reactive({
 });
 
 const defaultSchool = ref<string | null>(null);
-const schools = ref<any[]>([]);
+const schools = ref<FetchSchoolFilterContextResponse['schools']>([]);
+const schoolsLoading = ref(false);
 const groupSearch = ref('');
 let groupSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -774,41 +772,42 @@ const gradebook = reactive<{
 
 const studentStates = reactive<Record<string, StudentState>>({});
 const statusOptions = [
-	{ label: 'Assigned', value: 'Assigned' },
+	{ label: 'Not Started', value: 'Not Started' },
 	{ label: 'In Progress', value: 'In Progress' },
-	{ label: 'Graded', value: 'Graded' },
-	{ label: 'Returned', value: 'Returned' },
-	{ label: 'Missed', value: 'Missed' },
+	{ label: 'Needs Review', value: 'Needs Review' },
+	{ label: 'Moderated', value: 'Moderated' },
+	{ label: 'Finalized', value: 'Finalized' },
+	{ label: 'Released', value: 'Released' },
+	{ label: 'Not Applicable', value: 'Not Applicable' },
 ];
 
 const AUTOSAVE_DELAY = 2500;
 const studentSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> = {};
 const criteriaSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> = {};
 
-/* RESOURCES ----------------------------------------------------- */
+/* SERVICES ----------------------------------------------------- */
 
-function unwrapMessage<T>(res: any): T | undefined {
-	if (res && typeof res === 'object' && 'message' in res) {
-		return (res as any).message;
+function showDangerToast(title: string) {
+	const toastApi = toast as unknown as
+		| ((payload: { title: string; appearance?: string }) => void)
+		| {
+				error?: (message: string) => void;
+				create?: (payload: { title: string; appearance?: string }) => void;
+		  };
+	if (typeof toastApi === 'function') {
+		toastApi({ title, appearance: 'danger' });
+		return;
 	}
-	return res as T;
+	if (toastApi && typeof toastApi.error === 'function') {
+		toastApi.error(title);
+		return;
+	}
+	if (toastApi && typeof toastApi.create === 'function') {
+		toastApi.create({ title, appearance: 'danger' });
+	}
 }
 
-// 1. School Context Resource (Uses fetch_school_filter_context which uses get_user_default_school)
-const schoolResource = createResource({
-	url: 'ifitwala_ed.api.student_attendance.fetch_school_filter_context',
-	cache: 'school-filter-context',
-	method: 'POST',
-	auto: true,
-	transform: unwrapMessage,
-	onSuccess: onSchoolsLoaded,
-	onError: () => {
-		toast({ title: 'Could not load schools', appearance: 'danger' });
-	},
-});
-
-function onSchoolsLoaded(payload: any) {
-	const data = payload || {};
+function onSchoolsLoaded(data: FetchSchoolFilterContextResponse) {
 	const rows = Array.isArray(data.schools) ? data.schools : [];
 	schools.value = rows;
 	const def = data.default_school || null;
@@ -821,6 +820,19 @@ function onSchoolsLoaded(payload: any) {
 	}
 }
 
+async function loadSchoolContext() {
+	schoolsLoading.value = true;
+	try {
+		const payload = await studentAttendanceService.fetchSchoolContext({});
+		onSchoolsLoaded(payload);
+	} catch (error) {
+		console.error('Failed to load school context', error);
+		showDangerToast('Could not load schools');
+	} finally {
+		schoolsLoading.value = false;
+	}
+}
+
 // 2. Groups Loader
 async function loadGroups(search?: string) {
 	groupsLoading.value = true;
@@ -829,7 +841,7 @@ async function loadGroups(search?: string) {
 		// Use the existing API call without 'school' param because API clamps scope anyway?
 		// WAIT: We updated the backend to return 'school' field so we can filter client-side.
 		// Backend 'fetch_groups' returns groups safe for the user roles.
-		const payload: Record<string, unknown> = {};
+		const payload: { search?: string; limit?: number } = {};
 		// We are NOT passing school filters to backend fetch_groups because existing method
 		// is primarily for the instructor portal list. We'll reuse it and filter client side
 		// to avoid rewriting backend search logic.
@@ -842,8 +854,7 @@ async function loadGroups(search?: string) {
 			payload.limit = 100;
 		}
 
-		const response = await call('ifitwala_ed.api.gradebook.fetch_groups', payload);
-		const rows = unwrapMessage<GroupSummary[]>(response) ?? [];
+		const rows = await gradebookService.fetchGroups(payload);
 
 		// If currently selected group is not in list, add it (edge case)
 		if (
@@ -858,7 +869,7 @@ async function loadGroups(search?: string) {
 		applyRouteGroupFromQuery();
 	} catch (error) {
 		console.error('Failed to load student groups', error);
-		toast({ title: 'Could not load student groups', appearance: 'danger' });
+		showDangerToast('Could not load student groups');
 	} finally {
 		groupsLoading.value = false;
 	}
@@ -872,14 +883,13 @@ function reloadGroups() {
 async function loadTasks(groupName: string) {
 	tasksLoading.value = true;
 	try {
-		const response = await call('ifitwala_ed.api.gradebook.fetch_group_tasks', {
+		const payload = await gradebookService.fetchGroupTasks({
 			student_group: groupName,
 		});
-		const payload = unwrapMessage<{ tasks: TaskSummary[] }>(response);
 		taskSummaries.value = payload?.tasks ?? [];
 	} catch (error) {
 		console.error('Failed to load tasks', error);
-		toast({ title: 'Could not load tasks', appearance: 'danger' });
+		showDangerToast('Could not load tasks');
 	} finally {
 		tasksLoading.value = false;
 	}
@@ -889,14 +899,9 @@ async function loadTasks(groupName: string) {
 async function loadGradebook(taskName: string) {
 	gradebookLoading.value = true;
 	try {
-		const response = await call('ifitwala_ed.api.gradebook.get_task_gradebook', {
+		const payload = await gradebookService.getTaskGradebook({
 			task: taskName,
 		});
-		const payload = unwrapMessage<{
-			task: TaskPayload;
-			criteria: CriterionPayload[];
-			students: StudentRow[];
-		}>(response);
 		if (payload) {
 			gradebook.task = payload.task;
 			gradebook.criteria = payload.criteria || [];
@@ -905,15 +910,13 @@ async function loadGradebook(taskName: string) {
 		}
 	} catch (error) {
 		console.error('Failed to load gradebook', error);
-		toast({ title: 'Could not load gradebook', appearance: 'danger' });
+		showDangerToast('Could not load gradebook');
 	} finally {
 		gradebookLoading.value = false;
 	}
 }
 
 /* COMPUTED - FILTER OPTIONS & DERIVED DATA ---------------------- */
-
-const schoolsLoading = computed(() => schoolResource.loading);
 
 const schoolOptions = computed(() => {
 	const base = schools.value.map(s => ({ school_name: s.school_name || s.name, name: s.name }));
@@ -1341,7 +1344,10 @@ watch(
 );
 
 onMounted(() => {
-	void loadGroups();
+	void (async () => {
+		await loadSchoolContext();
+		await loadGroups();
+	})();
 });
 
 onBeforeUnmount(() => {
@@ -1360,7 +1366,7 @@ function initializeStudentStates() {
 
 	for (const student of gradebook.students) {
 		studentStates[student.task_student] = {
-			status: student.status || 'Assigned',
+			status: student.status || 'Not Started',
 			mark_awarded: student.mark_awarded,
 			feedback: normalizeFeedback(student.feedback),
 			visible_to_student: Boolean(student.visible_to_student),
@@ -1374,7 +1380,7 @@ function initializeStudentStates() {
 			criteria: student.criteria_scores.map(c => ({
 				assessment_criteria: c.assessment_criteria,
 				level: c.level,
-				level_points: c.level_points,
+				level_points: c.level_points ?? 0,
 				feedback: normalizeFeedback(c.feedback),
 			})),
 		};
@@ -1433,7 +1439,7 @@ function getCriterionState(taskStudent: string, criteriaName: string) {
 function onCriterionLevelChanged(
 	taskStudent: string,
 	criterionRow: CriterionPayload,
-	levelValue: string
+	levelValue: string | number | null
 ) {
 	const state = studentStates[taskStudent];
 	if (!state) return;
@@ -1446,13 +1452,25 @@ function onCriterionLevelChanged(
 
 	const levelDef = criterionRow.levels.find(l => l.level === levelValue);
 	item.level = levelValue;
-	item.level_points = levelDef ? levelDef.points : 0;
+	item.level_points = levelDef ? levelDef.points : item.level_points;
 	state.dirtyCriteria = true;
 	scheduleCriteriaSave(taskStudent);
+}
 
-	if (gradebook.task?.criteria && !gradebook.task.points) {
-		recalcTotalFromCriteria(taskStudent);
-	}
+function onCriterionPointsChanged(
+	taskStudent: string,
+	criteriaName: string,
+	value: number | null
+) {
+	const state = studentStates[taskStudent];
+	if (!state) return;
+	const item = state.criteria.find(c => c.assessment_criteria === criteriaName);
+	if (!item) return;
+	const nextValue = typeof value === 'number' ? value : 0;
+	if (item.level_points === nextValue) return;
+	item.level_points = nextValue;
+	state.dirtyCriteria = true;
+	scheduleCriteriaSave(taskStudent);
 }
 
 function onCriterionFeedbackChanged(taskStudent: string, criteriaName: string, value: string) {
@@ -1463,27 +1481,6 @@ function onCriterionFeedbackChanged(taskStudent: string, criteriaName: string, v
 	item.feedback = value;
 	state.dirtyCriteria = true;
 	scheduleCriteriaSave(taskStudent);
-}
-
-function recalcTotalFromCriteria(taskStudent: string) {
-	const state = studentStates[taskStudent];
-	if (!state) return;
-	let total = 0;
-	for (const crit of state.criteria) {
-		const def = gradebook.criteria.find(x => x.assessment_criteria === crit.assessment_criteria);
-		if (def && def.criteria_weighting) {
-			// weighted
-			// simple approach: points * weight / 100? Or just sum of weighted points?
-			// Assumes levels points are raw scores.
-			// Let's assume standard sum for now unless formula specified.
-			total += crit.level_points;
-		} else {
-			total += crit.level_points;
-		}
-	}
-	state.mark_awarded = total;
-	state.dirty = true;
-	scheduleStudentSave(taskStudent);
 }
 
 async function saveStudent(taskStudent: string) {
@@ -1500,16 +1497,15 @@ async function saveStudent(taskStudent: string) {
 			visible_to_guardian: state.visible_to_guardian,
 			complete: state.complete,
 		};
-		const response = await call('ifitwala_ed.api.gradebook.update_task_student', {
+		const doc: UpdateTaskStudentResponse = await gradebookService.updateTaskStudent({
 			task_student: taskStudent,
 			updates: payload,
 		});
-		const doc = unwrapMessage<any>(response);
 		state.dirty = false;
 		state.updated_on = doc.updated_on;
 	} catch (error) {
 		console.error('Save failed', error);
-		toast({ title: 'Failed to save grade', appearance: 'danger' });
+		showDangerToast('Failed to save grade');
 	} finally {
 		state.saving = false;
 		if (state.dirty) {
@@ -1523,32 +1519,30 @@ async function saveCriteria(taskStudent: string) {
 	if (!state) return;
 	state.savingCriteria = true;
 	try {
-		const updates = state.criteria
+		const criteriaScores = state.criteria
 			.map(c => ({
-				name: (c as any).score_name, // Expecting this from backend
+				assessment_criteria: c.assessment_criteria,
 				level: c.level,
-				level_points: c.level_points,
+				level_points: c.level_points ?? 0,
 				feedback: c.feedback,
 			}))
-			.filter(u => u.name); // Only update existing ones
+			.filter(row => row.assessment_criteria && row.level !== null && row.level !== '');
 
-		if (updates.length) {
-			for (const u of updates) {
-				await call('frappe.client.set_value', {
-					doctype: 'Task Criterion Score',
-					name: u.name,
-					fieldname: {
-						level: u.level,
-						level_points: u.level_points,
-						feedback: u.feedback,
-					},
-				});
+		if (criteriaScores.length) {
+			const doc: UpdateTaskStudentResponse = await gradebookService.updateTaskStudent({
+				task_student: taskStudent,
+				updates: {
+					criteria_scores: criteriaScores,
+				},
+			});
+			if (doc?.updated_on) {
+				state.updated_on = doc.updated_on;
 			}
 		}
 		state.dirtyCriteria = false;
 	} catch (err) {
 		console.error(err);
-		toast({ title: 'Error saving criteria', appearance: 'danger' });
+		showDangerToast('Error saving criteria');
 	} finally {
 		state.savingCriteria = false;
 	}

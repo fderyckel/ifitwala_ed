@@ -3,7 +3,11 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import schedule_applicant_interview
+from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import (
+    get_interview_workspace,
+    save_my_interview_feedback,
+    schedule_applicant_interview,
+)
 from ifitwala_ed.utilities.employee_booking import upsert_employee_booking
 
 
@@ -255,6 +259,121 @@ class TestApplicantInterview(FrappeTestCase):
         )
         rows = frappe.get_list("Applicant Interview", fields=["name"], filters={"name": interview.name})
         self.assertEqual(rows, [])
+
+    def test_workspace_returns_guardians_for_assigned_interviewer(self):
+        interviewer = self._create_user("workspace")
+        self._create_employee(interviewer, first_name="Work", last_name="Space")
+
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": "2030-06-05",
+                "interview_start": "2030-06-05 13:00:00",
+                "interview_end": "2030-06-05 13:30:00",
+                "interview_type": "Joint",
+                "interviewers": [{"interviewer": interviewer.name}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        applicant_doc = frappe.get_doc("Student Applicant", self.applicant.name)
+        applicant_doc.append(
+            "guardians",
+            {
+                "relationship": "Mother",
+                "guardian_first_name": "Ada",
+                "guardian_last_name": "Lovelace",
+                "guardian_email": "ada@example.com",
+                "guardian_mobile_phone": "+33101010101",
+                "is_primary": 1,
+            },
+        )
+        applicant_doc.save(ignore_permissions=True)
+
+        frappe.set_user(interviewer.name)
+        payload = get_interview_workspace(interview=interview.name)
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("interview", {}).get("name"), interview.name)
+        self.assertEqual(payload.get("applicant", {}).get("name"), self.applicant.name)
+        self.assertGreaterEqual(len(payload.get("applicant", {}).get("guardians") or []), 1)
+        self.assertEqual(payload.get("feedback", {}).get("my_feedback", {}).get("interviewer_user"), interviewer.name)
+        self.assertTrue(bool(payload.get("feedback", {}).get("can_edit")))
+
+    def test_save_my_feedback_upserts_single_row(self):
+        interviewer = self._create_user("feedback_upsert")
+        self._create_employee(interviewer, first_name="Feed", last_name="Back")
+
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": "2030-06-06",
+                "interview_start": "2030-06-06 09:00:00",
+                "interview_end": "2030-06-06 09:30:00",
+                "interview_type": "Student",
+                "interviewers": [{"interviewer": interviewer.name}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        frappe.set_user(interviewer.name)
+        first = save_my_interview_feedback(
+            interview=interview.name,
+            strengths="Strong curiosity",
+            feedback_status="Draft",
+        )
+        self.assertTrue(first.get("ok"))
+
+        second = save_my_interview_feedback(
+            interview=interview.name,
+            strengths="Strong curiosity and ownership",
+            concerns="Needs mentoring plan",
+            feedback_status="Submitted",
+        )
+        self.assertTrue(second.get("ok"))
+        self.assertEqual(second.get("feedback_status"), "Submitted")
+
+        rows = frappe.get_all(
+            "Applicant Interview Feedback",
+            filters={
+                "applicant_interview": interview.name,
+                "interviewer_user": interviewer.name,
+            },
+            fields=["name", "feedback_status", "submitted_on", "strengths", "concerns"],
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].get("feedback_status"), "Submitted")
+        self.assertTrue(bool(rows[0].get("submitted_on")))
+        self.assertIn("ownership", rows[0].get("strengths") or "")
+
+        self._created.append(("Applicant Interview Feedback", rows[0].get("name")))
+
+    def test_workspace_blocks_non_assigned_user(self):
+        interviewer = self._create_user("workspace_allow")
+        self._create_employee(interviewer, first_name="Allow", last_name="User")
+        outsider = self._create_user("workspace_block")
+        self._create_employee(outsider, first_name="Block", last_name="User")
+
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": "2030-06-07",
+                "interview_start": "2030-06-07 15:00:00",
+                "interview_end": "2030-06-07 15:30:00",
+                "interview_type": "Family",
+                "interviewers": [{"interviewer": interviewer.name}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        frappe.set_user(outsider.name)
+        with self.assertRaises(frappe.PermissionError):
+            get_interview_workspace(interview=interview.name)
+        with self.assertRaises(frappe.PermissionError):
+            save_my_interview_feedback(interview=interview.name, strengths="Not allowed", feedback_status="Draft")
 
     def _comments_for_interview(self, interview_name: str):
         comments = frappe.get_all(

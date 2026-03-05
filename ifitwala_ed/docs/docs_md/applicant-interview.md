@@ -3,11 +3,11 @@ title: "Applicant Interview: Structured Interview Evidence"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.3.0"
+version: "1.4.0"
 last_change_date: "2026-03-05"
-summary: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
+summary: "Record interview evidence, participants, calendar projection, and per-interviewer feedback with audit trail comments on the Student Applicant timeline."
 seo_title: "Applicant Interview: Structured Interview Evidence"
-seo_description: "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline."
+seo_description: "Record interview evidence, participants, calendar projection, and per-interviewer feedback with audit trail comments on the Student Applicant timeline."
 ---
 
 ## Before You Start (Prerequisites)
@@ -26,6 +26,8 @@ seo_description: "Record interview evidence, participants, and outcomes with aud
 - Outcome impression
 - Notes
 - Linked scheduling artifact (`school_event`) when created through the scheduling API
+- Linked interviewer workspace in StaffHome calendar (only when `School Event.reference_type = Applicant Interview`)
+- Per-interviewer feedback rows in `Applicant Interview Feedback` to avoid concurrent edits on one shared notes field
 
 ## Child Table (Included in Parent)
 
@@ -49,8 +51,10 @@ Controller logic remains on the parent doctype; child table controller is intent
 3. Preferred scheduling path uses `schedule_applicant_interview(...)` to atomically create:
    - `Applicant Interview` (admissions evidence)
    - linked `School Event` (calendar projection with participant audience)
-4. Update interview records as evidence evolves; timeline comments keep a visible audit trail.
-5. Interview completion contributes to applicant readiness and admissions decision confidence.
+4. Interviewers open the event from StaffHome calendar and use `InterviewWorkspaceOverlay` for applicant brief, documents, recommendations, timeline, and personal feedback.
+5. Feedback is saved per interviewer via `Applicant Interview Feedback` (`Draft` / `Submitted`).
+6. Update interview records as evidence evolves; timeline comments keep a visible audit trail.
+7. Interview completion contributes to applicant readiness and admissions decision confidence.
 
 <Callout type="tip" title="Operational pattern">
 Use separate interview rows for separate interactions instead of continuously overwriting one row.
@@ -69,6 +73,7 @@ Interviewers are child rows for structure only; workflow logic and validations a
 - [**Student Applicant**](/docs/en/student-applicant/) - readiness and decision flow
 - [**Applicant Health Profile**](/docs/en/applicant-health-profile/) - health review component
 - [**Applicant Document**](/docs/en/applicant-document/) - file review component
+- `Applicant Interview Feedback` - per-interviewer structured notes
 
 ## Technical Notes (IT)
 
@@ -91,6 +96,8 @@ Interviewers are child rows for structure only; workflow logic and validations a
 - **Operational/public methods**:
   - `schedule_applicant_interview(...)`
   - `suggest_interview_slots(...)`
+  - `get_interview_workspace(...)`
+  - `save_my_interview_feedback(...)`
   - `get_permission_query_conditions(...)`
   - `has_permission(...)`
 
@@ -108,7 +115,13 @@ Interviewers are child rows for structure only; workflow logic and validations a
     - `reference_name = <interview name>`
     - audience row `Custom Users`
     - participants = selected interviewer users (employee-facing calendar surfacing)
+  - staff calendar click routing opens interview workspace only for school events with `reference_type = "Applicant Interview"` and a valid `reference_name`
   - applicants without `applicant_user` are still schedulable; applicant user participation is not required for calendar projection
+- **Per-interviewer feedback model**:
+  - separate doctype `Applicant Interview Feedback` stores one row per `(applicant_interview, interviewer_user)`
+  - unique index enforced in doctype controller (`on_doctype_update`)
+  - interviewer feedback fields: strengths, concerns, shared values, other notes, recommendation, status (`Draft` / `Submitted`)
+  - SPA workspace writes through server API `save_my_interview_feedback(...)` (upsert semantics)
 - **Key hooks**:
   - `validate`: permission + applicant-state guard
   - `after_insert`: audit comment "Interview recorded"
@@ -130,5 +143,6 @@ Interviewers are child rows for structure only; workflow logic and validations a
 Runtime controller rule:
 - Staff roles (`Admission` roles + `Academic Admin` + `System Manager`) keep full create/update/delete access.
 - Non-admissions employees listed in `interviewers` can read/write only their assigned interview rows.
-- Interviewer write scope is restricted to `notes` and `outcome_impression`; schedule/participant fields stay staff-managed.
+- Interviewer write scope on parent interview remains restricted to `notes` and `outcome_impression`; schedule/participant fields stay staff-managed.
+- Structured per-interviewer notes should be captured in `Applicant Interview Feedback` from the SPA workspace.
 - Records are blocked when linked applicant is in terminal states (`Rejected`, `Promoted`).

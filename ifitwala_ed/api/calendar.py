@@ -1193,6 +1193,8 @@ def _collect_school_events(
 			se.location,
 			se.color,
 			se.school,
+			se.reference_type,
+			se.reference_name,
 			sep.participant_name
 		FROM `tabSchool Event` se
 		LEFT JOIN `tabSchool Event Participant` sep
@@ -1235,6 +1237,8 @@ def _collect_school_events(
                     "location": row.location,
                     "participant_name": row.participant_name,
                     "school": row.school,
+                    "reference_type": row.reference_type,
+                    "reference_name": row.reference_name,
                 },
             )
         )
