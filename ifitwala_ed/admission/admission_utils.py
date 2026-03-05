@@ -18,6 +18,8 @@ from ifitwala_ed.governance.policy_scope_utils import (
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ADMISSIONS_ROLES = {"Admission Manager", "Admission Officer"}
+ADMISSIONS_FILE_STAFF_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
+READ_LIKE_PERMISSION_TYPES = {"read", "report", "export", "print", "email"}
 
 
 APPLICANT_DOCUMENT_CLASSIFICATION_FIELDS = (
@@ -581,6 +583,189 @@ def _get_organization_scope(organization: str | None) -> list[str]:
 
     descendants = get_descendants_of("Organization", organization) or []
     return [organization, *[org for org in descendants if org and org != organization]]
+
+
+def _safe_active_employee_scope_row(user: str) -> dict | None:
+    resolved_user = (user or "").strip()
+    if not resolved_user:
+        return None
+    try:
+        return _active_employee_scope_row(resolved_user)
+    except Exception:
+        return None
+
+
+def is_admissions_file_staff_user(user: str | None = None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return False
+    if resolved_user == "Administrator":
+        return True
+    roles = set(frappe.get_roles(resolved_user))
+    return bool(roles & ADMISSIONS_FILE_STAFF_ROLES)
+
+
+def get_admissions_file_staff_scope(user: str | None = None) -> dict:
+    resolved_user = (user or frappe.session.user or "").strip()
+    denied = {
+        "allowed": False,
+        "bypass": False,
+        "org_scope": set(),
+        "school_scope": set(),
+    }
+    if not resolved_user or resolved_user == "Guest":
+        return denied
+
+    roles = set(frappe.get_roles(resolved_user))
+    if resolved_user == "Administrator" or "System Manager" in roles:
+        return {
+            "allowed": True,
+            "bypass": True,
+            "org_scope": set(),
+            "school_scope": set(),
+        }
+
+    if not (roles & ADMISSIONS_FILE_STAFF_ROLES):
+        return denied
+
+    employee = _safe_active_employee_scope_row(resolved_user)
+    if not employee:
+        return denied
+
+    org_scope = set(_get_organization_scope(employee.get("organization")))
+    school_scope = set(get_descendant_schools(employee.get("school")) or [])
+    if not org_scope and not school_scope:
+        return denied
+
+    return {
+        "allowed": True,
+        "bypass": False,
+        "org_scope": org_scope,
+        "school_scope": school_scope,
+    }
+
+
+def _scope_values_to_sql(values: set[str]) -> str:
+    cleaned = sorted({(value or "").strip() for value in values if (value or "").strip()})
+    return ", ".join(frappe.db.escape(value) for value in cleaned)
+
+
+def build_admissions_file_scope_exists_sql(*, user: str | None = None, student_applicant_expr_sql: str) -> str | None:
+    scope = get_admissions_file_staff_scope(user)
+    if not scope.get("allowed"):
+        return "1=0"
+    if scope.get("bypass"):
+        return None
+
+    org_scope = set(scope.get("org_scope") or set())
+    school_scope = set(scope.get("school_scope") or set())
+
+    org_condition = ""
+    if org_scope:
+        org_values = _scope_values_to_sql(org_scope)
+        if org_values:
+            org_condition = f" AND sa.organization IN ({org_values})"
+
+    school_condition = ""
+    if school_scope:
+        school_values = _scope_values_to_sql(school_scope)
+        if school_values:
+            school_condition = (
+                " AND ("
+                f"sa.school IN ({school_values}) "
+                "OR EXISTS ("
+                "SELECT 1 FROM `tabStudent` st "
+                "WHERE st.name = sa.student "
+                f"AND st.anchor_school IN ({school_values})"
+                ") "
+                "OR EXISTS ("
+                "SELECT 1 FROM `tabProgram Enrollment` pe "
+                "WHERE pe.student = sa.student "
+                "AND IFNULL(pe.archived, 0) = 0 "
+                f"AND pe.school IN ({school_values})"
+                ")"
+                ")"
+            )
+
+    return (
+        "EXISTS ("
+        "SELECT 1 "
+        "FROM `tabStudent Applicant` sa "
+        f"WHERE sa.name = {student_applicant_expr_sql}"
+        f"{org_condition}"
+        f"{school_condition}"
+        ")"
+    )
+
+
+def _get_effective_student_schools(*, student: str | None, applicant_school: str | None) -> set[str]:
+    effective_schools: set[str] = set()
+    school_name = (applicant_school or "").strip()
+    if school_name:
+        effective_schools.add(school_name)
+
+    student_name = (student or "").strip()
+    if not student_name:
+        return effective_schools
+
+    anchor_school = (frappe.db.get_value("Student", student_name, "anchor_school") or "").strip()
+    if anchor_school:
+        effective_schools.add(anchor_school)
+
+    enrollment_rows = frappe.get_all(
+        "Program Enrollment",
+        filters={
+            "student": student_name,
+            "archived": 0,
+        },
+        fields=["school"],
+        limit_page_length=1000,
+    )
+    for row in enrollment_rows:
+        row_school = (row.get("school") or "").strip()
+        if row_school:
+            effective_schools.add(row_school)
+
+    return effective_schools
+
+
+def has_scoped_staff_access_to_student_applicant(*, user: str | None = None, student_applicant: str | None) -> bool:
+    applicant_name = (student_applicant or "").strip()
+    if not applicant_name:
+        return False
+
+    scope = get_admissions_file_staff_scope(user)
+    if not scope.get("allowed"):
+        return False
+
+    applicant_row = frappe.db.get_value(
+        "Student Applicant",
+        applicant_name,
+        ["name", "organization", "school", "student"],
+        as_dict=True,
+    )
+    if not applicant_row:
+        return False
+
+    if scope.get("bypass"):
+        return True
+
+    org_scope = set(scope.get("org_scope") or set())
+    school_scope = set(scope.get("school_scope") or set())
+
+    applicant_org = (applicant_row.get("organization") or "").strip()
+    if org_scope and applicant_org not in org_scope:
+        return False
+
+    if school_scope:
+        effective_schools = _get_effective_student_schools(
+            student=applicant_row.get("student"),
+            applicant_school=applicant_row.get("school"),
+        )
+        if not effective_schools.intersection(school_scope):
+            return False
+
+    return True
 
 
 def normalize_email_value(email: str | None) -> str:

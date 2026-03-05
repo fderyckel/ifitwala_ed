@@ -3,8 +3,8 @@ title: "Applicant Document: Authoritative Owner of Admissions Files"
 slug: applicant-document
 category: Admission
 doc_order: 6
-version: "1.4.3"
-last_change_date: "2026-03-03"
+version: "1.5.0"
+last_change_date: "2026-03-05"
 summary: "Define Applicant Document as the applicant/type bucket and Applicant Document Item as per-file slot rows for review, readiness, and promotion."
 seo_title: "Applicant Document: Authoritative Owner of Admissions Files"
 seo_description: "Define Applicant Document parent buckets and Applicant Document Item per-file slots for admissions upload, review, readiness, and promotion."
@@ -179,7 +179,7 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-03)
+### Latest Technical Snapshot (2026-03-05)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.py`
@@ -211,22 +211,24 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 - **Runtime role guards (controller)**:
   - upload/manage roles: admissions roles + `Academic Admin` + `System Manager` + `Admissions Applicant`
   - reviewer roles: `Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`
+  - staff operations are applicant-scope gated (organization/school visibility with transfer-aware student-school matching)
+  - `Admissions Applicant` can operate only on own linked applicant rows
   - review-field mutation is blocked for non-reviewer roles
 - **Readiness and promotion integration**:
   - required-document readiness check in `Student Applicant.has_required_documents()`
   - promotion copy flow uses approved applicant docs in `Student Applicant._copy_promotable_documents_to_student()`
   - per-item readiness counting by `Applicant Document Item` upload + item review status
 
-### Permission Matrix (DocType Permissions)
+### Permission Matrix (Effective Runtime)
 
 | Role | Read | Write | Create | Delete | Notes |
 |---|---|---|---|---|---|
-| `Admission Manager` | Yes | Yes | Yes | Yes | Runtime delete guard applies when files exist |
-| `Admission Officer` | Yes | Yes | Yes | Yes | Reviewer authority |
-| `Academic Admin` | Yes | Yes | Yes | Yes | Reviewer authority |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant visibility; runtime delete guard applies when files exist |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant visibility; reviewer authority |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant visibility; reviewer authority |
 | `System Manager` | Yes | Yes | Yes | Yes | Reviewer authority + delete override with attached files |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes | Runtime guard limits review semantics |
-| `Admissions Applicant` | Yes | Yes | Yes | No | Portal-scoped behavior still enforced server-side |
-| `Academic Assistant` | Yes | Yes | Yes | Yes | Runtime guard limits review semantics |
+| `Admissions Applicant` | Yes | Yes | Yes | No | Own applicant rows only (self-link enforced) |
+| `Curriculum Coordinator` | No | No | No | No | Not in runtime admissions-file access contract |
+| `Academic Assistant` | No | No | No | No | Not in runtime admissions-file access contract |
 
 Runtime controller rules are authoritative over DocType matrix permissions.

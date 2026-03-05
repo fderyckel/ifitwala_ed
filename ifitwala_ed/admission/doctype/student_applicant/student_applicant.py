@@ -13,12 +13,16 @@ from frappe.utils import cint, get_datetime, now_datetime
 
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
+    READ_LIKE_PERMISSION_TYPES,
+    build_admissions_file_scope_exists_sql,
     ensure_admissions_permission,
     ensure_contact_dynamic_link,
     ensure_contact_for_email,
     get_applicant_document_slot_spec,
     get_applicant_scope_ancestors,
     get_contact_primary_email,
+    has_scoped_staff_access_to_student_applicant,
+    is_admissions_file_staff_user,
     is_applicant_document_type_in_scope,
     normalize_email_value,
     sync_student_applicant_contact_binding,
@@ -338,6 +342,10 @@ class StudentApplicant(Document):
         if not before:
             return
 
+        if is_admissions_file_staff_user(user):
+            if not has_scoped_staff_access_to_student_applicant(user=user, student_applicant=self.name):
+                frappe.throw(_("You do not have permission to edit this Applicant."), frappe.PermissionError)
+
         status_for_edit = self.application_status
         if before.application_status != self.application_status and getattr(self.flags, "allow_status_change", False):
             status_for_edit = before.application_status
@@ -467,6 +475,8 @@ class StudentApplicant(Document):
         user = frappe.session.user
         roles = set(frappe.get_roles(user))
         if roles & DECISION_ROLES:
+            if not has_scoped_staff_access_to_student_applicant(user=user, student_applicant=self.name):
+                frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
             return user
         frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
 
@@ -475,6 +485,13 @@ class StudentApplicant(Document):
     ):
         if permission_checker:
             permission_checker()
+
+        if is_admissions_file_staff_user(frappe.session.user):
+            if not has_scoped_staff_access_to_student_applicant(
+                user=frappe.session.user,
+                student_applicant=self.name,
+            ):
+                frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
 
         if self.is_new():
             frappe.throw(_("Save the Student Applicant before changing status."))
@@ -2312,3 +2329,98 @@ def school_by_organization_query(doctype, txt, searchfield, start, page_len, fil
         """,
         (organization, search_txt, start, page_len),
     )
+
+
+def get_permission_query_conditions(user: str | None = None) -> str | None:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return "1=0"
+
+    conditions: list[str] = []
+    if is_admissions_file_staff_user(resolved_user):
+        staff_condition = build_admissions_file_scope_exists_sql(
+            user=resolved_user,
+            student_applicant_expr_sql="`tabStudent Applicant`.`name`",
+        )
+        if staff_condition is None:
+            return None
+        if staff_condition != "1=0":
+            conditions.append(f"({staff_condition})")
+
+    roles = set(frappe.get_roles(resolved_user))
+    if ADMISSIONS_APPLICANT_ROLE in roles:
+        escaped_user = frappe.db.escape(resolved_user)
+        conditions.append(
+            "("
+            f"`tabStudent Applicant`.`applicant_user` = {escaped_user} "
+            f"OR `tabStudent Applicant`.`portal_account_email` = {escaped_user} "
+            f"OR `tabStudent Applicant`.`applicant_email` = {escaped_user}"
+            ")"
+        )
+
+    return " OR ".join(conditions) if conditions else "1=0"
+
+
+def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    op = (ptype or "read").lower()
+
+    if not resolved_user or resolved_user == "Guest":
+        return False
+
+    if is_admissions_file_staff_user(resolved_user):
+        staff_ops = READ_LIKE_PERMISSION_TYPES | {"write", "create", "delete", "submit", "cancel", "amend"}
+        if op not in staff_ops:
+            return False
+        if op == "create":
+            roles = set(frappe.get_roles(resolved_user))
+            return resolved_user == "Administrator" or "System Manager" in roles or bool(roles & ADMISSIONS_ROLES)
+        if not doc:
+            return True
+        applicant_name = _resolve_student_applicant_name(doc)
+        return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=applicant_name)
+
+    roles = set(frappe.get_roles(resolved_user))
+    if ADMISSIONS_APPLICANT_ROLE not in roles:
+        return False
+
+    applicant_ops = READ_LIKE_PERMISSION_TYPES | {"write"}
+    if op not in applicant_ops:
+        return False
+
+    if not doc:
+        return op in READ_LIKE_PERMISSION_TYPES
+
+    return _is_applicant_self_user(resolved_user, doc)
+
+
+def _resolve_student_applicant_name(doc) -> str:
+    if isinstance(doc, str):
+        return (doc or "").strip()
+    if isinstance(doc, dict):
+        return (doc.get("name") or "").strip()
+    return (getattr(doc, "name", None) or "").strip()
+
+
+def _is_applicant_self_user(user: str, doc) -> bool:
+    applicant_name = _resolve_student_applicant_name(doc)
+    if not applicant_name:
+        return False
+
+    row = frappe.db.get_value(
+        "Student Applicant",
+        applicant_name,
+        ["applicant_user", "portal_account_email", "applicant_email"],
+        as_dict=True,
+    )
+    if not row:
+        return False
+
+    if (row.get("applicant_user") or "").strip() == user:
+        return True
+
+    normalized_user = normalize_email_value(user)
+    return normalized_user in {
+        normalize_email_value(row.get("portal_account_email")),
+        normalize_email_value(row.get("applicant_email")),
+    }

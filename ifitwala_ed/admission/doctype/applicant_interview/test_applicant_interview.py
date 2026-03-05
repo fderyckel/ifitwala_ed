@@ -17,6 +17,7 @@ class TestApplicantInterview(FrappeTestCase):
         self._created = []
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
+        self.transfer_school = self._create_school(self.organization)
         self.applicant = self._create_applicant(self.organization, self.school)
 
     def tearDown(self):
@@ -375,6 +376,46 @@ class TestApplicantInterview(FrappeTestCase):
         with self.assertRaises(frappe.PermissionError):
             save_my_interview_feedback(interview=interview.name, strengths="Not allowed", feedback_status="Draft")
 
+    def test_transfer_school_academic_admin_can_read_interview_workspace(self):
+        academic_admin = self._create_user("transfer_admin", roles=["Academic Admin"])
+        self._create_employee(academic_admin, first_name="Transfer", last_name="Admin", school=self.transfer_school)
+
+        self._link_applicant_to_student(anchor_school=self.transfer_school)
+        interview = self._create_interview_for_applicant(
+            date="2030-06-08",
+            start="2030-06-08 10:00:00",
+            end="2030-06-08 10:30:00",
+            interview_type="Student",
+        )
+
+        frappe.set_user(academic_admin.name)
+        self.assertTrue(
+            frappe.has_permission("Applicant Interview", ptype="read", doc=interview.name, user=academic_admin.name)
+        )
+
+        payload = get_interview_workspace(interview=interview.name)
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("applicant", {}).get("name"), self.applicant.name)
+
+    def test_transfer_school_non_privileged_staff_cannot_read_interview_workspace(self):
+        staff_user = self._create_user("transfer_staff", roles=["Academic Assistant"])
+        self._create_employee(staff_user, first_name="Transfer", last_name="Staff", school=self.transfer_school)
+
+        self._link_applicant_to_student(anchor_school=self.transfer_school)
+        interview = self._create_interview_for_applicant(
+            date="2030-06-09",
+            start="2030-06-09 11:00:00",
+            end="2030-06-09 11:30:00",
+            interview_type="Student",
+        )
+
+        frappe.set_user(staff_user.name)
+        self.assertFalse(
+            frappe.has_permission("Applicant Interview", ptype="read", doc=interview.name, user=staff_user.name)
+        )
+        with self.assertRaises(frappe.PermissionError):
+            get_interview_workspace(interview=interview.name)
+
     def _comments_for_interview(self, interview_name: str):
         comments = frappe.get_all(
             "Comment",
@@ -412,7 +453,7 @@ class TestApplicantInterview(FrappeTestCase):
         self._created.append(("School", doc.name))
         return doc.name
 
-    def _create_user(self, label: str):
+    def _create_user(self, label: str, roles: list[str] | None = None):
         doc = frappe.get_doc(
             {
                 "doctype": "User",
@@ -423,9 +464,11 @@ class TestApplicantInterview(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("User", doc.name))
+        if roles:
+            doc.add_roles(*roles)
         return doc
 
-    def _create_employee(self, user, *, first_name: str, last_name: str):
+    def _create_employee(self, user, *, first_name: str, last_name: str, school: str | None = None):
         doc = frappe.get_doc(
             {
                 "doctype": "Employee",
@@ -436,12 +479,41 @@ class TestApplicantInterview(FrappeTestCase):
                 "date_of_joining": "2028-01-01",
                 "employment_status": "Active",
                 "organization": self.organization,
-                "school": self.school,
+                "school": school or self.school,
                 "user_id": user.name,
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Employee", doc.name))
         return doc
+
+    def _link_applicant_to_student(self, *, anchor_school: str):
+        student = frappe.get_doc(
+            {
+                "doctype": "Student",
+                "student_first_name": "Transfer",
+                "student_last_name": f"Student-{frappe.generate_hash(length=6)}",
+                "student_email": f"transfer-{frappe.generate_hash(length=8)}@example.com",
+                "student_applicant": self.applicant.name,
+                "anchor_school": anchor_school,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Student", student.name))
+        self.applicant.db_set("student", student.name, update_modified=False)
+        return student
+
+    def _create_interview_for_applicant(self, *, date: str, start: str, end: str, interview_type: str):
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": date,
+                "interview_start": start,
+                "interview_end": end,
+                "interview_type": interview_type,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+        return interview
 
     def _create_applicant(self, organization: str, school: str):
         doc = frappe.get_doc(

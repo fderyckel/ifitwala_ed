@@ -3,7 +3,7 @@ title: "Applicant Interview: Structured Interview Evidence"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.4.0"
+version: "1.5.0"
 last_change_date: "2026-03-05"
 summary: "Record interview evidence, participants, calendar projection, and per-interviewer feedback with audit trail comments on the Student Applicant timeline."
 seo_title: "Applicant Interview: Structured Interview Evidence"
@@ -134,14 +134,15 @@ Interviewers are child rows for structure only; workflow logic and validations a
 
 | Role | Read | Write | Create | Delete | Notes |
 |---|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Academic Admin` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Admission Officer` | Yes | Yes | Yes | Yes | Full Desk access |
+| `System Manager` | Yes | Yes | Yes | Yes | Global privileged access |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
 | `Interviewer` (listed in `interviewers`) | Yes (row-level) | Yes (row-level, restricted fields) | No | No | Can access only interviews where they are listed |
 
 Runtime controller rule:
-- Staff roles (`Admission` roles + `Academic Admin` + `System Manager`) keep full create/update/delete access.
+- Staff roles (`Admission` roles + `Academic Admin` + `System Manager`) are evaluated against applicant scope before create/update/read.
+- Scoped visibility is transfer-aware: access can follow linked student school context (for example, active enrollment/current anchor school) while preserving applicant-history linkage.
 - Non-admissions employees listed in `interviewers` can read/write only their assigned interview rows.
 - Interviewer write scope on parent interview remains restricted to `notes` and `outcome_impression`; schedule/participant fields stay staff-managed.
 - Structured per-interviewer notes should be captured in `Applicant Interview Feedback` from the SPA workspace.

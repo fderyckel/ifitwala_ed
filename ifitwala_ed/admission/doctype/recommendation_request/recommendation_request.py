@@ -6,7 +6,11 @@ from frappe.model.document import Document
 from frappe.utils import cint, get_datetime, now_datetime
 
 from ifitwala_ed.admission.admission_utils import (
+    READ_LIKE_PERMISSION_TYPES,
+    build_admissions_file_scope_exists_sql,
     get_applicant_scope_ancestors,
+    has_scoped_staff_access_to_student_applicant,
+    is_admissions_file_staff_user,
     is_applicant_document_type_in_scope,
     normalize_email_value,
 )
@@ -164,3 +168,64 @@ class RecommendationRequest(Document):
         )
         if exists:
             frappe.throw(_("Item Key must be unique per Student Applicant recommendation request."))
+
+
+def get_permission_query_conditions(user: str | None = None) -> str | None:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return "1=0"
+    if not is_admissions_file_staff_user(resolved_user):
+        return "1=0"
+
+    staff_condition = build_admissions_file_scope_exists_sql(
+        user=resolved_user,
+        student_applicant_expr_sql="`tabRecommendation Request`.`student_applicant`",
+    )
+    if staff_condition is None:
+        return None
+    return staff_condition
+
+
+def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    op = (ptype or "read").lower()
+    if not resolved_user or resolved_user == "Guest":
+        return False
+    if not is_admissions_file_staff_user(resolved_user):
+        return False
+
+    staff_ops = READ_LIKE_PERMISSION_TYPES | {"write", "create", "delete", "submit", "cancel", "amend"}
+    if op not in staff_ops:
+        return False
+
+    if op == "create":
+        if not doc:
+            return True
+    if not doc:
+        return True
+
+    student_applicant = _resolve_recommendation_request_student_applicant(doc)
+    return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=student_applicant)
+
+
+def _resolve_recommendation_request_student_applicant(doc) -> str:
+    if isinstance(doc, str):
+        request_name = (doc or "").strip()
+        if not request_name:
+            return ""
+        return (frappe.db.get_value("Recommendation Request", request_name, "student_applicant") or "").strip()
+
+    if isinstance(doc, dict):
+        student_applicant = (doc.get("student_applicant") or "").strip()
+        if student_applicant:
+            return student_applicant
+        request_name = (doc.get("name") or "").strip()
+    else:
+        student_applicant = (getattr(doc, "student_applicant", None) or "").strip()
+        if student_applicant:
+            return student_applicant
+        request_name = (getattr(doc, "name", None) or "").strip()
+
+    if not request_name:
+        return ""
+    return (frappe.db.get_value("Recommendation Request", request_name, "student_applicant") or "").strip()

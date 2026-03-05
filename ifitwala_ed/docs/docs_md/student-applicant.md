@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.11.1"
-last_change_date: "2026-03-04"
+version: "1.12.0"
+last_change_date: "2026-03-05"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, policies, and guardian intake/contact carry-over."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, policies, and guardian intake/contact carry-over."
@@ -324,7 +324,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-04)
+### Latest Technical Snapshot (2026-03-05)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
@@ -448,13 +448,15 @@ What to do (site operations):
 | Role | Read | Write | Create | Delete | Notes |
 |---|---|---|---|---|---|
 | `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Admission Officer` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Academic Admin` | Yes | No | No | No | Read-only in DocType permissions |
-| `Academic Assistant` | Yes | No | No | No | Read-only in DocType permissions |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Academic Admin` | Yes | No | No | No | Scoped read visibility |
+| `Academic Assistant` | No | No | No | No | Not in runtime admissions-file access contract |
+| `Admissions Applicant` | Yes | Yes | No | No | Own applicant only (self-link enforced) |
 
 Runtime controller rules (server):
 - Only admissions staff can create new records.
+- Admissions and academic-admin reads are scope-gated by organization/school visibility; visibility can follow linked student school context during school transfers.
 - Status changes must use lifecycle methods (direct writes are blocked).
 - Family/applicant editability depends on current status (`Invited/In Progress/Missing Info`).
 - Terminal states (`Rejected`, `Promoted`) are locked except explicit System Manager override flow.

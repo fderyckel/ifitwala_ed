@@ -10,11 +10,15 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import format_datetime, get_datetime, get_link_to_form, getdate, now_datetime
 
-from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
+from ifitwala_ed.admission.admission_utils import (
+    READ_LIKE_PERMISSION_TYPES,
+    build_admissions_file_scope_exists_sql,
+    has_scoped_staff_access_to_student_applicant,
+    is_admissions_file_staff_user,
+)
 from ifitwala_ed.api.recommendation_intake import get_recommendation_status_for_applicant
 from ifitwala_ed.utilities.employee_booking import find_employee_conflicts
 
-STAFF_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
 TERMINAL_APPLICANT_STATES = {"Rejected", "Promoted"}
 DEFAULT_INTERVIEW_DURATION_MINUTES = 30
 DEFAULT_SUGGESTION_WINDOW_START = "07:00:00"
@@ -59,6 +63,7 @@ class ApplicantInterview(Document):
         _assert_manage_interview_permission(
             allow_interviewer_write=not self.is_new(),
             interview_name=self.name if not self.is_new() else None,
+            student_applicant=self.student_applicant,
         )
 
     def _validate_interviewer_edit_scope(self):
@@ -232,11 +237,20 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
     user = (user or frappe.session.user or "").strip()
     if not user or user == "Guest":
         return "1=0"
+
+    conditions: list[str] = []
     if _is_interview_privileged_user(user):
-        return None
+        staff_condition = build_admissions_file_scope_exists_sql(
+            user=user,
+            student_applicant_expr_sql="`tabApplicant Interview`.`student_applicant`",
+        )
+        if staff_condition is None:
+            return None
+        if staff_condition != "1=0":
+            conditions.append(f"({staff_condition})")
 
     escaped_user = frappe.db.escape(user)
-    return (
+    interviewer_condition = (
         "exists ("
         "select 1 from `tabApplicant Interviewer` ai "
         "where ai.parent = `tabApplicant Interview`.`name` "
@@ -245,6 +259,8 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
         f"and ai.interviewer = {escaped_user}"
         ")"
     )
+    conditions.append(f"({interviewer_condition})")
+    return " OR ".join(conditions) if conditions else "1=0"
 
 
 def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bool:
@@ -252,17 +268,22 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
     op = (ptype or "read").lower()
     if not user or user == "Guest":
         return False
-    if _is_interview_privileged_user(user):
-        return True
 
-    read_like = {"read", "report", "export", "print", "email"}
-    if op == "create" or op == "delete" or op == "submit":
+    if op == "create":
+        return _is_interview_privileged_user(user)
+    if op in {"delete", "submit"}:
         return False
-    if op not in read_like and op != "write":
+    if op not in READ_LIKE_PERMISSION_TYPES and op != "write":
         return False
+
+    if _is_interview_privileged_user(user):
+        if not doc:
+            return True
+        student_applicant = _resolve_interview_student_applicant(doc)
+        return has_scoped_staff_access_to_student_applicant(user=user, student_applicant=student_applicant)
 
     if not doc:
-        if op not in read_like:
+        if op not in READ_LIKE_PERMISSION_TYPES:
             return False
         return bool(
             frappe.db.exists(
@@ -312,7 +333,7 @@ def schedule_applicant_interview(
     with suggested alternative times instead of throwing a hard validation error.
     """
 
-    _assert_manage_interview_permission()
+    _assert_manage_interview_permission(student_applicant=student_applicant)
 
     applicant_row = _get_applicant_context(student_applicant)
 
@@ -523,6 +544,7 @@ def _assert_manage_interview_permission(
     *,
     allow_interviewer_write: bool = False,
     interview_name: str | None = None,
+    student_applicant: str | None = None,
     user: str | None = None,
 ) -> None:
     current_user = (user or frappe.session.user or "").strip()
@@ -530,6 +552,16 @@ def _assert_manage_interview_permission(
         frappe.throw(_("You do not have permission to manage Applicant Interviews."), frappe.PermissionError)
 
     if _is_interview_privileged_user(current_user):
+        target_applicant = (student_applicant or "").strip()
+        if not target_applicant and interview_name:
+            target_applicant = (
+                frappe.db.get_value("Applicant Interview", interview_name, "student_applicant") or ""
+            ).strip()
+        if target_applicant and not has_scoped_staff_access_to_student_applicant(
+            user=current_user,
+            student_applicant=target_applicant,
+        ):
+            frappe.throw(_("You do not have permission to manage Applicant Interviews."), frappe.PermissionError)
         return
 
     if allow_interviewer_write and interview_name:
@@ -540,10 +572,7 @@ def _assert_manage_interview_permission(
 
 
 def _is_interview_privileged_user(user: str) -> bool:
-    if not user:
-        return False
-    roles = set(frappe.get_roles(user))
-    return user == "Administrator" or bool(roles & STAFF_ROLES)
+    return is_admissions_file_staff_user(user)
 
 
 def _is_interviewer_on_interview(*, user: str, interview_name: str) -> bool:
@@ -598,7 +627,14 @@ def _assert_interview_workspace_permission(
         frappe.throw(_("Please sign in to continue."), frappe.PermissionError)
 
     if _is_interview_privileged_user(current_user):
-        return
+        student_applicant = (
+            frappe.db.get_value("Applicant Interview", interview_name, "student_applicant") or ""
+        ).strip()
+        if student_applicant and has_scoped_staff_access_to_student_applicant(
+            user=current_user,
+            student_applicant=student_applicant,
+        ):
+            return
 
     if _is_interviewer_on_interview(user=current_user, interview_name=interview_name):
         return
@@ -624,6 +660,29 @@ def _clean_optional_text(value) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _resolve_interview_student_applicant(doc) -> str:
+    if isinstance(doc, str):
+        interview_name = (doc or "").strip()
+        if not interview_name:
+            return ""
+        return (frappe.db.get_value("Applicant Interview", interview_name, "student_applicant") or "").strip()
+
+    if isinstance(doc, dict):
+        student_applicant = (doc.get("student_applicant") or "").strip()
+        if student_applicant:
+            return student_applicant
+        interview_name = (doc.get("name") or "").strip()
+    else:
+        student_applicant = (getattr(doc, "student_applicant", None) or "").strip()
+        if student_applicant:
+            return student_applicant
+        interview_name = (getattr(doc, "name", None) or "").strip()
+
+    if not interview_name:
+        return ""
+    return (frappe.db.get_value("Applicant Interview", interview_name, "student_applicant") or "").strip()
 
 
 def _load_or_create_my_feedback_doc(*, interview_name: str, user: str):

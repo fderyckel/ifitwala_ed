@@ -3,7 +3,7 @@ title: "Applicant Interview Feedback: Per-Interviewer Notes"
 slug: applicant-interview-feedback
 category: Admission
 doc_order: 9
-version: "1.0.0"
+version: "1.1.0"
 last_change_date: "2026-03-05"
 summary: "Store one structured feedback record per interviewer per admissions interview to avoid concurrent edit collisions on shared interview notes."
 seo_title: "Applicant Interview Feedback"
@@ -45,7 +45,12 @@ Workspace APIs:
 - `get_interview_workspace(interview=...)`
 - `save_my_interview_feedback(...)`
 
-## Technical Notes
+## Related Docs
+
+- [**Applicant Interview**](/docs/en/applicant-interview/)
+- [**Student Applicant**](/docs/en/student-applicant/)
+
+## Technical Notes (IT)
 
 - **DocType schema**: `ifitwala_ed/admission/doctype/applicant_interview_feedback/applicant_interview_feedback.json`
 - **Controller**: `ifitwala_ed/admission/doctype/applicant_interview_feedback/applicant_interview_feedback.py`
@@ -53,8 +58,6 @@ Workspace APIs:
 - **Permission hooks**:
   - `get_permission_query_conditions(...)`
   - `has_permission(...)`
-
-## Related Docs
-
-- [**Applicant Interview**](/docs/en/applicant-interview/)
-- [**Student Applicant**](/docs/en/student-applicant/)
+- **Scope contract**:
+  - staff roles (`Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`) are scoped by applicant organization/school visibility
+  - non-privileged interviewers can access only their own row and only when listed on the interview
