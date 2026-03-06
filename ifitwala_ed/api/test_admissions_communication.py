@@ -8,6 +8,7 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import now_datetime
 
 from ifitwala_ed.api import admissions_communication
+from ifitwala_ed.api.admission_cockpit import _ensure_cockpit_access
 from ifitwala_ed.api.admissions_communication import (
     _require_actor_context,
     _session_user,
@@ -149,3 +150,15 @@ class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
         self.assertTrue(bool(getattr(admissions_communication.send_admissions_case_message, "allow_guest", False)))
         self.assertTrue(bool(getattr(admissions_communication.get_admissions_case_thread, "allow_guest", False)))
         self.assertTrue(bool(getattr(admissions_communication.mark_admissions_case_thread_read, "allow_guest", False)))
+
+
+class TestAdmissionsCockpitAuthGuards(FrappeTestCase):
+    def test_cockpit_access_rejects_none_literal_without_role_lookup(self):
+        with (
+            patch("ifitwala_ed.api.admission_cockpit.frappe.session.user", "None"),
+            patch("ifitwala_ed.api.admission_cockpit.frappe.get_roles") as get_roles_mock,
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                _ensure_cockpit_access()
+
+        get_roles_mock.assert_not_called()

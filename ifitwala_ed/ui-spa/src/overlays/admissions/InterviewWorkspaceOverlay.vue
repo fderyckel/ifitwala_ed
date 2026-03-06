@@ -117,13 +117,18 @@
 											<div>
 												<p class="type-caption text-ink/65">Submitted</p>
 												<p class="type-body text-ink">
-													{{ formatDateTime(workspaceApplicant?.submitted_at) }}
+													{{ formatHumanDateTime(workspaceApplicant?.submitted_at) }}
 												</p>
 											</div>
 											<div>
 												<p class="type-caption text-ink/65">Date of Birth</p>
 												<p class="type-body text-ink">
-													{{ workspaceApplicant?.student_date_of_birth || '—' }}
+													{{
+														formatHumanDate(workspaceApplicant?.student_date_of_birth, {
+															includeYear: true,
+															includeWeekday: false,
+														})
+													}}
 												</p>
 											</div>
 										</div>
@@ -245,15 +250,15 @@
 										</div>
 										<ul v-else class="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1">
 											<li
-												v-for="row in workspaceTimeline"
+												v-for="row in timelineRows"
 												:key="row.name"
 												class="rounded-xl border border-border/60 px-3 py-2"
 											>
 												<p class="type-caption text-ink/65">
 													{{ row.comment_by || row.comment_email || 'System' }} ·
-													{{ formatDateTime(row.creation) }}
+													{{ formatHumanDateTime(row.creation) }}
 												</p>
-												<p class="type-body text-ink/80 mt-1" v-html="row.content || ''"></p>
+												<p class="type-body text-ink/80 mt-1" v-html="row.renderedContent"></p>
 											</li>
 										</ul>
 									</article>
@@ -290,11 +295,9 @@
 															<span class="text-ink/60">· {{ item.name }}</span>
 														</p>
 														<p class="type-caption text-ink/70 mt-1">
-															{{
-																item.interview_start_label || item.interview_date || 'No date set'
-															}}
-															<span v-if="item.interview_end_label">
-																→ {{ item.interview_end_label }}</span
+															{{ formatInterviewStart(item) }}
+															<span v-if="formatInterviewEnd(item)">
+																→ {{ formatInterviewEnd(item) }}</span
 															>
 														</p>
 														<p
@@ -572,15 +575,29 @@ const interviewWindowLabel = computed(() => {
 	if (!isInterviewMode.value) {
 		return 'Applicant admission file summary';
 	}
-	const startLabel = workspace.value?.interview?.interview_start_label;
-	const endLabel = workspace.value?.interview?.interview_end_label;
+	const startLabel = formatHumanDateTime(workspace.value?.interview?.interview_start, {
+		fallback: '',
+	});
+	const endLabel = formatHumanDateTime(workspace.value?.interview?.interview_end, {
+		fallback: '',
+	});
 	if (startLabel && endLabel) return `${startLabel} to ${endLabel}`;
 	if (startLabel) return startLabel;
+	const dateOnlyLabel = formatHumanDate(workspace.value?.interview?.interview_date, {
+		fallback: '',
+	});
+	if (dateOnlyLabel) return dateOnlyLabel;
 	return 'Interview schedule';
 });
 
 const canEdit = computed(() =>
 	Boolean(isInterviewMode.value && workspace.value?.feedback?.can_edit)
+);
+const timelineRows = computed(() =>
+	workspaceTimeline.value.map(row => ({
+		...row,
+		renderedContent: formatTimelineContent(row.content),
+	}))
 );
 
 function emitAfterLeave() {
@@ -804,11 +821,143 @@ async function submitFeedback() {
 	await persistFeedback('Submitted');
 }
 
-function formatDateTime(value?: string | null) {
-	if (!value) return '—';
-	const parsed = new Date(value);
-	if (Number.isNaN(parsed.getTime())) return value;
-	return parsed.toLocaleString();
+type HumanDateOptions = {
+	includeYear?: boolean;
+	includeWeekday?: boolean;
+	includeOrdinalDay?: boolean;
+	includeTime?: boolean;
+	fallback?: string;
+};
+
+const TIMELINE_DATETIME_PATTERN =
+	/\b\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})?\b/g;
+
+function resolveAppLocale() {
+	if (typeof window === 'undefined') return undefined;
+	const globalAny = window as unknown as Record<string, any>;
+	const bootLang = String(globalAny.frappe?.boot?.lang || '').trim();
+	if (bootLang) return bootLang.replace('_', '-');
+	const htmlLang = document.documentElement.lang?.trim();
+	if (htmlLang) return htmlLang.replace('_', '-');
+	return navigator.languages?.[0] || navigator.language || undefined;
+}
+
+function resolveSiteTimeZone() {
+	if (typeof window === 'undefined') return undefined;
+	const globalAny = window as unknown as Record<string, any>;
+	const siteTz = String(globalAny.frappe?.boot?.sysdefaults?.time_zone || '').trim();
+	return siteTz || undefined;
+}
+
+function parseDateInput(value: string) {
+	const raw = String(value || '').trim();
+	if (!raw) return null;
+	const normalized = raw.replace(' ', 'T').replace(/\.(\d{3})\d+/, '.$1');
+	const parsed = new Date(normalized);
+	if (!Number.isNaN(parsed.getTime())) return parsed;
+	const fallback = new Date(raw);
+	return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function withEnglishOrdinalDay(dayText: string, locale?: string) {
+	const normalizedLocale = String(locale || '').toLowerCase();
+	if (!normalizedLocale.startsWith('en')) return dayText;
+	const dayNumber = Number.parseInt(dayText, 10);
+	if (!Number.isFinite(dayNumber)) return dayText;
+	const mod100 = dayNumber % 100;
+	if (mod100 >= 11 && mod100 <= 13) return `${dayNumber}th`;
+	switch (dayNumber % 10) {
+		case 1:
+			return `${dayNumber}st`;
+		case 2:
+			return `${dayNumber}nd`;
+		case 3:
+			return `${dayNumber}rd`;
+		default:
+			return `${dayNumber}th`;
+	}
+}
+
+function formatHumanDateTime(value?: string | null, options: HumanDateOptions = {}) {
+	const {
+		includeYear = false,
+		includeWeekday = true,
+		includeOrdinalDay = true,
+		includeTime = true,
+		fallback = '—',
+	} = options;
+	const raw = String(value || '').trim();
+	if (!raw) return fallback;
+	const parsed = parseDateInput(raw);
+	if (!parsed) return raw;
+	const locale = resolveAppLocale();
+	const timeZone = resolveSiteTimeZone();
+	try {
+		const formatter = new Intl.DateTimeFormat(locale, {
+			weekday: includeWeekday ? 'short' : undefined,
+			day: 'numeric',
+			month: 'long',
+			year: includeYear ? 'numeric' : undefined,
+			hour: includeTime ? '2-digit' : undefined,
+			minute: includeTime ? '2-digit' : undefined,
+			hour12: false,
+			timeZone,
+		});
+		const parts = formatter.formatToParts(parsed);
+		const partByType = new Map(parts.map(part => [part.type, part.value]));
+		const dayPart = partByType.get('day') || '';
+		const dayLabel =
+			includeOrdinalDay && dayPart ? withEnglishOrdinalDay(dayPart, locale) : dayPart;
+		const dateBits: string[] = [];
+		if (includeWeekday && partByType.get('weekday'))
+			dateBits.push(partByType.get('weekday') || '');
+		if (dayLabel) dateBits.push(dayLabel);
+		if (partByType.get('month')) dateBits.push(partByType.get('month') || '');
+		if (includeYear && partByType.get('year')) dateBits.push(partByType.get('year') || '');
+		const dateLabel = dateBits.join(' ').trim();
+		if (!includeTime) return dateLabel || formatter.format(parsed);
+		const hour = partByType.get('hour');
+		const minute = partByType.get('minute');
+		const timeLabel = hour && minute ? `${hour}:${minute}` : '';
+		if (dateLabel && timeLabel) return `${dateLabel} ${timeLabel}`;
+		if (dateLabel) return dateLabel;
+		if (timeLabel) return timeLabel;
+		return formatter.format(parsed);
+	} catch {
+		return raw;
+	}
+}
+
+function formatHumanDate(
+	value?: string | null,
+	options: Omit<HumanDateOptions, 'includeTime'> = {}
+) {
+	return formatHumanDateTime(value, {
+		includeTime: false,
+		...options,
+	});
+}
+
+function formatTimelineContent(content?: string | null) {
+	const raw = String(content || '');
+	if (!raw) return '';
+	return raw.replace(TIMELINE_DATETIME_PATTERN, match =>
+		formatHumanDateTime(match, {
+			fallback: match,
+		})
+	);
+}
+
+function formatInterviewStart(item: InterviewWorkspaceInterview) {
+	return (
+		formatHumanDateTime(item.interview_start, { fallback: '' }) ||
+		formatHumanDate(item.interview_date, { fallback: '' }) ||
+		'No date set'
+	);
+}
+
+function formatInterviewEnd(item: InterviewWorkspaceInterview) {
+	return formatHumanDateTime(item.interview_end, { fallback: '' });
 }
 
 function onKeydown(event: KeyboardEvent) {

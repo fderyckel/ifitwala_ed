@@ -48,18 +48,20 @@ BLOCKER_LABELS = {
     "no_reviewer_assigned": "No Reviewer Assigned",
 }
 
+INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
+
 
 def _ensure_cockpit_access(user: str | None = None) -> str:
-    user = user or frappe.session.user
-    if not user or user == "Guest":
+    resolved_user = _to_text(user or frappe.session.user)
+    if not resolved_user or resolved_user.lower() in INVALID_SESSION_USERS:
         frappe.throw(_("You need to sign in to access Admissions Cockpit."), frappe.PermissionError)
 
-    roles = set(frappe.get_roles(user))
+    roles = set(frappe.get_roles(resolved_user))
     if roles & ALLOWED_COCKPIT_ROLES:
-        return user
+        return resolved_user
 
     frappe.throw(_("You do not have permission to access Admissions Cockpit."), frappe.PermissionError)
-    return user
+    return resolved_user
 
 
 def _to_text(value) -> str:
