@@ -3,6 +3,7 @@ import { computed, reactive } from 'vue'
 
 export type OverlayType =
   | 'create-task'
+  | 'event-quick-create'
   | 'meeting-event'
   | 'school-event'
   | 'class-event'

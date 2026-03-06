@@ -131,6 +131,7 @@ import { FeatherIcon } from 'frappe-ui';
 
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
 import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
+import { SIGNAL_CALENDAR_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 
 import OrgCommunicationQuickCreateModal from '@/components/communication/OrgCommunicationQuickCreateModal.vue';
 
@@ -509,6 +510,7 @@ function setupMediaWatcher() {
 
 const cleanupFns: Array<() => void> = [];
 let intervalHandle: number | null = null;
+let disposeCalendarInvalidate: (() => void) | null = null;
 
 function maybeAutoRefresh(reason: 'interval' | 'visibility') {
 	if (!lastUpdated.value) {
@@ -543,10 +545,14 @@ onMounted(() => {
 	setupMediaWatcher();
 	setupIntervals();
 	setupCalendarHeightListener();
+	disposeCalendarInvalidate = uiSignals.subscribe(SIGNAL_CALENDAR_INVALIDATE, () => {
+		refresh({ force: true, reason: 'manual' });
+	});
 });
 
 onBeforeUnmount(() => {
 	cleanupFns.forEach(fn => fn());
 	if (intervalHandle) clearInterval(intervalHandle);
+	if (disposeCalendarInvalidate) disposeCalendarInvalidate();
 });
 </script>
