@@ -16,6 +16,7 @@ from ifitwala_ed.admission.admission_utils import (
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
+from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
 from ifitwala_ed.api.recommendation_intake import get_recommendation_status_for_applicant
 from ifitwala_ed.utilities.employee_booking import find_employee_conflicts
 
@@ -466,7 +467,11 @@ def get_interview_workspace(*, interview: str):
     interview_doc = frappe.get_doc("Applicant Interview", interview_name)
     applicant_row = _get_applicant_workspace_context(interview_doc.student_applicant)
     timeline_rows = _load_applicant_timeline(interview_doc.student_applicant)
-    document_payload = _load_applicant_documents_for_workspace(interview_doc.student_applicant)
+    document_payload = _load_applicant_documents_for_workspace(
+        interview_doc.student_applicant,
+        context_doctype="Applicant Interview",
+        context_name=interview_name,
+    )
     recommendation_payload = _load_recommendations_for_workspace(interview_doc.student_applicant)
     feedback_payload = _load_feedback_panel_for_workspace(interview_name=interview_name)
 
@@ -491,7 +496,11 @@ def get_applicant_workspace(*, student_applicant: str):
 
     applicant_row = _get_applicant_workspace_context(applicant_name)
     timeline_rows = _load_applicant_timeline(applicant_name)
-    document_payload = _load_applicant_documents_for_workspace(applicant_name)
+    document_payload = _load_applicant_documents_for_workspace(
+        applicant_name,
+        context_doctype="Student Applicant",
+        context_name=applicant_name,
+    )
     recommendation_payload = _load_recommendations_for_workspace(applicant_name)
     interview_rows = _load_interviews_for_applicant_workspace(student_applicant=applicant_name)
 
@@ -909,7 +918,12 @@ def _load_applicant_timeline(student_applicant: str) -> list[dict]:
     ]
 
 
-def _load_applicant_documents_for_workspace(student_applicant: str) -> dict:
+def _load_applicant_documents_for_workspace(
+    student_applicant: str,
+    *,
+    context_doctype: str,
+    context_name: str,
+) -> dict:
     doc_rows = frappe.get_all(
         "Applicant Document",
         filters={"student_applicant": student_applicant},
@@ -957,7 +971,7 @@ def _load_applicant_documents_for_workspace(student_applicant: str) -> dict:
                 "attached_to_doctype": "Applicant Document Item",
                 "attached_to_name": ["in", item_names],
             },
-            fields=["attached_to_name", "file_name", "file_url", "creation"],
+            fields=["name", "attached_to_name", "file_name", "file_url", "creation"],
             order_by="creation desc",
             limit_page_length=0,
             ignore_permissions=True,
@@ -975,7 +989,7 @@ def _load_applicant_documents_for_workspace(student_applicant: str) -> dict:
             "attached_to_doctype": "Applicant Document",
             "attached_to_name": ["in", doc_names],
         },
-        fields=["attached_to_name", "file_name", "file_url", "creation"],
+        fields=["name", "attached_to_name", "file_name", "file_url", "creation"],
         order_by="creation desc",
         limit_page_length=0,
         ignore_permissions=True,
@@ -1001,7 +1015,12 @@ def _load_applicant_documents_for_workspace(student_applicant: str) -> dict:
                 "reviewed_by": row.get("reviewed_by"),
                 "reviewed_on": row.get("reviewed_on"),
                 "file_name": latest_file.get("file_name"),
-                "file_url": latest_file.get("file_url"),
+                "file_url": resolve_admissions_file_open_url(
+                    file_name=latest_file.get("name"),
+                    file_url=latest_file.get("file_url"),
+                    context_doctype=context_doctype,
+                    context_name=context_name,
+                ),
                 "uploaded_at": latest_file.get("creation"),
             }
         )
@@ -1022,7 +1041,12 @@ def _load_applicant_documents_for_workspace(student_applicant: str) -> dict:
                         "reviewed_by": doc_row.get("reviewed_by"),
                         "reviewed_on": doc_row.get("reviewed_on"),
                         "file_name": legacy_file.get("file_name"),
-                        "file_url": legacy_file.get("file_url"),
+                        "file_url": resolve_admissions_file_open_url(
+                            file_name=legacy_file.get("name"),
+                            file_url=legacy_file.get("file_url"),
+                            context_doctype=context_doctype,
+                            context_name=context_name,
+                        ),
                         "uploaded_at": legacy_file.get("creation"),
                     }
                 ]

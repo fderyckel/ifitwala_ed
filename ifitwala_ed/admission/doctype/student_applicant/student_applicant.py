@@ -27,6 +27,7 @@ from ifitwala_ed.admission.admission_utils import (
     normalize_email_value,
     sync_student_applicant_contact_binding,
 )
+from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
@@ -1826,6 +1827,16 @@ class StudentApplicant(Document):
                 min_items_required = 1
             required_counts[row["name"]] = max(1, min_items_required)
 
+        def _build_file_open_url(file_row: dict | None) -> str | None:
+            if not file_row:
+                return None
+            return resolve_admissions_file_open_url(
+                file_name=file_row.get("name"),
+                file_url=file_row.get("file_url"),
+                context_doctype="Student Applicant",
+                context_name=self.name,
+            )
+
         document_rows = frappe.get_all(
             "Applicant Document",
             filters={"student_applicant": self.name},
@@ -1868,7 +1879,7 @@ class StudentApplicant(Document):
                     "attached_to_doctype": "Applicant Document Item",
                     "attached_to_name": ["in", item_names],
                 },
-                fields=["attached_to_name", "file_url", "file_name", "creation", "owner"],
+                fields=["name", "attached_to_name", "file_url", "file_name", "creation", "owner"],
                 order_by="creation desc",
             )
             for row_file in file_rows:
@@ -1885,7 +1896,7 @@ class StudentApplicant(Document):
                     "attached_to_doctype": "Applicant Document",
                     "attached_to_name": ["in", document_names],
                 },
-                fields=["attached_to_name", "file_url", "file_name", "creation", "owner"],
+                fields=["name", "attached_to_name", "file_url", "file_name", "creation", "owner"],
                 order_by="creation desc",
             )
             for row_file in legacy_rows:
@@ -1911,7 +1922,7 @@ class StudentApplicant(Document):
                     "reviewed_on": row_item.get("reviewed_on"),
                     "uploaded_by": latest_file.get("owner"),
                     "uploaded_at": latest_file.get("creation"),
-                    "file_url": latest_file.get("file_url"),
+                    "file_url": _build_file_open_url(latest_file),
                     "file_name": latest_file.get("file_name"),
                     "modified": row_item.get("modified"),
                 }
@@ -1961,7 +1972,7 @@ class StudentApplicant(Document):
                             "reviewed_on": document_row.get("reviewed_on"),
                             "uploaded_by": legacy_file.get("owner"),
                             "uploaded_at": legacy_file.get("creation"),
-                            "file_url": legacy_file.get("file_url"),
+                            "file_url": _build_file_open_url(legacy_file),
                             "file_name": legacy_file.get("file_name"),
                             "modified": document_row.get("modified"),
                         }
@@ -2035,7 +2046,7 @@ class StudentApplicant(Document):
                             "reviewed_on": document_row.get("reviewed_on"),
                             "uploaded_by": legacy_file.get("owner"),
                             "uploaded_at": legacy_file.get("creation"),
-                            "file_url": legacy_file.get("file_url"),
+                            "file_url": _build_file_open_url(legacy_file),
                             "file_name": legacy_file.get("file_name"),
                             "modified": document_row.get("modified"),
                         }

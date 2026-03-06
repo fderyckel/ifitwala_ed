@@ -1,5 +1,7 @@
 # ifitwala_ed/admission/doctype/applicant_interview/test_applicant_interview.py
 
+from urllib.parse import parse_qs, urlparse
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -9,6 +11,7 @@ from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview impor
     save_my_interview_feedback,
     schedule_applicant_interview,
 )
+from ifitwala_ed.api.file_access import download_admissions_file
 from ifitwala_ed.utilities.employee_booking import upsert_employee_booking
 
 
@@ -302,6 +305,107 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertGreaterEqual(len(payload.get("applicant", {}).get("guardians") or []), 1)
         self.assertEqual(payload.get("feedback", {}).get("my_feedback", {}).get("interviewer_user"), interviewer.name)
         self.assertTrue(bool(payload.get("feedback", {}).get("can_edit")))
+
+    def test_workspace_document_links_use_secure_download_endpoint_for_interviewer(self):
+        interviewer = self._create_user("workspace_docs")
+        outsider = self._create_user("workspace_docs_out")
+        self._create_employee(interviewer, first_name="Doc", last_name="Viewer")
+
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": "2030-06-15",
+                "interview_start": "2030-06-15 10:00:00",
+                "interview_end": "2030-06-15 10:30:00",
+                "interview_type": "Student",
+                "interviewers": [{"interviewer": interviewer.name}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        doc_type = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Type",
+                "code": f"workspace_doc_{frappe.generate_hash(length=6)}",
+                "document_type_name": "Workspace Doc",
+                "organization": self.organization,
+                "school": self.school,
+                "is_active": 1,
+                "classification_slot": "admissions_workspace_doc",
+                "classification_data_class": "administrative",
+                "classification_purpose": "administrative",
+                "classification_retention_policy": "until_program_end_plus_1y",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Type", doc_type.name))
+
+        applicant_document = frappe.get_doc(
+            {
+                "doctype": "Applicant Document",
+                "student_applicant": self.applicant.name,
+                "document_type": doc_type.name,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document", applicant_document.name))
+
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_document.name,
+                "item_key": "proof",
+                "item_label": "Proof",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "workspace-proof.txt",
+                "is_private": 1,
+                "content": b"workspace-file",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+
+        frappe.set_user(interviewer.name)
+        payload = get_interview_workspace(interview=interview.name)
+        rows = (payload.get("documents") or {}).get("rows") or []
+        self.assertTrue(rows)
+        items = rows[0].get("items") or []
+        self.assertTrue(items)
+        secure_url = (items[0].get("file_url") or "").strip()
+
+        self.assertTrue(secure_url)
+        self.assertNotIn("/private/files/", secure_url)
+
+        parsed = urlparse(secure_url)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_admissions_file")
+        query = parse_qs(parsed.query)
+        self.assertEqual((query.get("file") or [None])[0], file_doc.name)
+        self.assertEqual((query.get("context_doctype") or [None])[0], "Applicant Interview")
+        self.assertEqual((query.get("context_name") or [None])[0], interview.name)
+
+        frappe.local.response = {}
+        download_admissions_file(
+            file=file_doc.name,
+            context_doctype="Applicant Interview",
+            context_name=interview.name,
+        )
+        self.assertEqual(frappe.local.response.get("type"), "download")
+        self.assertEqual(frappe.local.response.get("filename"), file_doc.file_name)
+        self.assertEqual(frappe.local.response.get("filecontent"), b"workspace-file")
+
+        frappe.set_user(outsider.name)
+        with self.assertRaises(frappe.PermissionError):
+            download_admissions_file(
+                file=file_doc.name,
+                context_doctype="Applicant Interview",
+                context_name=interview.name,
+            )
 
     def test_save_my_feedback_upserts_single_row(self):
         interviewer = self._create_user("feedback_upsert")

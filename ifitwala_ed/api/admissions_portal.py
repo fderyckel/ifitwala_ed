@@ -27,6 +27,7 @@ from ifitwala_ed.admission.admission_utils import (
     upsert_contact_email,
 )
 from ifitwala_ed.admission.applicant_review_workflow import materialize_health_review_assignments
+from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
 from ifitwala_ed.api.recommendation_intake import get_recommendation_status_for_applicant
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
@@ -1600,6 +1601,7 @@ def update_applicant_health(
 def list_applicant_documents(student_applicant: str | None = None):
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
+    student_applicant_name = (row.get("name") or "").strip()
 
     documents = frappe.get_all(
         "Applicant Document",
@@ -1637,7 +1639,7 @@ def list_applicant_documents(student_applicant: str | None = None):
                 "attached_to_doctype": "Applicant Document Item",
                 "attached_to_name": ["in", item_names],
             },
-            fields=["attached_to_name", "file_url", "file_name", "creation"],
+            fields=["name", "attached_to_name", "file_url", "file_name", "creation"],
             order_by="creation desc",
         )
         for row_file in item_file_rows:
@@ -1653,7 +1655,7 @@ def list_applicant_documents(student_applicant: str | None = None):
             "attached_to_doctype": "Applicant Document",
             "attached_to_name": ["in", name_list],
         },
-        fields=["attached_to_name", "file_url", "file_name", "creation"],
+        fields=["name", "attached_to_name", "file_url", "file_name", "creation"],
         order_by="creation desc",
     )
     for row_file in legacy_file_rows:
@@ -1677,7 +1679,12 @@ def list_applicant_documents(student_applicant: str | None = None):
                 "reviewed_by": row_item.get("reviewed_by"),
                 "reviewed_on": row_item.get("reviewed_on"),
                 "uploaded_at": latest_file.get("creation"),
-                "file_url": latest_file.get("file_url"),
+                "file_url": resolve_admissions_file_open_url(
+                    file_name=latest_file.get("name"),
+                    file_url=latest_file.get("file_url"),
+                    context_doctype="Student Applicant",
+                    context_name=student_applicant_name,
+                ),
                 "file_name": latest_file.get("file_name"),
             }
         )
@@ -1699,7 +1706,12 @@ def list_applicant_documents(student_applicant: str | None = None):
                         "reviewed_by": doc.get("reviewed_by"),
                         "reviewed_on": doc.get("reviewed_on"),
                         "uploaded_at": legacy_file.get("creation"),
-                        "file_url": legacy_file.get("file_url"),
+                        "file_url": resolve_admissions_file_open_url(
+                            file_name=legacy_file.get("name"),
+                            file_url=legacy_file.get("file_url"),
+                            context_doctype="Student Applicant",
+                            context_name=student_applicant_name,
+                        ),
                         "file_name": legacy_file.get("file_name"),
                     }
                 ]

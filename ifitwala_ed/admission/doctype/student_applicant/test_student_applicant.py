@@ -3,6 +3,7 @@
 # See license.txt
 
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -312,6 +313,64 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertTrue(approved_payload.get("ok"))
         self.assertNotIn(code, approved_payload.get("missing") or [])
         self.assertNotIn(code, approved_payload.get("unapproved") or [])
+
+    def test_has_required_documents_returns_secure_file_links(self):
+        code = f"secure_doc_{frappe.generate_hash(length=6)}"
+        doc_type = self._create_applicant_document_type(code=code, is_required=1)
+        applicant = self._create_student_applicant()
+
+        frappe.set_user("Administrator")
+        try:
+            applicant_doc = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document",
+                    "student_applicant": applicant.name,
+                    "document_type": doc_type,
+                    "review_status": "Approved",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.set_user(self.staff_user.name)
+        self._created.append(("Applicant Document", applicant_doc.name))
+
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_doc.name,
+                "item_key": "required_secure_1",
+                "item_label": "Required Document",
+                "review_status": "Approved",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "required-secure.txt",
+                "is_private": 1,
+                "content": b"required-secure-file",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+
+        payload = applicant.has_required_documents()
+        required_rows = payload.get("required_rows") or []
+        target_row = next((row for row in required_rows if row.get("document_type") == doc_type), None)
+        self.assertIsNotNone(target_row)
+        secure_url = (target_row.get("file_url") or "").strip()
+
+        self.assertTrue(secure_url)
+        self.assertNotIn("/private/files/", secure_url)
+
+        parsed = urlparse(secure_url)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_admissions_file")
+        query = parse_qs(parsed.query)
+        self.assertEqual((query.get("file") or [None])[0], file_doc.name)
+        self.assertEqual((query.get("context_doctype") or [None])[0], "Student Applicant")
+        self.assertEqual((query.get("context_name") or [None])[0], applicant.name)
 
     def test_profile_information_reports_missing_required_fields(self):
         applicant = self._create_student_applicant()
