@@ -1152,6 +1152,7 @@ function render_health(health) {
 	if (!health) {
 		return render_empty("No health profile data.");
 	}
+	const requiredForApproval = health.required_for_approval !== false;
 	const reviewStatus = map_health_status(health.status);
 	const reviewTone = health.status === "complete" ? "green" : health.status === "needs_follow_up" ? "red" : "amber";
 	const declarationTone = health.declared_complete ? "green" : "amber";
@@ -1170,6 +1171,7 @@ function render_health(health) {
 		<div style="margin-bottom: 10px;">
 			${render_pill(health.status === "complete" ? "✓ Health Cleared" : reviewStatus, reviewTone)}
 			<span style="margin-left: 6px;">${render_pill(health.declared_complete ? "✓ Declaration Complete" : "Declaration Pending", declarationTone)}</span>
+			${requiredForApproval ? "" : `<span style="margin-left: 6px;">${render_pill("Optional for approval", "slate")}</span>`}
 		</div>
 		<table class="table table-bordered" style="margin-bottom: 0;">
 			<tbody>
@@ -1354,6 +1356,9 @@ function render_documents(documents) {
 function render_ok_label(section) {
 	if (!section) {
 		return render_pill("Unknown", "slate");
+	}
+	if (section.required_for_approval === false) {
+		return section.ok ? render_pill("Optional - Complete", "slate") : render_pill("Optional", "slate");
 	}
 	return section.ok ? render_pill("✓ OK", "green") : render_pill("Needs Review", "amber");
 }

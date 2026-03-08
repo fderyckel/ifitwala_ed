@@ -3,11 +3,11 @@ title: "School: Academic Scope and Hierarchy Node"
 slug: school
 category: School Settings
 doc_order: 1
-version: "1.0.0"
-last_change_date: "2026-02-25"
-summary: "Define schools as a NestedSet hierarchy anchored to an Organization for admissions, academics, calendars, and policy scope."
+version: "1.1.0"
+last_change_date: "2026-03-08"
+summary: "Define schools as a NestedSet hierarchy anchored to an Organization for admissions, academics, calendars, policy scope, and admissions health-readiness policy."
 seo_title: "School: Academic Scope and Hierarchy Node"
-seo_description: "Define schools as a NestedSet hierarchy anchored to an Organization for admissions, academics, calendars, and policy scope."
+seo_description: "Define schools as a NestedSet hierarchy anchored to an Organization for admissions, academics, calendars, policy scope, and admissions health-readiness policy."
 ---
 
 ## School: Academic Scope and Hierarchy Node
@@ -28,6 +28,7 @@ seo_description: "Define schools as a NestedSet hierarchy anchored to an Organiz
 - [**Student Applicant**](/docs/en/student-applicant/):
   - immutable admissions anchor (`organization` + `school`)
   - academic-year scope validation and policy school matching
+  - school-level approval gate toggle `require_health_profile_for_approval`
 - [**Institutional Policy**](/docs/en/institutional-policy/):
   - optional policy school scope targeting
 - [**Organization**](/docs/en/organization/):
@@ -44,6 +45,8 @@ seo_description: "Define schools as a NestedSet hierarchy anchored to an Organiz
   - `school_name`
   - `abbr`
   - `organization`
+- **Admissions readiness policy field**:
+  - `require_health_profile_for_approval` (`Check`, default `1`) controls whether health clearance is required for applicant approval readiness at this school.
 - **Controller hooks**:
   - `validate`, `on_update`, `after_save`, `on_trash`, `after_rename`
 - **Whitelisted methods**:

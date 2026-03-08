@@ -3,8 +3,8 @@ title: "Applicant Health Profile: Health Disclosure and Clearance"
 slug: applicant-health-profile
 category: Admission
 doc_order: 7
-version: "2.3.0"
-last_change_date: "2026-03-05"
+version: "2.4.0"
+last_change_date: "2026-03-08"
 summary: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
 seo_title: "Applicant Health Profile: Health Disclosure and Clearance"
 seo_description: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
@@ -30,7 +30,7 @@ seo_description: "Capture health details, control family/staff editing by applic
 
 ## Where It Is Used Across the ERP
 
-- [**Student Applicant**](/docs/en/student-applicant/): readiness checks require a cleared health review.
+- [**Student Applicant**](/docs/en/student-applicant/): readiness checks require a cleared health review only when the applicant school has `require_health_profile_for_approval = 1`.
 - Admissions portal APIs:
   - `get_applicant_health`
   - `update_applicant_health`
@@ -53,7 +53,7 @@ Families can provide health details in portal phases where edits are allowed, th
 <DoDont doTitle="Do" dontTitle="Don't">
   <Do>Keep reviewer outcomes explicit (`Pending`, `Needs Follow-Up`, `Cleared`) and let reviewer metadata stamp automatically.</Do>
   <Do>Use governed vaccination-proof uploads and canonical file URLs.</Do>
-  <Dont>Approve applicant decisions while health review is unresolved.</Dont>
+  <Dont>Approve applicant decisions while health review is unresolved when health is configured as required for that school.</Dont>
   <Dont>Allow family-side edits after terminal applicant states (`Rejected`, `Promoted`).</Dont>
 </DoDont>
 
@@ -73,7 +73,7 @@ Families can provide health details in portal phases where edits are allowed, th
     When family declaration is marked complete, matching `Applicant Review Rule` reviewers receive Focus assignments through `Applicant Review Assignment`.
   </Step>
   <Step title="Gate Decisions">
-    Applicant approval readiness depends on the health review state being complete.
+    Applicant approval readiness depends on the health review state being complete only when school policy enables health gating.
   </Step>
   <Step title="Promote">
     On applicant promotion, health fields and vaccination rows are copied into `Student Patient` / `Student Patient Vaccination`.
@@ -84,7 +84,7 @@ Families can provide health details in portal phases where edits are allowed, th
 </Steps>
 
 <Callout type="warning" title="Admissions decision impact">
-Do not move applicants to final approval while health review remains unresolved; readiness checks are designed to prevent this.
+When school policy requires health clearance, do not move applicants to final approval while health review remains unresolved; readiness checks are designed to prevent this.
 </Callout>
 
 ## Reporting

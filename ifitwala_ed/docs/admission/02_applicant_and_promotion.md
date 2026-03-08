@@ -1577,7 +1577,7 @@ It must **never** answer:
 
 * Status changes
 * Blocking logic
-* School-specific rules
+* School-specific rules (except the school-level health approval gate introduced after this phase baseline)
 * Program Offering enforcement
 * Promotion checks
 * UI buttons that imply action
@@ -1596,7 +1596,7 @@ Each dimension answers **only yes / no + why**:
 | ---------- | ------------------------------------------------------ |
 | Policies   | Have all *required* policy versions been acknowledged? |
 | Documents  | Are all *required* document types approved?            |
-| Health     | Has health review been marked complete?                |
+| Health     | If school policy requires it, has health review been marked complete? |
 | Interviews | Have required interviews been recorded?                |
 
 No weighting.

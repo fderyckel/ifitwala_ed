@@ -3,11 +3,11 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.13.2"
+version: "1.14.0"
 last_change_date: "2026-03-08"
-summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, policies, and guardian intake/contact carry-over."
+summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, and school-scoped health gating."
 seo_title: "Student Applicant: The Admission Record of Truth"
-seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, policies, and guardian intake/contact carry-over."
+seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, and school-scoped health gating."
 ---
 
 ## Student Applicant: The Admission Record of Truth
@@ -16,7 +16,7 @@ seo_description: "Manage applicant lifecycle from invitation to promotion, with 
 
 - Create [**Organization**](/docs/en/organization/) and [**School**](/docs/en/school/) first (required anchors).
 - If you intend to require applicant consent, configure active applicant-scoped policies first ([**Institutional Policy**](/docs/en/institutional-policy/) + active [**Policy Version**](/docs/en/policy-version/)).
-- Define required [**Applicant Document Type**](/docs/en/applicant-document-type/) records and [**Applicant Health Profile**](/docs/en/applicant-health-profile/) / [**Applicant Interview**](/docs/en/applicant-interview/) review workflow before approval/promotion decisions.
+- Define required [**Applicant Document Type**](/docs/en/applicant-document-type/) records and [**Applicant Interview**](/docs/en/applicant-interview/) review workflow before approval/promotion decisions. Define [**Applicant Health Profile**](/docs/en/applicant-health-profile/) workflow when the school requires health clearance for approval.
 - Ensure student-profile fields needed for promotion (`student_date_of_birth`, `student_gender`, `student_mobile_number`, `student_joining_date`, `student_first_language`, `student_nationality`, `residency_status`) are collected in the applicant profile step.
 
 ### How Policy Acknowledgement Becomes Mandatory
@@ -44,7 +44,7 @@ Use the applicant readiness outputs, not guesswork:
    - `Review Assignments Summary` shows completed assignment decisions for Health and Overall Application (document review truth remains in `Documents Summary`).
    - `Review Snapshot` includes readiness issues from `get_readiness_snapshot`.
 2. Approval action:
-   - `Approve` is blocked by server guard (`approve_application` -> `_validate_ready_for_approval`) until required policy acknowledgements are complete.
+   - `Approve` is blocked by server guard (`approve_application` -> `_validate_ready_for_approval`) until readiness requirements are met (policies/documents/profile/recommendations and health only when required by school policy).
    - Error text includes missing policy acknowledgement details.
 3. Applicant portal:
    - `/admissions` -> Policies page shows each required policy as `Pending acknowledgement` or `Acknowledged`.
@@ -55,7 +55,7 @@ Use the applicant readiness outputs, not guesswork:
 
 - Keeps one lifecycle record from `Draft` to `Promoted`.
 - Preserves institutional anchor (`organization`, `school`) as immutable once created.
-- Centralizes readiness checks across profile, policies, documents, and health.
+- Centralizes readiness checks across profile, policies, documents, recommendations, and school-scoped health requirements.
 - Links admissions to student creation and downstream enrollment operations.
 - Carries forward inquiry intent so teams do not restart data entry from zero.
 
@@ -285,7 +285,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 
 1. Required `Applicant Document Type` records are configured (`is_required = 1`, `is_active = 1`) for the organization/school ancestor scope you expect (parent-scope document types apply to descendants).
 2. Applicant has corresponding `Applicant Document` rows and required ones reach `review_status = Approved`.
-3. `Applicant Health Profile.review_status = Cleared`.
+3. If `School.require_health_profile_for_approval = 1`, `Applicant Health Profile.review_status = Cleared`.
 4. Applicant profile information required for Student promotion is complete.
 
 ### Optional but commonly expected in production
@@ -324,7 +324,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-05)
+### Latest Technical Snapshot (2026-03-08)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
@@ -379,7 +379,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 - **Readiness computation**:
   - `has_required_policies()` -> blocking
   - `has_required_documents()` -> blocking
-  - `health_review_complete()` -> blocking
+  - `health_review_complete()` -> blocking only when `School.require_health_profile_for_approval = 1`
   - `has_required_interviews()` -> tracked; not currently part of blocking `ready` boolean
   - repeatable required document types are satisfied when required upload count is met and either per-item approvals meet required count or the parent `Applicant Document` is explicitly marked `Approved`
   - interview summary shows a compact latest-5 table with Date/Time (linked to interview), Interviewer, and Outcome Impression

@@ -1201,6 +1201,8 @@ def _completion_state_for_requirement(required: list, missing: list, unapproved:
 def _completion_state_for_health(health: dict) -> str:
     if health.get("ok"):
         return "complete"
+    if not bool(health.get("required_for_approval", True)):
+        return "optional"
     status = (health.get("status") or "missing").strip()
     if status == "missing":
         return "pending"
@@ -1283,7 +1285,7 @@ def _derive_next_actions(application_status: str, readiness: dict) -> list[dict]
                 }
             )
 
-    if not health.get("ok"):
+    if bool(health.get("required_for_approval", True)) and not health.get("ok"):
         actions.append(
             {
                 "label": _("Complete health information"),
@@ -1346,6 +1348,8 @@ def get_applicant_snapshot(student_applicant: str | None = None):
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
     readiness = applicant.get_readiness_snapshot()
     portal_health = _portal_health_state(applicant.name)
+    health_required_for_approval = bool((readiness.get("health") or {}).get("required_for_approval", True))
+    portal_health["required_for_approval"] = health_required_for_approval
     recommendation_status = get_recommendation_status_for_applicant(
         student_applicant=applicant.name,
         include_confidential=False,

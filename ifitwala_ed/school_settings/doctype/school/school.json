@@ -22,6 +22,7 @@
   "contact_html",
   "school_settings_section",
   "default_follow_up_due_in_days",
+  "require_health_profile_for_approval",
   "column_break_xryt",
   "schedule_conflict_rule",
   "current_calendar_events_section",
@@ -368,6 +369,13 @@
    "fieldname": "default_follow_up_due_in_days",
    "fieldtype": "Int",
    "label": "Follow-Up Due In (Days)"
+  },
+  {
+   "default": "1",
+   "description": "If enabled, applicant approval readiness requires a cleared health profile for this school.",
+   "fieldname": "require_health_profile_for_approval",
+   "fieldtype": "Check",
+   "label": "Require Health Profile For Admissions Approval"
   },
   {
    "fieldname": "column_break_xryt",

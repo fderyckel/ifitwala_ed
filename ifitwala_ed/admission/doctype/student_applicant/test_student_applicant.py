@@ -546,6 +546,150 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertIn("Nationality", payload.get("missing") or [])
         self.assertNotIn("Joining Date", payload.get("missing") or [])
 
+    def test_readiness_snapshot_does_not_block_on_health_when_school_setting_disabled(self):
+        applicant = self._create_student_applicant()
+        frappe.db.set_value(
+            "School",
+            applicant.school,
+            "require_health_profile_for_approval",
+            0,
+            update_modified=False,
+        )
+        frappe.clear_cache()
+
+        with (
+            patch.object(
+                applicant, "has_required_policies", return_value={"ok": True, "missing": [], "required": [], "rows": []}
+            ),
+            patch.object(
+                applicant,
+                "has_required_documents",
+                return_value={
+                    "ok": True,
+                    "missing": [],
+                    "unapproved": [],
+                    "required": [],
+                    "required_rows": [],
+                    "uploaded_rows": [],
+                },
+            ),
+            patch.object(
+                applicant,
+                "health_review_complete",
+                return_value={
+                    "ok": False,
+                    "status": "missing",
+                    "profile_name": None,
+                    "review_status": None,
+                    "reviewed_by": None,
+                    "reviewed_on": None,
+                    "declared_complete": False,
+                    "declared_by": None,
+                    "declared_on": None,
+                },
+            ),
+            patch.object(applicant, "has_required_interviews", return_value={"ok": False, "count": 0, "items": []}),
+            patch.object(
+                applicant,
+                "has_required_profile_information",
+                return_value={"ok": True, "missing": [], "required": [], "fields": {}},
+            ),
+            patch.object(
+                applicant,
+                "has_required_recommendations",
+                return_value={
+                    "ok": True,
+                    "required_total": 0,
+                    "received_total": 0,
+                    "requested_total": 0,
+                    "missing": [],
+                    "rows": [],
+                    "state": "optional",
+                    "counts": {},
+                },
+            ),
+            patch.object(applicant, "get_review_assignments_summary", return_value={}),
+        ):
+            snapshot = applicant.get_readiness_snapshot()
+
+        self.assertTrue(snapshot.get("ready"))
+        self.assertFalse((snapshot.get("health") or {}).get("required_for_approval"))
+        self.assertFalse(
+            any("Health profile is missing or not cleared." in str(item) for item in (snapshot.get("issues") or []))
+        )
+
+    def test_readiness_snapshot_blocks_on_health_when_school_setting_enabled(self):
+        applicant = self._create_student_applicant()
+        frappe.db.set_value(
+            "School",
+            applicant.school,
+            "require_health_profile_for_approval",
+            1,
+            update_modified=False,
+        )
+        frappe.clear_cache()
+
+        with (
+            patch.object(
+                applicant, "has_required_policies", return_value={"ok": True, "missing": [], "required": [], "rows": []}
+            ),
+            patch.object(
+                applicant,
+                "has_required_documents",
+                return_value={
+                    "ok": True,
+                    "missing": [],
+                    "unapproved": [],
+                    "required": [],
+                    "required_rows": [],
+                    "uploaded_rows": [],
+                },
+            ),
+            patch.object(
+                applicant,
+                "health_review_complete",
+                return_value={
+                    "ok": False,
+                    "status": "missing",
+                    "profile_name": None,
+                    "review_status": None,
+                    "reviewed_by": None,
+                    "reviewed_on": None,
+                    "declared_complete": False,
+                    "declared_by": None,
+                    "declared_on": None,
+                },
+            ),
+            patch.object(applicant, "has_required_interviews", return_value={"ok": False, "count": 0, "items": []}),
+            patch.object(
+                applicant,
+                "has_required_profile_information",
+                return_value={"ok": True, "missing": [], "required": [], "fields": {}},
+            ),
+            patch.object(
+                applicant,
+                "has_required_recommendations",
+                return_value={
+                    "ok": True,
+                    "required_total": 0,
+                    "received_total": 0,
+                    "requested_total": 0,
+                    "missing": [],
+                    "rows": [],
+                    "state": "optional",
+                    "counts": {},
+                },
+            ),
+            patch.object(applicant, "get_review_assignments_summary", return_value={}),
+        ):
+            snapshot = applicant.get_readiness_snapshot()
+
+        self.assertFalse(snapshot.get("ready"))
+        self.assertTrue((snapshot.get("health") or {}).get("required_for_approval"))
+        self.assertTrue(
+            any("Health profile is missing or not cleared." in str(item) for item in (snapshot.get("issues") or []))
+        )
+
     def test_promotion_requires_joining_date(self):
         applicant = self._create_student_applicant()
         self._create_applicant_health_profile(applicant.name)

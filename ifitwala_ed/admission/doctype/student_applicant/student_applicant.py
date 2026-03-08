@@ -1664,6 +1664,16 @@ class StudentApplicant(Document):
             issues = ["Applicant readiness requirements are not met."]
         frappe.throw("\n".join(issues))
 
+    def _is_health_required_for_approval(self) -> bool:
+        school_name = (self.school or "").strip()
+        if not school_name:
+            return True
+
+        required_value = frappe.get_cached_value("School", school_name, "require_health_profile_for_approval")
+        if required_value is None:
+            return True
+        return bool(cint(required_value))
+
     def has_required_policies(self):
         if not self.organization:
             return {"ok": False, "missing": [], "required": [], "rows": []}
@@ -2326,16 +2336,20 @@ class StudentApplicant(Document):
         policies = self.has_required_policies()
         documents = self.has_required_documents()
         health = self.health_review_complete()
+        health_required_for_approval = self._is_health_required_for_approval()
+        health_payload = dict(health or {})
+        health_payload["required_for_approval"] = health_required_for_approval
         interviews = self.has_required_interviews()
         profile = self.has_required_profile_information()
         recommendations = self.has_required_recommendations()
         review_assignments = self.get_review_assignments_summary()
 
+        health_ok_for_approval = bool(health_payload.get("ok")) if health_required_for_approval else True
         ready = all(
             [
                 policies.get("ok"),
                 documents.get("ok"),
-                health.get("ok"),
+                health_ok_for_approval,
                 profile.get("ok"),
                 recommendations.get("ok"),
             ]
@@ -2351,8 +2365,8 @@ class StudentApplicant(Document):
                     issues.append(_("Missing policy acknowledgements: {0}.").format(", ".join(missing)))
                 else:
                     issues.append(_("Missing required policy acknowledgements."))
-        if not health.get("ok"):
-            status = health.get("status") or "missing"
+        if health_required_for_approval and not health_payload.get("ok"):
+            status = health_payload.get("status") or "missing"
             if status == "needs_follow_up":
                 issues.append(_("Health review requires follow-up."))
             else:
@@ -2384,7 +2398,7 @@ class StudentApplicant(Document):
         return {
             "policies": policies,
             "documents": documents,
-            "health": health,
+            "health": health_payload,
             "interviews": interviews,
             "profile": profile,
             "recommendations": recommendations,
