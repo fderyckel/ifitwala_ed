@@ -15,7 +15,7 @@ from ifitwala_ed.admission.admission_utils import (
     normalize_email_value,
 )
 
-ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document", "Applicant Document Item"}
+ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document", "Applicant Document Item", "Student Applicant", "Contact"}
 CONTEXT_STUDENT_APPLICANT = "Student Applicant"
 CONTEXT_APPLICANT_INTERVIEW = "Applicant Interview"
 CONTEXT_TASK_SUBMISSION = "Task Submission"
@@ -163,6 +163,19 @@ def _resolve_any_file_row(file_name: str) -> dict:
 
 
 def _resolve_student_applicant_from_file(file_row: dict) -> str:
+    file_name = (file_row.get("name") or "").strip()
+    if file_name:
+        classification = frappe.db.get_value(
+            "File Classification",
+            {"file": file_name},
+            ["primary_subject_type", "primary_subject_id"],
+            as_dict=True,
+        )
+        if classification and (classification.get("primary_subject_type") or "").strip() == "Student Applicant":
+            resolved = (classification.get("primary_subject_id") or "").strip()
+            if resolved:
+                return resolved
+
     attached_to_doctype = (file_row.get("attached_to_doctype") or "").strip()
     attached_to_name = (file_row.get("attached_to_name") or "").strip()
     if not attached_to_name:
@@ -177,6 +190,8 @@ def _resolve_student_applicant_from_file(file_row: dict) -> str:
             if applicant_document
             else None
         )
+    elif attached_to_doctype == "Student Applicant":
+        student_applicant = attached_to_name
     else:
         student_applicant = None
 

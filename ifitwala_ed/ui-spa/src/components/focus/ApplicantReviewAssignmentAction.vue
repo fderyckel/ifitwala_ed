@@ -85,9 +85,13 @@
 					</div>
 					<div>Current status: {{ assignment.preview.review_status || 'Pending' }}</div>
 					<div v-if="assignment.preview.file_url">
-						<a :href="assignment.preview.file_url" target="_blank" rel="noopener noreferrer"
-							>Open file</a
+						<button
+							type="button"
+							class="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-jacaranda hover:text-jacaranda"
+							@click="openPreviewFile"
 						>
+							Open file
+						</button>
 					</div>
 				</div>
 
@@ -130,8 +134,8 @@
 				<button type="button" class="btn btn-quiet" @click="emitClose">Close</button>
 				<button
 					type="button"
-					class="btn btn-primary"
-					:disabled="busy || submittedOnce || !canSubmit"
+					class="inline-flex items-center rounded-full bg-jacaranda px-5 py-2 type-button-label text-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-strong disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+					:disabled="busy || submittedOnce"
 					@click="submitDecision"
 				>
 					{{ busy ? 'Saving…' : 'Submit decision' }}
@@ -202,7 +206,6 @@ const targetLabel = computed(() => {
 });
 
 const decisionOptions = computed(() => assignment.value?.decision_options || []);
-const canSubmit = computed(() => Boolean(decision.value && assignment.value?.name));
 const previousReviews = computed(() => assignment.value?.previous_reviews || []);
 const canClaim = computed(() =>
 	Boolean(assignment.value?.can_claim && assignment.value?.assigned_to_role)
@@ -251,6 +254,12 @@ function requestRefresh() {
 function openInDesk() {
 	if (!deskUrl.value) return;
 	window.open(deskUrl.value, '_blank', 'noopener');
+}
+
+function openPreviewFile() {
+	const fileUrl = assignment.value?.preview?.file_url;
+	if (!fileUrl) return;
+	window.open(fileUrl, '_blank', 'noopener');
 }
 
 function newClientRequestId(prefix = 'applicant_review') {

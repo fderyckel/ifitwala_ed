@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import io
 import os
+from urllib.parse import parse_qs, urlparse
 
 import frappe
 from frappe import _
@@ -38,6 +39,7 @@ from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
 from ifitwala_ed.utilities import file_dispatcher
 
 ADMISSIONS_ROLE = "Admissions Applicant"
+INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
 
 PORTAL_STATUS_MAP = {
     "Draft": "Draft",
@@ -218,6 +220,15 @@ def _as_text(value) -> str:
     if value is None:
         return ""
     return str(value)
+
+
+def _session_user() -> str:
+    user = _as_text(getattr(frappe.session, "user", None)).strip()
+    if not user:
+        return ""
+    if user.lower() in INVALID_SESSION_USERS:
+        return ""
+    return user
 
 
 def _as_check(value) -> int:
@@ -565,10 +576,142 @@ def _serialize_applicant_guardians(applicant) -> list[dict]:
         for fieldname in APPLICANT_GUARDIAN_FIELDS:
             if fieldname in APPLICANT_GUARDIAN_CHECK_FIELDS:
                 payload[fieldname] = _as_check(row.get(fieldname))
+            elif fieldname == "guardian_image":
+                payload[fieldname] = _guardian_image_open_url(
+                    applicant_name=applicant.name,
+                    guardian_image=_as_text(row.get(fieldname)).strip(),
+                )
             else:
                 payload[fieldname] = _as_text(row.get(fieldname)).strip()
         rows.append(payload)
     return rows
+
+
+def _resolve_guardian_image_file(*, applicant_name: str, guardian_image: str | None) -> dict | None:
+    image_value = _as_text(guardian_image).strip()
+    if not image_value:
+        return None
+
+    file_name = ""
+    if "download_admissions_file" in image_value:
+        parsed = urlparse(image_value)
+        file_name = _as_text((parse_qs(parsed.query).get("file") or [""])[0]).strip()
+    if file_name:
+        row = frappe.db.get_value(
+            "File",
+            file_name,
+            ["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
+            as_dict=True,
+        )
+        if row and _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
+            return row
+
+    file_rows = frappe.get_all(
+        "File",
+        filters={"file_url": image_value},
+        fields=["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
+        order_by="creation desc",
+        limit_page_length=5,
+    )
+    for row in file_rows:
+        if _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
+            return row
+
+    return None
+
+
+def _file_is_scoped_to_applicant(*, file_row: dict, applicant_name: str) -> bool:
+    file_name = _as_text(file_row.get("name")).strip()
+    if file_name:
+        classification = frappe.db.get_value(
+            "File Classification",
+            {"file": file_name},
+            ["primary_subject_type", "primary_subject_id"],
+            as_dict=True,
+        )
+        if classification and (
+            _as_text(classification.get("primary_subject_type")).strip() == "Student Applicant"
+            and _as_text(classification.get("primary_subject_id")).strip() == applicant_name
+        ):
+            return True
+
+    return (
+        _as_text(file_row.get("attached_to_doctype")).strip() == "Student Applicant"
+        and _as_text(file_row.get("attached_to_name")).strip() == applicant_name
+    )
+
+
+def _guardian_image_open_url(*, applicant_name: str, guardian_image: str | None) -> str:
+    image_value = _as_text(guardian_image).strip()
+    if not image_value:
+        return ""
+
+    file_row = _resolve_guardian_image_file(applicant_name=applicant_name, guardian_image=image_value)
+    if not file_row:
+        return image_value
+
+    return (
+        resolve_admissions_file_open_url(
+            file_name=file_row.get("name"),
+            file_url=file_row.get("file_url"),
+            context_doctype="Student Applicant",
+            context_name=applicant_name,
+        )
+        or _as_text(file_row.get("file_url")).strip()
+    )
+
+
+def _rehome_guardian_image_to_contact(
+    *,
+    applicant_name: str,
+    guardian_image: str | None,
+    contact_name: str | None,
+) -> str:
+    resolved_contact = _as_text(contact_name).strip()
+    if not resolved_contact:
+        return _as_text(guardian_image).strip()
+
+    file_row = _resolve_guardian_image_file(applicant_name=applicant_name, guardian_image=guardian_image)
+    if not file_row:
+        return _as_text(guardian_image).strip()
+
+    attached_doctype = _as_text(file_row.get("attached_to_doctype")).strip()
+    attached_name = _as_text(file_row.get("attached_to_name")).strip()
+    attached_field = _as_text(file_row.get("attached_to_field")).strip()
+    if attached_doctype == "Contact" and attached_name == resolved_contact:
+        return _as_text(file_row.get("file_url")).strip()
+
+    if (
+        attached_doctype != "Student Applicant"
+        or attached_name != applicant_name
+        or attached_field == "applicant_image"
+    ):
+        return _as_text(file_row.get("file_url")).strip() or _as_text(guardian_image).strip()
+
+    frappe.db.set_value(
+        "File",
+        file_row.get("name"),
+        {
+            "attached_to_doctype": "Contact",
+            "attached_to_name": resolved_contact,
+            "attached_to_field": None,
+        },
+        update_modified=False,
+    )
+
+    classification_name = frappe.db.get_value("File Classification", {"file": file_row.get("name")}, "name")
+    if classification_name:
+        frappe.db.set_value(
+            "File Classification",
+            classification_name,
+            {
+                "attached_doctype": "Contact",
+                "attached_name": resolved_contact,
+            },
+            update_modified=False,
+        )
+
+    return _as_text(file_row.get("file_url")).strip() or _as_text(guardian_image).strip()
 
 
 def _parse_guardians_payload(guardians) -> list[dict] | None:
@@ -884,6 +1027,11 @@ def _apply_guardians_to_applicant(*, applicant, guardians_payload: list[dict]):
             row_payload=row,
             existing_contact_name=existing_contact_name,
         )
+        row["guardian_image"] = _rehome_guardian_image_to_contact(
+            applicant_name=applicant.name,
+            guardian_image=row.get("guardian_image"),
+            contact_name=row.get("contact"),
+        )
 
         if not _as_text(row.get("guardian_full_name")).strip():
             row["guardian_full_name"] = " ".join(
@@ -929,8 +1077,8 @@ def _apply_guardians_to_applicant(*, applicant, guardians_payload: list[dict]):
 
 
 def _require_admissions_applicant() -> str:
-    user = frappe.session.user
-    if not user or user == "Guest":
+    user = _session_user()
+    if not user:
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
     roles = set(frappe.get_roles(user))
@@ -938,6 +1086,41 @@ def _require_admissions_applicant() -> str:
         frappe.throw(_("You do not have permission to access the admissions portal."), frappe.PermissionError)
 
     return user
+
+
+def _get_applicant_rows_for_user(*, user: str, fields: list[str], limit: int = 2) -> list[dict]:
+    selected_fields = [field for field in fields if field]
+    if "name" not in selected_fields:
+        selected_fields = ["name", *selected_fields]
+
+    rows_by_name: dict[str, dict] = {}
+    search_filters = [{"applicant_user": user}]
+    normalized_user = normalize_email_value(user)
+    if normalized_user:
+        search_filters.extend(
+            [
+                {"portal_account_email": normalized_user},
+                {"applicant_email": normalized_user},
+            ]
+        )
+
+    for filters in search_filters:
+        rows = frappe.get_all(
+            "Student Applicant",
+            filters=filters,
+            fields=selected_fields,
+            limit_page_length=limit,
+            order_by="creation desc",
+        )
+        for row in rows or []:
+            name = _as_text(row.get("name")).strip()
+            if not name or name in rows_by_name:
+                continue
+            rows_by_name[name] = row
+            if len(rows_by_name) >= limit:
+                return list(rows_by_name.values())
+
+    return list(rows_by_name.values())
 
 
 def _get_applicant_for_user(user: str, fields: list[str] | None = None) -> dict:
@@ -955,16 +1138,32 @@ def _get_applicant_for_user(user: str, fields: list[str] | None = None) -> dict:
         "last_name",
         *APPLICANT_PROFILE_FIELDS,
     ]
-    rows = frappe.get_all(
-        "Student Applicant",
-        filters={"applicant_user": user},
-        fields=fields,
-        limit=2,
-    )
+    rows = _get_applicant_rows_for_user(user=user, fields=fields, limit=2)
     if not rows:
-        frappe.throw(_("Admissions access is not linked to any Applicant."), frappe.PermissionError)
+        frappe.throw(
+            _(
+                "Admissions access is not linked to any Applicant. Contact the admissions office to relink your account."
+            ),
+            frappe.PermissionError,
+        )
     if len(rows) > 1:
-        frappe.throw(_("Admissions access is linked to multiple Applicants."), frappe.PermissionError)
+        frappe.log_error(
+            title="Admissions Portal applicant identity conflict",
+            message=frappe.as_json(
+                {
+                    "user": user,
+                    "matched_applicants": sorted(
+                        [_as_text(row.get("name")).strip() for row in rows if _as_text(row.get("name")).strip()]
+                    ),
+                }
+            ),
+        )
+        frappe.throw(
+            _(
+                "Admissions access is linked to multiple Applicants. Contact the admissions office to relink your account."
+            ),
+            frappe.PermissionError,
+        )
     return rows[0]
 
 

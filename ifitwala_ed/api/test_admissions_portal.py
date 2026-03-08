@@ -8,6 +8,7 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.api import admissions_portal as admissions_portal_api
 from ifitwala_ed.api.admissions_portal import (
     _derive_next_actions,
     _portal_status_for,
@@ -25,6 +26,34 @@ from ifitwala_ed.api.admissions_portal import (
     upload_applicant_guardian_image,
     upload_applicant_profile_image,
 )
+from ifitwala_ed.utilities import file_dispatcher
+
+
+class TestAdmissionsPortalAuthGuards(FrappeTestCase):
+    def test_require_admissions_applicant_rejects_none_literal_as_unauthenticated(self):
+        with patch("ifitwala_ed.api.admissions_portal.frappe.session.user", "None"):
+            with self.assertRaises(frappe.PermissionError):
+                admissions_portal_api._require_admissions_applicant()
+
+    def test_get_applicant_for_user_resolves_portal_account_email_fallback(self):
+        def fake_get_all(doctype, **kwargs):
+            self.assertEqual(doctype, "Student Applicant")
+            filters = kwargs.get("filters") or {}
+            if filters == {"applicant_user": "applicant@example.com"}:
+                return []
+            if filters == {"portal_account_email": "applicant@example.com"}:
+                return [{"name": "APP-PORTAL"}]
+            if filters == {"applicant_email": "applicant@example.com"}:
+                return []
+            return []
+
+        with patch("ifitwala_ed.api.admissions_portal.frappe.get_all", side_effect=fake_get_all):
+            row = admissions_portal_api._get_applicant_for_user(
+                "applicant@example.com",
+                fields=["name"],
+            )
+
+        self.assertEqual(row.get("name"), "APP-PORTAL")
 
 
 class TestAdmissionsPortalContracts(FrappeTestCase):
@@ -690,6 +719,85 @@ class TestSubmitApplication(FrappeTestCase):
                     }
                 ],
             )
+
+    def test_update_applicant_profile_rehomes_legacy_guardian_image_attachment(self):
+        self._set_guardians_section_setting(1)
+
+        contact = frappe.get_doc(
+            {
+                "doctype": "Contact",
+                "first_name": "Applicant",
+                "last_name": "Contact",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Contact", contact.name))
+        self.applicant.db_set("applicant_contact", contact.name, update_modified=False)
+        self.applicant.reload()
+
+        file_doc = file_dispatcher.create_and_classify_file(
+            file_kwargs={
+                "attached_to_doctype": "Student Applicant",
+                "attached_to_name": self.applicant.name,
+                "attached_to_field": "guardians",
+                "file_name": "guardian.png",
+                "content": b"guardian-image",
+                "is_private": 1,
+            },
+            classification={
+                "primary_subject_type": "Student Applicant",
+                "primary_subject_id": self.applicant.name,
+                "data_class": "identity_image",
+                "purpose": "applicant_profile_display",
+                "retention_policy": "until_school_exit_plus_6m",
+                "slot": "guardian_profile_image",
+                "organization": self.organization,
+                "school": self.school,
+                "upload_source": "SPA",
+            },
+        )
+        self._created.append(("File", file_doc.name))
+        classification_name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
+        self.assertTrue(bool(classification_name))
+        self._created.append(("File Classification", classification_name))
+
+        frappe.set_user(self.applicant_user)
+        payload = update_applicant_profile(
+            student_applicant=self.applicant.name,
+            guardians=[
+                {
+                    "relationship": "Mother",
+                    "use_applicant_contact": 1,
+                    "can_consent": 1,
+                    "is_primary": 1,
+                    "guardian_first_name": "Mina",
+                    "guardian_last_name": "Portal",
+                    "guardian_email": f"guardian-{frappe.generate_hash(length=8)}@example.com",
+                    "guardian_mobile_phone": "+14155550101",
+                    "guardian_image": file_doc.file_url,
+                }
+            ],
+        )
+
+        self.assertTrue(payload.get("ok"))
+        self.assertIn("download_admissions_file", (payload.get("guardians") or [{}])[0].get("guardian_image") or "")
+        file_row = frappe.db.get_value(
+            "File",
+            file_doc.name,
+            ["attached_to_doctype", "attached_to_name", "attached_to_field"],
+            as_dict=True,
+        )
+        self.assertEqual(file_row.get("attached_to_doctype"), "Contact")
+        self.assertEqual(file_row.get("attached_to_name"), contact.name)
+        self.assertFalse((file_row.get("attached_to_field") or "").strip())
+
+        classification_row = frappe.db.get_value(
+            "File Classification",
+            classification_name,
+            ["attached_doctype", "attached_name"],
+            as_dict=True,
+        )
+        self.assertEqual(classification_row.get("attached_doctype"), "Contact")
+        self.assertEqual(classification_row.get("attached_name"), contact.name)
 
     def test_get_applicant_profile_includes_applicant_image(self):
         image_url = f"/private/files/applicant-{frappe.generate_hash(length=6)}.png"
