@@ -1982,13 +1982,35 @@ class StudentApplicant(Document):
             approved_items = [row for row in uploaded_items if row.get("review_status") == "Approved"]
             uploaded_count = len(uploaded_items)
             approved_count = len(approved_items)
+            document_review_status = (document_row.get("review_status") or "Pending").strip() or "Pending"
+            document_marked_approved = document_review_status == "Approved"
+            meets_item_approval_requirement = approved_count >= required_count
+            is_approved_for_readiness = document_marked_approved or meets_item_approval_requirement
 
             if uploaded_count < required_count:
                 missing.append(label)
-            elif approved_count < required_count:
+                review_status = "Missing"
+            elif is_approved_for_readiness:
+                review_status = "Approved"
+            else:
                 unapproved.append(label)
+                review_status = "Pending"
 
-            review_status = document_row.get("review_status") or "Pending"
+            reviewed_by = document_row.get("reviewed_by")
+            reviewed_on = document_row.get("reviewed_on")
+            if review_status == "Approved" and (not reviewed_by or not reviewed_on):
+                latest_item_review = sorted(
+                    [row_item for row_item in approved_items if row_item.get("reviewed_on")],
+                    key=lambda row_item: row_item.get("reviewed_on") or "",
+                    reverse=True,
+                )
+                if latest_item_review:
+                    latest_review_row = latest_item_review[0]
+                    if not reviewed_by:
+                        reviewed_by = latest_review_row.get("reviewed_by")
+                    if not reviewed_on:
+                        reviewed_on = latest_review_row.get("reviewed_on")
+
             latest_uploaded_item = {}
             if uploaded_items:
                 latest_uploaded_item = sorted(
@@ -2006,8 +2028,8 @@ class StudentApplicant(Document):
                     "uploaded_count": uploaded_count,
                     "approved_count": approved_count,
                     "review_status": review_status,
-                    "reviewed_by": document_row.get("reviewed_by"),
-                    "reviewed_on": document_row.get("reviewed_on"),
+                    "reviewed_by": reviewed_by,
+                    "reviewed_on": reviewed_on,
                     "uploaded_by": latest_uploaded_item.get("uploaded_by"),
                     "uploaded_at": latest_uploaded_item.get("uploaded_at"),
                     "file_url": latest_uploaded_item.get("file_url"),
@@ -2021,7 +2043,7 @@ class StudentApplicant(Document):
         for document_row in document_rows:
             document_type = document_row.get("document_type")
             meta = type_map.get(document_type) or {}
-            label = (
+            document_label = (
                 document_row.get("document_label")
                 or meta.get("code")
                 or meta.get("document_type_name")
@@ -2054,34 +2076,48 @@ class StudentApplicant(Document):
 
             uploaded_items = [row for row in item_group if row.get("file_url")]
             approved_items = [row for row in uploaded_items if row.get("review_status") == "Approved"]
-            latest_uploaded_item = {}
-            if uploaded_items:
-                latest_uploaded_item = sorted(
-                    uploaded_items,
-                    key=lambda row_item: row_item.get("uploaded_at") or "",
-                    reverse=True,
-                )[0]
-            uploaded_rows.append(
-                {
-                    "applicant_document": document_row.get("name"),
-                    "document_type": document_type,
-                    "label": label,
-                    "is_required": bool(meta.get("is_required")),
-                    "required_count": required_count if cint(meta.get("is_required")) else 0,
-                    "uploaded_count": len(uploaded_items),
-                    "approved_count": len(approved_items),
-                    "is_repeatable": bool(meta.get("is_repeatable")),
-                    "review_status": document_row.get("review_status") or "Pending",
-                    "reviewed_by": document_row.get("reviewed_by"),
-                    "reviewed_on": document_row.get("reviewed_on"),
-                    "uploaded_by": latest_uploaded_item.get("uploaded_by"),
-                    "uploaded_at": latest_uploaded_item.get("uploaded_at"),
-                    "file_url": latest_uploaded_item.get("file_url"),
-                    "file_name": latest_uploaded_item.get("file_name"),
-                    "modified": document_row.get("modified"),
-                    "items": item_group,
-                }
-            )
+            for uploaded_item in uploaded_items:
+                item_label = (
+                    (uploaded_item.get("item_label") or "").strip()
+                    or (uploaded_item.get("item_key") or "").strip()
+                    or (uploaded_item.get("name") or "").strip()
+                )
+                row_label = document_label
+                if item_label and item_label.lower() != str(document_label or "").strip().lower():
+                    row_label = _("{0} — {1}").format(document_label, item_label)
+
+                uploaded_rows.append(
+                    {
+                        "applicant_document": document_row.get("name"),
+                        "applicant_document_item": uploaded_item.get("name"),
+                        "document_type": document_type,
+                        "label": row_label,
+                        "document_label": document_label,
+                        "item_key": uploaded_item.get("item_key"),
+                        "item_label": uploaded_item.get("item_label"),
+                        "is_required": bool(meta.get("is_required")),
+                        "required_count": required_count if cint(meta.get("is_required")) else 0,
+                        "uploaded_count": len(uploaded_items),
+                        "approved_count": len(approved_items),
+                        "is_repeatable": bool(meta.get("is_repeatable")),
+                        "review_status": uploaded_item.get("review_status") or "Pending",
+                        "reviewed_by": uploaded_item.get("reviewed_by"),
+                        "reviewed_on": uploaded_item.get("reviewed_on"),
+                        "uploaded_by": uploaded_item.get("uploaded_by"),
+                        "uploaded_at": uploaded_item.get("uploaded_at"),
+                        "file_url": uploaded_item.get("file_url"),
+                        "file_name": uploaded_item.get("file_name"),
+                        "modified": uploaded_item.get("modified") or document_row.get("modified"),
+                    }
+                )
+
+        uploaded_rows.sort(
+            key=lambda row: (
+                row.get("uploaded_at") or "",
+                row.get("modified") or "",
+            ),
+            reverse=True,
+        )
 
         return {
             "ok": not missing and not unapproved,

@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.13.1"
+version: "1.13.2"
 last_change_date: "2026-03-08"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, policies, and guardian intake/contact carry-over."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -39,7 +39,7 @@ Use the applicant readiness outputs, not guesswork:
 
 1. Desk `Student Applicant` form:
    - `Policies Summary` shows a policy matrix with status, signer(s), signed timestamp, and version link.
-   - `Documents Summary` is the canonical document-review view and shows required-vs-uploaded document tables (missing items, uploader, upload date, reviewer, and links).
+   - `Documents Summary` is the canonical document-review view and shows required-vs-uploaded document tables (missing items, uploader, upload date, reviewer, and links); required rows include `Approved / Required` coverage and uploaded rows list all uploaded document items.
    - `Health Summary` shows cleared/pending state, health profile link, reviewer metadata, and declaration metadata.
    - `Review Assignments Summary` shows completed assignment decisions for Health and Overall Application (document review truth remains in `Documents Summary`).
    - `Review Snapshot` includes readiness issues from `get_readiness_snapshot`.
@@ -381,6 +381,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - `has_required_documents()` -> blocking
   - `health_review_complete()` -> blocking
   - `has_required_interviews()` -> tracked; not currently part of blocking `ready` boolean
+  - repeatable required document types are satisfied when required upload count is met and either per-item approvals meet required count or the parent `Applicant Document` is explicitly marked `Approved`
   - interview summary shows a compact latest-5 table with Date/Time (linked to interview), Interviewer, and Outcome Impression
   - `review_assignments_summary` is assignment-focused (Health + Overall Application); document reviewer metadata is surfaced in `documents_summary`
 - **Promotion side-effects (`promote_to_student`)**:

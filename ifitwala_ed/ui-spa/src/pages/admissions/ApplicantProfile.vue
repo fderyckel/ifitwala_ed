@@ -481,16 +481,6 @@
 							</label>
 
 							<label class="block">
-								<span class="type-caption text-ink/60">{{ __('Full name') }}</span>
-								<input
-									v-model="guardian.guardian_full_name"
-									type="text"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink/70 focus:outline-none"
-									disabled
-								/>
-							</label>
-
-							<label class="block">
 								<span class="type-caption text-ink/60">{{ __('Personal email *') }}</span>
 								<input
 									v-model="guardian.guardian_email"
@@ -637,16 +627,6 @@
 									</a>
 								</div>
 							</div>
-
-							<label class="block">
-								<span class="type-caption text-ink/60">{{ __('User ID') }}</span>
-								<input
-									v-model="guardian.user"
-									type="text"
-									class="mt-1 w-full rounded-xl border border-border/70 bg-surface px-3 py-2 type-body text-ink/70 focus:outline-none"
-									disabled
-								/>
-							</label>
 
 							<label class="flex items-center gap-2">
 								<input

@@ -1254,6 +1254,10 @@ function render_documents(documents) {
 	const requiredRows = Array.isArray(documents.required_rows) ? documents.required_rows : [];
 	const uploadedRows = Array.isArray(documents.uploaded_rows) ? documents.uploaded_rows : [];
 	const missing = Array.isArray(documents.missing) ? documents.missing : [];
+	const pendingUploadedReviews = uploadedRows.filter((row) => {
+		const status = String(row?.review_status || "Pending").trim() || "Pending";
+		return status === "Pending";
+	}).length;
 
 	if (!requiredRows.length && !uploadedRows.length) {
 		return render_empty("No document requirements are in scope.");
@@ -1269,6 +1273,7 @@ function render_documents(documents) {
 			<tr>
 				<td>${escape_html(String(row?.label || row?.document_type || "Document"))}</td>
 				<td>${render_document_status_pill(row?.review_status)}</td>
+				<td>${render_approved_required_pill(row)}</td>
 				<td>${render_user_link(row?.uploaded_by)}</td>
 				<td>${escape_html(format_datetime(row?.uploaded_at))}</td>
 				<td>${render_user_link(row?.reviewed_by)}</td>
@@ -1282,6 +1287,8 @@ function render_documents(documents) {
 		<tr>
 			<td>${escape_html(String(row?.label || row?.document_type || "Document"))}</td>
 			<td>${render_document_status_pill(row?.review_status)}</td>
+			<td>${render_user_link(row?.reviewed_by)}</td>
+			<td>${escape_html(format_datetime(row?.reviewed_on))}</td>
 			<td>${render_user_link(row?.uploaded_by)}</td>
 			<td>${escape_html(format_datetime(row?.uploaded_at))}</td>
 			<td>${row?.file_url ? render_text_link(String(row.file_url), "File", true) : escape_html("—")}</td>
@@ -1292,6 +1299,7 @@ function render_documents(documents) {
 		<div style="margin-bottom: 10px;">
 			${render_pill(documents.ok ? "✓ All required documents approved" : "Action required", documents.ok ? "green" : "amber")}
 			${missing.length ? `<span style="margin-left: 6px;">${render_pill(`Missing: ${missing.length}`, "red")}</span>` : ""}
+			${pendingUploadedReviews ? `<span style="margin-left: 6px;">${render_pill(`Pending item reviews: ${pendingUploadedReviews}`, "amber")}</span>` : ""}
 		</div>
 		${requiredRows.length ? `
 			<div style="margin-bottom: 12px;">
@@ -1302,6 +1310,7 @@ function render_documents(documents) {
 							<tr>
 								<th>Document</th>
 								<th>Status</th>
+								<th>Approved / Required</th>
 								<th>Uploaded By</th>
 								<th>Uploaded On</th>
 								<th>Reviewed By</th>
@@ -1318,13 +1327,15 @@ function render_documents(documents) {
 		` : ""}
 		${uploadedRows.length ? `
 			<div>
-				<div style="font-weight: 600; margin-bottom: 6px;">Latest Uploaded Documents</div>
+				<div style="font-weight: 600; margin-bottom: 6px;">Uploaded Document Items</div>
 				<div class="table-responsive">
 					<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 						<thead>
 							<tr>
 								<th>Document</th>
 								<th>Review Status</th>
+								<th>Reviewed By</th>
+								<th>Reviewed On</th>
 								<th>Uploaded By</th>
 								<th>Uploaded On</th>
 								<th>File</th>
@@ -1425,6 +1436,16 @@ function render_document_status_pill(status) {
 		return render_pill("Missing", "red");
 	}
 	return render_pill(normalized || "Pending", "amber");
+}
+
+function render_approved_required_pill(row) {
+	const requiredCount = Number(row?.required_count || 0);
+	if (!requiredCount) {
+		return escape_html("—");
+	}
+	const approvedCount = Number(row?.approved_count || 0);
+	const tone = approvedCount >= requiredCount ? "green" : "amber";
+	return render_pill(`${approvedCount}/${requiredCount}`, tone);
 }
 
 function map_health_status(status) {

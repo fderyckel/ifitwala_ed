@@ -1657,25 +1657,33 @@ For all active Policy Versions where:
 
 **Reads from**:
 
+* `Applicant Document Type`
 * `Applicant Document`
+* `Applicant Document Item`
+* `File`
 
 **Rules**:
 
-* A required document type is satisfied **only if**:
-
-  * an Applicant Document exists
-  * review_status == Approved
-  * latest version is approved
-
-Rejected documents do **not** satisfy the requirement.
+* Required upload count for each type is:
+  * `1` for non-repeatable types
+  * `max(1, min_items_required)` for repeatable required types
+* A required type is marked **missing** when uploaded item count is below required count.
+* A required type is marked **unapproved** when upload count is met but readiness approval is not acknowledged.
+* Readiness approval is acknowledged when either:
+  * approved item count meets required count, or
+  * parent `Applicant Document.review_status == Approved`
+* `uploaded_rows` are item-level (one row per uploaded `Applicant Document Item` file), sorted newest-first.
 
 **Returns**:
 
 ```python
 {
   "ok": bool,
-  "missing": [document_type, ...],
-  "rejected": [document_type, ...]
+  "missing": [document_label, ...],
+  "unapproved": [document_label, ...],
+  "required": [document_label, ...],
+  "required_rows": [...],
+  "uploaded_rows": [...],
 }
 ```
 

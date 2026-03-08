@@ -412,6 +412,131 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertEqual((query.get("context_doctype") or [None])[0], "Student Applicant")
         self.assertEqual((query.get("context_name") or [None])[0], applicant.name)
 
+    def test_repeatable_required_document_accepts_parent_level_approval_for_readiness(self):
+        code = f"repeatable_doc_{frappe.generate_hash(length=6)}"
+        doc_type = self._create_applicant_document_type(
+            code=code,
+            is_required=1,
+            is_repeatable=1,
+            min_items_required=2,
+        )
+        applicant = self._create_student_applicant()
+
+        frappe.set_user("Administrator")
+        try:
+            applicant_doc = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document",
+                    "student_applicant": applicant.name,
+                    "document_type": doc_type,
+                    "review_status": "Pending",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.set_user(self.staff_user.name)
+        self._created.append(("Applicant Document", applicant_doc.name))
+
+        for index in (1, 2):
+            item = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document Item",
+                    "applicant_document": applicant_doc.name,
+                    "item_key": f"required_bundle_{index}",
+                    "item_label": f"Transcript {index}",
+                    "review_status": "Pending",
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("Applicant Document Item", item.name))
+
+            file_doc = frappe.get_doc(
+                {
+                    "doctype": "File",
+                    "attached_to_doctype": "Applicant Document Item",
+                    "attached_to_name": item.name,
+                    "file_name": f"transcript-{index}.txt",
+                    "is_private": 1,
+                    "content": f"transcript-{index}".encode(),
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("File", file_doc.name))
+
+        approved_doc = frappe.get_doc("Applicant Document", applicant_doc.name)
+        approved_doc.review_status = "Approved"
+        approved_doc.review_notes = "Bundle approved after review."
+        approved_doc.save(ignore_permissions=True)
+
+        payload = applicant.has_required_documents()
+        self.assertTrue(payload.get("ok"))
+        self.assertNotIn(code, payload.get("missing") or [])
+        self.assertNotIn(code, payload.get("unapproved") or [])
+
+        required_rows = payload.get("required_rows") or []
+        row = next((item for item in required_rows if item.get("document_type") == doc_type), None)
+        self.assertIsNotNone(row)
+        self.assertEqual(row.get("review_status"), "Approved")
+        self.assertEqual(int(row.get("approved_count") or 0), 0)
+        self.assertEqual(int(row.get("required_count") or 0), 2)
+
+    def test_uploaded_rows_include_each_uploaded_document_item(self):
+        code = f"uploaded_rows_doc_{frappe.generate_hash(length=6)}"
+        doc_type = self._create_applicant_document_type(
+            code=code,
+            is_required=1,
+            is_repeatable=1,
+            min_items_required=2,
+        )
+        applicant = self._create_student_applicant()
+
+        frappe.set_user("Administrator")
+        try:
+            applicant_doc = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document",
+                    "student_applicant": applicant.name,
+                    "document_type": doc_type,
+                    "review_status": "Pending",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.set_user(self.staff_user.name)
+        self._created.append(("Applicant Document", applicant_doc.name))
+
+        created_item_labels = []
+        for index in (1, 2):
+            item_label = f"Transcript Variant {index}"
+            item = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document Item",
+                    "applicant_document": applicant_doc.name,
+                    "item_key": f"uploaded_variant_{index}",
+                    "item_label": item_label,
+                    "review_status": "Pending",
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("Applicant Document Item", item.name))
+
+            file_doc = frappe.get_doc(
+                {
+                    "doctype": "File",
+                    "attached_to_doctype": "Applicant Document Item",
+                    "attached_to_name": item.name,
+                    "file_name": f"uploaded-variant-{index}.txt",
+                    "is_private": 1,
+                    "content": f"uploaded-variant-{index}".encode(),
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("File", file_doc.name))
+            created_item_labels.append(item_label)
+
+        payload = applicant.has_required_documents()
+        uploaded_rows = payload.get("uploaded_rows") or []
+        target_rows = [row for row in uploaded_rows if row.get("document_type") == doc_type]
+        self.assertEqual(len(target_rows), 2)
+
+        labels = {row.get("item_label") for row in target_rows}
+        self.assertEqual(labels, set(created_item_labels))
+        self.assertTrue(all((row.get("file_url") or "").strip() for row in target_rows))
+
     def test_profile_information_reports_missing_required_fields(self):
         applicant = self._create_student_applicant()
         payload = applicant.has_required_profile_information()
@@ -821,6 +946,8 @@ class TestStudentApplicant(FrappeTestCase):
         organization=None,
         is_required=0,
         is_active=1,
+        is_repeatable=0,
+        min_items_required=1,
     ):
         existing = frappe.db.get_value("Applicant Document Type", {"code": code}, "name")
         if existing:
@@ -834,6 +961,8 @@ class TestStudentApplicant(FrappeTestCase):
                 "school": school or self.leaf_school,
                 "is_active": is_active,
                 "is_required": is_required,
+                "is_repeatable": is_repeatable,
+                "min_items_required": min_items_required,
                 "classification_slot": f"admissions_{frappe.scrub(code)}",
                 "classification_data_class": "administrative",
                 "classification_purpose": "administrative",
