@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.12.0"
-last_change_date: "2026-03-05"
+version: "1.13.0"
+last_change_date: "2026-03-08"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, policies, and guardian intake/contact carry-over."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, policies, and guardian intake/contact carry-over."
@@ -39,9 +39,9 @@ Use the applicant readiness outputs, not guesswork:
 
 1. Desk `Student Applicant` form:
    - `Policies Summary` shows a policy matrix with status, signer(s), signed timestamp, and version link.
-   - `Documents Summary` shows required-vs-uploaded document tables (missing items, uploader, upload date, reviewer, and links).
+   - `Documents Summary` is the canonical document-review view and shows required-vs-uploaded document tables (missing items, uploader, upload date, reviewer, and links).
    - `Health Summary` shows cleared/pending state, health profile link, reviewer metadata, and declaration metadata.
-   - `Review Assignments Summary` shows completed reviewer decisions across Documents, Health, and Overall Application.
+   - `Review Assignments Summary` shows completed assignment decisions for Health and Overall Application (document review truth remains in `Documents Summary`).
    - `Review Snapshot` includes readiness issues from `get_readiness_snapshot`.
 2. Approval action:
    - `Approve` is blocked by server guard (`approve_application` -> `_validate_ready_for_approval`) until required policy acknowledgements are complete.
@@ -378,7 +378,8 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - `has_required_documents()` -> blocking
   - `health_review_complete()` -> blocking
   - `has_required_interviews()` -> tracked; not currently part of blocking `ready` boolean
-  - interview summary shows recent interview links with datetime context (`interview_start` when present, else `interview_date`) for direct navigation from applicant review section
+  - interview summary shows a compact latest-5 table with Date/Time (linked to interview), Interviewer, and Outcome Impression
+  - `review_assignments_summary` is assignment-focused (Health + Overall Application); document reviewer metadata is surfaced in `documents_summary`
 - **Promotion side-effects (`promote_to_student`)**:
   - creates/links `Student`, writes `Student.student_applicant`, then sets applicant status to `Promoted`
   - creates/syncs `Student Patient` from Applicant Health Profile data

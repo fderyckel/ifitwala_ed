@@ -83,6 +83,31 @@
 		gap: 0.5rem;
 	}
 
+	.if-overlay__input {
+		width: 100%;
+		border-radius: var(--radius-xl);
+		border: 1px solid rgb(var(--border-rgb) / 0.7);
+		background-color: rgb(var(--surface-strong-rgb) / 1);
+		padding: 0.5rem 0.75rem;
+		font-size: 0.875rem;
+		color: rgb(var(--ink-rgb) / 1);
+		box-shadow: var(--shadow-soft);
+		outline: none;
+		transition:
+			border-color 120ms ease,
+			box-shadow 120ms ease;
+	}
+
+	.if-overlay__input:focus {
+		border-color: rgb(var(--leaf-rgb) / 0.5);
+		box-shadow: 0 0 0 2px rgb(var(--leaf-rgb) / 0.35);
+	}
+
+	.if-overlay__input:disabled {
+		opacity: 0.7;
+		cursor: not-allowed;
+	}
+
 	.if-overlay__icon-button {
 		display: inline-flex;
 		align-items: center;

@@ -1,7 +1,10 @@
 # ifitwala_ed/admission/doctype/recommendation_template/recommendation_template.py
 
+import hashlib
+
 import frappe
 from frappe import _
+from frappe.exceptions import DuplicateEntryError
 from frappe.model.document import Document
 from frappe.utils import cint
 
@@ -9,6 +12,8 @@ from ifitwala_ed.admission.admission_utils import get_applicant_scope_ancestors,
 from ifitwala_ed.governance.policy_scope_utils import is_policy_organization_applicable_to_context
 
 ALLOWED_FIELD_TYPES = {"Data", "Small Text", "Long Text", "Select", "Check"}
+MANAGED_RECOMMENDATION_DOC_TYPE_CODE_PREFIX = "recommendation_letter"
+MANAGED_RECOMMENDATION_DOC_TYPE_LABEL = "Recommendation Letter"
 
 
 class RecommendationTemplate(Document):
@@ -17,6 +22,7 @@ class RecommendationTemplate(Document):
         self._validate_scope()
         self._validate_limits()
         self._validate_file_rules()
+        self._ensure_target_document_type()
         self._validate_target_document_type()
         self._validate_template_fields()
 
@@ -54,6 +60,80 @@ class RecommendationTemplate(Document):
     def _validate_file_rules(self):
         if cint(self.file_upload_required) and not cint(self.allow_file_upload):
             frappe.throw(_("File Upload Required cannot be enabled when Allow File Upload is disabled."))
+
+    def _ensure_target_document_type(self):
+        if self.target_document_type:
+            return
+
+        target_row, created = self._resolve_or_create_managed_target_document_type()
+        target_name = (target_row.get("name") or "").strip()
+        if not target_name:
+            frappe.throw(_("Unable to resolve a managed Recommendation target document type."))
+
+        self.target_document_type = target_name
+        if cint(frappe.flags.in_test):
+            return
+
+        if created:
+            frappe.msgprint(
+                _("Target Document Type was created in the background and linked: {0} ({1}).").format(
+                    frappe.bold(target_name), frappe.bold(target_row.get("document_type_name") or target_name)
+                )
+            )
+            return
+
+        frappe.msgprint(_("Target Document Type was linked automatically: {0}.").format(frappe.bold(target_name)))
+
+    def _managed_target_document_type_code(self) -> str:
+        seed = f"{self.organization}|{self.school}"
+        digest = hashlib.sha1(seed.encode("utf-8")).hexdigest()[:10]
+        return f"{MANAGED_RECOMMENDATION_DOC_TYPE_CODE_PREFIX}_{digest}"
+
+    def _resolve_or_create_managed_target_document_type(self) -> tuple[dict, bool]:
+        code = self._managed_target_document_type_code()
+        existing = frappe.db.get_value(
+            "Applicant Document Type",
+            {"code": code},
+            ["name", "document_type_name"],
+            as_dict=True,
+        )
+        if existing:
+            return existing, False
+
+        payload = {
+            "doctype": "Applicant Document Type",
+            "code": code,
+            "document_type_name": MANAGED_RECOMMENDATION_DOC_TYPE_LABEL,
+            "organization": self.organization,
+            "school": self.school,
+            "is_active": 1,
+            "is_required": 0,
+            "is_repeatable": 1,
+            "min_items_required": 1,
+            "classification_slot": "recommendation_letter",
+            "classification_data_class": "academic",
+            "classification_purpose": "academic_report",
+            "classification_retention_policy": "until_program_end_plus_1y",
+            "description": _("Managed automatically for external recommendation intake."),
+        }
+
+        try:
+            created = frappe.get_doc(payload)
+            created.insert(ignore_permissions=True)
+            return {
+                "name": created.name,
+                "document_type_name": created.document_type_name,
+            }, True
+        except DuplicateEntryError:
+            row = frappe.db.get_value(
+                "Applicant Document Type",
+                {"code": code},
+                ["name", "document_type_name"],
+                as_dict=True,
+            )
+            if row:
+                return row, False
+            raise
 
     def _validate_target_document_type(self):
         if not self.target_document_type:

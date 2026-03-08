@@ -2168,7 +2168,14 @@ class StudentApplicant(Document):
         rows = frappe.get_all(
             "Applicant Interview",
             filters={"student_applicant": self.name},
-            fields=["name", "interview_date", "interview_start", "interview_end", "interview_type"],
+            fields=[
+                "name",
+                "interview_date",
+                "interview_start",
+                "interview_end",
+                "interview_type",
+                "outcome_impression",
+            ],
             order_by="modified desc",
             limit_page_length=20,
         )
@@ -2183,7 +2190,67 @@ class StudentApplicant(Document):
             reverse=True,
         )
         count = frappe.db.count("Applicant Interview", {"student_applicant": self.name})
-        return {"ok": count >= 1, "count": count, "items": rows[:5]}
+        recent_rows = rows[:5]
+        interview_names = [row.get("name") for row in recent_rows if row.get("name")]
+
+        interviewer_rows = []
+        if interview_names:
+            interviewer_rows = frappe.get_all(
+                "Applicant Interviewer",
+                filters={
+                    "parent": ["in", interview_names],
+                    "parenttype": "Applicant Interview",
+                    "parentfield": "interviewers",
+                },
+                fields=["parent", "interviewer", "idx"],
+                order_by="parent asc, idx asc",
+            )
+
+        interviewer_ids = sorted(
+            {
+                (row.get("interviewer") or "").strip()
+                for row in interviewer_rows
+                if (row.get("interviewer") or "").strip()
+            }
+        )
+        interviewer_name_by_user: dict[str, str] = {}
+        if interviewer_ids:
+            user_rows = frappe.get_all(
+                "User",
+                filters={"name": ["in", interviewer_ids]},
+                fields=["name", "full_name"],
+            )
+            for user_row in user_rows:
+                user_id = (user_row.get("name") or "").strip()
+                if not user_id:
+                    continue
+                full_name = (user_row.get("full_name") or "").strip()
+                interviewer_name_by_user[user_id] = full_name or user_id
+
+        interviewers_by_interview: dict[str, list[dict]] = {}
+        for interviewer_row in interviewer_rows:
+            interview_name = (interviewer_row.get("parent") or "").strip()
+            user_id = (interviewer_row.get("interviewer") or "").strip()
+            if not interview_name or not user_id:
+                continue
+            label = interviewer_name_by_user.get(user_id) or user_id
+            interviewers_by_interview.setdefault(interview_name, []).append(
+                {
+                    "user": user_id,
+                    "label": label,
+                }
+            )
+
+        items = []
+        for row in recent_rows:
+            interview_name = (row.get("name") or "").strip()
+            interviewers = list(interviewers_by_interview.get(interview_name, []))
+            item = dict(row)
+            item["interviewers"] = interviewers
+            item["interviewer_labels"] = [entry.get("label") for entry in interviewers if entry.get("label")]
+            items.append(item)
+
+        return {"ok": count >= 1, "count": count, "items": items}
 
     def has_required_recommendations(self):
         default_payload = {

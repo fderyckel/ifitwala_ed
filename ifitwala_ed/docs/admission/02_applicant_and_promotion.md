@@ -1725,7 +1725,20 @@ No enforcement.
 ```python
 {
   "ok": bool,
-  "count": int
+  "count": int,
+  "items": [
+    {
+      "name": str,
+      "interview_date": str | None,
+      "interview_start": str | None,
+      "interview_end": str | None,
+      "interview_type": str | None,
+      "outcome_impression": str | None,
+      "interviewers": [{"user": str, "label": str}],
+      "interviewer_labels": [str],
+    },
+    ...
+  ]  # latest 5, recent-first
 }
 ```
 
@@ -2150,6 +2163,8 @@ Administrative Record
 * `has_required_interviews()` returns:
 
   * `ok = True` if **≥ 1 interview exists**
+  * `count` = total interviews for the applicant
+  * `items` = latest 5 interview rows enriched for Desk readability (interviewer labels + outcome impression)
 
 ### Helpers (on Student Applicant only)
 

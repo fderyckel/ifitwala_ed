@@ -970,7 +970,6 @@ function render_snapshot(data) {
 
 function render_review_assignments(summary) {
 	const groups = [
-		{ key: "Applicant Document", label: "Documents" },
 		{ key: "Applicant Health Profile", label: "Health" },
 		{ key: "Student Applicant", label: "Overall Application" },
 	];
@@ -1018,7 +1017,12 @@ function render_review_assignments(summary) {
 		})
 		.join("");
 
-	return sections || render_empty("No review assignment decisions yet.");
+	const helperNote = `
+		<div class="text-muted" style="margin-bottom: 8px;">
+			Document review status and reviewer metadata are shown in Documents Summary below.
+		</div>
+	`;
+	return `${helperNote}${sections || render_empty("No review assignment decisions yet.")}`;
 }
 
 function render_interviews(interviews) {
@@ -1027,48 +1031,79 @@ function render_interviews(interviews) {
 	}
 	const count = Number(interviews.count || 0);
 	const items = Array.isArray(interviews.items) ? interviews.items : [];
-	return [
-		render_line("Interview count", escape_html(String(count))),
-		render_line("Recent interviews", render_interview_links(items)),
-	].join("");
+	if (!items.length) {
+		return [
+			render_line("Interview count", escape_html(String(count))),
+			`<div class="text-muted" style="margin-top: 6px;">No interviews yet.</div>`,
+		].join("");
+	}
+
+	const rows = items.map((row) => {
+		const name = String(row?.name || "").trim();
+		const scheduleLabel = escape_html(format_interview_schedule(row));
+		const scheduleCell = name
+			? `<a href="/desk/applicant-interview/${encodeURIComponent(name)}">${scheduleLabel}</a>`
+			: scheduleLabel;
+		const interviewerLabels = render_interviewer_labels(row);
+		const impression = escape_html(String(row?.outcome_impression || "—"));
+		return `
+			<tr>
+				<td>${scheduleCell}</td>
+				<td>${interviewerLabels}</td>
+				<td>${impression}</td>
+			</tr>
+		`;
+	}).join("");
+
+	return `
+		<div style="margin-bottom: 6px;">${render_line("Interview count", escape_html(String(count)))}</div>
+		<div class="table-responsive">
+			<table class="table table-bordered table-sm" style="margin-bottom: 0;">
+				<thead>
+					<tr>
+						<th>Date / Time</th>
+						<th>Interviewer</th>
+						<th>Outcome Impression</th>
+					</tr>
+				</thead>
+				<tbody>
+					${rows}
+				</tbody>
+			</table>
+		</div>
+	`;
 }
 
-function render_interview_links(items) {
-	if (!items.length) {
-		return escape_html("None");
+function format_interview_schedule(row) {
+	const interviewStart = String(row?.interview_start || "").trim();
+	const interviewEnd = String(row?.interview_end || "").trim();
+	const interviewDate = String(row?.interview_date || "").trim();
+	if (interviewStart && interviewEnd) {
+		return `${format_datetime(interviewStart)} - ${format_datetime(interviewEnd)}`;
 	}
+	if (interviewStart) {
+		return format_datetime(interviewStart);
+	}
+	if (interviewDate) {
+		return interviewDate;
+	}
+	return "—";
+}
 
-	const links = items
-		.map((row) => {
-			const name = String(row?.name || "").trim();
-			if (!name) {
-				return "";
-			}
-			const date = String(row?.interview_date || "").trim();
-			const interviewStart = String(row?.interview_start || "").trim();
-			const interviewEnd = String(row?.interview_end || "").trim();
-			const type = String(row?.interview_type || "").trim();
-			const pieces = [name];
-			if (interviewStart) {
-				const compactStart = interviewStart.replace("T", " ").slice(0, 16);
-				const compactEnd = interviewEnd ? interviewEnd.replace("T", " ").slice(11, 16) : "";
-				pieces.push(compactEnd ? `${compactStart}-${compactEnd}` : compactStart);
-			} else if (date) {
-				pieces.push(date);
-			}
-			if (type) {
-				pieces.push(type);
-			}
-			const label = escape_html(pieces.join(" · "));
-			const href = `/desk/applicant-interview/${encodeURIComponent(name)}`;
-			return `<a href="${href}">${label}</a>`;
-		})
+function render_interviewer_labels(row) {
+	const labels = Array.isArray(row?.interviewer_labels)
+		? row.interviewer_labels
+			.map((value) => String(value || "").trim())
+			.filter(Boolean)
+		: [];
+	if (labels.length) {
+		return escape_html(labels.join(", "));
+	}
+	const interviewers = Array.isArray(row?.interviewers) ? row.interviewers : [];
+	const fallback = interviewers
+		.map((entry) => String(entry?.label || entry?.user || "").trim())
 		.filter(Boolean);
-
-	if (!links.length) {
-		return escape_html("None");
-	}
-	return links.join(", ");
+	return escape_html(fallback.join(", ") || "—");
 }
 
 function render_health(health) {

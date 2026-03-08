@@ -2,6 +2,8 @@
 # Copyright (c) 2026, François de Ryckel and Contributors
 # See license.txt
 
+import hashlib
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -94,6 +96,83 @@ class TestRecommendationTemplate(FrappeTestCase):
             )
             doc.insert(ignore_permissions=True)
 
+    def test_target_document_type_is_auto_created_when_missing(self):
+        template = frappe.get_doc(
+            {
+                "doctype": "Recommendation Template",
+                "template_name": "Auto Template",
+                "organization": self.organization,
+                "school": self.school,
+                "minimum_required": 1,
+                "maximum_allowed": 2,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Recommendation Template", template.name))
+
+        target_name = (template.target_document_type or "").strip()
+        self.assertTrue(bool(target_name))
+        self._created.append(("Applicant Document Type", target_name))
+
+        target_row = frappe.db.get_value(
+            "Applicant Document Type",
+            target_name,
+            [
+                "code",
+                "organization",
+                "school",
+                "is_repeatable",
+                "is_required",
+                "classification_slot",
+                "classification_data_class",
+                "classification_purpose",
+                "classification_retention_policy",
+            ],
+            as_dict=True,
+        )
+        self.assertTrue(bool(target_row))
+        self.assertEqual(target_row.get("code"), self._managed_target_code())
+        self.assertEqual(target_row.get("organization"), self.organization)
+        self.assertEqual(target_row.get("school"), self.school)
+        self.assertEqual(int(target_row.get("is_repeatable") or 0), 1)
+        self.assertEqual(int(target_row.get("is_required") or 0), 0)
+        self.assertEqual(target_row.get("classification_slot"), "recommendation_letter")
+        self.assertEqual(target_row.get("classification_data_class"), "academic")
+        self.assertEqual(target_row.get("classification_purpose"), "academic_report")
+        self.assertEqual(target_row.get("classification_retention_policy"), "until_program_end_plus_1y")
+
+    def test_missing_target_reuses_same_managed_document_type(self):
+        first = frappe.get_doc(
+            {
+                "doctype": "Recommendation Template",
+                "template_name": "Auto Template A",
+                "organization": self.organization,
+                "school": self.school,
+                "minimum_required": 1,
+                "maximum_allowed": 2,
+            }
+        ).insert(ignore_permissions=True)
+        second = frappe.get_doc(
+            {
+                "doctype": "Recommendation Template",
+                "template_name": "Auto Template B",
+                "organization": self.organization,
+                "school": self.school,
+                "minimum_required": 1,
+                "maximum_allowed": 3,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Recommendation Template", first.name))
+        self._created.append(("Recommendation Template", second.name))
+
+        self.assertEqual(first.target_document_type, second.target_document_type)
+        self._created.append(("Applicant Document Type", first.target_document_type))
+
+        count = frappe.db.count(
+            "Applicant Document Type",
+            {"code": self._managed_target_code()},
+        )
+        self.assertEqual(count, 1)
+
     def test_template_fields_validation(self):
         # Missing field key
         with self.assertRaises(frappe.ValidationError):
@@ -182,3 +261,8 @@ class TestRecommendationTemplate(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Type", doc.name))
         return doc.name
+
+    def _managed_target_code(self) -> str:
+        seed = f"{self.organization}|{self.school}"
+        digest = hashlib.sha1(seed.encode("utf-8")).hexdigest()[:10]
+        return f"recommendation_letter_{digest}"

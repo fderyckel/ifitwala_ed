@@ -50,6 +50,7 @@ Rules:
 
 * ❌ No `@import "tailwindcss"` in sub-files
 * ❌ No `@reference "tailwindcss"` in sub-files
+* ❌ No `@apply` inside Vue `<style scoped>` blocks (Tailwind v4 can fail utility resolution there)
 * ✅ All other CSS lives under `@layer` blocks
 
 This avoids directive drift, ordering bugs, and upgrade fragility.

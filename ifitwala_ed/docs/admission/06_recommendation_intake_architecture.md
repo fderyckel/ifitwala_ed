@@ -26,6 +26,7 @@ School-scoped template controlling recommendation policy and form fields.
 Key fields:
 - `organization`, `school`
 - `target_document_type` (`Applicant Document Type`)
+  - optional at authoring time; when omitted, runtime auto-links or auto-creates a managed school-scoped `Applicant Document Type` for recommendation evidence and notifies staff on save
 - `minimum_required`, `maximum_allowed`
   - limits are strict-validated (`minimum_required >= 0`, `maximum_allowed >= 1`, `minimum_required <= maximum_allowed`); invalid values are rejected, not auto-normalized
 - `allow_file_upload`, `file_upload_required`
@@ -87,6 +88,7 @@ Implemented controls:
 ## 5. Runtime Workflow
 
 1. Staff creates request from applicant context using a school-scoped template.
+   - when template author left `target_document_type` empty, save auto-resolves/creates the managed recommendation document type before requests can be created
 2. System allocates/links `Applicant Document Item` slot and issues secure intake URL.
 3. Recommender opens token link, completes template fields, optionally uploads file, confirms attestation, submits.
 4. System seals `Recommendation Submission`, updates request to `Submitted`, and stores evidence in admissions document item slot.

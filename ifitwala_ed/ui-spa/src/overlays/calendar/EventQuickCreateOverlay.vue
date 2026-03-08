@@ -125,7 +125,7 @@
 											<input
 												v-model="meetingForm.date"
 												type="date"
-												class="if-input"
+												class="if-overlay__input"
 												:disabled="submitting"
 											/>
 										</div>
@@ -134,7 +134,7 @@
 											<input
 												v-model="meetingForm.start_time"
 												type="time"
-												class="if-input"
+												class="if-overlay__input"
 												:disabled="submitting"
 											/>
 										</div>
@@ -143,7 +143,7 @@
 											<input
 												v-model="meetingForm.end_time"
 												type="time"
-												class="if-input"
+												class="if-overlay__input"
 												:disabled="submitting"
 											/>
 										</div>
@@ -268,7 +268,7 @@
 											<input
 												v-model="schoolEventForm.starts_on"
 												type="datetime-local"
-												class="if-input"
+												class="if-overlay__input"
 												:disabled="submitting"
 											/>
 										</div>
@@ -277,7 +277,7 @@
 											<input
 												v-model="schoolEventForm.ends_on"
 												type="datetime-local"
-												class="if-input"
+												class="if-overlay__input"
 												:disabled="submitting"
 											/>
 										</div>
@@ -822,9 +822,3 @@ onBeforeUnmount(() => {
 	document.removeEventListener('keydown', onKeydown, true);
 });
 </script>
-
-<style scoped>
-.if-input {
-	@apply w-full rounded-xl border border-border/70 bg-white px-3 py-2 text-sm text-ink shadow-soft outline-none focus:ring-2 focus:ring-[rgb(var(--leaf-rgb)/0.35)];
-}
-</style>

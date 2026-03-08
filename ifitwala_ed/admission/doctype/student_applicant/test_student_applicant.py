@@ -173,22 +173,62 @@ class TestStudentApplicant(FrappeTestCase):
 
     def test_has_required_interviews_returns_recent_items(self):
         applicant = self._create_student_applicant()
-        interview = frappe.get_doc(
+        interviewer_user = self._create_user("Interview", "Reviewer")
+
+        older_interview = frappe.get_doc(
             {
                 "doctype": "Applicant Interview",
                 "student_applicant": applicant.name,
-                "interview_date": frappe.utils.nowdate(),
-                "interview_type": "Student",
+                "interview_date": "2026-03-01",
+                "interview_start": "2026-03-01 09:00:00",
+                "interview_end": "2026-03-01 09:30:00",
+                "interview_type": "Family",
+                "outcome_impression": "Neutral",
+                "interviewers": [
+                    {"interviewer": self.staff_user.name},
+                ],
             }
         ).insert(ignore_permissions=True)
-        self._created.append(("Applicant Interview", interview.name))
+        self._created.append(("Applicant Interview", older_interview.name))
+        recent_interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": applicant.name,
+                "interview_date": "2026-03-02",
+                "interview_start": "2026-03-02 10:00:00",
+                "interview_end": "2026-03-02 10:45:00",
+                "interview_type": "Student",
+                "outcome_impression": "Positive",
+                "interviewers": [
+                    {"interviewer": self.staff_user.name},
+                    {"interviewer": interviewer_user.name},
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", recent_interview.name))
 
         payload = applicant.has_required_interviews()
-        self.assertEqual(payload.get("count"), 1)
+        self.assertEqual(payload.get("count"), 2)
         self.assertTrue(payload.get("ok"))
         items = payload.get("items") or []
-        self.assertEqual(len(items), 1)
-        self.assertEqual(items[0].get("name"), interview.name)
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0].get("name"), recent_interview.name)
+        self.assertEqual(items[1].get("name"), older_interview.name)
+        self.assertEqual(items[0].get("outcome_impression"), "Positive")
+        self.assertEqual(items[1].get("outcome_impression"), "Neutral")
+
+        recent_interviewers = items[0].get("interviewers") or []
+        self.assertEqual(
+            [row.get("user") for row in recent_interviewers],
+            [self.staff_user.name, interviewer_user.name],
+        )
+        staff_label = frappe.db.get_value("User", self.staff_user.name, "full_name") or self.staff_user.name
+        reviewer_label = frappe.db.get_value("User", interviewer_user.name, "full_name") or interviewer_user.name
+        expected_recent_labels = [
+            staff_label,
+            reviewer_label,
+        ]
+        self.assertEqual(items[0].get("interviewer_labels"), expected_recent_labels)
 
     def test_promotion_copies_approved_applicant_document_files(self):
         doc_type = self._create_applicant_document_type(code="application_form")
