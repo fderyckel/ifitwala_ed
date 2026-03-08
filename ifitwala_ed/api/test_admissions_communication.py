@@ -9,7 +9,7 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import now_datetime
 
 from ifitwala_ed.api import admissions_communication
-from ifitwala_ed.api.admission_cockpit import _ensure_cockpit_access
+from ifitwala_ed.api.admission_cockpit import _ensure_cockpit_access, _get_roles_for_user
 from ifitwala_ed.api.admissions_communication import (
     _require_actor_context,
     _session_user,
@@ -163,6 +163,14 @@ class TestAdmissionsCockpitAuthGuards(FrappeTestCase):
                 _ensure_cockpit_access()
 
         get_roles_mock.assert_not_called()
+
+    def test_get_roles_for_user_rejects_none_user_not_found(self):
+        with patch(
+            "ifitwala_ed.api.admission_cockpit.frappe.get_roles",
+            side_effect=RuntimeError("User None not found"),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                _get_roles_for_user("None")
 
 
 class TestAdmissionsCaseReadReceiptUpsert(FrappeTestCase):

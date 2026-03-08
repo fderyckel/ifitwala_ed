@@ -123,6 +123,13 @@
 										<button
 											type="button"
 											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											@click="openCreateInterview(item)"
+										>
+											Create Interview
+										</button>
+										<button
+											type="button"
+											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											@click="openThread(item)"
 										>
 											Message
@@ -526,6 +533,39 @@ function openApplicantWorkspace(card: CockpitCard) {
 		mode: 'applicant',
 		studentApplicant: applicantName,
 	});
+}
+
+function deskSlug(value: string) {
+	return String(value || '')
+		.trim()
+		.toLowerCase()
+		.replace(/_/g, '-')
+		.replace(/\s+/g, '-');
+}
+
+function buildNewInterviewUrl(studentApplicant: string) {
+	const slug = deskSlug('Applicant Interview');
+	const base = `/desk/${slug}/new-${slug}-1`;
+	const now = new Date();
+	const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+		now.getDate()
+	).padStart(2, '0')}`;
+	const params = new URLSearchParams({
+		student_applicant: studentApplicant,
+		interview_date: localToday,
+	});
+	return `${base}?${params.toString()}`;
+}
+
+function openCreateInterview(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = 'Applicant reference is missing for interview create.';
+		return;
+	}
+
+	const url = buildNewInterviewUrl(applicantName);
+	window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 async function loadThread(card: CockpitCard, markRead: boolean = true) {

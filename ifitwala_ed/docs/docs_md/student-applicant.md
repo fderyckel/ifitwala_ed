@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.13.0"
+version: "1.13.1"
 last_change_date: "2026-03-08"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, policies, and guardian intake/contact carry-over."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -340,6 +340,9 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 - **Naming series**: `format:APPL-{MM}-{YYYY}-{###}` (for example `APPL-02-2026-001`)
 - **Desk surfaces**:
   - form logic/buttons/readiness widgets in `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`
+  - interview actions on applicant form include:
+    - `Create Interview` (new prefilled `Applicant Interview` draft)
+    - `Schedule Interview` (creates interview + linked `School Event` via scheduling API)
   - workspace cards in `ifitwala_ed/admission/workspace/admission/admission.json`
 - **Admissions portal SPA surfaces**:
   - entrypoint `ifitwala_ed/ui-spa/src/apps/admissions/main.ts`

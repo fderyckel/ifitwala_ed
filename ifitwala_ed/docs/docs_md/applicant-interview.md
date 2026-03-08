@@ -3,8 +3,8 @@ title: "Applicant Interview: Structured Interview Evidence"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.6.0"
-last_change_date: "2026-03-05"
+version: "1.6.1"
+last_change_date: "2026-03-08"
 summary: "Record interview evidence, participants, calendar projection, and per-interviewer feedback with audit trail comments on the Student Applicant timeline."
 seo_title: "Applicant Interview: Structured Interview Evidence"
 seo_description: "Record interview evidence, participants, calendar projection, and per-interviewer feedback with audit trail comments on the Student Applicant timeline."
@@ -15,6 +15,7 @@ seo_description: "Record interview evidence, participants, calendar projection, 
 - Create the `Student Applicant` record first.
 - Have interview date/time and participants prepared before creating the record.
 - Ensure interviewer users exist in the system for clean participant linkage.
+- Interviewer selection is intentionally constrained to users with role `Employee`.
 
 `Applicant Interview` captures interview evidence as part of admissions review. It formalizes interview context and leaves an audit trail on the applicant record.
 
@@ -47,6 +48,10 @@ Controller logic remains on the parent doctype; child table controller is intent
 ## Lifecycle and Linked Documents
 
 1. Create one interview record per interview event for the applicant.
+   - Desk quick-create entry points:
+     - `Student Applicant` form action: `Create Interview`
+     - Admissions Cockpit applicant card action: `Create Interview`
+   - New interview defaults: `student_applicant`, `interview_date = today`, and current session user appended to `interviewers`.
 2. Capture date/time, mode, participants, confidentiality level, and structured notes/outcome.
 3. Preferred scheduling path uses `schedule_applicant_interview(...)` to atomically create:
    - `Applicant Interview` (admissions evidence)
@@ -109,6 +114,8 @@ Interviewers are child rows for structure only; workflow logic and validations a
 - **Desk surface**:
   - parent doctype form in `ifitwala_ed/admission/doctype/applicant_interview/`
   - child table `Applicant Interviewer` embedded in parent
+  - form script applies interviewer query filter `role = Employee` on `interviewers.interviewer`
+  - form script defaults new docs to current date and appends current session user to interviewer rows when missing
 - **Student Applicant integration**:
   - readiness snapshot uses `has_required_interviews()`
   - create/update posts audit comments onto applicant timeline with clickable interview links

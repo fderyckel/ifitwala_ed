@@ -42,6 +42,7 @@ frappe.ui.form.on("Student Applicant", {
 		add_decision_actions(frm);
 		add_portal_invite_action(frm);
 		add_recommendation_actions(frm);
+		add_create_interview_action(frm);
 		add_schedule_interview_action(frm);
 	},
 
@@ -127,6 +128,47 @@ frappe.ui.form.on("Student Applicant", {
 
 const TERMINAL_PORTAL_INVITE_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
 const TERMINAL_INTERVIEW_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
+
+function add_create_interview_action(frm) {
+	frm.remove_custom_button(__("Create Interview"), __("Actions"));
+	frm.remove_custom_button(__("Create Interview"));
+
+	if (!frm.doc || frm.is_new()) {
+		return;
+	}
+
+	const status = String(frm.doc.application_status || "").trim();
+	if (TERMINAL_INTERVIEW_STATUSES.has(status)) {
+		return;
+	}
+
+	frm.add_custom_button(__("Create Interview"), () => {
+		frappe.new_doc(
+			"Applicant Interview",
+			{
+				student_applicant: frm.doc.name,
+				interview_date: frappe.datetime.get_today(),
+			},
+			(doc) => {
+				const user = String(frappe.session.user || "").trim();
+				if (!user) {
+					return;
+				}
+
+				const rows = Array.isArray(doc.interviewers) ? doc.interviewers : [];
+				const hasCurrentUser = rows.some(
+					row => String(row?.interviewer || "").trim() === user
+				);
+				if (hasCurrentUser) {
+					return;
+				}
+
+				const row = frappe.model.add_child(doc, "Applicant Interviewer", "interviewers");
+				row.interviewer = user;
+			}
+		);
+	}, __("Actions"));
+}
 
 function add_schedule_interview_action(frm) {
 	frm.remove_custom_button(__("Schedule Interview"), __("Actions"));

@@ -56,7 +56,7 @@ def _ensure_cockpit_access(user: str | None = None) -> str:
     if not resolved_user or resolved_user.lower() in INVALID_SESSION_USERS:
         frappe.throw(_("You need to sign in to access Admissions Cockpit."), frappe.PermissionError)
 
-    roles = set(frappe.get_roles(resolved_user))
+    roles = _get_roles_for_user(resolved_user)
     if roles & ALLOWED_COCKPIT_ROLES:
         return resolved_user
 
@@ -66,6 +66,16 @@ def _ensure_cockpit_access(user: str | None = None) -> str:
 
 def _to_text(value) -> str:
     return str(value or "").strip()
+
+
+def _get_roles_for_user(user: str) -> set[str]:
+    try:
+        return set(frappe.get_roles(user))
+    except Exception as exc:
+        message = _to_text(exc).lower()
+        if "not found" in message and _to_text(user).lower() in INVALID_SESSION_USERS:
+            frappe.throw(_("You need to sign in to access Admissions Cockpit."), frappe.PermissionError)
+        raise
 
 
 def _to_int(value, default: int) -> int:
@@ -977,7 +987,7 @@ def _cache_key_for_payload(payload: dict) -> str:
 @frappe.whitelist()
 def get_admissions_cockpit_data(filters=None):
     user = _ensure_cockpit_access()
-    user_roles = set(frappe.get_roles(user))
+    user_roles = _get_roles_for_user(user)
 
     filters = frappe.parse_json(filters) or {}
     organization_filter = _to_text(filters.get("organization"))

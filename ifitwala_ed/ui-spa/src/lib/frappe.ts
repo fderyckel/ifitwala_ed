@@ -2,6 +2,13 @@
 
 import { setConfig, frappeRequest } from 'frappe-ui'
 
+const AUTH_ERROR_PATTERNS = [
+	'you need to sign in',
+	'you must be logged in',
+	'user none not found',
+	'session expired',
+]
+
 async function resolveCsrfToken(): Promise<string> {
 	if (typeof window !== 'undefined' && (window as any)?.csrf_token) {
 		return (window as any).csrf_token as string
@@ -18,6 +25,39 @@ async function resolveCsrfToken(): Promise<string> {
 	}
 
 	return ''
+}
+
+function extractErrorStatus(error: unknown): number | null {
+	if (!error || typeof error !== 'object') return null
+	const status = (error as any)?.response?.status ?? (error as any)?.status
+	return typeof status === 'number' ? status : null
+}
+
+function extractErrorMessage(error: unknown): string {
+	if (!error || typeof error !== 'object') {
+		return String(error || '')
+	}
+	const rawMessage =
+		(error as any)?.response?._server_messages ||
+		(error as any)?.response?.message ||
+		(error as any)?.message ||
+		(error as any)?.response?.statusText ||
+		''
+	if (typeof rawMessage === 'string') return rawMessage
+	return String(rawMessage || '')
+}
+
+function isSessionFailureMessage(message: string): boolean {
+	const normalized = (message || '').toLowerCase()
+	return AUTH_ERROR_PATTERNS.some((pattern) => normalized.includes(pattern))
+}
+
+function redirectToLoginIfNeeded() {
+	if (typeof window === 'undefined') return
+	if (window.location.pathname.startsWith('/login')) return
+	const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+	const loginPath = `/login?redirect-to=${encodeURIComponent(currentPath)}`
+	window.location.assign(loginPath)
 }
 
 /**
@@ -83,8 +123,17 @@ async function _frappeRequestRaw(opts: unknown): Promise<unknown> {
  * - throws on invalid shapes
  */
 export async function apiRequest<T>(opts: unknown): Promise<T> {
-	const res = await _frappeRequestRaw(opts)
-	return unwrapTransport<T>(res)
+	try {
+		const res = await _frappeRequestRaw(opts)
+		return unwrapTransport<T>(res)
+	} catch (error) {
+		const status = extractErrorStatus(error)
+		const message = extractErrorMessage(error)
+		if ((status === 401 || status === 403) && isSessionFailureMessage(message)) {
+			redirectToLoginIfNeeded()
+		}
+		throw error
+	}
 }
 
 /**
