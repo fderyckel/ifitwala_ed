@@ -111,10 +111,33 @@
 		<div class="card-surface p-4">
 			<div class="type-body font-medium">Decision</div>
 			<div class="mt-3">
-				<select v-model="decision" class="if-input w-full" :disabled="busy">
-					<option value="">Select a decision</option>
-					<option v-for="opt in decisionOptions" :key="opt" :value="opt">{{ opt }}</option>
-				</select>
+				<label class="block">
+					<span class="sr-only">Decision select</span>
+					<div
+						class="relative rounded-xl border border-line-soft bg-white shadow-sm transition hover:border-jacaranda/60 focus-within:border-jacaranda focus-within:ring-2 focus-within:ring-jacaranda/25"
+					>
+						<select
+							v-model="decision"
+							class="w-full appearance-none rounded-xl bg-transparent px-4 py-3 pr-10 text-base text-ink cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+							:disabled="busy"
+						>
+							<option value="">Select a decision</option>
+							<option v-for="opt in decisionOptions" :key="opt" :value="opt">{{ opt }}</option>
+						</select>
+						<span
+							class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-token/70"
+							aria-hidden="true"
+						>
+							<svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
+								<path
+									fill-rule="evenodd"
+									d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.12l3.71-3.9a.75.75 0 1 1 1.08 1.04l-4.25 4.47a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+						</span>
+					</div>
+				</label>
 			</div>
 			<div class="mt-3">
 				<textarea
