@@ -143,12 +143,15 @@ async function loadMessages() {
 			limit_page_length: 120,
 		});
 		messages.value = payload.messages || [];
-		unreadCount.value = Number(payload.unread_count || 0);
-		await service.markMessagesRead({
-			context_doctype: 'Student Applicant',
-			context_name: applicantName.value,
-		});
-		unreadCount.value = 0;
+		const unread = Number(payload.unread_count || 0);
+		unreadCount.value = unread;
+		if (unread > 0) {
+			await service.markMessagesRead({
+				context_doctype: 'Student Applicant',
+				context_name: applicantName.value,
+			});
+			unreadCount.value = 0;
+		}
 	} catch (err) {
 		error.value = err instanceof Error ? err.message : __('Unable to load messages.');
 	} finally {
@@ -178,7 +181,6 @@ async function sendMessage() {
 			client_request_id: `admissions_message_${Date.now()}_${Math.random().toString(16).slice(2)}`,
 		});
 		draftBody.value = '';
-		await loadMessages();
 	} catch (err) {
 		sendError.value = err instanceof Error ? err.message : __('Unable to send message.');
 	} finally {
