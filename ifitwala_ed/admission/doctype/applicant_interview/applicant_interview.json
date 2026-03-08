@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "INTERVIEW-.YYYY.-.###",
  "creation": "2026-02-01 00:00:00",
  "description": "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline.",
  "doctype": "DocType",
@@ -104,11 +104,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-23 08:10:57",
+ "modified": "2026-03-08 12:03:59.810758",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Interview",
- "naming_rule": "Random",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
