@@ -704,8 +704,15 @@ import { Spinner } from 'frappe-ui';
 import { createAdmissionsService } from '@/lib/services/admissions/admissionsService';
 import { useAdmissionsSession } from '@/composables/useAdmissionsSession';
 import { __ } from '@/lib/i18n';
+import {
+	createEmptyGuardian,
+	guardianRowsForSubmit,
+	haveGuardianRowsChanged,
+	normalizeGuardianRow,
+} from '@/pages/admissions/applicantProfileGuardians';
 import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals';
 import type { Response as ApplicantProfileResponse } from '@/types/contracts/admissions/get_applicant_profile';
+import type { Request as UpdateApplicantProfileRequest } from '@/types/contracts/admissions/update_applicant_profile';
 import type {
 	ApplicantGuardianProfile,
 	ApplicantProfile,
@@ -725,6 +732,7 @@ const imageInput = ref<HTMLInputElement | null>(null);
 const selectedGuardianImageFiles = ref<Record<number, File | null>>({});
 const guardianImageInputs = ref<Record<number, HTMLInputElement | null>>({});
 const uploadingGuardianImageIndex = ref<number | null>(null);
+const savedGuardians = ref<ApplicantGuardianProfile[]>([]);
 
 const profile = ref<ApplicantProfile>(createEmptyProfile());
 const guardians = ref<ApplicantGuardianProfile[]>([]);
@@ -793,100 +801,6 @@ function clearGuardianImageUploadState() {
 	selectedGuardianImageFiles.value = {};
 	guardianImageInputs.value = {};
 	uploadingGuardianImageIndex.value = null;
-}
-
-function createEmptyGuardian(): ApplicantGuardianProfile {
-	return {
-		name: '',
-		guardian: '',
-		contact: '',
-		use_applicant_contact: false,
-		relationship: 'Other',
-		is_primary: false,
-		can_consent: true,
-		salutation: '',
-		guardian_full_name: '',
-		guardian_first_name: '',
-		guardian_last_name: '',
-		guardian_gender: '',
-		guardian_mobile_phone: '',
-		guardian_email: '',
-		guardian_work_email: '',
-		guardian_work_phone: '',
-		guardian_image: '',
-		user: '',
-		is_primary_guardian: false,
-		is_financial_guardian: false,
-		employment_sector: '',
-		work_place: '',
-		guardian_designation: '',
-	};
-}
-
-function normalizeBoolean(value: unknown, fallback = false): boolean {
-	if (typeof value === 'boolean') return value;
-	if (typeof value === 'number') return value !== 0;
-	const normalized = String(value || '')
-		.trim()
-		.toLowerCase();
-	if (!normalized) return fallback;
-	return ['1', 'true', 'yes', 'on'].includes(normalized);
-}
-
-function normalizeGuardianRow(
-	input: ApplicantGuardianProfile | null | undefined
-): ApplicantGuardianProfile {
-	const row = input || {};
-	return {
-		...createEmptyGuardian(),
-		...row,
-		name: String(row.name || '').trim(),
-		guardian: String(row.guardian || '').trim(),
-		contact: String(row.contact || '').trim(),
-		relationship: String(row.relationship || '').trim() || 'Other',
-		salutation: String(row.salutation || '').trim(),
-		guardian_full_name: String(row.guardian_full_name || '').trim(),
-		guardian_first_name: String(row.guardian_first_name || '').trim(),
-		guardian_last_name: String(row.guardian_last_name || '').trim(),
-		guardian_gender: String(row.guardian_gender || '').trim(),
-		guardian_mobile_phone: String(row.guardian_mobile_phone || '').trim(),
-		guardian_email: String(row.guardian_email || '').trim(),
-		guardian_work_email: String(row.guardian_work_email || '').trim(),
-		guardian_work_phone: String(row.guardian_work_phone || '').trim(),
-		guardian_image: String(row.guardian_image || '').trim(),
-		user: String(row.user || '').trim(),
-		employment_sector: String(row.employment_sector || '').trim(),
-		work_place: String(row.work_place || '').trim(),
-		guardian_designation: String(row.guardian_designation || '').trim(),
-		use_applicant_contact: normalizeBoolean(row.use_applicant_contact, false),
-		is_primary: normalizeBoolean(row.is_primary, false),
-		can_consent: normalizeBoolean(row.can_consent, true),
-		is_primary_guardian: normalizeBoolean(row.is_primary_guardian, false),
-		is_financial_guardian: normalizeBoolean(row.is_financial_guardian, false),
-	};
-}
-
-function guardianRowIsEmpty(row: ApplicantGuardianProfile): boolean {
-	return !(
-		String(row.guardian || '').trim() ||
-		String(row.guardian_first_name || '').trim() ||
-		String(row.guardian_last_name || '').trim() ||
-		String(row.guardian_email || '').trim() ||
-		String(row.guardian_mobile_phone || '').trim() ||
-		String(row.salutation || '').trim() ||
-		String(row.guardian_work_email || '').trim() ||
-		String(row.guardian_work_phone || '').trim() ||
-		String(row.employment_sector || '').trim() ||
-		String(row.work_place || '').trim() ||
-		String(row.guardian_designation || '').trim() ||
-		String(row.guardian_image || '').trim()
-	);
-}
-
-function guardianRowsForSubmit(): ApplicantGuardianProfile[] {
-	return guardians.value
-		.map(row => normalizeGuardianRow(row))
-		.filter(row => !guardianRowIsEmpty(row));
 }
 
 function addGuardianRow() {
@@ -1001,6 +915,7 @@ function applyPayload(payload: ApplicantProfileResponse) {
 	guardians.value = ((payload.guardians || []) as ApplicantGuardianProfile[]).map(row =>
 		normalizeGuardianRow(row)
 	);
+	savedGuardians.value = guardianRowsForSubmit(guardians.value);
 	clearGuardianImageUploadState();
 	applicantImage.value = (payload.applicant_image || '').trim();
 	selectedImageFile.value = null;
@@ -1035,7 +950,7 @@ async function saveProfile() {
 	saving.value = true;
 	actionError.value = '';
 	try {
-		const payload = await service.updateProfile({
+		const updatePayload: UpdateApplicantProfileRequest = {
 			student_preferred_name: profile.value.student_preferred_name || '',
 			student_date_of_birth: profile.value.student_date_of_birth || '',
 			student_gender: profile.value.student_gender || '',
@@ -1045,8 +960,15 @@ async function saveProfile() {
 			student_nationality: profile.value.student_nationality || '',
 			student_second_nationality: profile.value.student_second_nationality || '',
 			residency_status: profile.value.residency_status || '',
-			guardians: guardiansEnabled.value ? guardianRowsForSubmit() : [],
-		});
+		};
+		const currentGuardians = guardianRowsForSubmit(guardians.value);
+		if (
+			guardiansEnabled.value &&
+			haveGuardianRowsChanged(currentGuardians, savedGuardians.value)
+		) {
+			updatePayload.guardians = currentGuardians;
+		}
+		const payload = await service.updateProfile(updatePayload);
 		applyPayload(payload);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : __('Unable to save profile information.');

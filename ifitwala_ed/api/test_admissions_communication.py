@@ -1,5 +1,6 @@
 # ifitwala_ed/api/test_admissions_communication.py
 
+from contextlib import nullcontext
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -162,3 +163,53 @@ class TestAdmissionsCockpitAuthGuards(FrappeTestCase):
                 _ensure_cockpit_access()
 
         get_roles_mock.assert_not_called()
+
+
+class TestAdmissionsCaseReadReceiptUpsert(FrappeTestCase):
+    def test_upsert_retries_deadlock_and_succeeds(self):
+        class QueryDeadlockError(Exception):
+            pass
+
+        read_at = now_datetime()
+        with (
+            patch("ifitwala_ed.api.admissions_communication.frappe.cache") as cache_mock,
+            patch(
+                "ifitwala_ed.api.admissions_communication.frappe.db.sql",
+                side_effect=[QueryDeadlockError("deadlock"), None],
+            ) as sql_mock,
+            patch(
+                "ifitwala_ed.api.admissions_communication.frappe.generate_hash",
+                side_effect=["receipt-a", "receipt-b", "receipt-c"],
+            ),
+            patch("ifitwala_ed.api.admissions_communication.time.sleep") as sleep_mock,
+        ):
+            cache_mock.return_value.lock.return_value = nullcontext()
+            admissions_communication._upsert_portal_read_receipt(
+                user="applicant@example.com",
+                thread_name="COMM-0001",
+                read_at=read_at,
+            )
+
+        self.assertEqual(sql_mock.call_count, 2)
+        sleep_mock.assert_called_once_with(admissions_communication.READ_RECEIPT_RETRY_BASE_DELAY_SEC)
+
+    def test_upsert_raises_non_deadlock_errors(self):
+        read_at = now_datetime()
+        with (
+            patch("ifitwala_ed.api.admissions_communication.frappe.cache") as cache_mock,
+            patch(
+                "ifitwala_ed.api.admissions_communication.frappe.db.sql",
+                side_effect=RuntimeError("db failure"),
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_communication.frappe.generate_hash",
+                return_value="receipt-a",
+            ),
+        ):
+            cache_mock.return_value.lock.return_value = nullcontext()
+            with self.assertRaises(RuntimeError):
+                admissions_communication._upsert_portal_read_receipt(
+                    user="applicant@example.com",
+                    thread_name="COMM-0001",
+                    read_at=read_at,
+                )
