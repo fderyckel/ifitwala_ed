@@ -32,6 +32,7 @@ class TestRecommendationIntake(FrappeTestCase):
 
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
+        self._create_employee(self.staff_user.name, self.organization, self.school)
         self.applicant = self._create_applicant(self.organization, self.school, self.applicant_user.name)
 
         self.document_type = self._create_document_type(self.organization, self.school)
@@ -202,6 +203,25 @@ class TestRecommendationIntake(FrappeTestCase):
         self._created.append(("User", user.name))
         frappe.clear_cache(user=user.name)
         return user
+
+    def _create_employee(self, user: str, organization: str, school: str):
+        employee = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": "Recommendation",
+                "employee_last_name": "Staff",
+                "employee_gender": "Male",
+                "employee_professional_email": user,
+                "date_of_joining": "2025-01-01",
+                "employment_status": "Active",
+                "organization": organization,
+                "school": school,
+                "user_id": user,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Employee", employee.name))
+        frappe.clear_cache(user=user)
+        return employee
 
     def _create_organization(self) -> str:
         organization = frappe.get_doc(

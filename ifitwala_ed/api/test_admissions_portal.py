@@ -2,6 +2,7 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # See license.txt
 
+import base64
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -31,7 +32,7 @@ from ifitwala_ed.utilities import file_dispatcher
 
 class TestAdmissionsPortalAuthGuards(FrappeTestCase):
     def test_require_admissions_applicant_rejects_none_literal_as_unauthenticated(self):
-        with patch("ifitwala_ed.api.admissions_portal.frappe.session.user", "None"):
+        with patch("ifitwala_ed.api.admissions_portal._session_user", return_value=""):
             with self.assertRaises(frappe.PermissionError):
                 admissions_portal_api._require_admissions_applicant()
 
@@ -121,6 +122,7 @@ class TestInviteApplicant(FrappeTestCase):
         frappe.set_user(self.staff_user)
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
+        self._create_employee_for_user(self.staff_user, self.organization, self.school)
         self.applicant = self._create_applicant(self.organization, self.school)
 
     def tearDown(self):
@@ -226,6 +228,7 @@ class TestInviteApplicant(FrappeTestCase):
                 "first_name": "Disabled",
                 "last_name": "Applicant",
                 "enabled": 0,
+                "user_type": "Website User",
             }
         ).insert(ignore_permissions=True)
         self._created.append(("User", user.name))
@@ -395,6 +398,25 @@ class TestInviteApplicant(FrappeTestCase):
         doc.insert(ignore_permissions=True)
         self._created.append(("Contact", doc.name))
         return doc
+
+    def _create_employee_for_user(self, user: str, organization: str, school: str):
+        employee = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": "Admissions",
+                "employee_last_name": "Staff",
+                "employee_gender": "Male",
+                "employee_professional_email": user,
+                "date_of_joining": "2025-01-01",
+                "employment_status": "Active",
+                "organization": organization,
+                "school": school,
+                "user_id": user,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Employee", employee.name))
+        frappe.clear_cache(user=user)
+        return employee
 
     def _create_admissions_staff_user(self) -> str:
         email = f"admissions-staff-{frappe.generate_hash(length=8)}@example.com"
@@ -740,7 +762,7 @@ class TestSubmitApplication(FrappeTestCase):
                 "attached_to_name": self.applicant.name,
                 "attached_to_field": "guardians",
                 "file_name": "guardian.png",
-                "content": b"guardian-image",
+                "content": base64.b64decode(self._tiny_png_base64()),
                 "is_private": 1,
             },
             classification={

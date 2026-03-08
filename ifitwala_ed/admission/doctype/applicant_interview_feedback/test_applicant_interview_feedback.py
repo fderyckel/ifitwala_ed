@@ -13,10 +13,12 @@ class TestApplicantInterviewFeedback(FrappeTestCase):
         self.school = self._create_school(self.organization)
         self.applicant = self._create_applicant(self.organization, self.school)
 
-        self.interviewer = self._create_user("feedback-interviewer")
+        self._ensure_role("Counsellor")
+
+        self.interviewer = self._create_user("feedback-interviewer", roles=["Counsellor"])
         self._create_employee(self.interviewer, first_name="Panel", last_name="Interviewer")
 
-        self.outsider = self._create_user("feedback-outsider")
+        self.outsider = self._create_user("feedback-outsider", roles=["Counsellor"])
         self._create_employee(self.outsider, first_name="Panel", last_name="Outsider")
 
         self.interview = frappe.get_doc(
@@ -100,7 +102,7 @@ class TestApplicantInterviewFeedback(FrappeTestCase):
         self._created.append(("School", doc.name))
         return doc.name
 
-    def _create_user(self, label: str):
+    def _create_user(self, label: str, roles: list[str] | None = None):
         doc = frappe.get_doc(
             {
                 "doctype": "User",
@@ -108,10 +110,17 @@ class TestApplicantInterviewFeedback(FrappeTestCase):
                 "first_name": "Feedback",
                 "last_name": "User",
                 "enabled": 1,
+                "roles": [{"role": role} for role in (roles or [])],
             }
         ).insert(ignore_permissions=True)
         self._created.append(("User", doc.name))
         return doc
+
+    def _ensure_role(self, role_name: str):
+        if frappe.db.exists("Role", role_name):
+            return
+        role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+        self._created.append(("Role", role.name))
 
     def _create_employee(self, user, *, first_name: str, last_name: str):
         doc = frappe.get_doc(
