@@ -4,9 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 
 import AnalyticsCard from '@/components/analytics/AnalyticsCard.vue';
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
-import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
 import StatsTile from '@/components/analytics/StatsTile.vue';
-import { useAnalyticsSnapshotExport } from '@/composables/useAnalyticsSnapshotExport';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import {
@@ -36,7 +34,6 @@ const filters = ref<StudentLogDashboardFilters>({
 	to_date: null,
 	student: null,
 });
-const snapshotRoot = ref<HTMLElement | null>(null);
 
 const selectedStudentLabel = ref('');
 
@@ -58,23 +55,6 @@ const authors = computed(() => filterMeta.value.authors);
 const programsForSchool = computed(() => {
 	return allPrograms.value;
 });
-const exportFilters = computed(() => ({
-	School: filters.value.school || 'All',
-	'Academic Year': filters.value.academic_year || 'All',
-	Program: filters.value.program || 'All',
-	Author: filters.value.author || 'All',
-	'From Date': filters.value.from_date || 'None',
-	'To Date': filters.value.to_date || 'None',
-	Student: filters.value.student || 'All',
-}));
-
-const snapshotExport = useAnalyticsSnapshotExport({
-	dashboardSlug: 'student-log-analytics',
-	dashboardTitle: 'Student Log Analytics',
-	getTarget: () => snapshotRoot.value,
-	getFilters: () => exportFilters.value,
-});
-
 watch(
 	filterMeta,
 	data => {
@@ -217,7 +197,7 @@ function truncate(text: string, max = 140) {
 </script>
 
 <template>
-	<div ref="snapshotRoot" class="analytics-shell">
+	<div class="analytics-shell">
 		<header class="flex flex-wrap items-center justify-between gap-3">
 			<div>
 				<h1 class="type-h2 text-canopy">Student Log Analytics</h1>
@@ -228,13 +208,6 @@ function truncate(text: string, max = 140) {
 
 			<div class="flex flex-col items-end gap-2">
 				<StatsTile :value="openFollowUps" label="Open follow-ups" tone="warning" />
-				<AnalyticsSnapshotActions
-					:exporting-png="snapshotExport.exportingPng"
-					:exporting-pdf="snapshotExport.exportingPdf"
-					:message="snapshotExport.actionMessage"
-					@export-png="snapshotExport.exportPng"
-					@export-pdf="snapshotExport.exportPdf"
-				/>
 			</div>
 		</header>
 

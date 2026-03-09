@@ -336,24 +336,15 @@ Never:
 
 ---
 
-### 5.4 Snapshot export contract (PNG + PDF)
+### 5.4 Snapshot export status
 
-All staff analytics dashboards MUST expose a unified snapshot export action.
+Snapshot export is temporarily disabled across staff analytics dashboards as of 2026-03-09.
 
-Mandatory rules:
+Rules:
 
-* Export formats: PNG and PDF.
-* Export must include what is currently visible on the dashboard surface.
-* Export metadata must include:
-  * snapshot timestamp
-  * site timezone
-  * active filter set (label + value)
-* Export failures MUST be user-visible (inline message and/or toast). Silent failure is a defect.
-
-Implementation notes:
-
-* Use shared export UI/component so styling stays consistent across dashboards.
-* Keep export behavior in a shared composable/service; page code only maps its filter state.
+* Do not render PNG or PDF export actions on analytics pages until a replacement workflow is approved.
+* Do not keep orphaned export-specific client composables, shared buttons, or server endpoints when export is disabled.
+* If export returns later, the behavior must be re-documented here before code ships.
 
 ---
 
