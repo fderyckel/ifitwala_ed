@@ -10,7 +10,9 @@ from frappe.tests.utils import FrappeTestCase
 from ifitwala_ed.admission.admission_utils import (
     _school_belongs_to_organization_scope,
     _validate_admissions_assignee,
+    _validate_inquiry_assignee_scope,
     from_inquiry_invite,
+    get_inquiry_assignees,
 )
 from ifitwala_ed.tests.factories.users import make_user
 
@@ -71,6 +73,42 @@ class TestInquiry(FrappeTestCase):
         self.assertTrue(_school_belongs_to_organization_scope(school, child_org))
         self.assertTrue(_school_belongs_to_organization_scope(school, parent_org))
         self.assertFalse(_school_belongs_to_organization_scope(school, sibling_org))
+
+    def test_validate_inquiry_assignee_scope_allows_parent_school_lineage(self):
+        organization = self._make_organization("Inquiry Scope Root", is_group=1)
+        root_school = self._make_school(organization, "IIS", is_group=1)
+        branch_school = self._make_school(organization, "ISS", parent_school=root_school, is_group=1)
+        leaf_school = self._make_school(organization, "IHS", parent_school=branch_school)
+        sibling_school = self._make_school(organization, "IPS", parent_school=root_school)
+
+        inquiry = self._make_inquiry(organization=organization, school=leaf_school)
+        parent_assignee = self._make_employee_user(school=root_school)
+        sibling_assignee = self._make_employee_user(school=sibling_school)
+
+        _validate_inquiry_assignee_scope(parent_assignee.name, inquiry)
+        with self.assertRaises(frappe.ValidationError):
+            _validate_inquiry_assignee_scope(sibling_assignee.name, inquiry)
+
+    def test_get_inquiry_assignees_includes_parent_schools_and_excludes_siblings(self):
+        organization = self._make_organization("Inquiry Picker Root", is_group=1)
+        root_school = self._make_school(organization, "IIS", is_group=1)
+        branch_school = self._make_school(organization, "ISS", parent_school=root_school, is_group=1)
+        leaf_school = self._make_school(organization, "IHS", parent_school=branch_school)
+        sibling_school = self._make_school(organization, "IPS", parent_school=root_school)
+
+        root_user = self._make_employee_user(school=root_school)
+        branch_user = self._make_employee_user(school=branch_school)
+        leaf_user = self._make_employee_user(school=leaf_school)
+        sibling_user = self._make_employee_user(school=sibling_school)
+
+        with patch("ifitwala_ed.admission.admission_utils.ensure_admissions_permission", return_value="Administrator"):
+            rows = get_inquiry_assignees(filters={"organization": organization, "school": leaf_school})
+
+        names = {row[0] for row in rows}
+        self.assertIn(root_user.name, names)
+        self.assertIn(branch_user.name, names)
+        self.assertIn(leaf_user.name, names)
+        self.assertNotIn(sibling_user.name, names)
 
     def test_from_inquiry_invite_rejects_mismatched_school_organization(self):
         parent_org = self._make_organization("Invite Parent", is_group=1)
@@ -252,25 +290,54 @@ class TestInquiry(FrappeTestCase):
         doc.insert(ignore_permissions=True)
         return doc.name
 
-    def _make_school(self, organization: str, prefix: str) -> str:
+    def _make_school(
+        self,
+        organization: str,
+        prefix: str,
+        *,
+        parent_school: str | None = None,
+        is_group: int = 0,
+    ) -> str:
         doc = frappe.get_doc(
             {
                 "doctype": "School",
                 "school_name": f"{prefix} {frappe.generate_hash(length=6)}",
                 "abbr": f"S{frappe.generate_hash(length=4)}",
                 "organization": organization,
+                "parent_school": parent_school,
+                "is_group": is_group,
             }
         )
         doc.insert(ignore_permissions=True)
         return doc.name
 
-    def _make_inquiry(self, *, email: str | None = None):
+    def _make_employee_user(self, *, school: str, organization: str | None = None):
+        user = make_user()
+        frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": "Inquiry",
+                "employee_last_name": f"Assignee-{frappe.generate_hash(length=6)}",
+                "employee_gender": "Prefer not to say",
+                "employee_professional_email": user.name,
+                "organization": organization or frappe.db.get_value("School", school, "organization"),
+                "school": school,
+                "user_id": user.name,
+                "date_of_joining": frappe.utils.nowdate(),
+                "employment_status": "Active",
+            }
+        ).insert(ignore_permissions=True)
+        return user
+
+    def _make_inquiry(self, *, email: str | None = None, organization: str | None = None, school: str | None = None):
         doc = frappe.get_doc(
             {
                 "doctype": "Inquiry",
                 "first_name": "Invite",
                 "last_name": "Check",
                 "email": email,
+                "organization": organization,
+                "school": school,
             }
         )
         doc.insert(ignore_permissions=True)

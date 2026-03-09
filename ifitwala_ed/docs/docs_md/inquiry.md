@@ -3,8 +3,8 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.4.1"
-last_change_date: "2026-03-05"
+version: "1.4.2"
+last_change_date: "2026-03-09"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
 seo_description: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
@@ -62,7 +62,7 @@ Allowed transitions are strictly server-validated:
 - **Desk form + list view**:
   - custom action buttons (`Assign`, `Reassign`, `Mark Contacted`, `Qualify`, `Archive`, `Invite to Apply`)
   - `School` field link picker is client-filtered by selected `Organization` (includes descendant organizations)
-  - assignee picker in `Assign`/`Reassign` is server-scoped to active `Employee.user_id` within Inquiry organization/school scope
+  - assignee picker in `Assign`/`Reassign` is server-scoped to active `Employee.user_id` within Inquiry organization scope and the Inquiry school lineage (selected school plus parent schools)
   - `Mark Contacted` is available in `Assigned` state for both `Admission Officer` and `Admission Manager`
   - when the current session user is the assigned owner, `Mark Contacted` is also available even without admissions roles
   - list defaults to active pipeline (`workflow_state != Archived`)
@@ -173,7 +173,7 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
   - Organization/School hierarchy consistency check
   - strict workflow transition guard
   - `student_applicant` link immutability
-  - assignee scope guard for assignment/reassignment (`Employee` active + inquiry organization/school subtree)
+  - assignee scope guard for assignment/reassignment (`Employee` active + inquiry organization scope and inquiry school lineage: selected school plus parent schools)
 - **Whitelisted methods on document**:
   - `mark_qualified`
   - `archive`
