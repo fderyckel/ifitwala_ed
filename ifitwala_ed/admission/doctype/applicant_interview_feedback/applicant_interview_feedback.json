@@ -1,0 +1,180 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-03-05 00:00:00",
+ "description": "Per-interviewer feedback notes for admissions interviews, separated to avoid concurrent edit collisions on the parent interview record.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "applicant_interview",
+  "student_applicant",
+  "interviewer_user",
+  "feedback_status",
+  "submitted_on",
+  "recommendation",
+  "strengths",
+  "concerns",
+  "shared_values",
+  "other_notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "applicant_interview",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Applicant Interview",
+   "options": "Applicant Interview",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student_applicant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student Applicant",
+   "options": "Student Applicant",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "interviewer_user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Interviewer",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "feedback_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Feedback Status",
+   "options": "Draft\nSubmitted",
+   "reqd": 1
+  },
+  {
+   "fieldname": "submitted_on",
+   "fieldtype": "Datetime",
+   "label": "Submitted On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "recommendation",
+   "fieldtype": "Select",
+   "label": "Recommendation",
+   "options": "\nStrongly Recommend\nRecommend\nRecommend with Conditions\nDo Not Recommend"
+  },
+  {
+   "fieldname": "strengths",
+   "fieldtype": "Text",
+   "label": "Strengths"
+  },
+  {
+   "fieldname": "concerns",
+   "fieldtype": "Text",
+   "label": "Concerns"
+  },
+  {
+   "fieldname": "shared_values",
+   "fieldtype": "Text",
+   "label": "Shared Values"
+  },
+  {
+   "fieldname": "other_notes",
+   "fieldtype": "Text",
+   "label": "Other Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-05 00:00:00",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Applicant Interview Feedback",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counsellor",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "applicant_interview,student_applicant,interviewer_user",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "student_applicant"
+}

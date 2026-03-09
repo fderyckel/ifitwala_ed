@@ -708,9 +708,8 @@ Create a **pre-student health container** linked to admissions, then sync it to 
 
 **Why**
 
-* There is no authoritative guardian→applicant relationship in the current schema
-* Allowing Guardian-for-Applicant would be legally indefensible
-* This keeps the system internally consistent and auditable
+* Guardian→applicant relationships are now captured explicitly, but policy acknowledgement authority still remains Applicant-only until policy enforcement upgrade is explicitly enabled.
+* This keeps legal acknowledgement ownership deterministic and auditable in current admissions operations.
 
 **What Codex implements**
 
@@ -718,7 +717,7 @@ Create a **pre-student health container** linked to admissions, then sync it to 
 * Update docs to explicitly state this rule
 * Remove/clarify any wording implying guardian consent during admissions
 
-#### Phase 2 — Introduce explicit Applicant–Guardian relationship (FUTURE)
+#### Phase 2 — Explicit Applicant–Guardian relationship (IMPLEMENTED)
 
 **What is added**
 
@@ -728,10 +727,13 @@ DocType: `Student Applicant Guardian`
 
 Fields:
 
-* `guardian` (Link → Guardian, required)
+* `guardian` (Link → Guardian, optional for pre-promotion capture)
+* `contact` (Link → Contact, tracked for carry-over)
+* `use_applicant_contact` (checkbox)
 * `relationship` (Select, same options as `Student Guardian.relation`)
 * `is_primary` (checkbox)
 * `can_consent` (checkbox, default = true)
+* guardian profile fields mirrored from `Guardian` (name/email/mobile/work/flags)
 
 **What this enables**
 
@@ -743,11 +745,11 @@ Fields:
   * Primary vs secondary guardians
   * Consent eligibility flags
 
-**What Codex does NOT do yet**
+**What remains intentionally unchanged**
 
-* Do not infer guardian authority
-* Do not backfill historical data
-* Do not change Phase-1 acknowledgements
+* Do not infer guardian policy authority from `applicant_user`
+* Do not auto-backfill historical consent authority decisions
+* Keep current Applicant-only acknowledgement enforcement unless policy workflow is explicitly upgraded
 
 #### Phase 3 — Upgrade policy enforcement logic (AFTER Phase 2)
 
@@ -1175,8 +1177,8 @@ Policy acknowledgements during admissions are therefore:
 * **Acknowledged for:** Applicant
 * **Acknowledged by:** Admissions Applicant user only
 
-The system does **not** currently record guardian relationships at the applicant stage.
-As a result:
+The system now records guardian relationships at the applicant stage via `Student Applicant Guardian` rows.
+Current policy behavior remains:
 
 * Guardian roles are **not permitted** to acknowledge policies for Applicants
 * Guardian authority is **not inferred** from `applicant_user`
@@ -1184,19 +1186,13 @@ As a result:
 
 This model is valid for lightweight admissions flows and ensures internal consistency and auditability.
 
-### Known Limitation (Phase 1)
+### Current limitation (acknowledgement authority)
 
-The system does not currently model:
-
-* guardian→applicant relationships
-* multiple guardians
-* guardian-specific consent authority during admissions
-
-This limitation is acknowledged and documented.
+Even with explicit guardian rows, policy acknowledgements for applicant context remain Applicant-only in the current operational phase.
 
 ### Phase 2 — Explicit Applicant–Guardian model (definition)
 
-Phase 2 introduces a **new, explicit relationship** between a `Student Applicant` and one or more `Guardian` records.
+Phase 2 provides an explicit relationship between a `Student Applicant` and one or more `Guardian` records.
 
 New child table on `Student Applicant`:
 
@@ -1204,10 +1200,13 @@ DocType: `Student Applicant Guardian`
 
 Fields:
 
-* `guardian` (Link → Guardian, required)
+* `guardian` (Link → Guardian, optional for pre-promotion capture)
+* `contact` (Link → Contact)
+* `use_applicant_contact` (checkbox)
 * `relationship` (Select, same options as `Student Guardian.relation`)
 * `is_primary` (checkbox)
 * `can_consent` (checkbox, default = true)
+* guardian profile fields mirrored from `Guardian`
 
 This mirrors the existing Student ↔ Guardian model and removes all implicit assumptions about who is allowed to act during admissions.
 
@@ -1578,7 +1577,7 @@ It must **never** answer:
 
 * Status changes
 * Blocking logic
-* School-specific rules
+* School-specific rules (except the school-level health approval gate introduced after this phase baseline)
 * Program Offering enforcement
 * Promotion checks
 * UI buttons that imply action
@@ -1597,7 +1596,7 @@ Each dimension answers **only yes / no + why**:
 | ---------- | ------------------------------------------------------ |
 | Policies   | Have all *required* policy versions been acknowledged? |
 | Documents  | Are all *required* document types approved?            |
-| Health     | Has health review been marked complete?                |
+| Health     | If school policy requires it, has health review been marked complete? |
 | Interviews | Have required interviews been recorded?                |
 
 No weighting.
@@ -1658,25 +1657,33 @@ For all active Policy Versions where:
 
 **Reads from**:
 
+* `Applicant Document Type`
 * `Applicant Document`
+* `Applicant Document Item`
+* `File`
 
 **Rules**:
 
-* A required document type is satisfied **only if**:
-
-  * an Applicant Document exists
-  * review_status == Approved
-  * latest version is approved
-
-Rejected documents do **not** satisfy the requirement.
+* Required upload count for each type is:
+  * `1` for non-repeatable types
+  * `max(1, min_items_required)` for repeatable required types
+* A required type is marked **missing** when uploaded item count is below required count.
+* A required type is marked **unapproved** when upload count is met but readiness approval is not acknowledged.
+* Readiness approval is acknowledged when either:
+  * approved item count meets required count, or
+  * parent `Applicant Document.review_status == Approved`
+* `uploaded_rows` are item-level (one row per uploaded `Applicant Document Item` file), sorted newest-first.
 
 **Returns**:
 
 ```python
 {
   "ok": bool,
-  "missing": [document_type, ...],
-  "rejected": [document_type, ...]
+  "missing": [document_label, ...],
+  "unapproved": [document_label, ...],
+  "required": [document_label, ...],
+  "required_rows": [...],
+  "uploaded_rows": [...],
 }
 ```
 
@@ -1726,7 +1733,20 @@ No enforcement.
 ```python
 {
   "ok": bool,
-  "count": int
+  "count": int,
+  "items": [
+    {
+      "name": str,
+      "interview_date": str | None,
+      "interview_start": str | None,
+      "interview_end": str | None,
+      "interview_type": str | None,
+      "outcome_impression": str | None,
+      "interviewers": [{"user": str, "label": str}],
+      "interviewer_labels": [str],
+    },
+    ...
+  ]  # latest 5, recent-first
 }
 ```
 
@@ -2151,6 +2171,8 @@ Administrative Record
 * `has_required_interviews()` returns:
 
   * `ok = True` if **≥ 1 interview exists**
+  * `count` = total interviews for the applicant
+  * `items` = latest 5 interview rows enriched for Desk readability (interviewer labels + outcome impression)
 
 ### Helpers (on Student Applicant only)
 
@@ -2498,11 +2520,16 @@ Prevent **any other path** to Student creation.
   * Block creation unless:
 
     * via `promote_applicant`
-    * OR explicit migration flag
+    * OR Data Import row has `allow_direct_creation = 1`
+    * OR explicit migration / patch context
+
+### Import requirement
+
+* For `frappe.flags.in_import`, each Student row must include `allow_direct_creation = 1`
+* Missing/zero value must hard-fail import
 
 ### Flags respected
 
-* `frappe.flags.in_import`
 * `frappe.flags.in_migration`
 * `frappe.flags.in_patch`
 
@@ -2873,12 +2900,13 @@ In `students/doctype/student/student.py`:
 
 ```python
 def before_insert(self):
-    if not (
-        frappe.flags.in_import
-        or frappe.flags.in_migration
-        or frappe.flags.in_patch
-    ):
-        frappe.throw(_("Students must be created via Applicant promotion."))
+    if frappe.flags.in_import and int(self.allow_direct_creation or 0) != 1:
+        frappe.throw(_("Student Data Import requires allow_direct_creation=1 on each row."))
+    if self.student_applicant:
+        return
+    if frappe.flags.in_migration or frappe.flags.in_patch or int(self.allow_direct_creation or 0) == 1:
+        return
+    frappe.throw(_("Students must be created via Applicant promotion."))
 ```
 
 ### Promotion path responsibility
@@ -3014,4 +3042,4 @@ If you want, next step we can:
 * Promotion is **atomic** (all‑or‑nothing)
 * Promotion is **idempotent** (re‑run does not duplicate Student/Student Patient/data copies)
 * Applicant becomes **permanently read‑only** after promotion
-* Creation source guard: Student creation is allowed only via Applicant promotion, except explicit migration/import flags.
+* Creation source guard: Student creation is allowed only via Applicant promotion, except explicit migration/patch or `allow_direct_creation=1` bypasses; Data Import requires `allow_direct_creation=1`.

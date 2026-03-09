@@ -33,6 +33,14 @@ Agents must operate with a **product manager mindset** and prioritize friction r
 
 ---
 
+## 0.2 Framework Baseline (Non-Negotiable)
+
+* Runtime baseline is **Frappe Framework v16**.
+* Any workflow, script, or setup instruction that pins framework branch/version must target **`version-16`**.
+* Agents must treat older branch pins (for example `version-15`) as drift and update them when encountered.
+
+---
+
 ## 1. Operating Discipline
 
 ### 1.1 Mandatory Workflow
@@ -531,6 +539,12 @@ Front matter rule for markdown docs under `ifitwala_ed/docs/docs_md/`:
 * Any time a doc is changed, agent MUST:
   * increment/update `version`
   * set `last_change_date` to the actual change date (`YYYY-MM-DD`)
+* Section-order rule:
+  * `## Technical Notes (IT)` MUST be the final top-level section in the document.
+  * No top-level sections may appear after `## Technical Notes (IT)`.
+* Figure-anchor preservation rule:
+  * Preserve documentation figure tags exactly as written (for example `[[fig:1 size=auto]]`).
+  * Agents MUST NOT remove, rename, or reformat these tags because they map to screenshots/photos in the docs pipeline.
 
 ---
 
@@ -627,6 +641,30 @@ For scheduled jobs that mutate operational state:
 * MUST emit a run summary with processed/skipped/failed counts to logs and/or a stable cache key.
 * MUST isolate failures per doctype/work unit so one failure does not abort the full sweep.
 * MUST include overlap protection for frequent jobs (lock/guard) when race risk exists.
+
+### 18.6 Test Fixture Contract Fidelity (Non-Negotiable)
+
+For backend and API tests:
+
+* Fixtures MUST respect controller invariants; do not create setup rows in impossible states and then call `.save()` through guarded validation paths.
+* For invite-only identity fields on `Student Applicant` (`applicant_user`, `portal_account_email`, `applicant_email`, `applicant_contact`), tests MUST use lifecycle APIs or explicit controlled setup writes (`db_set(..., update_modified=False)`), not ad-hoc mutable saves.
+* File fixtures MUST match content type by extension; never upload non-PDF bytes with `.pdf` names or invalid image bytes with `.png` names.
+* When asserting defaults derived from mappings (for example classification mapping by code), tests MUST assert invariant outcomes (mapping resolves/completeness) and avoid brittle assumptions that can be overridden by site-level defaults.
+
+### 18.7 Mixed-Role Permission Precedence (Non-Negotiable)
+
+For role-gated business edits:
+
+* If a user has staff/admissions roles and family/applicant roles at the same time, staff precedence MUST apply for staff workflows.
+* Permission evaluators MUST define explicit precedence order; do not rely on incidental branch ordering.
+* Tests for permission logic MUST include at least one multi-role principal to prevent regressions.
+
+### 18.8 Translation Alias Safety (Non-Negotiable)
+
+For Python modules using `from frappe import _`:
+
+* `_` MUST NOT be reused as a local variable, tuple sink, or throwaway placeholder.
+* Shadowing `_` in whitelisted methods or validation code is a blocker because it can turn translatable error calls into runtime `TypeError`s.
 
 ---
 

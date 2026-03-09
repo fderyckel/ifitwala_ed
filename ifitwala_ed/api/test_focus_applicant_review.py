@@ -1,10 +1,14 @@
 # ifitwala_ed/api/test_focus_applicant_review.py
 
+from urllib.parse import parse_qs, urlparse
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.focus import (
     claim_applicant_review_assignment,
+    download_applicant_review_file,
+    get_focus_context,
     list_focus_items,
     reassign_applicant_review_assignment,
     submit_applicant_review_assignment,
@@ -91,9 +95,11 @@ class TestFocusApplicantReview(FrappeTestCase):
         self.assertEqual((self.assignment.assigned_to_user or "").strip(), self.reviewer_two)
         self.assertEqual((self.assignment.assigned_to_role or "").strip(), "")
 
+        frappe.set_user(self.reviewer_two)
         items_two = list_focus_items(open_only=1, limit=50, offset=0)
         self.assertTrue(any(row.get("reference_name") == self.assignment.name for row in items_two))
 
+        frappe.set_user(self.reviewer_one)
         items_one = list_focus_items(open_only=1, limit=50, offset=0)
         self.assertFalse(any(row.get("reference_name") == self.assignment.name for row in items_one))
 
@@ -107,6 +113,42 @@ class TestFocusApplicantReview(FrappeTestCase):
                 assignment=self.assignment.name,
                 reassign_to_user=target_user.name,
             )
+
+    def test_get_focus_context_returns_secure_download_url_for_document_item_file(self):
+        assignment, file_doc = self._create_document_item_assignment_with_file()
+
+        frappe.set_user(self.reviewer_one)
+        focus_rows = list_focus_items(open_only=1, limit=50, offset=0)
+        focus_item = next((row for row in focus_rows if row.get("reference_name") == assignment.name), None)
+        self.assertIsNotNone(focus_item)
+
+        ctx = get_focus_context(focus_item_id=focus_item.get("id"))
+        preview = (ctx.get("review_assignment") or {}).get("preview") or {}
+        preview_url = (preview.get("file_url") or "").strip()
+
+        self.assertTrue(preview_url)
+        self.assertNotIn("/private/files/", preview_url)
+
+        parsed = urlparse(preview_url)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.focus.download_applicant_review_file")
+        query = parse_qs(parsed.query)
+        self.assertEqual((query.get("assignment") or [None])[0], assignment.name)
+
+        frappe.local.response = {}
+        download_applicant_review_file(assignment=assignment.name)
+        self.assertEqual(frappe.local.response.get("type"), "download")
+        self.assertEqual(frappe.local.response.get("filename"), file_doc.file_name)
+        self.assertEqual(frappe.local.response.get("filecontent"), b"focus-file")
+
+    def test_download_applicant_review_file_requires_assignment_membership(self):
+        assignment, _ = self._create_document_item_assignment_with_file()
+
+        outsider = make_user()
+        self._created.append(("User", outsider.name))
+
+        frappe.set_user(outsider.name)
+        with self.assertRaises(frappe.PermissionError):
+            download_applicant_review_file(assignment=assignment.name)
 
     def _ensure_role(self, user: str, role: str):
         if not frappe.db.exists("Role", role):
@@ -168,12 +210,87 @@ class TestFocusApplicantReview(FrappeTestCase):
         frappe.set_user("Administrator")
         return doc
 
-    def _create_role_assignment(self, student_applicant: str, role_name: str):
+    def _create_document_type(self, organization: str, school: str) -> str:
+        code = f"focus_doc_{frappe.generate_hash(length=6)}"
+        doc = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Type",
+                "code": code,
+                "document_type_name": f"Type {code}",
+                "organization": organization,
+                "school": school,
+                "is_active": 1,
+                "classification_slot": f"admissions_{frappe.scrub(code)}",
+                "classification_data_class": "administrative",
+                "classification_purpose": "administrative",
+                "classification_retention_policy": "until_program_end_plus_1y",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Type", doc.name))
+        return doc.name
+
+    def _create_applicant_document(self, student_applicant: str, document_type: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Applicant Document",
+                "student_applicant": student_applicant,
+                "document_type": document_type,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document", doc.name))
+        return doc
+
+    def _create_document_item(self, applicant_document: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_document,
+                "item_key": f"focus_item_{frappe.generate_hash(length=6)}",
+                "item_label": "Focus Review File",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", doc.name))
+        return doc
+
+    def _attach_private_file(self, target_name: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "file_name": f"focus-{frappe.generate_hash(length=6)}.txt",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": target_name,
+                "is_private": 1,
+                "content": b"focus-file",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", doc.name))
+        return doc
+
+    def _create_document_item_assignment_with_file(self):
+        document_type = self._create_document_type(self.organization, self.school)
+        applicant_document = self._create_applicant_document(self.student_applicant.name, document_type)
+        document_item = self._create_document_item(applicant_document.name)
+        file_doc = self._attach_private_file(document_item.name)
+        assignment = self._create_role_assignment(
+            self.student_applicant.name,
+            self.role_name,
+            target_type="Applicant Document Item",
+            target_name=document_item.name,
+        )
+        return assignment, file_doc
+
+    def _create_role_assignment(
+        self,
+        student_applicant: str,
+        role_name: str,
+        target_type: str = "Student Applicant",
+        target_name: str | None = None,
+    ):
         doc = frappe.get_doc(
             {
                 "doctype": "Applicant Review Assignment",
-                "target_type": "Student Applicant",
-                "target_name": student_applicant,
+                "target_type": target_type,
+                "target_name": target_name or student_applicant,
                 "student_applicant": student_applicant,
                 "assigned_to_role": role_name,
                 "status": "Open",

@@ -1,16 +1,17 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "APPL-DOC-ITEM-.YYYY.-.####",
  "creation": "2026-03-01 00:00:00",
  "description": "Track per-file entries under an Applicant Document with independent review state.",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "applicant_document",
+  "review_status",
   "item_key",
   "item_label",
-  "review_status",
+  "column_break_w6l7",
   "reviewed_by",
   "reviewed_on",
   "review_notes"
@@ -63,14 +64,19 @@
    "fieldname": "review_notes",
    "fieldtype": "Text",
    "label": "Review Notes"
+  },
+  {
+   "fieldname": "column_break_w6l7",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-01 00:00:00",
+ "modified": "2026-03-08 12:05:47.333895",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Document Item",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

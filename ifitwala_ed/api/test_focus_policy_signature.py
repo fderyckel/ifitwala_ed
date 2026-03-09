@@ -26,7 +26,7 @@ class TestFocusPolicySignature(FrappeTestCase):
             {
                 "doctype": "School",
                 "school_name": f"FPS School {frappe.generate_hash(length=6)}",
-                "abbr": f"FP{frappe.generate_hash(length=4)}",
+                "abbr": f"FP{frappe.generate_hash(length=3)}",
                 "organization": self.organization.name,
             }
         ).insert(ignore_permissions=True)

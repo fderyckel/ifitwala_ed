@@ -51,9 +51,16 @@ class TestPolicyAcknowledgement(FrappeTestCase):
     def tearDown(self):
         frappe.set_user("Administrator")
         for doctype, name in reversed(self.created):
-            if frappe.db.exists(doctype, name):
-                frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+            self._delete_created_doc(doctype, name)
         super().tearDown()
+
+    def _delete_created_doc(self, doctype: str, name: str):
+        if not frappe.db.exists(doctype, name):
+            return
+        if doctype == "Policy Acknowledgement":
+            frappe.db.delete("Policy Acknowledgement", {"name": name})
+            return
+        frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
     def _make_employee(self, user: str):
         employee = frappe.get_doc(

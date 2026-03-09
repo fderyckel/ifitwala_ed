@@ -3,11 +3,19 @@
 
 # ifitwala_ed/api/focus_actions_applicant_review.py
 
+import mimetypes
+import os
+from urllib.parse import urlencode
+
 import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
-from ifitwala_ed.admission.applicant_review_workflow import complete_assignment_decision
+from ifitwala_ed.admission.applicant_review_workflow import (
+    TARGET_DOCUMENT,
+    TARGET_DOCUMENT_ITEM,
+    complete_assignment_decision,
+)
 from ifitwala_ed.api.focus_shared import (
     APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE,
     _cache,
@@ -17,6 +25,92 @@ from ifitwala_ed.api.focus_shared import (
     _resolve_review_assignment_name,
     _reviewer_matches_assignment,
 )
+
+
+def build_applicant_review_file_open_url(*, assignment: str, focus_item_id: str | None = None) -> str:
+    params = {"assignment": (assignment or "").strip()}
+    focus_id = (focus_item_id or "").strip()
+    if focus_id:
+        params["focus_item_id"] = focus_id
+    query = urlencode(params)
+    return f"/api/method/ifitwala_ed.api.focus.download_applicant_review_file?{query}"
+
+
+def _latest_assignment_file_row(assignment_doc) -> dict | None:
+    target_type = (assignment_doc.target_type or "").strip()
+    if target_type not in {TARGET_DOCUMENT, TARGET_DOCUMENT_ITEM}:
+        return None
+
+    rows = frappe.get_all(
+        "File",
+        filters={
+            "attached_to_doctype": target_type,
+            "attached_to_name": assignment_doc.target_name,
+        },
+        fields=["name", "file_url", "file_name", "is_private", "creation"],
+        order_by="creation desc",
+        limit_page_length=1,
+    )
+    return rows[0] if rows else None
+
+
+def _read_file_bytes(file_row: dict) -> bytes | None:
+    file_url = (file_row.get("file_url") or "").strip()
+    if not file_url or file_url.startswith(("http://", "https://")):
+        return None
+
+    rel_path = file_url.lstrip("/")
+    if rel_path.startswith("private/") or rel_path.startswith("public/"):
+        abs_path = frappe.utils.get_site_path(rel_path)
+    else:
+        base = "private" if frappe.utils.cint(file_row.get("is_private")) else "public"
+        abs_path = frappe.utils.get_site_path(base, rel_path)
+
+    if not os.path.exists(abs_path):
+        return None
+
+    with open(abs_path, "rb") as handle:
+        return handle.read()
+
+
+def download_applicant_review_file(
+    assignment: str | None = None,
+    focus_item_id: str | None = None,
+):
+    user = _require_login()
+    user_roles = set(frappe.get_roles(user))
+
+    assignment_name = _resolve_review_assignment_name(user=user, assignment=assignment, focus_item_id=focus_item_id)
+    assignment_doc = frappe.get_doc(APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE, assignment_name)
+
+    if (assignment_doc.status or "").strip() != "Open":
+        frappe.throw(_("This review assignment is no longer open."), frappe.ValidationError)
+
+    if not _reviewer_matches_assignment(assignment_doc.as_dict(), user=user, roles=user_roles):
+        frappe.throw(_("You are not assigned to this review item."), frappe.PermissionError)
+
+    file_row = _latest_assignment_file_row(assignment_doc)
+    if not file_row:
+        frappe.throw(_("No file is attached to this review target."), frappe.DoesNotExistError)
+
+    file_url = (file_row.get("file_url") or "").strip()
+    if file_url.startswith(("http://", "https://")):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    content = _read_file_bytes(file_row)
+    if content is None:
+        frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
+
+    filename = (file_row.get("file_name") or "").strip() or (assignment_doc.target_name or "").strip() or "document"
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+    frappe.local.response["type"] = "download"
+    frappe.local.response["filename"] = filename
+    frappe.local.response["filecontent"] = content
+    frappe.local.response["display_content_as"] = "inline"
+    frappe.local.response["content_type"] = content_type
 
 
 def claim_applicant_review_assignment(

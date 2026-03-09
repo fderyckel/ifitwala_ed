@@ -87,11 +87,11 @@
 			</section>
 
 			<section class="overflow-x-auto">
-				<div class="grid min-w-[1150px] grid-cols-6 gap-4">
+				<div class="flex min-w-max gap-4 pb-2">
 					<section
-						v-for="column in columns"
+						v-for="column in boardColumns"
 						:key="column.id"
-						class="flex min-h-[360px] flex-col rounded-xl border border-slate-200 bg-slate-50"
+						class="flex min-h-[360px] w-[360px] min-w-[360px] flex-col rounded-xl border border-slate-200 bg-slate-50"
 					>
 						<header class="flex items-center justify-between border-b border-slate-200 px-3 py-2">
 							<h3 class="type-label text-canopy">{{ column.title }}</h3>
@@ -110,10 +110,23 @@
 							>
 								<div class="mb-2 flex items-start justify-between gap-2">
 									<div>
-										<p class="type-body-strong text-ink">{{ item.display_name }}</p>
+										<button
+											type="button"
+											class="type-body-strong text-ink text-left hover:underline"
+											@click="openApplicantWorkspace(item)"
+										>
+											{{ item.display_name }}
+										</button>
 										<p class="type-caption text-slate-token/70">{{ item.name }}</p>
 									</div>
 									<div class="flex items-center gap-1.5">
+										<button
+											type="button"
+											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											@click="openCreateInterview(item)"
+										>
+											Create Interview
+										</button>
 										<button
 											type="button"
 											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
@@ -138,6 +151,9 @@
 								</p>
 
 								<div class="mb-2 flex flex-wrap gap-1">
+									<span v-if="column.id === 'review'" :class="reviewStageClass(item)">
+										{{ item.ready ? 'Ready for Decision' : 'Needs Review' }}
+									</span>
 									<span
 										class="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-token"
 									>
@@ -214,7 +230,7 @@
 					</div>
 				</header>
 
-				<div class="flex-1 overflow-y-auto px-5 py-4">
+				<div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
 					<p v-if="threadLoading" class="text-sm text-slate-500">Loading messages...</p>
 					<div
 						v-else-if="threadError"
@@ -254,8 +270,10 @@
 						maxlength="300"
 						class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
 						placeholder="Write a message to applicant..."
+						@keydown.ctrl.enter.prevent="sendThreadMessage"
+						@keydown.meta.enter.prevent="sendThreadMessage"
 					/>
-					<div class="mt-2 flex items-center justify-between gap-3">
+					<div class="mt-2 flex flex-wrap items-center justify-between gap-3">
 						<label class="inline-flex items-center gap-2 text-xs text-slate-700">
 							<input
 								v-model="threadInternalNote"
@@ -264,19 +282,20 @@
 							/>
 							<span>Internal note (not visible to applicant)</span>
 						</label>
-						<p class="text-xs text-slate-500">{{ threadDraft.length }}/300</p>
+						<div class="ml-auto flex items-center gap-3">
+							<p class="text-xs text-slate-500">{{ threadDraft.length }}/300</p>
+							<button
+								type="button"
+								class="analytics-export-button"
+								:disabled="threadSending"
+								@click="sendThreadMessage"
+							>
+								{{ threadSending ? 'Sending...' : 'Send' }}
+							</button>
+						</div>
 					</div>
+					<p class="mt-1 text-[11px] text-slate-500">Shortcut: Ctrl/Cmd + Enter</p>
 					<p v-if="threadSendError" class="mt-2 text-xs text-rose-700">{{ threadSendError }}</p>
-					<div class="mt-3 flex justify-end">
-						<button
-							type="button"
-							class="rounded-full bg-canopy px-4 py-2 text-sm font-semibold text-white transition hover:bg-canopy/90 disabled:cursor-not-allowed disabled:opacity-50"
-							:disabled="threadSending"
-							@click="sendThreadMessage"
-						>
-							{{ threadSending ? 'Sending...' : 'Send' }}
-						</button>
-					</div>
 				</footer>
 			</section>
 		</div>
@@ -286,6 +305,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import {
@@ -315,6 +335,7 @@ type CockpitCard = {
 	name: string;
 	display_name: string;
 	application_status: string;
+	ready: boolean;
 	school: string;
 	program_offering?: string;
 	top_blockers: {
@@ -364,6 +385,7 @@ type CockpitPayload = {
 const loading = ref(false);
 const error = ref('');
 const data = ref<CockpitPayload | null>(null);
+const overlay = useOverlayStack();
 const activeBlocker = ref('');
 const activeThreadCard = ref<CockpitCard | null>(null);
 const threadLoading = ref(false);
@@ -387,6 +409,39 @@ const organizations = computed(() => data.value?.config?.organizations || []);
 const schools = computed(() => data.value?.config?.schools || []);
 const blockers = computed(() => data.value?.blockers || []);
 const columns = computed(() => data.value?.columns || []);
+const boardColumns = computed<CockpitColumn[]>(() => {
+	const incoming = columns.value || [];
+	if (!incoming.length) {
+		return [];
+	}
+
+	const byId = new Map<string, CockpitCard[]>(
+		incoming.map(column => [column.id, (column.items || []) as CockpitCard[]])
+	);
+
+	return [
+		{
+			id: 'preparation',
+			title: 'Preparation',
+			items: [...(byId.get('in_progress') || []), ...(byId.get('draft') || [])],
+		},
+		{
+			id: 'submitted',
+			title: 'Submitted',
+			items: [...(byId.get('submitted') || [])],
+		},
+		{
+			id: 'review',
+			title: 'Review',
+			items: [...(byId.get('awaiting_decision') || []), ...(byId.get('under_review') || [])],
+		},
+		{
+			id: 'accepted',
+			title: 'Accepted',
+			items: [...(byId.get('accepted_pending_promotion') || [])],
+		},
+	];
+});
 
 const kpiItems = computed(() => {
 	const counts = data.value?.counts || {
@@ -418,6 +473,12 @@ const kpiItems = computed(() => {
 
 function pillClass(ok: boolean) {
 	return ok
+		? 'rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700'
+		: 'rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800';
+}
+
+function reviewStageClass(item: CockpitCard) {
+	return item.ready
 		? 'rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700'
 		: 'rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800';
 }
@@ -459,6 +520,52 @@ function formatDate(value?: string | null) {
 		return value;
 	}
 	return date.toLocaleString();
+}
+
+function openApplicantWorkspace(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = 'Applicant reference is missing for workspace open.';
+		return;
+	}
+
+	overlay.open('admissions-interview-workspace', {
+		mode: 'applicant',
+		studentApplicant: applicantName,
+	});
+}
+
+function deskSlug(value: string) {
+	return String(value || '')
+		.trim()
+		.toLowerCase()
+		.replace(/_/g, '-')
+		.replace(/\s+/g, '-');
+}
+
+function buildNewInterviewUrl(studentApplicant: string) {
+	const slug = deskSlug('Applicant Interview');
+	const base = `/desk/${slug}/new-${slug}-1`;
+	const now = new Date();
+	const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+		now.getDate()
+	).padStart(2, '0')}`;
+	const params = new URLSearchParams({
+		student_applicant: studentApplicant,
+		interview_date: localToday,
+	});
+	return `${base}?${params.toString()}`;
+}
+
+function openCreateInterview(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = 'Applicant reference is missing for interview create.';
+		return;
+	}
+
+	const url = buildNewInterviewUrl(applicantName);
+	window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 async function loadThread(card: CockpitCard, markRead: boolean = true) {

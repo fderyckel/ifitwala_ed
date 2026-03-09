@@ -42,6 +42,32 @@ export type ApplicantProfile = {
   residency_status?: string | null
 }
 
+export type ApplicantGuardianProfile = {
+  name?: string | null
+  guardian?: string | null
+  contact?: string | null
+  use_applicant_contact?: boolean | number | null
+  relationship?: string | null
+  is_primary?: boolean | number | null
+  can_consent?: boolean | number | null
+  salutation?: string | null
+  guardian_full_name?: string | null
+  guardian_first_name?: string | null
+  guardian_last_name?: string | null
+  guardian_gender?: string | null
+  guardian_mobile_phone?: string | null
+  guardian_email?: string | null
+  guardian_work_email?: string | null
+  guardian_work_phone?: string | null
+  guardian_image?: string | null
+  user?: string | null
+  is_primary_guardian?: boolean | number | null
+  is_financial_guardian?: boolean | number | null
+  employment_sector?: string | null
+  work_place?: string | null
+  guardian_designation?: string | null
+}
+
 export type ApplicantProfileCompleteness = {
   ok: boolean
   missing: string[]

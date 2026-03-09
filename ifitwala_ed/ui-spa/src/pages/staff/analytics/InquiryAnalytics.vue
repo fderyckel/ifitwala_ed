@@ -101,12 +101,48 @@
 					<option v-for="t in inquiryTypes" :key="t" :value="t">{{ t }}</option>
 				</select>
 			</div>
+
+			<div class="flex flex-col gap-1">
+				<label class="type-label">Assignment Lane</label>
+				<select
+					v-model="filters.assignment_lane"
+					class="h-9 min-w-[140px] rounded-md border px-2 text-sm"
+				>
+					<option value="">All Lanes</option>
+					<option value="Admission">Admission</option>
+					<option value="Staff">Staff</option>
+				</select>
+			</div>
 		</FiltersBar>
 
 		<div v-if="loading" class="py-12 text-center text-slate-500">Loading analytics...</div>
 
 		<template v-else>
 			<KpiRow :items="kpiItems" />
+
+			<section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+				<div v-for="lane in laneCards" :key="lane.id" class="flex flex-col gap-4 analytics-card">
+					<h3 class="analytics-card__title">{{ lane.title }}</h3>
+					<div class="flex flex-wrap gap-3">
+						<StatsTile label="Total" :value="lane.counts.total" />
+						<StatsTile label="Contacted" :value="lane.counts.contacted" />
+						<StatsTile label="Overdue" :value="lane.counts.overdue_first_contact" tone="warning" />
+						<StatsTile label="Due Today" :value="lane.counts.due_today" />
+						<StatsTile label="Upcoming" :value="lane.counts.upcoming" />
+						<StatsTile label="SLA (30d)" :value="lane.sla + '%'" />
+					</div>
+					<div class="flex gap-6 text-sm">
+						<div class="flex flex-col">
+							<span class="type-caption">Intake Avg</span>
+							<span class="font-medium text-ink">{{ lane.avg.intake_response_hours }}h</span>
+						</div>
+						<div class="flex flex-col">
+							<span class="type-caption">Resolver Avg</span>
+							<span class="font-medium text-ink">{{ lane.avg.resolver_response_hours }}h</span>
+						</div>
+					</div>
+				</div>
+			</section>
 
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 				<!-- Pipeline -->
@@ -123,9 +159,14 @@
 				</section>
 			</div>
 
-			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+			<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 				<HorizontalBarTopN title="Assigned To" :items="assigneeItems" class="analytics-card" />
 				<HorizontalBarTopN title="Inquiry Types" :items="typeItems" class="analytics-card" />
+				<HorizontalBarTopN
+					title="Lane Distribution"
+					:items="laneDistributionItems"
+					class="analytics-card"
+				/>
 			</div>
 
 			<!-- Detailed Stats & Trends -->
@@ -172,6 +213,11 @@
 					<AnalyticsChart :option="monthlyChartOption" />
 				</div>
 			</section>
+
+			<section class="analytics-card">
+				<h3 class="analytics-card__title mb-4">Monthly Resolver Average by Lane (Hours)</h3>
+				<AnalyticsChart :option="monthlyLaneChartOption" />
+			</section>
 		</template>
 	</div>
 </template>
@@ -185,6 +231,7 @@ import {
 	getInquiryTypes,
 	searchAdmissionUsers,
 	searchAcademicYears,
+	type DashboardFilters,
 } from '@/lib/admission';
 import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
@@ -208,7 +255,7 @@ const DATE_RANGES = [
 	{ label: 'All Time', value: 'all' },
 ] as const;
 
-const filters = ref({
+const filters = ref<DashboardFilters>({
 	date_mode: 'preset',
 	date_preset: '90d',
 	academic_year: '',
@@ -216,6 +263,7 @@ const filters = ref({
 	to_date: '',
 	assigned_to: '',
 	type_of_inquiry: '',
+	assignment_lane: '',
 	sla_status: '',
 	organization: '',
 	school: '',
@@ -231,6 +279,7 @@ const exportFilters = computed(() => ({
 	School: filters.value.school || 'All',
 	Assignee: filters.value.assigned_to || 'All',
 	'Inquiry Type': filters.value.type_of_inquiry || 'All',
+	'Assignment Lane': filters.value.assignment_lane || 'All',
 	'SLA Status': filters.value.sla_status || 'All',
 }));
 
@@ -362,6 +411,50 @@ const typeItems = computed(() => {
 	}));
 });
 
+const laneDistributionItems = computed(() => {
+	if (!data.value?.lane_distribution) return [];
+	const total = data.value?.counts?.total || 0;
+	return data.value.lane_distribution.map((d: any) => ({
+		label: d.label || 'Admission',
+		count: d.value,
+		pct: total ? Math.round((d.value / total) * 100) : 0,
+	}));
+});
+
+const laneCards = computed(() => {
+	const breakdown = data.value?.lane_breakdown || {};
+	const admission = breakdown.Admission || {};
+	const staff = breakdown.Staff || {};
+	return [
+		{
+			id: 'lane-admission',
+			title: 'Admission Lane',
+			counts: admission.counts || {
+				total: 0,
+				contacted: 0,
+				overdue_first_contact: 0,
+				due_today: 0,
+				upcoming: 0,
+			},
+			avg: admission.averages || { intake_response_hours: 0, resolver_response_hours: 0 },
+			sla: admission.sla?.pct_30d || 0,
+		},
+		{
+			id: 'lane-staff',
+			title: 'Staff Lane',
+			counts: staff.counts || {
+				total: 0,
+				contacted: 0,
+				overdue_first_contact: 0,
+				due_today: 0,
+				upcoming: 0,
+			},
+			avg: staff.averages || { intake_response_hours: 0, resolver_response_hours: 0 },
+			sla: staff.sla?.pct_30d || 0,
+		},
+	];
+});
+
 const slaTone = computed(() => {
 	const pct = data.value?.sla?.pct_30d || 0;
 	if (pct >= 90) return 'success';
@@ -412,6 +505,34 @@ const monthlyChartOption = computed(() => {
 				data: s.from_assign,
 				type: 'bar',
 				itemStyle: { color: '#10b981' },
+			},
+		],
+	};
+});
+
+const monthlyLaneChartOption = computed(() => {
+	const s = data.value?.monthly_lane_series;
+	if (!s) return {};
+	return {
+		tooltip: { trigger: 'axis' },
+		legend: { bottom: 0 },
+		grid: { left: 40, right: 20, top: 20, bottom: 40, containLabel: true },
+		xAxis: { type: 'category', data: s.labels, axisLabel: { color: '#64748b' } },
+		yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } }, name: 'Hours' },
+		series: [
+			{
+				name: 'Admission Lane',
+				data: s.admission,
+				type: 'line',
+				smooth: true,
+				itemStyle: { color: '#2563eb' },
+			},
+			{
+				name: 'Staff Lane',
+				data: s.staff,
+				type: 'line',
+				smooth: true,
+				itemStyle: { color: '#ea580c' },
 			},
 		],
 	};

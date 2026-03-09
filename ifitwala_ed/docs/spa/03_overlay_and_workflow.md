@@ -331,6 +331,13 @@ This document **subsumes** (reference only, non‑authority):
 **StudentLogCreateOverlay (baseline)**
 Treat as the reference behavior: closes immediately on server success; never gated by toast/refresh/reload.
 
+**EventQuickCreateOverlay (calendar mutation)**
+Must:
+
+* close immediately on Meeting/School Event semantic success
+* delegate API orchestration to a calendar UI service
+* rely on service-driven `calendar:invalidate` and a calendar refresh owner subscription
+
 **StudentLogFollowUpOverlay (must align)**
 Must:
 

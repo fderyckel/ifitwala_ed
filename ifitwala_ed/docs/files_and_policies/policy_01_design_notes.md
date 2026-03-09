@@ -216,8 +216,8 @@ Policy acknowledgements during admissions are therefore:
 * **Acknowledged for:** Applicant
 * **Acknowledged by:** Admissions Applicant user only
 
-The system does **not** currently record guardian relationships at the applicant stage.
-As a result:
+The system now records guardian relationships at the applicant stage via `Student Applicant Guardian`.
+Current acknowledgement behavior remains:
 
 * Guardian roles are **not permitted** to acknowledge policies for Applicants
 * Guardian authority is **not inferred** from `applicant_user`
@@ -225,19 +225,13 @@ As a result:
 
 This model is valid for lightweight admissions flows and ensures internal consistency and auditability.
 
-### Known Limitation (Phase 1)
+### Current Limitation (Phase 1)
 
-The system does not currently model:
-
-* guardian→applicant relationships
-* multiple guardians
-* guardian-specific consent authority during admissions
-
-This limitation is acknowledged and documented.
+Guardian rows exist, but Applicant-context policy acknowledgement is still enforced as Applicant-only until policy authority phase-upgrade is enabled.
 
 ### Phase 2 — Explicit Applicant–Guardian model (definition)
 
-Phase 2 introduces a **new, explicit relationship** between a `Student Applicant` and one or more `Guardian` records.
+Phase 2 introduces an explicit relationship between a `Student Applicant` and one or more `Guardian` records.
 
 New child table on `Student Applicant`:
 
@@ -245,10 +239,13 @@ DocType: `Student Applicant Guardian`
 
 Fields:
 
-* `guardian` (Link → Guardian, required)
+* `guardian` (Link → Guardian, optional for pre-promotion capture)
+* `contact` (Link → Contact)
+* `use_applicant_contact` (checkbox)
 * `relationship` (Select, same options as `Student Guardian.relation`)
 * `is_primary` (checkbox)
 * `can_consent` (checkbox, default = true)
+* guardian profile fields mirrored from `Guardian`
 
 This mirrors the existing Student ↔ Guardian model and removes all implicit assumptions about who is allowed to act during admissions.
 

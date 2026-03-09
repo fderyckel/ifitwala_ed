@@ -45,6 +45,7 @@ import CreateTaskDeliveryOverlay from '@/components/tasks/CreateTaskDeliveryOver
 import MeetingEventModal from '@/components/calendar/MeetingEventModal.vue';
 import SchoolEventModal from '@/components/calendar/SchoolEventModal.vue';
 import ClassEventModal from '@/components/calendar/ClassEventModal.vue';
+import EventQuickCreateOverlay from '@/overlays/calendar/EventQuickCreateOverlay.vue';
 import OrgCommunicationQuickCreateOverlay from '@/components/communication/OrgCommunicationQuickCreateModal.vue';
 import AttendanceRemarkOverlay from '@/overlays/attendance/AttendanceRemarkOverlay.vue';
 import StudentLogCreateOverlay from '@/overlays/student/StudentLogCreateOverlay.vue';
@@ -62,6 +63,7 @@ import ApplicantHealthOverlay from '@/overlays/admissions/ApplicantHealthOverlay
 import ApplicantDocumentUploadOverlay from '@/overlays/admissions/ApplicantDocumentUploadOverlay.vue';
 import ApplicantPolicyAcknowledgeOverlay from '@/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue';
 import ApplicantSubmitOverlay from '@/overlays/admissions/ApplicantSubmitOverlay.vue';
+import InterviewWorkspaceOverlay from '@/overlays/admissions/InterviewWorkspaceOverlay.vue';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
@@ -169,6 +171,8 @@ function resolveComponent(type: OverlayType) {
 	switch (type) {
 		case 'create-task':
 			return CreateTaskDeliveryOverlay;
+		case 'event-quick-create':
+			return EventQuickCreateOverlay;
 		case 'meeting-event':
 			return MeetingEventModal;
 		case 'school-event':
@@ -209,6 +213,8 @@ function resolveComponent(type: OverlayType) {
 			return ApplicantPolicyAcknowledgeOverlay;
 		case 'admissions-submit':
 			return ApplicantSubmitOverlay;
+		case 'admissions-interview-workspace':
+			return InterviewWorkspaceOverlay;
 		default:
 			return CreateTaskDeliveryOverlay;
 	}

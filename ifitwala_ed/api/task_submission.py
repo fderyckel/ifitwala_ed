@@ -6,6 +6,7 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
+from ifitwala_ed.api.file_access import resolve_academic_file_open_url
 from ifitwala_ed.assessment import task_submission_service
 
 
@@ -49,6 +50,32 @@ def get_latest_submission(outcome_id=None):
         order_by="idx asc",
         limit_page_length=0,
     )
+
+    file_rows = frappe.get_all(
+        "File",
+        filters={
+            "attached_to_doctype": "Task Submission",
+            "attached_to_name": latest.get("name"),
+        },
+        fields=["name", "file_url", "creation"],
+        order_by="creation desc",
+        limit_page_length=0,
+    )
+    file_name_by_url: dict[str, str] = {}
+    for row in file_rows:
+        raw_url = (row.get("file_url") or "").strip()
+        file_name = (row.get("name") or "").strip()
+        if raw_url and file_name and raw_url not in file_name_by_url:
+            file_name_by_url[raw_url] = file_name
+
+    for row in attachments:
+        raw_url = (row.get("file") or "").strip()
+        row["file"] = resolve_academic_file_open_url(
+            file_name=file_name_by_url.get(raw_url),
+            file_url=raw_url,
+            context_doctype="Task Submission",
+            context_name=latest.get("name"),
+        )
 
     return {
         "submission_id": latest.get("name"),

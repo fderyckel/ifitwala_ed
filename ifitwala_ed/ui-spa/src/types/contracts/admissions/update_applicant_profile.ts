@@ -2,12 +2,14 @@
 
 import type {
   ApplicantApplicationContext,
+  ApplicantGuardianProfile,
   ApplicantProfile,
   ApplicantProfileCompleteness,
 } from './types'
 
 export type Request = ApplicantProfile & {
   student_applicant?: string
+  guardians?: ApplicantGuardianProfile[]
 }
 
 export type Response = {
@@ -16,10 +18,16 @@ export type Response = {
   completeness: ApplicantProfileCompleteness
   application_context: ApplicantApplicationContext
   applicant_image?: string
+  guardian_section_enabled?: boolean
+  guardians?: ApplicantGuardianProfile[]
   options: {
     genders: string[]
     residency_statuses: string[]
     languages: Array<{ value: string; label: string }>
     countries: Array<{ value: string; label: string }>
+    guardian_relationships?: string[]
+    guardian_genders?: string[]
+    guardian_employment_sectors?: string[]
+    salutations?: Array<{ value: string; label: string }>
   }
 }

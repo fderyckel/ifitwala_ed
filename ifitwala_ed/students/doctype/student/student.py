@@ -20,10 +20,10 @@ Students may be created through TWO explicit, supported pathways:
 
 2) Data Import / Migration (explicit bypass)
    - Used for onboarding existing schools or legacy data
-   - Allowed ONLY when one of the following flags is set:
-       - frappe.flags.in_import
-       - frappe.flags.in_migration
-       - frappe.flags.in_patch
+   - Allowed ONLY when one of the following paths is used:
+       - Data Import (`frappe.flags.in_import`) with `allow_direct_creation = 1` on each imported row
+       - Migration (`frappe.flags.in_migration`)
+       - Patch execution (`frappe.flags.in_patch`)
    - `student_applicant` is NOT required
    - All standard Student behaviors DO execute:
        - User creation
@@ -63,8 +63,10 @@ class Student(Document):
     def onload(self):
         load_address_and_contact(self)
 
-    def validate(self):
+    def before_insert(self):
         self._validate_creation_source()
+
+    def validate(self):
         validate_account_holder_for_student(self)
         self.student_full_name = " ".join(
             filter(None, [self.student_first_name, self.student_middle_name, self.student_last_name])
@@ -99,26 +101,35 @@ class Student(Document):
             )
 
     def _validate_creation_source(self):
+        # Data Import rows must explicitly acknowledge direct creation.
+        if getattr(frappe.flags, "in_import", False):
+            if int(self.allow_direct_creation or 0) != 1:
+                frappe.throw(
+                    _(
+                        "Student Data Import requires allow_direct_creation=1 on each row. "
+                        "Add the column in your import template and set value to 1."
+                    )
+                )
+            return
+
         # Canonical path: Applicant promotion
         if self.student_applicant:
+            return
+
+        # Explicit bypass for migration / patch
+        if getattr(frappe.flags, "in_migration", False):
+            return
+        if getattr(frappe.flags, "in_patch", False):
             return
 
         # Explicit, audited admin bypass
         if int(self.allow_direct_creation or 0) == 1:
             return
 
-        # Explicit bypass for migration / import
-        if getattr(frappe.flags, "in_migration", False):
-            return
-        if getattr(frappe.flags, "in_import", False):
-            return
-        if getattr(frappe.flags, "in_patch", False):
-            return
-
         frappe.throw(
             _(
                 "Students must be created via Applicant promotion. "
-                "Set allow_direct_creation=1 or an explicit import/migration/patch context to create directly."
+                "Use Data Import with allow_direct_creation=1, or an explicit migration/patch context."
             )
         )
 

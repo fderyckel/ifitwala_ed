@@ -1,113 +1,120 @@
 <!-- ifitwala_ed/ui-spa/src/pages/admissions/ApplicantOverview.vue -->
 
 <template>
-	<div class="space-y-6">
-		<div>
+	<div class="admissions-overview">
+		<div class="admissions-overview__header">
 			<p class="type-h2 text-ink">{{ __('Overview') }}</p>
-			<p class="mt-1 type-caption text-ink/60">
+			<p class="type-body text-ink/65">
 				{{ __('Track your application progress and next steps.') }}
 			</p>
 		</div>
 
-		<div v-if="loading" class="rounded-2xl border border-border/70 bg-surface px-4 py-4">
-			<div class="flex items-center gap-3">
+		<div v-if="loading" class="admissions-overview__state-card">
+			<div class="admissions-overview__state-inline">
 				<Spinner class="h-4 w-4" />
 				<p class="type-body-strong text-ink">{{ __('Loading overview…') }}</p>
 			</div>
 		</div>
 
-		<div v-else-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+		<div v-else-if="error" class="admissions-overview__error-card">
 			<p class="type-body-strong text-rose-900">{{ __('Unable to load overview') }}</p>
-			<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">{{ error }}</p>
-			<button
-				type="button"
-				class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-2 type-caption text-rose-900"
-				@click="loadSnapshot"
-			>
+			<p class="admissions-overview__error-text type-caption text-rose-900/80 whitespace-pre-wrap">
+				{{ error }}
+			</p>
+			<button type="button" class="admissions-overview__retry-button" @click="loadSnapshot">
 				{{ __('Try again') }}
 			</button>
 		</div>
 
-		<div v-else>
-			<div class="grid gap-4 md:grid-cols-2">
-				<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
-					<div class="flex items-center justify-between gap-3">
+		<div v-else class="admissions-overview__content">
+			<div class="admissions-overview__summary-grid">
+				<section class="admissions-overview__panel">
+					<div class="admissions-overview__panel-header">
 						<p class="type-body-strong text-ink">{{ __('Application details') }}</p>
 					</div>
-					<div class="mt-3 grid gap-3">
+					<div class="admissions-overview__data-rows">
 						<div
 							v-for="row in applicationRows"
 							:key="row.key"
-							class="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-sand/30 px-3 py-2"
+							class="admissions-overview__data-row"
 						>
-							<p class="type-caption text-ink/60">{{ row.label }}</p>
-							<p class="type-body text-ink/80 text-right">{{ row.value }}</p>
+							<p class="admissions-overview__data-label type-caption">{{ row.label }}</p>
+							<p class="admissions-overview__data-value type-body">{{ row.value }}</p>
 						</div>
 					</div>
-				</div>
+				</section>
 
-				<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
-					<div class="flex items-center justify-between gap-3">
+				<section class="admissions-overview__panel">
+					<div class="admissions-overview__panel-header">
 						<p class="type-body-strong text-ink">{{ __('Profile summary') }}</p>
 						<RouterLink
 							:to="{ name: 'admissions-profile' }"
-							class="rounded-full bg-ink px-4 py-2 type-caption text-white"
+							class="admissions-overview__open-button"
 						>
 							{{ __('Open profile') }}
 						</RouterLink>
 					</div>
-					<div class="mt-3 grid gap-3">
-						<div
-							v-for="row in profileRows"
-							:key="row.key"
-							class="flex items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-2"
-						>
-							<p class="type-caption text-ink/60">{{ row.label }}</p>
-							<p class="type-body text-ink/80 text-right">{{ row.value }}</p>
+					<div class="admissions-overview__data-rows">
+						<div v-for="row in profileRows" :key="row.key" class="admissions-overview__data-row">
+							<p class="admissions-overview__data-label type-caption">{{ row.label }}</p>
+							<p class="admissions-overview__data-value type-body">{{ row.value }}</p>
 						</div>
 					</div>
-				</div>
+				</section>
 			</div>
 
-			<div class="grid gap-4 md:grid-cols-2">
-				<div
-					v-for="card in completionCards"
-					:key="card.key"
-					class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft"
-				>
-					<p class="type-body-strong text-ink">{{ card.label }}</p>
-					<p class="mt-1 type-caption" :class="card.tone">
-						{{ card.statusLabel }}
+			<section class="admissions-overview__panel admissions-overview__panel--actions">
+				<div class="admissions-overview__section-title">
+					<p class="type-h3 text-ink">{{ __('Next actions') }}</p>
+					<p class="type-caption text-ink/60">
+						{{ __('Complete these steps to keep your application moving.') }}
 					</p>
 				</div>
-			</div>
-
-			<div class="mt-6 rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
-				<p class="type-body-strong text-ink">{{ __('Next actions') }}</p>
-				<p v-if="!snapshot?.next_actions?.length" class="mt-2 type-caption text-ink/60">
+				<p
+					v-if="!snapshot?.next_actions?.length"
+					class="admissions-overview__empty-note type-caption"
+				>
 					{{ __('No outstanding tasks right now.') }}
 				</p>
-				<div v-else class="mt-3 flex flex-col gap-3">
+				<div v-else class="admissions-overview__action-list">
 					<div
 						v-for="action in snapshot.next_actions"
 						:key="action.label"
-						class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-sand/40 px-4 py-3"
+						class="admissions-overview__action-item"
 					>
-						<div>
+						<div class="admissions-overview__action-copy">
 							<p class="type-body text-ink">{{ action.label }}</p>
 							<p v-if="action.is_blocking" class="type-caption text-ink/60">
 								{{ __('Required before submission.') }}
 							</p>
 						</div>
-						<RouterLink
-							:to="{ name: action.route_name }"
-							class="rounded-full bg-ink px-4 py-2 type-caption text-white"
-						>
+						<RouterLink :to="{ name: action.route_name }" class="admissions-overview__open-button">
 							{{ __('Open') }}
 						</RouterLink>
 					</div>
 				</div>
-			</div>
+			</section>
+
+			<section class="admissions-overview__completion-section">
+				<div class="admissions-overview__section-title">
+					<p class="type-body-strong text-ink">{{ __('Progress by section') }}</p>
+					<p class="type-caption text-ink/60">
+						{{ __('Review what is complete and what is still pending.') }}
+					</p>
+				</div>
+				<div class="admissions-overview__completion-grid">
+					<div
+						v-for="card in completionCards"
+						:key="card.key"
+						class="admissions-overview__completion-card"
+					>
+						<p class="type-body-strong text-ink">{{ card.label }}</p>
+						<p class="admissions-overview__status-pill type-caption" :class="card.pillClass">
+							{{ card.statusLabel }}
+						</p>
+					</div>
+				</div>
+			</section>
 		</div>
 	</div>
 </template>
@@ -142,17 +149,17 @@ function statusLabel(state: string) {
 	}
 }
 
-function statusTone(state: string) {
+function statusPillClass(state: string) {
 	switch (state) {
 		case 'complete':
-			return 'text-leaf';
+			return 'admissions-overview__status-pill--complete';
 		case 'in_progress':
-			return 'text-sun';
+			return 'admissions-overview__status-pill--in-progress';
 		case 'optional':
-			return 'text-ink/55';
+			return 'admissions-overview__status-pill--optional';
 		case 'pending':
 		default:
-			return 'text-ink/60';
+			return 'admissions-overview__status-pill--pending';
 	}
 }
 
@@ -169,7 +176,7 @@ const completionCards = computed(() => {
 	].map(card => ({
 		...card,
 		statusLabel: statusLabel(card.state),
-		tone: statusTone(card.state),
+		pillClass: statusPillClass(card.state),
 	}));
 });
 
@@ -201,11 +208,6 @@ const profileRows = computed(() => {
 			key: 'preferred_name',
 			label: __('Preferred name'),
 			value: displayText(profile.student_preferred_name),
-		},
-		{
-			key: 'admission_date',
-			label: __('Admission date'),
-			value: displayText(profile.student_joining_date),
 		},
 		{
 			key: 'date_of_birth',

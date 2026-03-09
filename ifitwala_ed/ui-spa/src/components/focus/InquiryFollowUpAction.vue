@@ -16,7 +16,7 @@
 						Type: {{ inquiry?.type_of_inquiry }}
 					</div>
 					<div v-if="inquiry?.followup_due_on" class="type-meta text-muted mt-1">
-						Due: {{ inquiry?.followup_due_on }}
+						Due: {{ formatLocalizedDate(inquiry?.followup_due_on, { includeWeekday: true }) }}
 					</div>
 					<div v-if="inquiry?.sla_status" class="type-meta text-muted mt-1">
 						SLA: {{ inquiry?.sla_status }}
@@ -69,6 +69,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
+import { formatLocalizedDate } from '@/lib/datetime';
 import { __ } from '@/lib/i18n';
 import { createFocusService } from '@/lib/services/focus/focusService';
 

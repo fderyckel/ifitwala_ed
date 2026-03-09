@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "INTERVIEW-.YYYY.-.###",
  "creation": "2026-02-01 00:00:00",
  "description": "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline.",
  "doctype": "DocType",
@@ -10,12 +10,15 @@
   "student_applicant",
   "interview_type",
   "interview_date",
+  "interview_start",
+  "interview_end",
   "mode",
   "confidentiality_level",
   "interviewers",
   "column_break_y3fd",
   "outcome_impression",
-  "notes"
+  "notes",
+  "school_event"
  ],
  "fields": [
   {
@@ -42,6 +45,18 @@
    "in_standard_filter": 1,
    "label": "Interview Date",
    "reqd": 1
+  },
+  {
+   "fieldname": "interview_start",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Interview Start"
+  },
+  {
+   "fieldname": "interview_end",
+   "fieldtype": "Datetime",
+   "label": "Interview End"
   },
   {
    "fieldname": "mode",
@@ -77,15 +92,23 @@
    "fieldname": "notes",
    "fieldtype": "Text Editor",
    "label": "Notes"
+  },
+  {
+   "fieldname": "school_event",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "School Event",
+   "options": "School Event",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-22 08:10:54.379073",
+ "modified": "2026-03-08 12:03:59.810758",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Interview",
- "naming_rule": "Random",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -162,7 +185,7 @@
   }
  ],
  "row_format": "Dynamic",
- "search_fields": "student_applicant, interview_type",
+ "search_fields": "student_applicant, interview_type, school_event",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

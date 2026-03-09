@@ -245,7 +245,15 @@
 									class="border-t border-slate-100"
 								>
 									<td class="py-2 pr-2">{{ row.employee_name }}</td>
-									<td class="py-2 pr-2">{{ row.acknowledged_at || '-' }}</td>
+									<td class="py-2 pr-2">
+										{{
+											row.acknowledged_at
+												? formatLocalizedDateTime(row.acknowledged_at, {
+														includeWeekday: true,
+													})
+												: '-'
+										}}
+									</td>
 									<td class="py-2">{{ row.acknowledged_by || '-' }}</td>
 								</tr>
 								<tr v-if="dashboard.rows.signed.length === 0">
@@ -268,6 +276,7 @@ import { FeatherIcon } from 'frappe-ui';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { formatLocalizedDateTime } from '@/lib/datetime';
 import { createPolicySignatureService } from '@/lib/services/policySignature/policySignatureService';
 import { getStaffHomeHeader } from '@/lib/services/staff/staffHomeService';
 

@@ -4,6 +4,7 @@ from urllib.parse import quote
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from frappe.utils import nowdate
 
 from ifitwala_ed.www.admissions.index import get_context
 
@@ -12,6 +13,7 @@ class TestAdmissionsPortalRoute(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
+        self.organization = self._create_organization().name
 
     def tearDown(self):
         frappe.set_user("Administrator")
@@ -64,6 +66,7 @@ class TestAdmissionsPortalRoute(FrappeTestCase):
 
     def test_staff_user_hitting_admissions_is_redirected_to_staff_portal(self):
         user = self._create_user("staff-only", roles=["Employee"])
+        self._create_employee(user.name)
         original_request = self._set_request_path("/admissions")
         frappe.set_user(user.name)
         try:
@@ -76,6 +79,7 @@ class TestAdmissionsPortalRoute(FrappeTestCase):
 
     def test_staff_with_admissions_role_without_applicant_redirects_to_staff_portal(self):
         user = self._create_user("staff-admissions", roles=["Employee", "Admissions Applicant"])
+        self._create_employee(user.name)
         original_request = self._set_request_path("/admissions")
         frappe.set_user(user.name)
         try:
@@ -122,6 +126,34 @@ class TestAdmissionsPortalRoute(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("User", user.name))
         return user
+
+    def _create_organization(self):
+        org = frappe.get_doc(
+            {
+                "doctype": "Organization",
+                "organization_name": f"Admissions Route Org {frappe.generate_hash(length=6)}",
+                "abbr": f"A{frappe.generate_hash(length=4)}",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Organization", org.name))
+        return org
+
+    def _create_employee(self, user_email: str):
+        employee = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": "Admissions",
+                "employee_last_name": f"Route {frappe.generate_hash(length=5)}",
+                "employee_gender": "Prefer not to say",
+                "employee_professional_email": user_email,
+                "organization": self.organization,
+                "date_of_joining": nowdate(),
+                "employment_status": "Active",
+                "user_id": user_email,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Employee", employee.name))
+        return employee
 
     def _create_student_applicant(self, applicant_user: str):
         self._ensure_role("Admission Manager")

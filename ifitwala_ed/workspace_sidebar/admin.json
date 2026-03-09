@@ -25,10 +25,11 @@
    "label": "Portal",
    "link_type": "URL",
    "show_arrow": 0,
-   "type": "Link"
+   "type": "Link",
+   "url": "/hub/staff"
   }
  ],
- "modified": "2026-02-27 19:53:45.700767",
+ "modified": "2026-03-01 19:53:47",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Admin",

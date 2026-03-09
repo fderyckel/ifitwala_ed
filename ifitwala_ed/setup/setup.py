@@ -312,7 +312,7 @@ def grant_role_read_select_to_hr():
                 doc.read = 1
                 changed = True
 
-            # 'select' exists on DocPerm/Custom DocPerm in Frappe v15+
+            # 'select' exists on DocPerm/Custom DocPerm in Frappe v16+
             if doc.meta.has_field("select") and not int(doc.get("select") or 0):
                 doc.select = 1
                 changed = True

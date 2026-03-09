@@ -22,7 +22,11 @@ Inquiry → Student Applicant → Promotion → Student
 * Student Applicant = **sole pre‑student container**
 * Student = canonical institutional record
 
-A Student **cannot** exist except through Applicant promotion, unless an explicit migration/import bypass is used.
+A Student **cannot** exist except through Applicant promotion, unless one of these explicit bypasses is used:
+
+* Data Import with `allow_direct_creation = 1` on each imported row
+* Migration / patch execution context
+* Explicit `allow_direct_creation = 1` administrative creation
 
 
 ---
@@ -460,7 +464,7 @@ This boundary must be preserved across all phases and implementations.
 Phase 1 successfully established a **hard, enforceable pipeline**:
 
 * Inquiry → Student Applicant → Promotion → Student
-* A Student **cannot exist** except through Applicant promotion
+* A Student **cannot exist** except through Applicant promotion (except explicit import/migration/patch or `allow_direct_creation=1` bypass paths)
 * Enrollment logic already operates on **Program Offering**
 
 However, a structural blind spot remained:

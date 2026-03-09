@@ -1,11 +1,12 @@
 {
+ "app": "ifitwala_ed",
  "charts": [
   {
    "chart_name": "Patient Visits",
    "label": "Patient Visits"
   }
  ],
- "content": "[{\"id\":\"L8EDrF6Ytj\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Health</span>\",\"col\":12}},{\"id\":\"S9Vcg9Jkgr\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Patient Visits\",\"col\":12}},{\"id\":\"ZdbQSgsh9r\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Medical Visit\",\"col\":3}},{\"id\":\"Iv4F7a9kfL\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Patients\",\"col\":3}}]",
+ "content": "[{\"id\":\"L8EDrF6Ytj\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Health</span>\",\"col\":12}},{\"id\":\"S9Vcg9Jkgr\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Patient Visits\",\"col\":12}},{\"id\":\"ZdbQSgsh9r\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Medical Visit\",\"col\":3}},{\"id\":\"Iv4F7a9kfL\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Patients\",\"col\":3}},{\"id\":\"a1xc4YMhMc\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Hub\",\"col\":3}}]",
  "creation": "2025-01-12 09:12:00.151556",
  "custom_blocks": [],
  "docstatus": 0,
@@ -18,7 +19,7 @@
  "is_hidden": 0,
  "label": "Health",
  "links": [],
- "modified": "2025-11-12 14:40:16.976766",
+ "modified": "2026-03-03 13:19:19.552400",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Health",
@@ -36,6 +37,12 @@
   },
   {
    "role": "Admission Officer"
+  },
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Academic Assistant"
   }
  ],
  "sequence_id": 8.0,
@@ -50,6 +57,13 @@
    "type": "DocType"
   },
   {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Hub",
+   "type": "URL",
+   "url": "/hub/staff"
+  },
+  {
    "color": "Red",
    "doc_view": "List",
    "format": "{} incomplete",
@@ -59,5 +73,6 @@
    "type": "DocType"
   }
  ],
- "title": "Health"
+ "title": "Health",
+ "type": "Workspace"
 }

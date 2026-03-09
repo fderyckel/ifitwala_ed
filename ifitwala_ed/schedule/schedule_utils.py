@@ -378,7 +378,7 @@ def iter_student_group_room_slots(
         return []
 
     # Resolve school with a safe helper.
-    school = getattr(sg, "school", None) or get_school_for_student_group(sg)
+    school = getattr(sg, "school", None) or get_school_for_student_group(sg.name)
     if not school:
         return []
 

@@ -361,10 +361,18 @@ export function useAnalyticsSnapshotExport(options: UseAnalyticsSnapshotExportOp
 	}
 
 	return {
-		exportingPng,
-		exportingPdf,
-		actionMessage,
-		isBusy,
+		get exportingPng() {
+			return exportingPng.value;
+		},
+		get exportingPdf() {
+			return exportingPdf.value;
+		},
+		get actionMessage() {
+			return actionMessage.value;
+		},
+		get isBusy() {
+			return isBusy.value;
+		},
 		exportPng,
 		exportPdf,
 	};

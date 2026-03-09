@@ -114,6 +114,7 @@ class TestInquiry(FrappeTestCase):
         self.assertTrue(bool(linked.applicant_contact))
         self.assertEqual(linked.applicant_email, inquiry_email)
         self.assertEqual(frappe.db.get_value("Inquiry", inquiry.name, "contact"), linked.applicant_contact)
+        self.assertEqual(frappe.db.get_value("Inquiry", inquiry.name, "student_applicant"), applicant_name)
         self.assertTrue(
             bool(
                 frappe.db.exists(
@@ -158,6 +159,8 @@ class TestInquiry(FrappeTestCase):
         if dynamic_link_name:
             frappe.delete_doc("Dynamic Link", dynamic_link_name, force=1, ignore_permissions=True)
 
+        frappe.db.set_value("Inquiry", inquiry.name, "student_applicant", None, update_modified=False)
+
         with patch("ifitwala_ed.admission.admission_utils.ensure_admissions_permission", return_value="Administrator"):
             existing_name = from_inquiry_invite(
                 inquiry_name=inquiry.name,
@@ -166,6 +169,7 @@ class TestInquiry(FrappeTestCase):
             )
 
         self.assertEqual(existing_name, applicant_name)
+        self.assertEqual(frappe.db.get_value("Inquiry", inquiry.name, "student_applicant"), applicant_name)
         self.assertTrue(
             bool(
                 frappe.db.exists(
@@ -180,6 +184,60 @@ class TestInquiry(FrappeTestCase):
                 )
             )
         )
+
+    def test_mark_contacted_complete_todo_keeps_assigned_to(self):
+        inquiry = self._make_inquiry()
+        assignee = "Administrator"
+
+        inquiry.db_set("workflow_state", "Assigned", update_modified=False)
+        inquiry.db_set("assigned_to", assignee, update_modified=False)
+        inquiry.db_set("followup_due_on", frappe.utils.nowdate(), update_modified=False)
+        inquiry.reload()
+
+        with patch("ifitwala_ed.admission.doctype.inquiry.inquiry.ensure_admissions_permission", return_value=assignee):
+            inquiry.mark_contacted(complete_todo=1)
+
+        inquiry.reload()
+        self.assertEqual(inquiry.workflow_state, "Contacted")
+        self.assertEqual(inquiry.assigned_to, assignee)
+
+    def test_mark_contacted_allows_assigned_non_admissions_user(self):
+        inquiry = self._make_inquiry()
+        assignee = make_user()
+
+        inquiry.db_set("workflow_state", "Assigned", update_modified=False)
+        inquiry.db_set("assigned_to", assignee.name, update_modified=False)
+        inquiry.db_set("followup_due_on", frappe.utils.nowdate(), update_modified=False)
+        inquiry.reload()
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user(assignee.name)
+            inquiry.mark_contacted(complete_todo=0)
+        finally:
+            frappe.set_user(previous_user)
+
+        inquiry.reload()
+        self.assertEqual(inquiry.workflow_state, "Contacted")
+        self.assertEqual(inquiry.assigned_to, assignee.name)
+
+    def test_mark_contacted_rejects_unassigned_non_admissions_user(self):
+        inquiry = self._make_inquiry()
+        assignee = make_user()
+        other = make_user()
+
+        inquiry.db_set("workflow_state", "Assigned", update_modified=False)
+        inquiry.db_set("assigned_to", assignee.name, update_modified=False)
+        inquiry.db_set("followup_due_on", frappe.utils.nowdate(), update_modified=False)
+        inquiry.reload()
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user(other.name)
+            with self.assertRaises(frappe.PermissionError):
+                inquiry.mark_contacted(complete_todo=0)
+        finally:
+            frappe.set_user(previous_user)
 
     def _make_organization(self, prefix: str, parent: str | None = None, is_group: int = 0) -> str:
         doc = frappe.get_doc(

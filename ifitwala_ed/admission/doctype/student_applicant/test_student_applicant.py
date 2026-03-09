@@ -3,6 +3,7 @@
 # See license.txt
 
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -17,6 +18,9 @@ class TestStudentApplicant(FrappeTestCase):
         self._ensure_role("Admissions Applicant")
         self._ensure_role("Student")
         self._ensure_role("Guardian")
+        self._ensure_gender("Female")
+        self._ensure_gender("Male")
+        self._ensure_gender("Other")
         self._ensure_admissions_role("Administrator", "Admission Manager")
         frappe.clear_cache(user="Administrator")
         self.staff_user = self._create_user("Admissions", "Staff", add_role="Admission Manager")
@@ -169,22 +173,62 @@ class TestStudentApplicant(FrappeTestCase):
 
     def test_has_required_interviews_returns_recent_items(self):
         applicant = self._create_student_applicant()
-        interview = frappe.get_doc(
+        interviewer_user = self._create_user("Interview", "Reviewer")
+
+        older_interview = frappe.get_doc(
             {
                 "doctype": "Applicant Interview",
                 "student_applicant": applicant.name,
-                "interview_date": frappe.utils.nowdate(),
-                "interview_type": "Student",
+                "interview_date": "2026-03-01",
+                "interview_start": "2026-03-01 09:00:00",
+                "interview_end": "2026-03-01 09:30:00",
+                "interview_type": "Family",
+                "outcome_impression": "Neutral",
+                "interviewers": [
+                    {"interviewer": self.staff_user.name},
+                ],
             }
         ).insert(ignore_permissions=True)
-        self._created.append(("Applicant Interview", interview.name))
+        self._created.append(("Applicant Interview", older_interview.name))
+        recent_interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": applicant.name,
+                "interview_date": "2026-03-02",
+                "interview_start": "2026-03-02 10:00:00",
+                "interview_end": "2026-03-02 10:45:00",
+                "interview_type": "Student",
+                "outcome_impression": "Positive",
+                "interviewers": [
+                    {"interviewer": self.staff_user.name},
+                    {"interviewer": interviewer_user.name},
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", recent_interview.name))
 
         payload = applicant.has_required_interviews()
-        self.assertEqual(payload.get("count"), 1)
+        self.assertEqual(payload.get("count"), 2)
         self.assertTrue(payload.get("ok"))
         items = payload.get("items") or []
-        self.assertEqual(len(items), 1)
-        self.assertEqual(items[0].get("name"), interview.name)
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0].get("name"), recent_interview.name)
+        self.assertEqual(items[1].get("name"), older_interview.name)
+        self.assertEqual(items[0].get("outcome_impression"), "Positive")
+        self.assertEqual(items[1].get("outcome_impression"), "Neutral")
+
+        recent_interviewers = items[0].get("interviewers") or []
+        self.assertEqual(
+            [row.get("user") for row in recent_interviewers],
+            [self.staff_user.name, interviewer_user.name],
+        )
+        staff_label = frappe.db.get_value("User", self.staff_user.name, "full_name") or self.staff_user.name
+        reviewer_label = frappe.db.get_value("User", interviewer_user.name, "full_name") or interviewer_user.name
+        expected_recent_labels = [
+            staff_label,
+            reviewer_label,
+        ]
+        self.assertEqual(items[0].get("interviewer_labels"), expected_recent_labels)
 
     def test_promotion_copies_approved_applicant_document_files(self):
         doc_type = self._create_applicant_document_type(code="application_form")
@@ -282,10 +326,216 @@ class TestStudentApplicant(FrappeTestCase):
             frappe.set_user(self.staff_user.name)
         self._created.append(("Applicant Document", applicant_doc.name))
 
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_doc.name,
+                "item_key": "required_1",
+                "item_label": "Required Document",
+                "review_status": "Approved",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "required.txt",
+                "is_private": 1,
+                "content": b"required-file",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+
         approved_payload = applicant.has_required_documents()
         self.assertTrue(approved_payload.get("ok"))
         self.assertNotIn(code, approved_payload.get("missing") or [])
         self.assertNotIn(code, approved_payload.get("unapproved") or [])
+
+    def test_has_required_documents_returns_secure_file_links(self):
+        code = f"secure_doc_{frappe.generate_hash(length=6)}"
+        doc_type = self._create_applicant_document_type(code=code, is_required=1)
+        applicant = self._create_student_applicant()
+
+        frappe.set_user("Administrator")
+        try:
+            applicant_doc = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document",
+                    "student_applicant": applicant.name,
+                    "document_type": doc_type,
+                    "review_status": "Approved",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.set_user(self.staff_user.name)
+        self._created.append(("Applicant Document", applicant_doc.name))
+
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_doc.name,
+                "item_key": "required_secure_1",
+                "item_label": "Required Document",
+                "review_status": "Approved",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "required-secure.txt",
+                "is_private": 1,
+                "content": b"required-secure-file",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+
+        payload = applicant.has_required_documents()
+        required_rows = payload.get("required_rows") or []
+        target_row = next((row for row in required_rows if row.get("document_type") == doc_type), None)
+        self.assertIsNotNone(target_row)
+        secure_url = (target_row.get("file_url") or "").strip()
+
+        self.assertTrue(secure_url)
+        self.assertNotIn("/private/files/", secure_url)
+
+        parsed = urlparse(secure_url)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_admissions_file")
+        query = parse_qs(parsed.query)
+        self.assertEqual((query.get("file") or [None])[0], file_doc.name)
+        self.assertEqual((query.get("context_doctype") or [None])[0], "Student Applicant")
+        self.assertEqual((query.get("context_name") or [None])[0], applicant.name)
+
+    def test_repeatable_required_document_accepts_parent_level_approval_for_readiness(self):
+        code = f"repeatable_doc_{frappe.generate_hash(length=6)}"
+        doc_type = self._create_applicant_document_type(
+            code=code,
+            is_required=1,
+            is_repeatable=1,
+            min_items_required=2,
+        )
+        applicant = self._create_student_applicant()
+
+        frappe.set_user("Administrator")
+        try:
+            applicant_doc = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document",
+                    "student_applicant": applicant.name,
+                    "document_type": doc_type,
+                    "review_status": "Pending",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.set_user(self.staff_user.name)
+        self._created.append(("Applicant Document", applicant_doc.name))
+
+        for index in (1, 2):
+            item = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document Item",
+                    "applicant_document": applicant_doc.name,
+                    "item_key": f"required_bundle_{index}",
+                    "item_label": f"Transcript {index}",
+                    "review_status": "Pending",
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("Applicant Document Item", item.name))
+
+            file_doc = frappe.get_doc(
+                {
+                    "doctype": "File",
+                    "attached_to_doctype": "Applicant Document Item",
+                    "attached_to_name": item.name,
+                    "file_name": f"transcript-{index}.txt",
+                    "is_private": 1,
+                    "content": f"transcript-{index}".encode(),
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("File", file_doc.name))
+
+        approved_doc = frappe.get_doc("Applicant Document", applicant_doc.name)
+        approved_doc.review_status = "Approved"
+        approved_doc.review_notes = "Bundle approved after review."
+        approved_doc.save(ignore_permissions=True)
+
+        payload = applicant.has_required_documents()
+        self.assertTrue(payload.get("ok"))
+        self.assertNotIn(code, payload.get("missing") or [])
+        self.assertNotIn(code, payload.get("unapproved") or [])
+
+        required_rows = payload.get("required_rows") or []
+        row = next((item for item in required_rows if item.get("document_type") == doc_type), None)
+        self.assertIsNotNone(row)
+        self.assertEqual(row.get("review_status"), "Approved")
+        self.assertEqual(int(row.get("approved_count") or 0), 0)
+        self.assertEqual(int(row.get("required_count") or 0), 2)
+
+    def test_uploaded_rows_include_each_uploaded_document_item(self):
+        code = f"uploaded_rows_doc_{frappe.generate_hash(length=6)}"
+        doc_type = self._create_applicant_document_type(
+            code=code,
+            is_required=1,
+            is_repeatable=1,
+            min_items_required=2,
+        )
+        applicant = self._create_student_applicant()
+
+        frappe.set_user("Administrator")
+        try:
+            applicant_doc = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document",
+                    "student_applicant": applicant.name,
+                    "document_type": doc_type,
+                    "review_status": "Pending",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.set_user(self.staff_user.name)
+        self._created.append(("Applicant Document", applicant_doc.name))
+
+        created_item_labels = []
+        for index in (1, 2):
+            item_label = f"Transcript Variant {index}"
+            item = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document Item",
+                    "applicant_document": applicant_doc.name,
+                    "item_key": f"uploaded_variant_{index}",
+                    "item_label": item_label,
+                    "review_status": "Pending",
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("Applicant Document Item", item.name))
+
+            file_doc = frappe.get_doc(
+                {
+                    "doctype": "File",
+                    "attached_to_doctype": "Applicant Document Item",
+                    "attached_to_name": item.name,
+                    "file_name": f"uploaded-variant-{index}.txt",
+                    "is_private": 1,
+                    "content": f"uploaded-variant-{index}".encode(),
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("File", file_doc.name))
+            created_item_labels.append(item_label)
+
+        payload = applicant.has_required_documents()
+        uploaded_rows = payload.get("uploaded_rows") or []
+        target_rows = [row for row in uploaded_rows if row.get("document_type") == doc_type]
+        self.assertEqual(len(target_rows), 2)
+
+        labels = {row.get("item_label") for row in target_rows}
+        self.assertEqual(labels, set(created_item_labels))
+        self.assertTrue(all((row.get("file_url") or "").strip() for row in target_rows))
 
     def test_profile_information_reports_missing_required_fields(self):
         applicant = self._create_student_applicant()
@@ -294,6 +544,161 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertIn("Date of Birth", payload.get("missing") or [])
         self.assertIn("First Language", payload.get("missing") or [])
         self.assertIn("Nationality", payload.get("missing") or [])
+        self.assertNotIn("Joining Date", payload.get("missing") or [])
+
+    def test_readiness_snapshot_does_not_block_on_health_when_school_setting_disabled(self):
+        applicant = self._create_student_applicant()
+        frappe.db.set_value(
+            "School",
+            applicant.school,
+            "require_health_profile_for_approval",
+            0,
+            update_modified=False,
+        )
+        frappe.clear_cache()
+
+        with (
+            patch.object(
+                applicant, "has_required_policies", return_value={"ok": True, "missing": [], "required": [], "rows": []}
+            ),
+            patch.object(
+                applicant,
+                "has_required_documents",
+                return_value={
+                    "ok": True,
+                    "missing": [],
+                    "unapproved": [],
+                    "required": [],
+                    "required_rows": [],
+                    "uploaded_rows": [],
+                },
+            ),
+            patch.object(
+                applicant,
+                "health_review_complete",
+                return_value={
+                    "ok": False,
+                    "status": "missing",
+                    "profile_name": None,
+                    "review_status": None,
+                    "reviewed_by": None,
+                    "reviewed_on": None,
+                    "declared_complete": False,
+                    "declared_by": None,
+                    "declared_on": None,
+                },
+            ),
+            patch.object(applicant, "has_required_interviews", return_value={"ok": False, "count": 0, "items": []}),
+            patch.object(
+                applicant,
+                "has_required_profile_information",
+                return_value={"ok": True, "missing": [], "required": [], "fields": {}},
+            ),
+            patch.object(
+                applicant,
+                "has_required_recommendations",
+                return_value={
+                    "ok": True,
+                    "required_total": 0,
+                    "received_total": 0,
+                    "requested_total": 0,
+                    "missing": [],
+                    "rows": [],
+                    "state": "optional",
+                    "counts": {},
+                },
+            ),
+            patch.object(applicant, "get_review_assignments_summary", return_value={}),
+        ):
+            snapshot = applicant.get_readiness_snapshot()
+
+        self.assertTrue(snapshot.get("ready"))
+        self.assertFalse((snapshot.get("health") or {}).get("required_for_approval"))
+        self.assertFalse(
+            any("Health profile is missing or not cleared." in str(item) for item in (snapshot.get("issues") or []))
+        )
+
+    def test_readiness_snapshot_blocks_on_health_when_school_setting_enabled(self):
+        applicant = self._create_student_applicant()
+        frappe.db.set_value(
+            "School",
+            applicant.school,
+            "require_health_profile_for_approval",
+            1,
+            update_modified=False,
+        )
+        frappe.clear_cache()
+
+        with (
+            patch.object(
+                applicant, "has_required_policies", return_value={"ok": True, "missing": [], "required": [], "rows": []}
+            ),
+            patch.object(
+                applicant,
+                "has_required_documents",
+                return_value={
+                    "ok": True,
+                    "missing": [],
+                    "unapproved": [],
+                    "required": [],
+                    "required_rows": [],
+                    "uploaded_rows": [],
+                },
+            ),
+            patch.object(
+                applicant,
+                "health_review_complete",
+                return_value={
+                    "ok": False,
+                    "status": "missing",
+                    "profile_name": None,
+                    "review_status": None,
+                    "reviewed_by": None,
+                    "reviewed_on": None,
+                    "declared_complete": False,
+                    "declared_by": None,
+                    "declared_on": None,
+                },
+            ),
+            patch.object(applicant, "has_required_interviews", return_value={"ok": False, "count": 0, "items": []}),
+            patch.object(
+                applicant,
+                "has_required_profile_information",
+                return_value={"ok": True, "missing": [], "required": [], "fields": {}},
+            ),
+            patch.object(
+                applicant,
+                "has_required_recommendations",
+                return_value={
+                    "ok": True,
+                    "required_total": 0,
+                    "received_total": 0,
+                    "requested_total": 0,
+                    "missing": [],
+                    "rows": [],
+                    "state": "optional",
+                    "counts": {},
+                },
+            ),
+            patch.object(applicant, "get_review_assignments_summary", return_value={}),
+        ):
+            snapshot = applicant.get_readiness_snapshot()
+
+        self.assertFalse(snapshot.get("ready"))
+        self.assertTrue((snapshot.get("health") or {}).get("required_for_approval"))
+        self.assertTrue(
+            any("Health profile is missing or not cleared." in str(item) for item in (snapshot.get("issues") or []))
+        )
+
+    def test_promotion_requires_joining_date(self):
+        applicant = self._create_student_applicant()
+        self._create_applicant_health_profile(applicant.name)
+
+        applicant.db_set("application_status", "Approved", update_modified=False)
+        applicant.reload()
+
+        with self.assertRaises(frappe.ValidationError):
+            applicant.promote_to_student()
 
     def test_promotion_copies_profile_information_to_student(self):
         language = self._get_or_create_language_xtra()
@@ -340,19 +745,13 @@ class TestStudentApplicant(FrappeTestCase):
 
     def test_misconfigured_required_document_type_is_still_required_in_readiness(self):
         code = f"misconfigured_req_{frappe.generate_hash(length=6)}"
-        doc_type = frappe.get_doc(
-            {
-                "doctype": "Applicant Document Type",
-                "code": code,
-                "document_type_name": f"Type {code}",
-                "organization": self.org,
-                "school": self.parent_school,
-                "is_required": 1,
-                "is_active": 0,
-            }
-        ).insert(ignore_permissions=True)
-        self._created.append(("Applicant Document Type", doc_type.name))
-        frappe.db.set_value("Applicant Document Type", doc_type.name, "is_active", 1, update_modified=False)
+        doc_type = self._create_applicant_document_type(
+            code=code,
+            school=self.parent_school,
+            is_required=1,
+            is_active=1,
+        )
+        frappe.db.set_value("Applicant Document Type", doc_type, "classification_slot", "", update_modified=False)
 
         applicant = self._create_student_applicant()
         payload = applicant.has_required_documents()
@@ -491,6 +890,75 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertIn("Student", role_names)
         self.assertNotIn("Admissions Applicant", role_names)
 
+    def test_upgrade_identity_creates_guardian_from_applicant_guardian_profile_row(self):
+        applicant = self._create_student_applicant()
+        self._create_applicant_health_profile(applicant.name)
+
+        guardian_email = f"guardian-{frappe.generate_hash(length=8)}@example.com"
+        applicant.append(
+            "guardians",
+            {
+                "relationship": "Father",
+                "can_consent": 1,
+                "guardian_first_name": "Profile",
+                "guardian_last_name": "Guardian",
+                "guardian_email": guardian_email,
+                "guardian_mobile_phone": "+14155550155",
+                "guardian_gender": "Male",
+            },
+        )
+        applicant.save(ignore_permissions=True)
+
+        applicant.db_set("application_status", "Invited", update_modified=False)
+        applicant.reload()
+        applicant.mark_in_progress()
+        applicant.submit_application()
+        applicant.mark_under_review()
+        applicant.db_set("application_status", "Approved", update_modified=False)
+        applicant.reload()
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+
+        original_exists = frappe.db.exists
+
+        def exists_with_enrollment(doctype, filters=None, *args, **kwargs):
+            if doctype == "Program Enrollment" and isinstance(filters, dict):
+                if filters.get("student") == student_name and int(filters.get("archived") or 0) == 0:
+                    return "PE-MOCK-0002"
+            return original_exists(doctype, filters, *args, **kwargs)
+
+        with patch.object(frappe.db, "exists", side_effect=exists_with_enrollment):
+            result = applicant.upgrade_identity()
+
+        self.assertTrue(result.get("ok"))
+        self.assertEqual(len(result.get("guardians_linked") or []), 1)
+
+        guardian_name = frappe.db.get_value("Guardian", {"guardian_email": guardian_email}, "name")
+        self.assertTrue(bool(guardian_name))
+        self._created.append(("Guardian", guardian_name))
+
+        student = frappe.get_doc("Student", student_name)
+        linked_guardians = [row.guardian for row in (student.get("guardians") or [])]
+        self.assertIn(guardian_name, linked_guardians)
+
+        contact_name = frappe.db.get_value("Contact Email", {"email_id": guardian_email}, "parent")
+        self.assertTrue(bool(contact_name))
+        self.assertTrue(
+            bool(
+                frappe.db.exists(
+                    "Dynamic Link",
+                    {
+                        "parenttype": "Contact",
+                        "parentfield": "links",
+                        "parent": contact_name,
+                        "link_doctype": "Student",
+                        "link_name": student_name,
+                    },
+                )
+            )
+        )
+
     def _ensure_admissions_role(self, user, role):
         if not frappe.db.exists("Role", role):
             frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)
@@ -512,6 +980,19 @@ class TestStudentApplicant(FrappeTestCase):
             return
         frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)
         self._created.append(("Role", role))
+
+    def _ensure_gender(self, gender_name: str):
+        if frappe.db.exists("Gender", gender_name):
+            return
+        now = frappe.utils.now()
+        frappe.db.sql(
+            """
+            INSERT INTO `tabGender` (`name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `idx`)
+            VALUES (%s, %s, %s, %s, %s, 0, 0)
+            """,
+            (gender_name, now, now, "Administrator", "Administrator"),
+        )
+        self._created.append(("Gender", gender_name))
 
     def _create_org(self):
         name = f"Org-{frappe.generate_hash(length=6)}"
@@ -609,6 +1090,8 @@ class TestStudentApplicant(FrappeTestCase):
         organization=None,
         is_required=0,
         is_active=1,
+        is_repeatable=0,
+        min_items_required=1,
     ):
         existing = frappe.db.get_value("Applicant Document Type", {"code": code}, "name")
         if existing:
@@ -622,6 +1105,8 @@ class TestStudentApplicant(FrappeTestCase):
                 "school": school or self.leaf_school,
                 "is_active": is_active,
                 "is_required": is_required,
+                "is_repeatable": is_repeatable,
+                "min_items_required": min_items_required,
                 "classification_slot": f"admissions_{frappe.scrub(code)}",
                 "classification_data_class": "administrative",
                 "classification_purpose": "administrative",

@@ -48,9 +48,16 @@ class TestPolicyVersionApprovedBy(FrappeTestCase):
     def tearDown(self):
         frappe.set_user("Administrator")
         for doctype, name in reversed(self.created):
-            if frappe.db.exists(doctype, name):
-                frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+            self._delete_created_doc(doctype, name)
         super().tearDown()
+
+    def _delete_created_doc(self, doctype: str, name: str):
+        if not frappe.db.exists(doctype, name):
+            return
+        if doctype == "Policy Acknowledgement":
+            frappe.db.delete("Policy Acknowledgement", {"name": name})
+            return
+        frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
     def test_approved_by_allows_same_school_and_parent_school_writer(self):
         version = self._make_policy_version(approved_by=self.child_writer)
@@ -199,9 +206,16 @@ class TestPolicyVersionAmendments(FrappeTestCase):
     def tearDown(self):
         frappe.set_user("Administrator")
         for doctype, name in reversed(self.created):
-            if frappe.db.exists(doctype, name):
-                frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+            self._delete_created_doc(doctype, name)
         super().tearDown()
+
+    def _delete_created_doc(self, doctype: str, name: str):
+        if not frappe.db.exists(doctype, name):
+            return
+        if doctype == "Policy Acknowledgement":
+            frappe.db.delete("Policy Acknowledgement", {"name": name})
+            return
+        frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
     def test_first_policy_version_allows_blank_amended_from(self):
         version = self._make_policy_version(
@@ -238,14 +252,17 @@ class TestPolicyVersionAmendments(FrappeTestCase):
             is_active=0,
         )
 
+        amended = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v2",
+            policy_text="<p>Initial policy text.</p><p>Added detail.</p>",
+            is_active=0,
+            based_on_version=base.name,
+        )
+
+        amended.is_active = 1
         with self.assertRaises(frappe.ValidationError):
-            self._make_policy_version(
-                policy=self.policy.name,
-                version_label="v2",
-                policy_text="<p>Initial policy text.</p><p>Added detail.</p>",
-                is_active=0,
-                based_on_version=base.name,
-            )
+            amended.save(ignore_permissions=True)
 
     def test_amended_version_generates_diff_and_stats(self):
         base = self._make_policy_version(

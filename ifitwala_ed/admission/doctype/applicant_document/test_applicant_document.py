@@ -163,10 +163,12 @@ class TestApplicantDocument(FrappeTestCase):
                 "last_name": f"Applicant-{frappe.generate_hash(length=6)}",
                 "organization": organization,
                 "school": school,
-                "application_status": "Invited",
-                "applicant_user": applicant_user,
+                "application_status": "Draft",
             }
         ).insert(ignore_permissions=True)
+        doc.db_set("applicant_user", applicant_user, update_modified=False)
+        doc.db_set("application_status", "Invited", update_modified=False)
+        doc.reload()
         self._created.append(("Student Applicant", doc.name))
         return doc
 

@@ -8,15 +8,18 @@ import frappe
 from frappe import _
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.desk.form.assign_to import remove as remove_assignment
-from frappe.utils import add_days, cint, getdate, now, nowdate, validate_email_address
+from frappe.utils import add_days, cint, get_datetime, getdate, now, now_datetime, nowdate, validate_email_address
 from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
 
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
 )
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ADMISSIONS_ROLES = {"Admission Manager", "Admission Officer"}
+ADMISSIONS_FILE_STAFF_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
+READ_LIKE_PERMISSION_TYPES = {"read", "report", "export", "print", "email"}
 
 
 APPLICANT_DOCUMENT_CLASSIFICATION_FIELDS = (
@@ -86,6 +89,8 @@ APPLICANT_DOCUMENT_CODE_CLASSIFICATION_MAP = {
 
 SLA_SWEEP_LOCK_KEY = "admissions:sla_sweep:lock"
 SLA_SWEEP_STATUS_CACHE_KEY = "admissions:sla_sweep:last_run"
+INQUIRY_INVITE_LOCK_KEY_PREFIX = "admissions:inquiry_invite:lock"
+INQUIRY_ASSIGNMENT_LANES = {"Admission", "Staff"}
 
 
 def _normalize_scope_value(value: str | None) -> str:
@@ -465,6 +470,109 @@ def _validate_admissions_assignee(user: str) -> None:
         frappe.throw(_("Assignee must be an active user with the 'Admission Officer' or 'Admission Manager' role."))
 
 
+def _normalize_inquiry_assignment_lane(lane: str | None) -> str | None:
+    value = (lane or "").strip()
+    if not value:
+        return None
+
+    normalized = value.lower()
+    if normalized == "admission":
+        return "Admission"
+    if normalized == "staff":
+        return "Staff"
+    frappe.throw(_("Invalid Inquiry assignment lane: {0}.").format(value))
+    return None
+
+
+def _resolve_inquiry_assignment_lane_for_user(*, user: str, requested_lane: str | None = None) -> str:
+    user = (user or "").strip()
+    if not user:
+        frappe.throw(_("Assignee is required."))
+
+    roles = set(frappe.get_roles(user))
+    derived_lane = "Admission" if roles & ADMISSIONS_ROLES else "Staff"
+    requested = _normalize_inquiry_assignment_lane(requested_lane)
+    if requested and requested != derived_lane:
+        frappe.throw(
+            _("Assignee {0} belongs to lane {1}; requested lane {2} is not allowed.").format(
+                frappe.bold(user),
+                frappe.bold(derived_lane),
+                frappe.bold(requested),
+            )
+        )
+    return requested or derived_lane
+
+
+def _hours_between(start_dt, end_dt) -> float:
+    start = get_datetime(start_dt)
+    end = get_datetime(end_dt)
+    return round((end - start).total_seconds() / 3600.0, 2)
+
+
+def _active_employee_scope_row(user: str) -> dict:
+    user = (user or "").strip()
+    if not user:
+        frappe.throw(_("Assignee is required."))
+    row = frappe.db.get_value(
+        "Employee",
+        {"user_id": user, "employment_status": "Active"},
+        ["name", "organization", "school"],
+        as_dict=True,
+    )
+    if not row:
+        frappe.throw(_("Assignee must have an active Employee profile linked to this User account."))
+    return row
+
+
+def _validate_inquiry_assignee_scope(user: str, inquiry_doc) -> dict:
+    user = (user or "").strip()
+    if not user:
+        frappe.throw(_("Assignee is required."))
+
+    enabled = frappe.db.get_value("User", user, "enabled")
+    if not enabled:
+        frappe.throw(_("Assignee must be an enabled user."))
+
+    employee = _active_employee_scope_row(user)
+    inquiry_org = (inquiry_doc.get("organization") or "").strip()
+    inquiry_school = (inquiry_doc.get("school") or "").strip()
+
+    if inquiry_org:
+        org_scope = _get_organization_scope(inquiry_org)
+        if not org_scope:
+            frappe.throw(_("Invalid Inquiry Organization scope: {0}.").format(inquiry_org))
+        if (employee.get("organization") or "").strip() not in set(org_scope):
+            frappe.throw(
+                _("Assignee must belong to Organization {0} or one of its descendants.").format(
+                    frappe.bold(inquiry_org)
+                )
+            )
+
+    if inquiry_school:
+        school_scope = get_descendant_schools(inquiry_school) or []
+        if not school_scope:
+            frappe.throw(_("Invalid Inquiry School scope: {0}.").format(inquiry_school))
+        if (employee.get("school") or "").strip() not in set(school_scope):
+            frappe.throw(
+                _("Assignee must belong to School {0} or one of its descendants.").format(frappe.bold(inquiry_school))
+            )
+
+    return employee
+
+
+def _stamp_inquiry_lane_metrics_on_assignment(doc, assignment_lane: str) -> None:
+    ts = now_datetime()
+    doc.assignment_lane = assignment_lane
+    doc.resolver_assigned_at = ts
+
+    if not getattr(doc, "intake_assigned_at", None):
+        doc.intake_assigned_at = ts
+
+    if not getattr(doc, "intake_response_hours", None):
+        baseline = doc.submitted_at or doc.creation or ts
+        doc.intake_response_hours = _hours_between(baseline, ts)
+
+
 def _get_organization_scope(organization: str | None) -> list[str]:
     organization = (organization or "").strip()
     if not organization:
@@ -475,6 +583,189 @@ def _get_organization_scope(organization: str | None) -> list[str]:
 
     descendants = get_descendants_of("Organization", organization) or []
     return [organization, *[org for org in descendants if org and org != organization]]
+
+
+def _safe_active_employee_scope_row(user: str) -> dict | None:
+    resolved_user = (user or "").strip()
+    if not resolved_user:
+        return None
+    try:
+        return _active_employee_scope_row(resolved_user)
+    except Exception:
+        return None
+
+
+def is_admissions_file_staff_user(user: str | None = None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return False
+    if resolved_user == "Administrator":
+        return True
+    roles = set(frappe.get_roles(resolved_user))
+    return bool(roles & ADMISSIONS_FILE_STAFF_ROLES)
+
+
+def get_admissions_file_staff_scope(user: str | None = None) -> dict:
+    resolved_user = (user or frappe.session.user or "").strip()
+    denied = {
+        "allowed": False,
+        "bypass": False,
+        "org_scope": set(),
+        "school_scope": set(),
+    }
+    if not resolved_user or resolved_user == "Guest":
+        return denied
+
+    roles = set(frappe.get_roles(resolved_user))
+    if resolved_user == "Administrator" or "System Manager" in roles:
+        return {
+            "allowed": True,
+            "bypass": True,
+            "org_scope": set(),
+            "school_scope": set(),
+        }
+
+    if not (roles & ADMISSIONS_FILE_STAFF_ROLES):
+        return denied
+
+    employee = _safe_active_employee_scope_row(resolved_user)
+    if not employee:
+        return denied
+
+    org_scope = set(_get_organization_scope(employee.get("organization")))
+    school_scope = set(get_descendant_schools(employee.get("school")) or [])
+    if not org_scope and not school_scope:
+        return denied
+
+    return {
+        "allowed": True,
+        "bypass": False,
+        "org_scope": org_scope,
+        "school_scope": school_scope,
+    }
+
+
+def _scope_values_to_sql(values: set[str]) -> str:
+    cleaned = sorted({(value or "").strip() for value in values if (value or "").strip()})
+    return ", ".join(frappe.db.escape(value) for value in cleaned)
+
+
+def build_admissions_file_scope_exists_sql(*, user: str | None = None, student_applicant_expr_sql: str) -> str | None:
+    scope = get_admissions_file_staff_scope(user)
+    if not scope.get("allowed"):
+        return "1=0"
+    if scope.get("bypass"):
+        return None
+
+    org_scope = set(scope.get("org_scope") or set())
+    school_scope = set(scope.get("school_scope") or set())
+
+    org_condition = ""
+    if org_scope:
+        org_values = _scope_values_to_sql(org_scope)
+        if org_values:
+            org_condition = f" AND sa.organization IN ({org_values})"
+
+    school_condition = ""
+    if school_scope:
+        school_values = _scope_values_to_sql(school_scope)
+        if school_values:
+            school_condition = (
+                " AND ("
+                f"sa.school IN ({school_values}) "
+                "OR EXISTS ("
+                "SELECT 1 FROM `tabStudent` st "
+                "WHERE st.name = sa.student "
+                f"AND st.anchor_school IN ({school_values})"
+                ") "
+                "OR EXISTS ("
+                "SELECT 1 FROM `tabProgram Enrollment` pe "
+                "WHERE pe.student = sa.student "
+                "AND IFNULL(pe.archived, 0) = 0 "
+                f"AND pe.school IN ({school_values})"
+                ")"
+                ")"
+            )
+
+    return (
+        "EXISTS ("
+        "SELECT 1 "
+        "FROM `tabStudent Applicant` sa "
+        f"WHERE sa.name = {student_applicant_expr_sql}"
+        f"{org_condition}"
+        f"{school_condition}"
+        ")"
+    )
+
+
+def _get_effective_student_schools(*, student: str | None, applicant_school: str | None) -> set[str]:
+    effective_schools: set[str] = set()
+    school_name = (applicant_school or "").strip()
+    if school_name:
+        effective_schools.add(school_name)
+
+    student_name = (student or "").strip()
+    if not student_name:
+        return effective_schools
+
+    anchor_school = (frappe.db.get_value("Student", student_name, "anchor_school") or "").strip()
+    if anchor_school:
+        effective_schools.add(anchor_school)
+
+    enrollment_rows = frappe.get_all(
+        "Program Enrollment",
+        filters={
+            "student": student_name,
+            "archived": 0,
+        },
+        fields=["school"],
+        limit_page_length=1000,
+    )
+    for row in enrollment_rows:
+        row_school = (row.get("school") or "").strip()
+        if row_school:
+            effective_schools.add(row_school)
+
+    return effective_schools
+
+
+def has_scoped_staff_access_to_student_applicant(*, user: str | None = None, student_applicant: str | None) -> bool:
+    applicant_name = (student_applicant or "").strip()
+    if not applicant_name:
+        return False
+
+    scope = get_admissions_file_staff_scope(user)
+    if not scope.get("allowed"):
+        return False
+
+    applicant_row = frappe.db.get_value(
+        "Student Applicant",
+        applicant_name,
+        ["name", "organization", "school", "student"],
+        as_dict=True,
+    )
+    if not applicant_row:
+        return False
+
+    if scope.get("bypass"):
+        return True
+
+    org_scope = set(scope.get("org_scope") or set())
+    school_scope = set(scope.get("school_scope") or set())
+
+    applicant_org = (applicant_row.get("organization") or "").strip()
+    if org_scope and applicant_org not in org_scope:
+        return False
+
+    if school_scope:
+        effective_schools = _get_effective_student_schools(
+            student=applicant_row.get("student"),
+            applicant_school=applicant_row.get("school"),
+        )
+        if not effective_schools.intersection(school_scope):
+            return False
+
+    return True
 
 
 def normalize_email_value(email: str | None) -> str:
@@ -709,6 +1000,39 @@ def _get_first_contact_sla_days_default():
     return frappe.get_cached_value("Admission Settings", None, "first_contact_sla_days") or 7
 
 
+def _inquiry_invite_lock_key(inquiry_name: str) -> str:
+    return f"{INQUIRY_INVITE_LOCK_KEY_PREFIX}:{inquiry_name}"
+
+
+def bind_inquiry_student_applicant(*, inquiry_name: str, student_applicant: str) -> bool:
+    inquiry_name = (inquiry_name or "").strip()
+    student_applicant = (student_applicant or "").strip()
+
+    if not inquiry_name:
+        frappe.throw(_("Inquiry name is required."))
+    if not student_applicant:
+        frappe.throw(_("Student Applicant is required."))
+    if not frappe.db.exists("Inquiry", inquiry_name):
+        frappe.throw(_("Invalid Inquiry: {0}").format(inquiry_name))
+    if not frappe.db.exists("Student Applicant", student_applicant):
+        frappe.throw(_("Invalid Student Applicant: {0}").format(student_applicant))
+
+    current = (frappe.db.get_value("Inquiry", inquiry_name, "student_applicant") or "").strip()
+    if current and current != student_applicant:
+        frappe.throw(
+            _("Inquiry {0} is already linked to Student Applicant {1}; cannot relink to {2}.").format(
+                frappe.bold(inquiry_name),
+                frappe.bold(current),
+                frappe.bold(student_applicant),
+            )
+        )
+    if current == student_applicant:
+        return False
+
+    frappe.db.set_value("Inquiry", inquiry_name, "student_applicant", student_applicant, update_modified=False)
+    return True
+
+
 def set_inquiry_deadlines(doc):
     if not getattr(doc, "first_contact_due_on", None):
         base = getdate(doc.submitted_at) if getattr(doc, "submitted_at", None) else getdate(nowdate())
@@ -738,11 +1062,12 @@ def update_sla_status(doc):
 
 
 @frappe.whitelist()
-def assign_inquiry(doctype, docname, assigned_to):
+def assign_inquiry(doctype, docname, assigned_to, assignment_lane: str | None = None):
     ensure_admissions_permission()
     doc = frappe.get_doc(doctype, docname)
 
-    _validate_admissions_assignee(assigned_to)
+    _validate_inquiry_assignee_scope(assigned_to, doc)
+    resolved_lane = _resolve_inquiry_assignment_lane_for_user(user=assigned_to, requested_lane=assignment_lane)
 
     # Prevent double-assign in our custom field
     if doc.assigned_to:
@@ -764,6 +1089,7 @@ def assign_inquiry(doctype, docname, assigned_to):
     followup_due = add_days(nowdate(), settings.followup_sla_days or 1)
     doc.assigned_to = assigned_to
     doc.followup_due_on = followup_due
+    _stamp_inquiry_lane_metrics_on_assignment(doc, resolved_lane)
 
     doc.mark_assigned(add_comment=False)
 
@@ -787,7 +1113,7 @@ def assign_inquiry(doctype, docname, assigned_to):
         doc.add_comment(
             "Comment",
             text=frappe._(
-                f"Assigned to <b>{assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}. "
+                f"Assigned to <b>{assigned_to}</b> ({resolved_lane} lane) by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}. "
                 f"See follow-up task: {todo_link}"
             ),
         )
@@ -795,17 +1121,17 @@ def assign_inquiry(doctype, docname, assigned_to):
         doc.add_comment(
             "Comment",
             text=frappe._(
-                f"Assigned to <b>{assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
+                f"Assigned to <b>{assigned_to}</b> ({resolved_lane} lane) by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
             ),
         )
 
     notify_user(assigned_to, "🆕 You have been assigned a new inquiry.", doc)
 
-    return {"assigned_to": assigned_to, "todo": todo_name}
+    return {"assigned_to": assigned_to, "assignment_lane": resolved_lane, "todo": todo_name}
 
 
 @frappe.whitelist()
-def reassign_inquiry(doctype, docname, new_assigned_to):
+def reassign_inquiry(doctype, docname, new_assigned_to, assignment_lane: str | None = None):
     ensure_admissions_permission()
     doc = frappe.get_doc(doctype, docname)
 
@@ -815,7 +1141,8 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
     if doc.assigned_to == new_assigned_to:
         frappe.throw("This inquiry is already assigned to this user.")
 
-    _validate_admissions_assignee(new_assigned_to)
+    _validate_inquiry_assignee_scope(new_assigned_to, doc)
+    resolved_lane = _resolve_inquiry_assignment_lane_for_user(user=new_assigned_to, requested_lane=assignment_lane)
 
     settings = frappe.get_cached_doc("Admission Settings")
     prev_assigned = doc.assigned_to
@@ -829,6 +1156,7 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
     followup_due = add_days(nowdate(), settings.followup_sla_days or 1)
     doc.assigned_to = new_assigned_to
     doc.followup_due_on = followup_due
+    _stamp_inquiry_lane_metrics_on_assignment(doc, resolved_lane)
 
     doc.mark_assigned(add_comment=False)
 
@@ -870,7 +1198,7 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
         doc.add_comment(
             "Comment",
             text=frappe._(
-                f"Reassigned to <b>{new_assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}. "
+                f"Reassigned to <b>{new_assigned_to}</b> ({resolved_lane} lane) by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}. "
                 f"New follow-up task: {todo_link}"
             ),
         )
@@ -878,13 +1206,13 @@ def reassign_inquiry(doctype, docname, new_assigned_to):
         doc.add_comment(
             "Comment",
             text=frappe._(
-                f"Reassigned to <b>{new_assigned_to}</b> by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
+                f"Reassigned to <b>{new_assigned_to}</b> ({resolved_lane} lane) by <b>{frappe.session.user}</b> on {frappe.utils.formatdate(now())}."
             ),
         )
 
     notify_user(new_assigned_to, "🆕 You have been assigned a new inquiry (reassignment).", doc)
 
-    return {"reassigned_to": new_assigned_to, "todo": new_todo}
+    return {"reassigned_to": new_assigned_to, "assignment_lane": resolved_lane, "todo": new_todo}
 
 
 @frappe.whitelist()
@@ -903,6 +1231,57 @@ def get_admission_officers(doctype, txt, searchfield, start, page_len, filters):
     """,
         (f"%{txt}%", page_len, start),
     )
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_inquiry_assignees(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
+    ensure_admissions_permission()
+    filters = filters or {}
+    organization = (filters.get("organization") or "").strip()
+    school = (filters.get("school") or "").strip()
+
+    org_scope = _get_organization_scope(organization) if organization else []
+    if organization and not org_scope:
+        return []
+
+    school_scope = get_descendant_schools(school) if school else []
+    if school and not school_scope:
+        return []
+
+    where = ["u.enabled = 1", "ifnull(e.employment_status, '') = 'Active'", "ifnull(e.user_id, '') <> ''"]
+    params = {
+        "txt": f"%{txt or ''}%",
+        "start": int(start or 0),
+        "page_len": int(page_len or 20),
+    }
+    if org_scope:
+        where.append("e.organization IN %(org_scope)s")
+        params["org_scope"] = tuple(org_scope)
+    if school_scope:
+        where.append("e.school IN %(school_scope)s")
+        params["school_scope"] = tuple(school_scope)
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            u.name,
+            COALESCE(NULLIF(u.full_name, ''), NULLIF(e.employee_full_name, ''), u.name) AS full_name
+        FROM `tabUser` u
+        JOIN `tabEmployee` e ON e.user_id = u.name
+        WHERE {" AND ".join(where)}
+          AND (
+            u.name LIKE %(txt)s
+            OR u.full_name LIKE %(txt)s
+            OR e.employee_full_name LIKE %(txt)s
+          )
+        ORDER BY full_name ASC, u.name ASC
+        LIMIT %(start)s, %(page_len)s
+        """,
+        params,
+        as_list=True,
+    )
+    return rows
 
 
 @frappe.whitelist()
@@ -990,6 +1369,10 @@ def from_inquiry_invite(
     # ------------------------------------------------------------------
     # Validate inputs
     # ------------------------------------------------------------------
+    inquiry_name = (inquiry_name or "").strip()
+    school = (school or "").strip()
+    organization = (organization or "").strip() or None
+
     if not inquiry_name:
         frappe.throw(_("Inquiry name is required."))
 
@@ -1003,106 +1386,108 @@ def from_inquiry_invite(
     if not school_org:
         frappe.throw(_("Selected School does not have an Organization."))
 
-    # ------------------------------------------------------------------
-    # Load Inquiry (READ-ONLY usage)
-    # ------------------------------------------------------------------
-    inquiry = frappe.get_doc("Inquiry", inquiry_name)
-    inquiry_contact = ensure_inquiry_contact(inquiry)
-    inquiry_email = get_contact_primary_email(inquiry_contact)
+    lock_key = _inquiry_invite_lock_key(inquiry_name)
+    with frappe.cache().lock(lock_key, timeout=30):
+        # ------------------------------------------------------------------
+        # Load Inquiry (READ-ONLY usage)
+        # ------------------------------------------------------------------
+        inquiry = frappe.get_doc("Inquiry", inquiry_name)
+        inquiry_contact = ensure_inquiry_contact(inquiry)
+        inquiry_email = get_contact_primary_email(inquiry_contact)
 
-    # ------------------------------------------------------------------
-    # Prevent duplicate Applicants per Inquiry
-    # ------------------------------------------------------------------
-    existing = frappe.db.get_value(
-        "Student Applicant",
-        {"inquiry": inquiry.name},
-        "name",
-    )
-    if existing:
-        existing_applicant = frappe.get_doc("Student Applicant", existing)
-        changed = False
-        if inquiry_contact and not existing_applicant.applicant_contact:
-            existing_applicant.flags.from_contact_sync = True
-            existing_applicant.applicant_contact = inquiry_contact
-            changed = True
-
-        existing_applicant_email = normalize_email_value(existing_applicant.applicant_email)
-        if inquiry_email and not existing_applicant_email:
-            existing_applicant.flags.from_contact_sync = True
-            existing_applicant.applicant_email = inquiry_email
-            changed = True
-
-        if changed:
-            existing_applicant.save(ignore_permissions=True)
-
-        sync_student_applicant_contact_binding(
-            student_applicant=existing,
-            contact_name=inquiry_contact or existing_applicant.applicant_contact,
+        # ------------------------------------------------------------------
+        # Prevent duplicate Applicants per Inquiry
+        # ------------------------------------------------------------------
+        existing = frappe.db.get_value(
+            "Student Applicant",
+            {"inquiry": inquiry.name},
+            "name",
         )
-        return existing
+        if existing:
+            existing_applicant = frappe.get_doc("Student Applicant", existing)
+            changed = False
+            if inquiry_contact and not existing_applicant.applicant_contact:
+                existing_applicant.flags.from_contact_sync = True
+                existing_applicant.applicant_contact = inquiry_contact
+                changed = True
 
-    # ------------------------------------------------------------------
-    # Resolve organization (explicit or derived)
-    # ------------------------------------------------------------------
-    if not organization:
-        organization = school_org
+            existing_applicant_email = normalize_email_value(existing_applicant.applicant_email)
+            if inquiry_email and not existing_applicant_email:
+                existing_applicant.flags.from_contact_sync = True
+                existing_applicant.applicant_email = inquiry_email
+                changed = True
 
-    organization = (organization or "").strip()
+            if changed:
+                existing_applicant.save(ignore_permissions=True)
 
-    if not organization:
-        frappe.throw(_("Organization must be provided or derivable from the selected School."))
+            sync_student_applicant_contact_binding(
+                student_applicant=existing,
+                contact_name=inquiry_contact or existing_applicant.applicant_contact,
+            )
+            bind_inquiry_student_applicant(inquiry_name=inquiry.name, student_applicant=existing)
+            return existing
 
-    if not frappe.db.exists("Organization", organization):
-        frappe.throw(_("Invalid Organization: {0}").format(organization))
+        # ------------------------------------------------------------------
+        # Resolve organization (explicit or derived)
+        # ------------------------------------------------------------------
+        if not organization:
+            organization = school_org
 
-    if not _school_belongs_to_organization_scope(school, organization):
-        frappe.throw(_("Selected School does not belong to the selected Organization."))
+        if not organization:
+            frappe.throw(_("Organization must be provided or derivable from the selected School."))
 
-    # ------------------------------------------------------------------
-    # Create Student Applicant (institutional commitment point)
-    # ------------------------------------------------------------------
-    applicant = frappe.get_doc(
-        {
-            "doctype": "Student Applicant",
-            # Identity (best-effort, editable later)
-            "first_name": inquiry.get("first_name"),
-            "last_name": inquiry.get("last_name"),
-            # Institutional anchoring (IMMUTABLE after creation)
-            "school": school,
-            "organization": organization,
-            # Admissions intent (NOT enrollment)
-            "program": inquiry.get("program"),
-            "academic_year": inquiry.get("academic_year"),
-            "term": inquiry.get("term"),
-            # Traceability
-            "inquiry": inquiry.name,
-            # Contact anchor
-            "applicant_contact": inquiry_contact,
-            "applicant_email": inquiry_email,
-            # Lifecycle
-            "application_status": "Invited",
-        }
-    )
+        if not frappe.db.exists("Organization", organization):
+            frappe.throw(_("Invalid Organization: {0}").format(organization))
 
-    # Explicit lifecycle flags (used by Applicant controller)
-    applicant.flags.from_inquiry_invite = True
-    applicant.flags.allow_status_change = True
-    applicant.flags.status_change_source = "from_inquiry_invite"
-    applicant.flags.from_contact_sync = True
+        if not _school_belongs_to_organization_scope(school, organization):
+            frappe.throw(_("Selected School does not belong to the selected Organization."))
 
-    applicant.insert(ignore_permissions=True)
-    sync_student_applicant_contact_binding(student_applicant=applicant.name, contact_name=inquiry_contact)
+        # ------------------------------------------------------------------
+        # Create Student Applicant (institutional commitment point)
+        # ------------------------------------------------------------------
+        applicant = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                # Identity (best-effort, editable later)
+                "first_name": inquiry.get("first_name"),
+                "last_name": inquiry.get("last_name"),
+                # Institutional anchoring (IMMUTABLE after creation)
+                "school": school,
+                "organization": organization,
+                # Admissions intent (NOT enrollment)
+                "program": inquiry.get("program"),
+                "academic_year": inquiry.get("academic_year"),
+                "term": inquiry.get("term"),
+                # Traceability
+                "inquiry": inquiry.name,
+                # Contact anchor
+                "applicant_contact": inquiry_contact,
+                "applicant_email": inquiry_email,
+                # Lifecycle
+                "application_status": "Invited",
+            }
+        )
 
-    # ------------------------------------------------------------------
-    # Audit trail
-    # ------------------------------------------------------------------
-    applicant.add_comment(
-        "Comment",
-        text=_("Applicant invited from Inquiry {0} for School {1} by {2}.").format(
-            frappe.bold(inquiry.name),
-            frappe.bold(school),
-            frappe.bold(frappe.session.user),
-        ),
-    )
+        # Explicit lifecycle flags (used by Applicant controller)
+        applicant.flags.from_inquiry_invite = True
+        applicant.flags.allow_status_change = True
+        applicant.flags.status_change_source = "from_inquiry_invite"
+        applicant.flags.from_contact_sync = True
 
-    return applicant.name
+        applicant.insert(ignore_permissions=True)
+        sync_student_applicant_contact_binding(student_applicant=applicant.name, contact_name=inquiry_contact)
+        bind_inquiry_student_applicant(inquiry_name=inquiry.name, student_applicant=applicant.name)
+
+        # ------------------------------------------------------------------
+        # Audit trail
+        # ------------------------------------------------------------------
+        applicant.add_comment(
+            "Comment",
+            text=_("Applicant invited from Inquiry {0} for School {1} by {2}.").format(
+                frappe.bold(inquiry.name),
+                frappe.bold(school),
+                frappe.bold(frappe.session.user),
+            ),
+        )
+
+        return applicant.name

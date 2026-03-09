@@ -14,12 +14,45 @@ function blurActiveModalFocus() {
 }
 
 frappe.ui.form.on("Inquiry", {
+	setup(frm) {
+		frm.set_query('organization', () => ({
+			query: 'ifitwala_ed.api.inquiry.inquiry_organization_link_query'
+		}));
+
+		frm.set_query('school', () => {
+			const organization = String(frm.doc.organization || '').trim();
+			if (!organization) {
+				return {};
+			}
+			return {
+				query: 'ifitwala_ed.admission.admission_utils.school_by_organization_scope_query',
+				filters: { organization }
+			};
+		});
+	},
+
+	organization(frm) {
+		if (!String(frm.doc.organization || '').trim()) {
+			return;
+		}
+		if (!String(frm.doc.school || '').trim()) {
+			return;
+		}
+
+		frm.set_value('school', null);
+		frappe.show_alert({
+			message: __('School was cleared. Please select a school in the selected organization scope.'),
+			indicator: 'orange'
+		});
+	},
+
 	refresh(frm) {
 		frm.page.clear_actions_menu();
 
 		const s = String(frm.doc.workflow_state || '').trim();
 		const is_manager = frappe.user.has_role('Admission Manager');
 		const is_officer = frappe.user.has_role('Admission Officer');
+		const is_assigned_user = String(frm.doc.assigned_to || '').trim() === String(frappe.session.user || '').trim();
 		const canonicalStates = new Set(['New', 'Assigned', 'Contacted', 'Qualified', 'Archived']);
 
 		if (!canonicalStates.has(s)) {
@@ -36,7 +69,7 @@ frappe.ui.form.on("Inquiry", {
 			frm.add_custom_button('Reassign', () => frm.trigger('reassign'));
 		}
 
-		if (s === 'Assigned' && (is_officer || is_manager)) {
+		if (s === 'Assigned' && (is_officer || is_manager || is_assigned_user)) {
 			frm.add_custom_button('Mark Contacted', () => frm.trigger('mark_contacted'));
 		}
 
@@ -182,13 +215,17 @@ frappe.ui.form.on("Inquiry", {
 		frappe.prompt(
 			[
 				{
-					label: 'Assign To (Admission Officer/Manager)',
+					label: 'Assign To (Scoped Staff User)',
 					fieldname: 'assigned_to',
 					fieldtype: 'Link',
 					options: 'User',
 					reqd: 1,
 					get_query: () => ({
-						query: "ifitwala_ed.admission.admission_utils.get_admission_officers"
+						query: "ifitwala_ed.admission.admission_utils.get_inquiry_assignees",
+						filters: {
+							organization: frm.doc.organization || '',
+							school: frm.doc.school || ''
+						}
 					})
 				}
 			],
@@ -203,7 +240,8 @@ frappe.ui.form.on("Inquiry", {
 					},
 					callback: (r) => {
 						if (!r.exc) {
-							frappe.msgprint(__('Inquiry assigned to {0}', [values.assigned_to]));
+							const lane = r?.message?.assignment_lane || __('Unknown');
+							frappe.msgprint(__('Inquiry assigned to {0} ({1} lane)', [values.assigned_to, lane]));
 							frm.reload_doc();
 						}
 					}
@@ -218,13 +256,17 @@ frappe.ui.form.on("Inquiry", {
 		frappe.prompt(
 			[
 				{
-					label: 'Reassign To (Admission Officer/Manager)',
+					label: 'Reassign To (Scoped Staff User)',
 					fieldname: 'new_assigned_to',
 					fieldtype: 'Link',
 					options: 'User',
 					reqd: 1,
 					get_query: () => ({
-						query: 'ifitwala_ed.admission.admission_utils.get_admission_officers'
+						query: 'ifitwala_ed.admission.admission_utils.get_inquiry_assignees',
+						filters: {
+							organization: frm.doc.organization || '',
+							school: frm.doc.school || ''
+						}
 					})
 				}
 			],
@@ -239,7 +281,8 @@ frappe.ui.form.on("Inquiry", {
 					},
 					callback: (r) => {
 						if (!r.exc) {
-							frappe.msgprint(__('Inquiry reassigned to {0}', [values.new_assigned_to]));
+							const lane = r?.message?.assignment_lane || __('Unknown');
+							frappe.msgprint(__('Inquiry reassigned to {0} ({1} lane)', [values.new_assigned_to, lane]));
 							frm.reload_doc();
 						}
 					}

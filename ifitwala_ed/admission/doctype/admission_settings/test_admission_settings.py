@@ -1,9 +1,31 @@
 # Copyright (c) 2025, François de Ryckel and Contributors
 # See license.txt
 
-# import frappe
+import frappe
 from frappe.tests.utils import FrappeTestCase
 
 
 class TestAdmissionSettings(FrappeTestCase):
-    pass
+    def test_admission_settings_is_single(self):
+        self.assertEqual(frappe.get_meta("Admission Settings").issingle, 1)
+
+    def test_admission_settings_get_and_set(self):
+        settings = frappe.get_single("Admission Settings")
+        original_sla = settings.sla_enabled
+
+        frappe.db.set_single_value("Admission Settings", "sla_enabled", 1)
+
+        updated_settings = frappe.get_single("Admission Settings")
+        self.assertEqual(updated_settings.sla_enabled, 1)
+
+        frappe.db.set_single_value("Admission Settings", "sla_enabled", original_sla)
+
+    def test_guardians_profile_setting_roundtrip(self):
+        original_value = frappe.db.get_single_value("Admission Settings", "show_guardians_in_admissions_profile")
+        frappe.db.set_single_value("Admission Settings", "show_guardians_in_admissions_profile", 1)
+        self.assertEqual(frappe.db.get_single_value("Admission Settings", "show_guardians_in_admissions_profile"), 1)
+        frappe.db.set_single_value(
+            "Admission Settings",
+            "show_guardians_in_admissions_profile",
+            original_value or 0,
+        )

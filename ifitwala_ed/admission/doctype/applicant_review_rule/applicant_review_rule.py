@@ -86,7 +86,6 @@ class ApplicantReviewRule(Document):
 @frappe.validate_and_sanitize_search_inputs
 def get_reviewer_role_options(doctype, txt, searchfield, start, page_len, filters):
     """Role link query for Applicant Review Rule reviewer rows."""
-    _ = (doctype, searchfield, filters)
     if not frappe.has_permission("Applicant Review Rule", ptype="write"):
         frappe.throw(_("Insufficient Permission for Applicant Review Rule"), frappe.PermissionError)
 

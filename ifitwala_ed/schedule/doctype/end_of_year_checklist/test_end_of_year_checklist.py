@@ -214,6 +214,7 @@ class TestEndofYearChecklist(FrappeTestCase):
                     "student_first_name": label,
                     "student_last_name": f"Student{seed}",
                     "student_email": f"{label.lower()}{seed}@example.com",
+                    "allow_direct_creation": 1,
                 }
             ).insert(ignore_permissions=True)
         finally:

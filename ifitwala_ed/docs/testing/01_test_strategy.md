@@ -56,3 +56,20 @@ Goals:
 3. `api_modules_with_real_tests`
 
 The metrics script is informational by default and can be enforced with environment thresholds in CI.
+
+## 6. Regression Guardrails (2026-03 Lessons)
+
+1. Fixture setup must respect DocType invariants.
+- For guarded identity fields on `Student Applicant`, use lifecycle methods or controlled setup writes (`db_set(..., update_modified=False)`) instead of mutable `.save()` flows that trigger permission/immutability guards.
+
+2. Permission logic must define mixed-role precedence.
+- When a principal has both admissions/staff and applicant/family roles, staff precedence must be explicit in permission evaluators and covered by tests.
+
+3. Binary fixtures must be type-valid.
+- Do not use fake bytes behind `.pdf`/`.png` extensions; parser-level validation in Frappe/Pillow will fail and create false-negative test noise.
+
+4. Mapping/default tests must assert invariant outcomes, not fragile literals.
+- For code-mapped classification, assert slot resolution and completeness, and avoid assumptions that conflict with site-level defaults or environment-specific options.
+
+5. Translation alias `_` is reserved.
+- In Python modules importing `from frappe import _`, never shadow `_` with local temporary variables.

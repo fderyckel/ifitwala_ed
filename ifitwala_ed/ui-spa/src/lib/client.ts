@@ -4,6 +4,12 @@ type HttpMethod = 'POST' | 'GET'
 
 let cachedCsrfToken: string | null = null
 let csrfPromise: Promise<string> | null = null
+const AUTH_ERROR_PATTERNS = [
+	'you need to sign in',
+	'you must be logged in',
+	'user none not found',
+	'session expired',
+]
 
 async function resolveCsrfToken(): Promise<string> {
 	if (cachedCsrfToken) {
@@ -52,6 +58,51 @@ async function resolveCsrfToken(): Promise<string> {
 	return token || ''
 }
 
+function parseServerMessages(raw: unknown): string[] {
+	if (typeof raw !== 'string' || !raw.trim()) {
+		return []
+	}
+
+	try {
+		const entries = JSON.parse(raw)
+		if (!Array.isArray(entries)) {
+			return []
+		}
+		return entries
+			.map((entry) => {
+				if (typeof entry !== 'string') {
+					return String(entry || '')
+				}
+				try {
+					const payload = JSON.parse(entry)
+					return typeof payload?.message === 'string' ? payload.message : entry
+				} catch {
+					return entry
+				}
+			})
+			.filter((message) => Boolean((message || '').trim()))
+	} catch {
+		return []
+	}
+}
+
+function isSessionFailureMessage(message: string): boolean {
+	const normalized = (message || '').toLowerCase()
+	return AUTH_ERROR_PATTERNS.some((pattern) => normalized.includes(pattern))
+}
+
+function redirectToLoginIfNeeded() {
+	if (typeof window === 'undefined') {
+		return
+	}
+	if (window.location.pathname.startsWith('/login')) {
+		return
+	}
+	const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+	const loginPath = `/login?redirect-to=${encodeURIComponent(currentPath)}`
+	window.location.assign(loginPath)
+}
+
 export async function api(method: string, payload?: any, httpMethod: HttpMethod = 'POST') {
 	const csrf = await resolveCsrfToken()
 	const response = await fetch(`/api/method/${method}`, {
@@ -66,9 +117,11 @@ export async function api(method: string, payload?: any, httpMethod: HttpMethod 
 
 	const data = await response.json().catch(() => ({}))
 	if (!response.ok || data?.exception || data?.exc) {
-		const message = data?._server_messages
-			? JSON.parse(data._server_messages).join('\n')
-			: data?.message || response.statusText
+		const serverMessages = parseServerMessages(data?._server_messages)
+		const message = serverMessages.join('\n') || data?.message || response.statusText
+		if ((response.status === 401 || response.status === 403) && isSessionFailureMessage(message || '')) {
+			redirectToLoginIfNeeded()
+		}
 		throw new Error(message || 'API request failed')
 	}
 	return data?.message ?? data

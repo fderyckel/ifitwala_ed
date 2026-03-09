@@ -27,6 +27,8 @@ ROLE_INSTRUCTOR = "Instructor"
 ROLE_ACADEMIC_STAFF = "Academic Staff"
 ADMISSIONS_ANALYTICS_ROLES = frozenset(ADMISSIONS_ROLES | INQUIRY_ANALYTICS_ROLES | ENROLLMENT_ANALYTICS_ROLES)
 DEMOGRAPHICS_ANALYTICS_ROLES = frozenset(STUDENT_DEMOGRAPHICS_ANALYTICS_ROLES)
+MEETING_CREATE_ROLES = frozenset({"Employee", "System Manager"})
+SCHOOL_EVENT_CREATE_ROLES = frozenset({"System Manager", "Academic Admin", "Academic Assistant", "Organization IT"})
 
 
 def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_name: str | None) -> str:
@@ -70,10 +72,18 @@ def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_
     return "Staff"
 
 
-def _build_staff_home_capabilities(roles: set[str]) -> dict[str, bool]:
+def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> dict[str, bool]:
     attendance_roles = set(ADMIN_ROLES) | set(COUNSELOR_ROLES) | set(INSTRUCTOR_ROLES)
     has_instructor_role = ROLE_INSTRUCTOR in roles
     has_academic_staff_role = ROLE_ACADEMIC_STAFF in roles
+
+    if user:
+        can_create_meeting = bool(frappe.has_permission("Meeting", ptype="create", user=user))
+        can_create_school_event = bool(frappe.has_permission("School Event", ptype="create", user=user))
+    else:
+        can_create_meeting = bool(roles & set(MEETING_CREATE_ROLES))
+        can_create_school_event = bool(roles & set(SCHOOL_EVENT_CREATE_ROLES))
+
     return {
         "analytics_attendance": bool(roles & attendance_roles),
         "analytics_attendance_admin": bool(roles & set(ADMIN_ROLES)),
@@ -87,6 +97,9 @@ def _build_staff_home_capabilities(roles: set[str]) -> dict[str, bool]:
         "quick_action_create_task": has_instructor_role,
         "quick_action_gradebook": has_instructor_role,
         "quick_action_student_log": has_academic_staff_role,
+        "quick_action_create_meeting": can_create_meeting,
+        "quick_action_create_school_event": can_create_school_event,
+        "quick_action_create_event": can_create_meeting or can_create_school_event,
         "can_open_desk": bool(roles & set(STAFF_ROLES)),
     }
 
@@ -154,7 +167,7 @@ def get_staff_home_header():
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
     cache = frappe.cache()
-    cache_key = f"staff_home:header:v4:{user}"
+    cache_key = f"staff_home:header:v5:{user}"
     cached = cache.get_value(cache_key)
     if cached:
         try:
@@ -173,7 +186,7 @@ def get_staff_home_header():
         "user": row.name,
         "first_name": first_name,
         "full_name": row.full_name,
-        "capabilities": _build_staff_home_capabilities(roles),
+        "capabilities": _build_staff_home_capabilities(roles, user=user),
     }
 
     cache.set_value(cache_key, frappe.as_json(payload), expires_in_sec=CACHE_TTL_SECONDS)

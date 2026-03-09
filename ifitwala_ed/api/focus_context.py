@@ -13,6 +13,9 @@ from ifitwala_ed.admission.applicant_review_workflow import (
     TARGET_DOCUMENT_ITEM,
     TARGET_HEALTH,
 )
+from ifitwala_ed.api.focus_actions_applicant_review import (
+    build_applicant_review_file_open_url,
+)
 from ifitwala_ed.api.focus_shared import (
     ACTION_POLICY_STAFF_SIGN,
     APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE,
@@ -252,6 +255,17 @@ def get_focus_context(
                 limit_page_length=1,
             )
             file_row = file_rows[0] if file_rows else {}
+            raw_file_url = (file_row.get("file_url") or "").strip()
+            preview_file_url = (
+                raw_file_url
+                if raw_file_url.startswith(("http://", "https://"))
+                else build_applicant_review_file_open_url(
+                    assignment=assignment_doc.name,
+                    focus_item_id=focus_item_id,
+                )
+                if raw_file_url
+                else None
+            )
             preview = {
                 "document_type": doc_row.get("document_type"),
                 "document_label": (
@@ -263,7 +277,7 @@ def get_focus_context(
                 ),
                 "review_status": doc_row.get("review_status"),
                 "review_notes": doc_row.get("review_notes"),
-                "file_url": file_row.get("file_url"),
+                "file_url": preview_file_url,
                 "file_name": file_row.get("file_name"),
                 "uploaded_at": str(file_row.get("creation")) if file_row.get("creation") else None,
             }
@@ -302,6 +316,17 @@ def get_focus_context(
                 limit_page_length=1,
             )
             file_row = file_rows[0] if file_rows else {}
+            raw_file_url = (file_row.get("file_url") or "").strip()
+            preview_file_url = (
+                raw_file_url
+                if raw_file_url.startswith(("http://", "https://"))
+                else build_applicant_review_file_open_url(
+                    assignment=assignment_doc.name,
+                    focus_item_id=focus_item_id,
+                )
+                if raw_file_url
+                else None
+            )
             preview = {
                 "document_type": row_item.get("document_type"),
                 "document_label": (
@@ -315,7 +340,7 @@ def get_focus_context(
                 "item_key": (row_item.get("item_key") or "").strip(),
                 "review_status": row_item.get("review_status"),
                 "review_notes": row_item.get("review_notes"),
-                "file_url": file_row.get("file_url"),
+                "file_url": preview_file_url,
                 "file_name": file_row.get("file_name"),
                 "uploaded_at": str(file_row.get("creation")) if file_row.get("creation") else None,
             }

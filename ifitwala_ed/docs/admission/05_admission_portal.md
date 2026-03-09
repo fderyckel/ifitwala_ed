@@ -498,6 +498,7 @@ ApplicantSnapshot {
 GET  /api/admissions/profile/:applicant
 POST /api/admissions/profile/update
 POST /api/admissions/profile/image/upload
+POST /api/admissions/profile/guardian/image/upload
 ```
 
 ### Returns
@@ -524,6 +525,10 @@ ApplicantProfilePayload {
 ### Rules
 
 * Profile update is applicant-scoped and server-validated.
+* Guardian rows (when enabled) are applicant-scoped and server-validated:
+  * required per row: first name, last name, personal email, mobile phone, photo
+  * personal/work emails must pass email validation
+  * mobile/work phones must pass phone validation
 * Profile image upload is applicant-scoped and mutable-status only.
 * Profile image upload must route through dispatcher classification:
   * `data_class = identity_image`
@@ -532,6 +537,7 @@ ApplicantProfilePayload {
   * `slot = profile_image`
   * `upload_source = SPA`
 * Uploaded profile image remains private and stored on `Student Applicant.applicant_image`.
+* Guardian photo upload remains private and returns a canonical file URL used by `Student Applicant Guardian.guardian_image`.
 
 ---
 
@@ -807,6 +813,7 @@ No business logic.
 
 * Maintain student profile fields required for promotion
 * Upload/update applicant-owned student image
+* Optionally maintain one-or-more guardian intake rows when enabled in `Admission Settings.show_guardians_in_admissions_profile`
 
 **Reads**
 
@@ -815,6 +822,7 @@ No business logic.
 **Writes**
 
 * profile update
+* guardian intake row update (when enabled)
 * profile image upload (governed)
 
 ---

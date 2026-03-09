@@ -545,14 +545,12 @@ class PolicyVersion(Document):
         if (user_row.get("user_type") or "").strip() != "System User":
             frappe.throw(_("Approved By must be a system user."))
 
-        if not frappe.has_permission("Policy Version", ptype="write", user=approver, doc=self):
+        write_users = _users_with_policy_version_write_access()
+        if approver not in write_users:
             frappe.throw(_("Approved By must have write access to this Policy Version."), frappe.PermissionError)
 
         policy_organization, policy_school = _get_policy_scope(self.institutional_policy)
-        eligible_users = _eligible_approver_users(
-            policy_organization=policy_organization,
-            policy_school=policy_school,
-        )
+        eligible_users = _eligible_approver_users(policy_organization=policy_organization, policy_school=policy_school)
         if approver in eligible_users:
             return
 

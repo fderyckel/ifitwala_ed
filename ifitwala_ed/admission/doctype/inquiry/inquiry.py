@@ -13,6 +13,7 @@ from frappe.model.document import Document
 from frappe.utils import cint, get_datetime, now_datetime
 
 from ifitwala_ed.admission.admission_utils import (
+    ADMISSIONS_ROLES,
     ensure_admissions_permission,
     notify_admission_manager,
     set_inquiry_deadlines,
@@ -111,6 +112,23 @@ class Inquiry(Document):
 
         if from_state not in allowed or to_state not in allowed[from_state]:
             frappe.throw(_("Invalid workflow state transition from {0} to {1}.").format(from_state, to_state))
+
+    def _ensure_contact_action_permission(self) -> str:
+        user = frappe.session.user
+        if not user or user == "Guest":
+            frappe.throw(_("You need to sign in to perform this action."), frappe.PermissionError)
+
+        roles = set(frappe.get_roles(user))
+        if user == "Administrator" or "System Manager" in roles or roles & ADMISSIONS_ROLES:
+            return user
+        if (self.assigned_to or "").strip() == user:
+            return user
+
+        frappe.throw(
+            _("Only the assigned user or Admissions/System staff can mark this Inquiry as contacted."),
+            frappe.PermissionError,
+        )
+        return user
 
     def _set_workflow_state(self, target_state: str, comment: str | None = None) -> bool:
         current = _normalize_inquiry_state(self.workflow_state)
@@ -260,6 +278,14 @@ class Inquiry(Document):
                 self.response_hours_from_assign = h2
                 self.db_set("response_hours_from_assign", h2, update_modified=False)
 
+        # 4) Hours from current resolver assignment -> first contact (lane KPI snapshot)
+        if self.resolver_assigned_at and not self.resolver_response_hours:
+            resolver_ok = get_datetime(self.resolver_assigned_at) <= get_datetime(self.first_contacted_at)
+            if resolver_ok:
+                h3 = self._hours_between(self.resolver_assigned_at, self.first_contacted_at)
+                self.resolver_response_hours = h3
+                self.db_set("resolver_response_hours", h3, update_modified=False)
+
     @frappe.whitelist()
     def create_contact_from_inquiry(self):
         if self.contact:
@@ -301,7 +327,7 @@ class Inquiry(Document):
 
     @frappe.whitelist()
     def mark_contacted(self, complete_todo=False):
-        ensure_admissions_permission()
+        self._ensure_contact_action_permission()
         prev_assignee = self.assigned_to
 
         self.add_comment(
@@ -324,9 +350,8 @@ class Inquiry(Document):
         # 🔎 Stamp response-time metrics immediately after state flip
         self.set_contact_metrics()
 
-        # Optionally clear assignment on the doc
-        if cint(complete_todo) and prev_assignee:
-            self.db_set("assigned_to", None, update_modified=False)
+        # Keep assigned_to as persistent assignee history for reporting/distribution analytics.
+        # complete_todo controls ToDo closure only, not assignee field erasure.
 
         # Recompute SLA and persist
         update_sla_status(self)
@@ -365,4 +390,44 @@ class Inquiry(Document):
                 if todo_name:
                     frappe.db.set_value("ToDo", todo_name, "status", "Closed", update_modified=False)
 
+            # Keep assignment history on Inquiry even when native assignment cleanup runs.
+            self.db_set("assigned_to", prev_assignee, update_modified=False)
+            self.assigned_to = prev_assignee
+
         return {"ok": True}
+
+
+def _is_inquiry_privileged_user(user: str) -> bool:
+    roles = set(frappe.get_roles(user))
+    return (
+        user == "Administrator"
+        or "System Manager" in roles
+        or "Academic Admin" in roles
+        or bool(roles & ADMISSIONS_ROLES)
+    )
+
+
+def get_permission_query_conditions(user=None):
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return "1=0"
+    if _is_inquiry_privileged_user(user):
+        return None
+
+    escaped_user = frappe.db.escape(user)
+    return f"`tabInquiry`.`assigned_to` = {escaped_user}"
+
+
+def has_permission(doc, user=None, permission_type="read"):
+    user = user or frappe.session.user
+    permission_type = (permission_type or "read").lower()
+    if not user or user == "Guest":
+        return False
+    if _is_inquiry_privileged_user(user):
+        return True
+    if permission_type != "read":
+        return False
+    if doc:
+        return (doc.assigned_to or "").strip() == user
+    # Allow doctype-level read check; row filtering is enforced by permission_query_conditions.
+    return True

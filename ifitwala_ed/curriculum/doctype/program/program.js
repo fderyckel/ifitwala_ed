@@ -263,7 +263,7 @@ function _update_remaining_weight_badge(frm) {
 	$wrap.find(".remaining-weight-badge").remove();
 
 	// 2) Prefer the toolbar right-side if available
-	//    Frappe v15 grid structure usually has:
+	//    Frappe v16 grid structure usually has:
 	//    .grid-toolbar
 	//      ├─ .grid-buttons (left)
 	//      └─ .grid-actions  (right)

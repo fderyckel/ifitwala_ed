@@ -57,12 +57,12 @@
    "reqd": 1
   },
   {
+   "description": "Optional. Leave empty to let the system auto-link or create a managed recommendation document type for this school scope.",
    "fieldname": "target_document_type",
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Target Document Type",
-   "options": "Applicant Document Type",
-   "reqd": 1
+   "options": "Applicant Document Type"
   },
   {
    "default": "1",
@@ -122,7 +122,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-01 00:00:00",
+ "modified": "2026-03-01 07:003:00",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Recommendation Template",

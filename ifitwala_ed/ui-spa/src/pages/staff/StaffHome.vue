@@ -86,6 +86,30 @@
 
 					<!-- Create student log uses overlay stack -->
 					<button
+						v-if="userCapabilities.quick_action_create_event"
+						type="button"
+						class="action-tile group"
+						@click="openCreateEvent"
+					>
+						<div class="action-tile__icon">
+							<FeatherIcon name="calendar" class="h-6 w-6" />
+						</div>
+						<div class="flex-1 min-w-0">
+							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+								Create event
+							</p>
+							<p class="truncate type-caption text-slate-token/70">
+								Create a meeting or school event
+							</p>
+						</div>
+						<FeatherIcon
+							name="chevron-right"
+							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+						/>
+					</button>
+
+					<!-- Create student log uses overlay stack -->
+					<button
 						v-if="userCapabilities.quick_action_student_log"
 						type="button"
 						class="action-tile group"
@@ -354,6 +378,7 @@ const visibleQuickActions = computed(() => quickActions.filter(isQuickActionVisi
 const hasVisibleQuickActions = computed(
 	() =>
 		Boolean(userCapabilities.value.quick_action_create_task) ||
+		Boolean(userCapabilities.value.quick_action_create_event) ||
 		Boolean(userCapabilities.value.quick_action_student_log) ||
 		visibleQuickActions.value.length > 0
 );
@@ -667,7 +692,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			{
 				label: 'Organizational Chart',
 				to: { name: 'staff-organization-chart' },
-				capability: 'analytics_hr',
 			},
 			{ label: 'Leave Balance', to: '/analytics/staff/leave-balance', capability: 'analytics_hr' },
 			{
@@ -772,6 +796,29 @@ function openCreateTask() {
 		prefillStudentGroup: null,
 		prefillDueDate: null,
 		prefillAvailableFrom: null,
+	});
+}
+
+/* OVERLAY: Event Quick Create --------------------------------- */
+function openCreateEvent() {
+	const canCreateMeeting = Boolean(userCapabilities.value.quick_action_create_meeting);
+	const canCreateSchoolEvent = Boolean(userCapabilities.value.quick_action_create_school_event);
+
+	if (!canCreateMeeting && !canCreateSchoolEvent) {
+		toast.create({
+			title: 'Not available',
+			text: 'You do not have permission to create events.',
+			icon: 'info',
+		});
+		return;
+	}
+
+	const lockEventType = canCreateMeeting !== canCreateSchoolEvent;
+	const eventType = canCreateMeeting ? 'meeting' : 'school_event';
+
+	overlay.open('event-quick-create', {
+		eventType: lockEventType ? eventType : null,
+		lockEventType,
 	});
 }
 

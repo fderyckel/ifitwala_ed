@@ -131,6 +131,7 @@ import { FeatherIcon } from 'frappe-ui';
 
 import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEvents';
 import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
+import { SIGNAL_CALENDAR_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 
 import OrgCommunicationQuickCreateModal from '@/components/communication/OrgCommunicationQuickCreateModal.vue';
 
@@ -379,6 +380,22 @@ function extractSchoolEventName(eventId?: string | null) {
 	return rest.join('::');
 }
 
+function asMetaText(value: unknown) {
+	if (value === null || value === undefined) return '';
+	return String(value).trim();
+}
+
+function resolveSchoolEventReference(info: EventClickArg) {
+	const ext = (info.event.extendedProps || {}) as Record<string, unknown>;
+	const meta = (ext.meta && typeof ext.meta === 'object' ? ext.meta : {}) as Record<
+		string,
+		unknown
+	>;
+	const referenceType = asMetaText(meta.reference_type ?? ext.reference_type);
+	const referenceName = asMetaText(meta.reference_name ?? ext.reference_name);
+	return { referenceType, referenceName };
+}
+
 function resolveEventId(info: EventClickArg) {
 	return (
 		info.event.id ||
@@ -452,6 +469,15 @@ function handleEventClick(info: EventClickArg) {
 		const schoolEventName = extractSchoolEventName(info.event.id);
 		if (!schoolEventName) return;
 
+		const { referenceType, referenceName } = resolveSchoolEventReference(info);
+		if (referenceType === 'Applicant Interview' && referenceName) {
+			overlay.open('admissions-interview-workspace', {
+				interview: referenceName,
+				schoolEvent: schoolEventName,
+			});
+			return;
+		}
+
 		overlay.open('school-event', { event: schoolEventName });
 		return;
 	}
@@ -484,6 +510,7 @@ function setupMediaWatcher() {
 
 const cleanupFns: Array<() => void> = [];
 let intervalHandle: number | null = null;
+let disposeCalendarInvalidate: (() => void) | null = null;
 
 function maybeAutoRefresh(reason: 'interval' | 'visibility') {
 	if (!lastUpdated.value) {
@@ -518,10 +545,14 @@ onMounted(() => {
 	setupMediaWatcher();
 	setupIntervals();
 	setupCalendarHeightListener();
+	disposeCalendarInvalidate = uiSignals.subscribe(SIGNAL_CALENDAR_INVALIDATE, () => {
+		refresh({ force: true, reason: 'manual' });
+	});
 });
 
 onBeforeUnmount(() => {
 	cleanupFns.forEach(fn => fn());
 	if (intervalHandle) clearInterval(intervalHandle);
+	if (disposeCalendarInvalidate) disposeCalendarInvalidate();
 });
 </script>

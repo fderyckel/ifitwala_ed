@@ -2,29 +2,31 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "field:code",
- "creation": "2026-02-01 00:00:00.000000",
+ "creation": "2026-02-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "code",
   "document_type_name",
   "belongs_to",
-  "organization",
-  "school",
   "classification_slot",
   "classification_data_class",
   "classification_purpose",
-  "classification_retention_policy",
+  "is_active",
   "is_required",
+  "column_break_iwom",
+  "organization",
+  "school",
+  "classification_retention_policy",
   "is_repeatable",
   "min_items_required",
-  "is_active",
   "description"
  ],
  "fields": [
   {
    "fieldname": "code",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Code",
    "reqd": 1,
    "unique": 1
@@ -32,6 +34,7 @@
   {
    "fieldname": "document_type_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Document Type Name",
    "reqd": 1
   },
@@ -90,6 +93,7 @@
   },
   {
    "default": "1",
+   "description": "if more than one document required, then is repeatable has to be checked. ",
    "fieldname": "min_items_required",
    "fieldtype": "Int",
    "label": "Min Items Required"
@@ -101,17 +105,23 @@
    "label": "Is Active"
   },
   {
+   "description": "Message that will be displayed for applicant on the admission portal. ",
    "fieldname": "description",
    "fieldtype": "Small Text",
    "label": "Description"
+  },
+  {
+   "fieldname": "column_break_iwom",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-01 00:05:03",
+ "modified": "2026-03-03 15:21:29.283338",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Document Type",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -163,6 +173,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

@@ -9,18 +9,25 @@ import os
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint, now_datetime
+from frappe.utils import cint, get_datetime, now_datetime
 
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
+    READ_LIKE_PERMISSION_TYPES,
+    build_admissions_file_scope_exists_sql,
     ensure_admissions_permission,
+    ensure_contact_dynamic_link,
+    ensure_contact_for_email,
     get_applicant_document_slot_spec,
     get_applicant_scope_ancestors,
     get_contact_primary_email,
+    has_scoped_staff_access_to_student_applicant,
+    is_admissions_file_staff_user,
     is_applicant_document_type_in_scope,
     normalize_email_value,
     sync_student_applicant_contact_binding,
 )
+from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
@@ -131,7 +138,6 @@ STUDENT_PROFILE_REQUIRED_FIELD_LABELS = (
     ("student_date_of_birth", "Date of Birth"),
     ("student_gender", "Student Gender"),
     ("student_mobile_number", "Mobile Number"),
-    ("student_joining_date", "Joining Date"),
     ("student_first_language", "First Language"),
     ("student_nationality", "Nationality"),
     ("residency_status", "Residency Status"),
@@ -337,6 +343,10 @@ class StudentApplicant(Document):
         if not before:
             return
 
+        if is_admissions_file_staff_user(user):
+            if not has_scoped_staff_access_to_student_applicant(user=user, student_applicant=self.name):
+                frappe.throw(_("You do not have permission to edit this Applicant."), frappe.PermissionError)
+
         status_for_edit = self.application_status
         if before.application_status != self.application_status and getattr(self.flags, "allow_status_change", False):
             status_for_edit = before.application_status
@@ -349,6 +359,15 @@ class StudentApplicant(Document):
             if is_system_manager and getattr(self.flags, "system_manager_override", False):
                 return
             if self._has_changes(before):
+                frappe.throw(_("Edits are not allowed when status is {0}.").format(status_for_edit))
+            return
+
+        # Staff precedence: if a user has admissions roles, evaluate against staff rules
+        # even when they also carry family/applicant roles (common in test/dev admins).
+        if is_admissions:
+            if not rules["staff"] and self._has_changes(before):
+                if getattr(self.flags, "allow_status_change", False) and self._only_status_changed(before):
+                    return
                 frappe.throw(_("Edits are not allowed when status is {0}.").format(status_for_edit))
             return
 
@@ -368,12 +387,6 @@ class StudentApplicant(Document):
             if not rules["family"] and self._has_changes(before):
                 frappe.throw(_("Family edits are not allowed when status is {0}.").format(status_for_edit))
             return
-
-        if is_admissions and not rules["staff"]:
-            if self._has_changes(before):
-                if getattr(self.flags, "allow_status_change", False) and self._only_status_changed(before):
-                    return
-                frappe.throw(_("Edits are not allowed when status is {0}.").format(status_for_edit))
 
     def _has_changes(self, before, ignore_fields=None):
         ignore = set(ignore_fields or [])
@@ -463,6 +476,8 @@ class StudentApplicant(Document):
         user = frappe.session.user
         roles = set(frappe.get_roles(user))
         if roles & DECISION_ROLES:
+            if not has_scoped_staff_access_to_student_applicant(user=user, student_applicant=self.name):
+                frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
             return user
         frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
 
@@ -471,6 +486,13 @@ class StudentApplicant(Document):
     ):
         if permission_checker:
             permission_checker()
+
+        if is_admissions_file_staff_user(frappe.session.user):
+            if not has_scoped_staff_access_to_student_applicant(
+                user=frappe.session.user,
+                student_applicant=self.name,
+            ):
+                frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
 
         if self.is_new():
             frappe.throw(_("Save the Student Applicant before changing status."))
@@ -651,6 +673,8 @@ class StudentApplicant(Document):
 
         if self.application_status != "Approved":
             frappe.throw(_("Applicant must be Approved before promotion."))
+        if not self.student_joining_date:
+            frappe.throw(_("Joining Date is required before promotion to Student."))
 
         if self.student:
             self._copy_health_profile_to_student_patient(self.student, require_profile=False)
@@ -748,10 +772,16 @@ class StudentApplicant(Document):
         for spec in guardian_specs:
             guardian = spec["guardian"]
             relationship = spec["relationship"]
+            contact_name = (spec.get("contact") or "").strip() or None
             user_name = self._ensure_guardian_user_and_roles(guardian)
             if user_name:
                 touched_users.add(user_name)
-            linked_guardians.append({"guardian": guardian, "relationship": relationship})
+            self._ensure_guardian_contact_links(
+                guardian=guardian,
+                student=student,
+                contact_name=contact_name,
+            )
+            linked_guardians.append({"guardian": guardian, "relationship": relationship, "contact": contact_name})
 
         added_guardians = self._ensure_student_guardian_links(student, linked_guardians)
 
@@ -813,21 +843,155 @@ class StudentApplicant(Document):
         seen = set()
         for row in rows:
             guardian_name = (row.get("guardian") or "").strip()
-            if not guardian_name or guardian_name in seen:
+            relationship = (row.get("relationship") or "").strip() or "Other"
+            contact_name = (row.get("contact") or "").strip() or None
+
+            if guardian_name:
+                if not frappe.db.exists("Guardian", guardian_name):
+                    frappe.throw(_("Guardian {0} does not exist.").format(guardian_name))
+                guardian_doc = frappe.get_doc("Guardian", guardian_name)
+                key = guardian_doc.name
+                if key in seen:
+                    continue
+                seen.add(key)
+                resolved.append(
+                    {
+                        "guardian": guardian_doc,
+                        "relationship": relationship,
+                        "contact": contact_name,
+                    }
+                )
                 continue
-            if not frappe.db.exists("Guardian", guardian_name):
-                frappe.throw(_("Guardian {0} does not exist.").format(guardian_name))
-            seen.add(guardian_name)
-            resolved.append(
-                {
-                    "guardian": frappe.get_doc("Guardian", guardian_name),
-                    "relationship": row.get("relationship") or "Other",
-                }
-            )
+
+            if self._is_empty_applicant_guardian_row(row):
+                continue
+
+            row_spec = self._create_or_reuse_guardian_from_profile_row(row)
+            key = row_spec["guardian"].name
+            if key in seen:
+                continue
+            seen.add(key)
+            row_spec["relationship"] = relationship
+            if contact_name and not row_spec.get("contact"):
+                row_spec["contact"] = contact_name
+            resolved.append(row_spec)
+
         if resolved:
             return resolved
         fallback = self._create_or_reuse_guardian_from_contact()
         return [fallback]
+
+    def _is_empty_applicant_guardian_row(self, row) -> bool:
+        fields = (
+            "guardian_first_name",
+            "guardian_last_name",
+            "guardian_email",
+            "guardian_mobile_phone",
+            "salutation",
+            "guardian_work_email",
+            "guardian_work_phone",
+            "employment_sector",
+            "work_place",
+            "guardian_designation",
+            "guardian_image",
+        )
+        return not any((row.get(field) or "").strip() for field in fields)
+
+    def _create_or_reuse_guardian_from_profile_row(self, row) -> dict:
+        first_name = (row.get("guardian_first_name") or "").strip()
+        last_name = (row.get("guardian_last_name") or "").strip()
+        email = normalize_email_value(row.get("guardian_email"))
+        mobile = (row.get("guardian_mobile_phone") or "").strip()
+
+        if not first_name:
+            frappe.throw(_("Guardian first name is required in applicant guardians."))
+        if not last_name:
+            frappe.throw(_("Guardian last name is required in applicant guardians."))
+        if not email:
+            frappe.throw(_("Guardian personal email is required in applicant guardians."))
+        if not mobile:
+            frappe.throw(_("Guardian mobile phone is required in applicant guardians."))
+
+        existing = frappe.db.get_value("Guardian", {"guardian_email": email}, "name")
+        if existing:
+            guardian = frappe.get_doc("Guardian", existing)
+            changed = False
+            if (guardian.guardian_first_name or "").strip() != first_name:
+                guardian.guardian_first_name = first_name
+                changed = True
+            if (guardian.guardian_last_name or "").strip() != last_name:
+                guardian.guardian_last_name = last_name
+                changed = True
+            if not (guardian.guardian_mobile_phone or "").strip():
+                guardian.guardian_mobile_phone = mobile
+                changed = True
+
+            profile_field_map = (
+                ("salutation", "salutation"),
+                ("guardian_gender", "guardian_gender"),
+                ("guardian_work_email", "guardian_work_email"),
+                ("guardian_work_phone", "guardian_work_phone"),
+                ("employment_sector", "employment_sector"),
+                ("work_place", "work_place"),
+                ("guardian_designation", "guardian_designation"),
+                ("guardian_image", "guardian_image"),
+            )
+            for row_field, guardian_field in profile_field_map:
+                incoming = (row.get(row_field) or "").strip()
+                if incoming and not (guardian.get(guardian_field) or "").strip():
+                    guardian.set(guardian_field, incoming)
+                    changed = True
+
+            incoming_primary = cint(row.get("is_primary_guardian") or 0)
+            if incoming_primary and cint(guardian.get("is_primary_guardian") or 0) != 1:
+                guardian.is_primary_guardian = 1
+                changed = True
+
+            incoming_financial = cint(row.get("is_financial_guardian") or 0)
+            if incoming_financial and cint(guardian.get("is_financial_guardian") or 0) != 1:
+                guardian.is_financial_guardian = 1
+                changed = True
+
+            if changed:
+                guardian.save(ignore_permissions=True)
+
+            contact_name = (row.get("contact") or "").strip() or None
+            if not contact_name:
+                contact_name = (
+                    frappe.db.get_value(
+                        "Contact Email",
+                        {"email_id": email},
+                        "parent",
+                    )
+                    or None
+                )
+            return {"guardian": guardian, "relationship": row.get("relationship") or "Other", "contact": contact_name}
+
+        guardian = frappe.get_doc(
+            {
+                "doctype": "Guardian",
+                "salutation": (row.get("salutation") or "").strip() or None,
+                "guardian_first_name": first_name,
+                "guardian_last_name": last_name,
+                "guardian_gender": (row.get("guardian_gender") or "").strip() or None,
+                "guardian_email": email,
+                "guardian_mobile_phone": mobile,
+                "guardian_work_email": (row.get("guardian_work_email") or "").strip() or None,
+                "guardian_work_phone": (row.get("guardian_work_phone") or "").strip() or None,
+                "employment_sector": (row.get("employment_sector") or "").strip() or None,
+                "work_place": (row.get("work_place") or "").strip() or None,
+                "guardian_designation": (row.get("guardian_designation") or "").strip() or None,
+                "guardian_image": (row.get("guardian_image") or "").strip() or None,
+                "is_primary_guardian": cint(row.get("is_primary_guardian") or 0),
+                "is_financial_guardian": cint(row.get("is_financial_guardian") or 0),
+            }
+        ).insert(ignore_permissions=True)
+
+        return {
+            "guardian": guardian,
+            "relationship": row.get("relationship") or "Other",
+            "contact": (row.get("contact") or "").strip() or None,
+        }
 
     def _create_or_reuse_guardian_from_contact(self) -> dict:
         email = normalize_email_value(self.applicant_email) or normalize_email_value(self.portal_account_email)
@@ -867,7 +1031,11 @@ class StudentApplicant(Document):
             if not guardian.guardian_mobile_phone:
                 guardian.guardian_mobile_phone = mobile
                 guardian.save(ignore_permissions=True)
-            return {"guardian": guardian, "relationship": "Other"}
+            return {
+                "guardian": guardian,
+                "relationship": "Other",
+                "contact": (self.applicant_contact or "").strip() or None,
+            }
 
         first_name = (contact_first_name or "").strip() or (self.first_name or "").strip() or _("Guardian")
         last_name = (contact_last_name or "").strip() or (self.last_name or "").strip() or _("Contact")
@@ -880,7 +1048,48 @@ class StudentApplicant(Document):
                 "guardian_mobile_phone": mobile,
             }
         ).insert(ignore_permissions=True)
-        return {"guardian": guardian, "relationship": "Other"}
+        return {
+            "guardian": guardian,
+            "relationship": "Other",
+            "contact": (self.applicant_contact or "").strip() or None,
+        }
+
+    def _ensure_guardian_contact_links(self, *, guardian, student, contact_name: str | None = None):
+        resolved_contact = (contact_name or "").strip()
+        if not resolved_contact:
+            resolved_contact = (
+                frappe.db.get_value(
+                    "Contact Email",
+                    {"email_id": normalize_email_value(guardian.guardian_email)},
+                    "parent",
+                )
+                or ""
+            ).strip()
+        if not resolved_contact:
+            resolved_contact = ensure_contact_for_email(
+                first_name=guardian.guardian_first_name,
+                last_name=guardian.guardian_last_name,
+                email=guardian.guardian_email,
+                phone=guardian.guardian_mobile_phone,
+            )
+        if not resolved_contact:
+            return
+
+        ensure_contact_dynamic_link(
+            contact_name=resolved_contact,
+            link_doctype="Student Applicant",
+            link_name=self.name,
+        )
+        ensure_contact_dynamic_link(
+            contact_name=resolved_contact,
+            link_doctype="Guardian",
+            link_name=guardian.name,
+        )
+        ensure_contact_dynamic_link(
+            contact_name=resolved_contact,
+            link_doctype="Student",
+            link_name=student.name,
+        )
 
     def _ensure_guardian_user_and_roles(self, guardian):
         if not guardian.user:
@@ -1015,6 +1224,10 @@ class StudentApplicant(Document):
 
         for fieldname in HEALTH_PROFILE_COPY_FIELDS:
             student_patient.set(fieldname, profile.get(fieldname))
+
+        # File attachments require a persisted parent name; ensure new patients are inserted first.
+        if not student_patient.name:
+            student_patient.insert(ignore_permissions=True)
 
         student_patient.set("vaccinations", [])
         for index, row in enumerate(profile.get("vaccinations") or []):
@@ -1451,6 +1664,16 @@ class StudentApplicant(Document):
             issues = ["Applicant readiness requirements are not met."]
         frappe.throw("\n".join(issues))
 
+    def _is_health_required_for_approval(self) -> bool:
+        school_name = (self.school or "").strip()
+        if not school_name:
+            return True
+
+        required_value = frappe.get_cached_value("School", school_name, "require_health_profile_for_approval")
+        if required_value is None:
+            return True
+        return bool(cint(required_value))
+
     def has_required_policies(self):
         if not self.organization:
             return {"ok": False, "missing": [], "required": [], "rows": []}
@@ -1614,6 +1837,16 @@ class StudentApplicant(Document):
                 min_items_required = 1
             required_counts[row["name"]] = max(1, min_items_required)
 
+        def _build_file_open_url(file_row: dict | None) -> str | None:
+            if not file_row:
+                return None
+            return resolve_admissions_file_open_url(
+                file_name=file_row.get("name"),
+                file_url=file_row.get("file_url"),
+                context_doctype="Student Applicant",
+                context_name=self.name,
+            )
+
         document_rows = frappe.get_all(
             "Applicant Document",
             filters={"student_applicant": self.name},
@@ -1656,7 +1889,7 @@ class StudentApplicant(Document):
                     "attached_to_doctype": "Applicant Document Item",
                     "attached_to_name": ["in", item_names],
                 },
-                fields=["attached_to_name", "file_url", "file_name", "creation", "owner"],
+                fields=["name", "attached_to_name", "file_url", "file_name", "creation", "owner"],
                 order_by="creation desc",
             )
             for row_file in file_rows:
@@ -1673,7 +1906,7 @@ class StudentApplicant(Document):
                     "attached_to_doctype": "Applicant Document",
                     "attached_to_name": ["in", document_names],
                 },
-                fields=["attached_to_name", "file_url", "file_name", "creation", "owner"],
+                fields=["name", "attached_to_name", "file_url", "file_name", "creation", "owner"],
                 order_by="creation desc",
             )
             for row_file in legacy_rows:
@@ -1699,7 +1932,7 @@ class StudentApplicant(Document):
                     "reviewed_on": row_item.get("reviewed_on"),
                     "uploaded_by": latest_file.get("owner"),
                     "uploaded_at": latest_file.get("creation"),
-                    "file_url": latest_file.get("file_url"),
+                    "file_url": _build_file_open_url(latest_file),
                     "file_name": latest_file.get("file_name"),
                     "modified": row_item.get("modified"),
                 }
@@ -1749,7 +1982,7 @@ class StudentApplicant(Document):
                             "reviewed_on": document_row.get("reviewed_on"),
                             "uploaded_by": legacy_file.get("owner"),
                             "uploaded_at": legacy_file.get("creation"),
-                            "file_url": legacy_file.get("file_url"),
+                            "file_url": _build_file_open_url(legacy_file),
                             "file_name": legacy_file.get("file_name"),
                             "modified": document_row.get("modified"),
                         }
@@ -1759,13 +1992,35 @@ class StudentApplicant(Document):
             approved_items = [row for row in uploaded_items if row.get("review_status") == "Approved"]
             uploaded_count = len(uploaded_items)
             approved_count = len(approved_items)
+            document_review_status = (document_row.get("review_status") or "Pending").strip() or "Pending"
+            document_marked_approved = document_review_status == "Approved"
+            meets_item_approval_requirement = approved_count >= required_count
+            is_approved_for_readiness = document_marked_approved or meets_item_approval_requirement
 
             if uploaded_count < required_count:
                 missing.append(label)
-            elif approved_count < required_count:
+                review_status = "Missing"
+            elif is_approved_for_readiness:
+                review_status = "Approved"
+            else:
                 unapproved.append(label)
+                review_status = "Pending"
 
-            review_status = document_row.get("review_status") or "Pending"
+            reviewed_by = document_row.get("reviewed_by")
+            reviewed_on = document_row.get("reviewed_on")
+            if review_status == "Approved" and (not reviewed_by or not reviewed_on):
+                latest_item_review = sorted(
+                    [row_item for row_item in approved_items if row_item.get("reviewed_on")],
+                    key=lambda row_item: row_item.get("reviewed_on") or "",
+                    reverse=True,
+                )
+                if latest_item_review:
+                    latest_review_row = latest_item_review[0]
+                    if not reviewed_by:
+                        reviewed_by = latest_review_row.get("reviewed_by")
+                    if not reviewed_on:
+                        reviewed_on = latest_review_row.get("reviewed_on")
+
             latest_uploaded_item = {}
             if uploaded_items:
                 latest_uploaded_item = sorted(
@@ -1783,8 +2038,8 @@ class StudentApplicant(Document):
                     "uploaded_count": uploaded_count,
                     "approved_count": approved_count,
                     "review_status": review_status,
-                    "reviewed_by": document_row.get("reviewed_by"),
-                    "reviewed_on": document_row.get("reviewed_on"),
+                    "reviewed_by": reviewed_by,
+                    "reviewed_on": reviewed_on,
                     "uploaded_by": latest_uploaded_item.get("uploaded_by"),
                     "uploaded_at": latest_uploaded_item.get("uploaded_at"),
                     "file_url": latest_uploaded_item.get("file_url"),
@@ -1798,7 +2053,7 @@ class StudentApplicant(Document):
         for document_row in document_rows:
             document_type = document_row.get("document_type")
             meta = type_map.get(document_type) or {}
-            label = (
+            document_label = (
                 document_row.get("document_label")
                 or meta.get("code")
                 or meta.get("document_type_name")
@@ -1823,7 +2078,7 @@ class StudentApplicant(Document):
                             "reviewed_on": document_row.get("reviewed_on"),
                             "uploaded_by": legacy_file.get("owner"),
                             "uploaded_at": legacy_file.get("creation"),
-                            "file_url": legacy_file.get("file_url"),
+                            "file_url": _build_file_open_url(legacy_file),
                             "file_name": legacy_file.get("file_name"),
                             "modified": document_row.get("modified"),
                         }
@@ -1831,34 +2086,48 @@ class StudentApplicant(Document):
 
             uploaded_items = [row for row in item_group if row.get("file_url")]
             approved_items = [row for row in uploaded_items if row.get("review_status") == "Approved"]
-            latest_uploaded_item = {}
-            if uploaded_items:
-                latest_uploaded_item = sorted(
-                    uploaded_items,
-                    key=lambda row_item: row_item.get("uploaded_at") or "",
-                    reverse=True,
-                )[0]
-            uploaded_rows.append(
-                {
-                    "applicant_document": document_row.get("name"),
-                    "document_type": document_type,
-                    "label": label,
-                    "is_required": bool(meta.get("is_required")),
-                    "required_count": required_count if cint(meta.get("is_required")) else 0,
-                    "uploaded_count": len(uploaded_items),
-                    "approved_count": len(approved_items),
-                    "is_repeatable": bool(meta.get("is_repeatable")),
-                    "review_status": document_row.get("review_status") or "Pending",
-                    "reviewed_by": document_row.get("reviewed_by"),
-                    "reviewed_on": document_row.get("reviewed_on"),
-                    "uploaded_by": latest_uploaded_item.get("uploaded_by"),
-                    "uploaded_at": latest_uploaded_item.get("uploaded_at"),
-                    "file_url": latest_uploaded_item.get("file_url"),
-                    "file_name": latest_uploaded_item.get("file_name"),
-                    "modified": document_row.get("modified"),
-                    "items": item_group,
-                }
-            )
+            for uploaded_item in uploaded_items:
+                item_label = (
+                    (uploaded_item.get("item_label") or "").strip()
+                    or (uploaded_item.get("item_key") or "").strip()
+                    or (uploaded_item.get("name") or "").strip()
+                )
+                row_label = document_label
+                if item_label and item_label.lower() != str(document_label or "").strip().lower():
+                    row_label = _("{0} — {1}").format(document_label, item_label)
+
+                uploaded_rows.append(
+                    {
+                        "applicant_document": document_row.get("name"),
+                        "applicant_document_item": uploaded_item.get("name"),
+                        "document_type": document_type,
+                        "label": row_label,
+                        "document_label": document_label,
+                        "item_key": uploaded_item.get("item_key"),
+                        "item_label": uploaded_item.get("item_label"),
+                        "is_required": bool(meta.get("is_required")),
+                        "required_count": required_count if cint(meta.get("is_required")) else 0,
+                        "uploaded_count": len(uploaded_items),
+                        "approved_count": len(approved_items),
+                        "is_repeatable": bool(meta.get("is_repeatable")),
+                        "review_status": uploaded_item.get("review_status") or "Pending",
+                        "reviewed_by": uploaded_item.get("reviewed_by"),
+                        "reviewed_on": uploaded_item.get("reviewed_on"),
+                        "uploaded_by": uploaded_item.get("uploaded_by"),
+                        "uploaded_at": uploaded_item.get("uploaded_at"),
+                        "file_url": uploaded_item.get("file_url"),
+                        "file_name": uploaded_item.get("file_name"),
+                        "modified": uploaded_item.get("modified") or document_row.get("modified"),
+                    }
+                )
+
+        uploaded_rows.sort(
+            key=lambda row: (
+                row.get("uploaded_at") or "",
+                row.get("modified") or "",
+            ),
+            reverse=True,
+        )
 
         return {
             "ok": not missing and not unapproved,
@@ -1945,12 +2214,89 @@ class StudentApplicant(Document):
         rows = frappe.get_all(
             "Applicant Interview",
             filters={"student_applicant": self.name},
-            fields=["name", "interview_date", "interview_type"],
-            order_by="interview_date desc, modified desc",
-            limit_page_length=5,
+            fields=[
+                "name",
+                "interview_date",
+                "interview_start",
+                "interview_end",
+                "interview_type",
+                "outcome_impression",
+            ],
+            order_by="modified desc",
+            limit_page_length=20,
+        )
+        rows.sort(
+            key=lambda row: (
+                get_datetime(row.get("interview_start"))
+                if row.get("interview_start")
+                else get_datetime(f"{row.get('interview_date')} 00:00:00")
+                if row.get("interview_date")
+                else get_datetime("1900-01-01 00:00:00")
+            ),
+            reverse=True,
         )
         count = frappe.db.count("Applicant Interview", {"student_applicant": self.name})
-        return {"ok": count >= 1, "count": count, "items": rows}
+        recent_rows = rows[:5]
+        interview_names = [row.get("name") for row in recent_rows if row.get("name")]
+
+        interviewer_rows = []
+        if interview_names:
+            interviewer_rows = frappe.get_all(
+                "Applicant Interviewer",
+                filters={
+                    "parent": ["in", interview_names],
+                    "parenttype": "Applicant Interview",
+                    "parentfield": "interviewers",
+                },
+                fields=["parent", "interviewer", "idx"],
+                order_by="parent asc, idx asc",
+            )
+
+        interviewer_ids = sorted(
+            {
+                (row.get("interviewer") or "").strip()
+                for row in interviewer_rows
+                if (row.get("interviewer") or "").strip()
+            }
+        )
+        interviewer_name_by_user: dict[str, str] = {}
+        if interviewer_ids:
+            user_rows = frappe.get_all(
+                "User",
+                filters={"name": ["in", interviewer_ids]},
+                fields=["name", "full_name"],
+            )
+            for user_row in user_rows:
+                user_id = (user_row.get("name") or "").strip()
+                if not user_id:
+                    continue
+                full_name = (user_row.get("full_name") or "").strip()
+                interviewer_name_by_user[user_id] = full_name or user_id
+
+        interviewers_by_interview: dict[str, list[dict]] = {}
+        for interviewer_row in interviewer_rows:
+            interview_name = (interviewer_row.get("parent") or "").strip()
+            user_id = (interviewer_row.get("interviewer") or "").strip()
+            if not interview_name or not user_id:
+                continue
+            label = interviewer_name_by_user.get(user_id) or user_id
+            interviewers_by_interview.setdefault(interview_name, []).append(
+                {
+                    "user": user_id,
+                    "label": label,
+                }
+            )
+
+        items = []
+        for row in recent_rows:
+            interview_name = (row.get("name") or "").strip()
+            interviewers = list(interviewers_by_interview.get(interview_name, []))
+            item = dict(row)
+            item["interviewers"] = interviewers
+            item["interviewer_labels"] = [entry.get("label") for entry in interviewers if entry.get("label")]
+            items.append(item)
+
+        return {"ok": count >= 1, "count": count, "items": items}
 
     def has_required_recommendations(self):
         default_payload = {
@@ -1990,16 +2336,20 @@ class StudentApplicant(Document):
         policies = self.has_required_policies()
         documents = self.has_required_documents()
         health = self.health_review_complete()
+        health_required_for_approval = self._is_health_required_for_approval()
+        health_payload = dict(health or {})
+        health_payload["required_for_approval"] = health_required_for_approval
         interviews = self.has_required_interviews()
         profile = self.has_required_profile_information()
         recommendations = self.has_required_recommendations()
         review_assignments = self.get_review_assignments_summary()
 
+        health_ok_for_approval = bool(health_payload.get("ok")) if health_required_for_approval else True
         ready = all(
             [
                 policies.get("ok"),
                 documents.get("ok"),
-                health.get("ok"),
+                health_ok_for_approval,
                 profile.get("ok"),
                 recommendations.get("ok"),
             ]
@@ -2015,8 +2365,8 @@ class StudentApplicant(Document):
                     issues.append(_("Missing policy acknowledgements: {0}.").format(", ".join(missing)))
                 else:
                     issues.append(_("Missing required policy acknowledgements."))
-        if not health.get("ok"):
-            status = health.get("status") or "missing"
+        if health_required_for_approval and not health_payload.get("ok"):
+            status = health_payload.get("status") or "missing"
             if status == "needs_follow_up":
                 issues.append(_("Health review requires follow-up."))
             else:
@@ -2048,7 +2398,7 @@ class StudentApplicant(Document):
         return {
             "policies": policies,
             "documents": documents,
-            "health": health,
+            "health": health_payload,
             "interviews": interviews,
             "profile": profile,
             "recommendations": recommendations,
@@ -2107,3 +2457,98 @@ def school_by_organization_query(doctype, txt, searchfield, start, page_len, fil
         """,
         (organization, search_txt, start, page_len),
     )
+
+
+def get_permission_query_conditions(user: str | None = None) -> str | None:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return "1=0"
+
+    conditions: list[str] = []
+    if is_admissions_file_staff_user(resolved_user):
+        staff_condition = build_admissions_file_scope_exists_sql(
+            user=resolved_user,
+            student_applicant_expr_sql="`tabStudent Applicant`.`name`",
+        )
+        if staff_condition is None:
+            return None
+        if staff_condition != "1=0":
+            conditions.append(f"({staff_condition})")
+
+    roles = set(frappe.get_roles(resolved_user))
+    if ADMISSIONS_APPLICANT_ROLE in roles:
+        escaped_user = frappe.db.escape(resolved_user)
+        conditions.append(
+            "("
+            f"`tabStudent Applicant`.`applicant_user` = {escaped_user} "
+            f"OR `tabStudent Applicant`.`portal_account_email` = {escaped_user} "
+            f"OR `tabStudent Applicant`.`applicant_email` = {escaped_user}"
+            ")"
+        )
+
+    return " OR ".join(conditions) if conditions else "1=0"
+
+
+def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    op = (ptype or "read").lower()
+
+    if not resolved_user or resolved_user == "Guest":
+        return False
+
+    if is_admissions_file_staff_user(resolved_user):
+        staff_ops = READ_LIKE_PERMISSION_TYPES | {"write", "create", "delete", "submit", "cancel", "amend"}
+        if op not in staff_ops:
+            return False
+        if op == "create":
+            roles = set(frappe.get_roles(resolved_user))
+            return resolved_user == "Administrator" or "System Manager" in roles or bool(roles & ADMISSIONS_ROLES)
+        if not doc:
+            return True
+        applicant_name = _resolve_student_applicant_name(doc)
+        return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=applicant_name)
+
+    roles = set(frappe.get_roles(resolved_user))
+    if ADMISSIONS_APPLICANT_ROLE not in roles:
+        return False
+
+    applicant_ops = READ_LIKE_PERMISSION_TYPES | {"write"}
+    if op not in applicant_ops:
+        return False
+
+    if not doc:
+        return op in READ_LIKE_PERMISSION_TYPES
+
+    return _is_applicant_self_user(resolved_user, doc)
+
+
+def _resolve_student_applicant_name(doc) -> str:
+    if isinstance(doc, str):
+        return (doc or "").strip()
+    if isinstance(doc, dict):
+        return (doc.get("name") or "").strip()
+    return (getattr(doc, "name", None) or "").strip()
+
+
+def _is_applicant_self_user(user: str, doc) -> bool:
+    applicant_name = _resolve_student_applicant_name(doc)
+    if not applicant_name:
+        return False
+
+    row = frappe.db.get_value(
+        "Student Applicant",
+        applicant_name,
+        ["applicant_user", "portal_account_email", "applicant_email"],
+        as_dict=True,
+    )
+    if not row:
+        return False
+
+    if (row.get("applicant_user") or "").strip() == user:
+        return True
+
+    normalized_user = normalize_email_value(user)
+    return normalized_user in {
+        normalize_email_value(row.get("portal_account_email")),
+        normalize_email_value(row.get("applicant_email")),
+    }

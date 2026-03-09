@@ -85,9 +85,13 @@
 					</div>
 					<div>Current status: {{ assignment.preview.review_status || 'Pending' }}</div>
 					<div v-if="assignment.preview.file_url">
-						<a :href="assignment.preview.file_url" target="_blank" rel="noopener noreferrer"
-							>Open file</a
+						<button
+							type="button"
+							class="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-jacaranda hover:text-jacaranda"
+							@click="openPreviewFile"
 						>
+							Open file
+						</button>
 					</div>
 				</div>
 
@@ -107,10 +111,33 @@
 		<div class="card-surface p-4">
 			<div class="type-body font-medium">Decision</div>
 			<div class="mt-3">
-				<select v-model="decision" class="if-input w-full" :disabled="busy">
-					<option value="">Select a decision</option>
-					<option v-for="opt in decisionOptions" :key="opt" :value="opt">{{ opt }}</option>
-				</select>
+				<label class="block">
+					<span class="sr-only">Decision select</span>
+					<div
+						class="relative rounded-xl border border-line-soft bg-white shadow-sm transition hover:border-jacaranda/60 focus-within:border-jacaranda focus-within:ring-2 focus-within:ring-jacaranda/25"
+					>
+						<select
+							v-model="decision"
+							class="w-full appearance-none rounded-xl bg-transparent px-4 py-3 pr-10 text-base text-ink cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+							:disabled="busy"
+						>
+							<option value="">Select a decision</option>
+							<option v-for="opt in decisionOptions" :key="opt" :value="opt">{{ opt }}</option>
+						</select>
+						<span
+							class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-token/70"
+							aria-hidden="true"
+						>
+							<svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
+								<path
+									fill-rule="evenodd"
+									d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.12l3.71-3.9a.75.75 0 1 1 1.08 1.04l-4.25 4.47a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+						</span>
+					</div>
+				</label>
 			</div>
 			<div class="mt-3">
 				<textarea
@@ -130,8 +157,8 @@
 				<button type="button" class="btn btn-quiet" @click="emitClose">Close</button>
 				<button
 					type="button"
-					class="btn btn-primary"
-					:disabled="busy || submittedOnce || !canSubmit"
+					class="inline-flex items-center rounded-full bg-jacaranda px-5 py-2 type-button-label text-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-strong disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+					:disabled="busy || submittedOnce"
 					@click="submitDecision"
 				>
 					{{ busy ? 'Saving…' : 'Submit decision' }}
@@ -149,7 +176,7 @@
 				>
 					<div class="type-meta text-muted">
 						{{ row.reviewer || 'Reviewer' }} • {{ row.decision || '—' }} •
-						{{ row.decided_on || '—' }}
+						{{ formatReviewTimestamp(row.decided_on) }}
 					</div>
 					<div v-if="row.notes" class="type-body mt-1">{{ row.notes }}</div>
 				</div>
@@ -202,7 +229,6 @@ const targetLabel = computed(() => {
 });
 
 const decisionOptions = computed(() => assignment.value?.decision_options || []);
-const canSubmit = computed(() => Boolean(decision.value && assignment.value?.name));
 const previousReviews = computed(() => assignment.value?.previous_reviews || []);
 const canClaim = computed(() =>
 	Boolean(assignment.value?.can_claim && assignment.value?.assigned_to_role)
@@ -253,6 +279,12 @@ function openInDesk() {
 	window.open(deskUrl.value, '_blank', 'noopener');
 }
 
+function openPreviewFile() {
+	const fileUrl = assignment.value?.preview?.file_url;
+	if (!fileUrl) return;
+	window.open(fileUrl, '_blank', 'noopener');
+}
+
 function newClientRequestId(prefix = 'applicant_review') {
 	return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
@@ -260,6 +292,63 @@ function newClientRequestId(prefix = 'applicant_review') {
 function errorMessage(err: unknown): string {
 	if (err instanceof Error && err.message) return err.message;
 	return __('Please try again.');
+}
+
+function resolveAppLocale(): string | undefined {
+	if (typeof window === 'undefined') return undefined;
+	const globalAny = window as unknown as Record<string, any>;
+	const bootLang = String(globalAny.frappe?.boot?.lang || '').trim();
+	if (bootLang) return bootLang.replace('_', '-');
+	const htmlLang = document.documentElement.lang?.trim();
+	if (htmlLang) return htmlLang.replace('_', '-');
+	return navigator.languages?.[0] || navigator.language || undefined;
+}
+
+function resolveSiteTimeZone(): string | undefined {
+	if (typeof window === 'undefined') return undefined;
+	const globalAny = window as unknown as Record<string, any>;
+	const siteTz = String(globalAny.frappe?.boot?.sysdefaults?.time_zone || '').trim();
+	return siteTz || undefined;
+}
+
+function parseDateTime(value: string): Date | null {
+	const raw = String(value || '').trim();
+	if (!raw) return null;
+	const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+	const parsed = new Date(normalized);
+	if (!Number.isNaN(parsed.getTime())) return parsed;
+	const fallback = new Date(raw);
+	return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function formatReviewTimestamp(value?: string | null): string {
+	if (!value) return '—';
+	const parsed = parseDateTime(value);
+	if (!parsed) return value;
+
+	try {
+		const formatter = new Intl.DateTimeFormat(resolveAppLocale(), {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'short',
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false,
+			timeZone: resolveSiteTimeZone(),
+		});
+		const parts = formatter.formatToParts(parsed);
+		const weekday = parts.find(part => part.type === 'weekday')?.value;
+		const day = parts.find(part => part.type === 'day')?.value;
+		const month = parts.find(part => part.type === 'month')?.value;
+		const hour = parts.find(part => part.type === 'hour')?.value;
+		const minute = parts.find(part => part.type === 'minute')?.value;
+		if (weekday && day && month && hour && minute) {
+			return `${weekday} ${day} ${month} ${hour}:${minute}`;
+		}
+		return formatter.format(parsed);
+	} catch {
+		return value;
+	}
 }
 
 async function submitDecision() {

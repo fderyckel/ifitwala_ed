@@ -48,22 +48,34 @@ BLOCKER_LABELS = {
     "no_reviewer_assigned": "No Reviewer Assigned",
 }
 
+INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
+
 
 def _ensure_cockpit_access(user: str | None = None) -> str:
-    user = user or frappe.session.user
-    if not user or user == "Guest":
+    resolved_user = _to_text(user or frappe.session.user)
+    if not resolved_user or resolved_user.lower() in INVALID_SESSION_USERS:
         frappe.throw(_("You need to sign in to access Admissions Cockpit."), frappe.PermissionError)
 
-    roles = set(frappe.get_roles(user))
+    roles = _get_roles_for_user(resolved_user)
     if roles & ALLOWED_COCKPIT_ROLES:
-        return user
+        return resolved_user
 
     frappe.throw(_("You do not have permission to access Admissions Cockpit."), frappe.PermissionError)
-    return user
+    return resolved_user
 
 
 def _to_text(value) -> str:
     return str(value or "").strip()
+
+
+def _get_roles_for_user(user: str) -> set[str]:
+    try:
+        return set(frappe.get_roles(user))
+    except Exception as exc:
+        message = _to_text(exc).lower()
+        if "not found" in message and _to_text(user).lower() in INVALID_SESSION_USERS:
+            frappe.throw(_("You need to sign in to access Admissions Cockpit."), frappe.PermissionError)
+        raise
 
 
 def _to_int(value, default: int) -> int:
@@ -205,6 +217,7 @@ def _empty_readiness_snapshot() -> dict:
         },
         "health": {
             "ok": False,
+            "required_for_approval": True,
             "status": "missing",
             "profile_name": None,
             "review_status": None,
@@ -270,6 +283,7 @@ def _build_health_state(applicant_names: list[str]) -> dict[str, dict]:
         if not profile_row:
             health_state_by_applicant[applicant_name] = {
                 "ok": False,
+                "required_for_approval": True,
                 "status": "missing",
                 "profile_name": None,
                 "review_status": None,
@@ -294,6 +308,7 @@ def _build_health_state(applicant_names: list[str]) -> dict[str, dict]:
 
         health_state_by_applicant[applicant_name] = {
             "ok": is_ok,
+            "required_for_approval": True,
             "status": status,
             "profile_name": _to_text(profile_row.get("name")) or None,
             "review_status": review_status or None,
@@ -669,7 +684,31 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
     return out
 
 
-def _build_issues(*, policies: dict, documents: dict, health: dict, profile: dict) -> list[str]:
+def _build_health_requirement_by_school(applicant_rows: list[dict]) -> dict[str, bool]:
+    school_names = sorted({_to_text(row.get("school")) for row in applicant_rows if _to_text(row.get("school"))})
+    if not school_names:
+        return {}
+
+    rows = frappe.get_all(
+        "School",
+        filters={"name": ["in", school_names]},
+        fields=["name", "require_health_profile_for_approval"],
+        limit_page_length=len(school_names),
+    )
+
+    out: dict[str, bool] = {}
+    for row in rows:
+        school_name = _to_text(row.get("name"))
+        if not school_name:
+            continue
+        required_value = row.get("require_health_profile_for_approval")
+        out[school_name] = True if required_value is None else bool(cint(required_value))
+    return out
+
+
+def _build_issues(
+    *, policies: dict, documents: dict, health: dict, profile: dict, health_required_for_approval: bool
+) -> list[str]:
     issues: list[str] = []
 
     if not policies.get("ok"):
@@ -685,7 +724,7 @@ def _build_issues(*, policies: dict, documents: dict, health: dict, profile: dic
             else:
                 issues.append(_("Missing required policy acknowledgements."))
 
-    if not health.get("ok"):
+    if health_required_for_approval and not health.get("ok"):
         status = _to_text(health.get("status")) or "missing"
         if status == "needs_follow_up":
             issues.append(_("Health review requires follow-up."))
@@ -720,6 +759,7 @@ def _build_readiness_batch(applicant_rows: list[dict]) -> dict[str, dict]:
     policies_by_applicant = _build_policy_state(applicant_rows, applicant_names)
     documents_by_applicant = _build_documents_state(applicant_rows, applicant_names)
     health_by_applicant = _build_health_state(applicant_names)
+    health_requirement_by_school = _build_health_requirement_by_school(applicant_rows)
 
     readiness_by_applicant: dict[str, dict] = {}
 
@@ -744,6 +784,7 @@ def _build_readiness_batch(applicant_rows: list[dict]) -> dict[str, dict]:
         }
         health = health_by_applicant.get(applicant_name) or {
             "ok": False,
+            "required_for_approval": True,
             "status": "missing",
             "profile_name": None,
             "review_status": None,
@@ -754,8 +795,13 @@ def _build_readiness_batch(applicant_rows: list[dict]) -> dict[str, dict]:
             "declared_on": None,
         }
         profile = _build_profile_state(applicant_row)
+        school_name = _to_text(applicant_row.get("school"))
+        health_required_for_approval = health_requirement_by_school.get(school_name, True)
+        health = dict(health)
+        health["required_for_approval"] = health_required_for_approval
 
-        ready = bool(policies.get("ok") and documents.get("ok") and health.get("ok") and profile.get("ok"))
+        health_ok_for_approval = bool(health.get("ok")) if health_required_for_approval else True
+        ready = bool(policies.get("ok") and documents.get("ok") and health_ok_for_approval and profile.get("ok"))
 
         readiness_by_applicant[applicant_name] = {
             "policies": policies,
@@ -768,6 +814,7 @@ def _build_readiness_batch(applicant_rows: list[dict]) -> dict[str, dict]:
                 documents=documents,
                 health=health,
                 profile=profile,
+                health_required_for_approval=health_required_for_approval,
             ),
         }
 
@@ -877,7 +924,7 @@ def _build_blockers(
                 }
             )
 
-    if not health.get("ok"):
+    if bool(health.get("required_for_approval", True)) and not health.get("ok"):
         health_profile = _to_text(health.get("profile_name"))
         target = (
             _target(
@@ -975,7 +1022,7 @@ def _cache_key_for_payload(payload: dict) -> str:
 @frappe.whitelist()
 def get_admissions_cockpit_data(filters=None):
     user = _ensure_cockpit_access()
-    user_roles = set(frappe.get_roles(user))
+    user_roles = _get_roles_for_user(user)
 
     filters = frappe.parse_json(filters) or {}
     organization_filter = _to_text(filters.get("organization"))
@@ -1072,7 +1119,6 @@ def get_admissions_cockpit_data(filters=None):
             "student_date_of_birth",
             "student_gender",
             "student_mobile_number",
-            "student_joining_date",
             "student_first_language",
             "student_nationality",
             "residency_status",
@@ -1207,6 +1253,10 @@ def get_admissions_cockpit_data(filters=None):
         if bool(comms_summary.get("needs_reply")):
             counts["unread_applicant_replies"] += cint(comms_summary.get("unread_count") or 0)
 
+        health_payload = snapshot.get("health") or {}
+        health_required_for_approval = bool(health_payload.get("required_for_approval", True))
+        health_ok_for_approval = bool(health_payload.get("ok")) if health_required_for_approval else True
+
         card = {
             "name": applicant_name,
             "display_name": _display_name(row),
@@ -1221,7 +1271,8 @@ def get_admissions_cockpit_data(filters=None):
                 "profile_ok": bool((snapshot.get("profile") or {}).get("ok")),
                 "policies_ok": bool((snapshot.get("policies") or {}).get("ok")),
                 "documents_ok": bool((snapshot.get("documents") or {}).get("ok")),
-                "health_ok": bool((snapshot.get("health") or {}).get("ok")),
+                "health_ok": health_ok_for_approval,
+                "health_required_for_approval": health_required_for_approval,
             },
             "top_blockers": [
                 {

@@ -890,6 +890,7 @@ A UI surface **must** be a workflow overlay rendered via `OverlayHost` **iff** i
 
 * `StudentLogCreateOverlay`
 * `StudentLogFollowUpOverlay`
+* `EventQuickCreateOverlay`
 * `FocusRouterOverlay`
 * `QuickCFUOverlay`
 * `TaskReviewOverlay`
@@ -927,15 +928,20 @@ Calendar event views are classified as:
 
 * **Read-only event inspection** → **Non-workflow dialog**
 * **Event mutation (edit, cancel, reschedule)** → **Workflow overlay**
+* **Event creation (Meeting / School Event)** → **Workflow overlay**
 
-**Current state (based on files provided):**
+**Current read-only dialogs (inspection-only):**
 
 * `MeetingEventModal`
 * `ClassEventModal`
 * `SchoolEventModal`
 
-➡️ These are **read-only detail dialogs today**
-➡️ They are **NOT workflow overlays yet**
+**Current workflow overlay (mutation):**
+
+* `EventQuickCreateOverlay`
+
+➡️ The read-only modals above remain **non-workflow dialogs**
+➡️ `EventQuickCreateOverlay` is a **workflow overlay** for event creation
 
 They may remain dialogs **for now**, but:
 

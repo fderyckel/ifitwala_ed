@@ -96,7 +96,7 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         self.assertTrue(_has_rule_result(payload, "BASKET", "basket_valid", "fail"))
 
     def test_materialize_request_updates_enrollment(self):
-        context = _setup_enrollment_context(score=95)
+        context = _setup_enrollment_context(score=95, create_existing_enrollment=False)
         request = _make_enrollment_request(
             context,
             student=context["student"],
@@ -161,11 +161,12 @@ def _has_rule_result(payload, required_course, rule, result):
 
 def _setup_enrollment_context(
     score,
-    capacity=None,
+    capacity=30,
     seat_policy=None,
     enrollment_rules=None,
     program_course_level=None,
     program_course_category=None,
+    create_existing_enrollment=True,
 ):
     grade_scale = _make_grade_scale()
     organization = _make_organization()
@@ -237,20 +238,21 @@ def _setup_enrollment_context(
         data["enrollment_rules"] = [{"rule_type": "MIN_TOTAL_COURSES", "int_value_1": 1}]
     offering = frappe.get_doc(data).insert()
 
-    enrollment = frappe.get_doc(
-        {
-            "doctype": "Program Enrollment",
-            "student": student.name,
-            "program": program.name,
-            "program_offering": offering.name,
-            "academic_year": academic_year.name,
-            "enrollment_date": nowdate(),
-            "enrollment_source": "Migration",
-            "enrollment_override_reason": "Test setup",
-        }
-    ).insert()
-    enrollment.append("courses", {"course": required_course.name, "status": "Completed"})
-    enrollment.save()
+    if create_existing_enrollment:
+        enrollment = frappe.get_doc(
+            {
+                "doctype": "Program Enrollment",
+                "student": student.name,
+                "program": program.name,
+                "program_offering": offering.name,
+                "academic_year": academic_year.name,
+                "enrollment_date": nowdate(),
+                "enrollment_source": "Migration",
+                "enrollment_override_reason": "Test setup",
+            }
+        ).insert()
+        enrollment.append("courses", {"course": required_course.name, "status": "Completed"})
+        enrollment.save()
 
     _make_course_term_result(
         student=student,

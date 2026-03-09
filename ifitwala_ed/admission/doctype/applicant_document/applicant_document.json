@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "APPL-DOC-.YYYY.-.####",
  "creation": "2026-02-01 00:00:00",
  "description": "Track each applicant document type, review status, and promotion relevance with strict immutability and governed file handling.",
  "doctype": "DocType",
@@ -10,12 +10,13 @@
   "student_applicant",
   "document_type",
   "document_label",
+  "promotion_target",
   "review_status",
   "reviewed_by",
   "reviewed_on",
+  "column_break_xq7s",
   "review_notes",
   "is_promotable",
-  "promotion_target",
   "promotion_notes"
  ],
  "fields": [
@@ -44,12 +45,15 @@
    "default": "Pending",
    "fieldname": "review_status",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Review Status",
    "options": "Pending\nApproved\nRejected\nSuperseded"
   },
   {
    "fieldname": "reviewed_by",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Reviewed By",
    "options": "User",
    "read_only": 1
@@ -81,14 +85,19 @@
    "fieldname": "promotion_notes",
    "fieldtype": "Small Text",
    "label": "Promotion Notes"
+  },
+  {
+   "fieldname": "column_break_xq7s",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-22 08:12:53.807934",
+ "modified": "2026-03-08 12:03:47.163747",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Document",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

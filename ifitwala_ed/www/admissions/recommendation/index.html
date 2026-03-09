@@ -1,6 +1,9 @@
 {% if noindex %}
 <meta name="robots" content="noindex,nofollow,noarchive" />
 {% endif %}
+{% if csrf_token %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+{% endif %}
 
 <div id="recommendation-intake-root" style="max-width: 860px; margin: 28px auto; padding: 0 16px; font-family: Helvetica, Arial, sans-serif;">
   <section style="border: 1px solid #e6e8ec; border-radius: 16px; background: #ffffff; padding: 20px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);">
@@ -101,12 +104,18 @@
   }
 
   async function callApi(method, payload) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+    const headers = {
+      "Content-Type": "application/json",
+    };
+    if (csrfToken) {
+      headers["X-Frappe-CSRF-Token"] = csrfToken;
+    }
+
     const response = await fetch(`/api/method/${method}`, {
       method: "POST",
       credentials: "same-origin",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(payload || {}),
     });
 

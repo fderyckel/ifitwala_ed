@@ -92,6 +92,83 @@ def _load_schema(raw_schema: Any) -> dict | None:
     )
 
 
+def _json_type_matches(value: Any, expected_type: str) -> bool:
+    if expected_type == "object":
+        return isinstance(value, dict)
+    if expected_type == "array":
+        return isinstance(value, list)
+    if expected_type == "string":
+        return isinstance(value, str)
+    if expected_type == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected_type == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if expected_type == "boolean":
+        return isinstance(value, bool)
+    if expected_type == "null":
+        return value is None
+    return True
+
+
+def _format_error_path(path: tuple[Any, ...]) -> str:
+    return ".".join([str(part) for part in path]) if path else "(root)"
+
+
+def _basic_schema_errors(value: Any, schema: dict, path: tuple[Any, ...] = ()) -> list[tuple[tuple[Any, ...], str]]:
+    errors: list[tuple[tuple[Any, ...], str]] = []
+    if not isinstance(schema, dict):
+        return errors
+
+    expected = schema.get("type")
+    if expected:
+        expected_types = expected if isinstance(expected, list) else [expected]
+        if not any(_json_type_matches(value, t) for t in expected_types):
+            expected_text = ", ".join(str(t) for t in expected_types)
+            errors.append((path, f"Expected type: {expected_text}."))
+            return errors
+
+    enum_values = schema.get("enum")
+    if isinstance(enum_values, list) and value not in enum_values:
+        errors.append((path, f"Value must be one of: {enum_values}."))
+
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        minimum = schema.get("minimum")
+        maximum = schema.get("maximum")
+        if minimum is not None and value < minimum:
+            errors.append((path, f"Value must be greater than or equal to {minimum}."))
+        if maximum is not None and value > maximum:
+            errors.append((path, f"Value must be less than or equal to {maximum}."))
+
+    if isinstance(value, list):
+        min_items = schema.get("minItems")
+        if min_items is not None and len(value) < int(min_items):
+            errors.append((path, f"At least {int(min_items)} item(s) are required."))
+        item_schema = schema.get("items")
+        if isinstance(item_schema, dict):
+            for index, item_value in enumerate(value):
+                errors.extend(_basic_schema_errors(item_value, item_schema, path + (index,)))
+
+    if isinstance(value, dict):
+        properties = schema.get("properties") or {}
+        required = schema.get("required") or []
+        for required_key in required:
+            if required_key not in value:
+                errors.append((path + (required_key,), "This field is required."))
+
+        additional = schema.get("additionalProperties", True)
+        if additional is False:
+            for key in value:
+                if key not in properties:
+                    errors.append((path + (key,), "Additional properties are not allowed."))
+
+        for key, child_value in value.items():
+            child_schema = properties.get(key)
+            if isinstance(child_schema, dict):
+                errors.extend(_basic_schema_errors(child_value, child_schema, path + (key,)))
+
+    return errors
+
+
 def validate_props_schema(props: dict, raw_schema: Any, *, block_type: str):
     schema = _load_schema(raw_schema)
     if not schema:
@@ -99,21 +176,23 @@ def validate_props_schema(props: dict, raw_schema: Any, *, block_type: str):
             _("Missing props schema for block type: {0}").format(block_type),
             frappe.ValidationError,
         )
+
+    errors: list[tuple[tuple[Any, ...], str]] = []
     try:
         from jsonschema import Draft7Validator
-    except Exception:
-        frappe.throw(
-            _("jsonschema is required to validate block props for {0}.").format(block_type),
-            frappe.ValidationError,
-        )
 
-    validator = Draft7Validator(schema)
-    errors = sorted(validator.iter_errors(props), key=lambda e: list(e.path))
+        validator = Draft7Validator(schema)
+        errors = sorted(
+            [(tuple(err.path), err.message) for err in validator.iter_errors(props)],
+            key=lambda item: list(item[0]),
+        )
+    except Exception:
+        errors = sorted(_basic_schema_errors(props, schema), key=lambda item: list(item[0]))
+
     if errors:
         formatted = []
-        for err in errors:
-            path = ".".join([str(p) for p in err.path]) if err.path else "(root)"
-            formatted.append(f"{path}: {err.message}")
+        for path, message in errors:
+            formatted.append(f"{_format_error_path(path)}: {message}")
         message = "\n".join(formatted)
         frappe.throw(
             _("Invalid props for block '{0}':\n{1}").format(block_type, message),

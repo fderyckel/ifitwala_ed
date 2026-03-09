@@ -281,7 +281,7 @@ def bulk_upsert_attendance(payload=None):
     group_ctx = {}
     for g in group_names:
         sg = frappe.get_cached_doc("Student Group", g)
-        group_school = get_school_for_student_group(sg)
+        group_school = get_school_for_student_group(sg.name)
 
         # Term window (today must be within current term if one exists)
         # today = getdate()  # noqa: F841
@@ -520,7 +520,10 @@ def get_meeting_dates(student_group: str | None = None, *, limit: int | None = N
 
     schedule_name = sg.school_schedule
     if not schedule_name:
-        schedule_name = get_effective_schedule_for_ay(sg.academic_year, get_school_for_student_group(sg))
+        schedule_name = get_effective_schedule_for_ay(
+            sg.academic_year,
+            get_school_for_student_group(sg.name),
+        )
 
     if not schedule_name:
         rc.set_value(key, [], expires_in_sec=MEETING_DATES_TTL)

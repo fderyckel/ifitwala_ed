@@ -3,11 +3,11 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.8.0"
-last_change_date: "2026-03-01"
-summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
+version: "1.14.0"
+last_change_date: "2026-03-08"
+summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, and school-scoped health gating."
 seo_title: "Student Applicant: The Admission Record of Truth"
-seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, health, documents, and policies, plus governed files and portal access."
+seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, and school-scoped health gating."
 ---
 
 ## Student Applicant: The Admission Record of Truth
@@ -16,7 +16,7 @@ seo_description: "Manage applicant lifecycle from invitation to promotion, with 
 
 - Create [**Organization**](/docs/en/organization/) and [**School**](/docs/en/school/) first (required anchors).
 - If you intend to require applicant consent, configure active applicant-scoped policies first ([**Institutional Policy**](/docs/en/institutional-policy/) + active [**Policy Version**](/docs/en/policy-version/)).
-- Define required [**Applicant Document Type**](/docs/en/applicant-document-type/) records and [**Applicant Health Profile**](/docs/en/applicant-health-profile/) / [**Applicant Interview**](/docs/en/applicant-interview/) review workflow before approval/promotion decisions.
+- Define required [**Applicant Document Type**](/docs/en/applicant-document-type/) records and [**Applicant Interview**](/docs/en/applicant-interview/) review workflow before approval/promotion decisions. Define [**Applicant Health Profile**](/docs/en/applicant-health-profile/) workflow when the school requires health clearance for approval.
 - Ensure student-profile fields needed for promotion (`student_date_of_birth`, `student_gender`, `student_mobile_number`, `student_joining_date`, `student_first_language`, `student_nationality`, `residency_status`) are collected in the applicant profile step.
 
 ### How Policy Acknowledgement Becomes Mandatory
@@ -39,12 +39,12 @@ Use the applicant readiness outputs, not guesswork:
 
 1. Desk `Student Applicant` form:
    - `Policies Summary` shows a policy matrix with status, signer(s), signed timestamp, and version link.
-   - `Documents Summary` shows required-vs-uploaded document tables (missing items, uploader, upload date, reviewer, and links).
+   - `Documents Summary` is the canonical document-review view and shows required-vs-uploaded document tables (missing items, uploader, upload date, reviewer, and links); required rows include `Approved / Required` coverage and uploaded rows list all uploaded document items.
    - `Health Summary` shows cleared/pending state, health profile link, reviewer metadata, and declaration metadata.
-   - `Review Assignments Summary` shows completed reviewer decisions across Documents, Health, and Overall Application.
+   - `Review Assignments Summary` shows completed assignment decisions for Health and Overall Application (document review truth remains in `Documents Summary`).
    - `Review Snapshot` includes readiness issues from `get_readiness_snapshot`.
 2. Approval action:
-   - `Approve` is blocked by server guard (`approve_application` -> `_validate_ready_for_approval`) until required policy acknowledgements are complete.
+   - `Approve` is blocked by server guard (`approve_application` -> `_validate_ready_for_approval`) until readiness requirements are met (policies/documents/profile/recommendations and health only when required by school policy).
    - Error text includes missing policy acknowledgement details.
 3. Applicant portal:
    - `/admissions` -> Policies page shows each required policy as `Pending acknowledgement` or `Acknowledged`.
@@ -55,7 +55,7 @@ Use the applicant readiness outputs, not guesswork:
 
 - Keeps one lifecycle record from `Draft` to `Promoted`.
 - Preserves institutional anchor (`organization`, `school`) as immutable once created.
-- Centralizes readiness checks across profile, policies, documents, and health.
+- Centralizes readiness checks across profile, policies, documents, recommendations, and school-scoped health requirements.
 - Links admissions to student creation and downstream enrollment operations.
 - Carries forward inquiry intent so teams do not restart data entry from zero.
 
@@ -189,9 +189,14 @@ If email delivery fails, portal linkage still succeeds (`User` + role + applican
 `guardians` uses child table **Student Applicant Guardian**:
 
 - `guardian` -> `Guardian`
+- `contact` -> `Contact` (tracked guardian contact used for carry-over)
 - `relationship` (Mother/Father/etc.)
 - `is_primary`
 - `can_consent`
+- guardian identity/profile fields mirrored from `Guardian` (`salutation`, names, email, mobile, work fields, guardian flags)
+- `use_applicant_contact` to explicitly reuse `Student Applicant.applicant_contact` for a guardian row
+- applicant portal save validation enforces required guardian fields per row: first name, last name, personal email, mobile phone, and photo
+- guardian personal/work emails are validated as email format; guardian mobile/work phones are validated as phone format
 
 No standalone child-doc page is required; behavior is owned by the parent lifecycle.
 
@@ -216,6 +221,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - direct attachments blocked except `applicant_image`
   - governed upload endpoint: `ifitwala_ed.utilities.governed_uploads.upload_applicant_image`
   - admissions portal self-upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_profile_image`
+  - admissions portal guardian photo upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_guardian_image`
   - all other admissions docs routed via `Applicant Document` + file classification
 - **Recommendation intake (runtime)**:
   - external recommender submissions use a separate intake surface (`/admissions/recommendation/<token>`) and do not use applicant portal authentication
@@ -279,7 +285,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 
 1. Required `Applicant Document Type` records are configured (`is_required = 1`, `is_active = 1`) for the organization/school ancestor scope you expect (parent-scope document types apply to descendants).
 2. Applicant has corresponding `Applicant Document` rows and required ones reach `review_status = Approved`.
-3. `Applicant Health Profile.review_status = Cleared`.
+3. If `School.require_health_profile_for_approval = 1`, `Applicant Health Profile.review_status = Cleared`.
 4. Applicant profile information required for Student promotion is complete.
 
 ### Optional but commonly expected in production
@@ -304,9 +310,21 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   </Step>
 </Steps>
 
+## Reporting and Analytics
+
+- No dedicated Script/Query Report declares `Student Applicant` as `ref_doctype`.
+- Current analytics are API/widget driven (admissions portal completeness + morning brief pulse).
+
+## Related Docs
+
+<RelatedDocs
+  slugs="inquiry,applicant-document-type,applicant-document,applicant-health-profile,applicant-interview,institutional-policy,policy-version,policy-acknowledgement"
+  title="Related Applicant Lifecycle Docs"
+/>
+
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-02-21)
+### Latest Technical Snapshot (2026-03-08)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
@@ -322,6 +340,9 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 - **Naming series**: `format:APPL-{MM}-{YYYY}-{###}` (for example `APPL-02-2026-001`)
 - **Desk surfaces**:
   - form logic/buttons/readiness widgets in `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`
+  - interview actions on applicant form include:
+    - `Create Interview` (new prefilled `Applicant Interview` draft)
+    - `Schedule Interview` (creates interview + linked `School Event` via scheduling API)
   - workspace cards in `ifitwala_ed/admission/workspace/admission/admission.json`
 - **Admissions portal SPA surfaces**:
   - entrypoint `ifitwala_ed/ui-spa/src/apps/admissions/main.ts`
@@ -329,6 +350,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - pages:
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantOverview.vue`
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantHealth.vue`
+    - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantProfile.vue` (includes optional guardian intake section controlled by Admission Settings)
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantPolicies.vue`
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantSubmit.vue`
@@ -357,9 +379,11 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 - **Readiness computation**:
   - `has_required_policies()` -> blocking
   - `has_required_documents()` -> blocking
-  - `health_review_complete()` -> blocking
+  - `health_review_complete()` -> blocking only when `School.require_health_profile_for_approval = 1`
   - `has_required_interviews()` -> tracked; not currently part of blocking `ready` boolean
-  - interview summary shows recent interview links for direct navigation from applicant review section
+  - repeatable required document types are satisfied when required upload count is met and either per-item approvals meet required count or the parent `Applicant Document` is explicitly marked `Approved`
+  - interview summary shows a compact latest-5 table with Date/Time (linked to interview), Interviewer, and Outcome Impression
+  - `review_assignments_summary` is assignment-focused (Health + Overall Application); document reviewer metadata is surfaced in `documents_summary`
 - **Promotion side-effects (`promote_to_student`)**:
   - creates/links `Student`, writes `Student.student_applicant`, then sets applicant status to `Promoted`
   - creates/syncs `Student Patient` from Applicant Health Profile data
@@ -372,6 +396,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - requires an active `Program Enrollment` for the promoted student
   - provisions/links Guardian + Student access identities and roles
   - links guardians to Student in canonical Student guardian rows
+  - links tracked guardian Contact rows to `Student Applicant`, `Guardian`, and promoted `Student`
   - is idempotent (re-run does not duplicate users or guardian links)
 - **Link query endpoints**:
   - `academic_year_intent_query`
@@ -428,27 +453,17 @@ What to do (site operations):
 | Role | Read | Write | Create | Delete | Notes |
 |---|---|---|---|---|---|
 | `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Admission Officer` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Academic Admin` | Yes | No | No | No | Read-only in DocType permissions |
-| `Academic Assistant` | Yes | No | No | No | Read-only in DocType permissions |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Academic Admin` | Yes | No | No | No | Scoped read visibility |
+| `Academic Assistant` | No | No | No | No | Not in runtime admissions-file access contract |
+| `Admissions Applicant` | Yes | Yes | No | No | Own applicant only (self-link enforced) |
 
 Runtime controller rules (server):
 - Only admissions staff can create new records.
+- Admissions and academic-admin reads are scope-gated by organization/school visibility; visibility can follow linked student school context during school transfers.
 - Status changes must use lifecycle methods (direct writes are blocked).
 - Family/applicant editability depends on current status (`Invited/In Progress/Missing Info`).
 - Terminal states (`Rejected`, `Promoted`) are locked except explicit System Manager override flow.
 - `inquiry`, `student`, `applicant_user`, `applicant_contact`, and `portal_account_email` are immutable and only set through named flows.
 - Direct `File` clutter is blocked on this doctype except `applicant_image`; admissions evidence belongs on [**Applicant Document**](/docs/en/applicant-document/).
-
-## Reporting and Analytics
-
-- No dedicated Script/Query Report declares `Student Applicant` as `ref_doctype`.
-- Current analytics are API/widget driven (admissions portal completeness + morning brief pulse).
-
-## Related Docs
-
-<RelatedDocs
-  slugs="inquiry,applicant-document-type,applicant-document,applicant-health-profile,applicant-interview,institutional-policy,policy-version,policy-acknowledgement"
-  title="Related Applicant Lifecycle Docs"
-/>

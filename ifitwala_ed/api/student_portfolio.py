@@ -13,6 +13,7 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, get_datetime, getdate, now_datetime, strip_html, today
 
+from ifitwala_ed.api.file_access import resolve_academic_file_open_url
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
 from ifitwala_ed.utilities.school_tree import get_school_lineage
 
@@ -456,7 +457,12 @@ def _load_item_evidence(rows: list[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]
             item_map[item_name] = {
                 "kind": "external_file",
                 "file_name": file_row.get("file_name"),
-                "file_url": file_row.get("file_url"),
+                "file_url": resolve_academic_file_open_url(
+                    file_name=file_row.get("name"),
+                    file_url=file_row.get("file_url"),
+                    context_doctype="Student Portfolio Item",
+                    context_name=item_name,
+                ),
                 "file_size": file_row.get("file_size"),
             }
     return item_map
@@ -1300,7 +1306,12 @@ def resolve_portfolio_share_context(token: str, viewer_email: str | None = None)
                 "task_submission": item.task_submission,
                 "student_reflection_entry": item.student_reflection_entry,
                 "artefact_file": item.artefact_file,
-                "artefact_file_url": (file_map.get(item.artefact_file) or {}).get("file_url"),
+                "artefact_file_url": resolve_academic_file_open_url(
+                    file_name=item.artefact_file,
+                    file_url=(file_map.get(item.artefact_file) or {}).get("file_url"),
+                    share_token=token,
+                    viewer_email=viewer_email,
+                ),
                 "artefact_file_name": (file_map.get(item.artefact_file) or {}).get("file_name"),
             }
         )
@@ -1454,7 +1465,12 @@ def export_portfolio_pdf(payload=None, **kwargs):
         content=pdf_content,
     )
     return {
-        "file_url": file_doc.file_url,
+        "file_url": resolve_academic_file_open_url(
+            file_name=file_doc.name,
+            file_url=file_doc.file_url,
+            context_doctype="Student",
+            context_name=student,
+        ),
         "file_name": file_doc.file_name,
         "student": student,
     }
@@ -1492,7 +1508,12 @@ def export_reflection_pdf(payload=None, **kwargs):
         content=pdf_content,
     )
     return {
-        "file_url": file_doc.file_url,
+        "file_url": resolve_academic_file_open_url(
+            file_name=file_doc.name,
+            file_url=file_doc.file_url,
+            context_doctype="Student",
+            context_name=student,
+        ),
         "file_name": file_doc.file_name,
         "student": student,
     }

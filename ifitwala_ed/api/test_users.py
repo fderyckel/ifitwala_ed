@@ -114,9 +114,20 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Mixed"
         user.last_name = "Roles"
         user.enabled = 1
+        user.user_type = "System User"
         _append_role(user, "Employee")
         _append_role(user, "Admissions Applicant")
         user.insert(ignore_permissions=True)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Mixed"
+        employee.employee_last_name = "Roles"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        employee.insert(ignore_permissions=True)
 
         original_request = getattr(frappe.local, "request", None)
         try:
@@ -132,6 +143,7 @@ class TestUserRedirect(FrappeTestCase):
             else:
                 frappe.local.request = original_request
             frappe.set_user("Administrator")
+            frappe.delete_doc("Employee", employee.name, force=True)
             frappe.delete_doc("User", user.email, force=True)
 
     def test_staff_desk_request_is_not_redirected(self):
@@ -228,9 +240,20 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Staff"
         user.last_name = "Admissions"
         user.enabled = 1
+        user.user_type = "System User"
         _append_role(user, "Employee")
         _append_role(user, "Admissions Applicant")
         user.insert(ignore_permissions=True)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Staff"
+        employee.employee_last_name = "Admissions"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        employee.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
@@ -241,6 +264,7 @@ class TestUserRedirect(FrappeTestCase):
         self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
 
         frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
     def test_login_redirect_overrides_incoming_redirect_to_param(self):

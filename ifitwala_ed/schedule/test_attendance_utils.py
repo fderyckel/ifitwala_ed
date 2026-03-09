@@ -22,7 +22,11 @@ class TestAttendanceUtils(FrappeTestCase):
             patch.object(attendance_utils.frappe, "session", SimpleNamespace(user="test.user@example.com")),
             patch.object(attendance_utils.frappe, "get_roles", return_value=["Academic Admin"]),
             patch.object(attendance_utils.frappe, "get_cached_doc", return_value=sg),
-            patch.object(attendance_utils, "get_school_for_student_group", return_value="SCH-001"),
+            patch.object(
+                attendance_utils,
+                "get_school_for_student_group",
+                return_value="SCH-001",
+            ) as school_resolver_mock,
             patch.object(
                 attendance_utils,
                 "get_current_term",
@@ -46,6 +50,7 @@ class TestAttendanceUtils(FrappeTestCase):
 
         self.assertEqual(result, {"created": 1, "updated": 0})
         current_term_mock.assert_called_once_with("SCH-001", sg.academic_year)
+        school_resolver_mock.assert_called_once_with(sg.name)
         bulk_insert_mock.assert_called_once()
 
     def test_bulk_upsert_attendance_handles_missing_school_without_crash(self):

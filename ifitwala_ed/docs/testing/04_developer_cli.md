@@ -29,6 +29,7 @@ The wrapper invokes `python3 -m ifitwala_ed.codex_cli`.
 
 3. `backend-smoke --site <site>`
 - Runs the default backend smoke modules (same baseline as CI), or custom modules with repeated `--module`.
+- Local bench/site should run on **Frappe v16** to stay CI-compatible.
 
 4. `desk-build`
 - Runs `yarn install --frozen-lockfile` then `yarn build`.

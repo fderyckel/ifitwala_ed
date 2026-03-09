@@ -22,10 +22,25 @@ def update_profile_from_contact(doc, method=None):
 
     if guardian:
         guardian_doc = frappe.get_doc("Guardian", guardian)
-        guardian_doc.salutation = doc.salutation
-        guardian_doc.guardian_gender = doc.gender
-        guardian_doc.guardian_mobile_phone = primary_mobile
-        guardian_doc.save()
+        changed = False
+
+        salutation = (doc.salutation or "").strip()
+        if salutation and salutation != (guardian_doc.salutation or "").strip():
+            guardian_doc.salutation = salutation
+            changed = True
+
+        gender = (doc.gender or "").strip()
+        if gender and gender != (guardian_doc.guardian_gender or "").strip():
+            guardian_doc.guardian_gender = gender
+            changed = True
+
+        mobile = (primary_mobile or "").strip()
+        if mobile and mobile != (guardian_doc.guardian_mobile_phone or "").strip():
+            guardian_doc.guardian_mobile_phone = mobile
+            changed = True
+
+        if changed:
+            guardian_doc.save(ignore_permissions=True)
 
 
 from frappe.contacts.address_and_contact import has_permission as _core_has_permission  # noqa: E402

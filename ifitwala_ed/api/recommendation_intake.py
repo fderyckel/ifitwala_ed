@@ -80,6 +80,15 @@ def _as_bool(value) -> bool:
     return text in {"1", "true", "yes", "on"}
 
 
+def _get_bound_request():
+    try:
+        return frappe.request
+    except RuntimeError:
+        return None
+    except Exception:
+        return None
+
+
 def _request_path_suffix(token: str) -> str:
     return f"/admissions/recommendation/{token}"
 
@@ -1298,9 +1307,9 @@ def submit_recommendation(payload=None, **kwargs):
             _verify_otp_on_row(row=row_for_otp or {}, otp_code=otp_code)
             request_doc.reload()
 
-        has_file_in_request = bool(data.get("content")) or bool(
-            getattr(frappe.request, "files", None) and frappe.request.files.get("file")
-        )
+        request_obj = _get_bound_request()
+        request_files = getattr(request_obj, "files", None) if request_obj else None
+        has_file_in_request = bool(data.get("content")) or bool(request_files and request_files.get("file"))
         allow_file_upload = bool(template_meta.get("allow_file_upload"))
         file_upload_required = bool(template_meta.get("file_upload_required"))
         if has_file_in_request and not allow_file_upload:
@@ -1345,8 +1354,12 @@ def submit_recommendation(payload=None, **kwargs):
                 "attestation_confirmed": 1,
                 "has_file": 1 if has_file_in_request else 0,
                 "submitted_on": now_datetime(),
-                "source_ip": frappe.local.request_ip if frappe.request else None,
-                "user_agent": (frappe.request.headers.get("User-Agent") if frappe.request else None),
+                "source_ip": getattr(frappe.local, "request_ip", None),
+                "user_agent": (
+                    request_obj.headers.get("User-Agent")
+                    if request_obj and getattr(request_obj, "headers", None)
+                    else None
+                ),
                 "idempotency_key": client_request_id,
             }
         )

@@ -713,6 +713,7 @@
 import { computed, ref, watch } from 'vue';
 import { createResource, FeatherIcon, call, toast } from 'frappe-ui';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { formatLocalizedDateTime } from '@/lib/datetime';
 import ContentDialog from '@/components/ContentDialog.vue';
 import GenericListDialog from '@/components/analytics/GenericListDialog.vue';
 import HistoryDialog from '@/components/analytics/HistoryDialog.vue';
@@ -940,15 +941,10 @@ function openInteractionThread(item: Announcement): void {
 
 function formatThreadTimestamp(value?: string | null): string {
 	if (!value) return '';
-	const d = new Date(value);
-	if (isNaN(d.getTime())) return value;
-
-	return d.toLocaleDateString('en-GB', {
+	return formatLocalizedDateTime(value, {
 		day: '2-digit',
 		month: 'short',
-		hour: '2-digit',
-		minute: '2-digit',
-		hour12: false,
+		fallback: value,
 	});
 }
 
@@ -1017,10 +1013,9 @@ function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
 		applause: 'Celebration',
 		question: 'Question',
 		concern: 'Concern',
-		other: 'Other',
 	};
 
-	const intent_type = reactionIntentMap[reaction] || 'Other';
+	const intent_type = reactionIntentMap[reaction];
 
 	call(
 		'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',

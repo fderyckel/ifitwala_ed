@@ -13,7 +13,7 @@ class TestApplicantHealthProfile(FrappeTestCase):
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
         self.user = self._create_user_with_role("Admissions Applicant")
-        self.applicant = self._create_student_applicant(self.organization, self.school)
+        self.applicant = self._create_student_applicant(self.organization, self.school, self.user)
 
     def tearDown(self):
         frappe.set_user("Administrator")
@@ -128,7 +128,7 @@ class TestApplicantHealthProfile(FrappeTestCase):
         self._created.append(("User", user.name))
         return user.name
 
-    def _create_student_applicant(self, organization: str, school: str) -> str:
+    def _create_student_applicant(self, organization: str, school: str, applicant_user: str) -> str:
         doc = frappe.get_doc(
             {
                 "doctype": "Student Applicant",
@@ -139,6 +139,7 @@ class TestApplicantHealthProfile(FrappeTestCase):
                 "application_status": "Draft",
             }
         ).insert(ignore_permissions=True)
+        doc.db_set("applicant_user", applicant_user, update_modified=False)
         doc.db_set("application_status", "Invited", update_modified=False)
         doc.reload()
         self._created.append(("Student Applicant", doc.name))

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Any
@@ -31,10 +32,23 @@ THREAD_COMMUNICATION_TYPE = "Information"
 THREAD_INTERACTION_MODE = "Structured Feedback"
 THREAD_STATUS = "Published"
 THREAD_PORTAL_SURFACE = "Desk"
+INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
+READ_RECEIPT_REFERENCE_DOCTYPE = "Org Communication"
+READ_RECEIPT_DEADLOCK_RETRY_ATTEMPTS = 3
+READ_RECEIPT_RETRY_BASE_DELAY_SEC = 0.05
 
 
 def _to_text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _session_user() -> str:
+    user = _to_text(getattr(frappe.session, "user", None))
+    if not user:
+        return ""
+    if user.lower() in INVALID_SESSION_USERS:
+        return ""
+    return user
 
 
 def _normalize_context(context_doctype: str | None, context_name: str | None) -> tuple[str, str]:
@@ -56,6 +70,12 @@ def _safe_datetime(value) -> datetime | None:
         return None
 
 
+def _is_query_deadlock_error(exc: Exception) -> bool:
+    if exc.__class__.__name__ == "QueryDeadlockError":
+        return True
+    return _to_text(getattr(exc, "exc_type", "")).lower() == "querydeadlockerror"
+
+
 def _next_thread_title(context_doctype: str, context_name: str) -> str:
     base = f"Admissions Thread - {context_doctype} - {context_name}"
     candidate = base
@@ -68,7 +88,7 @@ def _next_thread_title(context_doctype: str, context_name: str) -> str:
 
 @contextmanager
 def _as_user(user: str):
-    current_user = _to_text(frappe.session.user)
+    current_user = _session_user()
     target_user = _to_text(user)
     if not target_user or current_user == target_user:
         yield
@@ -99,8 +119,8 @@ def _resolve_student_applicant_row(applicant_name: str) -> dict:
 
 
 def _require_actor_context(*, context_doctype: str, context_name: str) -> dict:
-    user = _to_text(frappe.session.user)
-    if not user or user == "Guest":
+    user = _session_user()
+    if not user:
         frappe.throw(_("You need to sign in to access admissions communications."), frappe.PermissionError)
 
     roles = set(frappe.get_roles(user))
@@ -332,12 +352,65 @@ def _get_read_receipt_time(user: str, thread_name: str) -> datetime | None:
         "Portal Read Receipt",
         {
             "user": user,
-            "reference_doctype": "Org Communication",
+            "reference_doctype": READ_RECEIPT_REFERENCE_DOCTYPE,
             "reference_name": thread_name,
         },
         "read_at",
     )
     return _safe_datetime(read_at)
+
+
+def _upsert_portal_read_receipt(*, user: str, thread_name: str, read_at: datetime) -> None:
+    values = {
+        "name": frappe.generate_hash(length=10),
+        "created_at": read_at,
+        "modified_at": read_at,
+        "modified_by": user,
+        "owner": user,
+        "user": user,
+        "reference_doctype": READ_RECEIPT_REFERENCE_DOCTYPE,
+        "reference_name": thread_name,
+        "read_at": read_at,
+    }
+    lock_key = f"admissions:thread:read:{user}:{thread_name}"
+    with frappe.cache().lock(lock_key, timeout=8):
+        for attempt in range(1, READ_RECEIPT_DEADLOCK_RETRY_ATTEMPTS + 1):
+            values["name"] = frappe.generate_hash(length=10)
+            try:
+                frappe.db.sql(
+                    """
+                    INSERT INTO `tabPortal Read Receipt`
+                        (`name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `idx`,
+                         `user`, `reference_doctype`, `reference_name`, `read_at`)
+                    VALUES
+                        (%(name)s, %(created_at)s, %(modified_at)s, %(modified_by)s, %(owner)s, 0, 0,
+                         %(user)s, %(reference_doctype)s, %(reference_name)s, %(read_at)s)
+                    ON DUPLICATE KEY UPDATE
+                        `read_at` = VALUES(`read_at`),
+                        `modified` = VALUES(`modified`),
+                        `modified_by` = VALUES(`modified_by`)
+                    """,
+                    values,
+                )
+                return
+            except Exception as exc:
+                if not _is_query_deadlock_error(exc):
+                    raise
+                if attempt >= READ_RECEIPT_DEADLOCK_RETRY_ATTEMPTS:
+                    frappe.log_error(
+                        title="Admissions Communication read receipt deadlock",
+                        message=frappe.as_json(
+                            {
+                                "user": user,
+                                "reference_doctype": READ_RECEIPT_REFERENCE_DOCTYPE,
+                                "reference_name": thread_name,
+                                "attempts": attempt,
+                                "exc_type": exc.__class__.__name__,
+                            }
+                        ),
+                    )
+                    raise
+                time.sleep(READ_RECEIPT_RETRY_BASE_DELAY_SEC * attempt)
 
 
 def _count_unread_messages(*, thread_name: str, applicant_user: str, actor_user: str, actor_kind: str) -> int:
@@ -387,7 +460,7 @@ def _count_unread_messages(*, thread_name: str, applicant_user: str, actor_user:
     return cint((count_row[0] or {}).get("unread_count") or 0)
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def send_admissions_case_message(
     *,
     context_doctype: str | None = None,
@@ -453,7 +526,7 @@ def send_admissions_case_message(
     return response
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_admissions_case_thread(
     *,
     context_doctype: str | None = None,
@@ -541,7 +614,7 @@ def get_admissions_case_thread(
     }
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def mark_admissions_case_thread_read(
     *,
     context_doctype: str | None = None,
@@ -556,33 +629,7 @@ def mark_admissions_case_thread_read(
         return {"ok": True, "thread_name": None}
 
     read_at = now_datetime()
-    existing = frappe.db.get_value(
-        "Portal Read Receipt",
-        {
-            "user": actor_user,
-            "reference_doctype": "Org Communication",
-            "reference_name": thread_name,
-        },
-        "name",
-    )
-    if existing:
-        frappe.db.set_value(
-            "Portal Read Receipt",
-            existing,
-            "read_at",
-            read_at,
-            update_modified=False,
-        )
-    else:
-        frappe.get_doc(
-            {
-                "doctype": "Portal Read Receipt",
-                "user": actor_user,
-                "reference_doctype": "Org Communication",
-                "reference_name": thread_name,
-                "read_at": read_at,
-            }
-        ).insert(ignore_permissions=True)
+    _upsert_portal_read_receipt(user=actor_user, thread_name=thread_name, read_at=read_at)
 
     return {"ok": True, "thread_name": thread_name, "read_at": read_at}
 

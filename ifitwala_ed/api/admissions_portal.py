@@ -5,15 +5,17 @@ from __future__ import annotations
 import base64
 import io
 import os
+from urllib.parse import parse_qs, urlparse
 
 import frappe
 from frappe import _
-from frappe.utils import cint, now_datetime
+from frappe.utils import cint, now_datetime, validate_email_address, validate_phone_number
 from PIL import Image, UnidentifiedImageError
 
 from ifitwala_ed.admission import admissions_portal as admission_api
 from ifitwala_ed.admission.admission_utils import (
     ensure_admissions_permission,
+    ensure_contact_dynamic_link,
     ensure_contact_for_email,
     ensure_inquiry_contact,
     get_applicant_scope_ancestors,
@@ -26,6 +28,7 @@ from ifitwala_ed.admission.admission_utils import (
     upsert_contact_email,
 )
 from ifitwala_ed.admission.applicant_review_workflow import materialize_health_review_assignments
+from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
 from ifitwala_ed.api.recommendation_intake import get_recommendation_status_for_applicant
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
@@ -36,6 +39,7 @@ from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
 from ifitwala_ed.utilities import file_dispatcher
 
 ADMISSIONS_ROLE = "Admissions Applicant"
+INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
 
 PORTAL_STATUS_MAP = {
     "Draft": "Draft",
@@ -122,6 +126,76 @@ APPLICANT_PROFILE_REQUIRED_FIELD_LABELS = (
 
 APPLICANT_PROFILE_GENDER_OPTIONS = ("Female", "Male", "Other")
 APPLICANT_PROFILE_RESIDENCY_OPTIONS = ("Local Resident", "Expat Resident", "Boarder", "Other")
+APPLICANT_GUARDIAN_RELATIONSHIP_OPTIONS = (
+    "Mother",
+    "Father",
+    "Stepmother",
+    "Stepfather",
+    "Grandmother",
+    "Grandfather",
+    "Aunt",
+    "Uncle",
+    "Sister",
+    "Brother",
+    "Other",
+)
+APPLICANT_GUARDIAN_GENDER_OPTIONS = ("Female", "Male", "Other", "Prefer Not To Say")
+APPLICANT_GUARDIAN_EMPLOYMENT_SECTOR_OPTIONS = (
+    "Corporate – Finance / Banking",
+    "Corporate – Tech / IT",
+    "Corporate – Manufacturing",
+    "Corporate – Retail / FMCG",
+    "Corporate – Hospitality / Tourism",
+    "Corporate – Logistics / Transport",
+    "Corporate – Construction / Engineering",
+    "Corporate – Real Estate / Property",
+    "Healthcare / Medical",
+    "Education",
+    "Government",
+    "Embassy / Diplomatic Corps",
+    "NGO / Non-Profit",
+    "Armed Forces",
+    "Creative Industries (Media / Design / Arts)",
+    "Self-Employed",
+    "Freelance / Consultant",
+    "Homemaker",
+    "Retired",
+    "Other",
+)
+APPLICANT_GUARDIAN_CHECK_FIELDS = (
+    "use_applicant_contact",
+    "is_primary",
+    "can_consent",
+    "is_primary_guardian",
+    "is_financial_guardian",
+)
+APPLICANT_GUARDIAN_TEXT_FIELDS = (
+    "guardian",
+    "contact",
+    "relationship",
+    "salutation",
+    "guardian_full_name",
+    "guardian_first_name",
+    "guardian_last_name",
+    "guardian_gender",
+    "guardian_mobile_phone",
+    "guardian_email",
+    "guardian_work_email",
+    "guardian_work_phone",
+    "guardian_image",
+    "user",
+    "employment_sector",
+    "work_place",
+    "guardian_designation",
+)
+APPLICANT_GUARDIAN_FIELDS = ("name",) + APPLICANT_GUARDIAN_TEXT_FIELDS + APPLICANT_GUARDIAN_CHECK_FIELDS
+APPLICANT_GUARDIAN_REQUIRED_FIELD_LABELS = (
+    ("guardian_first_name", "Guardian First Name"),
+    ("guardian_last_name", "Guardian Last Name"),
+    ("guardian_email", "Guardian Personal Email"),
+    ("guardian_mobile_phone", "Guardian Mobile Phone"),
+    ("guardian_image", "Guardian Photo"),
+)
 
 
 def _has_health_declaration_column() -> bool:
@@ -146,6 +220,15 @@ def _as_text(value) -> str:
     if value is None:
         return ""
     return str(value)
+
+
+def _session_user() -> str:
+    user = _as_text(getattr(frappe.session, "user", None)).strip()
+    if not user:
+        return ""
+    if user.lower() in INVALID_SESSION_USERS:
+        return ""
+    return user
 
 
 def _as_check(value) -> int:
@@ -195,7 +278,7 @@ def _validate_profile_image_content(content: bytes) -> None:
     try:
         with Image.open(io.BytesIO(content)) as img:
             img.verify()
-    except (UnidentifiedImageError, OSError, ValueError):
+    except (UnidentifiedImageError, OSError, ValueError, SyntaxError):
         frappe.throw(_("Uploaded profile image must be a valid image file."))
 
 
@@ -409,12 +492,15 @@ def _profile_completeness(profile_payload: dict) -> dict:
 def _build_profile_payload(applicant) -> dict:
     profile = _serialize_applicant_profile(applicant)
     completeness = _profile_completeness(profile)
+    guardians_enabled = _guardians_feature_enabled()
     return {
         "profile": profile,
         "completeness": completeness,
         "application_context": _application_context_payload(applicant),
         "options": _profile_reference_options(),
         "applicant_image": _as_text(applicant.get("applicant_image")).strip(),
+        "guardian_section_enabled": guardians_enabled,
+        "guardians": _serialize_applicant_guardians(applicant) if guardians_enabled else [],
     }
 
 
@@ -449,12 +535,550 @@ def _profile_reference_options() -> dict:
             for row in country_rows
             if _as_text(row.get("name")).strip()
         ],
+        "guardian_relationships": list(APPLICANT_GUARDIAN_RELATIONSHIP_OPTIONS),
+        "guardian_genders": list(APPLICANT_GUARDIAN_GENDER_OPTIONS),
+        "guardian_employment_sectors": list(APPLICANT_GUARDIAN_EMPLOYMENT_SECTOR_OPTIONS),
+        "salutations": _guardian_salutation_options(),
     }
 
 
+def _guardian_salutation_options() -> list[dict]:
+    try:
+        rows = frappe.get_all(
+            "Salutation",
+            fields=["name", "salutation"],
+            order_by="name asc",
+        )
+    except Exception:
+        return []
+    output = []
+    for row in rows:
+        value = _as_text(row.get("name")).strip()
+        if not value:
+            continue
+        label = _as_text(row.get("salutation")).strip() or value
+        output.append({"value": value, "label": label})
+    return output
+
+
+def _guardians_feature_enabled() -> bool:
+    try:
+        setting = frappe.db.get_single_value("Admission Settings", "show_guardians_in_admissions_profile")
+    except Exception:
+        return False
+    return bool(cint(setting or 0))
+
+
+def _serialize_applicant_guardians(applicant) -> list[dict]:
+    rows: list[dict] = []
+    for row in applicant.get("guardians") or []:
+        payload: dict = {}
+        for fieldname in APPLICANT_GUARDIAN_FIELDS:
+            if fieldname in APPLICANT_GUARDIAN_CHECK_FIELDS:
+                payload[fieldname] = _as_check(row.get(fieldname))
+            elif fieldname == "guardian_image":
+                payload[fieldname] = _guardian_image_open_url(
+                    applicant_name=applicant.name,
+                    guardian_image=_as_text(row.get(fieldname)).strip(),
+                )
+            else:
+                payload[fieldname] = _as_text(row.get(fieldname)).strip()
+        rows.append(payload)
+    return rows
+
+
+def _resolve_guardian_image_file(*, applicant_name: str, guardian_image: str | None) -> dict | None:
+    image_value = _as_text(guardian_image).strip()
+    if not image_value:
+        return None
+
+    file_name = ""
+    if "download_admissions_file" in image_value:
+        parsed = urlparse(image_value)
+        file_name = _as_text((parse_qs(parsed.query).get("file") or [""])[0]).strip()
+    if file_name:
+        row = frappe.db.get_value(
+            "File",
+            file_name,
+            ["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
+            as_dict=True,
+        )
+        if row and _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
+            return row
+
+    file_rows = frappe.get_all(
+        "File",
+        filters={"file_url": image_value},
+        fields=["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
+        order_by="creation desc",
+        limit_page_length=5,
+    )
+    for row in file_rows:
+        if _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
+            return row
+
+    return None
+
+
+def _file_is_scoped_to_applicant(*, file_row: dict, applicant_name: str) -> bool:
+    file_name = _as_text(file_row.get("name")).strip()
+    if file_name:
+        classification = frappe.db.get_value(
+            "File Classification",
+            {"file": file_name},
+            ["primary_subject_type", "primary_subject_id"],
+            as_dict=True,
+        )
+        if classification and (
+            _as_text(classification.get("primary_subject_type")).strip() == "Student Applicant"
+            and _as_text(classification.get("primary_subject_id")).strip() == applicant_name
+        ):
+            return True
+
+    return (
+        _as_text(file_row.get("attached_to_doctype")).strip() == "Student Applicant"
+        and _as_text(file_row.get("attached_to_name")).strip() == applicant_name
+    )
+
+
+def _guardian_image_open_url(*, applicant_name: str, guardian_image: str | None) -> str:
+    image_value = _as_text(guardian_image).strip()
+    if not image_value:
+        return ""
+
+    file_row = _resolve_guardian_image_file(applicant_name=applicant_name, guardian_image=image_value)
+    if not file_row:
+        return image_value
+
+    return (
+        resolve_admissions_file_open_url(
+            file_name=file_row.get("name"),
+            file_url=file_row.get("file_url"),
+            context_doctype="Student Applicant",
+            context_name=applicant_name,
+        )
+        or _as_text(file_row.get("file_url")).strip()
+    )
+
+
+def _rehome_guardian_image_to_contact(
+    *,
+    applicant_name: str,
+    guardian_image: str | None,
+    contact_name: str | None,
+) -> str:
+    resolved_contact = _as_text(contact_name).strip()
+    if not resolved_contact:
+        return _as_text(guardian_image).strip()
+
+    file_row = _resolve_guardian_image_file(applicant_name=applicant_name, guardian_image=guardian_image)
+    if not file_row:
+        return _as_text(guardian_image).strip()
+
+    attached_doctype = _as_text(file_row.get("attached_to_doctype")).strip()
+    attached_name = _as_text(file_row.get("attached_to_name")).strip()
+    attached_field = _as_text(file_row.get("attached_to_field")).strip()
+    if attached_doctype == "Contact" and attached_name == resolved_contact:
+        return _as_text(file_row.get("file_url")).strip()
+
+    if (
+        attached_doctype != "Student Applicant"
+        or attached_name != applicant_name
+        or attached_field == "applicant_image"
+    ):
+        return _as_text(file_row.get("file_url")).strip() or _as_text(guardian_image).strip()
+
+    frappe.db.set_value(
+        "File",
+        file_row.get("name"),
+        {
+            "attached_to_doctype": "Contact",
+            "attached_to_name": resolved_contact,
+            "attached_to_field": None,
+        },
+        update_modified=False,
+    )
+
+    classification_name = frappe.db.get_value("File Classification", {"file": file_row.get("name")}, "name")
+    if classification_name:
+        frappe.db.set_value(
+            "File Classification",
+            classification_name,
+            {
+                "attached_doctype": "Contact",
+                "attached_name": resolved_contact,
+            },
+            update_modified=False,
+        )
+
+    return _as_text(file_row.get("file_url")).strip() or _as_text(guardian_image).strip()
+
+
+def _parse_guardians_payload(guardians) -> list[dict] | None:
+    if guardians is None:
+        return None
+
+    payload = guardians
+    if isinstance(payload, str):
+        payload = frappe.parse_json(payload)
+    if not isinstance(payload, list):
+        frappe.throw(_("Guardians payload must be a list."))
+
+    normalized: list[dict] = []
+    for row in payload:
+        if not isinstance(row, dict):
+            frappe.throw(_("Each guardian entry must be an object."))
+        normalized.append(row)
+    return normalized
+
+
+def _guardian_row_is_empty(row: dict) -> bool:
+    identity_fields = (
+        "guardian",
+        "guardian_first_name",
+        "guardian_last_name",
+        "guardian_email",
+        "guardian_mobile_phone",
+        "salutation",
+        "guardian_work_email",
+        "guardian_work_phone",
+        "employment_sector",
+        "work_place",
+        "guardian_designation",
+        "guardian_image",
+    )
+    return not any(_as_text(row.get(fieldname)).strip() for fieldname in identity_fields)
+
+
+def _validate_guardian_profile_row(row: dict) -> dict:
+    missing_labels = [
+        _(label)
+        for fieldname, label in APPLICANT_GUARDIAN_REQUIRED_FIELD_LABELS
+        if not _as_text(row.get(fieldname)).strip()
+    ]
+    if missing_labels:
+        frappe.throw(_("Each guardian must include: {0}.").format(", ".join(missing_labels)))
+
+    guardian_email = normalize_email_value(row.get("guardian_email"))
+    try:
+        validate_email_address(guardian_email, True)
+    except Exception:
+        frappe.throw(_("Guardian personal email must be a valid email address."))
+    row["guardian_email"] = guardian_email
+
+    guardian_work_email = normalize_email_value(row.get("guardian_work_email"))
+    if guardian_work_email:
+        try:
+            validate_email_address(guardian_work_email, True)
+        except Exception:
+            frappe.throw(_("Guardian work email must be a valid email address."))
+    row["guardian_work_email"] = guardian_work_email
+
+    guardian_mobile_phone = _as_text(row.get("guardian_mobile_phone")).strip()
+    try:
+        validate_phone_number(guardian_mobile_phone, throw=True)
+    except Exception:
+        frappe.throw(_("Guardian mobile phone must be a valid phone number."))
+    row["guardian_mobile_phone"] = guardian_mobile_phone
+
+    guardian_work_phone = _as_text(row.get("guardian_work_phone")).strip()
+    if guardian_work_phone:
+        try:
+            validate_phone_number(guardian_work_phone, throw=True)
+        except Exception:
+            frappe.throw(_("Guardian work phone must be a valid phone number."))
+    row["guardian_work_phone"] = guardian_work_phone
+
+    return row
+
+
+def _contact_is_linked_to_applicant(*, contact_name: str, applicant_name: str) -> bool:
+    if not contact_name or not applicant_name:
+        return False
+    return bool(
+        frappe.db.exists(
+            "Dynamic Link",
+            {
+                "parenttype": "Contact",
+                "parentfield": "links",
+                "parent": contact_name,
+                "link_doctype": "Student Applicant",
+                "link_name": applicant_name,
+            },
+        )
+    )
+
+
+def _set_contact_primary_mobile(contact_doc, mobile: str) -> bool:
+    mobile = _as_text(mobile).strip()
+    if not mobile:
+        return False
+
+    changed = False
+    phone_rows = list(contact_doc.get("phone_nos") or [])
+    has_phone = any(_as_text(row.get("phone")).strip() == mobile for row in phone_rows)
+    if not has_phone:
+        contact_doc.append("phone_nos", {"phone": mobile, "is_primary_mobile_no": 1})
+        changed = True
+        phone_rows = list(contact_doc.get("phone_nos") or [])
+
+    primary_set = False
+    for row in phone_rows:
+        row_phone = _as_text(row.get("phone")).strip()
+        should_be_primary = row_phone == mobile and not primary_set
+        if should_be_primary:
+            primary_set = True
+        desired = 1 if should_be_primary else 0
+        if cint(row.get("is_primary_mobile_no") or 0) != desired:
+            row.is_primary_mobile_no = desired
+            changed = True
+
+    if _as_text(contact_doc.get("mobile_no")).strip() != mobile:
+        contact_doc.mobile_no = mobile
+        changed = True
+
+    return changed
+
+
+def _guardian_contact_name_from_guardian_email(email: str) -> str:
+    normalized = normalize_email_value(email)
+    if not normalized:
+        return ""
+    return _as_text(
+        frappe.db.get_value(
+            "Contact Email",
+            {"email_id": normalized},
+            "parent",
+        )
+    ).strip()
+
+
+def _hydrate_guardian_row_from_guardian_doc(*, row_payload: dict, guardian_doc) -> dict:
+    row = dict(row_payload)
+    row["guardian"] = guardian_doc.name
+    row["salutation"] = row.get("salutation") or _as_text(guardian_doc.get("salutation")).strip()
+    row["guardian_first_name"] = (
+        row.get("guardian_first_name") or _as_text(guardian_doc.get("guardian_first_name")).strip()
+    )
+    row["guardian_last_name"] = (
+        row.get("guardian_last_name") or _as_text(guardian_doc.get("guardian_last_name")).strip()
+    )
+    row["guardian_gender"] = row.get("guardian_gender") or _as_text(guardian_doc.get("guardian_gender")).strip()
+    row["guardian_mobile_phone"] = (
+        row.get("guardian_mobile_phone") or _as_text(guardian_doc.get("guardian_mobile_phone")).strip()
+    )
+    row["guardian_email"] = row.get("guardian_email") or _as_text(guardian_doc.get("guardian_email")).strip()
+    row["guardian_work_email"] = (
+        row.get("guardian_work_email") or _as_text(guardian_doc.get("guardian_work_email")).strip()
+    )
+    row["guardian_work_phone"] = (
+        row.get("guardian_work_phone") or _as_text(guardian_doc.get("guardian_work_phone")).strip()
+    )
+    row["employment_sector"] = row.get("employment_sector") or _as_text(guardian_doc.get("employment_sector")).strip()
+    row["work_place"] = row.get("work_place") or _as_text(guardian_doc.get("work_place")).strip()
+    row["guardian_designation"] = (
+        row.get("guardian_designation") or _as_text(guardian_doc.get("guardian_designation")).strip()
+    )
+    row["guardian_image"] = row.get("guardian_image") or _as_text(guardian_doc.get("guardian_image")).strip()
+    row["user"] = row.get("user") or _as_text(guardian_doc.get("user")).strip()
+
+    if row.get("is_primary_guardian") in (None, ""):
+        row["is_primary_guardian"] = _as_check(guardian_doc.get("is_primary_guardian"))
+    if row.get("is_financial_guardian") in (None, ""):
+        row["is_financial_guardian"] = _as_check(guardian_doc.get("is_financial_guardian"))
+
+    row["guardian_full_name"] = _as_text(guardian_doc.get("guardian_full_name")).strip() or " ".join(
+        part for part in [row.get("guardian_first_name"), row.get("guardian_last_name")] if _as_text(part).strip()
+    )
+
+    contact_name = _as_text(row.get("contact")).strip()
+    if not contact_name:
+        contact_name = _guardian_contact_name_from_guardian_email(_as_text(row.get("guardian_email")).strip())
+    if contact_name:
+        row["contact"] = contact_name
+
+    return row
+
+
+def _create_or_update_guardian_contact(
+    *,
+    applicant,
+    row_payload: dict,
+    existing_contact_name: str | None = None,
+) -> str:
+    use_applicant_contact = _as_bool(row_payload.get("use_applicant_contact"))
+    applicant_contact = _as_text(applicant.get("applicant_contact")).strip()
+    if use_applicant_contact:
+        if not applicant_contact:
+            frappe.throw(_("Applicant Contact is required before using it for guardian contact tracking."))
+        ensure_contact_dynamic_link(
+            contact_name=applicant_contact,
+            link_doctype="Student Applicant",
+            link_name=applicant.name,
+        )
+        return applicant_contact
+
+    first_name = _as_text(row_payload.get("guardian_first_name")).strip()
+    last_name = _as_text(row_payload.get("guardian_last_name")).strip()
+    email = normalize_email_value(row_payload.get("guardian_email"))
+    mobile = _as_text(row_payload.get("guardian_mobile_phone")).strip()
+
+    if not first_name:
+        frappe.throw(_("Guardian first name is required."))
+    if not last_name:
+        frappe.throw(_("Guardian last name is required."))
+    if not email:
+        frappe.throw(_("Guardian personal email is required."))
+    if not mobile:
+        frappe.throw(_("Guardian mobile phone is required."))
+
+    contact_name = _as_text(existing_contact_name).strip()
+    if contact_name:
+        if not frappe.db.exists("Contact", contact_name):
+            contact_name = ""
+        elif not _contact_is_linked_to_applicant(contact_name=contact_name, applicant_name=applicant.name):
+            frappe.throw(_("Guardian Contact must already be linked to this applicant."))
+
+    contact_from_email = _guardian_contact_name_from_guardian_email(email)
+    if contact_from_email and contact_from_email != contact_name:
+        if not _contact_is_linked_to_applicant(contact_name=contact_from_email, applicant_name=applicant.name):
+            frappe.throw(
+                _("Guardian email is linked to another contact. Ask admissions staff to link that contact first.")
+            )
+        contact_name = contact_from_email
+
+    if contact_name:
+        contact_doc = frappe.get_doc("Contact", contact_name)
+    else:
+        contact_doc = frappe.get_doc(
+            {
+                "doctype": "Contact",
+                "first_name": first_name,
+                "last_name": last_name,
+                "email_ids": [{"email_id": email, "is_primary": 1}],
+                "phone_nos": [{"phone": mobile, "is_primary_mobile_no": 1}],
+                "mobile_no": mobile,
+            }
+        )
+        contact_doc.insert(ignore_permissions=True)
+        contact_name = contact_doc.name
+
+    changed = False
+    if _as_text(contact_doc.get("first_name")).strip() != first_name:
+        contact_doc.first_name = first_name
+        changed = True
+    if _as_text(contact_doc.get("last_name")).strip() != last_name:
+        contact_doc.last_name = last_name
+        changed = True
+
+    upsert_contact_email(contact_name, email, set_primary_if_missing=True)
+    if _set_contact_primary_mobile(contact_doc, mobile):
+        changed = True
+
+    if changed:
+        contact_doc.save(ignore_permissions=True)
+
+    ensure_contact_dynamic_link(
+        contact_name=contact_name,
+        link_doctype="Student Applicant",
+        link_name=applicant.name,
+    )
+    return contact_name
+
+
+def _normalize_guardian_row(row_payload: dict) -> dict:
+    normalized: dict = {}
+    for fieldname in APPLICANT_GUARDIAN_TEXT_FIELDS:
+        normalized[fieldname] = _as_text(row_payload.get(fieldname)).strip()
+    for fieldname in APPLICANT_GUARDIAN_CHECK_FIELDS:
+        normalized[fieldname] = _as_check(row_payload.get(fieldname))
+
+    normalized["name"] = _as_text(row_payload.get("name")).strip()
+    normalized["relationship"] = normalized.get("relationship") or "Other"
+    if not normalized.get("can_consent"):
+        normalized["can_consent"] = 0
+    return normalized
+
+
+def _apply_guardians_to_applicant(*, applicant, guardians_payload: list[dict]):
+    existing_by_name = {row.name: row for row in (applicant.get("guardians") or []) if row.name}
+    normalized_rows: list[dict] = []
+
+    for row_payload in guardians_payload:
+        row = _normalize_guardian_row(row_payload)
+        existing_row = existing_by_name.get(_as_text(row.get("name")).strip())
+
+        if _guardian_row_is_empty(row):
+            continue
+
+        guardian_name = _as_text(row.get("guardian")).strip()
+        if guardian_name:
+            if not frappe.db.exists("Guardian", guardian_name):
+                frappe.throw(_("Invalid Guardian: {0}.").format(guardian_name))
+            guardian_doc = frappe.get_doc("Guardian", guardian_name)
+            row = _hydrate_guardian_row_from_guardian_doc(row_payload=row, guardian_doc=guardian_doc)
+        row = _validate_guardian_profile_row(row)
+
+        existing_contact_name = _as_text(row.get("contact")).strip()
+        if not existing_contact_name and existing_row:
+            existing_contact_name = _as_text(existing_row.get("contact")).strip()
+        row["contact"] = _create_or_update_guardian_contact(
+            applicant=applicant,
+            row_payload=row,
+            existing_contact_name=existing_contact_name,
+        )
+        row["guardian_image"] = _rehome_guardian_image_to_contact(
+            applicant_name=applicant.name,
+            guardian_image=row.get("guardian_image"),
+            contact_name=row.get("contact"),
+        )
+
+        if not _as_text(row.get("guardian_full_name")).strip():
+            row["guardian_full_name"] = " ".join(
+                part
+                for part in [
+                    _as_text(row.get("guardian_first_name")).strip(),
+                    _as_text(row.get("guardian_last_name")).strip(),
+                ]
+                if part
+            )
+
+        normalized_rows.append(row)
+
+    applicant.set("guardians", [])
+    for row in normalized_rows:
+        applicant.append(
+            "guardians",
+            {
+                "guardian": row.get("guardian") or None,
+                "contact": row.get("contact") or None,
+                "use_applicant_contact": _as_check(row.get("use_applicant_contact")),
+                "relationship": row.get("relationship") or "Other",
+                "is_primary": _as_check(row.get("is_primary")),
+                "can_consent": _as_check(row.get("can_consent")),
+                "salutation": row.get("salutation") or None,
+                "guardian_full_name": row.get("guardian_full_name") or None,
+                "guardian_first_name": row.get("guardian_first_name") or None,
+                "guardian_last_name": row.get("guardian_last_name") or None,
+                "guardian_gender": row.get("guardian_gender") or None,
+                "guardian_mobile_phone": row.get("guardian_mobile_phone") or None,
+                "guardian_email": normalize_email_value(row.get("guardian_email")) or None,
+                "guardian_work_email": normalize_email_value(row.get("guardian_work_email")) or None,
+                "guardian_work_phone": row.get("guardian_work_phone") or None,
+                "guardian_image": row.get("guardian_image") or None,
+                "user": row.get("user") or None,
+                "is_primary_guardian": _as_check(row.get("is_primary_guardian")),
+                "is_financial_guardian": _as_check(row.get("is_financial_guardian")),
+                "employment_sector": row.get("employment_sector") or None,
+                "work_place": row.get("work_place") or None,
+                "guardian_designation": row.get("guardian_designation") or None,
+            },
+        )
+
+
 def _require_admissions_applicant() -> str:
-    user = frappe.session.user
-    if not user or user == "Guest":
+    user = _session_user()
+    if not user:
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
     roles = set(frappe.get_roles(user))
@@ -462,6 +1086,41 @@ def _require_admissions_applicant() -> str:
         frappe.throw(_("You do not have permission to access the admissions portal."), frappe.PermissionError)
 
     return user
+
+
+def _get_applicant_rows_for_user(*, user: str, fields: list[str], limit: int = 2) -> list[dict]:
+    selected_fields = [field for field in fields if field]
+    if "name" not in selected_fields:
+        selected_fields = ["name", *selected_fields]
+
+    rows_by_name: dict[str, dict] = {}
+    search_filters = [{"applicant_user": user}]
+    normalized_user = normalize_email_value(user)
+    if normalized_user:
+        search_filters.extend(
+            [
+                {"portal_account_email": normalized_user},
+                {"applicant_email": normalized_user},
+            ]
+        )
+
+    for filters in search_filters:
+        rows = frappe.get_all(
+            "Student Applicant",
+            filters=filters,
+            fields=selected_fields,
+            limit_page_length=limit,
+            order_by="creation desc",
+        )
+        for row in rows or []:
+            name = _as_text(row.get("name")).strip()
+            if not name or name in rows_by_name:
+                continue
+            rows_by_name[name] = row
+            if len(rows_by_name) >= limit:
+                return list(rows_by_name.values())
+
+    return list(rows_by_name.values())
 
 
 def _get_applicant_for_user(user: str, fields: list[str] | None = None) -> dict:
@@ -479,16 +1138,32 @@ def _get_applicant_for_user(user: str, fields: list[str] | None = None) -> dict:
         "last_name",
         *APPLICANT_PROFILE_FIELDS,
     ]
-    rows = frappe.get_all(
-        "Student Applicant",
-        filters={"applicant_user": user},
-        fields=fields,
-        limit=2,
-    )
+    rows = _get_applicant_rows_for_user(user=user, fields=fields, limit=2)
     if not rows:
-        frappe.throw(_("Admissions access is not linked to any Applicant."), frappe.PermissionError)
+        frappe.throw(
+            _(
+                "Admissions access is not linked to any Applicant. Contact the admissions office to relink your account."
+            ),
+            frappe.PermissionError,
+        )
     if len(rows) > 1:
-        frappe.throw(_("Admissions access is linked to multiple Applicants."), frappe.PermissionError)
+        frappe.log_error(
+            title="Admissions Portal applicant identity conflict",
+            message=frappe.as_json(
+                {
+                    "user": user,
+                    "matched_applicants": sorted(
+                        [_as_text(row.get("name")).strip() for row in rows if _as_text(row.get("name")).strip()]
+                    ),
+                }
+            ),
+        )
+        frappe.throw(
+            _(
+                "Admissions access is linked to multiple Applicants. Contact the admissions office to relink your account."
+            ),
+            frappe.PermissionError,
+        )
     return rows[0]
 
 
@@ -526,6 +1201,8 @@ def _completion_state_for_requirement(required: list, missing: list, unapproved:
 def _completion_state_for_health(health: dict) -> str:
     if health.get("ok"):
         return "complete"
+    if not bool(health.get("required_for_approval", True)):
+        return "optional"
     status = (health.get("status") or "missing").strip()
     if status == "missing":
         return "pending"
@@ -608,7 +1285,7 @@ def _derive_next_actions(application_status: str, readiness: dict) -> list[dict]
                 }
             )
 
-    if not health.get("ok"):
+    if bool(health.get("required_for_approval", True)) and not health.get("ok"):
         actions.append(
             {
                 "label": _("Complete health information"),
@@ -671,6 +1348,8 @@ def get_applicant_snapshot(student_applicant: str | None = None):
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
     readiness = applicant.get_readiness_snapshot()
     portal_health = _portal_health_state(applicant.name)
+    health_required_for_approval = bool((readiness.get("health") or {}).get("required_for_approval", True))
+    portal_health["required_for_approval"] = health_required_for_approval
     recommendation_status = get_recommendation_status_for_applicant(
         student_applicant=applicant.name,
         include_confidential=False,
@@ -739,6 +1418,7 @@ def update_applicant_profile(
     student_nationality: str | None = None,
     student_second_nationality: str | None = None,
     residency_status: str | None = None,
+    guardians=None,
 ):
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
@@ -783,6 +1463,9 @@ def update_applicant_profile(
     }
 
     applicant.update(updates)
+    guardians_payload = _parse_guardians_payload(guardians)
+    if guardians_payload is not None and _guardians_feature_enabled():
+        _apply_guardians_to_applicant(applicant=applicant, guardians_payload=guardians_payload)
     applicant.save(ignore_permissions=True)
     payload = _build_profile_payload(applicant)
     payload["ok"] = True
@@ -848,6 +1531,69 @@ def upload_applicant_profile_image(
         file_doc.file_url,
         update_modified=False,
     )
+    classification_name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
+
+    return {
+        "ok": True,
+        "file": file_doc.name,
+        "file_url": file_doc.file_url,
+        "file_name": file_doc.file_name,
+        "file_size": file_doc.file_size,
+        "classification": classification_name,
+    }
+
+
+@frappe.whitelist()
+def upload_applicant_guardian_image(
+    *,
+    student_applicant: str | None = None,
+    file_name: str | None = None,
+    content: str | None = None,
+):
+    user = _require_admissions_applicant()
+    row = _ensure_applicant_match(student_applicant, user)
+
+    is_read_only, reason = _read_only_for(_as_text(row.get("application_status")).strip())
+    if is_read_only:
+        frappe.throw(reason or _("This application is read-only."), frappe.PermissionError)
+
+    applicant_name = _as_text(row.get("name")).strip()
+    if not applicant_name:
+        frappe.throw(_("Applicant context is missing."))
+
+    upload_name = _as_text(file_name).strip()
+    if not upload_name:
+        frappe.throw(_("file_name is required."))
+
+    upload_content = _decode_profile_image_content(_as_text(content))
+    _validate_profile_image_content(upload_content)
+
+    applicant = frappe.get_doc("Student Applicant", applicant_name)
+    if not applicant.get("organization") or not applicant.get("school"):
+        frappe.throw(_("Organization and School are required for file classification."))
+
+    file_doc = file_dispatcher.create_and_classify_file(
+        file_kwargs={
+            "attached_to_doctype": "Student Applicant",
+            "attached_to_name": applicant.name,
+            "attached_to_field": "guardians",
+            "file_name": upload_name,
+            "content": upload_content,
+            "is_private": 1,
+        },
+        classification={
+            "primary_subject_type": "Student Applicant",
+            "primary_subject_id": applicant.name,
+            "data_class": "identity_image",
+            "purpose": "applicant_profile_display",
+            "retention_policy": "until_school_exit_plus_6m",
+            "slot": "guardian_profile_image",
+            "organization": applicant.organization,
+            "school": applicant.school,
+            "upload_source": "SPA",
+        },
+    )
+    _ensure_file_on_disk(file_doc)
     classification_name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
 
     return {
@@ -1058,6 +1804,7 @@ def update_applicant_health(
 def list_applicant_documents(student_applicant: str | None = None):
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
+    student_applicant_name = (row.get("name") or "").strip()
 
     documents = frappe.get_all(
         "Applicant Document",
@@ -1095,7 +1842,7 @@ def list_applicant_documents(student_applicant: str | None = None):
                 "attached_to_doctype": "Applicant Document Item",
                 "attached_to_name": ["in", item_names],
             },
-            fields=["attached_to_name", "file_url", "file_name", "creation"],
+            fields=["name", "attached_to_name", "file_url", "file_name", "creation"],
             order_by="creation desc",
         )
         for row_file in item_file_rows:
@@ -1111,7 +1858,7 @@ def list_applicant_documents(student_applicant: str | None = None):
             "attached_to_doctype": "Applicant Document",
             "attached_to_name": ["in", name_list],
         },
-        fields=["attached_to_name", "file_url", "file_name", "creation"],
+        fields=["name", "attached_to_name", "file_url", "file_name", "creation"],
         order_by="creation desc",
     )
     for row_file in legacy_file_rows:
@@ -1135,7 +1882,12 @@ def list_applicant_documents(student_applicant: str | None = None):
                 "reviewed_by": row_item.get("reviewed_by"),
                 "reviewed_on": row_item.get("reviewed_on"),
                 "uploaded_at": latest_file.get("creation"),
-                "file_url": latest_file.get("file_url"),
+                "file_url": resolve_admissions_file_open_url(
+                    file_name=latest_file.get("name"),
+                    file_url=latest_file.get("file_url"),
+                    context_doctype="Student Applicant",
+                    context_name=student_applicant_name,
+                ),
                 "file_name": latest_file.get("file_name"),
             }
         )
@@ -1157,7 +1909,12 @@ def list_applicant_documents(student_applicant: str | None = None):
                         "reviewed_by": doc.get("reviewed_by"),
                         "reviewed_on": doc.get("reviewed_on"),
                         "uploaded_at": legacy_file.get("creation"),
-                        "file_url": legacy_file.get("file_url"),
+                        "file_url": resolve_admissions_file_open_url(
+                            file_name=legacy_file.get("name"),
+                            file_url=legacy_file.get("file_url"),
+                            context_doctype="Student Applicant",
+                            context_name=student_applicant_name,
+                        ),
                         "file_name": legacy_file.get("file_name"),
                     }
                 ]

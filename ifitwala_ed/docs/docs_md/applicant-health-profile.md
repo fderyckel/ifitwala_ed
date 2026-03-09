@@ -3,14 +3,12 @@ title: "Applicant Health Profile: Health Disclosure and Clearance"
 slug: applicant-health-profile
 category: Admission
 doc_order: 7
-version: "2.2.2"
-last_change_date: "2026-03-02"
+version: "2.4.0"
+last_change_date: "2026-03-08"
 summary: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
 seo_title: "Applicant Health Profile: Health Disclosure and Clearance"
 seo_description: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
 ---
-
-## Applicant Health Profile: Health Disclosure and Clearance
 
 ## Before You Start (Prerequisites)
 
@@ -32,7 +30,7 @@ seo_description: "Capture health details, control family/staff editing by applic
 
 ## Where It Is Used Across the ERP
 
-- [**Student Applicant**](/docs/en/student-applicant/): readiness checks require a cleared health review.
+- [**Student Applicant**](/docs/en/student-applicant/): readiness checks require a cleared health review only when the applicant school has `require_health_profile_for_approval = 1`.
 - Admissions portal APIs:
   - `get_applicant_health`
   - `update_applicant_health`
@@ -55,7 +53,7 @@ Families can provide health details in portal phases where edits are allowed, th
 <DoDont doTitle="Do" dontTitle="Don't">
   <Do>Keep reviewer outcomes explicit (`Pending`, `Needs Follow-Up`, `Cleared`) and let reviewer metadata stamp automatically.</Do>
   <Do>Use governed vaccination-proof uploads and canonical file URLs.</Do>
-  <Dont>Approve applicant decisions while health review is unresolved.</Dont>
+  <Dont>Approve applicant decisions while health review is unresolved when health is configured as required for that school.</Dont>
   <Dont>Allow family-side edits after terminal applicant states (`Rejected`, `Promoted`).</Dont>
 </DoDont>
 
@@ -75,7 +73,7 @@ Families can provide health details in portal phases where edits are allowed, th
     When family declaration is marked complete, matching `Applicant Review Rule` reviewers receive Focus assignments through `Applicant Review Assignment`.
   </Step>
   <Step title="Gate Decisions">
-    Applicant approval readiness depends on the health review state being complete.
+    Applicant approval readiness depends on the health review state being complete only when school policy enables health gating.
   </Step>
   <Step title="Promote">
     On applicant promotion, health fields and vaccination rows are copied into `Student Patient` / `Student Patient Vaccination`.
@@ -86,12 +84,23 @@ Families can provide health details in portal phases where edits are allowed, th
 </Steps>
 
 <Callout type="warning" title="Admissions decision impact">
-Do not move applicants to final approval while health review remains unresolved; readiness checks are designed to prevent this.
+When school policy requires health clearance, do not move applicants to final approval while health review remains unresolved; readiness checks are designed to prevent this.
 </Callout>
+
+## Reporting
+
+- No dedicated Script/Query Report currently declares this doctype as `ref_doctype`.
+
+## Related Docs
+
+<RelatedDocs
+  slugs="student-applicant,applicant-interview,applicant-document"
+  title="Related Applicant Review Docs"
+/>
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-02)
+### Latest Technical Snapshot (2026-03-05)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_health_profile/applicant_health_profile.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/applicant_health_profile/applicant_health_profile.py`
@@ -118,24 +127,15 @@ Do not move applicants to final approval while health review remains unresolved;
 | Role | Read | Write | Create | Delete | Notes |
 |---|---|---|---|---|---|
 | `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Academic Admin` | Yes | Yes | Yes | Yes | Staff review role |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Full Desk access |
-| `Admission Officer` | Yes | Yes | Yes | Yes | Full Desk access |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
 | `Nurse` | Yes | Yes | Yes | Yes | Staff review role |
-| `Guardian` | Yes | Yes | Yes | No | Family-facing write allowed by DocType permissions |
+| `Guardian` | Yes | Yes | Yes | No | Linked-guardian rows only |
+| `Admissions Applicant` | Yes | Yes | Yes | No | Own applicant rows only |
 
 Runtime controller rules:
-- Family/applicant editing is allowed for non-promoted applicant phases (`Draft` through `Withdrawn`, excluding `Rejected`).
+- Family/applicant editing is allowed only when user linkage to the applicant is valid and status is non-terminal (`Draft` through `Withdrawn`, excluding `Rejected`).
+- Admissions/academic staff are scoped by applicant organization/school visibility; `System Manager` remains global.
 - Review fields are staff-only (`Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`, `Nurse`).
 - Terminal applicant states (`Rejected`, `Promoted`) are read-only.
-
-## Reporting
-
-- No dedicated Script/Query Report currently declares this doctype as `ref_doctype`.
-
-## Related Docs
-
-<RelatedDocs
-  slugs="student-applicant,applicant-interview,applicant-document"
-  title="Related Applicant Review Docs"
-/>

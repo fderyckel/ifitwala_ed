@@ -27,7 +27,7 @@ Define the post-promotion access upgrade boundary as a separate workflow from ad
 - `Student Applicant.application_status = Promoted`
 - `Student Applicant.student` is set
 - At least one active `Program Enrollment` exists for that student
-- Guardian identity inputs are resolvable (explicit applicant guardians or applicant contact fallback with required phone+email)
+- Guardian identity inputs are resolvable (explicit applicant guardian rows with contact tracking, or applicant contact fallback with required phone+email)
 
 ## Effects
 
@@ -36,6 +36,7 @@ Define the post-promotion access upgrade boundary as a separate workflow from ad
 - Remove `Admissions Applicant` role and assign `Guardian` role for guardian identities
 - Ensure Student portal identity exists and has `Student` role
 - Link Guardian <-> Student in `Student.guardians` child rows
+- Link tracked guardian `Contact` rows to `Student Applicant`, `Guardian`, and promoted `Student`
 
 ## Explicit Non-Effects
 

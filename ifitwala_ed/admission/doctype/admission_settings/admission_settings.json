@@ -10,9 +10,12 @@
   "section_break_fk4b",
   "first_contact_sla_days",
   "followup_sla_days",
+  "todo_color",
+  "column_break_af5a",
   "sla_enabled",
   "sla_check_interval_hours",
-  "todo_color"
+  "portal_section",
+  "show_guardians_in_admissions_profile"
  ],
  "fields": [
   {
@@ -50,13 +53,29 @@
    "fieldname": "followup_sla_days",
    "fieldtype": "Int",
    "label": "Follow up SLA Days"
+  },
+  {
+   "fieldname": "column_break_af5a",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "portal_section",
+   "fieldtype": "Section Break",
+   "label": "Admissions Portal"
+  },
+  {
+   "default": "0",
+   "description": "If enabled, applicant-facing profile page shows guardian intake rows.",
+   "fieldname": "show_guardians_in_admissions_profile",
+   "fieldtype": "Check",
+   "label": "Show Guardians In Admissions Profile"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-02-22 08:11:55.300430",
+ "modified": "2026-03-04 09:05:06.330468",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission Settings",

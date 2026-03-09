@@ -2,6 +2,9 @@
 
 from datetime import datetime, time, timedelta
 from unittest import TestCase
+from unittest.mock import patch
+
+import frappe
 
 from ifitwala_ed.api.calendar import (
     CAL_MIN_DURATION,
@@ -10,7 +13,51 @@ from ifitwala_ed.api.calendar import (
     _resolve_sg_schedule_context,
     _system_tzinfo,
     _time_to_str,
+    create_meeting_quick,
+    create_school_event_quick,
 )
+
+
+class _DummyLock:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class _DummyCache:
+    def __init__(self):
+        self.store: dict[str, str] = {}
+
+    def get_value(self, key):
+        return self.store.get(key)
+
+    def set_value(self, key, value, expires_in_sec=None):
+        self.store[key] = value
+
+    def lock(self, key, timeout=15):
+        return _DummyLock()
+
+
+class _FakeDoc:
+    def __init__(self, payload: dict, name: str):
+        self.name = name
+        for key, value in payload.items():
+            setattr(self, key, value)
+
+        if payload.get("meeting_name"):
+            self.meeting_name = payload.get("meeting_name")
+            self.from_datetime = f"{payload.get('date')} {payload.get('start_time')}:00"
+            self.to_datetime = f"{payload.get('date')} {payload.get('end_time')}:00"
+
+        if payload.get("subject"):
+            self.subject = payload.get("subject")
+            self.starts_on = payload.get("starts_on")
+            self.ends_on = payload.get("ends_on")
+
+    def insert(self):
+        return self
 
 
 class TestCalendarApi(TestCase):
@@ -39,3 +86,66 @@ class TestCalendarApi(TestCase):
         self.assertIsNone(context["block_number"])
         self.assertEqual(context["session_date"], "2026-02-01")
         self.assertEqual(context["end"] - context["start"], CAL_MIN_DURATION)
+
+    def test_create_meeting_quick_is_idempotent(self):
+        cache = _DummyCache()
+        captured_payloads = []
+
+        def _fake_get_doc(payload):
+            captured_payloads.append(payload)
+            return _FakeDoc(payload, "MTG-TEST-0001")
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc", side_effect=_fake_get_doc),
+        ):
+            first = create_meeting_quick(
+                client_request_id="req-1",
+                meeting_name="Weekly Check-in",
+                date="2026-02-01",
+                start_time="09:00",
+                end_time="10:00",
+            )
+            second = create_meeting_quick(
+                client_request_id="req-1",
+                meeting_name="Weekly Check-in",
+                date="2026-02-01",
+                start_time="09:00",
+                end_time="10:00",
+            )
+
+        self.assertEqual(first.get("status"), "created")
+        self.assertEqual(second.get("status"), "already_processed")
+        self.assertEqual(second.get("idempotent"), True)
+        self.assertEqual(len(captured_payloads), 1)
+        self.assertEqual(captured_payloads[0].get("participants"), [{"participant": "staff@example.com"}])
+
+    def test_create_school_event_quick_defaults_custom_users_to_session_user(self):
+        cache = _DummyCache()
+        captured_payloads = []
+
+        def _fake_get_doc(payload):
+            captured_payloads.append(payload)
+            return _FakeDoc(payload, "SEVENT-2026-000001")
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc", side_effect=_fake_get_doc),
+        ):
+            response = create_school_event_quick(
+                client_request_id="req-custom-1",
+                subject="Parent Coffee Morning",
+                school="SCHOOL-1",
+                starts_on="2026-02-01T09:00",
+                ends_on="2026-02-01T10:00",
+                audience_type="Custom Users",
+                event_category="Other",
+            )
+
+        self.assertEqual(response.get("status"), "created")
+        self.assertEqual(len(captured_payloads), 1)
+        self.assertEqual(captured_payloads[0].get("participants"), [{"participant": "staff@example.com"}])

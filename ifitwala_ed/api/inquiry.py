@@ -161,6 +161,13 @@ def _apply_common_conditions(filters: dict, site_tz: str):
         conds.append("i.sla_status = %(sla)s")
         params["sla"] = filters["sla_status"]
 
+    lane = (filters.get("assignment_lane") or "").strip()
+    if lane:
+        if lane not in ("Admission", "Staff"):
+            frappe.throw("Invalid assignment_lane filter.")
+        conds.append("COALESCE(i.assignment_lane, 'Admission') = %(assignment_lane)s")
+        params["assignment_lane"] = lane
+
     return " AND ".join(conds), params
 
 
@@ -176,6 +183,12 @@ def _rest_conditions(filters: dict):
     if filters.get("sla_status"):
         conds.append("i.sla_status = %(sla)s")
         params["sla"] = filters["sla_status"]
+    lane = (filters.get("assignment_lane") or "").strip()
+    if lane:
+        if lane not in ("Admission", "Staff"):
+            frappe.throw("Invalid assignment_lane filter.")
+        conds.append("COALESCE(i.assignment_lane, 'Admission') = %(assignment_lane)s")
+        params["assignment_lane"] = lane
     return " AND ".join(conds) or "1=1", params
 
 
@@ -361,6 +374,172 @@ def get_dashboard_data(filters=None):
         as_dict=False,
     )[0][0]
 
+    lane_distribution = frappe.db.sql(
+        f"""
+        SELECT COALESCE(i.assignment_lane, 'Admission') AS label, COUNT(*) AS value
+        FROM `tabInquiry` i
+        WHERE {where}
+        GROUP BY COALESCE(i.assignment_lane, 'Admission')
+        ORDER BY label
+        """,
+        params,
+        as_dict=True,
+    )
+
+    def _lane_metrics(lane: str) -> dict:
+        lane_where = f"{where} AND COALESCE(i.assignment_lane, 'Admission') = %(lane)s"
+        lane_params = {**params, "lane": lane}
+        lane_total = frappe.db.sql(
+            f"SELECT COUNT(*) FROM `tabInquiry` i WHERE {lane_where}",
+            lane_params,
+            as_dict=False,
+        )[0][0]
+        lane_contacted = frappe.db.sql(
+            f"SELECT COUNT(*) FROM `tabInquiry` i WHERE {lane_where} AND i.first_contacted_at IS NOT NULL",
+            lane_params,
+            as_dict=False,
+        )[0][0]
+        lane_overdue = frappe.db.sql(
+            """
+            SELECT COUNT(*)
+            FROM `tabInquiry` i
+            WHERE {lane_where}
+                AND i.first_contacted_at IS NULL
+                AND i.first_contact_due_on IS NOT NULL
+                AND i.first_contact_due_on < %(today)s
+            """.format(lane_where=lane_where),
+            {**lane_params, "today": nowdate()},
+            as_dict=False,
+        )[0][0]
+        lane_due_today = frappe.db.sql(
+            """
+            SELECT COUNT(*)
+            FROM `tabInquiry` i
+            WHERE {lane_where}
+                AND i.first_contacted_at IS NULL
+                AND DATE(i.first_contact_due_on) = %(today)s
+            """.format(lane_where=lane_where),
+            {**lane_params, "today": today},
+            as_dict=False,
+        )[0][0]
+        lane_upcoming = frappe.db.sql(
+            """
+            SELECT COUNT(*)
+            FROM `tabInquiry` i
+            WHERE {lane_where}
+                AND i.first_contacted_at IS NULL
+                AND DATE(i.first_contact_due_on) > %(up_from)s
+                AND DATE(i.first_contact_due_on) <= %(up_to)s
+            """.format(lane_where=lane_where),
+            {**lane_params, "up_from": up_from, "up_to": up_to},
+            as_dict=False,
+        )[0][0]
+        lane_avg_intake = (
+            frappe.db.sql(
+                f"""
+                SELECT AVG(i.intake_response_hours)
+                FROM `tabInquiry` i
+                WHERE {lane_where} AND i.intake_response_hours IS NOT NULL
+                """,
+                lane_params,
+                as_dict=False,
+            )[0][0]
+            or 0
+        )
+        lane_avg_resolver = (
+            frappe.db.sql(
+                f"""
+                SELECT AVG(i.resolver_response_hours)
+                FROM `tabInquiry` i
+                WHERE {lane_where} AND i.resolver_response_hours IS NOT NULL
+                """,
+                lane_params,
+                as_dict=False,
+            )[0][0]
+            or 0
+        )
+
+        lane_params_30 = {**rest_params}
+        lane_params_30["lane"] = lane
+        lane_params_30["due_from30"] = f"{max(add_days(td, -30), fd)}"
+        lane_params_30["due_to30"] = f"{td}"
+        lane_den = frappe.db.sql(
+            """
+            SELECT COUNT(*)
+            FROM `tabInquiry` i
+            WHERE i.first_contact_due_on IS NOT NULL
+                AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
+                AND COALESCE(i.assignment_lane, 'Admission') = %(lane)s
+                AND ({rest_where})
+            """.format(rest_where=rest_where),
+            lane_params_30,
+            as_dict=False,
+        )[0][0]
+        lane_num = frappe.db.sql(
+            """
+            SELECT COUNT(*)
+            FROM `tabInquiry` i
+            WHERE i.first_contact_due_on IS NOT NULL
+                AND i.first_contact_due_on BETWEEN %(due_from30)s AND %(due_to30)s
+                AND i.first_contacted_at IS NOT NULL
+                AND DATE(i.first_contacted_at) <= i.first_contact_due_on
+                AND COALESCE(i.assignment_lane, 'Admission') = %(lane)s
+                AND ({rest_where})
+            """.format(rest_where=rest_where),
+            lane_params_30,
+            as_dict=False,
+        )[0][0]
+        lane_sla = round((float(lane_num) / lane_den * 100.0), 1) if lane_den else 0.0
+
+        return {
+            "counts": {
+                "total": lane_total,
+                "contacted": lane_contacted,
+                "overdue_first_contact": lane_overdue,
+                "due_today": lane_due_today,
+                "upcoming": lane_upcoming,
+            },
+            "averages": {
+                "intake_response_hours": round(float(lane_avg_intake), 2),
+                "resolver_response_hours": round(float(lane_avg_resolver), 2),
+            },
+            "sla": {"pct_30d": lane_sla},
+        }
+
+    lane_breakdown = {
+        "Admission": _lane_metrics("Admission"),
+        "Staff": _lane_metrics("Staff"),
+    }
+
+    lane_monthly_rows = frappe.db.sql(
+        f"""
+        SELECT
+            DATE_FORMAT({SUBMITTED_LOCAL_EXPR}, '%%Y-%%m') AS ym,
+            COALESCE(i.assignment_lane, 'Admission') AS lane,
+            AVG(i.resolver_response_hours) AS resolver_avg
+        FROM `tabInquiry` i
+        WHERE {where}
+        GROUP BY ym, lane
+        ORDER BY ym
+        """,
+        params,
+        as_dict=True,
+    )
+    lane_monthly_labels = sorted({row.get("ym") for row in lane_monthly_rows if row.get("ym")})
+    admission_map = {
+        row.get("ym"): float(row.get("resolver_avg") or 0)
+        for row in lane_monthly_rows
+        if row.get("lane") == "Admission"
+    }
+    staff_map = {
+        row.get("ym"): float(row.get("resolver_avg") or 0) for row in lane_monthly_rows if row.get("lane") == "Staff"
+    }
+    monthly_lane_series = {
+        "labels": lane_monthly_labels,
+        "admission": [round(admission_map.get(label, 0.0), 2) for label in lane_monthly_labels],
+        "staff": [round(staff_map.get(label, 0.0), 2) for label in lane_monthly_labels],
+    }
+
     # ── Pipeline by workflow_state
     pipeline = frappe.db.sql(
         f"""
@@ -462,6 +641,9 @@ def get_dashboard_data(filters=None):
         "monthly_avg_series": monthly_series,
         "assignee_distribution": assignees,
         "type_distribution": types,
+        "lane_distribution": lane_distribution,
+        "lane_breakdown": lane_breakdown,
+        "monthly_lane_series": monthly_lane_series,
     }
 
 
@@ -526,25 +708,50 @@ def inquiry_organization_link_query(doctype=None, txt=None, searchfield=None, st
 
 @frappe.whitelist()
 def admission_user_link_query(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
-    """Enabled users with Admission Officer/Manager role; match name/full_name/email."""
+    """Enabled users linked to active Employee rows; match name/full_name/email."""
+    filters = filters or {}
+    organization = (filters.get("organization") or "").strip()
+    school = (filters.get("school") or "").strip()
+
+    org_scope = _get_descendant_organizations(organization) if organization else []
+    if organization and not org_scope:
+        return []
+    school_scope = get_descendant_schools(school) if school else []
+    if school and not school_scope:
+        return []
+
+    where = ["ifnull(e.employment_status, '') = 'Active'", "ifnull(e.user_id, '') <> ''"]
+    params = {
+        "txt": f"%{txt or ''}%",
+        "start": int(start or 0),
+        "page_len": int(page_len or 20),
+    }
+    if org_scope:
+        where.append("e.organization IN %(org_scope)s")
+        params["org_scope"] = tuple(org_scope)
+    if school_scope:
+        where.append("e.school IN %(school_scope)s")
+        params["school_scope"] = tuple(school_scope)
+
     return frappe.db.sql(
-        """
-        SELECT u.name, u.full_name
+        f"""
+        SELECT
+            u.name,
+            COALESCE(NULLIF(u.full_name, ''), NULLIF(e.employee_full_name, ''), u.name) as full_name
         FROM `tabUser` u
+        JOIN `tabEmployee` e ON e.user_id = u.name
         WHERE u.enabled = 1
-            AND u.name IN (
-            SELECT parent FROM `tabHas Role`
-            WHERE role IN ('Admission Officer','Admission Manager')
-            )
+            AND {" AND ".join(where)}
             AND (
             u.name LIKE %(txt)s
             OR u.full_name LIKE %(txt)s
+            OR e.employee_full_name LIKE %(txt)s
             OR u.email LIKE %(txt)s
             )
-        ORDER BY u.full_name ASC, u.creation DESC
+        ORDER BY full_name ASC, u.creation DESC
         LIMIT %(start)s, %(page_len)s
         """,
-        {"txt": f"%{txt or ''}%", "start": int(start or 0), "page_len": int(page_len or 20)},
+        params,
     )
 
 
