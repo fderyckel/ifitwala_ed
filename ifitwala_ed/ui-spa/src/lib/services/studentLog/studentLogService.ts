@@ -20,6 +20,10 @@ import type {
 	Request as SubmitStudentLogRequest,
 	Response as SubmitStudentLogResponse,
 } from '@/types/contracts/student_log/submit_student_log'
+import type {
+	Request as AddClarificationRequest,
+	Response as AddClarificationResponse,
+} from '@/types/contracts/student_log/add_clarification'
 
 /**
  * Student Log Service (A+ — LOCKED)
@@ -69,6 +73,12 @@ export function createStudentLogService() {
 		auto: false,
 	})
 
+	const addClarificationResource = createResource<AddClarificationResponse>({
+		url: 'ifitwala_ed.students.doctype.student_log.student_log.add_clarification',
+		method: 'POST',
+		auto: false,
+	})
+
 	/* ------------------------------------------------------------------
 	 * Public API (A+)
 	 * ------------------------------------------------------------------ */
@@ -100,10 +110,22 @@ export function createStudentLogService() {
 		return result
 	}
 
+	async function addClarification(
+		payload: AddClarificationRequest
+	): Promise<AddClarificationResponse> {
+		const result = await addClarificationResource.submit(payload)
+
+		uiSignals.emit(SIGNAL_STUDENT_LOG_INVALIDATE)
+		uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+
+		return result
+	}
+
 	return {
 		searchStudents,
 		searchFollowUpUsers,
 		getFormOptions,
 		submitStudentLog,
+		addClarification,
 	}
 }

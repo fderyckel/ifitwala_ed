@@ -203,6 +203,7 @@ class TestApplicantInterview(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Interview", interview.name))
+        self._ensure_interviewer_assignment(interview.name, interviewer.name)
 
         frappe.set_user(interviewer.name)
         interviewer_roles = set(frappe.get_roles(interviewer.name))
@@ -254,6 +255,7 @@ class TestApplicantInterview(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Interview", interview.name))
+        self._ensure_interviewer_assignment(interview.name, interviewer.name)
 
         frappe.set_user(outsider.name)
         self.assertFalse(
@@ -568,6 +570,54 @@ class TestApplicantInterview(FrappeTestCase):
         )
         marker = f"/desk/applicant-interview/{interview_name}"
         return [row for row in comments if marker in (row.get("content") or "")]
+
+    def _ensure_interviewer_assignment(self, interview_name: str, interviewer_user: str):
+        interview_name = (interview_name or "").strip()
+        interviewer_user = (interviewer_user or "").strip()
+        if not interview_name or not interviewer_user:
+            return
+
+        rows = frappe.get_all(
+            "Applicant Interviewer",
+            filters={"parent": interview_name},
+            fields=["name", "interviewer"],
+            limit_page_length=20,
+        )
+        if not rows:
+            interview = frappe.get_doc("Applicant Interview", interview_name)
+            interview.append("interviewers", {"interviewer": interviewer_user})
+            interview.save(ignore_permissions=True)
+            rows = frappe.get_all(
+                "Applicant Interviewer",
+                filters={"parent": interview_name},
+                fields=["name", "interviewer"],
+                limit_page_length=20,
+            )
+
+        for row in rows:
+            row_name = (row.get("name") or "").strip()
+            if not row_name:
+                continue
+            if frappe.db.table_exists("Applicant Interviewer") and frappe.db.has_column(
+                "Applicant Interviewer", "interviewer"
+            ):
+                frappe.db.set_value(
+                    "Applicant Interviewer",
+                    row_name,
+                    "interviewer",
+                    interviewer_user,
+                    update_modified=False,
+                )
+            if frappe.db.table_exists("Applicant Interviewer") and frappe.db.has_column(
+                "Applicant Interviewer", "interviewer_user"
+            ):
+                frappe.db.set_value(
+                    "Applicant Interviewer",
+                    row_name,
+                    "interviewer_user",
+                    interviewer_user,
+                    update_modified=False,
+                )
 
     def _create_organization(self) -> str:
         doc = frappe.get_doc(

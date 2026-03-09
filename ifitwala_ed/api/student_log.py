@@ -10,8 +10,6 @@ from frappe import _
 from frappe.utils import cint, nowdate, nowtime, strip_html
 from frappe.utils.nestedset import get_descendants_of
 
-from ifitwala_ed.utilities.school_tree import get_ancestor_schools
-
 LOG_DOCTYPE = "Student Log"
 PAGE_LENGTH_DEFAULT = 20
 
@@ -168,40 +166,88 @@ def _get_employee_school_for_session_user() -> str | None:
     return school or None
 
 
+def _get_staff_scope_schools_for_session_user() -> list[str]:
+    """Return canonical scope: self + descendants + immediate parent (one level)."""
+    user = frappe.session.user
+    if not user or user == "Guest":
+        return []
+
+    cache = frappe.cache()
+    key = f"ifitwala_ed:student_log:scope_schools:{user}"
+    cached = cache.get_value(key)
+    if cached is not None:
+        return [s for s in (cached or []) if s]
+
+    emp_school = _get_employee_school_for_session_user()
+    if not emp_school:
+        cache.set_value(key, [], expires_in_sec=300)
+        return []
+
+    scope = _get_school_scope_parent_plus_one(emp_school, include_descendants=True)
+    cache.set_value(key, scope, expires_in_sec=300)
+    return scope
+
+
 def _get_student_school(student: str) -> str | None:
     return frappe.db.get_value("Student", student, "anchor_school")
 
 
-def _get_school_up_chain(school: str | None) -> list[str]:
+def _is_student_in_session_scope(student: str) -> bool:
+    """Hard server guard so clients cannot submit/search out-of-scope students."""
+    if not student:
+        return False
+    scope_schools = _get_staff_scope_schools_for_session_user()
+    if not scope_schools:
+        return False
+    return bool(
+        frappe.db.exists(
+            "Student",
+            {
+                "name": student,
+                "enabled": 1,
+                "anchor_school": ["in", tuple(scope_schools)],
+            },
+        )
+    )
+
+
+def _get_school_scope_parent_plus_one(school: str | None, include_descendants: bool = True) -> list[str]:
     """
-    Return [school] + all ancestors (UP only).
-    Uses canonical school_tree utility but guarantees 'school' itself is included.
+    Canonical Student Log school scope:
+    - self
+    - descendants (optional)
+    - immediate parent (one level only)
+
+    This intentionally does not include grandparent/upper ancestors.
     """
+    school = (school or "").strip()
     if not school:
         return []
 
-    anc = get_ancestor_schools(school) or []
+    out: list[str] = [school]
+    if include_descendants:
+        out.extend(get_descendants_of("School", school) or [])
 
-    # Defensive: some helpers return ancestors only (excluding self), others may include self.
-    # Guarantee first element is the school itself and remove duplicates while preserving order.
-    out = []
+    parent_school = frappe.db.get_value("School", school, "parent_school")
+    if parent_school:
+        out.append(parent_school)
+
     seen = set()
-
-    for s in [school] + list(anc):
-        s = (s or "").strip()
-        if not s or s in seen:
+    normalized: list[str] = []
+    for s in out:
+        node = (s or "").strip()
+        if not node or node in seen:
             continue
-        seen.add(s)
-        out.append(s)
-
-    return out
+        seen.add(node)
+        normalized.append(node)
+    return normalized
 
 
 def _is_log_type_allowed_for_student_school(log_type: str, student_school: str | None) -> bool:
     """
     Allowed if Student Log Type.school is:
     - empty (global), OR
-    - in student's UP chain (self + ancestors)
+    - in student's canonical school scope (self + descendants + parent +1)
     """
     row = frappe.db.get_value("Student Log Type", log_type, ["school"], as_dict=True)
     if not row:
@@ -210,17 +256,78 @@ def _is_log_type_allowed_for_student_school(log_type: str, student_school: str |
     if not row.school:
         return True  # global
 
-    return row.school in _get_school_up_chain(student_school)
+    return row.school in _get_school_scope_parent_plus_one(student_school, include_descendants=True)
+
+
+def _is_next_step_allowed_for_student_school(next_step: str, student_school: str | None) -> bool:
+    """
+    Allowed if Student Log Next Step.school is:
+    - empty (global), OR
+    - in the student's allowed next-step scope.
+    """
+    row = frappe.db.get_value("Student Log Next Step", next_step, ["school"], as_dict=True)
+    if not row:
+        return False
+
+    if not row.school:
+        return True  # global
+
+    return row.school in _allowed_next_step_schools(student_school)
 
 
 def _allowed_next_step_schools(student_school: str | None) -> list[str]:
     """
     Allowed schools for Student Log Next Step:
     - student school
-    - all ancestors (UP chain)
-    No siblings, no descendants.
+    - descendants
+    - immediate parent (+1 only)
+    No siblings, no higher ancestors.
     """
-    return _get_school_up_chain(student_school)
+    return _get_school_scope_parent_plus_one(student_school, include_descendants=True)
+
+
+def _get_next_step_assignment_context(next_step: str, student: str) -> tuple[str | None, list[str], str | None]:
+    """
+    Return (required_role, allowed_schools, student_school) for assignee resolution.
+    Enforces next_step scope against the student context.
+    """
+    ns = frappe.db.get_value("Student Log Next Step", next_step, ["associated_role", "school"], as_dict=True)
+    if not ns:
+        frappe.throw(_("Next step not found."))
+
+    role = (ns.get("associated_role") or "").strip() or None
+    student_school = _get_student_school(student)
+    allowed_schools = _allowed_next_step_schools(student_school)
+
+    step_school = (ns.get("school") or "").strip()
+    if step_school and step_school not in set(allowed_schools):
+        frappe.throw(
+            _("This next step is not allowed for the student's school."),
+            title=_("Invalid Next Step"),
+        )
+
+    return role, allowed_schools, student_school
+
+
+def _is_follow_up_person_allowed(next_step: str, student: str, user_id: str) -> bool:
+    """True only when the assignee is in-scope and satisfies next-step role constraints."""
+    if not (next_step and student and user_id):
+        return False
+
+    role, allowed_schools, _student_school = _get_next_step_assignment_context(next_step, student)
+    if not allowed_schools:
+        return False
+
+    if not frappe.db.get_value("User", user_id, "enabled"):
+        return False
+
+    if not frappe.db.exists("Employee", {"user_id": user_id, "school": ["in", tuple(allowed_schools)]}):
+        return False
+
+    if role and not frappe.db.exists("Has Role", {"parent": user_id, "role": role}):
+        return False
+
+    return True
 
 
 def _thumb_url(original_url: str | None) -> str | None:
@@ -254,13 +361,11 @@ def search_students(**payload):
     if not query or len(query) < 2:
         return []
 
-    # Scope by current user's Employee.school (+ descendants) to avoid sibling leakage.
-    emp_school = _get_employee_school_for_session_user()
-    if not emp_school:
+    # Scope by current user's canonical staff scope to avoid sibling leakage.
+    schools = _get_staff_scope_schools_for_session_user()
+    if not schools:
         # Safe: if no employee school, return nothing rather than leaking data
         return []
-
-    schools = [emp_school] + (get_descendants_of("School", emp_school) or [])
 
     rows = frappe.get_all(
         "Student",
@@ -305,15 +410,10 @@ def search_follow_up_users(**payload):
         frappe.throw(_("Next step is required."))
     if not student:
         frappe.throw(_("Student is required."))
+    if not _is_student_in_session_scope(student):
+        frappe.throw(_("You are not allowed to access this student."), frappe.PermissionError)
 
-    ns = frappe.db.get_value("Student Log Next Step", next_step, ["associated_role", "school"], as_dict=True)
-    if not ns:
-        frappe.throw(_("Next step not found."))
-
-    role = (ns.get("associated_role") or "").strip() or None
-
-    student_school = _get_student_school(student)
-    allowed_schools = _allowed_next_step_schools(student_school)
+    role, allowed_schools, _student_school = _get_next_step_assignment_context(next_step, student)
     if not allowed_schools:
         return []
 
@@ -386,21 +486,23 @@ def get_form_options(**payload):
     student = payload.get("student")
     if not student:
         frappe.throw(_("Student is required."))
+    if not _is_student_in_session_scope(student):
+        frappe.throw(_("You are not allowed to access this student."), frappe.PermissionError)
 
     student_school = _get_student_school(student)
-    up_chain = _get_school_up_chain(student_school)
+    school_scope = _get_school_scope_parent_plus_one(student_school, include_descendants=True)
 
     # ----------------------------
     # Log types (cached 5 min)
-    # - Scope UP (self + ancestors)
+    # - Scope parent+1 rule (self + descendants + immediate parent)
     # - Include global (school IS NULL / '')
     # ----------------------------
     cache = frappe.cache()
-    cache_key = f"ifitwala_ed:student_log:log_types:up:{student_school or '__none__'}"
+    cache_key = f"ifitwala_ed:student_log:log_types:p1:{student_school or '__none__'}"
     log_types = cache.get_value(cache_key)
 
     if not log_types:
-        if not up_chain:
+        if not school_scope:
             log_types = frappe.db.sql(
                 """
                 SELECT
@@ -426,7 +528,7 @@ def get_form_options(**payload):
                 )
                 ORDER BY log_type ASC
                 """,
-                {"schools": tuple(up_chain)},
+                {"schools": tuple(school_scope)},
                 as_dict=True,
             )
 
@@ -434,7 +536,7 @@ def get_form_options(**payload):
 
     # ----------------------------
     # Next steps
-    # - Scope UP (self + ancestors)
+    # - Scope parent+1 rule (self + descendants + immediate parent)
     # - Include global (school IS NULL / '')
     # - Use SQL to avoid or_filters edge cases
     # ----------------------------
@@ -493,12 +595,14 @@ def submit_student_log(**payload):
 
     if not student:
         frappe.throw(_("Student is required."))
+    if not _is_student_in_session_scope(student):
+        frappe.throw(_("You are not allowed to create a log for this student."), frappe.PermissionError)
     if not log_type:
         frappe.throw(_("Log type is required."))
     if not log or not str(log).strip():
         frappe.throw(_("Log text is required."))
 
-    # Enforce log type visibility by student school (UP chain + global)
+    # Enforce log type visibility by student school (parent+1 scope + global)
     student_school = _get_student_school(student)
     if not _is_log_type_allowed_for_student_school(log_type, student_school):
         frappe.throw(
@@ -514,6 +618,16 @@ def submit_student_log(**payload):
             frappe.throw(_("Next step is required."))
         if not follow_up_person:
             frappe.throw(_("Follow-up person is required."))
+        if not _is_next_step_allowed_for_student_school(next_step, student_school):
+            frappe.throw(
+                _("This next step is not allowed for the student's school."),
+                title=_("Invalid Next Step"),
+            )
+        if not _is_follow_up_person_allowed(next_step, student, follow_up_person):
+            frappe.throw(
+                _("Selected follow-up person is not eligible for this next step and student scope."),
+                title=_("Invalid Assignee"),
+            )
 
     doc = frappe.new_doc("Student Log")
     doc.student = student

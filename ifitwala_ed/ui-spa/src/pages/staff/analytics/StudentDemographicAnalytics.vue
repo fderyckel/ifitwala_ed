@@ -343,6 +343,11 @@ function closeSliceDrawer() {
 	sliceRows.value = [];
 }
 
+function studentDeskUrl(studentId: string | null | undefined) {
+	if (!studentId) return '#';
+	return `/desk/student/${encodeURIComponent(studentId)}`;
+}
+
 function setPreset(preset: ViewPreset) {
 	filters.value.preset = preset;
 }
@@ -556,7 +561,16 @@ function setPreset(preset: ViewPreset) {
 		>
 			<template #row="{ row }">
 				<div class="flex flex-col">
-					<span class="font-medium text-slate-800">{{ row.name || row.title }}</span>
+					<a
+						v-if="sliceMeta?.entity === 'student' && row.id"
+						:href="studentDeskUrl(row.id)"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="font-medium text-canopy hover:underline"
+					>
+						{{ row.name || row.title }}
+					</a>
+					<span v-else class="font-medium text-slate-800">{{ row.name || row.title }}</span>
 					<span class="text-xs text-slate-500">{{ row.subtitle || row.cohort }}</span>
 				</div>
 			</template>

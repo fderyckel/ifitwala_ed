@@ -191,6 +191,47 @@ Used by:
 									</div>
 								</div>
 
+								<!-- Clarification action (append-only timeline note) -->
+								<div class="card-panel p-5">
+									<div class="type-label">Clarification</div>
+									<div class="mt-1 type-body-strong text-ink">Add clarification</div>
+									<div class="type-caption mt-1">
+										Append context without rewriting the original log.
+									</div>
+
+									<div class="mt-4">
+										<textarea
+											v-model="clarificationText"
+											class="if-textarea w-full"
+											rows="4"
+											placeholder="Add clarification…"
+											:disabled="busy || clarificationBusy"
+										/>
+										<div class="type-caption mt-2">
+											Use this for new context only. Original submitted content remains unchanged.
+										</div>
+										<div
+											v-if="clarificationSavedMessage"
+											class="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700"
+										>
+											{{ clarificationSavedMessage }}
+										</div>
+									</div>
+
+									<div class="mt-5 flex items-center justify-end">
+										<button
+											type="button"
+											class="if-action"
+											:disabled="busy || clarificationBusy || !canSubmitClarification"
+											@click="submitClarification"
+										>
+											{{
+												clarificationBusy ? __('Saving clarification…') : __('Add clarification')
+											}}
+										</button>
+									</div>
+								</div>
+
 								<!-- Assignee action: write follow-up -->
 								<div v-if="modeState === 'assignee'" class="card-panel p-5">
 									<div class="type-label">Your response</div>
@@ -288,6 +329,7 @@ import {
 } from '@headlessui/vue';
 import { __ } from '@/lib/i18n';
 import { createFocusService } from '@/lib/services/focus/focusService';
+import { createStudentLogService } from '@/lib/services/studentLog/studentLogService';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import type {
 	Request as GetFocusContextRequest,
@@ -330,6 +372,7 @@ const emit = defineEmits<{
 
 const overlay = useOverlayStack();
 const focusService = createFocusService();
+const studentLogService = createStudentLogService();
 
 const baseZ = computed(() => props.zIndex ?? 3000);
 const wrapStyle = computed(() => ({ zIndex: baseZ.value }));
@@ -348,10 +391,18 @@ const busy = ref(false);
 const submittedOnce = ref(false);
 
 const draftText = ref('');
+const clarificationText = ref('');
+const clarificationBusy = ref(false);
+const clarificationSavedMessage = ref('');
 const errorMessage = ref('');
 
 const canSubmit = computed(() => {
 	return !!props.studentLog && (draftText.value || '').trim().length >= 5;
+});
+
+const canSubmitClarification = computed(() => {
+	const logName = (log.value?.name || props.studentLog || '').trim();
+	return !!logName && (clarificationText.value || '').trim().length >= 3;
 });
 
 const canComplete = computed(() => {
@@ -456,6 +507,8 @@ watch(
 		// reset local UI state each open
 		clearError();
 		draftText.value = '';
+		clarificationText.value = '';
+		clarificationSavedMessage.value = '';
 		submittedOnce.value = false;
 		modeState.value = props.mode;
 		reload();
@@ -533,6 +586,36 @@ async function completeParentLog() {
 		setError(e, __('Could not complete log. Please try again.'));
 	} finally {
 		busy.value = false;
+	}
+}
+
+async function submitClarification() {
+	if (clarificationBusy.value) return;
+	if (!canSubmitClarification.value) return;
+	clearError();
+	clarificationSavedMessage.value = '';
+
+	const logName = (log.value?.name || props.studentLog || '').trim();
+	if (!logName) {
+		setError(__('Missing Student Log'), __('Please reopen this item and try again.'));
+		return;
+	}
+
+	clarificationBusy.value = true;
+	try {
+		const msg = await studentLogService.addClarification({
+			log_name: logName,
+			clarification: (clarificationText.value || '').trim(),
+		});
+		if (!msg?.ok) throw new Error(__('Clarification was not accepted.'));
+
+		clarificationText.value = '';
+		clarificationSavedMessage.value = __('Clarification added to timeline.');
+		await reload();
+	} catch (e: any) {
+		setError(e, __('Could not add clarification. Please try again.'));
+	} finally {
+		clarificationBusy.value = false;
 	}
 }
 

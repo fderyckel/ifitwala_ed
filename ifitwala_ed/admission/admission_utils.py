@@ -921,7 +921,22 @@ def sync_student_applicant_contact_binding(*, student_applicant: str, contact_na
                     "link_name": applicant.name,
                 },
             )
-            if existing_link:
+            existing_user_link = False
+            applicant_user = (applicant.get("applicant_user") or "").strip()
+            if applicant_user:
+                existing_user_link = bool(
+                    frappe.db.exists(
+                        "Dynamic Link",
+                        {
+                            "parenttype": "Contact",
+                            "parentfield": "links",
+                            "parent": existing_parent,
+                            "link_doctype": "User",
+                            "link_name": applicant_user,
+                        },
+                    )
+                )
+            if existing_link or existing_user_link:
                 continue
         upsert_contact_email(resolved_contact, normalized, set_primary_if_missing=True)
         emails_synced.append(normalized)

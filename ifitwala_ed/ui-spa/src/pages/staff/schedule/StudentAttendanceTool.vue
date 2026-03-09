@@ -194,6 +194,7 @@
 						:code-colors="codeColors"
 						@change-code="onChangeCode"
 						@open-remark="openRemark"
+						@open-log="openStudentLog"
 					/>
 				</div>
 			</div>
@@ -691,6 +692,39 @@ function openRemark(payload: { student: StudentRosterEntry; block: BlockKey }) {
 		value: existing,
 		maxLength: 255,
 		onSave: (nextValue: string) => applyRemarkValue(studentId, block, nextValue),
+	});
+}
+
+function openStudentLog(payload: { student: StudentRosterEntry }) {
+	const student = payload?.student;
+	if (!student?.student) {
+		safeSetError(__('Select a student before creating a log.'));
+		return;
+	}
+	if (!filters.student_group) {
+		safeSetError(__('Select a student group before creating a log.'));
+		return;
+	}
+
+	const studentLabel = student.preferred_name || student.student_name || student.student;
+	const studentMeta = student.preferred_name ? student.student_name : null;
+	const groupId = filters.student_group;
+	const groupLabelValue = groupLabel.value || groupId;
+
+	overlay.open('student-log-create', {
+		mode: 'attendance',
+		sourceLabel: 'Attendance',
+		context_school: filters.school || defaultSchool.value || null,
+		student: {
+			id: student.student,
+			label: studentLabel,
+			image: student.student_image || null,
+			meta: studentMeta,
+		},
+		student_group: {
+			id: groupId,
+			label: groupLabelValue,
+		},
 	});
 }
 

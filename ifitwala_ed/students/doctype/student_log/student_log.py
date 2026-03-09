@@ -166,6 +166,8 @@ class StudentLog(Document):
         if not self.school:
             self.school = self._resolve_school()
 
+        self._assert_amendment_allowed()
+        self._assert_core_fields_immutable_after_follow_up()
         self._assert_followup_transition_and_immutability()
 
     def on_submit(self):
@@ -198,6 +200,66 @@ class StudentLog(Document):
     # ---------------------------------------------------------------------
     # Validation helpers
     # ---------------------------------------------------------------------
+    def _assert_amendment_allowed(self):
+        """
+        Amendment guard:
+        once follow-up work exists on the source log, amendment is blocked.
+        """
+        source_log = (self.amended_from or "").strip()
+        if not source_log:
+            return
+
+        if frappe.db.exists("Student Log Follow Up", {"student_log": source_log}):
+            frappe.throw(
+                _(
+                    "This Student Log already has follow-up records and cannot be amended. "
+                    "Add a clarification note instead."
+                ),
+                title=_("Amendment Blocked"),
+            )
+
+    def _assert_core_fields_immutable_after_follow_up(self):
+        """
+        Once any follow-up exists for this log, core observation fields are immutable.
+        Follow-up lifecycle actions still happen via dedicated workflow endpoints.
+        """
+        if self.is_new() or self.docstatus != 1:
+            return
+        if not self.name:
+            return
+        if not frappe.db.exists("Student Log Follow Up", {"student_log": self.name}):
+            return
+
+        old = self.get_doc_before_save() or frappe._dict()
+        if not old:
+            return
+
+        immutable_fields = (
+            "student",
+            "date",
+            "time",
+            "log_type",
+            "log",
+            "visible_to_student",
+            "visible_to_guardians",
+            "requires_follow_up",
+            "next_step",
+            "follow_up_role",
+            "follow_up_person",
+            "program",
+            "academic_year",
+            "program_offering",
+            "school",
+        )
+        for fieldname in immutable_fields:
+            if old.get(fieldname) != self.get(fieldname):
+                frappe.throw(
+                    _(
+                        "Field {0} cannot be changed after follow-up work has started. Use Add Clarification instead."
+                    ).format(fieldname),
+                    title=_("Immutable After Follow-Up"),
+                )
+
     def _assert_followup_transition_and_immutability(self):
         """Enforce legal status transitions and lock core fields once Completed."""
         old = self.get_doc_before_save() or frappe._dict()
@@ -882,6 +944,42 @@ def reopen_log(log_name: str):
                 pass
 
     return {"ok": True, "status": "In Progress", "log": row.name}
+
+
+@frappe.whitelist()
+def add_clarification(log_name: str, clarification: str):
+    """
+    Append-only clarification on a Student Log timeline.
+    Does not mutate workflow state.
+    """
+    log_name = (log_name or "").strip()
+    clarification = (clarification or "").strip()
+
+    if not log_name:
+        frappe.throw(_("Missing Student Log name."))
+    if not clarification:
+        frappe.throw(_("Clarification text is required."))
+
+    log_doc = frappe.get_doc("Student Log", log_name)
+    if not frappe.has_permission("Student Log", ptype="read", doc=log_doc):
+        frappe.throw(_("You are not permitted to access this log."), frappe.PermissionError)
+
+    roles = set(frappe.get_roles() or [])
+    is_admin = bool({"Academic Admin", "System Manager", "Administrator"} & roles)
+    is_owner = frappe.session.user == log_doc.owner
+    is_assignee = frappe.session.user == (log_doc.follow_up_person or "")
+    if not (is_admin or is_owner or is_assignee):
+        frappe.throw(_("Only the log owner, assignee, or an administrator can add clarifications."))
+
+    comment = log_doc.add_comment(
+        comment_type="Info",
+        text=_("Clarification: {0}").format(frappe.utils.escape_html(clarification)),
+    )
+    return {
+        "ok": True,
+        "log": log_doc.name,
+        "comment": getattr(comment, "name", None),
+    }
 
 
 def _user_is_pastoral_lead_for_student(user: str, student: str) -> bool:

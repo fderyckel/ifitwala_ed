@@ -48,6 +48,7 @@ const option = computed<ChartOption>(() => {
 			return [colIdx, rowIdx, bucket?.count || 0, bucket?.sliceKey];
 		})
 	);
+	const maxValue = Math.max(1, ...data.map(d => Number(d[2]) || 0));
 
 	return {
 		tooltip: {
@@ -63,26 +64,42 @@ const option = computed<ChartOption>(() => {
 		xAxis: {
 			type: 'category',
 			data: columns,
-			splitArea: { show: true },
+			splitArea: { show: false },
 			axisLabel: { rotate: 30 },
 		},
 		yAxis: {
 			type: 'category',
 			data: props.rows.map(r => r.row),
-			splitArea: { show: true },
+			splitArea: { show: false },
 		},
 		visualMap: {
 			show: false,
 			min: 0,
-			max: Math.max(...data.map(d => d[2] as number), 1),
+			max: maxValue,
 			orient: 'horizontal',
 			left: 'center',
 			bottom: 0,
+			inRange: {
+				color: ['#eff6ff', '#93c5fd', '#2563eb'],
+			},
 		},
 		series: [
 			{
 				type: 'heatmap',
 				data,
+				label: {
+					show: true,
+					color: '#0f172a',
+					fontSize: 11,
+					formatter: (params: any) => {
+						const count = Number(params?.value?.[2] || 0);
+						return count > 0 ? String(count) : '';
+					},
+				},
+				itemStyle: {
+					borderColor: '#e2e8f0',
+					borderWidth: 1,
+				},
 				emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.35)' } },
 			},
 		],

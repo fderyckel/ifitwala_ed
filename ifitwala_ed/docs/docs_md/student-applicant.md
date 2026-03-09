@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.14.0"
-last_change_date: "2026-03-08"
+version: "1.14.1"
+last_change_date: "2026-03-09"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, and school-scoped health gating."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, and school-scoped health gating."
@@ -385,6 +385,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - interview summary shows a compact latest-5 table with Date/Time (linked to interview), Interviewer, and Outcome Impression
   - `review_assignments_summary` is assignment-focused (Health + Overall Application); document reviewer metadata is surfaced in `documents_summary`
 - **Promotion side-effects (`promote_to_student`)**:
+  - preconditions: applicant status must be `Approved` and `student_joining_date` is required
   - creates/links `Student`, writes `Student.student_applicant`, then sets applicant status to `Promoted`
   - creates/syncs `Student Patient` from Applicant Health Profile data
   - copies approved promotable admissions documents into Student-owned governed files

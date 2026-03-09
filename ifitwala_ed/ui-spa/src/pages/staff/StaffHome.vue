@@ -830,7 +830,8 @@ function openStudentLog() {
 	pendingStudentLogSavedToast.value = true;
 
 	overlay.open('student-log-create', {
-		mode: 'school',
+		mode: 'home',
+		sourceLabel: 'Staff Home',
 	});
 }
 </script>

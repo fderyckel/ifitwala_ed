@@ -403,6 +403,43 @@ Transport normalization happens **once**, centrally.
 
 ---
 
+### 7.3 Heatmap visibility is a correctness contract
+
+If a heatmap carries real values but appears blank or “washed out”, that is a defect.
+
+Rules:
+
+* Always define an explicit `inRange.color` palette for heatmaps, even when `visualMap.show = false`.
+* Always clamp a non-zero max bound (`max >= 1`) so sparse datasets do not collapse into near-invisible color output.
+* Prefer showing non-zero cell labels for sparse cohort/category matrices so users can verify values at a glance.
+* Keep click payloads (`sliceKey`) in the series data tuple when adding display labels.
+
+---
+
+### 7.4 Drill-down drawers must be actionable
+
+A drawer that lists entities but offers no next action is a UX dead-end.
+
+Rules:
+
+* Student drill-down rows must link directly to canonical Desk forms (`/desk/student/<name>`).
+* Links must open safely (`target="_blank"` + `rel="noopener noreferrer"`) for staff workflows.
+* Apply route links only for supported entities; unsupported entities must remain readable text, not broken links.
+
+---
+
+### 7.5 Donut chart hover behavior must be stable
+
+If donut charts flicker or jitter on hover, treat that as an interaction defect.
+
+Rules:
+
+* Disable pie hover expansion/scale and hover labels when they trigger repeated repaint jitter.
+* Constrain tooltips to chart/container bounds (`confine`) to avoid hover thrash near edges.
+* Keep drill-down click handling intact after hover stabilization changes.
+
+---
+
 ## 8. Anti-Patterns (Treat as Defects)
 
 ❌ Analytics page outside `pages/staff/analytics/`
@@ -414,6 +451,9 @@ Transport normalization happens **once**, centrally.
 ❌ Aggregating before permission checks
 ❌ Optimistic analytics updates
 ❌ Pagination excluded from payload
+❌ Hidden heatmap visualMap with no explicit `inRange` palette
+❌ Drill-down drawer rows that provide names but no direct action link
+❌ Donut hover emphasis that causes visual jitter/flicker
 
 Each of these already caused real bugs.
 
@@ -439,7 +479,7 @@ This document is **subordinate** to the following canonical SPA notes:
 
 ### 🔒 Authoritative A+ SPA Documents
 
-1. **`spa_architecture_and_rules.md`**
+1. **`01_spa_architecture_and_rules.md`**
    *Highest authority for all Vue SPA code*
    Defines:
 
@@ -455,10 +495,10 @@ This document is **subordinate** to the following canonical SPA notes:
 
    * contract governance
 
-   > If any rule in this analytics note conflicts with `spa_architecture_and_rules.md`,
+   > If any rule in this analytics note conflicts with `01_spa_architecture_and_rules.md`,
    > **the SPA rules win**.
 
-2. **`overlay_and_workflow.md`**
+2. **`03_overlay_and_workflow.md`**
    *Canonical A+ lifecycle for workflows and overlays*
    Defines:
 
@@ -527,8 +567,8 @@ ui-spa/src/pages/staff/analytics/
 
 It must **mentally load these documents first**, in this order:
 
-1. `spa_architecture_and_rules.md` (parent authority)
-2. `overlay_and_workflow.md` (workflow boundaries)
+1. `01_spa_architecture_and_rules.md` (parent authority)
+2. `03_overlay_and_workflow.md` (workflow boundaries)
 3. **this analytics note** (domain-specific constraints)
 
 If something feels unclear:

@@ -11,6 +11,22 @@
 
 ---
 
+## Implementation sync snapshot (2026-03-09)
+
+| Area | Status | Notes |
+|---|---|---|
+| Canonical visibility predicate on read surfaces | Implemented | Morning Briefing, Student Overview Dashboard, and Student Logs Script Report now consume `get_student_log_visibility_predicate(...)`. |
+| Attendance entry into Student Log overlay | Implemented | Attendance grid has row-level “Add log”; opens `student-log-create` in `attendance` mode with locked student context. |
+| Staff Home overlay entry mode | Implemented | Staff Home now opens `student-log-create` in `home` mode (`sourceLabel: Staff Home`). |
+| Student search scope guardrails | Implemented | Server scope now enforces self + descendants + immediate parent; out-of-scope student operations are blocked server-side. |
+| School scope depth policy (parent+1 vs full ancestors) | Implemented + Locked | Canonical rule is parent +1 only (no higher ancestors); API code and docs now aligned on one helper contract. |
+| Follow-up assignee/next-step validation on submit | Implemented | API validates next-step school scope and assignee eligibility before insert/submit. |
+| Immutability + clarification workflow | Implemented (API/controller) | Amend blocked when follow-up exists; core fields lock after follow-up starts; `add_clarification(...)` endpoint added. |
+| Clarification UX entry in SPA | Implemented | Student Log follow-up overlay now supports append-only clarification submission with inline feedback. |
+| Regression test coverage for new contracts | Implemented (added) | Added focused backend and SPA unit tests for scope guards, overlay mode/discard rules, and immutability safeguards. |
+
+---
+
 ## 0. Intent and boundary (no drift)
 
 ### 0.1 What this system is
@@ -205,6 +221,12 @@ Given reference school **S**, allowed set is:
 * all descendants of S
 * parent of S (one level only)
 * **never sibling schools**
+
+Scope depth decision (locked for v1):
+
+* Parent expansion is **exactly +1 level**.
+* Do not include grandparent or higher ancestors.
+* Server code must use one canonical helper for this (`_get_school_scope_parent_plus_one(...)`).
 
 Applies uniformly to:
 
@@ -508,7 +530,7 @@ Constraints:
 Even if staff can see a log, student/guardian visibility is controlled only by:
 
 * `visible_to_student`
-* `visible_to_parents`
+* `visible_to_guardians`
 
 No staff role can override those flags through SPA.
 
@@ -919,16 +941,9 @@ Rules:
 
 On success:
 
-* Toast: “Log submitted” (best-effort)
-* Show success state with:
-
-  * “Add another”
-  * “Close”
-
-Add another:
-
-* Attendance mode: same student, cleared form
-* Home mode: cleared form + student picker
+* Submit through one server mutation (`submit_student_log`)
+* Overlay closes immediately (`reason = programmatic`)
+* Refresh owners handle post-save invalidation/toast behavior (outside overlay)
 
 **A+ rule:** overlay close must never depend on toast or refresh.
 
@@ -938,8 +953,8 @@ Add another:
 
 Validation errors:
 
-* Show server message in toast
-* Inline error where possible
+* Show server message inline in the overlay
+* Do not rely on toasts from the overlay
 
 Loading failures:
 
@@ -979,22 +994,22 @@ All SPA calls must comply with `spa_architecture_and_rules.md`:
 
 Request shapes (illustrative; server signature is authoritative):
 
-Fetch log types:
+Search students (home mode):
 
 ```json
-{ "school": "SCH-..." }
+{ "query": "ann", "limit": 10 }
 ```
 
-Fetch next steps:
+Fetch form options (student-scoped):
 
 ```json
-{ "school": "SCH-..." }
+{ "student": "STU-..." }
 ```
 
 Search follow-up assignees:
 
 ```json
-{ "school": "SCH-...", "role": "Counselor", "q": "ann" }
+{ "next_step": "STEP-...", "student": "STU-...", "query": "ann", "limit": 50 }
 ```
 
 Submit student log:
@@ -1002,12 +1017,10 @@ Submit student log:
 ```json
 {
   "student": "STU-...",
-  "date": "YYYY-MM-DD",
-  "time": "HH:mm",
   "log_type": "...",
   "log": "...",
   "visible_to_student": 0,
-  "visible_to_parents": 0,
+  "visible_to_guardians": 0,
   "requires_follow_up": 0,
   "next_step": null,
   "follow_up_person": null

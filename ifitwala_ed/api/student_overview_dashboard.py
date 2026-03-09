@@ -12,6 +12,7 @@ import frappe
 from frappe.utils import getdate, nowdate
 
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
+from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ALLOWED_STAFF_ROLES = {
@@ -702,14 +703,7 @@ def _learning_block(student: str, program: str | None, academic_year: str | None
 
 
 def _wellbeing_block(student: str, academic_year: str | None):
-    # Student Logs
-    logs = frappe.db.get_all(
-        "Student Log",
-        filters={"student": student},
-        fields=["name", "date", "log_type", "follow_up_status", "log", "requires_follow_up"],
-        order_by="date desc",
-        limit=20,
-    )
+    logs = _get_visible_student_logs(student=student, academic_year=academic_year, limit=20)
 
     # Referrals
     referrals = []
@@ -789,6 +783,85 @@ def _wellbeing_block(student: str, academic_year: str | None):
     return {"timeline": timeline, "metrics": metrics}
 
 
+def _get_visible_student_logs(student: str, academic_year: str | None, limit: int = 20) -> list[dict]:
+    visibility_sql, visibility_params = get_student_log_visibility_predicate(
+        user=_current_user(),
+        table_alias="sl",
+        allow_aggregate_only=False,
+    )
+    if visibility_sql == "0=1":
+        return []
+
+    params = {
+        **(visibility_params or {}),
+        "student": student,
+        "limit": int(limit),
+    }
+    ay_clause = ""
+    if academic_year:
+        ay_clause = "AND sl.academic_year = %(academic_year)s"
+        params["academic_year"] = academic_year
+
+    return frappe.db.sql(
+        f"""
+        SELECT
+            sl.name,
+            sl.date,
+            sl.log_type,
+            sl.follow_up_status,
+            sl.log,
+            sl.requires_follow_up
+        FROM `tabStudent Log` sl
+        WHERE sl.docstatus = 1
+          AND sl.student = %(student)s
+          {ay_clause}
+          AND ({visibility_sql})
+        ORDER BY sl.date DESC, sl.time DESC
+        LIMIT %(limit)s
+        """,
+        params,
+        as_dict=True,
+    )
+
+
+def _visible_student_log_support_counts(student: str, academic_year: str | None) -> tuple[int, int]:
+    visibility_sql, visibility_params = get_student_log_visibility_predicate(
+        user=_current_user(),
+        table_alias="sl",
+        allow_aggregate_only=False,
+    )
+    if visibility_sql == "0=1":
+        return 0, 0
+
+    params = {
+        **(visibility_params or {}),
+        "student": student,
+    }
+    ay_clause = ""
+    if academic_year:
+        ay_clause = "AND sl.academic_year = %(academic_year)s"
+        params["academic_year"] = academic_year
+
+    row = frappe.db.sql(
+        f"""
+        SELECT
+            COUNT(*) AS total_logs,
+            SUM(CASE WHEN sl.requires_follow_up = 1 THEN 1 ELSE 0 END) AS open_followups
+        FROM `tabStudent Log` sl
+        WHERE sl.docstatus = 1
+          AND sl.student = %(student)s
+          {ay_clause}
+          AND ({visibility_sql})
+        """,
+        params,
+        as_dict=True,
+    )
+    if not row:
+        return 0, 0
+
+    return int(row[0].get("total_logs") or 0), int(row[0].get("open_followups") or 0)
+
+
 def _history_block(student: str, program: str | None):
     # Use Program Enrollment academic years as a backbone
     years = frappe.get_all(
@@ -855,6 +928,7 @@ def _history_block(student: str, program: str | None):
 def _kpi_block(student: str, academic_year: str | None):
     attendance_summary = _attendance_block(student, academic_year)["summary"]
     task_rows = _task_rows(student, None)
+    student_logs_total, student_logs_open_followups = _visible_student_log_support_counts(student, academic_year)
     if academic_year:
         task_rows = [r for r in task_rows if not r.academic_year or r.academic_year == academic_year]
 
@@ -878,10 +952,8 @@ def _kpi_block(student: str, academic_year: str | None):
         },
         "academic": {"latest_overall_label": None, "latest_overall_value": None, "trend": None},
         "support": {
-            "student_logs_total": frappe.db.count("Student Log", {"student": student}),
-            "student_logs_open_followups": frappe.db.count(
-                "Student Log", {"student": student, "requires_follow_up": 1}
-            ),
+            "student_logs_total": student_logs_total,
+            "student_logs_open_followups": student_logs_open_followups,
             "active_referrals": frappe.db.count("Student Referral", {"student": student})
             if frappe.db.exists("DocType", "Student Referral")
             else 0,

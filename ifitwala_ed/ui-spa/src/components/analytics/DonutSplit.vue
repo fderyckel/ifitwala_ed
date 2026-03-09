@@ -105,8 +105,10 @@ const coloredItems = computed<Item[]>(() => {
 
 const option = computed<ChartOption>(() => ({
 	color: coloredItems.value.map(i => i.color),
+	animationDurationUpdate: 0,
 	tooltip: {
 		trigger: 'item',
+		confine: true,
 		formatter: (p: any) =>
 			`${p.name}: ${p.value}${p.data?.pct != null ? ` (${p.data.pct}%)` : ''}`,
 	},
@@ -116,9 +118,12 @@ const option = computed<ChartOption>(() => ({
 			type: 'pie',
 			radius: ['40%', '70%'],
 			avoidLabelOverlap: false,
+			hoverAnimation: false,
+			selectedMode: false,
+			stillShowZeroSum: false,
 			itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 1 },
 			label: { show: false },
-			emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
+			emphasis: { scale: false, label: { show: false } },
 			data: coloredItems.value.map(i => ({
 				name: i.label,
 				value: i.count,

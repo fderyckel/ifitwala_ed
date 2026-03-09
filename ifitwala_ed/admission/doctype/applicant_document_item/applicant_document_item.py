@@ -29,6 +29,7 @@ class ApplicantDocumentItem(Document):
         sync_applicant_document_review_from_items(self.applicant_document)
 
     def on_trash(self):
+        self._validate_delete_allowed()
         sync_applicant_document_review_from_items(self.applicant_document)
 
     def before_trash(self):

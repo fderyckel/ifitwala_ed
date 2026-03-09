@@ -239,7 +239,7 @@ class TestStudentApplicant(FrappeTestCase):
 
     def test_promotion_copies_approved_applicant_document_files(self):
         doc_type = self._create_applicant_document_type(code="application_form")
-        applicant = self._create_student_applicant()
+        applicant = self._create_student_applicant(student_joining_date=frappe.utils.nowdate())
         self._create_applicant_health_profile(applicant.name)
 
         frappe.set_user("Administrator")
@@ -767,7 +767,7 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertIn(code, payload.get("missing") or [])
 
     def test_promotion_copies_health_profile_to_student_patient(self):
-        applicant = self._create_student_applicant()
+        applicant = self._create_student_applicant(student_joining_date=frappe.utils.nowdate())
         self._create_applicant_health_profile(
             applicant.name,
             blood_group="O Positive",
@@ -809,7 +809,7 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertEqual(str(student_patient.vaccinations[0].date), frappe.utils.nowdate())
 
     def test_upgrade_identity_requires_active_enrollment(self):
-        applicant = self._create_student_applicant()
+        applicant = self._create_student_applicant(student_joining_date=frappe.utils.nowdate())
         self._create_applicant_health_profile(applicant.name)
 
         applicant.db_set("application_status", "Invited", update_modified=False)
@@ -828,7 +828,7 @@ class TestStudentApplicant(FrappeTestCase):
 
     def test_upgrade_identity_is_idempotent_and_provisions_roles(self):
         applicant_user = self._create_user("Applicant", "Portal", add_role="Admissions Applicant")
-        applicant = self._create_student_applicant()
+        applicant = self._create_student_applicant(student_joining_date=frappe.utils.nowdate())
         self._create_applicant_health_profile(applicant.name)
 
         guardian = self._create_guardian(
@@ -898,7 +898,7 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertNotIn("Admissions Applicant", role_names)
 
     def test_upgrade_identity_creates_guardian_from_applicant_guardian_profile_row(self):
-        applicant = self._create_student_applicant()
+        applicant = self._create_student_applicant(student_joining_date=frappe.utils.nowdate())
         self._create_applicant_health_profile(applicant.name)
 
         guardian_email = f"guardian-{frappe.generate_hash(length=8)}@example.com"
