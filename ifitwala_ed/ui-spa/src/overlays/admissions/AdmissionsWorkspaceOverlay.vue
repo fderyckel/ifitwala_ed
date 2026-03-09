@@ -1,4 +1,4 @@
-<!-- ifitwala_ed/ui-spa/src/overlays/admissions/InterviewWorkspaceOverlay.vue -->
+<!-- ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue -->
 <template>
 	<TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
 		<Dialog
@@ -56,7 +56,7 @@
 									type="button"
 									class="if-overlay__icon-button"
 									@click="emitClose('programmatic')"
-									aria-label="Close interview workspace"
+									aria-label="Close admissions workspace"
 								>
 									<FeatherIcon name="x" class="h-5 w-5" />
 								</button>
@@ -74,7 +74,7 @@
 								v-else-if="errorText"
 								class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
 							>
-								<p class="type-body-strong text-rose-900">Unable to load interview workspace</p>
+								<p class="type-body-strong text-rose-900">Unable to load admissions workspace</p>
 								<p class="type-caption text-rose-900/85 mt-1">{{ errorText }}</p>
 								<div class="mt-4 flex justify-end gap-2">
 									<button class="if-action" type="button" @click="emitClose('programmatic')">
@@ -167,7 +167,7 @@
 										</ul>
 									</article>
 
-									<article class="interview-card">
+									<article v-if="isInterviewMode" class="interview-card">
 										<div class="flex items-center justify-between gap-2">
 											<h3 class="type-h3 text-ink">Documents</h3>
 											<span
@@ -217,6 +217,411 @@
 												</ul>
 											</li>
 										</ul>
+									</article>
+
+									<article v-else class="interview-card">
+										<div class="flex items-start justify-between gap-3">
+											<div>
+												<h3 class="type-h3 text-ink">Evidence Review</h3>
+												<p class="mt-1 type-caption text-ink/65">
+													Requirement cards show readiness. Review happens on each submitted file.
+												</p>
+											</div>
+											<span
+												class="type-badge-label rounded-full bg-sky/20 px-2 py-0.5 text-ink/70"
+											>
+												{{ applicantRequirementRows.length }} requirements
+											</span>
+										</div>
+
+										<div class="mt-3 grid gap-2 sm:grid-cols-3">
+											<div class="rounded-xl bg-sky/20 px-3 py-2">
+												<p class="type-caption text-ink/70">Complete</p>
+												<p class="type-body-strong text-ink">
+													{{ completedRequirementCount }}/{{ applicantRequirementRows.length }}
+												</p>
+											</div>
+											<div class="rounded-xl bg-sky/20 px-3 py-2">
+												<p class="type-caption text-ink/70">Missing Requirements</p>
+												<p class="type-body-strong text-ink">{{ missingRequirementCount }}</p>
+											</div>
+											<div class="rounded-xl bg-sky/20 px-3 py-2">
+												<p class="type-caption text-ink/70">Pending File Reviews</p>
+												<p class="type-body-strong text-ink">{{ pendingSubmissionCount }}</p>
+											</div>
+										</div>
+
+										<div
+											v-if="documentActionError"
+											class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 type-caption text-rose-900"
+										>
+											{{ documentActionError }}
+										</div>
+										<div
+											v-if="documentActionNotice"
+											class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 type-caption text-emerald-900"
+										>
+											{{ documentActionNotice }}
+										</div>
+
+										<div
+											v-if="!applicantRequirementRows.length"
+											class="mt-3 type-caption text-ink/60"
+										>
+											No document requirements are in scope for this applicant.
+										</div>
+										<div v-else class="mt-4 space-y-3">
+											<section
+												v-for="row in applicantRequirementRows"
+												:key="row.applicant_document || row.document_type || row.label"
+												class="rounded-2xl border border-border/70 bg-white p-4"
+											>
+												<div
+													class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+												>
+													<div class="min-w-0">
+														<div class="flex flex-wrap items-center gap-2">
+															<h4 class="type-body-strong text-ink">
+																{{ row.label || row.document_type || 'Requirement' }}
+															</h4>
+															<span
+																class="rounded-full border px-2 py-0.5 text-xs font-semibold"
+																:class="requirementStatusClass(row.review_status)"
+															>
+																{{ row.review_status || 'Pending' }}
+															</span>
+															<span
+																class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700"
+															>
+																{{ formatRequirementProgress(row) }}
+															</span>
+														</div>
+														<p class="mt-1 type-caption text-ink/65">
+															{{ formatRequirementMeta(row) }}
+														</p>
+													</div>
+
+													<div
+														v-if="canManageApplicantOverrides"
+														class="flex flex-wrap gap-2 lg:justify-end"
+													>
+														<button
+															v-if="row.requirement_override"
+															type="button"
+															class="if-action"
+															:disabled="requirementSubmitting"
+															@click="clearRequirementOverride(row)"
+														>
+															Clear Override
+														</button>
+														<template v-else>
+															<button
+																type="button"
+																class="if-action"
+																:disabled="requirementSubmitting"
+																@click="beginRequirementOverride(row, 'Waived')"
+															>
+																Waive
+															</button>
+															<button
+																type="button"
+																class="if-action"
+																:disabled="requirementSubmitting"
+																@click="beginRequirementOverride(row, 'Exception Approved')"
+															>
+																Exception
+															</button>
+														</template>
+													</div>
+												</div>
+
+												<div
+													v-if="row.requirement_override"
+													class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2"
+												>
+													<p class="type-caption text-amber-900">
+														{{ row.requirement_override }}
+														<span v-if="row.override_reason"> · {{ row.override_reason }}</span>
+													</p>
+												</div>
+
+												<div
+													v-if="isEditingRequirement(row)"
+													class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
+												>
+													<label class="block space-y-1">
+														<span class="type-caption text-ink/70">
+															Reason for {{ requirementActionValue }} on
+															{{ requirementActionLabel || 'this requirement' }}
+														</span>
+														<textarea
+															v-model="requirementActionReason"
+															class="if-field"
+															rows="3"
+															:disabled="requirementSubmitting"
+														></textarea>
+													</label>
+													<div class="mt-3 flex flex-wrap justify-end gap-2">
+														<button
+															type="button"
+															class="if-action"
+															:disabled="requirementSubmitting"
+															@click="cancelRequirementOverride"
+														>
+															Cancel
+														</button>
+														<button
+															type="button"
+															class="if-action if-action--primary"
+															:disabled="requirementSubmitting"
+															@click="submitRequirementOverride"
+														>
+															{{ requirementSubmitting ? 'Saving…' : 'Apply Override' }}
+														</button>
+													</div>
+												</div>
+
+												<div v-if="row.items?.length" class="mt-3 space-y-2">
+													<div
+														v-for="item in row.items"
+														:key="item.name || item.item_key || item.item_label"
+														class="rounded-xl border border-border/60 bg-slate-50/60 p-3"
+													>
+														<div
+															class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+														>
+															<div class="min-w-0">
+																<div class="flex flex-wrap items-center gap-2">
+																	<p class="type-body text-ink">
+																		{{ item.item_label || item.item_key || 'Submitted file' }}
+																	</p>
+																	<span
+																		class="rounded-full border px-2 py-0.5 text-xs font-semibold"
+																		:class="submissionStatusClass(item.review_status)"
+																	>
+																		{{ item.review_status || 'Pending' }}
+																	</span>
+																</div>
+																<p class="mt-1 type-caption text-ink/65">
+																	{{ formatSubmissionMeta(item) }}
+																</p>
+																<a
+																	v-if="item.file_url"
+																	:href="item.file_url"
+																	target="_blank"
+																	rel="noreferrer"
+																	class="mt-2 inline-flex text-sm font-medium text-canopy underline"
+																>
+																	{{ item.file_name || 'Open file' }}
+																</a>
+															</div>
+
+															<div
+																v-if="canReviewApplicantSubmissions && item.name"
+																class="flex flex-wrap gap-2 lg:justify-end"
+															>
+																<button
+																	type="button"
+																	class="if-action"
+																	:disabled="submissionSubmitting"
+																	@click="approveSubmission(item)"
+																>
+																	Approve
+																</button>
+																<button
+																	type="button"
+																	class="if-action"
+																	:disabled="submissionSubmitting"
+																	@click="beginSubmissionDecision(item, 'Needs Follow-Up')"
+																>
+																	Request Changes
+																</button>
+																<button
+																	type="button"
+																	class="if-action"
+																	:disabled="submissionSubmitting"
+																	@click="beginSubmissionDecision(item, 'Rejected')"
+																>
+																	Reject
+																</button>
+															</div>
+														</div>
+
+														<div
+															v-if="isEditingSubmission(item)"
+															class="mt-3 rounded-xl border border-slate-200 bg-white p-3"
+														>
+															<label class="block space-y-1">
+																<span class="type-caption text-ink/70">
+																	Review note
+																	<span v-if="submissionRequiresNotes"> (required)</span>
+																</span>
+																<textarea
+																	v-model="submissionDecisionNotes"
+																	class="if-field"
+																	rows="3"
+																	:disabled="submissionSubmitting"
+																></textarea>
+															</label>
+															<div class="mt-3 flex flex-wrap justify-end gap-2">
+																<button
+																	type="button"
+																	class="if-action"
+																	:disabled="submissionSubmitting"
+																	@click="cancelSubmissionDecision"
+																>
+																	Cancel
+																</button>
+																<button
+																	type="button"
+																	class="if-action if-action--primary"
+																	:disabled="submissionSubmitting"
+																	@click="submitSubmissionDecision"
+																>
+																	{{ submissionSubmitting ? 'Saving…' : 'Save Review' }}
+																</button>
+															</div>
+														</div>
+													</div>
+												</div>
+												<p v-else class="mt-3 type-caption text-ink/60">No submitted files yet.</p>
+											</section>
+										</div>
+
+										<div v-if="applicantSupplementalUploads.length" class="mt-4">
+											<h4 class="type-body-strong text-ink">Additional Submitted Files</h4>
+											<p class="mt-1 type-caption text-ink/65">
+												Optional evidence appears here so staff can review it without leaving
+												applicant context.
+											</p>
+											<div class="mt-3 space-y-2">
+												<div
+													v-for="row in applicantSupplementalUploads"
+													:key="row.applicant_document_item || row.label"
+													class="rounded-xl border border-border/60 bg-slate-50/60 p-3"
+												>
+													<div
+														class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+													>
+														<div class="min-w-0">
+															<div class="flex flex-wrap items-center gap-2">
+																<p class="type-body text-ink">
+																	{{ row.label || row.document_label || 'Submitted file' }}
+																</p>
+																<span
+																	class="rounded-full border px-2 py-0.5 text-xs font-semibold"
+																	:class="submissionStatusClass(row.review_status)"
+																>
+																	{{ row.review_status || 'Pending' }}
+																</span>
+															</div>
+															<p class="mt-1 type-caption text-ink/65">
+																{{ formatSubmissionMeta(row) }}
+															</p>
+															<a
+																v-if="row.file_url"
+																:href="row.file_url"
+																target="_blank"
+																rel="noreferrer"
+																class="mt-2 inline-flex text-sm font-medium text-canopy underline"
+															>
+																{{ row.file_name || 'Open file' }}
+															</a>
+														</div>
+
+														<div
+															v-if="canReviewApplicantSubmissions && row.applicant_document_item"
+															class="flex flex-wrap gap-2 lg:justify-end"
+														>
+															<button
+																type="button"
+																class="if-action"
+																:disabled="submissionSubmitting"
+																@click="
+																	approveSubmission({
+																		name: row.applicant_document_item,
+																		item_label: row.item_label,
+																		item_key: row.item_key,
+																	})
+																"
+															>
+																Approve
+															</button>
+															<button
+																type="button"
+																class="if-action"
+																:disabled="submissionSubmitting"
+																@click="
+																	beginSubmissionDecision(
+																		{
+																			name: row.applicant_document_item,
+																			item_label: row.item_label,
+																			item_key: row.item_key,
+																		},
+																		'Needs Follow-Up'
+																	)
+																"
+															>
+																Request Changes
+															</button>
+															<button
+																type="button"
+																class="if-action"
+																:disabled="submissionSubmitting"
+																@click="
+																	beginSubmissionDecision(
+																		{
+																			name: row.applicant_document_item,
+																			item_label: row.item_label,
+																			item_key: row.item_key,
+																		},
+																		'Rejected'
+																	)
+																"
+															>
+																Reject
+															</button>
+														</div>
+													</div>
+
+													<div
+														v-if="isEditingSubmission({ name: row.applicant_document_item })"
+														class="mt-3 rounded-xl border border-slate-200 bg-white p-3"
+													>
+														<label class="block space-y-1">
+															<span class="type-caption text-ink/70">
+																Review note
+																<span v-if="submissionRequiresNotes"> (required)</span>
+															</span>
+															<textarea
+																v-model="submissionDecisionNotes"
+																class="if-field"
+																rows="3"
+																:disabled="submissionSubmitting"
+															></textarea>
+														</label>
+														<div class="mt-3 flex flex-wrap justify-end gap-2">
+															<button
+																type="button"
+																class="if-action"
+																:disabled="submissionSubmitting"
+																@click="cancelSubmissionDecision"
+															>
+																Cancel
+															</button>
+															<button
+																type="button"
+																class="if-action if-action--primary"
+																:disabled="submissionSubmitting"
+																@click="submitSubmissionDecision"
+															>
+																{{ submissionSubmitting ? 'Saving…' : 'Save Review' }}
+															</button>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
 									</article>
 
 									<article class="interview-card">
@@ -474,13 +879,21 @@ import { FeatherIcon } from 'frappe-ui';
 import {
 	getApplicantWorkspace,
 	getInterviewWorkspace,
+	reviewApplicantDocumentSubmission,
 	saveMyInterviewFeedback,
-} from '@/lib/services/admissions/interviewWorkspaceService';
+	setDocumentRequirementOverride,
+} from '@/lib/services/admissions/admissionsWorkspaceService';
 import type {
+	ApplicantDocumentRequirementOverride,
+	ApplicantDocumentReviewDecision,
+	ApplicantWorkspaceDocumentItem,
+	ApplicantWorkspaceDocumentReview,
+	ApplicantWorkspaceRequirementRow,
+	ApplicantWorkspaceUploadedRow,
 	ApplicantWorkspaceResponse,
 	InterviewWorkspaceInterview,
 	InterviewWorkspaceResponse,
-} from '@/types/contracts/admissions/interview_workspace';
+} from '@/types/contracts/admissions/admissions_workspace';
 
 const props = defineProps<{
 	open: boolean;
@@ -494,6 +907,19 @@ const props = defineProps<{
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
 type WorkspaceMode = 'interview' | 'applicant';
+
+function emptyApplicantDocumentReview(): ApplicantWorkspaceDocumentReview {
+	return {
+		ok: false,
+		missing: [],
+		unapproved: [],
+		required: [],
+		required_rows: [],
+		uploaded_rows: [],
+		can_review_submissions: false,
+		can_manage_overrides: false,
+	};
+}
 
 const emit = defineEmits<{
 	(e: 'close', reason: CloseReason): void;
@@ -519,6 +945,18 @@ const formConcerns = ref('');
 const formSharedValues = ref('');
 const formOtherNotes = ref('');
 const formRecommendation = ref('');
+const documentActionError = ref<string | null>(null);
+const documentActionNotice = ref<string | null>(null);
+const submissionDecisionItem = ref<string | null>(null);
+const submissionDecision = ref<ApplicantDocumentReviewDecision | null>(null);
+const submissionDecisionNotes = ref('');
+const submissionSubmitting = ref(false);
+const requirementActionDocument = ref<string | null>(null);
+const requirementActionType = ref<string | null>(null);
+const requirementActionValue = ref<ApplicantDocumentRequirementOverride | null>(null);
+const requirementActionLabel = ref('');
+const requirementActionReason = ref('');
+const requirementSubmitting = ref(false);
 
 const recommendationOptions = [
 	'Strongly Recommend',
@@ -533,8 +971,15 @@ const workspaceApplicant = computed(
 const workspaceTimeline = computed(
 	() => workspace.value?.timeline || applicantWorkspace.value?.timeline || []
 );
-const workspaceDocuments = computed(
-	() => workspace.value?.documents || applicantWorkspace.value?.documents || { rows: [], count: 0 }
+const workspaceDocuments = computed(() => workspace.value?.documents || { rows: [], count: 0 });
+const applicantDocumentReview = computed(
+	() => applicantWorkspace.value?.document_review || emptyApplicantDocumentReview()
+);
+const applicantRequirementRows = computed<ApplicantWorkspaceRequirementRow[]>(
+	() => applicantDocumentReview.value.required_rows || []
+);
+const applicantUploadedRows = computed<ApplicantWorkspaceUploadedRow[]>(
+	() => applicantDocumentReview.value.uploaded_rows || []
 );
 const workspaceRecommendations = computed(
 	() =>
@@ -558,6 +1003,46 @@ const workspaceInterviews = computed<InterviewWorkspaceInterview[]>(() => {
 	}
 	return [];
 });
+const supplementalDocumentNames = computed(() => {
+	const names = new Set<string>();
+	for (const row of applicantRequirementRows.value) {
+		const name = String(row?.applicant_document || '').trim();
+		if (name) {
+			names.add(name);
+		}
+	}
+	return names;
+});
+const applicantSupplementalUploads = computed<ApplicantWorkspaceUploadedRow[]>(() =>
+	applicantUploadedRows.value.filter(row => {
+		const applicantDocument = String(row?.applicant_document || '').trim();
+		return !applicantDocument || !supplementalDocumentNames.value.has(applicantDocument);
+	})
+);
+const missingRequirementCount = computed(() => applicantDocumentReview.value.missing.length);
+const pendingSubmissionCount = computed(
+	() =>
+		applicantUploadedRows.value.filter(
+			row => String(row?.review_status || 'Pending').trim() === 'Pending'
+		).length
+);
+const completedRequirementCount = computed(
+	() =>
+		applicantRequirementRows.value.filter(row =>
+			['Approved', 'Waived', 'Exception Approved'].includes(
+				String(row?.review_status || '').trim()
+			)
+		).length
+);
+const canReviewApplicantSubmissions = computed(() =>
+	Boolean(!isInterviewMode.value && applicantDocumentReview.value.can_review_submissions)
+);
+const canManageApplicantOverrides = computed(() =>
+	Boolean(!isInterviewMode.value && applicantDocumentReview.value.can_manage_overrides)
+);
+const submissionRequiresNotes = computed(
+	() => submissionDecision.value === 'Needs Follow-Up' || submissionDecision.value === 'Rejected'
+);
 
 const hasWorkspace = computed(() => Boolean(workspace.value || applicantWorkspace.value));
 const isInterviewMode = computed(() => currentMode.value === 'interview');
@@ -573,7 +1058,7 @@ const workspaceOverline = computed(() =>
 
 const interviewWindowLabel = computed(() => {
 	if (!isInterviewMode.value) {
-		return 'Applicant admission file summary';
+		return 'Applicant evidence, readiness, and interview summary';
 	}
 	const startLabel = formatHumanDateTime(workspace.value?.interview?.interview_start, {
 		fallback: '',
@@ -617,6 +1102,28 @@ function clearRuntimeMessages() {
 	saveNotice.value = null;
 }
 
+function resetApplicantActionState() {
+	documentActionError.value = null;
+	documentActionNotice.value = null;
+	submissionSubmitting.value = false;
+	requirementSubmitting.value = false;
+	submissionDecisionItem.value = null;
+	submissionDecision.value = null;
+	submissionDecisionNotes.value = '';
+	requirementActionDocument.value = null;
+	requirementActionType.value = null;
+	requirementActionValue.value = null;
+	requirementActionLabel.value = '';
+	requirementActionReason.value = '';
+}
+
+function applyApplicantDocumentReview(documentReview: ApplicantWorkspaceDocumentReview) {
+	if (!applicantWorkspace.value) {
+		return;
+	}
+	applicantWorkspace.value.document_review = documentReview;
+}
+
 function resetFormFromWorkspace() {
 	formError.value = null;
 	saveNotice.value = null;
@@ -641,6 +1148,7 @@ async function loadInterviewWorkspace(
 	loading.value = true;
 	errorText.value = null;
 	clearRuntimeMessages();
+	resetApplicantActionState();
 	if (!options.preserveApplicantContext) {
 		applicantWorkspace.value = null;
 	}
@@ -675,6 +1183,7 @@ async function loadApplicantWorkspace(studentApplicantName: string) {
 	loading.value = true;
 	errorText.value = null;
 	clearRuntimeMessages();
+	resetApplicantActionState();
 	workspace.value = null;
 
 	try {
@@ -745,6 +1254,7 @@ function returnToApplicantMode() {
 	currentMode.value = 'applicant';
 	activeInterviewName.value = '';
 	clearRuntimeMessages();
+	resetApplicantActionState();
 	resetFormFromWorkspace();
 }
 
@@ -759,6 +1269,187 @@ async function openInterview(interviewName: string | null | undefined) {
 		return;
 	}
 	await loadInterviewWorkspace(normalizedInterview, { preserveApplicantContext: true });
+}
+
+function newClientRequestId(prefix = 'admissions_workspace') {
+	return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 12)}`;
+}
+
+function getApplicantWorkspaceName() {
+	return String(applicantWorkspace.value?.applicant?.name || '').trim();
+}
+
+function isEditingSubmission(item: ApplicantWorkspaceDocumentItem) {
+	return Boolean(
+		submissionDecisionItem.value &&
+		submissionDecisionItem.value === String(item?.name || '').trim() &&
+		submissionDecision.value
+	);
+}
+
+function beginSubmissionDecision(
+	item: ApplicantWorkspaceDocumentItem,
+	decision: ApplicantDocumentReviewDecision
+) {
+	const itemName = String(item?.name || '').trim();
+	if (!itemName) {
+		documentActionError.value = 'Submitted file reference is missing.';
+		return;
+	}
+	documentActionError.value = null;
+	documentActionNotice.value = null;
+	cancelRequirementOverride();
+	submissionDecisionItem.value = itemName;
+	submissionDecision.value = decision;
+	submissionDecisionNotes.value = '';
+}
+
+function cancelSubmissionDecision() {
+	submissionDecisionItem.value = null;
+	submissionDecision.value = null;
+	submissionDecisionNotes.value = '';
+}
+
+async function approveSubmission(item: ApplicantWorkspaceDocumentItem) {
+	beginSubmissionDecision(item, 'Approved');
+	await submitSubmissionDecision();
+}
+
+async function submitSubmissionDecision() {
+	const studentApplicant = getApplicantWorkspaceName();
+	const applicantDocumentItem = String(submissionDecisionItem.value || '').trim();
+	const decision = submissionDecision.value;
+	if (!studentApplicant || !applicantDocumentItem || !decision) {
+		documentActionError.value = 'Submitted file reference is missing.';
+		return;
+	}
+	if (submissionRequiresNotes.value && !submissionDecisionNotes.value.trim()) {
+		documentActionError.value = 'A review note is required for this decision.';
+		return;
+	}
+
+	documentActionError.value = null;
+	documentActionNotice.value = null;
+	submissionSubmitting.value = true;
+	try {
+		const result = await reviewApplicantDocumentSubmission({
+			student_applicant: studentApplicant,
+			applicant_document_item: applicantDocumentItem,
+			decision,
+			notes: submissionDecisionNotes.value.trim() || null,
+			client_request_id: newClientRequestId('applicant_document_review'),
+		});
+		applyApplicantDocumentReview(result.documents);
+		cancelSubmissionDecision();
+		documentActionNotice.value =
+			decision === 'Approved' ? 'Submitted file approved.' : 'Submitted file review updated.';
+	} catch (err) {
+		documentActionError.value =
+			err instanceof Error ? err.message : 'Unable to update submitted file review.';
+	} finally {
+		submissionSubmitting.value = false;
+	}
+}
+
+function isEditingRequirement(row: ApplicantWorkspaceRequirementRow) {
+	const applicantDocument = String(row?.applicant_document || '').trim();
+	const documentType = String(row?.document_type || '').trim();
+	return Boolean(
+		requirementActionValue.value &&
+		requirementActionDocument.value === applicantDocument &&
+		requirementActionType.value === documentType
+	);
+}
+
+function beginRequirementOverride(
+	row: ApplicantWorkspaceRequirementRow,
+	overrideValue: ApplicantDocumentRequirementOverride
+) {
+	documentActionError.value = null;
+	documentActionNotice.value = null;
+	cancelSubmissionDecision();
+	requirementActionDocument.value = String(row?.applicant_document || '').trim() || null;
+	requirementActionType.value = String(row?.document_type || '').trim() || null;
+	requirementActionValue.value = overrideValue;
+	requirementActionLabel.value = String(row?.label || row?.document_type || 'Requirement').trim();
+	requirementActionReason.value = '';
+}
+
+function cancelRequirementOverride() {
+	requirementActionDocument.value = null;
+	requirementActionType.value = null;
+	requirementActionValue.value = null;
+	requirementActionLabel.value = '';
+	requirementActionReason.value = '';
+}
+
+async function submitRequirementOverride() {
+	const studentApplicant = getApplicantWorkspaceName();
+	if (!studentApplicant || !requirementActionValue.value) {
+		documentActionError.value = 'Requirement reference is missing.';
+		return;
+	}
+	if (!requirementActionReason.value.trim()) {
+		documentActionError.value = 'A reason is required for waivers and exceptions.';
+		return;
+	}
+
+	documentActionError.value = null;
+	documentActionNotice.value = null;
+	requirementSubmitting.value = true;
+	try {
+		const result = await setDocumentRequirementOverride({
+			student_applicant: studentApplicant,
+			applicant_document: requirementActionDocument.value,
+			document_type: requirementActionType.value,
+			requirement_override: requirementActionValue.value,
+			override_reason: requirementActionReason.value.trim(),
+			client_request_id: newClientRequestId('document_requirement_override'),
+		});
+		applyApplicantDocumentReview(result.documents);
+		documentActionNotice.value = `${requirementActionValue.value} recorded.`;
+		cancelRequirementOverride();
+	} catch (err) {
+		documentActionError.value =
+			err instanceof Error ? err.message : 'Unable to update requirement override.';
+	} finally {
+		requirementSubmitting.value = false;
+	}
+}
+
+async function clearRequirementOverride(row: ApplicantWorkspaceRequirementRow) {
+	const studentApplicant = getApplicantWorkspaceName();
+	const label = String(row?.label || row?.document_type || 'requirement').trim();
+	if (!studentApplicant) {
+		documentActionError.value = 'Requirement reference is missing.';
+		return;
+	}
+	if (!window.confirm(`Clear the override for ${label}?`)) {
+		return;
+	}
+
+	documentActionError.value = null;
+	documentActionNotice.value = null;
+	cancelSubmissionDecision();
+	requirementSubmitting.value = true;
+	try {
+		const result = await setDocumentRequirementOverride({
+			student_applicant: studentApplicant,
+			applicant_document: String(row?.applicant_document || '').trim() || null,
+			document_type: String(row?.document_type || '').trim() || null,
+			requirement_override: '',
+			override_reason: '',
+			client_request_id: newClientRequestId('document_requirement_override_clear'),
+		});
+		applyApplicantDocumentReview(result.documents);
+		documentActionNotice.value = 'Requirement override cleared.';
+		cancelRequirementOverride();
+	} catch (err) {
+		documentActionError.value =
+			err instanceof Error ? err.message : 'Unable to clear requirement override.';
+	} finally {
+		requirementSubmitting.value = false;
+	}
 }
 
 function hasAnyFeedbackContent() {
@@ -958,6 +1649,64 @@ function formatInterviewStart(item: InterviewWorkspaceInterview) {
 
 function formatInterviewEnd(item: InterviewWorkspaceInterview) {
 	return formatHumanDateTime(item.interview_end, { fallback: '' });
+}
+
+function requirementStatusClass(status?: string | null) {
+	const normalized = String(status || '').trim();
+	if (['Approved', 'Waived', 'Exception Approved'].includes(normalized)) {
+		return 'border-emerald-200 bg-emerald-50 text-emerald-900';
+	}
+	if (normalized === 'Missing' || normalized === 'Rejected') {
+		return 'border-rose-200 bg-rose-50 text-rose-900';
+	}
+	return 'border-amber-200 bg-amber-50 text-amber-900';
+}
+
+function submissionStatusClass(status?: string | null) {
+	return requirementStatusClass(status);
+}
+
+function formatRequirementProgress(row: ApplicantWorkspaceRequirementRow) {
+	const approvedCount = Number(row?.approved_count || 0);
+	const requiredCount = Number(row?.required_count || 0);
+	if (!requiredCount) {
+		return 'Optional';
+	}
+	return `${approvedCount}/${requiredCount} approved`;
+}
+
+function formatRequirementMeta(row: ApplicantWorkspaceRequirementRow) {
+	const bits: string[] = [];
+	const uploadedCount = Number(row?.uploaded_count || 0);
+	if (uploadedCount) {
+		bits.push(`${uploadedCount} submitted`);
+	}
+	if (row?.uploaded_by) {
+		bits.push(`last upload by ${row.uploaded_by}`);
+	}
+	if (row?.uploaded_at) {
+		bits.push(`on ${formatHumanDateTime(row.uploaded_at, { includeYear: true })}`);
+	}
+	return bits.join(' · ') || 'No submitted files yet.';
+}
+
+function formatSubmissionMeta(
+	item: ApplicantWorkspaceDocumentItem | ApplicantWorkspaceUploadedRow
+) {
+	const bits: string[] = [];
+	if (item?.uploaded_by) {
+		bits.push(`uploaded by ${item.uploaded_by}`);
+	}
+	if (item?.uploaded_at) {
+		bits.push(`on ${formatHumanDateTime(item.uploaded_at, { includeYear: true })}`);
+	}
+	if (item?.reviewed_by) {
+		bits.push(`reviewed by ${item.reviewed_by}`);
+	}
+	if (item?.reviewed_on) {
+		bits.push(`on ${formatHumanDateTime(item.reviewed_on, { includeYear: true })}`);
+	}
+	return bits.join(' · ') || 'Awaiting review.';
 }
 
 function onKeydown(event: KeyboardEvent) {

@@ -77,7 +77,7 @@
 
 							<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
 								<label class="type-caption text-ink/70" for="item-label-input">
-									{{ __('File description') }}
+									{{ __('File description (optional)') }}
 								</label>
 								<input
 									id="item-label-input"
@@ -88,7 +88,11 @@
 									:disabled="isReadOnly || submitting"
 								/>
 								<p class="mt-2 type-caption text-ink/55">
-									{{ __('This label helps admissions review each uploaded file separately.') }}
+									{{
+										__(
+											'Optional. Add a note only when it helps distinguish multiple files for the same requirement.'
+										)
+									}}
 								</p>
 							</div>
 
@@ -305,10 +309,6 @@ async function submit() {
 		return;
 	}
 	const trimmedItemLabel = itemLabelValue.value.trim();
-	if (!trimmedItemLabel) {
-		setError('', __('Please provide a short description for this file.'));
-		return;
-	}
 
 	submitting.value = true;
 	clearError();

@@ -3,8 +3,8 @@ title: "Applicant Interview Feedback: Per-Interviewer Notes"
 slug: applicant-interview-feedback
 category: Admission
 doc_order: 9
-version: "1.1.0"
-last_change_date: "2026-03-05"
+version: "1.1.1"
+last_change_date: "2026-03-09"
 summary: "Store one structured feedback record per interviewer per admissions interview to avoid concurrent edit collisions on shared interview notes."
 seo_title: "Applicant Interview Feedback"
 seo_description: "Per-interviewer admissions interview feedback linked to Applicant Interview with Draft/Submitted status and row-level access control."
@@ -39,7 +39,7 @@ This prevents multi-interviewer collisions on one shared text field and enables 
 
 ## SPA Usage
 
-Used by `InterviewWorkspaceOverlay` opened from `StaffHome` calendar when the clicked `School Event` references `Applicant Interview`.
+Used by `AdmissionsWorkspaceOverlay` opened from `StaffHome` calendar when the clicked `School Event` references `Applicant Interview`.
 
 Workspace APIs:
 - `get_interview_workspace(interview=...)`

@@ -11,8 +11,8 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
+from ifitwala_ed.admission.admission_utils import is_admissions_workspace_user
 from ifitwala_ed.admission.applicant_review_workflow import (
-    TARGET_DOCUMENT,
     TARGET_DOCUMENT_ITEM,
     complete_assignment_decision,
 )
@@ -27,6 +27,14 @@ from ifitwala_ed.api.focus_shared import (
 )
 
 
+def _assert_focus_route_allowed(*, assignment_doc, user: str) -> None:
+    if (assignment_doc.target_type or "").strip() == TARGET_DOCUMENT_ITEM and is_admissions_workspace_user(user):
+        frappe.throw(
+            _("Admissions staff review evidence from the applicant workspace or Student Applicant form."),
+            frappe.PermissionError,
+        )
+
+
 def build_applicant_review_file_open_url(*, assignment: str, focus_item_id: str | None = None) -> str:
     params = {"assignment": (assignment or "").strip()}
     focus_id = (focus_item_id or "").strip()
@@ -38,7 +46,7 @@ def build_applicant_review_file_open_url(*, assignment: str, focus_item_id: str 
 
 def _latest_assignment_file_row(assignment_doc) -> dict | None:
     target_type = (assignment_doc.target_type or "").strip()
-    if target_type not in {TARGET_DOCUMENT, TARGET_DOCUMENT_ITEM}:
+    if target_type != TARGET_DOCUMENT_ITEM:
         return None
 
     rows = frappe.get_all(
@@ -82,6 +90,7 @@ def download_applicant_review_file(
 
     assignment_name = _resolve_review_assignment_name(user=user, assignment=assignment, focus_item_id=focus_item_id)
     assignment_doc = frappe.get_doc(APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE, assignment_name)
+    _assert_focus_route_allowed(assignment_doc=assignment_doc, user=user)
 
     if (assignment_doc.status or "").strip() != "Open":
         frappe.throw(_("This review assignment is no longer open."), frappe.ValidationError)
@@ -152,6 +161,7 @@ def claim_applicant_review_assignment(
                 }
 
         assignment_doc = frappe.get_doc(APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE, assignment_name)
+        _assert_focus_route_allowed(assignment_doc=assignment_doc, user=user)
         if (assignment_doc.status or "").strip() != "Open":
             frappe.throw(_("This review assignment is not open."), frappe.ValidationError)
 
@@ -246,6 +256,7 @@ def reassign_applicant_review_assignment(
                 }
 
         assignment_doc = frappe.get_doc(APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE, assignment_name)
+        _assert_focus_route_allowed(assignment_doc=assignment_doc, user=user)
         if (assignment_doc.status or "").strip() != "Open":
             frappe.throw(_("This review assignment is not open."), frappe.ValidationError)
 
@@ -340,6 +351,7 @@ def submit_applicant_review_assignment(
                 }
 
         assignment_doc = frappe.get_doc(APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE, assignment_name)
+        _assert_focus_route_allowed(assignment_doc=assignment_doc, user=user)
         if not _reviewer_matches_assignment(assignment_doc.as_dict(), user=user, roles=user_roles):
             frappe.throw(_("You are not assigned to this review item."), frappe.PermissionError)
 

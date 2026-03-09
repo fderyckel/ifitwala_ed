@@ -24,7 +24,7 @@ export type OverlayType =
   | 'admissions-document-upload'
   | 'admissions-policy-ack'
   | 'admissions-submit'
-  | 'admissions-interview-workspace'
+  | 'admissions-workspace'
 
 export type OverlayEntry = {
   id: string

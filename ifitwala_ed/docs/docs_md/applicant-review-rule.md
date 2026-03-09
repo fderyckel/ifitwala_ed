@@ -3,73 +3,100 @@ title: "Applicant Review Rule: Reviewer Scope Configuration"
 slug: applicant-review-rule
 category: Admission
 doc_order: 8
-version: "1.1.1"
-last_change_date: "2026-02-28"
-summary: "Configure admissions review assignees by organization, school, optional program offering, and target type."
+version: "1.3.0"
+last_change_date: "2026-03-09"
+summary: "Configure admissions reviewers by organization, school, optional program offering, and target type, including per-file document item review."
 seo_title: "Applicant Review Rule: Reviewer Scope Configuration"
-seo_description: "Configure admissions review assignees by organization, school, optional program offering, and target type."
+seo_description: "Configure admissions reviewers by organization, school, optional program offering, and target type, including per-file document item review."
 ---
 
-## Applicant Review Rule: Reviewer Scope Configuration
+## Contract
+
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/applicant_review_rule/applicant_review_rule.json`, `ifitwala_ed/admission/doctype/applicant_review_rule/applicant_review_rule.py`, `ifitwala_ed/admission/applicant_review_workflow.py`
+Test refs: `ifitwala_ed/admission/test_applicant_review_workflow.py`, `ifitwala_ed/api/test_focus_applicant_review.py`
 
 `Applicant Review Rule` defines who must review admissions artifacts for a given institutional scope.
 
-## Scope Model
+It is configuration, not a task queue. Tasks are materialized later into `Applicant Review Assignment`.
 
-- `organization` is required.
-- `school` is required.
-- `program_offering` is optional for program-specific rules.
-- `target_type` is required and must be one of:
-  - `Applicant Document`
-  - `Applicant Health Profile`
-  - `Student Applicant`
-- `document_type` is optional and only valid when `target_type = Applicant Document`.
+## Target Types and Scope
+
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/applicant_review_rule/applicant_review_rule.json`, `ifitwala_ed/admission/applicant_review_workflow.py`
+Test refs: `ifitwala_ed/admission/test_applicant_review_workflow.py`
+
+Required scope fields:
+
+- `organization`
+- `school`
+- `target_type`
+
+Optional scope field:
+
+- `program_offering`
+
+Implemented target types:
+
+- `Applicant Document Item`
+- `Applicant Health Profile`
+- `Student Applicant`
+
+`document_type` is optional and only valid when `target_type` is `Applicant Document Item`.
 
 ## Reviewer Rows
 
-Use child table `Applicant Review Rule Reviewer`.
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/applicant_review_rule_reviewer/applicant_review_rule_reviewer.json`, `ifitwala_ed/admission/doctype/applicant_review_rule/applicant_review_rule.py`
+Test refs: `ifitwala_ed/admission/test_applicant_review_workflow.py`
 
-Each row must set `reviewer_mode`:
+Reviewer rows live in child table `Applicant Review Rule Reviewer`.
+
+Supported reviewer modes:
 
 - `Role Only`
 - `Specific User`
 
-Row rules:
+Row invariants:
 
-- `Role Only` requires `reviewer_role` and must keep `reviewer_user` empty.
-- `Specific User` requires `reviewer_user`; `reviewer_role` is optional but recommended.
-- If `Specific User` includes a `reviewer_role`, the selected user must have that role.
-- Duplicate reviewer actors are rejected.
+- `Role Only` requires `reviewer_role` and must keep `reviewer_user` empty
+- `Specific User` requires `reviewer_user`
+- duplicate effective reviewer actors are rejected
 
-UI behavior:
+## Rule Resolution and Materialization
 
-- In the `reviewers` child table, `reviewer_role` can be selected by users with `Applicant Review Rule` write access, even if they do not have direct `Role` read permission.
-- In the `reviewers` child table, `reviewer_user` link options are filtered by `reviewer_role` when a role is selected.
-- If no role is selected, `reviewer_user` shows the standard enabled-user query.
-
-## Rule Resolution Contract
+Status: Implemented
+Code refs: `ifitwala_ed/admission/applicant_review_workflow.py`
+Test refs: `ifitwala_ed/admission/test_applicant_review_workflow.py`, `ifitwala_ed/api/test_focus_applicant_review.py`
 
 When assignments are materialized:
 
-1. Only active rules in applicant organization/school ancestor scope are considered.
-2. Most-specific scope is selected by nearest organization + nearest school + program specificity.
-3. All matching rules at the same most-specific scope are merged.
-4. Reviewer rows are deduped by effective assignment actor (specific user or role queue).
-5. If no rule matches, no assignment is created.
+1. only active rules in applicant organization/school ancestor scope are considered
+2. nearest organization + nearest school + program specificity wins
+3. all rules at the same best scope are merged
+4. reviewer actors are deduped
+5. no matching rule means no assignment is created
 
-## Focus Overlay Behavior (Role Queue)
+Materialization supports submission-level evidence review only. Parent `Applicant Document` rows are aggregate requirement cards and never receive review assignments.
 
-When a rule row is `Role Only`, materialized `Applicant Review Assignment` remains role-assigned (`assigned_to_role`).
+## Focus Integration
 
-From Focus overlay, a role holder can:
+Status: Implemented
+Code refs: `ifitwala_ed/api/focus_listing.py`, `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/api/focus_actions_applicant_review.py`
+Test refs: `ifitwala_ed/api/test_focus_applicant_review.py`
 
-- **Take ownership** (claim): convert open assignment to `assigned_to_user = current user`.
-- **Assign** to another enabled user with the same role: convert open assignment to `assigned_to_user = selected user`.
+Role-queue behavior:
 
-## Permissions
+- open role assignments can be claimed by a reviewer with the required role
+- open role assignments can be reassigned to another enabled user with the same role
+- once completed, the assignment leaves the open Focus queue
 
-Rule management is limited to:
+## Technical Notes (IT)
 
-- `Admission Manager`
-- `Academic Admin`
-- `System Manager`
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/applicant_review_rule/applicant_review_rule.json`, `ifitwala_ed/admission/doctype/applicant_review_rule/applicant_review_rule.py`, `ifitwala_ed/admission/applicant_review_workflow.py`
+Test refs: `ifitwala_ed/admission/test_applicant_review_workflow.py`, `ifitwala_ed/api/test_focus_applicant_review.py`
+
+- `target_type` schema includes `Applicant Document Item`, `Applicant Health Profile`, and `Student Applicant`.
+- `document_type` filtering applies only to `Applicant Document Item` evidence rules.
+- Rule matching and assignment creation live in `applicant_review_workflow.py`; the rule doctype controller mainly validates configuration coherence.

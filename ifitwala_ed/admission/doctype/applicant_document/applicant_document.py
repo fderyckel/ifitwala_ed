@@ -17,17 +17,24 @@ from ifitwala_ed.admission.admission_utils import (
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
 UPLOAD_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager", ADMISSIONS_APPLICANT_ROLE}
 REVIEW_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
+OVERRIDE_ROLES = {"Admission Manager", "Academic Admin", "System Manager"}
+ALLOWED_REQUIREMENT_OVERRIDES = {"Waived", "Exception Approved"}
+AGGREGATE_FIELDS = ("review_status", "reviewed_by", "reviewed_on")
+OVERRIDE_FIELDS = ("requirement_override", "override_reason", "override_by", "override_on")
+PROMOTION_FIELDS = ("promotion_target", "promotion_notes")
 
 
 class ApplicantDocument(Document):
     def validate(self):
         before = self.get_doc_before_save() if not self.is_new() else None
+        self._normalize_fields()
         self._validate_permissions(before)
         self._validate_applicant_state()
         self._validate_immutable_fields(before)
         self._validate_unique_document_type()
-        self._validate_review_status(before)
-        self._validate_promotion_flags(before)
+        self._validate_aggregate_fields(before)
+        self._validate_requirement_override(before)
+        self._validate_promotion_controls(before)
 
     def before_trash(self):
         self._validate_delete_allowed()
@@ -51,6 +58,15 @@ class ApplicantDocument(Document):
             "logical_key": doc_type_code,
         }
 
+    def _normalize_fields(self):
+        self.student_applicant = (self.student_applicant or "").strip()
+        self.document_type = (self.document_type or "").strip()
+        self.document_label = (self.document_label or "").strip()
+        self.promotion_target = (self.promotion_target or "").strip()
+        self.promotion_notes = (self.promotion_notes or "").strip()
+        self.requirement_override = (self.requirement_override or "").strip()
+        self.override_reason = (self.override_reason or "").strip()
+
     def _validate_permissions(self, before):
         user_roles = set(frappe.get_roles(frappe.session.user))
         if not user_roles & UPLOAD_ROLES:
@@ -68,11 +84,6 @@ class ApplicantDocument(Document):
         if is_applicant and not is_staff_reviewer:
             if not _is_student_applicant_self_user(self.student_applicant, frappe.session.user):
                 frappe.throw(_("You do not have permission to manage this Applicant Document."), frappe.PermissionError)
-
-        if self._review_fields_changed(before) and not user_roles & REVIEW_ROLES:
-            frappe.throw(
-                _("Only Admission Officer, Admission Manager, Academic Admin, or System Manager can review documents.")
-            )
 
     def _validate_applicant_state(self):
         status = frappe.db.get_value("Student Applicant", self.student_applicant, "application_status")
@@ -100,39 +111,68 @@ class ApplicantDocument(Document):
         if exists:
             frappe.throw(_("Only one Applicant Document per document type is allowed per Applicant."))
 
-    def _validate_review_status(self, before):
+    def _aggregate_fields_changed(self, before):
         if not before:
-            return
-        if before.review_status == self.review_status:
-            return
-        if self.review_status in {"Approved", "Rejected", "Superseded"}:
-            if not self.reviewed_by:
-                self.reviewed_by = frappe.session.user
-            if not self.reviewed_on:
-                self.reviewed_on = now_datetime()
+            status = (self.review_status or "").strip() or "Pending"
+            reviewed_by = (self.reviewed_by or "").strip()
+            reviewed_on = self.reviewed_on
+            return status != "Pending" or bool(reviewed_by or reviewed_on)
+        return any(before.get(field) != self.get(field) for field in AGGREGATE_FIELDS)
 
-    def _validate_promotion_flags(self, before):
-        if not self.is_promotable:
+    def _validate_aggregate_fields(self, before):
+        if self._aggregate_fields_changed(before):
+            frappe.throw(_("Requirement status is derived from submission review state and cannot be edited directly."))
+
+    def _override_fields_changed(self, before):
+        if not before:
+            return bool(self.requirement_override or self.override_reason or self.override_by or self.override_on)
+        return any(before.get(field) != self.get(field) for field in OVERRIDE_FIELDS)
+
+    def _validate_requirement_override(self, before):
+        if not self._override_fields_changed(before):
             return
-        if self.review_status != "Approved":
-            frappe.throw(_("Is Promotable requires Review Status = Approved."))
+
+        user_roles = set(frappe.get_roles(frappe.session.user))
+        if not user_roles & OVERRIDE_ROLES:
+            frappe.throw(
+                _(
+                    "Only Admission Manager, Academic Admin, or System Manager can set a requirement waiver or exception."
+                )
+            )
+
+        override_status = (self.requirement_override or "").strip()
+        if override_status and override_status not in ALLOWED_REQUIREMENT_OVERRIDES:
+            frappe.throw(_("Invalid requirement override: {0}.").format(override_status))
+
+        if not override_status:
+            self.override_reason = None
+            self.override_by = None
+            self.override_on = None
+            return
+
+        if not self.override_reason:
+            frappe.throw(_("Override reason is required when applying a waiver or exception."))
+
+        if not self.override_by:
+            self.override_by = frappe.session.user
+        if not self.override_on:
+            self.override_on = now_datetime()
+
+    def _promotion_fields_changed(self, before):
+        if not before:
+            return bool(self.promotion_target or self.promotion_notes)
+        return any(before.get(field) != self.get(field) for field in PROMOTION_FIELDS)
+
+    def _validate_promotion_controls(self, before):
+        if not self._promotion_fields_changed(before):
+            return
         user_roles = set(frappe.get_roles(frappe.session.user))
         if not user_roles & REVIEW_ROLES:
             frappe.throw(
-                _("Only Admission Officer, Admission Manager, Academic Admin, or System Manager can set Is Promotable.")
+                _(
+                    "Only Admission Officer, Admission Manager, Academic Admin, or System Manager can manage promotion routing."
+                )
             )
-
-    def _review_fields_changed(self, before):
-        if not before:
-            status = (self.review_status or "").strip()
-            # New rows are born with default Pending; that is not a review action.
-            if status and status != "Pending":
-                return True
-            return bool((self.review_notes or "").strip() or self.reviewed_by or self.reviewed_on)
-        return any(
-            before.get(field) != self.get(field)
-            for field in ("review_status", "review_notes", "reviewed_by", "reviewed_on")
-        )
 
     def _validate_delete_allowed(self):
         if not self.name:
@@ -153,23 +193,20 @@ class ApplicantDocument(Document):
 
     def _append_update_timeline(self, before):
         changes = []
-        previous_status = (before.get("review_status") or "Pending").strip()
-        current_status = (self.get("review_status") or "Pending").strip()
-        if previous_status != current_status:
-            changes.append(_("Review Status: {0} -> {1}").format(previous_status, current_status))
-
-        before_notes = (before.get("review_notes") or "").strip()
-        current_notes = (self.get("review_notes") or "").strip()
-        if before_notes != current_notes:
-            changes.append(_("Review notes updated") if current_notes else _("Review notes cleared"))
-
-        if cint(before.get("is_promotable")) != cint(self.get("is_promotable")):
+        before_override = (before.get("requirement_override") or "").strip()
+        current_override = (self.get("requirement_override") or "").strip()
+        if before_override != current_override:
             changes.append(
-                _("Is Promotable: {0} -> {1}").format(
-                    _("Yes") if cint(before.get("is_promotable")) else _("No"),
-                    _("Yes") if cint(self.get("is_promotable")) else _("No"),
+                _("Requirement Override: {0} -> {1}").format(
+                    before_override or _("None"),
+                    current_override or _("None"),
                 )
             )
+
+        before_reason = (before.get("override_reason") or "").strip()
+        current_reason = (self.get("override_reason") or "").strip()
+        if before_reason != current_reason:
+            changes.append(_("Override reason updated") if current_reason else _("Override reason cleared"))
 
         before_target = (before.get("promotion_target") or "").strip()
         current_target = (self.get("promotion_target") or "").strip()
@@ -224,26 +261,39 @@ def sync_applicant_document_review_from_items(applicant_document: str | None) ->
     parent_name = (applicant_document or "").strip()
     if not parent_name:
         return {}
-    if not frappe.db.exists("Applicant Document", parent_name):
+    parent_row = (
+        frappe.db.get_value(
+            "Applicant Document",
+            parent_name,
+            ["name", "document_type"],
+            as_dict=True,
+        )
+        or {}
+    )
+    if not parent_row:
         return {}
+
+    required_count = _required_count_for_document_type(parent_row.get("document_type"))
 
     item_rows = frappe.get_all(
         "Applicant Document Item",
         filters={"applicant_document": parent_name},
         fields=["review_status", "reviewed_by", "reviewed_on"],
     )
-    statuses = [(row.get("review_status") or "Pending").strip() for row in item_rows]
+    active_rows = [row for row in item_rows if (row.get("review_status") or "Pending").strip() != "Superseded"]
+    statuses = [(row.get("review_status") or "Pending").strip() for row in active_rows]
+    approved_count = sum(1 for status in statuses if status == "Approved")
 
-    if not statuses:
+    if approved_count >= required_count and approved_count > 0:
+        target_status = "Approved"
+        reviewed_by, reviewed_on = _latest_review_actor(active_rows, "Approved")
+    elif any(status == "Rejected" for status in statuses):
+        target_status = "Rejected"
+        reviewed_by, reviewed_on = _latest_review_actor(active_rows, "Rejected")
+    elif not statuses:
         target_status = "Pending"
         reviewed_by = None
         reviewed_on = None
-    elif any(status == "Rejected" for status in statuses):
-        target_status = "Rejected"
-        reviewed_by, reviewed_on = _latest_review_actor(item_rows, "Rejected")
-    elif all(status == "Approved" for status in statuses):
-        target_status = "Approved"
-        reviewed_by, reviewed_on = _latest_review_actor(item_rows, "Approved")
     else:
         target_status = "Pending"
         reviewed_by = None
@@ -399,3 +449,22 @@ def _is_student_applicant_self_user(student_applicant: str | None, user: str | N
 def _is_document_applicant_self_user(*, doc, user: str) -> bool:
     student_applicant = _resolve_document_student_applicant(doc)
     return _is_student_applicant_self_user(student_applicant, user)
+
+
+def _required_count_for_document_type(document_type: str | None) -> int:
+    document_type_name = (document_type or "").strip()
+    if not document_type_name:
+        return 1
+
+    row = (
+        frappe.db.get_value(
+            "Applicant Document Type",
+            document_type_name,
+            ["is_repeatable", "min_items_required"],
+            as_dict=True,
+        )
+        or {}
+    )
+    if not cint(row.get("is_repeatable")):
+        return 1
+    return max(1, cint(row.get("min_items_required") or 1))

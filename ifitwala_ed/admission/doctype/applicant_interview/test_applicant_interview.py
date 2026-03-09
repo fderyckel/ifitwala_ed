@@ -546,6 +546,10 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertTrue(payload.get("ok"))
         self.assertEqual(payload.get("applicant", {}).get("name"), self.applicant.name)
         self.assertGreaterEqual(len(payload.get("interviews") or []), 1)
+        self.assertIn("document_review", payload)
+        self.assertIn("required_rows", payload.get("document_review") or {})
+        self.assertTrue(payload.get("document_review", {}).get("can_review_submissions"))
+        self.assertTrue(payload.get("document_review", {}).get("can_manage_overrides"))
 
     def test_transfer_school_non_privileged_staff_cannot_read_applicant_workspace(self):
         staff_user = self._create_user("transfer_file_staff", roles=["Academic Assistant"])

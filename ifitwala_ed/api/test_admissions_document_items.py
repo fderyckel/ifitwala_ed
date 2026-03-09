@@ -83,15 +83,24 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         self.assertIn("AISL transcript 2019", labels)
         self.assertIn("ISL transcript 2020", labels)
 
-    def test_upload_requires_item_description_for_new_item(self):
+    def test_upload_without_item_description_uses_server_generated_submission_label(self):
         frappe.set_user(self.applicant_user)
-        with self.assertRaises(frappe.ValidationError):
-            upload_applicant_document(
-                student_applicant=self.applicant.name,
-                document_type=self.document_type,
-                file_name="unknown.txt",
-                content=self._tiny_file_base64(),
-            )
+        payload = upload_applicant_document(
+            student_applicant=self.applicant.name,
+            document_type=self.document_type,
+            file_name="unknown.txt",
+            content=self._tiny_file_base64(),
+        )
+
+        row = frappe.db.get_value(
+            "Applicant Document Item",
+            payload.get("applicant_document_item"),
+            ["item_key", "item_label"],
+            as_dict=True,
+        )
+        self.assertTrue(bool(row))
+        self.assertTrue(bool(row.get("item_key")))
+        self.assertTrue(bool(row.get("item_label")))
 
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):

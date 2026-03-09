@@ -6,10 +6,10 @@
 import frappe
 from frappe import _
 
+from ifitwala_ed.admission.admission_utils import is_admissions_workspace_user
 from ifitwala_ed.admission.applicant_review_workflow import (
     DECISION_OPTIONS_BY_TARGET,
     TARGET_APPLICATION,
-    TARGET_DOCUMENT,
     TARGET_DOCUMENT_ITEM,
     TARGET_HEALTH,
 )
@@ -193,6 +193,14 @@ def get_focus_context(
         assignment_row = assignment_doc.as_dict()
         user_roles = set(frappe.get_roles(frappe.session.user))
 
+        if (assignment_doc.target_type or "").strip() == TARGET_DOCUMENT_ITEM and is_admissions_workspace_user(
+            frappe.session.user
+        ):
+            frappe.throw(
+                _("Admissions staff review evidence from the applicant workspace or Student Applicant form."),
+                frappe.PermissionError,
+            )
+
         if (assignment_doc.status or "").strip() != "Open":
             frappe.throw(_("This review assignment is no longer open."), frappe.ValidationError)
 
@@ -224,64 +232,7 @@ def get_focus_context(
 
         preview = {}
         target_type = (assignment_doc.target_type or "").strip()
-        if target_type == TARGET_DOCUMENT:
-            document_row = frappe.db.sql(
-                """
-                select
-                    d.name,
-                    d.document_type,
-                    d.document_label,
-                    d.review_status,
-                    d.review_notes,
-                    ifnull(dt.document_type_name, '') as document_type_name,
-                    ifnull(dt.code, '') as document_type_code
-                from `tabApplicant Document` d
-                left join `tabApplicant Document Type` dt
-                  on dt.name = d.document_type
-                where d.name = %(name)s
-                """,
-                {"name": assignment_doc.target_name},
-                as_dict=True,
-            )
-            doc_row = document_row[0] if document_row else {}
-            file_rows = frappe.get_all(
-                "File",
-                filters={
-                    "attached_to_doctype": TARGET_DOCUMENT,
-                    "attached_to_name": assignment_doc.target_name,
-                },
-                fields=["file_url", "file_name", "creation"],
-                order_by="creation desc",
-                limit_page_length=1,
-            )
-            file_row = file_rows[0] if file_rows else {}
-            raw_file_url = (file_row.get("file_url") or "").strip()
-            preview_file_url = (
-                raw_file_url
-                if raw_file_url.startswith(("http://", "https://"))
-                else build_applicant_review_file_open_url(
-                    assignment=assignment_doc.name,
-                    focus_item_id=focus_item_id,
-                )
-                if raw_file_url
-                else None
-            )
-            preview = {
-                "document_type": doc_row.get("document_type"),
-                "document_label": (
-                    (doc_row.get("document_label") or "").strip()
-                    or (doc_row.get("document_type_code") or "").strip()
-                    or (doc_row.get("document_type_name") or "").strip()
-                    or (doc_row.get("document_type") or "").strip()
-                    or assignment_doc.target_name
-                ),
-                "review_status": doc_row.get("review_status"),
-                "review_notes": doc_row.get("review_notes"),
-                "file_url": preview_file_url,
-                "file_name": file_row.get("file_name"),
-                "uploaded_at": str(file_row.get("creation")) if file_row.get("creation") else None,
-            }
-        elif target_type == TARGET_DOCUMENT_ITEM:
+        if target_type == TARGET_DOCUMENT_ITEM:
             item_row = frappe.db.sql(
                 """
                 select

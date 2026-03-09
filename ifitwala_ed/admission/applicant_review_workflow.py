@@ -13,7 +13,6 @@ from ifitwala_ed.admission.doctype.applicant_document.applicant_document import 
     sync_applicant_document_review_from_items,
 )
 
-TARGET_DOCUMENT = "Applicant Document"
 TARGET_DOCUMENT_ITEM = "Applicant Document Item"
 TARGET_HEALTH = "Applicant Health Profile"
 TARGET_APPLICATION = "Student Applicant"
@@ -23,7 +22,6 @@ REVIEWER_MODE_ROLE_ONLY = "Role Only"
 REVIEWER_MODE_SPECIFIC_USER = "Specific User"
 
 DECISION_OPTIONS_BY_TARGET = {
-    TARGET_DOCUMENT: ["Approved", "Needs Follow-Up", "Rejected"],
     TARGET_DOCUMENT_ITEM: ["Approved", "Needs Follow-Up", "Rejected"],
     TARGET_HEALTH: ["Cleared", "Needs Follow-Up"],
     TARGET_APPLICATION: ["Recommend Admit", "Recommend Waitlist", "Recommend Reject", "Needs Follow-Up"],
@@ -144,7 +142,7 @@ def _query_matching_rule_rows(
           and organization in %(organizations)s
           and school in %(schools)s
     """
-    if target_type in {TARGET_DOCUMENT, TARGET_DOCUMENT_ITEM}:
+    if target_type == TARGET_DOCUMENT_ITEM:
         if document_type:
             sql += " and (ifnull(document_type, '') = '' or document_type = %(document_type)s)"
             params["document_type"] = document_type
@@ -338,28 +336,6 @@ def materialize_review_assignments(
     return created_or_reopened
 
 
-def materialize_document_review_assignments(
-    *, applicant_document: str, source_event: str = "document_uploaded"
-) -> list[str]:
-    row = frappe.db.get_value(
-        TARGET_DOCUMENT,
-        applicant_document,
-        ["name", "student_applicant", "document_type"],
-        as_dict=True,
-    )
-    if not row:
-        return []
-
-    return materialize_review_assignments(
-        target_type=TARGET_DOCUMENT,
-        target_name=row.get("name"),
-        student_applicant=row.get("student_applicant"),
-        source_event=source_event,
-        document_type=row.get("document_type"),
-        reopen_done=True,
-    )
-
-
 def materialize_document_item_review_assignments(
     *, applicant_document_item: str, source_event: str = "document_item_uploaded"
 ) -> list[str]:
@@ -434,22 +410,6 @@ def _update_target_review_fields(
     now_ts = now_datetime()
     clean_notes = (notes or "").strip()
 
-    if target_type == TARGET_DOCUMENT:
-        review_status = DOCUMENT_REVIEW_STATUS_BY_DECISION.get(decision)
-        if not review_status:
-            frappe.throw(_("Invalid document decision: {0}.").format(decision), frappe.ValidationError)
-        frappe.db.set_value(
-            TARGET_DOCUMENT,
-            target_name,
-            {
-                "review_status": review_status,
-                "review_notes": clean_notes,
-                "reviewed_by": decided_by,
-                "reviewed_on": now_ts,
-            },
-        )
-        return
-
     if target_type == TARGET_DOCUMENT_ITEM:
         review_status = DOCUMENT_REVIEW_STATUS_BY_DECISION.get(decision)
         if not review_status:
@@ -488,6 +448,78 @@ def _update_target_review_fields(
     frappe.throw(_("Unsupported target type: {0}.").format(target_type), frappe.ValidationError)
 
 
+def cancel_open_assignments_for_target(
+    *,
+    target_type: str,
+    target_name: str,
+    cancelled_by: str,
+    cancel_reason: str | None = None,
+    exclude_assignment: str | None = None,
+):
+    filters = {
+        "target_type": (target_type or "").strip(),
+        "target_name": (target_name or "").strip(),
+        "status": "Open",
+    }
+    excluded_name = (exclude_assignment or "").strip()
+    if excluded_name:
+        filters["name"] = ["!=", excluded_name]
+
+    rows = frappe.get_all(
+        ASSIGNMENT_DOCTYPE,
+        filters=filters,
+        fields=["name"],
+        order_by="modified desc",
+        limit_page_length=1000,
+    )
+    if not rows:
+        return []
+
+    now_ts = now_datetime()
+    clean_reason = (cancel_reason or "").strip() or None
+    closed_names: list[str] = []
+    for row in rows:
+        name = (row.get("name") or "").strip()
+        if not name:
+            continue
+        doc = frappe.get_doc(ASSIGNMENT_DOCTYPE, name)
+        doc.status = "Cancelled"
+        doc.decision = None
+        doc.notes = clean_reason
+        doc.decided_by = cancelled_by
+        doc.decided_on = now_ts
+        doc.save(ignore_permissions=True)
+        closed_names.append(name)
+
+    return closed_names
+
+
+def apply_review_decision(
+    *,
+    target_type: str,
+    target_name: str,
+    decision: str,
+    notes: str | None,
+    decided_by: str,
+    exclude_assignment: str | None = None,
+):
+    _update_target_review_fields(
+        target_type=target_type,
+        target_name=target_name,
+        decision=decision,
+        notes=notes,
+        decided_by=decided_by,
+    )
+    if (target_type or "").strip() == TARGET_DOCUMENT_ITEM:
+        cancel_open_assignments_for_target(
+            target_type=target_type,
+            target_name=target_name,
+            cancelled_by=decided_by,
+            cancel_reason=_("Closed after an evidence decision was recorded."),
+            exclude_assignment=exclude_assignment,
+        )
+
+
 def complete_assignment_decision(*, assignment_doc, decision: str, notes: str | None, decided_by: str):
     options = DECISION_OPTIONS_BY_TARGET.get((assignment_doc.target_type or "").strip(), [])
     if decision not in options:
@@ -500,12 +532,13 @@ def complete_assignment_decision(*, assignment_doc, decision: str, notes: str | 
     assignment_doc.decided_on = now_datetime()
     assignment_doc.save(ignore_permissions=True)
 
-    _update_target_review_fields(
+    apply_review_decision(
         target_type=assignment_doc.target_type,
         target_name=assignment_doc.target_name,
         decision=decision,
         notes=notes,
         decided_by=decided_by,
+        exclude_assignment=assignment_doc.name,
     )
 
 
@@ -533,7 +566,6 @@ def get_review_assignments_summary(*, student_applicant: str) -> dict:
 
     if not rows:
         return {
-            TARGET_DOCUMENT: [],
             TARGET_DOCUMENT_ITEM: [],
             TARGET_HEALTH: [],
             TARGET_APPLICATION: [],
@@ -555,35 +587,6 @@ def get_review_assignments_summary(*, student_applicant: str) -> dict:
     if user_ids:
         for user_row in frappe.get_all("User", filters={"name": ["in", user_ids]}, fields=["name", "full_name"]):
             full_name_map[user_row.get("name")] = (user_row.get("full_name") or "").strip() or user_row.get("name")
-
-    document_targets = [row.get("target_name") for row in rows if row.get("target_type") == TARGET_DOCUMENT]
-    document_label_by_target: dict[str, str] = {}
-    if document_targets:
-        document_rows = frappe.db.sql(
-            """
-            select
-                d.name,
-                d.document_type,
-                d.document_label,
-                ifnull(dt.document_type_name, '') as document_type_name,
-                ifnull(dt.code, '') as document_type_code
-            from `tabApplicant Document` d
-            left join `tabApplicant Document Type` dt
-              on dt.name = d.document_type
-            where d.name in %(targets)s
-            """,
-            {"targets": tuple(document_targets)},
-            as_dict=True,
-        )
-        for row in document_rows:
-            label = (
-                (row.get("document_label") or "").strip()
-                or (row.get("document_type_code") or "").strip()
-                or (row.get("document_type_name") or "").strip()
-                or (row.get("document_type") or "").strip()
-                or (row.get("name") or "").strip()
-            )
-            document_label_by_target[row.get("name")] = label
 
     item_targets = [row.get("target_name") for row in rows if row.get("target_type") == TARGET_DOCUMENT_ITEM]
     item_label_by_target: dict[str, str] = {}
@@ -631,9 +634,7 @@ def get_review_assignments_summary(*, student_applicant: str) -> dict:
         decided_by_label = full_name_map.get(decided_by) or decided_by or reviewer_label
 
         target_label = row.get("target_name")
-        if target_type == TARGET_DOCUMENT:
-            target_label = document_label_by_target.get(row.get("target_name")) or row.get("target_name")
-        elif target_type == TARGET_DOCUMENT_ITEM:
+        if target_type == TARGET_DOCUMENT_ITEM:
             target_label = item_label_by_target.get(row.get("target_name")) or row.get("target_name")
         elif target_type == TARGET_HEALTH:
             target_label = _("Health Profile")
@@ -654,7 +655,6 @@ def get_review_assignments_summary(*, student_applicant: str) -> dict:
         )
 
     return {
-        TARGET_DOCUMENT: grouped.get(TARGET_DOCUMENT, []),
         TARGET_DOCUMENT_ITEM: grouped.get(TARGET_DOCUMENT_ITEM, []),
         TARGET_HEALTH: grouped.get(TARGET_HEALTH, []),
         TARGET_APPLICATION: grouped.get(TARGET_APPLICATION, []),

@@ -249,18 +249,28 @@ class TestStudentApplicant(FrappeTestCase):
                     "doctype": "Applicant Document",
                     "student_applicant": applicant.name,
                     "document_type": doc_type,
-                    "review_status": "Approved",
                 }
             ).insert(ignore_permissions=True)
         finally:
             frappe.set_user(self.staff_user.name)
         self._created.append(("Applicant Document", applicant_doc.name))
 
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_doc.name,
+                "item_key": "application_form",
+                "item_label": "Application Form",
+                "review_status": "Approved",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
         source_file = frappe.get_doc(
             {
                 "doctype": "File",
-                "attached_to_doctype": "Applicant Document",
-                "attached_to_name": applicant_doc.name,
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
                 "file_name": "supporting.txt",
                 "is_private": 1,
                 "content": b"promote-me",
@@ -326,7 +336,6 @@ class TestStudentApplicant(FrappeTestCase):
                     "doctype": "Applicant Document",
                     "student_applicant": applicant.name,
                     "document_type": doc_type,
-                    "review_status": "Approved",
                 }
             ).insert(ignore_permissions=True)
         finally:
@@ -373,7 +382,6 @@ class TestStudentApplicant(FrappeTestCase):
                     "doctype": "Applicant Document",
                     "student_applicant": applicant.name,
                     "document_type": doc_type,
-                    "review_status": "Approved",
                 }
             ).insert(ignore_permissions=True)
         finally:
@@ -419,7 +427,7 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertEqual((query.get("context_doctype") or [None])[0], "Student Applicant")
         self.assertEqual((query.get("context_name") or [None])[0], applicant.name)
 
-    def test_repeatable_required_document_accepts_parent_level_approval_for_readiness(self):
+    def test_repeatable_required_document_accepts_requirement_override_for_readiness(self):
         code = f"repeatable_doc_{frappe.generate_hash(length=6)}"
         doc_type = self._create_applicant_document_type(
             code=code,
@@ -436,41 +444,16 @@ class TestStudentApplicant(FrappeTestCase):
                     "doctype": "Applicant Document",
                     "student_applicant": applicant.name,
                     "document_type": doc_type,
-                    "review_status": "Pending",
                 }
             ).insert(ignore_permissions=True)
         finally:
             frappe.set_user(self.staff_user.name)
         self._created.append(("Applicant Document", applicant_doc.name))
-
-        for index in (1, 2):
-            item = frappe.get_doc(
-                {
-                    "doctype": "Applicant Document Item",
-                    "applicant_document": applicant_doc.name,
-                    "item_key": f"required_bundle_{index}",
-                    "item_label": f"Transcript {index}",
-                    "review_status": "Pending",
-                }
-            ).insert(ignore_permissions=True)
-            self._created.append(("Applicant Document Item", item.name))
-
-            file_doc = frappe.get_doc(
-                {
-                    "doctype": "File",
-                    "attached_to_doctype": "Applicant Document Item",
-                    "attached_to_name": item.name,
-                    "file_name": f"transcript-{index}.txt",
-                    "is_private": 1,
-                    "content": f"transcript-{index}".encode(),
-                }
-            ).insert(ignore_permissions=True)
-            self._created.append(("File", file_doc.name))
-
-        approved_doc = frappe.get_doc("Applicant Document", applicant_doc.name)
-        approved_doc.review_status = "Approved"
-        approved_doc.review_notes = "Bundle approved after review."
-        approved_doc.save(ignore_permissions=True)
+        applicant.set_document_requirement_override(
+            applicant_document=applicant_doc.name,
+            requirement_override="Waived",
+            override_reason="School accepted formal waiver.",
+        )
 
         payload = applicant.has_required_documents()
         self.assertTrue(payload.get("ok"))
@@ -480,7 +463,7 @@ class TestStudentApplicant(FrappeTestCase):
         required_rows = payload.get("required_rows") or []
         row = next((item for item in required_rows if item.get("document_type") == doc_type), None)
         self.assertIsNotNone(row)
-        self.assertEqual(row.get("review_status"), "Approved")
+        self.assertEqual(row.get("review_status"), "Waived")
         self.assertEqual(int(row.get("approved_count") or 0), 0)
         self.assertEqual(int(row.get("required_count") or 0), 2)
 
@@ -543,6 +526,155 @@ class TestStudentApplicant(FrappeTestCase):
         labels = {row.get("item_label") for row in target_rows}
         self.assertEqual(labels, set(created_item_labels))
         self.assertTrue(all((row.get("file_url") or "").strip() for row in target_rows))
+
+    def test_review_document_submission_updates_item_and_cancels_open_assignments(self):
+        code = f"review_submission_doc_{frappe.generate_hash(length=6)}"
+        doc_type = self._create_applicant_document_type(code=code, is_required=1)
+        applicant = self._create_student_applicant()
+
+        frappe.set_user("Administrator")
+        try:
+            applicant_document = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document",
+                    "student_applicant": applicant.name,
+                    "document_type": doc_type,
+                    "review_status": "Pending",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.set_user(self.staff_user.name)
+        self._created.append(("Applicant Document", applicant_document.name))
+
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_document.name,
+                "item_key": "passport_primary",
+                "item_label": "Passport PDF",
+                "review_status": "Pending",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "passport.txt",
+                "is_private": 1,
+                "content": b"passport",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+
+        assignment_one = frappe.get_doc(
+            {
+                "doctype": "Applicant Review Assignment",
+                "target_type": "Applicant Document Item",
+                "target_name": item.name,
+                "student_applicant": applicant.name,
+                "assigned_to_user": self.staff_user.name,
+                "status": "Open",
+                "source_event": "document_uploaded",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Review Assignment", assignment_one.name))
+        assignment_two = frappe.get_doc(
+            {
+                "doctype": "Applicant Review Assignment",
+                "target_type": "Applicant Document Item",
+                "target_name": item.name,
+                "student_applicant": applicant.name,
+                "assigned_to_role": "Admission Manager",
+                "status": "Open",
+                "source_event": "document_uploaded",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Review Assignment", assignment_two.name))
+
+        result = applicant.review_document_submission(
+            applicant_document_item=item.name,
+            decision="Approved",
+        )
+
+        self.assertTrue(result.get("ok"))
+        self.assertEqual(result.get("decision"), "Approved")
+
+        item.reload()
+        self.assertEqual(item.review_status, "Approved")
+        self.assertEqual((item.reviewed_by or "").strip(), self.staff_user.name)
+        self.assertTrue(bool(item.reviewed_on))
+
+        applicant_document.reload()
+        self.assertEqual(applicant_document.review_status, "Approved")
+
+        assignment_one.reload()
+        assignment_two.reload()
+        self.assertEqual(assignment_one.status, "Cancelled")
+        self.assertEqual(assignment_two.status, "Cancelled")
+        self.assertEqual((assignment_one.decided_by or "").strip(), self.staff_user.name)
+
+        documents_payload = result.get("documents") or {}
+        uploaded_rows = documents_payload.get("uploaded_rows") or []
+        target_row = next((row for row in uploaded_rows if row.get("applicant_document_item") == item.name), None)
+        self.assertIsNotNone(target_row)
+        self.assertEqual(target_row.get("review_status"), "Approved")
+
+    def test_review_document_submission_requires_notes_for_follow_up_and_rejection(self):
+        code = f"review_note_doc_{frappe.generate_hash(length=6)}"
+        doc_type = self._create_applicant_document_type(code=code, is_required=1)
+        applicant = self._create_student_applicant()
+
+        frappe.set_user("Administrator")
+        try:
+            applicant_document = frappe.get_doc(
+                {
+                    "doctype": "Applicant Document",
+                    "student_applicant": applicant.name,
+                    "document_type": doc_type,
+                    "review_status": "Pending",
+                }
+            ).insert(ignore_permissions=True)
+        finally:
+            frappe.set_user(self.staff_user.name)
+        self._created.append(("Applicant Document", applicant_document.name))
+
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_document.name,
+                "item_key": "transcript_primary",
+                "item_label": "Transcript PDF",
+                "review_status": "Pending",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "transcript.txt",
+                "is_private": 1,
+                "content": b"transcript",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+
+        with self.assertRaises(frappe.ValidationError):
+            applicant.review_document_submission(
+                applicant_document_item=item.name,
+                decision="Needs Follow-Up",
+            )
+
+        with self.assertRaises(frappe.ValidationError):
+            applicant.review_document_submission(
+                applicant_document_item=item.name,
+                decision="Rejected",
+            )
 
     def test_profile_information_reports_missing_required_fields(self):
         applicant = self._create_student_applicant()

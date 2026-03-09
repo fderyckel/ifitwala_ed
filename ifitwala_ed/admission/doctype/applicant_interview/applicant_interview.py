@@ -11,6 +11,7 @@ from frappe.model.document import Document
 from frappe.utils import format_datetime, get_datetime, get_link_to_form, getdate, now_datetime
 
 from ifitwala_ed.admission.admission_utils import (
+    ADMISSIONS_ROLES,
     READ_LIKE_PERMISSION_TYPES,
     build_admissions_file_scope_exists_sql,
     has_scoped_staff_access_to_student_applicant,
@@ -495,20 +496,20 @@ def get_applicant_workspace(*, student_applicant: str):
     _assert_applicant_workspace_permission(student_applicant=applicant_name)
 
     applicant_row = _get_applicant_workspace_context(applicant_name)
+    applicant_doc = frappe.get_doc("Student Applicant", applicant_name)
     timeline_rows = _load_applicant_timeline(applicant_name)
-    document_payload = _load_applicant_documents_for_workspace(
-        applicant_name,
-        context_doctype="Student Applicant",
-        context_name=applicant_name,
-    )
     recommendation_payload = _load_recommendations_for_workspace(applicant_name)
     interview_rows = _load_interviews_for_applicant_workspace(student_applicant=applicant_name)
+    current_user = (frappe.session.user or "").strip()
+    document_review_payload = applicant_doc.has_required_documents()
+    document_review_payload["can_review_submissions"] = _can_review_document_submissions_in_workspace(current_user)
+    document_review_payload["can_manage_overrides"] = _can_manage_document_overrides_in_workspace(current_user)
 
     return {
         "ok": True,
         "applicant": applicant_row,
         "timeline": timeline_rows,
-        "documents": document_payload,
+        "document_review": document_review_payload,
         "recommendations": recommendation_payload,
         "interviews": interview_rows,
     }
@@ -607,6 +608,16 @@ def _assert_manage_interview_permission(
 
 def _is_interview_privileged_user(user: str) -> bool:
     return is_admissions_file_staff_user(user)
+
+
+def _can_review_document_submissions_in_workspace(user: str | None) -> bool:
+    roles = set(frappe.get_roles(user or frappe.session.user))
+    return bool(roles & (ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}))
+
+
+def _can_manage_document_overrides_in_workspace(user: str | None) -> bool:
+    roles = set(frappe.get_roles(user or frappe.session.user))
+    return bool(roles & {"Admission Manager", "Academic Admin", "System Manager"})
 
 
 def _is_interviewer_on_interview(*, user: str, interview_name: str) -> bool:
@@ -1009,24 +1020,6 @@ def _load_applicant_documents_for_workspace(
                 continue
             latest_file_by_item[attached] = row
 
-    latest_file_by_doc: dict[str, dict] = {}
-    legacy_file_rows = frappe.get_all(
-        "File",
-        filters={
-            "attached_to_doctype": "Applicant Document",
-            "attached_to_name": ["in", doc_names],
-        },
-        fields=["name", "attached_to_name", "file_name", "file_url", "creation"],
-        order_by="creation desc",
-        limit_page_length=0,
-        ignore_permissions=True,
-    )
-    for row in legacy_file_rows:
-        attached = row.get("attached_to_name")
-        if not attached or attached in latest_file_by_doc:
-            continue
-        latest_file_by_doc[attached] = row
-
     items_by_doc: dict[str, list[dict]] = {}
     for row in item_rows:
         parent = row.get("applicant_document")
@@ -1056,27 +1049,6 @@ def _load_applicant_documents_for_workspace(
     for doc_row in doc_rows:
         doc_name = doc_row.get("name")
         items = items_by_doc.get(doc_name, [])
-        if not items:
-            legacy_file = latest_file_by_doc.get(doc_name, {})
-            if legacy_file:
-                items = [
-                    {
-                        "name": None,
-                        "item_key": "legacy",
-                        "item_label": _("Existing upload"),
-                        "review_status": doc_row.get("review_status") or "Pending",
-                        "reviewed_by": doc_row.get("reviewed_by"),
-                        "reviewed_on": doc_row.get("reviewed_on"),
-                        "file_name": legacy_file.get("file_name"),
-                        "file_url": resolve_admissions_file_open_url(
-                            file_name=legacy_file.get("name"),
-                            file_url=legacy_file.get("file_url"),
-                            context_doctype=context_doctype,
-                            context_name=context_name,
-                        ),
-                        "uploaded_at": legacy_file.get("creation"),
-                    }
-                ]
 
         payload_rows.append(
             {

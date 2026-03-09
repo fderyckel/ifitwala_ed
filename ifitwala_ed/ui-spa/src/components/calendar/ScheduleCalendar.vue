@@ -471,7 +471,7 @@ function handleEventClick(info: EventClickArg) {
 
 		const { referenceType, referenceName } = resolveSchoolEventReference(info);
 		if (referenceType === 'Applicant Interview' && referenceName) {
-			overlay.open('admissions-interview-workspace', {
+			overlay.open('admissions-workspace', {
 				interview: referenceName,
 				schoolEvent: schoolEventName,
 			});

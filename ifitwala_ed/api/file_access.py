@@ -15,7 +15,7 @@ from ifitwala_ed.admission.admission_utils import (
     normalize_email_value,
 )
 
-ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document", "Applicant Document Item", "Student Applicant", "Contact"}
+ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document Item", "Student Applicant", "Contact"}
 CONTEXT_STUDENT_APPLICANT = "Student Applicant"
 CONTEXT_APPLICANT_INTERVIEW = "Applicant Interview"
 CONTEXT_TASK_SUBMISSION = "Task Submission"
@@ -181,9 +181,7 @@ def _resolve_student_applicant_from_file(file_row: dict) -> str:
     if not attached_to_name:
         frappe.throw(_("File attachment context is incomplete."), frappe.ValidationError)
 
-    if attached_to_doctype == "Applicant Document":
-        student_applicant = frappe.db.get_value("Applicant Document", attached_to_name, "student_applicant")
-    elif attached_to_doctype == "Applicant Document Item":
+    if attached_to_doctype == "Applicant Document Item":
         applicant_document = frappe.db.get_value("Applicant Document Item", attached_to_name, "applicant_document")
         student_applicant = (
             frappe.db.get_value("Applicant Document", applicant_document, "student_applicant")

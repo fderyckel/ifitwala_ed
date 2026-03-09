@@ -1809,7 +1809,19 @@ def list_applicant_documents(student_applicant: str | None = None):
     documents = frappe.get_all(
         "Applicant Document",
         filters={"student_applicant": row.get("name")},
-        fields=["name", "document_type", "review_status", "reviewed_by", "reviewed_on", "modified"],
+        fields=[
+            "name",
+            "document_type",
+            "document_label",
+            "review_status",
+            "reviewed_by",
+            "reviewed_on",
+            "requirement_override",
+            "override_reason",
+            "override_by",
+            "override_on",
+            "modified",
+        ],
         order_by="modified desc",
     )
 
@@ -1851,21 +1863,23 @@ def list_applicant_documents(student_applicant: str | None = None):
                 continue
             latest_file_by_item[parent] = row_file
 
-    legacy_latest_file_by_document: dict[str, dict] = {}
-    legacy_file_rows = frappe.get_all(
-        "File",
-        filters={
-            "attached_to_doctype": "Applicant Document",
-            "attached_to_name": ["in", name_list],
-        },
-        fields=["name", "attached_to_name", "file_url", "file_name", "creation"],
-        order_by="creation desc",
-    )
-    for row_file in legacy_file_rows:
-        parent = row_file.get("attached_to_name")
-        if not parent or parent in legacy_latest_file_by_document:
-            continue
-        legacy_latest_file_by_document[parent] = row_file
+    doc_type_names = sorted({doc.get("document_type") for doc in documents if doc.get("document_type")})
+    doc_type_meta: dict[str, dict] = {}
+    if doc_type_names:
+        for row_type in frappe.get_all(
+            "Applicant Document Type",
+            filters={"name": ["in", doc_type_names]},
+            fields=[
+                "name",
+                "code",
+                "document_type_name",
+                "description",
+                "is_required",
+                "is_repeatable",
+                "min_items_required",
+            ],
+        ):
+            doc_type_meta[row_type.get("name")] = row_type
 
     items_by_document: dict[str, list[dict]] = {}
     for row_item in item_rows:
@@ -1895,29 +1909,8 @@ def list_applicant_documents(student_applicant: str | None = None):
     payload = []
     for doc in documents:
         doc_name = doc.get("name")
+        type_meta = doc_type_meta.get(doc.get("document_type")) or {}
         items = items_by_document.get(doc_name, [])
-
-        if not items:
-            legacy_file = legacy_latest_file_by_document.get(doc_name, {})
-            if legacy_file:
-                items = [
-                    {
-                        "name": "",
-                        "item_key": "legacy",
-                        "item_label": _("Existing upload"),
-                        "review_status": doc.get("review_status") or "Pending",
-                        "reviewed_by": doc.get("reviewed_by"),
-                        "reviewed_on": doc.get("reviewed_on"),
-                        "uploaded_at": legacy_file.get("creation"),
-                        "file_url": resolve_admissions_file_open_url(
-                            file_name=legacy_file.get("name"),
-                            file_url=legacy_file.get("file_url"),
-                            context_doctype="Student Applicant",
-                            context_name=student_applicant_name,
-                        ),
-                        "file_name": legacy_file.get("file_name"),
-                    }
-                ]
 
         latest_uploaded_at = None
         latest_file_url = None
@@ -1930,11 +1923,63 @@ def list_applicant_documents(student_applicant: str | None = None):
             latest_uploaded_at = sorted_items[0].get("uploaded_at")
             latest_file_url = sorted_items[0].get("file_url")
 
+        is_required = bool(type_meta.get("is_required"))
+        is_repeatable = bool(type_meta.get("is_repeatable"))
+        required_count = _portal_required_document_count(type_meta)
+        uploaded_count = len([item for item in items if item.get("file_url")])
+        approved_count = len(
+            [item for item in items if item.get("file_url") and item.get("review_status") == "Approved"]
+        )
+        rejected_count = len(
+            [item for item in items if item.get("file_url") and item.get("review_status") == "Rejected"]
+        )
+        pending_count = len(
+            [
+                item
+                for item in items
+                if item.get("file_url")
+                and (item.get("review_status") or "Pending").strip() not in {"Approved", "Rejected"}
+            ]
+        )
+        override_status = (doc.get("requirement_override") or "").strip() or None
+        state_key, state_label = _portal_document_requirement_state(
+            is_required=is_required,
+            required_count=required_count,
+            uploaded_count=uploaded_count,
+            approved_count=approved_count,
+            rejected_count=rejected_count,
+            pending_count=pending_count,
+            override_status=override_status,
+        )
+
         payload.append(
             {
                 "name": doc_name,
                 "document_type": doc.get("document_type"),
+                "label": (
+                    (doc.get("document_label") or "").strip()
+                    or (type_meta.get("document_type_name") or "").strip()
+                    or (type_meta.get("code") or "").strip()
+                    or (doc.get("document_type") or "").strip()
+                    or doc_name
+                ),
+                "description": type_meta.get("description") or "",
+                "is_required": is_required,
+                "is_repeatable": is_repeatable,
+                "required_count": required_count,
+                "uploaded_count": uploaded_count,
+                "approved_count": approved_count,
+                "rejected_count": rejected_count,
+                "pending_count": pending_count,
+                "requirement_state": state_key,
+                "requirement_state_label": state_label,
+                "requirement_override": override_status,
+                "override_reason": doc.get("override_reason"),
+                "override_by": doc.get("override_by"),
+                "override_on": doc.get("override_on"),
                 "review_status": doc.get("review_status") or "Pending",
+                "reviewed_by": doc.get("reviewed_by"),
+                "reviewed_on": doc.get("reviewed_on"),
                 "uploaded_at": latest_uploaded_at,
                 "file_url": latest_file_url,
                 "items": items,
@@ -1942,6 +1987,41 @@ def list_applicant_documents(student_applicant: str | None = None):
         )
 
     return {"documents": payload}
+
+
+def _portal_required_document_count(row_type: dict | None) -> int:
+    if not row_type or not row_type.get("is_required"):
+        return 0
+    if not cint(row_type.get("is_repeatable")):
+        return 1
+    return max(1, cint(row_type.get("min_items_required") or 1))
+
+
+def _portal_document_requirement_state(
+    *,
+    is_required: bool,
+    required_count: int,
+    uploaded_count: int,
+    approved_count: int,
+    rejected_count: int,
+    pending_count: int,
+    override_status: str | None,
+) -> tuple[str, str]:
+    if override_status == "Waived":
+        return "waived", _("Waived by admissions")
+    if override_status == "Exception Approved":
+        return "exception_approved", _("Exception approved by admissions")
+
+    needed_count = required_count if is_required else max(1, uploaded_count)
+    if uploaded_count <= 0:
+        return "not_started", _("Not started")
+    if approved_count >= needed_count and needed_count > 0:
+        return "complete", _("Complete")
+    if rejected_count > 0:
+        return "changes_requested", _("Changes requested")
+    if pending_count > 0 or uploaded_count > 0:
+        return "waiting_review", _("Uploaded - waiting for review")
+    return "not_started", _("Not started")
 
 
 @frappe.whitelist()
@@ -2022,8 +2102,6 @@ def upload_applicant_document(
 
     if not document_type:
         frappe.throw(_("document_type is required."))
-    if not applicant_document_item and not _as_text(item_key).strip() and not _as_text(item_label).strip():
-        frappe.throw(_("Provide a short description for this file."))
 
     if not content and not (getattr(frappe.request, "files", None) and frappe.request.files.get("file")):
         frappe.throw(_("File content is required."))

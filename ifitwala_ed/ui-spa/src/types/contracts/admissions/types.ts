@@ -77,7 +77,32 @@ export type ApplicantProfileCompleteness = {
 export type ApplicantDocument = {
   name: string
   document_type: string
+  label?: string | null
+  description?: string | null
+  is_required?: boolean
+  is_repeatable?: boolean
+  required_count?: number
+  uploaded_count?: number
+  approved_count?: number
+  rejected_count?: number
+  pending_count?: number
+  requirement_state?:
+    | 'not_started'
+    | 'waiting_review'
+    | 'changes_requested'
+    | 'complete'
+    | 'waived'
+    | 'exception_approved'
+    | 'optional'
+    | null
+  requirement_state_label?: string | null
+  requirement_override?: 'Waived' | 'Exception Approved' | null
+  override_reason?: string | null
+  override_by?: string | null
+  override_on?: string | null
   review_status: 'Pending' | 'Approved' | 'Rejected' | 'Superseded'
+  reviewed_by?: string | null
+  reviewed_on?: string | null
   uploaded_at?: string | null
   file_url?: string | null
   items?: Array<{

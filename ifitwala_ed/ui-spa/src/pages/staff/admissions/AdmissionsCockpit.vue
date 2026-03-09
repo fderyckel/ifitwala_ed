@@ -529,7 +529,7 @@ function openApplicantWorkspace(card: CockpitCard) {
 		return;
 	}
 
-	overlay.open('admissions-interview-workspace', {
+	overlay.open('admissions-workspace', {
 		mode: 'applicant',
 		studentApplicant: applicantName,
 	});

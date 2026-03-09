@@ -71,12 +71,7 @@
 		<div v-if="assignment?.preview" class="card-surface p-4">
 			<div class="type-body font-medium">Preview</div>
 			<div class="mt-2 space-y-2 type-meta text-muted">
-				<div
-					v-if="
-						assignment.target_type === 'Applicant Document' ||
-						assignment.target_type === 'Applicant Document Item'
-					"
-				>
+				<div v-if="assignment.target_type === 'Applicant Document Item'">
 					<div>
 						Document: {{ assignment.preview.document_label || assignment.preview.document_type }}
 					</div>
@@ -219,10 +214,7 @@ const reassignToUser = ref('');
 
 const targetLabel = computed(() => {
 	if (!assignment.value) return __('Applicant review');
-	if (assignment.value.target_type === 'Applicant Document')
-		return __('Applicant document review');
-	if (assignment.value.target_type === 'Applicant Document Item')
-		return __('Applicant document item review');
+	if (assignment.value.target_type === 'Applicant Document Item') return __('Evidence review');
 	if (assignment.value.target_type === 'Applicant Health Profile')
 		return __('Applicant health review');
 	return __('Overall application review');
@@ -240,9 +232,6 @@ const roleCandidates = computed(() => assignment.value?.role_candidates || []);
 
 const deskUrl = computed(() => {
 	if (!assignment.value) return null;
-	if (assignment.value.target_type === 'Applicant Document') {
-		return `/desk/applicant-document/${encodeURIComponent(assignment.value.target_name)}`;
-	}
 	if (assignment.value.target_type === 'Applicant Document Item') {
 		return `/desk/applicant-document-item/${encodeURIComponent(assignment.value.target_name)}`;
 	}

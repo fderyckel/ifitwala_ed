@@ -14,6 +14,7 @@
 2. Recommender intake is a separate guest surface (`/admissions/recommendation/<token>`), not admissions portal authentication.
 3. Recommender links grant one narrow capability: submit exactly one recommendation request payload.
 4. Recommendation files continue to be admissions evidence and are uploaded through governed admissions document upload flows.
+5. Recommendation evidence follows the same requirement/submission contract as all admissions evidence: the parent `Applicant Document` is aggregate-only and review, when required, happens only on the linked `Applicant Document Item`.
 
 ---
 
@@ -66,6 +67,7 @@ Multiple letters are supported via repeatable `Applicant Document Item` slots:
 
 - each request gets a unique `item_key`
 - recommendation files attach to `Applicant Document Item`
+- any evidence review assignment created for a recommendation letter targets that `Applicant Document Item`, never the parent requirement card
 - uniqueness is preserved by applicant + document type + item key
 
 This avoids fake `Recommendation 1/2/3` document types and keeps admissions files under Applicant Document ownership.
@@ -92,6 +94,7 @@ Implemented controls:
 2. System allocates/links `Applicant Document Item` slot and issues secure intake URL.
 3. Recommender opens token link, completes template fields, optionally uploads file, confirms attestation, submits.
 4. System seals `Recommendation Submission`, updates request to `Submitted`, and stores evidence in admissions document item slot.
+   - if staff evidence review is configured, the resulting review task is materialized against that submission row only
 5. Staff can re-send or revoke open requests.
 6. Applicant portal sees recommendation progress status only.
 

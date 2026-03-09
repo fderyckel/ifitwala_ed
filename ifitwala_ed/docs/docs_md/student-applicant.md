@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.14.1"
+version: "1.14.4"
 last_change_date: "2026-03-09"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, and school-scoped health gating."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -39,14 +39,17 @@ Use the applicant readiness outputs, not guesswork:
 
 1. Desk `Student Applicant` form:
    - `Policies Summary` shows a policy matrix with status, signer(s), signed timestamp, and version link.
-   - `Documents Summary` is the canonical document-review view and shows required-vs-uploaded document tables (missing items, uploader, upload date, reviewer, and links); required rows include `Approved / Required` coverage and uploaded rows list all uploaded document items.
+   - `Documents Summary` is the canonical admissions-staff evidence view and shows requirement rows plus submitted-file rows. Staff review uploaded files directly there and do not need to reason about `Applicant Document` vs `Applicant Document Item`.
    - `Health Summary` shows cleared/pending state, health profile link, reviewer metadata, and declaration metadata.
    - `Review Assignments Summary` shows completed assignment decisions for Health and Overall Application (document review truth remains in `Documents Summary`).
    - `Review Snapshot` includes readiness issues from `get_readiness_snapshot`.
-2. Approval action:
+2. Admissions Cockpit applicant workspace:
+   - applicant-centered workspace shows the same requirement/submission model as Desk
+   - admissions roles review evidence there without leaving applicant context
+3. Approval action:
    - `Approve` is blocked by server guard (`approve_application` -> `_validate_ready_for_approval`) until readiness requirements are met (policies/documents/profile/recommendations and health only when required by school policy).
    - Error text includes missing policy acknowledgement details.
-3. Applicant portal:
+4. Applicant portal:
    - `/admissions` -> Policies page shows each required policy as `Pending acknowledgement` or `Acknowledged`.
 
 `Student Applicant` is the core admissions record in Ifitwala Ed. It is where intent becomes an application, review becomes decision, and decision becomes student promotion.
@@ -228,7 +231,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - supports multiple confidential letters per applicant using per-request `Applicant Document Item` slots (`item_key`)
   - admissions creates/re-sends/revokes `Recommendation Request` records; recommender submission is sealed in `Recommendation Submission`
   - applicant portal surfaces recommendation **status only** through snapshot completeness and status summary
-  - architecture and contract reference: `ifitwala_ed/docs/admission/recommendation_intake_architecture.md`
+  - architecture and contract reference: `ifitwala_ed/docs/admission/06_recommendation_intake_architecture.md`
 - **Governance policy engine**:
   - `Policy Acknowledgement.context_doctype = Student Applicant`
   - policy readiness pulled from active Institutional Policy versions
@@ -238,7 +241,11 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - admissions cockpit API `ifitwala_ed.api.admission_cockpit.get_admissions_cockpit_data` (applicant-stage Kanban + blocker strip)
 - **Reviewer workflow**:
   - submission trigger creates Overall Application review assignments (`application_status` transition to `Submitted`)
-  - desk shows completed assignment decisions in `review_assignments_summary`
+  - admissions roles review evidence in applicant context only:
+    - Desk `Student Applicant.documents_summary`
+    - admissions cockpit applicant workspace overlay
+  - non-admissions reviewers handle `Applicant Document Item` assignments in Focus
+  - desk shows completed Health and Overall Application assignment decisions in `review_assignments_summary`
   - staff morning brief surface (`ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`) renders applicant status breakdown
 - **Schedule module touchpoint**:
   - Program Enrollment Tool offers `Student Applicant` as a source option in UI.
@@ -284,7 +291,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 ### Required for approval-readiness path
 
 1. Required `Applicant Document Type` records are configured (`is_required = 1`, `is_active = 1`) for the organization/school ancestor scope you expect (parent-scope document types apply to descendants).
-2. Applicant has corresponding `Applicant Document` rows and required ones reach `review_status = Approved`.
+2. Applicant has corresponding `Applicant Document` requirement rows and each required one is satisfied either by approved submission-backed evidence or an explicit admissions override (`Waived` / `Exception Approved`).
 3. If `School.require_health_profile_for_approval = 1`, `Applicant Health Profile.review_status = Cleared`.
 4. Applicant profile information required for Student promotion is complete.
 
@@ -324,7 +331,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-08)
+### Latest Technical Snapshot (2026-03-09)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
@@ -381,14 +388,14 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - `has_required_documents()` -> blocking
   - `health_review_complete()` -> blocking only when `School.require_health_profile_for_approval = 1`
   - `has_required_interviews()` -> tracked; not currently part of blocking `ready` boolean
-  - repeatable required document types are satisfied when required upload count is met and either per-item approvals meet required count or the parent `Applicant Document` is explicitly marked `Approved`
+  - repeatable required document types are satisfied when approved submission count meets the required count, or when the parent requirement has an explicit admissions override
   - interview summary shows a compact latest-5 table with Date/Time (linked to interview), Interviewer, and Outcome Impression
   - `review_assignments_summary` is assignment-focused (Health + Overall Application); document reviewer metadata is surfaced in `documents_summary`
 - **Promotion side-effects (`promote_to_student`)**:
   - preconditions: applicant status must be `Approved` and `student_joining_date` is required
   - creates/links `Student`, writes `Student.student_applicant`, then sets applicant status to `Promoted`
   - creates/syncs `Student Patient` from Applicant Health Profile data
-  - copies approved promotable admissions documents into Student-owned governed files
+  - copies approved admissions documents into Student-owned governed files; current runtime excludes only rows whose `promotion_target` is explicitly non-`Student`
   - copies applicant image through governed file dispatcher into Student profile image slot
   - does **not** create Guardian/User portal access or mutate portal roles
   - does **not** send welcome email or print-format welcome kit by itself

@@ -1,4 +1,4 @@
-// ifitwala_ed/ui-spa/src/types/contracts/admissions/interview_workspace.ts
+// ifitwala_ed/ui-spa/src/types/contracts/admissions/admissions_workspace.ts
 
 export type InterviewFeedbackStatus = 'Draft' | 'Submitted' | 'Pending'
 
@@ -88,6 +88,82 @@ export interface InterviewWorkspaceDocument {
 	items: InterviewWorkspaceDocumentItem[]
 }
 
+export type ApplicantDocumentReviewDecision = 'Approved' | 'Needs Follow-Up' | 'Rejected'
+export type ApplicantDocumentRequirementOverride = 'Waived' | 'Exception Approved'
+
+export interface ApplicantWorkspaceDocumentItem {
+	name?: string | null
+	item_key?: string | null
+	item_label?: string | null
+	review_status?: string | null
+	reviewed_by?: string | null
+	reviewed_on?: string | null
+	uploaded_by?: string | null
+	uploaded_at?: string | null
+	file_name?: string | null
+	file_url?: string | null
+	modified?: string | null
+}
+
+export interface ApplicantWorkspaceRequirementRow {
+	applicant_document?: string | null
+	document_type?: string | null
+	label?: string | null
+	is_required?: boolean
+	required_count?: number
+	uploaded_count?: number
+	approved_count?: number
+	review_status?: string | null
+	reviewed_by?: string | null
+	reviewed_on?: string | null
+	requirement_override?: string | null
+	override_reason?: string | null
+	override_by?: string | null
+	override_on?: string | null
+	uploaded_by?: string | null
+	uploaded_at?: string | null
+	file_name?: string | null
+	file_url?: string | null
+	modified?: string | null
+	items: ApplicantWorkspaceDocumentItem[]
+}
+
+export interface ApplicantWorkspaceUploadedRow {
+	applicant_document?: string | null
+	applicant_document_item?: string | null
+	document_type?: string | null
+	label?: string | null
+	document_label?: string | null
+	item_key?: string | null
+	item_label?: string | null
+	is_required?: boolean
+	required_count?: number
+	uploaded_count?: number
+	approved_count?: number
+	is_repeatable?: boolean
+	requirement_override?: string | null
+	override_reason?: string | null
+	review_status?: string | null
+	reviewed_by?: string | null
+	reviewed_on?: string | null
+	uploaded_by?: string | null
+	uploaded_at?: string | null
+	file_name?: string | null
+	file_url?: string | null
+	modified?: string | null
+}
+
+export interface ApplicantWorkspaceDocumentReview {
+	ok: boolean
+	missing: string[]
+	unapproved: string[]
+	required: string[]
+	required_rows: ApplicantWorkspaceRequirementRow[]
+	uploaded_rows: ApplicantWorkspaceUploadedRow[]
+	can_review_submissions?: boolean
+	can_manage_overrides?: boolean
+}
+
 export interface InterviewWorkspaceRecommendationSummary {
 	ok?: boolean
 	required_total?: number
@@ -173,10 +249,7 @@ export interface ApplicantWorkspaceResponse {
 	ok: boolean
 	applicant: InterviewWorkspaceApplicant
 	timeline: InterviewWorkspaceTimelineRow[]
-	documents: {
-		rows: InterviewWorkspaceDocument[]
-		count: number
-	}
+	document_review: ApplicantWorkspaceDocumentReview
 	recommendations: {
 		summary: InterviewWorkspaceRecommendationSummary
 		requests: InterviewWorkspaceRecommendationRequest[]
@@ -201,4 +274,35 @@ export interface SaveMyInterviewFeedbackResponse {
 	feedback_status?: InterviewFeedbackStatus
 	submitted_on?: string | null
 	feedback: InterviewWorkspaceFeedbackPayload
+}
+
+export interface ReviewApplicantDocumentSubmissionRequest {
+	student_applicant: string
+	applicant_document_item: string
+	decision: ApplicantDocumentReviewDecision
+	notes?: string | null
+	client_request_id?: string | null
+}
+
+export interface ReviewApplicantDocumentSubmissionResponse {
+	ok: boolean
+	applicant_document?: string | null
+	applicant_document_item?: string | null
+	decision?: ApplicantDocumentReviewDecision | null
+	documents: ApplicantWorkspaceDocumentReview
+}
+
+export interface SetDocumentRequirementOverrideRequest {
+	student_applicant: string
+	applicant_document?: string | null
+	document_type?: string | null
+	requirement_override?: ApplicantDocumentRequirementOverride | '' | null
+	override_reason?: string | null
+	client_request_id?: string | null
+}
+
+export interface SetDocumentRequirementOverrideResponse {
+	ok: boolean
+	applicant_document?: string | null
+	documents: ApplicantWorkspaceDocumentReview
 }

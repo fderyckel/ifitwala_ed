@@ -19,6 +19,7 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ADMISSIONS_ROLES = {"Admission Manager", "Admission Officer"}
 ADMISSIONS_FILE_STAFF_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
+ADMISSIONS_WORKSPACE_ROLES = ADMISSIONS_FILE_STAFF_ROLES
 READ_LIKE_PERMISSION_TYPES = {"read", "report", "export", "print", "email"}
 
 
@@ -603,6 +604,16 @@ def is_admissions_file_staff_user(user: str | None = None) -> bool:
         return True
     roles = set(frappe.get_roles(resolved_user))
     return bool(roles & ADMISSIONS_FILE_STAFF_ROLES)
+
+
+def is_admissions_workspace_user(user: str | None = None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return False
+    if resolved_user == "Administrator":
+        return True
+    roles = set(frappe.get_roles(resolved_user))
+    return bool(roles & ADMISSIONS_WORKSPACE_ROLES)
 
 
 def get_admissions_file_staff_scope(user: str | None = None) -> dict:

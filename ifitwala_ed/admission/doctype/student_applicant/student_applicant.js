@@ -706,7 +706,7 @@ function prompt_create_recommendation_request(frm) {
 						label: __("Item Label"),
 						fieldname: "item_label",
 						fieldtype: "Data",
-						description: __("Optional label shown in Applicant Document item slot."),
+						description: __("Optional label to help staff distinguish this recommendation submission."),
 					},
 					{
 						label: __("Expires In (days)"),
@@ -981,6 +981,7 @@ function render_review_sections(frm) {
 			set_html(frm, "health_summary", render_health(data.health));
 			set_html(frm, "policies_summary", render_policies(data.policies));
 			set_html(frm, "documents_summary", render_documents(data.documents));
+			bind_document_summary_actions(frm);
 		})
 		.catch(() => {
 			set_html(frm, "review_snapshot", render_empty("Unable to load review snapshot."));
@@ -1264,48 +1265,59 @@ function render_documents(documents) {
 	if (!requiredRows.length && !uploadedRows.length) {
 		return render_empty("No document requirements are in scope.");
 	}
+	const canManageOverrides = can_manage_document_overrides();
+	const canReviewSubmissions = can_review_document_submissions();
 
 	const requiredBody = requiredRows.map((row) => {
 		const docName = String(row?.applicant_document || "").trim();
-		const docLink = docName
-			? render_text_link(`/desk/applicant-document/${encodeURIComponent(docName)}`, docName)
+		const fileLink = row?.file_url ? render_text_link(String(row.file_url), "Open latest file", true) : escape_html("—");
+		const requirementOverride = String(row?.requirement_override || "").trim();
+		const overrideReason = String(row?.override_reason || "").trim();
+		const overrideMeta = requirementOverride
+			? `<div class="text-muted" style="margin-top: 4px;">${escape_html(overrideReason || "Override recorded.")}</div>`
+			: "";
+		const actionButtons = canManageOverrides
+			? requirementOverride
+				? `<button type="button" class="document-requirement-action-btn" data-action="clear_override" data-applicant-document="${escape_html(docName)}" data-document-type="${escape_html(String(row?.document_type || ""))}" style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Clear Override")}</button>`
+				: [
+					`<button type="button" class="document-requirement-action-btn" data-action="set_override" data-override="Waived" data-applicant-document="${escape_html(docName)}" data-document-type="${escape_html(String(row?.document_type || ""))}" data-label="${escape_html(String(row?.label || row?.document_type || "Requirement"))}" style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Waive")}</button>`,
+					`<button type="button" class="document-requirement-action-btn" data-action="set_override" data-override="Exception Approved" data-applicant-document="${escape_html(docName)}" data-document-type="${escape_html(String(row?.document_type || ""))}" data-label="${escape_html(String(row?.label || row?.document_type || "Requirement"))}" style="border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Exception")}</button>`,
+				].join("")
 			: escape_html("—");
-		const fileLink = row?.file_url ? render_text_link(String(row.file_url), "File", true) : escape_html("—");
 		return `
 			<tr>
 				<td>${escape_html(String(row?.label || row?.document_type || "Document"))}</td>
-				<td>${render_document_status_pill(row?.review_status)}</td>
+				<td>${render_document_status_pill(row?.review_status)}${overrideMeta}</td>
 				<td>${render_approved_required_pill(row)}</td>
-				<td>${render_user_link(row?.uploaded_by)}</td>
-				<td>${escape_html(format_datetime(row?.uploaded_at))}</td>
-				<td>${render_user_link(row?.reviewed_by)}</td>
-				<td>${escape_html(format_datetime(row?.reviewed_on))}</td>
-				<td>${docLink} · ${fileLink}</td>
+				<td>${render_user_link(row?.uploaded_by)}<div class="text-muted">${escape_html(format_datetime(row?.uploaded_at))}</div></td>
+				<td>${render_user_link(row?.reviewed_by)}<div class="text-muted">${escape_html(format_datetime(row?.reviewed_on))}</div></td>
+				<td>${fileLink}</td>
+				<td>${actionButtons}</td>
 			</tr>
 		`;
 	}).join("");
 
 	const uploadedBody = uploadedRows.map((row) => `
 		<tr>
-			<td>${escape_html(String(row?.label || row?.document_type || "Document"))}</td>
+			<td>${escape_html(String(row?.document_label || row?.document_type || "Document"))}</td>
+			<td>${escape_html(String(row?.item_label || row?.item_key || row?.applicant_document_item || "Submission"))}</td>
 			<td>${render_document_status_pill(row?.review_status)}</td>
-			<td>${render_user_link(row?.reviewed_by)}</td>
-			<td>${escape_html(format_datetime(row?.reviewed_on))}</td>
-			<td>${render_user_link(row?.uploaded_by)}</td>
-			<td>${escape_html(format_datetime(row?.uploaded_at))}</td>
-			<td>${row?.file_url ? render_text_link(String(row.file_url), "File", true) : escape_html("—")}</td>
+			<td>${render_user_link(row?.uploaded_by)}<div class="text-muted">${escape_html(format_datetime(row?.uploaded_at))}</div></td>
+			<td>${render_user_link(row?.reviewed_by)}<div class="text-muted">${escape_html(format_datetime(row?.reviewed_on))}</div></td>
+			<td>${row?.file_url ? render_text_link(String(row.file_url), "Open file", true) : escape_html("—")}</td>
+			<td>${canReviewSubmissions ? render_submission_action_buttons(row) : escape_html("—")}</td>
 		</tr>
 	`).join("");
 
 	return `
 		<div style="margin-bottom: 10px;">
-			${render_pill(documents.ok ? "✓ All required documents approved" : "Action required", documents.ok ? "green" : "amber")}
+			${render_pill(documents.ok ? "✓ All required document requirements complete" : "Action required", documents.ok ? "green" : "amber")}
 			${missing.length ? `<span style="margin-left: 6px;">${render_pill(`Missing: ${missing.length}`, "red")}</span>` : ""}
 			${pendingUploadedReviews ? `<span style="margin-left: 6px;">${render_pill(`Pending item reviews: ${pendingUploadedReviews}`, "amber")}</span>` : ""}
 		</div>
 		${requiredRows.length ? `
 			<div style="margin-bottom: 12px;">
-				<div style="font-weight: 600; margin-bottom: 6px;">Required Documents</div>
+				<div style="font-weight: 600; margin-bottom: 6px;">Document Requirements</div>
 				<div class="table-responsive">
 					<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 						<thead>
@@ -1313,11 +1325,10 @@ function render_documents(documents) {
 								<th>Document</th>
 								<th>Status</th>
 								<th>Approved / Required</th>
-								<th>Uploaded By</th>
-								<th>Uploaded On</th>
-								<th>Reviewed By</th>
-								<th>Reviewed On</th>
-								<th>Links</th>
+								<th>Latest Upload</th>
+								<th>Latest Review</th>
+								<th>File</th>
+								<th>Actions</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -1329,18 +1340,18 @@ function render_documents(documents) {
 		` : ""}
 		${uploadedRows.length ? `
 			<div>
-				<div style="font-weight: 600; margin-bottom: 6px;">Uploaded Document Items</div>
+				<div style="font-weight: 600; margin-bottom: 6px;">Submitted Files</div>
 				<div class="table-responsive">
 					<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 						<thead>
 							<tr>
-								<th>Document</th>
+								<th>Requirement</th>
+								<th>Submission</th>
 								<th>Review Status</th>
-								<th>Reviewed By</th>
-								<th>Reviewed On</th>
-								<th>Uploaded By</th>
-								<th>Uploaded On</th>
+								<th>Uploaded</th>
+								<th>Reviewed</th>
 								<th>File</th>
+								<th>Actions</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -1351,6 +1362,178 @@ function render_documents(documents) {
 			</div>
 		` : ""}
 	`;
+}
+
+function can_manage_document_overrides() {
+	return ["Admission Manager", "Academic Admin", "System Manager"].some((role) => frappe.user.has_role(role));
+}
+
+function can_review_document_submissions() {
+	return ["Admission Officer", "Admission Manager", "Academic Admin", "System Manager"].some((role) => frappe.user.has_role(role));
+}
+
+function new_admissions_review_request_id(prefix = "admissions_review") {
+	return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 12)}`;
+}
+
+function render_submission_action_buttons(row) {
+	const itemName = String(row?.applicant_document_item || "").trim();
+	if (!itemName) {
+		return escape_html("—");
+	}
+	const attrs = `data-applicant-document-item="${escape_html(itemName)}" data-label="${escape_html(String(row?.label || row?.item_label || row?.item_key || "Submission"))}"`;
+	return [
+		`<button type="button" class="document-submission-action-btn" data-action="approve_submission" ${attrs} style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Approve")}</button>`,
+		`<button type="button" class="document-submission-action-btn" data-action="needs_follow_up_submission" ${attrs} style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Request Changes")}</button>`,
+		`<button type="button" class="document-submission-action-btn" data-action="reject_submission" ${attrs} style="border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Reject")}</button>`,
+	].join("");
+}
+
+function bind_document_summary_actions(frm) {
+	const wrapper = frm.fields_dict.documents_summary?.$wrapper;
+	if (!wrapper) {
+		return;
+	}
+
+	wrapper.off("click", ".document-requirement-action-btn");
+	wrapper.on("click", ".document-requirement-action-btn", (event) => {
+		const target = event.currentTarget;
+		if (!(target instanceof HTMLElement)) {
+			return;
+		}
+		const action = String(target.getAttribute("data-action") || "").trim();
+		const applicantDocument = String(target.getAttribute("data-applicant-document") || "").trim();
+		const documentType = String(target.getAttribute("data-document-type") || "").trim();
+		const overrideValue = String(target.getAttribute("data-override") || "").trim();
+		const label = String(target.getAttribute("data-label") || documentType || applicantDocument || "Requirement").trim();
+
+		if (action === "clear_override") {
+			frappe.confirm(__("Clear the requirement override for {0}?").replace("{0}", label), () => {
+				apply_document_requirement_override(frm, {
+					applicant_document: applicantDocument || null,
+					document_type: documentType || null,
+					requirement_override: "",
+					override_reason: "",
+				});
+			});
+			return;
+		}
+
+		if (action !== "set_override" || !overrideValue) {
+			return;
+		}
+
+		frappe.prompt(
+			[
+				{
+					label: __("Reason"),
+					fieldname: "override_reason",
+					fieldtype: "Small Text",
+					reqd: 1,
+				},
+			],
+			(values) => {
+				apply_document_requirement_override(frm, {
+					applicant_document: applicantDocument || null,
+					document_type: documentType || null,
+					requirement_override: overrideValue,
+					override_reason: String(values.override_reason || "").trim(),
+				});
+			},
+			__(overrideValue),
+			__("Apply")
+		);
+	});
+
+	wrapper.off("click", ".document-submission-action-btn");
+	wrapper.on("click", ".document-submission-action-btn", (event) => {
+		const target = event.currentTarget;
+		if (!(target instanceof HTMLElement)) {
+			return;
+		}
+		const action = String(target.getAttribute("data-action") || "").trim();
+		const applicantDocumentItem = String(target.getAttribute("data-applicant-document-item") || "").trim();
+		const label = String(target.getAttribute("data-label") || applicantDocumentItem || "Submission").trim();
+		if (!action || !applicantDocumentItem) {
+			return;
+		}
+
+		if (action === "approve_submission") {
+			frappe.confirm(__("Approve the submitted file for {0}?").replace("{0}", label), () => {
+				review_document_submission(frm, {
+					applicant_document_item: applicantDocumentItem,
+					decision: "Approved",
+					notes: "",
+				});
+			});
+			return;
+		}
+
+		const decision = action === "needs_follow_up_submission" ? "Needs Follow-Up" : action === "reject_submission" ? "Rejected" : "";
+		if (!decision) {
+			return;
+		}
+
+		frappe.prompt(
+			[
+				{
+					label: __("Review Note"),
+					fieldname: "notes",
+					fieldtype: "Small Text",
+					reqd: 1,
+				},
+			],
+			(values) => {
+				review_document_submission(frm, {
+					applicant_document_item: applicantDocumentItem,
+					decision,
+					notes: String(values.notes || "").trim(),
+				});
+			},
+			decision === "Needs Follow-Up" ? __("Request Changes") : __("Reject Submission"),
+			__("Save")
+		);
+	});
+}
+
+function apply_document_requirement_override(frm, payload) {
+	frappe.call({
+		method: "ifitwala_ed.api.admissions_review.set_document_requirement_override",
+		args: {
+			student_applicant: frm.doc.name,
+			...payload,
+			client_request_id: new_admissions_review_request_id("document_requirement_override"),
+		},
+		freeze: true,
+		freeze_message: __("Updating requirement override..."),
+	})
+		.then(() => {
+			frappe.show_alert({ message: __("Requirement override updated."), indicator: "green" });
+			render_review_sections(frm);
+		})
+		.catch((error) => {
+			frappe.msgprint(get_error_message(error, __("Unable to update requirement override.")));
+		});
+}
+
+function review_document_submission(frm, payload) {
+	frappe.call({
+		method: "ifitwala_ed.api.admissions_review.review_applicant_document_submission",
+		args: {
+			student_applicant: frm.doc.name,
+			...payload,
+			client_request_id: new_admissions_review_request_id("document_submission_review"),
+		},
+		freeze: true,
+		freeze_message: __("Saving evidence review..."),
+	})
+		.then(() => {
+			frappe.show_alert({ message: __("Submitted file review updated."), indicator: "green" });
+			render_review_sections(frm);
+		})
+		.catch((error) => {
+			frappe.msgprint(get_error_message(error, __("Unable to update submitted file review.")));
+		});
 }
 
 function render_ok_label(section) {
@@ -1431,11 +1614,17 @@ function format_datetime(value) {
 
 function render_document_status_pill(status) {
 	const normalized = String(status || "Pending").trim();
-	if (normalized === "Approved") {
-		return render_pill("Approved", "green");
+	if (normalized === "Approved" || normalized === "Waived" || normalized === "Exception Approved") {
+		return render_pill(normalized, "green");
 	}
-	if (normalized === "Rejected" || normalized === "Superseded") {
-		return render_pill(normalized, "red");
+	if (normalized === "Rejected") {
+		return render_pill("Rejected", "red");
+	}
+	if (normalized === "Superseded") {
+		return render_pill("Superseded", "slate");
+	}
+	if (normalized === "Needs Follow-Up") {
+		return render_pill("Needs Follow-Up", "amber");
 	}
 	if (normalized === "Missing") {
 		return render_pill("Missing", "red");
@@ -1444,6 +1633,10 @@ function render_document_status_pill(status) {
 }
 
 function render_approved_required_pill(row) {
+	const requirementOverride = String(row?.requirement_override || "").trim();
+	if (requirementOverride) {
+		return render_pill(requirementOverride, "green");
+	}
 	const requiredCount = Number(row?.required_count || 0);
 	if (!requiredCount) {
 		return escape_html("—");

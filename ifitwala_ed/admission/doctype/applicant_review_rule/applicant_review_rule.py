@@ -37,12 +37,10 @@ class ApplicantReviewRule(Document):
     def _validate_target_fields(self):
         target_type = (self.target_type or "").strip()
         document_type = (self.document_type or "").strip()
-        if target_type in {"Applicant Document", "Applicant Document Item"}:
+        if target_type == "Applicant Document Item":
             return
         if document_type:
-            frappe.throw(
-                _("Document Type can only be set when Target Type is Applicant Document or Applicant Document Item.")
-            )
+            frappe.throw(_("Document Type can only be set when Target Type is Applicant Document Item."))
 
     def _validate_reviewers(self):
         reviewers = self.reviewers or []

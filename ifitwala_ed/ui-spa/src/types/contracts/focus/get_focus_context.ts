@@ -52,7 +52,7 @@ export type Response = {
   }>
   review_assignment?: {
     name: string
-    target_type: 'Applicant Document' | 'Applicant Document Item' | 'Applicant Health Profile' | 'Student Applicant'
+    target_type: 'Applicant Document Item' | 'Applicant Health Profile' | 'Student Applicant'
     target_name: string
     student_applicant: string
     applicant_name?: string | null

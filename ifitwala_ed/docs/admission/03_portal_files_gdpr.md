@@ -322,7 +322,7 @@ This is enforced **server-side**, not via UI hiding.
 * All files are deletable via Applicant purge
 * No documents live directly on User
 * Files are never moved or re-linked on promotion
-* Approved promotable Applicant Documents are copied as new Student File records with source linkage preserved
+* Approved applicant evidence submissions are copied as new Student File records with source linkage preserved unless the parent requirement routes promotion elsewhere
 * Identity can be erased independently of application record
 
 (Full GDPR policy handled elsewhere; this portal does not violate it.)
@@ -641,7 +641,7 @@ ApplicantDocumentType {
 * Portal may upload **only** against these types
 * `belongs_to` is semantic only (does not affect file ownership)
 
-### A.5.2 Applicant Documents (Uploads)
+### A.5.2 Applicant Requirements and Submitted Files
 
 ### Endpoints
 
@@ -656,26 +656,57 @@ POST /api/admissions/documents/upload
 ApplicantDocument {
   name: string
   document_type: string
+  label: string
+  description: string
+  is_required: boolean
+  is_repeatable: boolean
+  required_count: number
+  uploaded_count: number
+  approved_count: number
+  rejected_count: number
+  pending_count: number
+  requirement_state:
+    | 'not_started'
+    | 'waiting_review'
+    | 'changes_requested'
+    | 'complete'
+    | 'waived'
+    | 'exception_approved'
+  requirement_state_label: string
+  requirement_override: 'Waived' | 'Exception Approved' | null
+  override_reason: string | null
+  override_by: string | null
+  override_on: datetime | null
   review_status: "Pending" | "Approved" | "Rejected"
+  reviewed_by: string | null
+  reviewed_on: datetime | null
   uploaded_at: datetime
-  items: ApplicantDocumentItem[]
+  file_url: string | null
+  items: ApplicantDocumentSubmission[]
 }
 
-ApplicantDocumentItem {
+ApplicantDocumentSubmission {
   name: string
   item_key: string
   item_label: string
   review_status: "Pending" | "Approved" | "Rejected" | "Superseded"
+  reviewed_by: string | null
+  reviewed_on: datetime | null
   uploaded_at: datetime
   file_url: string
+  file_name: string | null
 }
 ```
 
 ### Upload rules
 
-* Upload creates/uses `Applicant Document` (bucket) and creates/uses `Applicant Document Item` (per file entry)
-* File attached **only** to Applicant Document Item
-* No direct file uploads anywhere else
+* Portal is requirement-centric; applicants do not choose between parent requirement and submission rows
+* Upload resolves/creates one `Applicant Document` requirement card and creates/reuses one `Applicant Document Item` submission row server-side
+* File attaches **only** to `Applicant Document Item`
+* `item_label` is optional and is used only to help distinguish multiple submitted files
+* Non-repeatable requirements reuse the existing submission row on replacement
+* Repeatable requirements may allocate additional submission rows
+* No direct file uploads to `Student Applicant` or `Applicant Document`
 * File Classification primary subject is always **Student Applicant**
 
 ---
@@ -1094,13 +1125,14 @@ Permissions alone are **insufficient**.
 
 * Portal can:
 
-  * upload
-  * view
+  * view requirement cards and submitted files
+  * upload or replace files through named admissions endpoints
 * Portal cannot:
 
   * approve / reject
   * change document type
   * delete
+  * manage submission rows directly outside the upload flow
 
 #### Policy Acknowledgement
 
@@ -2483,7 +2515,7 @@ Admissions files MUST NOT:
 
 Promotion from Applicant → Student:
 - does **not** move or re-link Applicant files
-- copies only approved promotable Applicant Documents into new Student File records
+- copies only approved applicant evidence submissions into new Student File records unless the parent requirement routes promotion elsewhere
 - freezes Applicant files as historical admissions artefacts
 - operational records must never depend on admissions file ownership
 

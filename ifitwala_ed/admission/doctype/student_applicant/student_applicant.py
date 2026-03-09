@@ -27,6 +27,7 @@ from ifitwala_ed.admission.admission_utils import (
     normalize_email_value,
     sync_student_applicant_contact_binding,
 )
+from ifitwala_ed.admission.applicant_review_workflow import apply_review_decision
 from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
@@ -1458,22 +1459,6 @@ class StudentApplicant(Document):
                 if parent and parent not in latest_file_by_item:
                     latest_file_by_item[parent] = file_row
 
-        legacy_latest_file_by_doc = {}
-        if doc_names:
-            legacy_rows = frappe.get_all(
-                "File",
-                filters={
-                    "attached_to_doctype": "Applicant Document",
-                    "attached_to_name": ["in", doc_names],
-                },
-                fields=["name", "attached_to_name", "file_url", "file_name", "is_private", "creation"],
-                order_by="creation desc",
-            )
-            for file_row in legacy_rows:
-                parent = file_row.get("attached_to_name")
-                if parent and parent not in legacy_latest_file_by_doc:
-                    legacy_latest_file_by_doc[parent] = file_row
-
         document_type_names = sorted({row.get("document_type") for row in docs if row.get("document_type")})
         document_type_map = {}
         if document_type_names:
@@ -1504,94 +1489,62 @@ class StudentApplicant(Document):
                 continue
 
             item_group = items_by_doc.get(doc_row.get("name"), [])
-            if item_group:
-                for item in item_group:
-                    source = latest_file_by_item.get(item.get("name"))
-                    if not source:
-                        copy_errors.append(
-                            _("Missing file for Applicant Document Item {0}.").format(item.get("name") or _("Unknown"))
-                        )
-                        continue
-                    content = self._read_file_bytes(source)
-                    if not content:
-                        copy_errors.append(
-                            _("Could not read file for Applicant Document Item {0}.").format(
-                                item.get("name") or _("Unknown")
-                            )
-                        )
-                        continue
-                    item_key = (item.get("item_key") or item.get("name") or "item").strip()
-                    slot_key = f"admissions_{frappe.scrub(doc_type_code or 'document')}_{frappe.scrub(item_key)[:80]}"
-                    filename = source.get("file_name") or os.path.basename(source.get("file_url") or "document")
-
-                    try:
-                        file_dispatcher.create_and_classify_file(
-                            file_kwargs={
-                                "attached_to_doctype": "Student",
-                                "attached_to_name": student.name,
-                                "file_name": filename,
-                                "content": content,
-                                "is_private": 1 if source.get("is_private") else 0,
-                            },
-                            classification={
-                                "primary_subject_type": "Student",
-                                "primary_subject_id": student.name,
-                                "data_class": slot_spec["data_class"],
-                                "purpose": slot_spec["purpose"],
-                                "retention_policy": slot_spec["retention_policy"],
-                                "slot": slot_key,
-                                "organization": self.organization,
-                                "school": self.school,
-                                "source_file": source.get("name"),
-                                "upload_source": "API",
-                            },
-                        )
-                        copied_count += 1
-                    except Exception:
-                        copy_errors.append(
-                            _("Could not copy Applicant Document Item {0}.").format(item.get("name") or _("Unknown"))
-                        )
-                        frappe.log_error(frappe.get_traceback(), "Applicant Document Item Promotion Copy Failed")
-                continue
-
-            # Legacy fallback for records predating Applicant Document Item.
-            source = legacy_latest_file_by_doc.get(doc_row.get("name"))
-            if not source:
-                copy_errors.append(_("Missing file for Applicant Document {0}.").format(doc_row.get("name")))
-                continue
-            content = self._read_file_bytes(source)
-            if not content:
-                copy_errors.append(_("Could not read file for Applicant Document {0}.").format(doc_row.get("name")))
-                continue
-
-            slot_key = f"admissions_{frappe.scrub(doc_type_code or 'document')}_legacy"
-            filename = source.get("file_name") or os.path.basename(source.get("file_url") or "document")
-            try:
-                file_dispatcher.create_and_classify_file(
-                    file_kwargs={
-                        "attached_to_doctype": "Student",
-                        "attached_to_name": student.name,
-                        "file_name": filename,
-                        "content": content,
-                        "is_private": 1 if source.get("is_private") else 0,
-                    },
-                    classification={
-                        "primary_subject_type": "Student",
-                        "primary_subject_id": student.name,
-                        "data_class": slot_spec["data_class"],
-                        "purpose": slot_spec["purpose"],
-                        "retention_policy": slot_spec["retention_policy"],
-                        "slot": slot_key,
-                        "organization": self.organization,
-                        "school": self.school,
-                        "source_file": source.get("name"),
-                        "upload_source": "API",
-                    },
+            if not item_group:
+                copy_errors.append(
+                    _("Approved Applicant Document {0} has no approved submissions to copy.").format(
+                        doc_row.get("name") or _("Unknown")
+                    )
                 )
-                copied_count += 1
-            except Exception:
-                copy_errors.append(_("Could not copy Applicant Document {0}.").format(doc_row.get("name")))
-                frappe.log_error(frappe.get_traceback(), "Applicant Document Promotion Copy Failed")
+                continue
+
+            for item in item_group:
+                source = latest_file_by_item.get(item.get("name"))
+                if not source:
+                    copy_errors.append(
+                        _("Missing file for Applicant Document Item {0}.").format(item.get("name") or _("Unknown"))
+                    )
+                    continue
+                content = self._read_file_bytes(source)
+                if not content:
+                    copy_errors.append(
+                        _("Could not read file for Applicant Document Item {0}.").format(
+                            item.get("name") or _("Unknown")
+                        )
+                    )
+                    continue
+                item_key = (item.get("item_key") or item.get("name") or "item").strip()
+                slot_key = f"admissions_{frappe.scrub(doc_type_code or 'document')}_{frappe.scrub(item_key)[:80]}"
+                filename = source.get("file_name") or os.path.basename(source.get("file_url") or "document")
+
+                try:
+                    file_dispatcher.create_and_classify_file(
+                        file_kwargs={
+                            "attached_to_doctype": "Student",
+                            "attached_to_name": student.name,
+                            "file_name": filename,
+                            "content": content,
+                            "is_private": 1 if source.get("is_private") else 0,
+                        },
+                        classification={
+                            "primary_subject_type": "Student",
+                            "primary_subject_id": student.name,
+                            "data_class": slot_spec["data_class"],
+                            "purpose": slot_spec["purpose"],
+                            "retention_policy": slot_spec["retention_policy"],
+                            "slot": slot_key,
+                            "organization": self.organization,
+                            "school": self.school,
+                            "source_file": source.get("name"),
+                            "upload_source": "API",
+                        },
+                    )
+                    copied_count += 1
+                except Exception:
+                    copy_errors.append(
+                        _("Could not copy Applicant Document Item {0}.").format(item.get("name") or _("Unknown"))
+                    )
+                    frappe.log_error(frappe.get_traceback(), "Applicant Document Item Promotion Copy Failed")
+            continue
 
         if copy_errors:
             frappe.throw("\n".join(copy_errors))
@@ -1857,6 +1810,10 @@ class StudentApplicant(Document):
                 "review_status",
                 "reviewed_by",
                 "reviewed_on",
+                "requirement_override",
+                "override_reason",
+                "override_by",
+                "override_on",
                 "modified",
             ],
             order_by="modified desc",
@@ -1897,23 +1854,6 @@ class StudentApplicant(Document):
                 if not parent_name or parent_name in latest_file_by_item:
                     continue
                 latest_file_by_item[parent_name] = row_file
-
-        legacy_latest_file_by_document = {}
-        if document_names:
-            legacy_rows = frappe.get_all(
-                "File",
-                filters={
-                    "attached_to_doctype": "Applicant Document",
-                    "attached_to_name": ["in", document_names],
-                },
-                fields=["name", "attached_to_name", "file_url", "file_name", "creation", "owner"],
-                order_by="creation desc",
-            )
-            for row_file in legacy_rows:
-                parent_name = row_file.get("attached_to_name")
-                if not parent_name or parent_name in legacy_latest_file_by_document:
-                    continue
-                legacy_latest_file_by_document[parent_name] = row_file
 
         documents_by_type = {row.get("document_type"): row for row in document_rows if row.get("document_type")}
         items_by_document = {}
@@ -1958,6 +1898,10 @@ class StudentApplicant(Document):
                         "review_status": "Missing",
                         "reviewed_by": None,
                         "reviewed_on": None,
+                        "requirement_override": None,
+                        "override_reason": None,
+                        "override_by": None,
+                        "override_on": None,
                         "uploaded_by": None,
                         "uploaded_at": None,
                         "file_url": None,
@@ -1969,57 +1913,31 @@ class StudentApplicant(Document):
                 continue
 
             item_group = list(items_by_document.get(document_row.get("name"), []))
-            if not item_group:
-                legacy_file = legacy_latest_file_by_document.get(document_row.get("name"), {})
-                if legacy_file:
-                    item_group = [
-                        {
-                            "name": "",
-                            "item_key": "legacy",
-                            "item_label": _("Existing upload"),
-                            "review_status": document_row.get("review_status") or "Pending",
-                            "reviewed_by": document_row.get("reviewed_by"),
-                            "reviewed_on": document_row.get("reviewed_on"),
-                            "uploaded_by": legacy_file.get("owner"),
-                            "uploaded_at": legacy_file.get("creation"),
-                            "file_url": _build_file_open_url(legacy_file),
-                            "file_name": legacy_file.get("file_name"),
-                            "modified": document_row.get("modified"),
-                        }
-                    ]
-
             uploaded_items = [row for row in item_group if row.get("file_url")]
             approved_items = [row for row in uploaded_items if row.get("review_status") == "Approved"]
+            rejected_items = [row for row in uploaded_items if row.get("review_status") == "Rejected"]
             uploaded_count = len(uploaded_items)
             approved_count = len(approved_items)
-            document_review_status = (document_row.get("review_status") or "Pending").strip() or "Pending"
-            document_marked_approved = document_review_status == "Approved"
-            meets_item_approval_requirement = approved_count >= required_count
-            is_approved_for_readiness = document_marked_approved or meets_item_approval_requirement
+            requirement_override = (document_row.get("requirement_override") or "").strip() or None
+            override_satisfies_requirement = requirement_override in {"Waived", "Exception Approved"}
 
-            if uploaded_count < required_count:
+            if override_satisfies_requirement:
+                review_status = requirement_override
+            elif uploaded_count < required_count:
                 missing.append(label)
                 review_status = "Missing"
-            elif is_approved_for_readiness:
+            elif approved_count >= required_count:
                 review_status = "Approved"
             else:
                 unapproved.append(label)
-                review_status = "Pending"
+                review_status = "Rejected" if rejected_items else "Pending"
 
-            reviewed_by = document_row.get("reviewed_by")
-            reviewed_on = document_row.get("reviewed_on")
-            if review_status == "Approved" and (not reviewed_by or not reviewed_on):
-                latest_item_review = sorted(
-                    [row_item for row_item in approved_items if row_item.get("reviewed_on")],
-                    key=lambda row_item: row_item.get("reviewed_on") or "",
-                    reverse=True,
-                )
-                if latest_item_review:
-                    latest_review_row = latest_item_review[0]
-                    if not reviewed_by:
-                        reviewed_by = latest_review_row.get("reviewed_by")
-                    if not reviewed_on:
-                        reviewed_on = latest_review_row.get("reviewed_on")
+            if override_satisfies_requirement:
+                reviewed_by = document_row.get("override_by")
+                reviewed_on = document_row.get("override_on")
+            else:
+                reviewed_by = document_row.get("reviewed_by")
+                reviewed_on = document_row.get("reviewed_on")
 
             latest_uploaded_item = {}
             if uploaded_items:
@@ -2040,6 +1958,10 @@ class StudentApplicant(Document):
                     "review_status": review_status,
                     "reviewed_by": reviewed_by,
                     "reviewed_on": reviewed_on,
+                    "requirement_override": requirement_override,
+                    "override_reason": document_row.get("override_reason"),
+                    "override_by": document_row.get("override_by"),
+                    "override_on": document_row.get("override_on"),
                     "uploaded_by": latest_uploaded_item.get("uploaded_by"),
                     "uploaded_at": latest_uploaded_item.get("uploaded_at"),
                     "file_url": latest_uploaded_item.get("file_url"),
@@ -2065,25 +1987,6 @@ class StudentApplicant(Document):
                 required_count = max(1, cint(meta.get("min_items_required") or 1))
 
             item_group = list(items_by_document.get(document_row.get("name"), []))
-            if not item_group:
-                legacy_file = legacy_latest_file_by_document.get(document_row.get("name"), {})
-                if legacy_file:
-                    item_group = [
-                        {
-                            "name": "",
-                            "item_key": "legacy",
-                            "item_label": _("Existing upload"),
-                            "review_status": document_row.get("review_status") or "Pending",
-                            "reviewed_by": document_row.get("reviewed_by"),
-                            "reviewed_on": document_row.get("reviewed_on"),
-                            "uploaded_by": legacy_file.get("owner"),
-                            "uploaded_at": legacy_file.get("creation"),
-                            "file_url": _build_file_open_url(legacy_file),
-                            "file_name": legacy_file.get("file_name"),
-                            "modified": document_row.get("modified"),
-                        }
-                    ]
-
             uploaded_items = [row for row in item_group if row.get("file_url")]
             approved_items = [row for row in uploaded_items if row.get("review_status") == "Approved"]
             for uploaded_item in uploaded_items:
@@ -2110,6 +2013,8 @@ class StudentApplicant(Document):
                         "uploaded_count": len(uploaded_items),
                         "approved_count": len(approved_items),
                         "is_repeatable": bool(meta.get("is_repeatable")),
+                        "requirement_override": document_row.get("requirement_override"),
+                        "override_reason": document_row.get("override_reason"),
                         "review_status": uploaded_item.get("review_status") or "Pending",
                         "reviewed_by": uploaded_item.get("reviewed_by"),
                         "reviewed_on": uploaded_item.get("reviewed_on"),
@@ -2405,6 +2310,172 @@ class StudentApplicant(Document):
             "review_assignments": review_assignments,
             "ready": bool(ready),
             "issues": issues,
+        }
+
+    def _assert_document_review_workspace_access(self):
+        roles = set(frappe.get_roles(frappe.session.user))
+        if not roles & DECISION_ROLES:
+            frappe.throw(
+                _(
+                    "Only Admission Officer, Admission Manager, Academic Admin, or System Manager can review evidence here."
+                ),
+                frappe.PermissionError,
+            )
+
+        if self.application_status in TERMINAL_STATUSES:
+            frappe.throw(_("Applicant is read-only in terminal states."))
+
+        if not has_scoped_staff_access_to_student_applicant(user=frappe.session.user, student_applicant=self.name):
+            frappe.throw(_("You do not have permission to review evidence for this applicant."), frappe.PermissionError)
+
+    def _resolve_document_submission_review_context(self, applicant_document_item: str | None) -> tuple[dict, dict]:
+        item_name = (applicant_document_item or "").strip()
+        if not item_name:
+            frappe.throw(_("Submitted file is required."))
+
+        item_row = frappe.db.get_value(
+            "Applicant Document Item",
+            item_name,
+            ["name", "applicant_document", "item_key", "item_label"],
+            as_dict=True,
+        )
+        if not item_row:
+            frappe.throw(_("Applicant Document Item {0} was not found.").format(item_name), frappe.DoesNotExistError)
+
+        document_row = frappe.db.get_value(
+            "Applicant Document",
+            item_row.get("applicant_document"),
+            ["name", "student_applicant", "document_type", "document_label"],
+            as_dict=True,
+        )
+        if not document_row or (document_row.get("student_applicant") or "").strip() != self.name:
+            frappe.throw(_("Submitted file does not belong to this Student Applicant."), frappe.PermissionError)
+
+        return item_row, document_row
+
+    def review_document_submission(
+        self,
+        applicant_document_item: str | None = None,
+        decision: str | None = None,
+        notes: str | None = None,
+    ):
+        self._assert_document_review_workspace_access()
+        item_row, document_row = self._resolve_document_submission_review_context(applicant_document_item)
+
+        resolved_decision = (decision or "").strip()
+        if resolved_decision not in {"Approved", "Needs Follow-Up", "Rejected"}:
+            frappe.throw(_("Invalid evidence decision: {0}.").format(resolved_decision or _("(empty)")))
+
+        clean_notes = (notes or "").strip() or None
+        if resolved_decision in {"Needs Follow-Up", "Rejected"} and not clean_notes:
+            frappe.throw(_("Notes are required when requesting changes or rejecting a submitted file."))
+
+        apply_review_decision(
+            target_type="Applicant Document Item",
+            target_name=item_row.get("name"),
+            decision=resolved_decision,
+            notes=clean_notes,
+            decided_by=frappe.session.user,
+        )
+
+        document_label = (
+            (document_row.get("document_label") or "").strip()
+            or (
+                frappe.db.get_value("Applicant Document Type", document_row.get("document_type"), "document_type_name")
+                or ""
+            ).strip()
+            or (document_row.get("document_type") or "").strip()
+            or _("Document")
+        )
+        item_label = (
+            (item_row.get("item_label") or "").strip()
+            or (item_row.get("item_key") or "").strip()
+            or (item_row.get("name") or "").strip()
+        )
+        self.add_comment(
+            "Comment",
+            text=_("Evidence review updated: {0} / {1} -> {2} by {3} on {4}.").format(
+                frappe.bold(document_label),
+                frappe.bold(item_label or _("Submission")),
+                frappe.bold(resolved_decision),
+                frappe.bold(frappe.session.user),
+                now_datetime(),
+            ),
+        )
+
+        return {
+            "ok": True,
+            "applicant_document": document_row.get("name"),
+            "applicant_document_item": item_row.get("name"),
+            "decision": resolved_decision,
+            "documents": self.has_required_documents(),
+        }
+
+    @frappe.whitelist()
+    def set_document_requirement_override(
+        self,
+        applicant_document: str | None = None,
+        document_type: str | None = None,
+        requirement_override: str | None = None,
+        override_reason: str | None = None,
+    ):
+        roles = set(frappe.get_roles(frappe.session.user))
+        if not roles & {"Admission Manager", "Academic Admin", "System Manager"}:
+            frappe.throw(
+                _(
+                    "Only Admission Manager, Academic Admin, or System Manager can set a requirement waiver or exception."
+                ),
+                frappe.PermissionError,
+            )
+
+        if self.application_status in TERMINAL_STATUSES:
+            frappe.throw(_("Applicant is read-only in terminal states."))
+
+        target_document_name = (applicant_document or "").strip()
+        target_document_type = (document_type or "").strip()
+        override_value = (requirement_override or "").strip()
+        override_reason = (override_reason or "").strip()
+
+        if target_document_name:
+            document_doc = frappe.get_doc("Applicant Document", target_document_name)
+            if document_doc.student_applicant != self.name:
+                frappe.throw(_("Applicant Document does not belong to this Student Applicant."))
+        else:
+            if not target_document_type:
+                frappe.throw(_("Document Type is required when Applicant Document is not provided."))
+            existing = frappe.db.get_value(
+                "Applicant Document",
+                {"student_applicant": self.name, "document_type": target_document_type},
+                "name",
+            )
+            if existing:
+                document_doc = frappe.get_doc("Applicant Document", existing)
+            else:
+                if not override_value:
+                    return {
+                        "ok": True,
+                        "applicant_document": None,
+                        "documents": self.has_required_documents(),
+                    }
+                document_doc = frappe.get_doc(
+                    {
+                        "doctype": "Applicant Document",
+                        "student_applicant": self.name,
+                        "document_type": target_document_type,
+                    }
+                )
+                document_doc.insert(ignore_permissions=True)
+
+        document_doc.requirement_override = override_value or None
+        document_doc.override_reason = override_reason or None
+        document_doc.override_by = None
+        document_doc.override_on = None
+        document_doc.save(ignore_permissions=True)
+
+        return {
+            "ok": True,
+            "applicant_document": document_doc.name,
+            "documents": self.has_required_documents(),
         }
 
 

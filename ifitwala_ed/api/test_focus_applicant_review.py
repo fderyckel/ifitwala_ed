@@ -115,9 +115,11 @@ class TestFocusApplicantReview(FrappeTestCase):
             )
 
     def test_get_focus_context_returns_secure_download_url_for_document_item_file(self):
-        assignment, file_doc = self._create_document_item_assignment_with_file()
+        focus_role = "Academic Assistant"
+        focus_reviewer = self._make_user_with_role(focus_role)
+        assignment, file_doc = self._create_document_item_assignment_with_file(role_name=focus_role)
 
-        frappe.set_user(self.reviewer_one)
+        frappe.set_user(focus_reviewer)
         focus_rows = list_focus_items(open_only=1, limit=50, offset=0)
         focus_item = next((row for row in focus_rows if row.get("reference_name") == assignment.name), None)
         self.assertIsNotNone(focus_item)
@@ -141,7 +143,9 @@ class TestFocusApplicantReview(FrappeTestCase):
         self.assertEqual(frappe.local.response.get("filecontent"), b"focus-file")
 
     def test_download_applicant_review_file_requires_assignment_membership(self):
-        assignment, _ = self._create_document_item_assignment_with_file()
+        focus_role = "Academic Assistant"
+        self._make_user_with_role(focus_role)
+        assignment, _ = self._create_document_item_assignment_with_file(role_name=focus_role)
 
         outsider = make_user()
         self._created.append(("User", outsider.name))
@@ -149,6 +153,16 @@ class TestFocusApplicantReview(FrappeTestCase):
         frappe.set_user(outsider.name)
         with self.assertRaises(frappe.PermissionError):
             download_applicant_review_file(assignment=assignment.name)
+
+    def test_admissions_user_is_redirected_away_from_document_item_focus_work(self):
+        assignment, _ = self._create_document_item_assignment_with_file(role_name=self.role_name)
+
+        frappe.set_user(self.reviewer_one)
+        focus_rows = list_focus_items(open_only=1, limit=50, offset=0)
+        self.assertFalse(any(row.get("reference_name") == assignment.name for row in focus_rows))
+
+        with self.assertRaises(frappe.PermissionError):
+            claim_applicant_review_assignment(assignment=assignment.name)
 
     def _ensure_role(self, user: str, role: str):
         if not frappe.db.exists("Role", role):
@@ -266,14 +280,14 @@ class TestFocusApplicantReview(FrappeTestCase):
         self._created.append(("File", doc.name))
         return doc
 
-    def _create_document_item_assignment_with_file(self):
+    def _create_document_item_assignment_with_file(self, role_name: str):
         document_type = self._create_document_type(self.organization, self.school)
         applicant_document = self._create_applicant_document(self.student_applicant.name, document_type)
         document_item = self._create_document_item(applicant_document.name)
         file_doc = self._attach_private_file(document_item.name)
         assignment = self._create_role_assignment(
             self.student_applicant.name,
-            self.role_name,
+            role_name,
             target_type="Applicant Document Item",
             target_name=document_item.name,
         )

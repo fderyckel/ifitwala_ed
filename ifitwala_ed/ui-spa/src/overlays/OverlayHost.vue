@@ -63,7 +63,7 @@ import ApplicantHealthOverlay from '@/overlays/admissions/ApplicantHealthOverlay
 import ApplicantDocumentUploadOverlay from '@/overlays/admissions/ApplicantDocumentUploadOverlay.vue';
 import ApplicantPolicyAcknowledgeOverlay from '@/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue';
 import ApplicantSubmitOverlay from '@/overlays/admissions/ApplicantSubmitOverlay.vue';
-import InterviewWorkspaceOverlay from '@/overlays/admissions/InterviewWorkspaceOverlay.vue';
+import AdmissionsWorkspaceOverlay from '@/overlays/admissions/AdmissionsWorkspaceOverlay.vue';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
@@ -213,8 +213,8 @@ function resolveComponent(type: OverlayType) {
 			return ApplicantPolicyAcknowledgeOverlay;
 		case 'admissions-submit':
 			return ApplicantSubmitOverlay;
-		case 'admissions-interview-workspace':
-			return InterviewWorkspaceOverlay;
+		case 'admissions-workspace':
+			return AdmissionsWorkspaceOverlay;
 		default:
 			return CreateTaskDeliveryOverlay;
 	}
