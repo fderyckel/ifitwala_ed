@@ -40,6 +40,16 @@ jobs:
 
       - name: Install Bench
         run: pip install frappe-bench
+      - name: Start Redis for bench
+        run: |
+          for port in 11000 12000 13000; do
+            if redis-cli -p "$port" ping >/dev/null 2>&1; then
+              echo "Redis already running on :$port"
+              continue
+            fi
+            redis-server --port "$port" --daemonize yes
+            redis-cli -p "$port" ping
+          done
 
       - name: Init nightly bench
         run: |
@@ -86,6 +96,16 @@ jobs:
 
       - name: Install Bench
         run: pip install frappe-bench
+      - name: Start Redis for bench
+        run: |
+          for port in 11000 12000 13000; do
+            if redis-cli -p "$port" ping >/dev/null 2>&1; then
+              echo "Redis already running on :$port"
+              continue
+            fi
+            redis-server --port "$port" --daemonize yes
+            redis-cli -p "$port" ping
+          done
 
       - name: Init nightly bench
         run: |

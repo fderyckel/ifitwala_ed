@@ -54,6 +54,16 @@ jobs:
 
       - name: Install system deps
         run: sudo apt-get update && sudo apt-get install -y redis-server
+      - name: Start Redis for bench
+        run: |
+          for port in 11000 12000 13000; do
+            if redis-cli -p "$port" ping >/dev/null 2>&1; then
+              echo "Redis already running on :$port"
+              continue
+            fi
+            redis-server --port "$port" --daemonize yes
+            redis-cli -p "$port" ping
+          done
 
       - name: Install Bench
         run: pip install frappe-bench
@@ -134,6 +144,16 @@ jobs:
 
       - name: Install system deps
         run: sudo apt-get update && sudo apt-get install -y redis-server
+      - name: Start Redis for bench
+        run: |
+          for port in 11000 12000 13000; do
+            if redis-cli -p "$port" ping >/dev/null 2>&1; then
+              echo "Redis already running on :$port"
+              continue
+            fi
+            redis-server --port "$port" --daemonize yes
+            redis-cli -p "$port" ping
+          done
 
       - name: Install Bench
         run: pip install frappe-bench
