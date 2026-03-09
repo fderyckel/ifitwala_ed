@@ -11,6 +11,7 @@ from ifitwala_ed.api.calendar import (
     _attach_duration,
     _coerce_time,
     _resolve_sg_schedule_context,
+    _student_group_memberships,
     _system_tzinfo,
     _time_to_str,
     create_meeting_quick,
@@ -149,3 +150,34 @@ class TestCalendarApi(TestCase):
         self.assertEqual(response.get("status"), "created")
         self.assertEqual(len(captured_payloads), 1)
         self.assertEqual(captured_payloads[0].get("participants"), [{"participant": "staff@example.com"}])
+
+    def test_student_group_memberships_does_not_filter_child_rows_by_active(self):
+        observed_filters = []
+
+        def _fake_get_all(doctype, filters=None, fields=None, ignore_permissions=False, **kwargs):
+            self.assertEqual(doctype, "Student Group Instructor")
+            observed_filters.append(dict(filters or {}))
+
+            if filters.get("user_id") == "staff@example.com":
+                return [frappe._dict({"parent": "SG-USER", "user_id": "staff@example.com"})]
+            if filters.get("employee") == "EMP-0001":
+                return [frappe._dict({"parent": "SG-EMP", "user_id": "assistant@example.com"})]
+            if "instructor" in (filters or {}):
+                return [frappe._dict({"parent": "SG-INS", "user_id": None})]
+            return []
+
+        with patch("ifitwala_ed.api.calendar_core.frappe.get_all", side_effect=_fake_get_all):
+            group_names, instructor_ids = _student_group_memberships(
+                user="staff@example.com",
+                employee_id="EMP-0001",
+                instructor_ids={"INS-0001"},
+            )
+
+        self.assertEqual(group_names, {"SG-USER", "SG-EMP", "SG-INS"})
+        self.assertIn("INS-0001", instructor_ids)
+        self.assertIn("assistant@example.com", instructor_ids)
+
+        self.assertEqual(len(observed_filters), 3)
+        for filters in observed_filters:
+            self.assertEqual(filters.get("parenttype"), "Student Group")
+            self.assertNotIn("active", filters)

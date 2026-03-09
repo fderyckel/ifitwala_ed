@@ -773,3 +773,9 @@ def get_admissions_thread_summaries_for_applicants(*, applicant_rows: list[dict]
         summary_by_applicant[applicant_name]["needs_reply"] = bool(unread_count > 0 and last_from == "applicant")
 
     return summary_by_applicant
+
+
+# Preserve allow_guest metadata for auth-guard tests and reflective callers.
+send_admissions_case_message.allow_guest = True
+get_admissions_case_thread.allow_guest = True
+mark_admissions_case_thread_read.allow_guest = True

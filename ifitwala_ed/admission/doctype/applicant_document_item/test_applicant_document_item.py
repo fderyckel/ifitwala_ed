@@ -209,6 +209,20 @@ class TestApplicantDocumentItem(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("User", doc.name))
+        employee = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": "Admission",
+                "employee_last_name": role.replace(" ", ""),
+                "employee_professional_email": email,
+                "organization": self.organization,
+                "school": self.school,
+                "user_id": doc.name,
+                "date_of_joining": frappe.utils.nowdate(),
+                "employment_status": "Active",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Employee", employee.name))
         frappe.clear_cache(user=doc.name)
         return doc.name
 

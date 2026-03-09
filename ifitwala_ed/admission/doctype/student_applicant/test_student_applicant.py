@@ -28,6 +28,13 @@ class TestStudentApplicant(FrappeTestCase):
         self.org = self._create_org()
         self.parent_school = self._create_school("Admissions Root", "AR", self.org, is_group=1)
         self.leaf_school = self._create_school("Admissions Leaf", "AL", self.org, parent=self.parent_school, is_group=0)
+        self._create_employee_for_user(
+            self.staff_user.name,
+            first_name="Admissions",
+            last_name="Staff",
+            organization=self.org,
+            school=self.leaf_school,
+        )
 
         self.visible_ay = self._create_academic_year(self.leaf_school, "2025-2026", archived=0, visible=1)
         self.archived_ay = self._create_academic_year(self.leaf_school, "2024-2025", archived=1, visible=1)
@@ -1066,7 +1073,25 @@ class TestStudentApplicant(FrappeTestCase):
             user.append("roles", {"role": add_role})
         user.insert(ignore_permissions=True)
         self._created.append(("User", user.name))
+        frappe.clear_cache(user=user.name)
         return user
+
+    def _create_employee_for_user(self, user: str, *, first_name: str, last_name: str, organization: str, school: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": first_name,
+                "employee_last_name": last_name,
+                "employee_professional_email": user,
+                "organization": organization,
+                "school": school,
+                "user_id": user,
+                "date_of_joining": frappe.utils.nowdate(),
+                "employment_status": "Active",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Employee", doc.name))
+        return doc
 
     def _create_guardian(self, *, first_name, last_name, email, mobile, user=None):
         doc = frappe.get_doc(

@@ -2,6 +2,7 @@
 
 from contextlib import nullcontext
 from datetime import timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import frappe
@@ -139,11 +140,17 @@ class TestAdmissionsCommunicationSummaries(FrappeTestCase):
 
 class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
     def test_session_user_treats_none_literal_as_unauthenticated(self):
-        with patch("ifitwala_ed.api.admissions_communication.frappe.session.user", "None"):
+        with patch(
+            "ifitwala_ed.api.admissions_communication.frappe.session",
+            SimpleNamespace(user="None"),
+        ):
             self.assertEqual(_session_user(), "")
 
     def test_require_actor_context_rejects_invalid_session_user(self):
-        with patch("ifitwala_ed.api.admissions_communication.frappe.session.user", "None"):
+        with patch(
+            "ifitwala_ed.api.admissions_communication.frappe.session",
+            SimpleNamespace(user="None"),
+        ):
             with self.assertRaises(frappe.PermissionError):
                 _require_actor_context(context_doctype="Student Applicant", context_name="APP-0001")
 
@@ -156,7 +163,10 @@ class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
 class TestAdmissionsCockpitAuthGuards(FrappeTestCase):
     def test_cockpit_access_rejects_none_literal_without_role_lookup(self):
         with (
-            patch("ifitwala_ed.api.admission_cockpit.frappe.session.user", "None"),
+            patch(
+                "ifitwala_ed.api.admission_cockpit.frappe.session",
+                SimpleNamespace(user="None"),
+            ),
             patch("ifitwala_ed.api.admission_cockpit.frappe.get_roles") as get_roles_mock,
         ):
             with self.assertRaises(frappe.PermissionError):

@@ -101,7 +101,7 @@ def _active_employee_status_from_login_email(*, user: str) -> tuple[bool, str]:
             "employee_professional_email": login_email,
         },
         fields=["name", "user_id"],
-        limit_page_length=2,
+        limit=2,
     )
     if len(matches) != 1:
         return False, ""

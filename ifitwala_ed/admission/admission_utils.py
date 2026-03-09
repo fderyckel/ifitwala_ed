@@ -634,6 +634,7 @@ def get_admissions_file_staff_scope(user: str | None = None) -> dict:
 
     org_scope = set(_get_organization_scope(employee.get("organization")))
     school_scope = set(get_descendant_schools(employee.get("school")) or [])
+
     if not org_scope and not school_scope:
         return denied
 
@@ -908,6 +909,20 @@ def sync_student_applicant_contact_binding(*, student_applicant: str, contact_na
         if not normalized or normalized in seen:
             continue
         seen.add(normalized)
+        existing_parent = (frappe.db.get_value("Contact Email", {"email_id": normalized}, "parent") or "").strip()
+        if existing_parent and existing_parent != resolved_contact:
+            existing_link = frappe.db.exists(
+                "Dynamic Link",
+                {
+                    "parenttype": "Contact",
+                    "parentfield": "links",
+                    "parent": existing_parent,
+                    "link_doctype": "Student Applicant",
+                    "link_name": applicant.name,
+                },
+            )
+            if existing_link:
+                continue
         upsert_contact_email(resolved_contact, normalized, set_primary_if_missing=True)
         emails_synced.append(normalized)
 

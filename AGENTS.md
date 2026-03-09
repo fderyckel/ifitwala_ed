@@ -666,6 +666,106 @@ For Python modules using `from frappe import _`:
 * `_` MUST NOT be reused as a local variable, tuple sink, or throwaway placeholder.
 * Shadowing `_` in whitelisted methods or validation code is a blocker because it can turn translatable error calls into runtime `TypeError`s.
 
+### 18.9 Query-Filter Schema Contract Safety (Non-Negotiable)
+
+For any `frappe.get_all`, `frappe.get_list`, `frappe.db.get_value`, Query Builder, or SQL WHERE clause:
+
+* Every filtered column MUST exist on the queried DocType/table schema in the current workspace.
+* Agents MUST verify filter fieldnames against authoritative schema files before coding; guesses are forbidden.
+* Child table queries MUST NOT reuse parent/peer flags by assumption (for example adding `active` to a child table filter without schema proof).
+* If active/inactive semantics live on a parent DocType, enforce them on the parent DocType explicitly; do not invent child-level flags.
+
+### 18.10 Calendar/Permission Regression Gate (Non-Negotiable)
+
+For changes touching calendar feeds, calendar details, or permission resolution paths:
+
+* PRs MUST include at least one regression test that exercises the affected whitelisted endpoint path end-to-end.
+* CI for pull requests MUST run the calendar regression test module (for example `ifitwala_ed.api.test_calendar`) as a blocking check.
+* Any refactor that splits/moves helpers across modules MUST include before/after contract parity checks for query filters and payload shape.
+
+---
+
+## 19. Contract Matrix & Drift Prevention (Non-Negotiable)
+
+### 19.1 One Canonical Spec Per Feature
+
+* Each feature MUST have exactly one canonical contract document.
+* Draft notes, brainstorm text, and “drop-in sections” MUST live in separate non-authoritative files.
+* Canonical docs MUST NOT mix locked contract text with exploratory content.
+
+### 19.2 Section Status Markers Are Mandatory
+
+* Every top-level section in a canonical feature doc MUST include:
+  * `Status`: `Implemented` | `Partial` | `Planned`
+  * `Code refs`: concrete file paths
+  * `Test refs`: concrete tests (or explicit `None`)
+* Sections without status markers are incomplete documentation.
+
+### 19.3 Contract Matrix Required Before Merge
+
+* Any feature or workflow change MUST include a doc-to-code contract matrix covering at least:
+  * Schema / DocType
+  * Controller / Workflow logic
+  * API endpoints
+  * SPA/UI surfaces
+  * Reports / Dashboards / Briefings
+  * Scheduler / background jobs
+  * Tests
+* Any `Unknown` row in the matrix is a merge blocker.
+
+### 19.4 No Custom Permission Logic Outside Canonical Predicate
+
+* If a doctype provides canonical permission/visibility helpers, all read surfaces MUST reuse them.
+* Hand-rolled visibility clauses in dashboards, reports, and side APIs are defects unless explicitly documented as narrower portal-only exceptions.
+
+### 19.5 No Custom Scope Math Outside Canonical Scope Helper
+
+* School/program visibility scope MUST be computed by shared server helpers.
+* Re-implementing scope logic per endpoint (ancestor-only in one place, descendant-only in another) is drift and a blocker.
+* SPA clients MUST NOT implement scope logic beyond server-provided contracts.
+
+### 19.6 Server Invariants Own Correctness
+
+* Client-side guards are UX only; they are not correctness guarantees.
+* Idempotency, uniqueness, legal status transitions, and immutability rules MUST be enforced server-side.
+* Any meaningful action (submit, follow up, decide, close, reopen, reassign) MUST use a named workflow endpoint, not assembled client CRUD calls.
+
+### 19.7 Defaults Parity Rule
+
+* DocType defaults and SPA defaults MUST match.
+* Intentional divergence is allowed only when documented in the canonical contract with rationale and explicit date.
+
+### 19.8 Entry-Point Mode Contract Rule
+
+* Any overlay/workflow with multiple entry points MUST define explicit mode contracts (payload + locking behavior + required selections).
+* Every declared mode MUST be wired from a real entry point and covered by tests.
+* A documented mode that is not wired is a design defect.
+
+### 19.9 Analytics/Report Permission Parity Rule
+
+* Dashboards, reports, and briefing widgets MUST NOT expose rows/content that the same user cannot read in canonical list permissions.
+* Aggregate-only roles MUST NEVER receive log-level/detail payloads.
+* Filter metadata MUST be visibility-scoped and must not leak out-of-scope entities.
+
+### 19.10 Stale Spec Retirement Rule
+
+* If implementation changes behavior, the same PR MUST either:
+  * update the canonical doc, or
+  * mark the old doc section `Deprecated` with replacement reference.
+* Deleting a feature note is allowed only when a newer canonical source fully supersedes it.
+
+### 19.11 Codex Agent Execution Protocol (Repository-Specific)
+
+* Start feature work by producing a contract matrix before coding.
+* If matrix/doc/code mismatch is found, STOP and get explicit direction:
+  * align code to docs, or
+  * update docs to reality (with rationale and approval per §2.1).
+* Do not claim completion while critical invariants lack tests.
+* Final delivery must include a short drift scan:
+  * what now matches,
+  * what remains mismatched,
+  * what follow-up is required.
+
 ---
 
 THE FILE PATH name and path is always on top of the file before the imports.

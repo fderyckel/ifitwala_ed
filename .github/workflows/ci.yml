@@ -94,6 +94,7 @@ jobs:
             "ifitwala_ed.schedule.doctype.program_enrollment_request.test_program_enrollment_request"
             "ifitwala_ed.api.test_guardian_home"
             "ifitwala_ed.api.test_users"
+            "ifitwala_ed.api.test_calendar"
             "ifitwala_ed.hr.test_leave_permissions"
           )
 

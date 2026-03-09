@@ -29,8 +29,12 @@ class ApplicantDocument(Document):
         self._validate_review_status(before)
         self._validate_promotion_flags(before)
 
-    def before_delete(self):
+    def before_trash(self):
         self._validate_delete_allowed()
+
+    # Keep compatibility with older hook naming used in this app.
+    def before_delete(self):
+        self.before_trash()
 
     def on_update(self):
         before = self.get_doc_before_save()

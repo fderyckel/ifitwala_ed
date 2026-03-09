@@ -395,6 +395,7 @@ class TestUserRedirect(FrappeTestCase):
         student.student_last_name = "Student"
         student.student_email = user.email
         student.student_user_id = user.email
+        student.allow_direct_creation = 1
         previous_in_import = bool(getattr(frappe.flags, "in_import", False))
         frappe.flags.in_import = True
         try:

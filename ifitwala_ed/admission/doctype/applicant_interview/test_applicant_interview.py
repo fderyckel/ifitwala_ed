@@ -262,8 +262,8 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertFalse(
             frappe.has_permission("Applicant Interview", ptype="write", doc=interview.name, user=outsider.name)
         )
-        rows = frappe.get_list("Applicant Interview", fields=["name"], filters={"name": interview.name})
-        self.assertEqual(rows, [])
+        with self.assertRaises(frappe.PermissionError):
+            frappe.get_list("Applicant Interview", fields=["name"], filters={"name": interview.name})
 
     def test_workspace_returns_guardians_for_assigned_interviewer(self):
         interviewer = self._create_user("workspace")

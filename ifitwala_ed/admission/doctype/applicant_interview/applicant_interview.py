@@ -614,17 +614,44 @@ def _is_interviewer_on_interview(*, user: str, interview_name: str) -> bool:
     resolved_name = (interview_name or "").strip()
     if not resolved_user or not resolved_name:
         return False
-    return bool(
-        frappe.db.exists(
-            "Applicant Interviewer",
-            {
-                "parent": resolved_name,
-                "parenttype": "Applicant Interview",
-                "parentfield": "interviewers",
-                "interviewer": resolved_user,
-            },
-        )
+    strict_match = frappe.db.exists(
+        "Applicant Interviewer",
+        {
+            "parent": resolved_name,
+            "parenttype": "Applicant Interview",
+            "parentfield": "interviewers",
+            "interviewer": resolved_user,
+        },
     )
+    if strict_match:
+        return True
+
+    # Backward-compatible fallback for rows with missing parent metadata.
+    relaxed_match = frappe.db.exists(
+        "Applicant Interviewer",
+        {
+            "parent": resolved_name,
+            "interviewer": resolved_user,
+        },
+    )
+    if relaxed_match:
+        return True
+
+    # Legacy fieldname fallback used on early interviewer schema drafts.
+    if frappe.db.table_exists("Applicant Interviewer") and frappe.db.has_column(
+        "Applicant Interviewer", "interviewer_user"
+    ):
+        return bool(
+            frappe.db.exists(
+                "Applicant Interviewer",
+                {
+                    "parent": resolved_name,
+                    "interviewer_user": resolved_user,
+                },
+            )
+        )
+
+    return False
 
 
 def _normalized_interviewer_rows(rows: Sequence[frappe._dict] | Sequence[dict] | Sequence[Document]) -> list[str]:
