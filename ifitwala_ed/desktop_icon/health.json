@@ -11,7 +11,7 @@
  "label": "Health",
  "link_to": "Health",
  "link_type": "Workspace Sidebar",
- "modified": "2026-02-28 09:26:45.960423",
+ "modified": "2026-03-09 21:44:05.937525",
  "modified_by": "Administrator",
  "name": "Health",
  "owner": "Administrator",
@@ -24,10 +24,10 @@
    "role": "Academic Assistant"
   },
   {
-   "role": "Academic Assistant"
+   "role": "Academic Admin"
   },
   {
-   "role": "Academic Admin"
+   "role": "Accreditation Visitor"
   }
  ],
  "sidebar": "Health",

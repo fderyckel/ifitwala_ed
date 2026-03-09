@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "APPL-REV-ASS-.YYYY.-.MM.-.####",
  "creation": "2026-02-23 00:00:00",
  "description": "Materialized review task assignment for admissions review workflows.",
  "doctype": "DocType",
@@ -145,10 +145,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-23 00:07:03",
+ "modified": "2026-03-09 21:53:48.594408",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Review Assignment",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
