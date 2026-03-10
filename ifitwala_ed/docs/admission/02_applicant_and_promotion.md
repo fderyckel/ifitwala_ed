@@ -77,6 +77,8 @@ Current blocking inputs:
 - required recommendations
 - health clearance only when `School.require_health_profile_for_approval = 1`
 
+Recommendation blockers are surfaced to applicants as status-only progress. They are not part of the applicant document upload workflow.
+
 Current non-blocking input:
 
 - interviews are tracked and surfaced, but they do not currently gate approval

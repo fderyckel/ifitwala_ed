@@ -29,7 +29,10 @@ from ifitwala_ed.admission.admission_utils import (
 )
 from ifitwala_ed.admission.applicant_review_workflow import materialize_health_review_assignments
 from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
-from ifitwala_ed.api.recommendation_intake import get_recommendation_status_for_applicant
+from ifitwala_ed.api.recommendation_intake import (
+    get_recommendation_status_for_applicant,
+    get_recommendation_template_rows_for_applicant,
+)
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
@@ -1805,6 +1808,7 @@ def list_applicant_documents(student_applicant: str | None = None):
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
     student_applicant_name = (row.get("name") or "").strip()
+    hidden_document_types = _recommendation_target_document_types_for_applicant(student_applicant_name)
 
     documents = frappe.get_all(
         "Applicant Document",
@@ -1824,6 +1828,8 @@ def list_applicant_documents(student_applicant: str | None = None):
         ],
         order_by="modified desc",
     )
+    if hidden_document_types:
+        documents = [doc for doc in documents if (doc.get("document_type") or "").strip() not in hidden_document_types]
 
     if not documents:
         return {"documents": []}
@@ -1989,6 +1995,19 @@ def list_applicant_documents(student_applicant: str | None = None):
     return {"documents": payload}
 
 
+def _recommendation_target_document_types_for_applicant(student_applicant: str) -> set[str]:
+    template_rows = get_recommendation_template_rows_for_applicant(
+        student_applicant=student_applicant,
+        include_confidential=True,
+        fields=["target_document_type"],
+    )
+    return {
+        (row.get("target_document_type") or "").strip()
+        for row in template_rows
+        if (row.get("target_document_type") or "").strip()
+    }
+
+
 def _portal_required_document_count(row_type: dict | None) -> int:
     if not row_type or not row_type.get("is_required"):
         return 0
@@ -2028,6 +2047,7 @@ def _portal_document_requirement_state(
 def list_applicant_document_types(student_applicant: str | None = None):
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
+    hidden_document_types = _recommendation_target_document_types_for_applicant((row.get("name") or "").strip())
 
     organization = row.get("organization")
     school = row.get("school")
@@ -2062,6 +2082,8 @@ def list_applicant_document_types(student_applicant: str | None = None):
 
     payload = []
     for row_type in rows:
+        if (row_type.get("name") or "").strip() in hidden_document_types:
+            continue
         if not is_applicant_document_type_in_scope(
             document_type_organization=row_type.get("organization"),
             document_type_school=row_type.get("school"),
@@ -2099,9 +2121,12 @@ def upload_applicant_document(
 ):
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
+    hidden_document_types = _recommendation_target_document_types_for_applicant((row.get("name") or "").strip())
 
     if not document_type:
         frappe.throw(_("document_type is required."))
+    if (document_type or "").strip() in hidden_document_types:
+        frappe.throw(_("Recommendation submissions are managed through referee links and cannot be uploaded here."))
 
     if not content and not (getattr(frappe.request, "files", None) and frappe.request.files.get("file")):
         frappe.throw(_("File content is required."))

@@ -703,6 +703,7 @@ ApplicantDocumentSubmission {
 * Repeatable requirements may allocate additional submission rows
 * No direct file uploads to `Student Applicant` or `Applicant Document`
 * File Classification primary subject is always **Student Applicant**
+* Recommendation-template target document types are excluded from applicant document reads and uploads; applicants track referee progress only via `/admissions/status`
 
 ---
 
@@ -882,7 +883,8 @@ No business logic.
 
 **Purpose**
 
-* Upload & view documents
+* Upload & view applicant-owned documents
+* Excludes recommendation evidence collected from external referees
 
 **Reads**
 
@@ -951,6 +953,7 @@ No business logic.
 
 * Read-only state
 * Waiting / decision / outcome
+* Recommendation progress status only; no access to referee submission content or files
 
 No edits.
 
@@ -1100,6 +1103,8 @@ This extension is implemented with:
 * API: `ifitwala_ed.api.recommendation_intake.*`
 * DocTypes: `Recommendation Template`, `Recommendation Request`, `Recommendation Submission`
 * applicant status-only surface: admissions snapshot `recommendations_summary` + `completeness.recommendations`
+* applicant documents surface excludes recommendation evidence and recommendation target document types
+* if a school wants the applicant to upload a recommendation letter directly, that must be configured as a normal `Applicant Document Type`, not a `Recommendation Template`
 * architecture contract: `docs/admission/06_recommendation_intake_architecture.md`
 
 ---

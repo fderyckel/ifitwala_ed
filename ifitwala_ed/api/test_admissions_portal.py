@@ -36,6 +36,9 @@ class TestAdmissionsPortalAuthGuards(FrappeTestCase):
             with self.assertRaises(frappe.PermissionError):
                 admissions_portal_api._require_admissions_applicant()
 
+    def test_portal_session_endpoint_is_whitelisted(self):
+        self.assertIn(admissions_portal_api.get_admissions_session, frappe.whitelisted)
+
     def test_get_applicant_for_user_resolves_portal_account_email_fallback(self):
         def fake_get_all(doctype, **kwargs):
             self.assertEqual(doctype, "Student Applicant")

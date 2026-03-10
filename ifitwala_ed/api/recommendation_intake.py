@@ -272,6 +272,42 @@ def _ensure_template_scope_for_applicant(*, student_applicant: str, template_nam
     return applicant_row, template_row
 
 
+def get_recommendation_template_rows_for_applicant(
+    *,
+    student_applicant: str,
+    include_confidential: bool = False,
+    fields: list[str] | tuple[str, ...] | None = None,
+) -> list[dict]:
+    if not _feature_ready():
+        return []
+
+    student_applicant = (student_applicant or "").strip()
+    if not student_applicant:
+        return []
+
+    _, org_scope, school_scope = _request_scope_ancestors(student_applicant)
+
+    required_fields = ["name", "organization", "school"]
+    if not include_confidential:
+        required_fields.append("applicant_can_view_status")
+    query_fields = list(dict.fromkeys(required_fields + list(fields or [])))
+
+    rows = frappe.get_all(
+        RECOMMENDATION_TEMPLATE_DOCTYPE,
+        filters={"is_active": 1},
+        fields=query_fields,
+    )
+
+    template_rows = []
+    for row in rows:
+        if not _template_in_scope(template_row=row, org_scope=org_scope, school_scope=school_scope):
+            continue
+        if not include_confidential and not cint(row.get("applicant_can_view_status")):
+            continue
+        template_rows.append(row)
+    return template_rows
+
+
 def _new_item_key(student_applicant: str) -> str:
     base = "recommendation"
     for _index in range(30):
@@ -984,26 +1020,12 @@ def get_recommendation_status_for_applicant(
         }
 
     _refresh_expired_requests(student_applicant=student_applicant)
-    applicant_row, org_scope, school_scope = _request_scope_ancestors(student_applicant)
-    templates = frappe.get_all(
-        RECOMMENDATION_TEMPLATE_DOCTYPE,
-        filters={"is_active": 1},
-        fields=[
-            "name",
-            "template_name",
-            "minimum_required",
-            "applicant_can_view_status",
-            "organization",
-            "school",
-        ],
+    applicant_row, _, _ = _request_scope_ancestors(student_applicant)
+    template_rows = get_recommendation_template_rows_for_applicant(
+        student_applicant=student_applicant,
+        include_confidential=include_confidential,
+        fields=["template_name", "minimum_required", "applicant_can_view_status"],
     )
-    template_rows = []
-    for row in templates:
-        if not _template_in_scope(template_row=row, org_scope=org_scope, school_scope=school_scope):
-            continue
-        if not include_confidential and not cint(row.get("applicant_can_view_status")):
-            continue
-        template_rows.append(row)
 
     if not template_rows:
         return {

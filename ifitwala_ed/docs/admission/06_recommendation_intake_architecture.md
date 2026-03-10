@@ -13,8 +13,9 @@
 1. Admissions portal authentication remains password login for `Admissions Applicant` users only.
 2. Recommender intake is a separate guest surface (`/admissions/recommendation/<token>`), not admissions portal authentication.
 3. Recommender links grant one narrow capability: submit exactly one recommendation request payload.
-4. Recommendation files continue to be admissions evidence and are uploaded through governed admissions document upload flows.
+4. Recommendation submissions are referee-owned. When a school enables file upload on the template, the referee uploads that file within the secure recommendation intake flow; otherwise the recommendation is form-only.
 5. Recommendation evidence follows the same requirement/submission contract as all admissions evidence: the parent `Applicant Document` is aggregate-only and review, when required, happens only on the linked `Applicant Document Item`.
+6. Applicant portal visibility is status-only. Applicants never open the recommendation submission, its answers, or any attached file, and recommendation target document types are excluded from `/admissions/documents`.
 
 ---
 
@@ -96,7 +97,7 @@ Implemented controls:
 4. System seals `Recommendation Submission`, updates request to `Submitted`, and stores evidence in admissions document item slot.
    - if staff evidence review is configured, the resulting review task is materialized against that submission row only
 5. Staff can re-send or revoke open requests.
-6. Applicant portal sees recommendation progress status only.
+6. Applicant portal sees recommendation progress status only and cannot access the submission itself.
 
 ---
 
@@ -138,3 +139,4 @@ Recommendation readiness is evaluated per in-scope active template:
 1. Applicant visibility is status-only and controlled by template `applicant_can_view_status`.
 2. Template max allowed requests is enforced against open/submitted requests.
 3. Recommender link flow depends on email delivery when send-email is enabled.
+4. If a school wants the applicant to upload a recommendation letter directly, that must use a normal `Applicant Document Type` in the applicant documents workflow, not `Recommendation Template`.

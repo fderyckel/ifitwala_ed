@@ -36,8 +36,15 @@
 		</div>
 
 		<div v-else class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
-			<p class="type-body-strong text-ink">{{ __('Recommendation letters') }}</p>
+			<p class="type-body-strong text-ink">{{ __('Recommendations') }}</p>
 			<p class="mt-1 type-caption text-ink/65">{{ recommendationSummaryLine }}</p>
+			<p class="mt-2 type-caption text-ink/55">
+				{{
+					__(
+						'Your school contacts referees directly. You can track whether recommendations were received here, but you cannot open the submission or any attached file.'
+					)
+				}}
+			</p>
 
 			<div v-if="recommendationRows.length" class="mt-3 space-y-2">
 				<div

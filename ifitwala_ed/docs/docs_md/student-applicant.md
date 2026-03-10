@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.14.4"
-last_change_date: "2026-03-09"
+version: "1.14.5"
+last_change_date: "2026-03-10"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, and school-scoped health gating."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, and school-scoped health gating."
@@ -214,7 +214,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - [**Applicant Interview**](/docs/en/applicant-interview/)
 - **Portal surfaces**:
   - website entry `/admissions` (`ifitwala_ed/www/admissions/index.py`)
-  - SPA pages: overview, profile, documents, health, policies, submit
+  - SPA pages: overview, profile, documents, health, policies, submit, status
   - API service: `ifitwala_ed.api.admissions_portal.*`
   - next-actions contract: document upload is blocking only when required docs are missing; uploaded docs pending review are surfaced as under-review (non-blocking) for applicants, and Submit page shows an explicit "Awaiting admissions review" banner while still allowing submission
 - **Promotion linkage**:
@@ -231,6 +231,8 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - supports multiple confidential letters per applicant using per-request `Applicant Document Item` slots (`item_key`)
   - admissions creates/re-sends/revokes `Recommendation Request` records; recommender submission is sealed in `Recommendation Submission`
   - applicant portal surfaces recommendation **status only** through snapshot completeness and status summary
+  - applicant documents and applicant uploads exclude recommendation-template target document types
+  - if a school wants the applicant to upload a recommendation letter directly, that must use a normal `Applicant Document Type`, not `Recommendation Template`
   - architecture and contract reference: `ifitwala_ed/docs/admission/06_recommendation_intake_architecture.md`
 - **Governance policy engine**:
   - `Policy Acknowledgement.context_doctype = Student Applicant`
