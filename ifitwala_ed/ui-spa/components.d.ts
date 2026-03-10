@@ -16,7 +16,6 @@ declare module 'vue' {
     ActivityStatusBadge: typeof import('./src/components/activity/ActivityStatusBadge.vue')['default']
     AnalyticsCard: typeof import('./src/components/analytics/AnalyticsCard.vue')['default']
     AnalyticsChart: typeof import('./src/components/analytics/AnalyticsChart.vue')['default']
-    AnalyticsSnapshotActions: typeof import('./src/components/analytics/AnalyticsSnapshotActions.vue')['default']
     ApplicantReviewAssignmentAction: typeof import('./src/components/focus/ApplicantReviewAssignmentAction.vue')['default']
     ClassEventModal: typeof import('./src/components/calendar/ClassEventModal.vue')['default']
     ClassHubHeader: typeof import('./src/components/class-hub/ClassHubHeader.vue')['default']
