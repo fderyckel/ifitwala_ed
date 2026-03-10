@@ -28,6 +28,7 @@
   "student_second_nationality",
   "anchor_school",
   "cohort",
+  "student_house",
   "exit_section",
   "student_exit_date",
   "student_exit_reason",
@@ -308,16 +309,22 @@
    "label": "Allow Direct Creation",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "student_house",
+   "fieldtype": "Link",
+   "label": "Student House",
+   "options": "Student House"
   }
  ],
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-22 11:18:29.745668",
+ "modified": "2026-03-10 20:32:54.409740",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
- "naming_rule": "Expression",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

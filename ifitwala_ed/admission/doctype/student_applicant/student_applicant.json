@@ -24,6 +24,7 @@
   "program",
   "program_offering",
   "cohort",
+  "student_house",
   "applicant_status_section",
   "application_status",
   "applicant_email",
@@ -354,12 +355,18 @@
    "fieldtype": "Link",
    "label": "Cohort",
    "options": "Student Cohort"
+  },
+  {
+   "fieldname": "student_house",
+   "fieldtype": "Link",
+   "label": "Student House",
+   "options": "Student House"
   }
  ],
  "image_field": "applicant_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-10 18:24:51.926939",
+ "modified": "2026-03-10 20:33:31.053409",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",
