@@ -167,7 +167,7 @@
    "read_only": 1
   },
   {
-   "description": "Leave a non-confidential note to inform faculty about the reasons for the student visit to the health centre. The note will create an automatic medical log entry for the student.",
+   "description": "Leave a non-confidential note to inform faculty about the reasons for the student visit to the health centre.",
    "fieldname": "note",
    "fieldtype": "Text Editor",
    "label": "Note"
