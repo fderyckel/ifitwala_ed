@@ -527,9 +527,11 @@ def get_org_communication_feed(
         # (reactions alone must NOT qualify an item)
         conditions.append(
             "EXISTS ("
-            "SELECT ci.name FROM `tabCommunication Interaction` ci "
+            "SELECT ci.name FROM `tabCommunication Interaction Entry` ci "
             "WHERE ci.org_communication = `tabOrg Communication`.name "
             "AND ci.intent_type = 'Comment'"
+            "AND COALESCE(TRIM(ci.note), '') != '' "
+            "AND ci.visibility != 'Hidden' "
             ")"
         )
 

@@ -1,6 +1,5 @@
 # ifitwala_ed/api/test_admissions_communication.py
 
-from contextlib import nullcontext
 from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -36,7 +35,6 @@ class TestAdmissionsCommunicationSummaries(FrappeTestCase):
 
         with (
             patch("ifitwala_ed.api.admissions_communication.frappe.get_all", side_effect=fake_get_all),
-            patch("ifitwala_ed.api.admissions_communication.frappe.db.table_exists", return_value=True),
             patch(
                 "ifitwala_ed.api.admissions_communication.frappe.db.sql",
                 return_value=[
@@ -76,7 +74,6 @@ class TestAdmissionsCommunicationSummaries(FrappeTestCase):
 
         with (
             patch("ifitwala_ed.api.admissions_communication.frappe.get_all", side_effect=fake_get_all),
-            patch("ifitwala_ed.api.admissions_communication.frappe.db.table_exists", return_value=True),
             patch(
                 "ifitwala_ed.api.admissions_communication.frappe.db.sql",
                 return_value=[
@@ -113,7 +110,6 @@ class TestAdmissionsCommunicationSummaries(FrappeTestCase):
 
         with (
             patch("ifitwala_ed.api.admissions_communication.frappe.get_all", side_effect=fake_get_all),
-            patch("ifitwala_ed.api.admissions_communication.frappe.db.table_exists", return_value=True),
             patch(
                 "ifitwala_ed.api.admissions_communication.frappe.db.sql",
                 return_value=[
@@ -163,6 +159,83 @@ class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
         self.assertTrue(bool(getattr(admissions_communication.mark_admissions_case_thread_read, "allow_guest", False)))
 
 
+class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
+    def test_send_message_uses_canonical_entry_writer(self):
+        created_at = now_datetime()
+        actor_ctx = {
+            "actor": "applicant",
+            "user": "applicant@example.com",
+            "context": {"name": "APP-0001", "organization": "ORG-1", "school": "SCH-1"},
+            "applicant_user": "applicant@example.com",
+        }
+        latest_row = {
+            "name": "ENTRY-0001",
+            "user": "applicant@example.com",
+            "note": "Can I upload the passport tomorrow?",
+            "visibility": "Private to school",
+            "creation": created_at,
+            "modified": created_at,
+            "full_name": "Applicant One",
+        }
+
+        with (
+            patch("ifitwala_ed.api.admissions_communication._require_actor_context", return_value=actor_ctx),
+            patch("ifitwala_ed.api.admissions_communication._get_or_create_thread", return_value="COMM-0001"),
+            patch(
+                "ifitwala_ed.api.admissions_communication.create_interaction_entry",
+                return_value=latest_row,
+            ) as create_entry_mock,
+            patch(
+                "ifitwala_ed.api.admissions_communication.get_latest_org_communication_entry_for_user",
+                return_value=latest_row,
+            ),
+        ):
+            result = admissions_communication.send_admissions_case_message(
+                context_doctype="Student Applicant",
+                context_name="APP-0001",
+                body="Can I upload the passport tomorrow?",
+            )
+
+        create_entry_mock.assert_called_once_with(
+            org_communication="COMM-0001",
+            user="applicant@example.com",
+            intent_type="Question",
+            note="Can I upload the passport tomorrow?",
+            visibility="Private to school",
+            surface="Other",
+        )
+        self.assertEqual(result["thread_name"], "COMM-0001")
+        self.assertEqual(result["message"]["name"], "ENTRY-0001")
+        self.assertEqual(result["message"]["direction"], "ApplicantToStaff")
+
+    def test_mark_thread_read_delegates_to_shared_read_receipt(self):
+        read_at = now_datetime()
+        actor_ctx = {
+            "actor": "applicant",
+            "user": "applicant@example.com",
+            "context": {"name": "APP-0001"},
+            "applicant_user": "applicant@example.com",
+        }
+
+        with (
+            patch("ifitwala_ed.api.admissions_communication._require_actor_context", return_value=actor_ctx),
+            patch("ifitwala_ed.api.admissions_communication._get_thread_name", return_value="COMM-0001"),
+            patch("ifitwala_ed.api.admissions_communication.now_datetime", return_value=read_at),
+            patch("ifitwala_ed.api.admissions_communication.upsert_org_communication_read_receipt") as mark_read_mock,
+        ):
+            result = admissions_communication.mark_admissions_case_thread_read(
+                context_doctype="Student Applicant",
+                context_name="APP-0001",
+            )
+
+        mark_read_mock.assert_called_once_with(
+            user="applicant@example.com",
+            org_communication="COMM-0001",
+            read_at=read_at,
+        )
+        self.assertEqual(result, {"ok": True, "thread_name": "COMM-0001", "read_at": read_at})
+
+
 class TestAdmissionsCockpitAuthGuards(FrappeTestCase):
     def test_cockpit_access_rejects_none_literal_without_role_lookup(self):
         with (
@@ -184,53 +257,3 @@ class TestAdmissionsCockpitAuthGuards(FrappeTestCase):
         ):
             with self.assertRaises(frappe.PermissionError):
                 _get_roles_for_user("None")
-
-
-class TestAdmissionsCaseReadReceiptUpsert(FrappeTestCase):
-    def test_upsert_retries_deadlock_and_succeeds(self):
-        class QueryDeadlockError(Exception):
-            pass
-
-        read_at = now_datetime()
-        with (
-            patch("ifitwala_ed.api.admissions_communication.frappe.cache") as cache_mock,
-            patch(
-                "ifitwala_ed.api.admissions_communication.frappe.db.sql",
-                side_effect=[QueryDeadlockError("deadlock"), None],
-            ) as sql_mock,
-            patch(
-                "ifitwala_ed.api.admissions_communication.frappe.generate_hash",
-                side_effect=["receipt-a", "receipt-b", "receipt-c"],
-            ),
-            patch("ifitwala_ed.api.admissions_communication.time.sleep") as sleep_mock,
-        ):
-            cache_mock.return_value.lock.return_value = nullcontext()
-            admissions_communication._upsert_portal_read_receipt(
-                user="applicant@example.com",
-                thread_name="COMM-0001",
-                read_at=read_at,
-            )
-
-        self.assertEqual(sql_mock.call_count, 2)
-        sleep_mock.assert_called_once_with(admissions_communication.READ_RECEIPT_RETRY_BASE_DELAY_SEC)
-
-    def test_upsert_raises_non_deadlock_errors(self):
-        read_at = now_datetime()
-        with (
-            patch("ifitwala_ed.api.admissions_communication.frappe.cache") as cache_mock,
-            patch(
-                "ifitwala_ed.api.admissions_communication.frappe.db.sql",
-                side_effect=RuntimeError("db failure"),
-            ),
-            patch(
-                "ifitwala_ed.api.admissions_communication.frappe.generate_hash",
-                return_value="receipt-a",
-            ),
-        ):
-            cache_mock.return_value.lock.return_value = nullcontext()
-            with self.assertRaises(RuntimeError):
-                admissions_communication._upsert_portal_read_receipt(
-                    user="applicant@example.com",
-                    thread_name="COMM-0001",
-                    read_at=read_at,
-                )

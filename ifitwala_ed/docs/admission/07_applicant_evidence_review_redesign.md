@@ -111,6 +111,7 @@ Staff surface split is now explicit and role-based:
 - `Admission Officer`, `Admission Manager`, `Academic Admin`, and `System Manager` review evidence from applicant context only:
   - Desk `Student Applicant.documents_summary`
   - Admissions Cockpit applicant workspace overlay
+- submitted recommendation letters now surface a recommendation-specific review action on both of those applicant-centered surfaces so staff can read the referee answers before deciding on the linked `Applicant Document Item`
 - non-admissions reviewers continue to use Focus for `Applicant Document Item` assignments
 - admissions-workspace users are intentionally blocked from document-item Focus actions to avoid duplicate mental models
 - requirement overrides remain available only to `Admission Manager`, `Academic Admin`, and `System Manager`
@@ -162,7 +163,7 @@ Test refs: `ifitwala_ed/admission/doctype/applicant_document/test_applicant_docu
 | Schema / DocType | parent = requirement, item = submission, assignment = task | Implemented |
 | Controller / workflow logic | submission-only evidence review, aggregate parent sync, explicit override policy | Implemented |
 | API endpoints | governed upload, server-owned slot resolution, applicant requirement DTO | Implemented |
-| SPA / UI surfaces | applicant requirement cards, admissions workspace overlay, Desk applicant evidence summary, Focus for non-admissions reviewers only | Implemented |
+| SPA / UI surfaces | applicant requirement cards, admissions workspace overlay with recommendation review pane, Desk applicant evidence summary with recommendation review dialog, Focus for non-admissions reviewers only | Implemented |
 | Reports / dashboards / briefings | Desk applicant summary and admissions cockpit workspace both expose the same requirement/submission model | Implemented |
 | Scheduler / background jobs | None | Implemented |
 | Tests | backend coverage for parent aggregate, item permissions, assignment permissions, applicant docs DTO | Implemented |

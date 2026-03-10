@@ -545,7 +545,8 @@ Visibility rule:
 
 * `Org Communication`
 * `Org Communication Audience`
-* `Communication Interaction`
+* `Communication Interaction Entry`
+* `Portal Read Receipt`
 
 ```ts
 export type CommunicationAttention = {
@@ -564,7 +565,9 @@ Rules:
 
   * They are explicitly included in `Org Communication Audience`
   * Or audience is “All Guardians” (if modeled)
-* Read state derived from `Communication Interaction`
+* Read state derived from `Portal Read Receipt`
+* A guardian’s own `Communication Interaction Entry` also counts as seen for unread summary logic
+* Canonical cross-surface messaging rules live in `docs/spa/07_org_communication_messaging_contract.md`
 
 ---
 

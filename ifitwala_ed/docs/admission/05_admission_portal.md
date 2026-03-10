@@ -771,6 +771,11 @@ POST /api/method/ifitwala_ed.api.admissions_communication.mark_admissions_case_t
 * Applicant portal sends applicant-visible messages only.
 * Internal staff notes never render in applicant portal thread responses.
 * Read state is tracked per user/thread through `Portal Read Receipt`.
+* Storage contract:
+  * `Org Communication` = case thread/container
+  * `Communication Interaction Entry` = applicant/staff message ledger
+  * `Portal Read Receipt` = per-user read state
+* Canonical cross-surface messaging rules live in `docs/spa/07_org_communication_messaging_contract.md`.
 
 ---
 

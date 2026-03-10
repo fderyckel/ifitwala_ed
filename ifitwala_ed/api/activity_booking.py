@@ -18,7 +18,6 @@ from frappe.utils import cint, flt, get_datetime, getdate, now_datetime
 from ifitwala_ed.api.org_comm_utils import (
     create_activity_communication,
     get_activity_communication_feed,
-    post_activity_communication_interaction,
 )
 from ifitwala_ed.schedule.doctype.program_offering.program_offering import (
     create_draft_tuition_invoice,
@@ -1725,21 +1724,4 @@ def get_activity_communications(
         activity_student_group=activity_student_group,
         start=start,
         page_length=page_length,
-    )
-
-
-@frappe.whitelist()
-def post_activity_communication_entry(
-    org_communication: str,
-    intent_type: str | None = None,
-    reaction_code: str | None = None,
-    note: str | None = None,
-    surface: str | None = "Portal Feed",
-):
-    return post_activity_communication_interaction(
-        org_communication=org_communication,
-        intent_type=intent_type,
-        reaction_code=reaction_code,
-        note=note,
-        surface=surface,
     )

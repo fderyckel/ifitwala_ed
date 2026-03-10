@@ -25,6 +25,7 @@ export type InteractionIntentType =
 	| 'Celebration'
 	| 'Question'
 	| 'Concern'
+	| 'Other'
 
 export const REACTION_CODES = [
 	'like',

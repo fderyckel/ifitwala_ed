@@ -72,7 +72,8 @@ Ship a Guardian Home that answers in <30 seconds:
 * Guardian ↔ students: `Guardian` child table (Guardian Student), plus Student links
 * Student Log (guardian-visible only)
 * Org Communication + Org Communication Audience
-* Communication Interaction (read/unread/reaction state)
+* Communication Interaction Entry (interaction ledger)
+* Portal Read Receipt (read/unread state)
 * Task Delivery (assignment unit), Task (metadata), Task Outcome (published results only)
 * School Calendar + Holidays, School Event (audience-scoped if applicable), School Schedule templates
 
@@ -156,7 +157,7 @@ Ship a Guardian Home that answers in <30 seconds:
 **Backend**
 
 * Pull `Org Communication` scoped to guardian using `Org Communication Audience`.
-* Determine `is_unread` using `Communication Interaction` (e.g., read receipt / last interaction / explicit read flag depending on schema).
+* Determine `is_unread` using `Portal Read Receipt`, and treat the guardian’s own `Communication Interaction Entry` rows as seen for summary logic.
 * Include:
 
   * `unread_communications` count

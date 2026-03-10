@@ -625,8 +625,33 @@
 									</article>
 
 									<article class="interview-card">
-										<h3 class="type-h3 text-ink">Recommendations</h3>
-										<div class="mt-3 grid gap-2 sm:grid-cols-3">
+										<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+											<div>
+												<h3 class="type-h3 text-ink">Recommendations</h3>
+												<p class="mt-1 type-caption text-ink/65">
+													Review referee context and approve the linked submission without leaving
+													applicant workspace.
+												</p>
+											</div>
+											<div class="flex flex-wrap gap-2">
+												<span
+													v-if="(workspaceRecommendations.summary.pending_review_count || 0) > 0"
+													class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900"
+												>
+													{{ workspaceRecommendations.summary.pending_review_count || 0 }}
+													awaiting review
+												</span>
+												<button
+													v-if="nextPendingRecommendationRow && recommendationReview"
+													type="button"
+													class="if-action"
+													@click="openNextPendingRecommendation"
+												>
+													Next Pending
+												</button>
+											</div>
+										</div>
+										<div class="mt-3 grid gap-2 sm:grid-cols-4">
 											<div class="rounded-xl bg-sky/20 px-3 py-2">
 												<p class="type-caption text-ink/70">Required</p>
 												<p class="type-body-strong text-ink">
@@ -644,6 +669,341 @@
 												<p class="type-body-strong text-ink">
 													{{ workspaceRecommendations.summary.requested_total || 0 }}
 												</p>
+											</div>
+											<div class="rounded-xl bg-sky/20 px-3 py-2">
+												<p class="type-caption text-ink/70">Pending Review</p>
+												<p class="type-body-strong text-ink">
+													{{ workspaceRecommendations.summary.pending_review_count || 0 }}
+												</p>
+											</div>
+										</div>
+
+										<div
+											v-if="!recommendationReviewRows.length"
+											class="mt-4 rounded-xl border border-dashed border-border/70 bg-slate-50/70 px-4 py-5 type-caption text-ink/60"
+										>
+											No submitted recommendations are available yet.
+										</div>
+										<div v-else class="mt-4 grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
+											<div class="space-y-2">
+												<button
+													v-for="row in recommendationReviewRows"
+													:key="
+														row.recommendation_request ||
+														row.recommendation_submission ||
+														row.applicant_document_item
+													"
+													type="button"
+													class="w-full rounded-2xl border px-4 py-3 text-left transition"
+													:class="
+														selectedRecommendationRow?.recommendation_request ===
+														row.recommendation_request
+															? 'border-canopy bg-canopy/5 shadow-sm'
+															: 'border-border/70 bg-white hover:border-canopy/40 hover:bg-slate-50'
+													"
+													@click="openRecommendationReviewRow(row)"
+												>
+													<div class="flex items-start justify-between gap-3">
+														<div class="min-w-0">
+															<p class="type-body-strong text-ink truncate">
+																{{ row.recommender_name || row.recommender_email || 'Referee' }}
+															</p>
+															<p class="mt-1 type-caption text-ink/65 truncate">
+																{{
+																	row.template_name ||
+																	row.recommendation_template ||
+																	'Recommendation'
+																}}
+																<span v-if="row.recommender_relationship">
+																	· {{ row.recommender_relationship }}</span
+																>
+															</p>
+														</div>
+														<span
+															class="rounded-full border px-2 py-0.5 text-xs font-semibold"
+															:class="submissionStatusClass(row.review_status)"
+														>
+															{{ row.review_status || 'Pending' }}
+														</span>
+													</div>
+													<p class="mt-2 type-caption text-ink/70">
+														Submitted {{ formatHumanMoment(row.submitted_on) }}
+													</p>
+													<p class="mt-1 type-caption text-ink/60">
+														Shared {{ formatHumanMoment(row.sent_on) }}
+														<span v-if="row.opened_on">
+															· Opened {{ formatHumanMoment(row.opened_on) }}</span
+														>
+													</p>
+												</button>
+											</div>
+
+											<div class="rounded-2xl border border-border/70 bg-slate-50/60 p-4">
+												<div v-if="recommendationReviewLoading" class="space-y-3">
+													<div class="if-skel h-5 w-1/3" />
+													<div class="if-skel h-16 w-full rounded-xl" />
+													<div class="if-skel h-32 w-full rounded-xl" />
+												</div>
+												<div
+													v-else-if="recommendationReviewError"
+													class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3"
+												>
+													<p class="type-body-strong text-rose-900">
+														Unable to load recommendation
+													</p>
+													<p class="mt-1 type-caption text-rose-900/85">
+														{{ recommendationReviewError }}
+													</p>
+												</div>
+												<div v-else-if="recommendationReview" class="space-y-4">
+													<div
+														class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+													>
+														<div class="min-w-0">
+															<p class="type-overline text-ink/55">Recommendation Review</p>
+															<h4 class="type-h3 text-ink">
+																{{
+																	recommendationReview.recommendation.recommender_name ||
+																	recommendationReview.recommendation.recommender_email ||
+																	'Referee'
+																}}
+															</h4>
+															<p class="mt-1 type-caption text-ink/65">
+																{{
+																	recommendationReview.recommendation.template_name ||
+																	recommendationReview.recommendation.recommendation_template ||
+																	'Recommendation'
+																}}
+																<span
+																	v-if="
+																		recommendationReview.recommendation.recommender_relationship
+																	"
+																>
+																	·
+																	{{
+																		recommendationReview.recommendation.recommender_relationship
+																	}}
+																</span>
+															</p>
+														</div>
+														<span
+															class="rounded-full border px-2 py-0.5 text-xs font-semibold"
+															:class="
+																submissionStatusClass(
+																	recommendationReview.recommendation.review_status
+																)
+															"
+														>
+															{{ recommendationReview.recommendation.review_status || 'Pending' }}
+														</span>
+													</div>
+
+													<div class="grid gap-3 sm:grid-cols-2">
+														<div class="rounded-xl border border-border/70 bg-white px-3 py-2">
+															<p class="type-caption text-ink/60">Shared</p>
+															<p class="type-body text-ink">
+																{{
+																	formatHumanMoment(recommendationReview.recommendation.sent_on)
+																}}
+															</p>
+														</div>
+														<div class="rounded-xl border border-border/70 bg-white px-3 py-2">
+															<p class="type-caption text-ink/60">Opened</p>
+															<p class="type-body text-ink">
+																{{
+																	formatHumanMoment(recommendationReview.recommendation.opened_on)
+																}}
+															</p>
+														</div>
+														<div class="rounded-xl border border-border/70 bg-white px-3 py-2">
+															<p class="type-caption text-ink/60">Submitted</p>
+															<p class="type-body text-ink">
+																{{
+																	formatHumanMoment(
+																		recommendationReview.recommendation.submitted_on
+																	)
+																}}
+															</p>
+														</div>
+														<div class="rounded-xl border border-border/70 bg-white px-3 py-2">
+															<p class="type-caption text-ink/60">Reviewed</p>
+															<p class="type-body text-ink">
+																{{
+																	recommendationReview.recommendation.reviewed_on
+																		? `${formatHumanMoment(
+																				recommendationReview.recommendation.reviewed_on
+																			)} · ${
+																				recommendationReview.recommendation.reviewed_by || 'Staff'
+																			}`
+																		: 'Awaiting review'
+																}}
+															</p>
+														</div>
+													</div>
+
+													<div class="rounded-xl border border-border/70 bg-white px-4 py-3">
+														<div class="flex flex-wrap items-center gap-2">
+															<span
+																v-if="recommendationReview.recommendation.attestation_confirmed"
+																class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-900"
+															>
+																Attestation confirmed
+															</span>
+															<span
+																v-if="recommendationReview.recommendation.item_label"
+																class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700"
+															>
+																{{ recommendationReview.recommendation.item_label }}
+															</span>
+															<a
+																v-if="recommendationReview.recommendation.file_url"
+																:href="recommendationReview.recommendation.file_url"
+																target="_blank"
+																rel="noreferrer"
+																class="text-sm font-medium text-canopy underline"
+															>
+																{{
+																	recommendationReview.recommendation.file_name ||
+																	'Open attached file'
+																}}
+															</a>
+														</div>
+														<p
+															v-if="recommendationReview.recommendation.recommender_email"
+															class="mt-2 type-caption text-ink/65"
+														>
+															{{ recommendationReview.recommendation.recommender_email }}
+														</p>
+													</div>
+
+													<div>
+														<h5 class="type-body-strong text-ink">Submission Answers</h5>
+														<div
+															v-if="!recommendationReview.recommendation.answers.length"
+															class="mt-2 type-caption text-ink/60"
+														>
+															No structured answers were captured for this recommendation.
+														</div>
+														<div v-else class="mt-3 space-y-2">
+															<div
+																v-for="answer in recommendationReview.recommendation.answers"
+																:key="answer.field_key"
+																class="rounded-xl border border-border/70 bg-white px-4 py-3"
+															>
+																<p class="type-caption text-ink/60">
+																	{{ answer.label }}
+																</p>
+																<p class="mt-1 type-body whitespace-pre-wrap text-ink">
+																	{{
+																		answer.display_value ||
+																		(answer.has_value ? String(answer.value || '') : 'No response')
+																	}}
+																</p>
+															</div>
+														</div>
+													</div>
+
+													<div
+														v-if="documentActionError"
+														class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 type-caption text-rose-900"
+													>
+														{{ documentActionError }}
+													</div>
+													<div
+														v-if="documentActionNotice"
+														class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 type-caption text-emerald-900"
+													>
+														{{ documentActionNotice }}
+													</div>
+
+													<div
+														v-if="
+															recommendationReviewItem &&
+															canReviewRecommendationSubmissions &&
+															recommendationReview.recommendation.can_review
+														"
+														class="rounded-xl border border-border/70 bg-white p-4"
+													>
+														<div
+															v-if="isEditingSubmission(recommendationReviewItem)"
+															class="space-y-3"
+														>
+															<label class="block space-y-1">
+																<span class="type-caption text-ink/70">
+																	Review note
+																	<span v-if="submissionRequiresNotes"> (required)</span>
+																</span>
+																<textarea
+																	v-model="submissionDecisionNotes"
+																	class="if-field"
+																	rows="3"
+																	:disabled="submissionSubmitting"
+																></textarea>
+															</label>
+															<div class="flex flex-wrap justify-end gap-2">
+																<button
+																	type="button"
+																	class="if-action"
+																	:disabled="submissionSubmitting"
+																	@click="cancelSubmissionDecision"
+																>
+																	Cancel
+																</button>
+																<button
+																	type="button"
+																	class="if-action if-action--primary"
+																	:disabled="submissionSubmitting"
+																	@click="submitSubmissionDecision"
+																>
+																	{{ submissionSubmitting ? 'Saving…' : 'Save Review' }}
+																</button>
+															</div>
+														</div>
+														<div v-else class="flex flex-wrap justify-end gap-2">
+															<button
+																type="button"
+																class="if-action"
+																:disabled="submissionSubmitting"
+																@click="approveSubmission(recommendationReviewItem)"
+															>
+																Approve
+															</button>
+															<button
+																type="button"
+																class="if-action"
+																:disabled="submissionSubmitting"
+																@click="
+																	beginSubmissionDecision(
+																		recommendationReviewItem,
+																		'Needs Follow-Up'
+																	)
+																"
+															>
+																Request Changes
+															</button>
+															<button
+																type="button"
+																class="if-action"
+																:disabled="submissionSubmitting"
+																@click="
+																	beginSubmissionDecision(recommendationReviewItem, 'Rejected')
+																"
+															>
+																Reject
+															</button>
+														</div>
+													</div>
+													<p v-else-if="recommendationReviewItem" class="type-caption text-ink/60">
+														Evidence review actions are available from applicant workspace for
+														admissions reviewers.
+													</p>
+												</div>
+												<div
+													v-else
+													class="flex h-full min-h-56 items-center justify-center rounded-xl border border-dashed border-border/70 bg-white/70 px-4 py-5 text-center type-caption text-ink/60"
+												>
+													Select a submitted recommendation to review the full referee response.
+												</div>
 											</div>
 										</div>
 									</article>
@@ -879,6 +1239,7 @@ import { FeatherIcon } from 'frappe-ui';
 import {
 	getApplicantWorkspace,
 	getInterviewWorkspace,
+	getRecommendationReviewPayload,
 	reviewApplicantDocumentSubmission,
 	saveMyInterviewFeedback,
 	setDocumentRequirementOverride,
@@ -893,6 +1254,8 @@ import type {
 	ApplicantWorkspaceResponse,
 	InterviewWorkspaceInterview,
 	InterviewWorkspaceResponse,
+	RecommendationReviewPayload,
+	RecommendationReviewRow,
 } from '@/types/contracts/admissions/admissions_workspace';
 
 const props = defineProps<{
@@ -902,6 +1265,9 @@ const props = defineProps<{
 	schoolEvent?: string | null;
 	mode?: 'interview' | 'applicant' | null;
 	studentApplicant?: string | null;
+	recommendationRequest?: string | null;
+	recommendationSubmission?: string | null;
+	applicantDocumentItem?: string | null;
 }>();
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
@@ -934,11 +1300,15 @@ const submitting = ref(false);
 const errorText = ref<string | null>(null);
 const formError = ref<string | null>(null);
 const saveNotice = ref<string | null>(null);
+const recommendationReviewLoading = ref(false);
+const recommendationReviewError = ref<string | null>(null);
 
 const workspace = ref<InterviewWorkspaceResponse | null>(null);
 const applicantWorkspace = ref<ApplicantWorkspaceResponse | null>(null);
 const currentMode = ref<WorkspaceMode>('interview');
 const activeInterviewName = ref('');
+const recommendationReview = ref<RecommendationReviewPayload | null>(null);
+const selectedRecommendationRequest = ref('');
 
 const formStrengths = ref('');
 const formConcerns = ref('');
@@ -983,16 +1353,22 @@ const applicantUploadedRows = computed<ApplicantWorkspaceUploadedRow[]>(
 );
 const workspaceRecommendations = computed(
 	() =>
-		workspace.value?.recommendations ||
-		applicantWorkspace.value?.recommendations || {
+		(currentMode.value === 'applicant'
+			? applicantWorkspace.value?.recommendations
+			: applicantWorkspace.value?.recommendations || workspace.value?.recommendations) || {
 			summary: {
 				required_total: 0,
 				received_total: 0,
 				requested_total: 0,
+				pending_review_count: 0,
 			},
 			requests: [],
 			submissions: [],
+			review_rows: [],
 		}
+);
+const recommendationReviewRows = computed<RecommendationReviewRow[]>(
+	() => workspaceRecommendations.value.review_rows || []
 );
 const workspaceInterviews = computed<InterviewWorkspaceInterview[]>(() => {
 	if (applicantWorkspace.value?.interviews?.length) {
@@ -1037,6 +1413,9 @@ const completedRequirementCount = computed(
 const canReviewApplicantSubmissions = computed(() =>
 	Boolean(!isInterviewMode.value && applicantDocumentReview.value.can_review_submissions)
 );
+const canReviewRecommendationSubmissions = computed(() =>
+	Boolean(applicantDocumentReview.value.can_review_submissions)
+);
 const canManageApplicantOverrides = computed(() =>
 	Boolean(!isInterviewMode.value && applicantDocumentReview.value.can_manage_overrides)
 );
@@ -1051,6 +1430,51 @@ const showBackToApplicant = computed(
 );
 
 const applicantDisplayName = computed(() => workspaceApplicant.value?.display_name || '');
+const selectedRecommendationRow = computed<RecommendationReviewRow | null>(() => {
+	const requestName = String(
+		recommendationReview.value?.recommendation?.recommendation_request ||
+			selectedRecommendationRequest.value ||
+			''
+	).trim();
+	if (!requestName) {
+		return null;
+	}
+	return (
+		recommendationReviewRows.value.find(
+			row => String(row?.recommendation_request || '').trim() === requestName
+		) || null
+	);
+});
+const recommendationReviewItem = computed<ApplicantWorkspaceDocumentItem | null>(() => {
+	const recommendation = recommendationReview.value?.recommendation;
+	const itemName = String(recommendation?.applicant_document_item || '').trim();
+	if (!itemName) {
+		return null;
+	}
+	return {
+		name: itemName,
+		item_label: recommendation?.item_label || recommendation?.file_name || 'Recommendation',
+		item_key: recommendation?.item_key || null,
+		review_status: recommendation?.review_status || null,
+		reviewed_by: recommendation?.reviewed_by || null,
+		reviewed_on: recommendation?.reviewed_on || null,
+		file_name: recommendation?.file_name || null,
+		file_url: recommendation?.file_url || null,
+	};
+});
+const nextPendingRecommendationRow = computed<RecommendationReviewRow | null>(() => {
+	const activeRequest = String(
+		recommendationReview.value?.recommendation?.recommendation_request ||
+			selectedRecommendationRequest.value ||
+			''
+	).trim();
+	return (
+		recommendationReviewRows.value.find(row => {
+			const requestName = String(row?.recommendation_request || '').trim();
+			return Boolean(row?.needs_review) && requestName && requestName !== activeRequest;
+		}) || null
+	);
+});
 
 const workspaceOverline = computed(() =>
 	isInterviewMode.value ? 'Admission Interview Workspace' : 'Admission Applicant Workspace'
@@ -1115,6 +1539,14 @@ function resetApplicantActionState() {
 	requirementActionValue.value = null;
 	requirementActionLabel.value = '';
 	requirementActionReason.value = '';
+	clearRecommendationReviewState();
+}
+
+function clearRecommendationReviewState() {
+	recommendationReviewLoading.value = false;
+	recommendationReviewError.value = null;
+	recommendationReview.value = null;
+	selectedRecommendationRequest.value = '';
 }
 
 function applyApplicantDocumentReview(documentReview: ApplicantWorkspaceDocumentReview) {
@@ -1132,6 +1564,115 @@ function resetFormFromWorkspace() {
 	formSharedValues.value = workspace.value?.feedback?.my_feedback?.shared_values || '';
 	formOtherNotes.value = workspace.value?.feedback?.my_feedback?.other_notes || '';
 	formRecommendation.value = workspace.value?.feedback?.my_feedback?.recommendation || '';
+}
+
+function resolveRequestedRecommendationAnchor() {
+	const recommendationRequest = String(props.recommendationRequest || '').trim();
+	if (recommendationRequest) {
+		return { recommendation_request: recommendationRequest };
+	}
+	const recommendationSubmission = String(props.recommendationSubmission || '').trim();
+	if (recommendationSubmission) {
+		return { recommendation_submission: recommendationSubmission };
+	}
+	const applicantDocumentItem = String(props.applicantDocumentItem || '').trim();
+	if (applicantDocumentItem) {
+		return { applicant_document_item: applicantDocumentItem };
+	}
+	return null;
+}
+
+async function openRecommendationReview(anchor: {
+	recommendation_request?: string | null;
+	recommendation_submission?: string | null;
+	applicant_document_item?: string | null;
+}) {
+	const studentApplicant = String(workspaceApplicant.value?.name || '').trim();
+	if (!studentApplicant) {
+		recommendationReviewError.value = 'Applicant reference is missing for recommendation review.';
+		return;
+	}
+
+	const recommendationRequest = String(anchor.recommendation_request || '').trim();
+	const recommendationSubmission = String(anchor.recommendation_submission || '').trim();
+	const applicantDocumentItem = String(anchor.applicant_document_item || '').trim();
+	if (!recommendationRequest && !recommendationSubmission && !applicantDocumentItem) {
+		recommendationReviewError.value = 'Recommendation reference is missing.';
+		return;
+	}
+
+	recommendationReviewLoading.value = true;
+	recommendationReviewError.value = null;
+	documentActionError.value = null;
+	try {
+		recommendationReview.value = await getRecommendationReviewPayload({
+			student_applicant: studentApplicant,
+			recommendation_request: recommendationRequest || null,
+			recommendation_submission: recommendationSubmission || null,
+			applicant_document_item: applicantDocumentItem || null,
+		});
+		selectedRecommendationRequest.value =
+			String(recommendationReview.value.recommendation.recommendation_request || '').trim() ||
+			recommendationRequest;
+	} catch (err) {
+		recommendationReview.value = null;
+		recommendationReviewError.value =
+			err instanceof Error ? err.message : 'Unable to load recommendation details.';
+	} finally {
+		recommendationReviewLoading.value = false;
+	}
+}
+
+async function openRecommendationReviewRow(row: RecommendationReviewRow | null | undefined) {
+	const recommendationRequest = String(row?.recommendation_request || '').trim();
+	const recommendationSubmission = String(row?.recommendation_submission || '').trim();
+	const applicantDocumentItem = String(row?.applicant_document_item || '').trim();
+	if (!recommendationRequest && !recommendationSubmission && !applicantDocumentItem) {
+		recommendationReviewError.value = 'Recommendation reference is missing.';
+		return;
+	}
+	await openRecommendationReview({
+		recommendation_request: recommendationRequest || null,
+		recommendation_submission: recommendationSubmission || null,
+		applicant_document_item: applicantDocumentItem || null,
+	});
+}
+
+async function syncRequestedRecommendationReview() {
+	const requestedAnchor = resolveRequestedRecommendationAnchor();
+	if (!requestedAnchor) {
+		return;
+	}
+	await openRecommendationReview(requestedAnchor);
+}
+
+async function refreshApplicantWorkspaceContext(
+	options: { syncRecommendationReview?: boolean } = {}
+) {
+	const studentApplicant = String(workspaceApplicant.value?.name || '').trim();
+	if (!studentApplicant) {
+		return;
+	}
+
+	try {
+		applicantWorkspace.value = await getApplicantWorkspace(studentApplicant);
+		if (options.syncRecommendationReview && recommendationReview.value?.recommendation) {
+			await openRecommendationReview({
+				recommendation_request:
+					recommendationReview.value.recommendation.recommendation_request || null,
+			});
+		}
+	} catch (err) {
+		documentActionError.value =
+			err instanceof Error ? err.message : 'Unable to refresh applicant workspace.';
+	}
+}
+
+async function openNextPendingRecommendation() {
+	if (!nextPendingRecommendationRow.value) {
+		return;
+	}
+	await openRecommendationReviewRow(nextPendingRecommendationRow.value);
 }
 
 async function loadInterviewWorkspace(
@@ -1158,6 +1699,7 @@ async function loadInterviewWorkspace(
 		currentMode.value = 'interview';
 		activeInterviewName.value = workspace.value.interview.name;
 		resetFormFromWorkspace();
+		await syncRequestedRecommendationReview();
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Failed to load interview workspace.';
 		workspace.value = null;
@@ -1191,6 +1733,7 @@ async function loadApplicantWorkspace(studentApplicantName: string) {
 		currentMode.value = 'applicant';
 		activeInterviewName.value = '';
 		resetFormFromWorkspace();
+		await syncRequestedRecommendationReview();
 	} catch (err) {
 		applicantWorkspace.value = null;
 		errorText.value = err instanceof Error ? err.message : 'Failed to load applicant workspace.';
@@ -1276,7 +1819,7 @@ function newClientRequestId(prefix = 'admissions_workspace') {
 }
 
 function getApplicantWorkspaceName() {
-	return String(applicantWorkspace.value?.applicant?.name || '').trim();
+	return String(workspaceApplicant.value?.name || '').trim();
 }
 
 function isEditingSubmission(item: ApplicantWorkspaceDocumentItem) {
@@ -1340,6 +1883,9 @@ async function submitSubmissionDecision() {
 			client_request_id: newClientRequestId('applicant_document_review'),
 		});
 		applyApplicantDocumentReview(result.documents);
+		if (!isInterviewMode.value || applicantWorkspace.value) {
+			await refreshApplicantWorkspaceContext({ syncRecommendationReview: true });
+		}
 		cancelSubmissionDecision();
 		documentActionNotice.value =
 			decision === 'Approved' ? 'Submitted file approved.' : 'Submitted file review updated.';
@@ -1407,6 +1953,7 @@ async function submitRequirementOverride() {
 			client_request_id: newClientRequestId('document_requirement_override'),
 		});
 		applyApplicantDocumentReview(result.documents);
+		await refreshApplicantWorkspaceContext({ syncRecommendationReview: true });
 		documentActionNotice.value = `${requirementActionValue.value} recorded.`;
 		cancelRequirementOverride();
 	} catch (err) {
@@ -1442,6 +1989,7 @@ async function clearRequirementOverride(row: ApplicantWorkspaceRequirementRow) {
 			client_request_id: newClientRequestId('document_requirement_override_clear'),
 		});
 		applyApplicantDocumentReview(result.documents);
+		await refreshApplicantWorkspaceContext({ syncRecommendationReview: true });
 		documentActionNotice.value = 'Requirement override cleared.';
 		cancelRequirementOverride();
 	} catch (err) {
@@ -1629,6 +2177,31 @@ function formatHumanDate(
 	});
 }
 
+function formatRelativeTime(value?: string | null) {
+	const raw = String(value || '').trim();
+	if (!raw) return '';
+	const parsed = parseDateInput(raw);
+	if (!parsed) return '';
+
+	const diffSeconds = Math.round((parsed.getTime() - Date.now()) / 1000);
+	const absoluteSeconds = Math.abs(diffSeconds);
+	const formatter = new Intl.RelativeTimeFormat(resolveAppLocale(), { numeric: 'auto' });
+
+	if (absoluteSeconds < 60) return formatter.format(diffSeconds, 'second');
+	if (absoluteSeconds < 3600) return formatter.format(Math.round(diffSeconds / 60), 'minute');
+	if (absoluteSeconds < 86400) return formatter.format(Math.round(diffSeconds / 3600), 'hour');
+	if (absoluteSeconds < 604800) return formatter.format(Math.round(diffSeconds / 86400), 'day');
+	if (absoluteSeconds < 2629800) return formatter.format(Math.round(diffSeconds / 604800), 'week');
+	return formatter.format(Math.round(diffSeconds / 2629800), 'month');
+}
+
+function formatHumanMoment(value?: string | null, options: HumanDateOptions = {}) {
+	const absolute = formatHumanDateTime(value, { includeYear: true, ...options });
+	if (!value) return absolute;
+	const relative = formatRelativeTime(value);
+	return relative && relative !== absolute ? `${absolute} (${relative})` : absolute;
+}
+
 function formatTimelineContent(content?: string | null) {
 	const raw = String(content || '');
 	if (!raw) return '';
@@ -1715,7 +2288,16 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 watch(
-	() => [props.open, props.interview, props.mode, props.studentApplicant] as const,
+	() =>
+		[
+			props.open,
+			props.interview,
+			props.mode,
+			props.studentApplicant,
+			props.recommendationRequest,
+			props.recommendationSubmission,
+			props.applicantDocumentItem,
+		] as const,
 	([isOpen]) => {
 		if (!isOpen) return;
 		void loadWorkspace();

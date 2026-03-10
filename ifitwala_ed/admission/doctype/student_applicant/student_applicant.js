@@ -13,6 +13,28 @@ function blurActiveModalFocus() {
 	}
 }
 
+const EMPLOYEE_USER_QUERY = "ifitwala_ed.api.users.get_users_with_role";
+
+function get_employee_user_query() {
+	return {
+		query: EMPLOYEE_USER_QUERY,
+		filters: { role: "Employee" },
+	};
+}
+
+function get_employee_user_options(txt) {
+	return frappe.call({
+		type: "GET",
+		method: "frappe.desk.search.search_link",
+		args: {
+			doctype: "User",
+			txt: txt || "",
+			query: EMPLOYEE_USER_QUERY,
+			filters: { role: "Employee" },
+		},
+	}).then((res) => res?.message || []);
+}
+
 frappe.ui.form.on("Student Applicant", {
 
 	refresh(frm) {
@@ -239,14 +261,14 @@ function open_schedule_interview_dialog(frm) {
 				label: __("Primary Interviewer"),
 				reqd: 1,
 				default: frappe.session.user,
-				get_query: () => ({ filters: { enabled: 1 } }),
+				get_query: () => get_employee_user_query(),
 			},
 			{
 				fieldname: "additional_interviewers",
 				fieldtype: "MultiSelectPills",
 				label: __("Additional Interviewers"),
 				description: __("Optional. Add more employee interviewers."),
-				get_data: (txt) => frappe.db.get_link_options("User", txt, { enabled: 1 }),
+				get_data: (txt) => get_employee_user_options(txt),
 			},
 			{
 				fieldname: "column_break_people",
@@ -980,7 +1002,7 @@ function render_review_sections(frm) {
 			set_html(frm, "interviews_summary", render_interviews(data.interviews));
 			set_html(frm, "health_summary", render_health(data.health));
 			set_html(frm, "policies_summary", render_policies(data.policies));
-			set_html(frm, "documents_summary", render_documents(data.documents));
+			set_html(frm, "documents_summary", render_documents(data.documents, data.recommendations));
 			bind_document_summary_actions(frm);
 		})
 		.catch(() => {
@@ -1250,7 +1272,103 @@ function render_policies(policies) {
 	`;
 }
 
-function render_documents(documents) {
+function render_recommendation_review_section(recommendations) {
+	const summary = recommendations || {};
+	const rows = Array.isArray(summary?.review_rows) ? summary.review_rows : [];
+	const pendingReviewCount = Number(summary?.pending_review_count || 0);
+
+	const metrics = `
+		<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px;">
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#f8fbff;">
+				<div class="text-muted" style="font-size:12px;">Required</div>
+				<div style="font-weight:600;font-size:16px;">${escape_html(String(summary?.required_total || 0))}</div>
+			</div>
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#f8fbff;">
+				<div class="text-muted" style="font-size:12px;">Received</div>
+				<div style="font-weight:600;font-size:16px;">${escape_html(String(summary?.received_total || 0))}</div>
+			</div>
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#f8fbff;">
+				<div class="text-muted" style="font-size:12px;">Requested</div>
+				<div style="font-weight:600;font-size:16px;">${escape_html(String(summary?.requested_total || 0))}</div>
+			</div>
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#f8fbff;">
+				<div class="text-muted" style="font-size:12px;">Pending Review</div>
+				<div style="font-weight:600;font-size:16px;">${escape_html(String(pendingReviewCount))}</div>
+			</div>
+		</div>
+	`;
+
+	if (!rows.length) {
+		return `
+			<div style="margin-bottom: 16px;">
+				<div style="font-weight: 600; margin-bottom: 8px;">Recommendation Review</div>
+				${metrics}
+				<div class="text-muted">No submitted recommendations are available yet.</div>
+			</div>
+		`;
+	}
+
+	const body = rows.map((row) => {
+		const recommendationRequest = String(row?.recommendation_request || "").trim();
+		const recommendationSubmission = String(row?.recommendation_submission || "").trim();
+		const applicantDocumentItem = String(row?.applicant_document_item || "").trim();
+		const fileUrl = String(row?.file_url || "").trim();
+		const actionButton = (
+			recommendationRequest || recommendationSubmission || applicantDocumentItem
+		)
+			? `<button type="button" class="recommendation-review-action-btn" data-recommendation-request="${escape_html(recommendationRequest)}" data-recommendation-submission="${escape_html(recommendationSubmission)}" data-applicant-document-item="${escape_html(applicantDocumentItem)}" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;">${escape_html("Review Recommendation")}</button>`
+			: escape_html("—");
+		const uploadedAt = format_human_moment(row?.submitted_on || row?.consumed_on);
+		return `
+			<tr>
+				<td>
+					<div style="font-weight: 600;">${escape_html(String(row?.recommender_name || row?.recommender_email || "Referee"))}</div>
+					<div class="text-muted">${escape_html(String(row?.recommender_relationship || "—"))}</div>
+				</td>
+				<td>${escape_html(String(row?.template_name || row?.recommendation_template || "Recommendation"))}</td>
+				<td>
+					<div>${escape_html(format_human_moment(row?.sent_on))}</div>
+					<div class="text-muted">${escape_html(format_human_moment(row?.opened_on))}</div>
+				</td>
+				<td>${escape_html(uploadedAt)}</td>
+				<td>
+					${render_document_status_pill(row?.review_status)}
+					${row?.reviewed_by ? `<div class="text-muted" style="margin-top:4px;">${escape_html(String(row.reviewed_by))}</div>` : ""}
+				</td>
+				<td>
+					${actionButton}
+					${fileUrl ? `<div style="margin-top:6px;">${render_text_link(fileUrl, "Open attachment", true)}</div>` : ""}
+				</td>
+			</tr>
+		`;
+	}).join("");
+
+	return `
+		<div style="margin-bottom: 16px;">
+			<div style="font-weight: 600; margin-bottom: 8px;">Recommendation Review</div>
+			${metrics}
+			<div class="table-responsive">
+				<table class="table table-bordered table-sm" style="margin-bottom: 0;">
+					<thead>
+						<tr>
+							<th>Referee</th>
+							<th>Template</th>
+							<th>Shared / Opened</th>
+							<th>Submitted</th>
+							<th>Review Status</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						${body}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	`;
+}
+
+function render_documents(documents, recommendations) {
 	if (!documents) {
 		return render_empty("No document data.");
 	}
@@ -1315,6 +1433,7 @@ function render_documents(documents) {
 			${missing.length ? `<span style="margin-left: 6px;">${render_pill(`Missing: ${missing.length}`, "red")}</span>` : ""}
 			${pendingUploadedReviews ? `<span style="margin-left: 6px;">${render_pill(`Pending item reviews: ${pendingUploadedReviews}`, "amber")}</span>` : ""}
 		</div>
+		${render_recommendation_review_section(recommendations)}
 		${requiredRows.length ? `
 			<div style="margin-bottom: 12px;">
 				<div style="font-weight: 600; margin-bottom: 6px;">Document Requirements</div>
@@ -1494,6 +1613,180 @@ function bind_document_summary_actions(frm) {
 			__("Save")
 		);
 	});
+
+	wrapper.off("click", ".recommendation-review-action-btn");
+	wrapper.on("click", ".recommendation-review-action-btn", (event) => {
+		const target = event.currentTarget;
+		if (!(target instanceof HTMLElement)) {
+			return;
+		}
+		open_recommendation_review_dialog(frm, {
+			recommendation_request: String(target.getAttribute("data-recommendation-request") || "").trim(),
+			recommendation_submission: String(target.getAttribute("data-recommendation-submission") || "").trim(),
+			applicant_document_item: String(target.getAttribute("data-applicant-document-item") || "").trim(),
+		});
+	});
+}
+
+function render_recommendation_review_dialog(payload) {
+	const recommendation = payload?.recommendation || {};
+	const answers = Array.isArray(recommendation.answers) ? recommendation.answers : [];
+	const canReview = Boolean(
+		recommendation.can_review &&
+		recommendation.applicant_document_item &&
+		can_review_document_submissions()
+	);
+	const reviewStatus = String(recommendation.review_status || "Pending").trim() || "Pending";
+
+	const timelineRows = [
+		{ label: "Shared", value: recommendation.sent_on },
+		{ label: "Opened", value: recommendation.opened_on },
+		{ label: "Submitted", value: recommendation.submitted_on },
+		{ label: "Reviewed", value: recommendation.reviewed_on },
+	];
+
+	const timelineBody = timelineRows.map((row) => `
+		<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#fff;">
+			<div class="text-muted" style="font-size:12px;">${escape_html(row.label)}</div>
+			<div style="font-weight:600;">${escape_html(format_human_moment(row.value))}</div>
+		</div>
+	`).join("");
+
+	const answerBody = answers.length
+		? answers.map((answer) => `
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:12px;background:#fff;margin-bottom:8px;">
+				<div class="text-muted" style="font-size:12px;margin-bottom:4px;">${escape_html(String(answer?.label || answer?.field_key || "Answer"))}</div>
+				<div style="white-space:pre-wrap;">${escape_html(String(answer?.display_value || (answer?.has_value ? answer?.value || "" : "No response")))}</div>
+			</div>
+		`).join("")
+		: `<div class="text-muted">No structured answers were captured for this recommendation.</div>`;
+
+	const reviewActions = canReview
+		? `
+			<div style="margin-top:16px;border-top:1px solid #e5e7eb;padding-top:12px;">
+				<label style="display:block;margin-bottom:8px;">
+					<div class="text-muted" style="font-size:12px;margin-bottom:4px;">Review Note</div>
+					<textarea class="recommendation-review-note" rows="3" placeholder="Required for Request Changes or Reject" style="width:100%;border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;resize:vertical;"></textarea>
+				</label>
+				<div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;">
+					<button type="button" class="recommendation-review-decision-btn" data-decision="Approved" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">${escape_html("Approve")}</button>
+					<button type="button" class="recommendation-review-decision-btn" data-decision="Needs Follow-Up" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">${escape_html("Request Changes")}</button>
+					<button type="button" class="recommendation-review-decision-btn" data-decision="Rejected" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">${escape_html("Reject")}</button>
+				</div>
+			</div>
+		`
+		: `<div class="text-muted" style="margin-top: 12px;">This recommendation has already been reviewed.</div>`;
+
+	return `
+		<div style="display:grid;gap:16px;">
+			<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start;">
+				<div>
+					<div class="text-muted" style="font-size:12px;">Recommendation Review</div>
+					<div style="font-size:20px;font-weight:700;color:#17313b;">${escape_html(String(recommendation.recommender_name || recommendation.recommender_email || "Referee"))}</div>
+					<div class="text-muted" style="margin-top:4px;">${escape_html(String(recommendation.template_name || recommendation.recommendation_template || "Recommendation"))}${recommendation.recommender_relationship ? ` · ${escape_html(String(recommendation.recommender_relationship))}` : ""}</div>
+				</div>
+				<div>${render_document_status_pill(reviewStatus)}</div>
+			</div>
+			<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">
+				${timelineBody}
+			</div>
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:12px;background:#f8fbff;">
+				<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+					${recommendation.attestation_confirmed ? `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#e8f7ee;border:1px solid #9ad5b0;color:#1f7a3e;">${escape_html("Attestation confirmed")}</span>` : ""}
+					${recommendation.item_label ? `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#f4f5f7;border:1px solid #d7dce2;color:#3f4b57;">${escape_html(String(recommendation.item_label))}</span>` : ""}
+					${recommendation.file_url ? render_text_link(String(recommendation.file_url), recommendation.file_name || "Open attached file", true) : ""}
+				</div>
+				${recommendation.recommender_email ? `<div class="text-muted" style="margin-top:8px;">${escape_html(String(recommendation.recommender_email))}</div>` : ""}
+			</div>
+			<div>
+				<div style="font-weight:600;margin-bottom:8px;">Submission Answers</div>
+				${answerBody}
+			</div>
+			${reviewActions}
+		</div>
+	`;
+}
+
+function open_recommendation_review_dialog(frm, anchor) {
+	const dialog = new frappe.ui.Dialog({
+		title: __("Recommendation Review"),
+		fields: [
+			{
+				fieldtype: "HTML",
+				fieldname: "body",
+			},
+		],
+		primary_action_label: __("Close"),
+		primary_action() {
+			dialog.hide();
+		},
+	});
+
+	let currentPayload = null;
+	let currentAnchor = {
+		recommendation_request: String(anchor?.recommendation_request || "").trim(),
+		recommendation_submission: String(anchor?.recommendation_submission || "").trim(),
+		applicant_document_item: String(anchor?.applicant_document_item || "").trim(),
+	};
+
+	const renderLoading = () => {
+		dialog.fields_dict.body.$wrapper.html(`<div class="text-muted">${escape_html("Loading recommendation review...")}</div>`);
+	};
+
+	const loadPayload = () => {
+		renderLoading();
+		return frappe.call({
+			method: "ifitwala_ed.api.recommendation_intake.get_recommendation_review_payload",
+			args: {
+				student_applicant: frm.doc.name,
+				recommendation_request: currentAnchor.recommendation_request || null,
+				recommendation_submission: currentAnchor.recommendation_submission || null,
+				applicant_document_item: currentAnchor.applicant_document_item || null,
+			},
+		}).then((res) => {
+			currentPayload = res?.message || {};
+			dialog.fields_dict.body.$wrapper.html(render_recommendation_review_dialog(currentPayload));
+		}).catch((error) => {
+			dialog.fields_dict.body.$wrapper.html(
+				`<div class="text-danger">${escape_html(get_error_message(error, __("Unable to load recommendation review.")))}</div>`
+			);
+		});
+	};
+
+	dialog.$wrapper.off("click", ".recommendation-review-decision-btn");
+	dialog.$wrapper.on("click", ".recommendation-review-decision-btn", (event) => {
+		const target = event.currentTarget;
+		if (!(target instanceof HTMLElement)) {
+			return;
+		}
+		const decision = String(target.getAttribute("data-decision") || "").trim();
+		const applicantDocumentItem = String(currentPayload?.recommendation?.applicant_document_item || "").trim();
+		const notes = String(dialog.$wrapper.find(".recommendation-review-note").val() || "").trim();
+		if (!decision || !applicantDocumentItem) {
+			frappe.msgprint(__("Recommendation review target is missing."));
+			return;
+		}
+		if ((decision === "Needs Follow-Up" || decision === "Rejected") && !notes) {
+			frappe.msgprint(__("A review note is required for this decision."));
+			return;
+		}
+		review_document_submission(
+			frm,
+			{
+				applicant_document_item: applicantDocumentItem,
+				decision,
+				notes,
+			},
+			{
+				show_alert: false,
+				success_message: __("Recommendation review updated."),
+				on_success: () => loadPayload(),
+			}
+		);
+	});
+
+	dialog.show();
+	loadPayload();
 }
 
 function apply_document_requirement_override(frm, payload) {
@@ -1516,7 +1809,7 @@ function apply_document_requirement_override(frm, payload) {
 		});
 }
 
-function review_document_submission(frm, payload) {
+function review_document_submission(frm, payload, options = {}) {
 	frappe.call({
 		method: "ifitwala_ed.api.admissions_review.review_applicant_document_submission",
 		args: {
@@ -1528,8 +1821,13 @@ function review_document_submission(frm, payload) {
 		freeze_message: __("Saving evidence review..."),
 	})
 		.then(() => {
-			frappe.show_alert({ message: __("Submitted file review updated."), indicator: "green" });
+			if (options.show_alert !== false) {
+				frappe.show_alert({ message: options.success_message || __("Submitted file review updated."), indicator: "green" });
+			}
 			render_review_sections(frm);
+			if (typeof options.on_success === "function") {
+				options.on_success();
+			}
 		})
 		.catch((error) => {
 			frappe.msgprint(get_error_message(error, __("Unable to update submitted file review.")));
@@ -1610,6 +1908,57 @@ function format_datetime(value) {
 	} catch (error) {
 		return text;
 	}
+}
+
+function parse_datetime_value(value) {
+	const text = String(value || "").trim();
+	if (!text) {
+		return null;
+	}
+	const normalized = text.replace(" ", "T").replace(/\.(\d{3})\d+/, ".$1");
+	const parsed = new Date(normalized);
+	if (!Number.isNaN(parsed.getTime())) {
+		return parsed;
+	}
+	const fallback = new Date(text);
+	return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function format_relative_time(value) {
+	const parsed = parse_datetime_value(value);
+	if (!parsed || typeof Intl === "undefined" || typeof Intl.RelativeTimeFormat !== "function") {
+		return "";
+	}
+	const diffSeconds = Math.round((parsed.getTime() - Date.now()) / 1000);
+	const absoluteSeconds = Math.abs(diffSeconds);
+	const formatter = new Intl.RelativeTimeFormat((frappe.boot && frappe.boot.lang) || undefined, {
+		numeric: "auto",
+	});
+	if (absoluteSeconds < 60) {
+		return formatter.format(diffSeconds, "second");
+	}
+	if (absoluteSeconds < 3600) {
+		return formatter.format(Math.round(diffSeconds / 60), "minute");
+	}
+	if (absoluteSeconds < 86400) {
+		return formatter.format(Math.round(diffSeconds / 3600), "hour");
+	}
+	if (absoluteSeconds < 604800) {
+		return formatter.format(Math.round(diffSeconds / 86400), "day");
+	}
+	if (absoluteSeconds < 2629800) {
+		return formatter.format(Math.round(diffSeconds / 604800), "week");
+	}
+	return formatter.format(Math.round(diffSeconds / 2629800), "month");
+}
+
+function format_human_moment(value) {
+	const absolute = format_datetime(value);
+	if (absolute === "—") {
+		return absolute;
+	}
+	const relative = format_relative_time(value);
+	return relative ? `${absolute} (${relative})` : absolute;
 }
 
 function render_document_status_pill(status) {

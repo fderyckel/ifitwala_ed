@@ -7,9 +7,12 @@ from urllib.parse import urlparse
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import get_applicant_workspace
+from ifitwala_ed.api.admission_cockpit import get_admissions_cockpit_data
 from ifitwala_ed.api.recommendation_intake import (
     create_recommendation_request,
     get_recommendation_intake_payload,
+    get_recommendation_review_payload,
     get_recommendation_status_for_applicant,
     list_recommendation_requests,
     submit_recommendation,
@@ -170,6 +173,75 @@ class TestRecommendationIntake(FrappeTestCase):
         self.assertNotIn("recommender_email", rows[0])
         self.assertNotIn("recommender_name", rows[0])
         self.assertEqual((payload.get("summary") or {}).get("state"), "pending")
+
+    def test_staff_review_payload_exposes_answers_and_review_target(self):
+        submitted = self._create_submitted_recommendation()
+
+        frappe.set_user(self.staff_user.name)
+        payload = get_recommendation_review_payload(
+            student_applicant=self.applicant.name,
+            recommendation_request=submitted["recommendation_request"],
+        )
+
+        self.assertTrue(bool(payload.get("ok")))
+        recommendation = payload.get("recommendation") or {}
+        self.assertEqual(recommendation.get("recommendation_request"), submitted["recommendation_request"])
+        self.assertEqual(recommendation.get("recommendation_submission"), submitted["recommendation_submission"])
+        self.assertEqual(recommendation.get("applicant_document_item"), submitted["applicant_document_item"])
+        self.assertEqual(recommendation.get("review_status"), "Pending")
+        self.assertTrue(bool(recommendation.get("can_review")))
+
+        answers = recommendation.get("answers") or []
+        self.assertEqual(len(answers), 1)
+        self.assertEqual((answers[0] or {}).get("label"), "Recommendation Summary")
+        self.assertEqual((answers[0] or {}).get("display_value"), "Strong and consistent performance.")
+
+    def test_applicant_cannot_access_staff_review_payload(self):
+        submitted = self._create_submitted_recommendation()
+
+        frappe.set_user(self.applicant_user.name)
+        with self.assertRaises(frappe.PermissionError):
+            get_recommendation_review_payload(
+                student_applicant=self.applicant.name,
+                recommendation_request=submitted["recommendation_request"],
+            )
+
+    def test_cockpit_payload_includes_pending_recommendation_review_target(self):
+        submitted = self._create_submitted_recommendation()
+
+        frappe.set_user(self.staff_user.name)
+        payload = get_admissions_cockpit_data(filters={"assigned_to_me": 0, "limit": 20})
+        columns = payload.get("columns") or []
+        cards = [
+            card
+            for column in columns
+            for card in (column.get("items") or [])
+            if card.get("name") == self.applicant.name
+        ]
+
+        self.assertEqual(len(cards), 1)
+        recommendations = (cards[0] or {}).get("recommendations") or {}
+        self.assertEqual(int(recommendations.get("received_total") or 0), 1)
+        self.assertEqual(int(recommendations.get("pending_review_count") or 0), 1)
+        self.assertEqual(
+            (recommendations.get("first_pending_review") or {}).get("recommendation_request"),
+            submitted["recommendation_request"],
+        )
+        self.assertEqual(
+            (recommendations.get("first_pending_review") or {}).get("applicant_document_item"),
+            submitted["applicant_document_item"],
+        )
+
+    def test_applicant_workspace_includes_recommendation_review_rows(self):
+        submitted = self._create_submitted_recommendation()
+
+        frappe.set_user(self.staff_user.name)
+        payload = get_applicant_workspace(student_applicant=self.applicant.name)
+        review_rows = (payload.get("recommendations") or {}).get("review_rows") or []
+
+        self.assertEqual(len(review_rows), 1)
+        self.assertEqual((review_rows[0] or {}).get("recommendation_request"), submitted["recommendation_request"])
+        self.assertEqual((review_rows[0] or {}).get("applicant_document_item"), submitted["applicant_document_item"])
 
     def _feature_tables_ready(self) -> bool:
         required = (
@@ -332,3 +404,42 @@ class TestRecommendationIntake(FrappeTestCase):
         token = (path.split("/")[-1] or "").strip()
         self.assertTrue(bool(token))
         return token
+
+    def _create_submitted_recommendation(self) -> dict[str, str]:
+        frappe.set_user(self.staff_user.name)
+        created = create_recommendation_request(
+            student_applicant=self.applicant.name,
+            recommendation_template=self.template.name,
+            recommender_name="Ms Mentor",
+            recommender_email=f"mentor-{frappe.generate_hash(length=6)}@example.com",
+            recommender_relationship="Teacher",
+            send_email=0,
+            client_request_id=f"submitted-{frappe.generate_hash(length=6)}",
+        )
+
+        recommendation_request = created.get("recommendation_request")
+        self.assertTrue(bool(recommendation_request))
+        token = self._token_from_intake_url(created.get("intake_url"))
+
+        frappe.set_user("Guest")
+        submit_recommendation(
+            token=token,
+            answers={"recommendation_summary": "Strong and consistent performance."},
+            attestation_confirmed=1,
+            client_request_id=f"submit-{frappe.generate_hash(length=6)}",
+        )
+
+        frappe.set_user(self.staff_user.name)
+        request_row = frappe.db.get_value(
+            "Recommendation Request",
+            recommendation_request,
+            ["submission", "applicant_document_item"],
+            as_dict=True,
+        )
+        self.assertTrue(bool(request_row.get("submission")))
+        self.assertTrue(bool(request_row.get("applicant_document_item")))
+        return {
+            "recommendation_request": recommendation_request,
+            "recommendation_submission": request_row.get("submission"),
+            "applicant_document_item": request_row.get("applicant_document_item"),
+        }

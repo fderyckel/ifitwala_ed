@@ -173,6 +173,16 @@ export interface InterviewWorkspaceRecommendationSummary {
 	state?: string | null
 	rows?: Array<Record<string, unknown>>
 	counts?: Record<string, number>
+	pending_review_count?: number
+	latest_submitted_on?: string | null
+	first_pending_review?: {
+		recommendation_request?: string | null
+		recommendation_submission?: string | null
+		applicant_document_item?: string | null
+		recommender_name?: string | null
+		template_name?: string | null
+		submitted_on?: string | null
+	} | null
 }
 
 export interface InterviewWorkspaceRecommendationRequest {
@@ -197,6 +207,87 @@ export interface InterviewWorkspaceRecommendationSubmission {
 	recommender_email?: string | null
 	submitted_on?: string | null
 	has_file?: boolean
+	applicant_document_item?: string | null
+	item_label?: string | null
+	review_status?: string | null
+	reviewed_by?: string | null
+	reviewed_on?: string | null
+	file_name?: string | null
+	file_url?: string | null
+}
+
+export interface RecommendationReviewRow {
+	recommendation_request?: string | null
+	recommendation_submission?: string | null
+	student_applicant?: string | null
+	recommendation_template?: string | null
+	template_name?: string | null
+	target_document_type?: string | null
+	applicant_document?: string | null
+	applicant_document_item?: string | null
+	item_key?: string | null
+	item_label?: string | null
+	request_status?: string | null
+	review_status?: string | null
+	reviewed_by?: string | null
+	reviewed_on?: string | null
+	recommender_name?: string | null
+	recommender_email?: string | null
+	recommender_relationship?: string | null
+	sent_on?: string | null
+	opened_on?: string | null
+	submitted_on?: string | null
+	expires_on?: string | null
+	resend_count?: number
+	has_file?: boolean
+	attestation_confirmed?: boolean
+	file_name?: string | null
+	file_url?: string | null
+	needs_review?: boolean
+	can_review?: boolean
+}
+
+export interface RecommendationReviewAnswer {
+	field_key: string
+	label: string
+	field_type?: string | null
+	value?: unknown
+	display_value?: string | null
+	has_value?: boolean
+}
+
+export interface RecommendationReviewPayload {
+	ok: boolean
+	recommendation: {
+		student_applicant: string
+		recommendation_request: string
+		recommendation_submission: string
+		recommendation_template?: string | null
+		template_name?: string | null
+		target_document_type?: string | null
+		applicant_document?: string | null
+		applicant_document_item?: string | null
+		item_key?: string | null
+		item_label?: string | null
+		request_status?: string | null
+		review_status?: string | null
+		reviewed_by?: string | null
+		reviewed_on?: string | null
+		recommender_name?: string | null
+		recommender_email?: string | null
+		recommender_relationship?: string | null
+		sent_on?: string | null
+		opened_on?: string | null
+		submitted_on?: string | null
+		expires_on?: string | null
+		has_file?: boolean
+		attestation_confirmed?: boolean
+		file_name?: string | null
+		file_url?: string | null
+		answers: RecommendationReviewAnswer[]
+		can_review?: boolean
+		needs_review?: boolean
+	}
 }
 
 export interface InterviewWorkspaceFeedbackPanelRow {
@@ -241,6 +332,7 @@ export interface InterviewWorkspaceResponse {
 		summary: InterviewWorkspaceRecommendationSummary
 		requests: InterviewWorkspaceRecommendationRequest[]
 		submissions: InterviewWorkspaceRecommendationSubmission[]
+		review_rows: RecommendationReviewRow[]
 	}
 	feedback: InterviewWorkspaceFeedbackPayload
 }
@@ -254,6 +346,7 @@ export interface ApplicantWorkspaceResponse {
 		summary: InterviewWorkspaceRecommendationSummary
 		requests: InterviewWorkspaceRecommendationRequest[]
 		submissions: InterviewWorkspaceRecommendationSubmission[]
+		review_rows: RecommendationReviewRow[]
 	}
 	interviews: InterviewWorkspaceInterview[]
 }

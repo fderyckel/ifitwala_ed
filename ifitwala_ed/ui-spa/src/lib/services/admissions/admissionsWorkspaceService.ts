@@ -4,6 +4,7 @@ import { api } from '@/lib/client'
 
 import type {
 	ApplicantWorkspaceResponse,
+	RecommendationReviewPayload,
 	InterviewWorkspaceResponse,
 	ReviewApplicantDocumentSubmissionRequest,
 	ReviewApplicantDocumentSubmissionResponse,
@@ -23,6 +24,15 @@ export async function getApplicantWorkspace(studentApplicant: string): Promise<A
 	return api('ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.get_applicant_workspace', {
 		student_applicant: studentApplicant,
 	}) as Promise<ApplicantWorkspaceResponse>
+}
+
+export async function getRecommendationReviewPayload(payload: {
+	student_applicant?: string | null
+	recommendation_request?: string | null
+	recommendation_submission?: string | null
+	applicant_document_item?: string | null
+}): Promise<RecommendationReviewPayload> {
+	return api('ifitwala_ed.api.recommendation_intake.get_recommendation_review_payload', payload) as Promise<RecommendationReviewPayload>
 }
 
 export async function saveMyInterviewFeedback(

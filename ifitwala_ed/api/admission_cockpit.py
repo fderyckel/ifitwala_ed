@@ -18,6 +18,7 @@ from ifitwala_ed.admission.admission_utils import (
 )
 from ifitwala_ed.admission.doctype.student_applicant.student_applicant import STUDENT_PROFILE_REQUIRED_FIELD_LABELS
 from ifitwala_ed.api.admissions_communication import get_admissions_thread_summaries_for_applicants
+from ifitwala_ed.api.recommendation_intake import get_recommendation_status_batch_for_applicants
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
@@ -228,6 +229,20 @@ def _empty_readiness_snapshot() -> dict:
             "declared_on": None,
         },
         "profile": {"ok": False, "missing": [], "required": []},
+        "recommendations": {
+            "ok": True,
+            "required_total": 0,
+            "received_total": 0,
+            "requested_total": 0,
+            "missing": [],
+            "rows": [],
+            "state": "optional",
+            "counts": {},
+            "review_rows": [],
+            "pending_review_count": 0,
+            "first_pending_review": None,
+            "latest_submitted_on": None,
+        },
     }
 
 
@@ -707,7 +722,13 @@ def _build_health_requirement_by_school(applicant_rows: list[dict]) -> dict[str,
 
 
 def _build_issues(
-    *, policies: dict, documents: dict, health: dict, profile: dict, health_required_for_approval: bool
+    *,
+    policies: dict,
+    documents: dict,
+    health: dict,
+    profile: dict,
+    recommendations: dict,
+    health_required_for_approval: bool,
 ) -> list[str]:
     issues: list[str] = []
 
@@ -748,6 +769,15 @@ def _build_issues(
         else:
             issues.append(_("Missing required profile information."))
 
+    if not recommendations.get("ok"):
+        missing = recommendations.get("missing") or []
+        required_total = cint(recommendations.get("required_total") or 0)
+        received_total = cint(recommendations.get("received_total") or 0)
+        if missing:
+            issues.append(_("Missing required recommendations: {0}.").format(", ".join(str(item) for item in missing)))
+        elif required_total > 0:
+            issues.append(_("Required recommendations received: {0} of {1}.").format(received_total, required_total))
+
     return issues
 
 
@@ -760,6 +790,10 @@ def _build_readiness_batch(applicant_rows: list[dict]) -> dict[str, dict]:
     documents_by_applicant = _build_documents_state(applicant_rows, applicant_names)
     health_by_applicant = _build_health_state(applicant_names)
     health_requirement_by_school = _build_health_requirement_by_school(applicant_rows)
+    recommendations_by_applicant = get_recommendation_status_batch_for_applicants(
+        applicant_rows=applicant_rows,
+        include_confidential=True,
+    )
 
     readiness_by_applicant: dict[str, dict] = {}
 
@@ -795,25 +829,47 @@ def _build_readiness_batch(applicant_rows: list[dict]) -> dict[str, dict]:
             "declared_on": None,
         }
         profile = _build_profile_state(applicant_row)
+        recommendations = recommendations_by_applicant.get(applicant_name) or {
+            "ok": True,
+            "required_total": 0,
+            "received_total": 0,
+            "requested_total": 0,
+            "missing": [],
+            "rows": [],
+            "state": "optional",
+            "counts": {},
+            "review_rows": [],
+            "pending_review_count": 0,
+            "first_pending_review": None,
+            "latest_submitted_on": None,
+        }
         school_name = _to_text(applicant_row.get("school"))
         health_required_for_approval = health_requirement_by_school.get(school_name, True)
         health = dict(health)
         health["required_for_approval"] = health_required_for_approval
 
         health_ok_for_approval = bool(health.get("ok")) if health_required_for_approval else True
-        ready = bool(policies.get("ok") and documents.get("ok") and health_ok_for_approval and profile.get("ok"))
+        ready = bool(
+            policies.get("ok")
+            and documents.get("ok")
+            and health_ok_for_approval
+            and profile.get("ok")
+            and recommendations.get("ok")
+        )
 
         readiness_by_applicant[applicant_name] = {
             "policies": policies,
             "documents": documents,
             "health": health,
             "profile": profile,
+            "recommendations": recommendations,
             "ready": ready,
             "issues": _build_issues(
                 policies=policies,
                 documents=documents,
                 health=health,
                 profile=profile,
+                recommendations=recommendations,
                 health_required_for_approval=health_required_for_approval,
             ),
         }
@@ -1223,6 +1279,7 @@ def get_admissions_cockpit_data(filters=None):
         assignee_stats = assignment_summary.get(applicant_name, {"open_total": 0, "open_for_me": 0})
         snapshot = readiness_by_applicant.get(applicant_name) or _empty_readiness_snapshot()
         comms_summary = comms_summary_by_applicant.get(applicant_name) or {}
+        recommendations = snapshot.get("recommendations") or {}
 
         ready = bool(snapshot.get("ready"))
         stage = _resolve_stage(_to_text(row.get("application_status")), ready)
@@ -1273,6 +1330,15 @@ def get_admissions_cockpit_data(filters=None):
                 "documents_ok": bool((snapshot.get("documents") or {}).get("ok")),
                 "health_ok": health_ok_for_approval,
                 "health_required_for_approval": health_required_for_approval,
+                "recommendations_ok": bool(recommendations.get("ok")),
+            },
+            "recommendations": {
+                "required_total": cint(recommendations.get("required_total") or 0),
+                "received_total": cint(recommendations.get("received_total") or 0),
+                "requested_total": cint(recommendations.get("requested_total") or 0),
+                "pending_review_count": cint(recommendations.get("pending_review_count") or 0),
+                "latest_submitted_on": recommendations.get("latest_submitted_on"),
+                "first_pending_review": recommendations.get("first_pending_review"),
             },
             "top_blockers": [
                 {

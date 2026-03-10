@@ -13,8 +13,9 @@ This document defines the implemented architecture for after-school / extra-curr
    - `activity_program_offering`
    - `activity_booking`
    - `activity_student_group`
-5. `Communication Interaction` remains the summary/reaction state per user per communication.
-6. `Communication Interaction Entry` stores append-only interaction history.
+5. `Communication Interaction Entry` is the only runtime interaction ledger for activity communication threads, comments, and reactions.
+6. `Portal Read Receipt` is the runtime read-state ledger.
+7. Canonical cross-surface messaging rules live in `docs/spa/07_org_communication_messaging_contract.md`.
 
 ## 2. Readiness Gate (Pre-Open)
 
@@ -77,7 +78,8 @@ Activity communications are created/fetched through internal Org Communication A
 
 1. Audience scope still enforced by `check_audience_match(...)`.
 2. Activity feeds can filter by explicit activity context fields.
-3. Interaction history is append-only via `Communication Interaction Entry`.
+3. Comments and reactions use the shared workflow APIs in `ifitwala_ed/api/org_communication_interactions.py`.
+4. Interaction history is append-only via `Communication Interaction Entry`.
 
 ## 7. Key API Endpoints
 
@@ -93,9 +95,8 @@ Implemented in `ifitwala_ed/api/activity_booking.py`:
 8. `get_student_activity_bookings`
 9. `get_activity_booking_logistics`
 10. `get_activity_communications`
-11. `post_activity_communication_entry`
-12. `get_activity_portal_board`
-13. `submit_activity_booking_batch`
+11. `get_activity_portal_board`
+12. `submit_activity_booking_batch`
 
 ## 8. Portal UX Contracts
 
@@ -110,7 +111,7 @@ Both routes consume `get_activity_portal_board` and use:
 2. Settings-driven waitlist visibility.
 3. Settings-driven cancellation policy for guardian/student self-service.
 4. Settings-driven paid-booking label mode.
-5. Embedded activity communication panels + communication-center view.
+5. Embedded activity communication panels + communication-center view powered by the shared org communication interaction workflows.
 
 ## 9. Global Booking Settings (Single Doctype)
 

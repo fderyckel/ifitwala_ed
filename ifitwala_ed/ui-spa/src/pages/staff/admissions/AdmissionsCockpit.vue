@@ -161,6 +161,9 @@
 									</span>
 									<span :class="pillClass(item.readiness.profile_ok)">Profile</span>
 									<span :class="pillClass(item.readiness.documents_ok)">Docs</span>
+									<span :class="pillClass(item.readiness.recommendations_ok)"
+										>Recommendations</span
+									>
 									<span :class="pillClass(item.readiness.policies_ok)">Policies</span>
 									<span :class="pillClass(item.readiness.health_ok)">Health</span>
 									<span
@@ -169,6 +172,34 @@
 									>
 										Comms · {{ item.comms?.unread_count || 0 }}
 									</span>
+								</div>
+
+								<div
+									v-if="(item.recommendations?.pending_review_count || 0) > 0"
+									class="mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2"
+								>
+									<div class="flex items-center justify-between gap-3">
+										<div>
+											<p class="text-xs font-semibold text-amber-900">Recommendation review</p>
+											<p class="text-xs text-amber-900/80">
+												{{ item.recommendations.pending_review_count }} awaiting review
+												<span v-if="item.recommendations.latest_submitted_on">
+													· latest {{ formatDate(item.recommendations.latest_submitted_on) }}
+												</span>
+											</p>
+										</div>
+										<button
+											type="button"
+											class="rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											@click="openRecommendationReview(item)"
+										>
+											{{
+												item.recommendations.pending_review_count === 1
+													? 'Review Recommendation'
+													: 'Review Recommendations'
+											}}
+										</button>
+									</div>
 								</div>
 
 								<div
@@ -349,6 +380,22 @@ type CockpitCard = {
 		documents_ok: boolean;
 		policies_ok: boolean;
 		health_ok: boolean;
+		recommendations_ok: boolean;
+	};
+	recommendations?: {
+		required_total: number;
+		received_total: number;
+		requested_total: number;
+		pending_review_count: number;
+		latest_submitted_on?: string | null;
+		first_pending_review?: {
+			recommendation_request?: string | null;
+			recommendation_submission?: string | null;
+			applicant_document_item?: string | null;
+			recommender_name?: string | null;
+			template_name?: string | null;
+			submitted_on?: string | null;
+		} | null;
 	};
 	open_url: string;
 	blockers: {
@@ -532,6 +579,32 @@ function openApplicantWorkspace(card: CockpitCard) {
 	overlay.open('admissions-workspace', {
 		mode: 'applicant',
 		studentApplicant: applicantName,
+	});
+}
+
+function openRecommendationReview(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = 'Applicant reference is missing for recommendation review.';
+		return;
+	}
+
+	const pendingReview = card.recommendations?.first_pending_review;
+	const pendingCount = Number(card.recommendations?.pending_review_count || 0);
+	const shouldPrefill = pendingCount === 1 && pendingReview;
+
+	overlay.open('admissions-workspace', {
+		mode: 'applicant',
+		studentApplicant: applicantName,
+		recommendationRequest: shouldPrefill
+			? String(pendingReview?.recommendation_request || '').trim() || null
+			: null,
+		recommendationSubmission: shouldPrefill
+			? String(pendingReview?.recommendation_submission || '').trim() || null
+			: null,
+		applicantDocumentItem: shouldPrefill
+			? String(pendingReview?.applicant_document_item || '').trim() || null
+			: null,
 	});
 }
 

@@ -529,24 +529,3 @@ def get_activity_communication_feed(
         start=start,
         page_length=page_length,
     )
-
-
-@frappe.whitelist()
-def post_activity_communication_interaction(
-    org_communication: str,
-    intent_type: str | None = None,
-    reaction_code: str | None = None,
-    note: str | None = None,
-    surface: str | None = "Portal Feed",
-):
-    from ifitwala_ed.setup.doctype.communication_interaction.communication_interaction import (
-        upsert_communication_interaction,
-    )
-
-    return upsert_communication_interaction(
-        org_communication=org_communication,
-        intent_type=intent_type,
-        reaction_code=reaction_code,
-        note=note,
-        surface=surface,
-    )

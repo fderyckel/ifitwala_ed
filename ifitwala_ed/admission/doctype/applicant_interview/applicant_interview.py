@@ -1070,81 +1070,50 @@ def _load_recommendations_for_workspace(student_applicant: str) -> dict:
         student_applicant=student_applicant,
         include_confidential=True,
     )
-
-    requests = []
-    if frappe.db.table_exists("Recommendation Request"):
-        request_rows = frappe.get_all(
-            "Recommendation Request",
-            filters={"student_applicant": student_applicant},
-            fields=[
-                "name",
-                "recommendation_template",
-                "request_status",
-                "recommender_name",
-                "recommender_email",
-                "recommender_relationship",
-                "sent_on",
-                "opened_on",
-                "consumed_on",
-                "expires_on",
-                "submission",
-            ],
-            order_by="modified desc",
-            limit_page_length=INTERVIEW_WORKSPACE_DOC_LIMIT,
-            ignore_permissions=True,
-        )
-        requests = [
-            {
-                "name": row.get("name"),
-                "recommendation_template": row.get("recommendation_template"),
-                "request_status": row.get("request_status"),
-                "recommender_name": row.get("recommender_name"),
-                "recommender_email": row.get("recommender_email"),
-                "recommender_relationship": row.get("recommender_relationship"),
-                "sent_on": row.get("sent_on"),
-                "opened_on": row.get("opened_on"),
-                "consumed_on": row.get("consumed_on"),
-                "expires_on": row.get("expires_on"),
-                "submission": row.get("submission"),
-            }
-            for row in request_rows
-        ]
-
-    submissions = []
-    if frappe.db.table_exists("Recommendation Submission"):
-        submission_rows = frappe.get_all(
-            "Recommendation Submission",
-            filters={"student_applicant": student_applicant},
-            fields=[
-                "name",
-                "recommendation_request",
-                "recommendation_template",
-                "recommender_name",
-                "recommender_email",
-                "submitted_on",
-                "has_file",
-            ],
-            order_by="submitted_on desc, modified desc",
-            limit_page_length=INTERVIEW_WORKSPACE_DOC_LIMIT,
-            ignore_permissions=True,
-        )
-        submissions = [
-            {
-                "name": row.get("name"),
-                "recommendation_request": row.get("recommendation_request"),
-                "recommendation_template": row.get("recommendation_template"),
-                "recommender_name": row.get("recommender_name"),
-                "recommender_email": row.get("recommender_email"),
-                "submitted_on": row.get("submitted_on"),
-                "has_file": bool(row.get("has_file")),
-            }
-            for row in submission_rows
-        ]
+    review_rows = list(summary.get("review_rows") or [])
+    requests = [
+        {
+            "name": row.get("recommendation_request"),
+            "recommendation_template": row.get("recommendation_template"),
+            "request_status": row.get("request_status"),
+            "recommender_name": row.get("recommender_name"),
+            "recommender_email": row.get("recommender_email"),
+            "recommender_relationship": row.get("recommender_relationship"),
+            "sent_on": row.get("sent_on"),
+            "opened_on": row.get("opened_on"),
+            "consumed_on": row.get("submitted_on"),
+            "expires_on": row.get("expires_on"),
+            "submission": row.get("recommendation_submission"),
+        }
+        for row in review_rows
+        if row.get("recommendation_request")
+    ][:INTERVIEW_WORKSPACE_DOC_LIMIT]
+    submissions = [
+        {
+            "name": row.get("recommendation_submission"),
+            "recommendation_request": row.get("recommendation_request"),
+            "recommendation_template": row.get("recommendation_template"),
+            "recommender_name": row.get("recommender_name"),
+            "recommender_email": row.get("recommender_email"),
+            "submitted_on": row.get("submitted_on"),
+            "has_file": bool(row.get("has_file")),
+            "applicant_document_item": row.get("applicant_document_item"),
+            "item_label": row.get("item_label"),
+            "review_status": row.get("review_status"),
+            "reviewed_by": row.get("reviewed_by"),
+            "reviewed_on": row.get("reviewed_on"),
+            "file_name": row.get("file_name"),
+            "file_url": row.get("file_url"),
+        }
+        for row in review_rows
+        if row.get("recommendation_submission")
+    ][:INTERVIEW_WORKSPACE_DOC_LIMIT]
 
     return {
         "summary": summary,
         "requests": requests,
         "submissions": submissions,
+        "review_rows": review_rows[:INTERVIEW_WORKSPACE_DOC_LIMIT],
     }
 
 

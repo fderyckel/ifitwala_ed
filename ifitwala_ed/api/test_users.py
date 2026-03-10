@@ -15,6 +15,7 @@ except Exception:
 from ifitwala_ed.api.users import (
     STAFF_ROLES,
     _strip_redirect_query,
+    get_users_with_role,
     get_website_user_home_page,
     redirect_non_staff_away_from_desk,
     redirect_user_to_entry_portal,
@@ -732,3 +733,42 @@ class TestUserRedirect(FrappeTestCase):
             "HR Manager",
         }
         self.assertEqual(STAFF_ROLES, expected_roles)
+
+
+class TestUserQueries(FrappeTestCase):
+    def test_get_users_with_role_returns_only_enabled_matching_users(self):
+        employee_user = frappe.new_doc("User")
+        employee_user.email = f"test_employee_query_match_{frappe.generate_hash(length=6)}@example.com"
+        employee_user.first_name = "Interview"
+        employee_user.last_name = "Match"
+        employee_user.enabled = 1
+        _append_role(employee_user, "Employee")
+        employee_user.insert(ignore_permissions=True)
+
+        disabled_employee = frappe.new_doc("User")
+        disabled_employee.email = f"test_employee_query_disabled_{frappe.generate_hash(length=6)}@example.com"
+        disabled_employee.first_name = "Interview"
+        disabled_employee.last_name = "Disabled"
+        disabled_employee.enabled = 0
+        _append_role(disabled_employee, "Employee")
+        disabled_employee.insert(ignore_permissions=True)
+
+        non_employee_user = frappe.new_doc("User")
+        non_employee_user.email = f"test_employee_query_other_{frappe.generate_hash(length=6)}@example.com"
+        non_employee_user.first_name = "Interview"
+        non_employee_user.last_name = "Teacher"
+        non_employee_user.enabled = 1
+        _append_role(non_employee_user, "Teacher")
+        non_employee_user.insert(ignore_permissions=True)
+
+        try:
+            rows = get_users_with_role("User", "", "name", 0, 20, {"role": "Employee"})
+            names = {row[0] for row in rows}
+
+            self.assertIn(employee_user.email, names)
+            self.assertNotIn(disabled_employee.email, names)
+            self.assertNotIn(non_employee_user.email, names)
+        finally:
+            frappe.delete_doc("User", employee_user.email, force=True)
+            frappe.delete_doc("User", disabled_employee.email, force=True)
+            frappe.delete_doc("User", non_employee_user.email, force=True)

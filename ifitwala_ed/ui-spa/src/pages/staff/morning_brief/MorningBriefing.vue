@@ -1,4 +1,4 @@
-<!-- ifitwala_ed/ui-spa/src/pages/staff/MorningBriefing.vue -->
+<!-- ifitwala_ed/ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue -->
 <template>
 	<div class="min-h-screen bg-transparent p-4 sm:p-6 space-y-8">
 		<!-- HEADER -->
@@ -697,8 +697,8 @@
 		<CommentThreadDrawer
 			:open="showInteractionDrawer"
 			title="Announcement Comments"
-			:rows="interactionThread.data || []"
-			:loading="interactionThread.loading"
+			:rows="interactionThreadRows"
+			:loading="interactionThreadLoading"
 			v-model:comment="newComment"
 			submit-label="Send"
 			placeholder="Add a short comment (max 300 characters)"
@@ -711,9 +711,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { createResource, FeatherIcon, call, toast } from 'frappe-ui';
+import { createResource, FeatherIcon, toast } from 'frappe-ui';
+
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { formatLocalizedDateTime } from '@/lib/datetime';
+import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
 import ContentDialog from '@/components/ContentDialog.vue';
 import GenericListDialog from '@/components/analytics/GenericListDialog.vue';
 import HistoryDialog from '@/components/analytics/HistoryDialog.vue';
@@ -723,18 +725,14 @@ import AbsentStudentList from './components/AbsentStudentList.vue';
 import {
 	ORG_SURFACES,
 	type Announcement,
-	type WidgetsPayload,
 	type InteractionSummaryMap,
 	type InteractionThreadRow,
+	type WidgetsPayload,
 	type StudentLogItem,
 	type OrgPriority,
 	type StudentLogDetail,
 } from '@/types/morning_brief';
-import type {
-	InteractionSummary,
-	InteractionIntentType,
-	ReactionCode,
-} from '@/types/morning_brief';
+import type { InteractionSummary, ReactionCode } from '@/types/morning_brief';
 import { canShowPublicInteractions } from '@/utils/orgCommunication';
 import type { PolicyInformLinkPayload } from '@/utils/policyInformLink';
 import type { OrgCommunicationListItem } from '@/types/orgCommunication';
@@ -778,6 +776,10 @@ const showInteractionDrawer = ref<boolean>(false);
 const activeCommunication = ref<Announcement | null>(null);
 const showInteractionsForActive = computed(() => canShowInteractions(activeCommunication.value));
 const newComment = ref<string>('');
+const interactionService = createCommunicationInteractionService();
+const interactionSummaryData = ref<InteractionSummaryMap>({});
+const interactionThreadRows = ref<InteractionThreadRow[]>([]);
+const interactionThreadLoading = ref(false);
 
 const criticalIncidentsList = createResource<StudentLogDetail[]>({
 	url: 'ifitwala_ed.api.morning_brief.get_critical_incidents_details',
@@ -787,18 +789,6 @@ const criticalIncidentsList = createResource<StudentLogDetail[]>({
 const widgets = createResource<WidgetsPayload>({
 	url: 'ifitwala_ed.api.morning_brief.get_briefing_widgets',
 	auto: true,
-});
-
-const interactionSummary = createResource<InteractionSummaryMap>({
-	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_org_comm_interaction_summary',
-	method: 'POST',
-	auto: false,
-});
-
-const interactionThread = createResource<InteractionThreadRow[]>({
-	url: 'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.get_communication_thread',
-	method: 'POST',
-	auto: false,
 });
 
 const viewModes = [
@@ -853,15 +843,58 @@ function canShowInteractions(item: Announcement | null | undefined): boolean {
 watch(
 	() => widgets.data?.announcements,
 	(list: Announcement[] | undefined) => {
-		if (!list || !list.length) return;
+		if (!list || !list.length) {
+			interactionSummaryData.value = {};
+			return;
+		}
 
-		const comm_names = list.map(a => a.name).filter(Boolean);
-		if (!comm_names.length) return;
+		const commNames = list.map(a => a.name).filter(Boolean);
+		if (!commNames.length) {
+			interactionSummaryData.value = {};
+			return;
+		}
 
-		interactionSummary.submit({ comm_names });
+		void refreshInteractionSummary(commNames);
 	},
 	{ immediate: true }
 );
+
+async function refreshInteractionSummary(commNames: string[]) {
+	if (!commNames.length) {
+		interactionSummaryData.value = {};
+		return;
+	}
+
+	try {
+		interactionSummaryData.value = await interactionService.getOrgCommInteractionSummary({
+			comm_names: commNames,
+		});
+	} catch {
+		interactionSummaryData.value = {};
+	}
+}
+
+async function refreshInteractionThread(orgCommunication: string) {
+	interactionThreadLoading.value = true;
+	try {
+		interactionThreadRows.value = await interactionService.getCommunicationThread({
+			org_communication: orgCommunication,
+			limit_start: 0,
+			limit_page_length: 30,
+		});
+	} catch (err) {
+		interactionThreadRows.value = [];
+		const message = err instanceof Error ? err.message : 'Unable to load announcement comments.';
+		toast({
+			title: 'Unable to load comments',
+			text: message,
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+	} finally {
+		interactionThreadLoading.value = false;
+	}
+}
 
 function nextSpotlight(): void {
 	if (!spotlightAnnouncements.value.length) return;
@@ -907,10 +940,13 @@ function openAnnouncement(news: Announcement): void {
 }
 
 function getInteractionFor(item: Announcement): InteractionSummary {
-	const summary = interactionSummary.data?.[item.name];
+	const summary = interactionSummaryData.value?.[item.name];
 	if (!summary) {
 		return {
 			counts: {},
+			reaction_counts: {},
+			reactions_total: 0,
+			comments_total: 0,
 			self: null,
 		};
 	}
@@ -923,20 +959,17 @@ function getInteractionStatsFor(item: Announcement) {
 
 function openInteractionThread(item: Announcement): void {
 	if (!canShowInteractions(item)) {
-		toast.create({
-			appearance: 'warning',
-			message: 'Comments are disabled for this announcement.',
+		toast({
+			title: 'Comments unavailable',
+			text: 'Comments are disabled for this announcement.',
+			icon: 'info',
 		});
 		return;
 	}
+
 	activeCommunication.value = item;
 	showInteractionDrawer.value = true;
-
-	interactionThread.submit({
-		org_communication: item.name,
-		limit_start: 0,
-		limit_page_length: 30,
-	});
+	void refreshInteractionThread(item.name);
 }
 
 function formatThreadTimestamp(value?: string | null): string {
@@ -948,90 +981,144 @@ function formatThreadTimestamp(value?: string | null): string {
 	});
 }
 
-function acknowledgeAnnouncement(item: Announcement): void {
-	if (!item?.name || !canShowInteractions(item)) return;
+async function acknowledgeAnnouncement(item: Announcement): Promise<void> {
+	if (!item?.name) {
+		toast({
+			title: 'Unable to save acknowledgement',
+			text: 'Please try again.',
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+		return;
+	}
+	if (!canShowInteractions(item)) {
+		toast({
+			title: 'Reactions unavailable',
+			text: 'Reactions are disabled for this announcement.',
+			icon: 'info',
+		});
+		return;
+	}
 
-	call(
-		'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
-		{
+	try {
+		await interactionService.reactToOrgCommunication({
 			org_communication: item.name,
-			intent_type: 'Acknowledged',
+			reaction_code: 'like',
 			surface: ORG_SURFACES.MORNING_BRIEF,
-		}
-	).then(() => {
+		});
 		const list = widgets.data?.announcements || [];
-		const comm_names = list.map(a => a.name).filter(Boolean);
-		if (comm_names.length) {
-			interactionSummary.submit({ comm_names });
+		const commNames = list.map(a => a.name).filter(Boolean);
+		if (commNames.length) {
+			await refreshInteractionSummary(commNames);
 		}
-	});
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Unable to save acknowledgement.';
+		toast({
+			title: 'Unable to save acknowledgement',
+			text: message,
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+	}
 }
 
-function submitComment(): void {
-	if (!activeCommunication.value || !canShowInteractions(activeCommunication.value)) return;
-	if (!newComment.value.trim()) return;
+async function submitComment(): Promise<void> {
+	if (!activeCommunication.value?.name) {
+		toast({
+			title: 'Select an announcement',
+			text: 'Choose an announcement before posting a comment.',
+			icon: 'info',
+		});
+		return;
+	}
+	if (!canShowInteractions(activeCommunication.value)) {
+		toast({
+			title: 'Comments unavailable',
+			text: 'Comments are disabled for this announcement.',
+			icon: 'info',
+		});
+		return;
+	}
 
 	const note = newComment.value.trim();
+	if (!note) {
+		toast({
+			title: 'Comment required',
+			text: 'Write a comment before posting.',
+			icon: 'info',
+		});
+		return;
+	}
 
-	call(
-		'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
-		{
+	try {
+		await interactionService.postOrgCommunicationComment({
 			org_communication: activeCommunication.value.name,
 			note,
-			intent_type: 'Comment',
 			surface: ORG_SURFACES.MORNING_BRIEF,
-		}
-	).then(() => {
-		newComment.value = '';
-		interactionThread.submit({
-			org_communication: activeCommunication.value.name,
-			limit_start: 0,
-			limit_page_length: 30,
 		});
+		newComment.value = '';
+		await refreshInteractionThread(activeCommunication.value.name);
 
 		const list = widgets.data?.announcements || [];
-		const comm_names = list.map(a => a.name).filter(Boolean);
-		if (comm_names.length) {
-			interactionSummary.submit({ comm_names });
+		const commNames = list.map(a => a.name).filter(Boolean);
+		if (commNames.length) {
+			await refreshInteractionSummary(commNames);
 		}
-	});
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Unable to post comment.';
+		toast({
+			title: 'Unable to post comment',
+			text: message,
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+	}
 }
 
-function reactToAnnouncement(item: Announcement, reaction: ReactionCode): void {
-	if (!item?.name || !canShowInteractions(item)) return;
+async function reactToAnnouncement(item: Announcement, reaction: ReactionCode): Promise<void> {
+	if (!item?.name) {
+		toast({
+			title: 'Unable to save reaction',
+			text: 'Please try again.',
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+		return;
+	}
+	if (!canShowInteractions(item)) {
+		toast({
+			title: 'Reactions unavailable',
+			text: 'Reactions are disabled for this announcement.',
+			icon: 'info',
+		});
+		return;
+	}
 
 	if (reaction === 'question') {
 		openInteractionThread(item);
 		return;
 	}
 
-	const reactionIntentMap: Record<ReactionCode, InteractionIntentType> = {
-		like: 'Acknowledged',
-		thank: 'Appreciated',
-		heart: 'Support',
-		smile: 'Positive',
-		applause: 'Celebration',
-		question: 'Question',
-		concern: 'Concern',
-	};
-
-	const intent_type = reactionIntentMap[reaction];
-
-	call(
-		'ifitwala_ed.setup.doctype.communication_interaction.communication_interaction.upsert_communication_interaction',
-		{
+	try {
+		await interactionService.reactToOrgCommunication({
 			org_communication: item.name,
 			reaction_code: reaction,
-			intent_type,
 			surface: ORG_SURFACES.MORNING_BRIEF,
-		}
-	).then(() => {
+		});
 		const list = widgets.data?.announcements || [];
-		const comm_names = list.map(a => a.name).filter(Boolean);
-		if (comm_names.length) {
-			interactionSummary.submit({ comm_names });
+		const commNames = list.map(a => a.name).filter(Boolean);
+		if (commNames.length) {
+			await refreshInteractionSummary(commNames);
 		}
-	});
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Unable to save reaction.';
+		toast({
+			title: 'Unable to save reaction',
+			text: message,
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+	}
 }
 
 function openAnnouncementsDialog(): void {

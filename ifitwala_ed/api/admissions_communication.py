@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import time
-from contextlib import contextmanager
 from datetime import datetime
 from typing import Any
 
@@ -13,8 +11,13 @@ from frappe.utils import cint, get_datetime, now_datetime
 
 from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
 from ifitwala_ed.api.admissions_portal import _ensure_applicant_match
-from ifitwala_ed.setup.doctype.communication_interaction.communication_interaction import (
-    _append_interaction_entry,
+from ifitwala_ed.api.org_communication_interactions import (
+    create_interaction_entry,
+    get_latest_org_communication_entry_for_user,
+    upsert_org_communication_read_receipt,
+)
+from ifitwala_ed.setup.doctype.communication_interaction_entry.communication_interaction_entry import (
+    DOCTYPE as ENTRY_DOCTYPE,
 )
 
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
@@ -34,8 +37,6 @@ THREAD_STATUS = "Published"
 THREAD_PORTAL_SURFACE = "Desk"
 INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
 READ_RECEIPT_REFERENCE_DOCTYPE = "Org Communication"
-READ_RECEIPT_DEADLOCK_RETRY_ATTEMPTS = 3
-READ_RECEIPT_RETRY_BASE_DELAY_SEC = 0.05
 
 
 def _to_text(value: Any) -> str:
@@ -70,12 +71,6 @@ def _safe_datetime(value) -> datetime | None:
         return None
 
 
-def _is_query_deadlock_error(exc: Exception) -> bool:
-    if exc.__class__.__name__ == "QueryDeadlockError":
-        return True
-    return _to_text(getattr(exc, "exc_type", "")).lower() == "querydeadlockerror"
-
-
 def _next_thread_title(context_doctype: str, context_name: str) -> str:
     base = f"Admissions Thread - {context_doctype} - {context_name}"
     candidate = base
@@ -84,21 +79,6 @@ def _next_thread_title(context_doctype: str, context_name: str) -> str:
         counter += 1
         candidate = f"{base} #{counter}"
     return candidate
-
-
-@contextmanager
-def _as_user(user: str):
-    current_user = _session_user()
-    target_user = _to_text(user)
-    if not target_user or current_user == target_user:
-        yield
-        return
-
-    frappe.set_user(target_user)
-    try:
-        yield
-    finally:
-        frappe.set_user(current_user or "Guest")
 
 
 def _resolve_student_applicant_row(applicant_name: str) -> dict:
@@ -228,12 +208,16 @@ def _get_or_create_thread(*, context_doctype: str, context_name: str, context_ro
         existing = _get_thread_name(context_doctype, context_name)
         if existing:
             return existing
-        with _as_user("Administrator"):
+        current_user = _session_user()
+        frappe.set_user("Administrator")
+        try:
             return _create_thread(
                 context_doctype=context_doctype,
                 context_name=context_name,
                 context_row=context_row,
             )
+        finally:
+            frappe.set_user(current_user or "Guest")
 
 
 def _sender_direction(*, sender_user: str, applicant_user: str, visibility: str) -> str:
@@ -252,36 +236,10 @@ def _truncate_preview(note: str, max_len: int = 120) -> str:
 
 
 def _fetch_latest_entry_for_sender(*, thread_name: str, sender_user: str) -> dict | None:
-    if frappe.db.table_exists("Communication Interaction Entry"):
-        rows = frappe.get_all(
-            "Communication Interaction Entry",
-            filters={
-                "org_communication": thread_name,
-                "user": sender_user,
-            },
-            fields=["name", "user", "note", "visibility", "creation", "modified"],
-            order_by="creation desc",
-            limit=1,
-        )
-        if rows:
-            return rows[0]
-
-    # Fallback for sites without entry rows.
-    interaction_rows = frappe.get_all(
-        "Communication Interaction",
-        filters={
-            "org_communication": thread_name,
-            "user": sender_user,
-        },
-        fields=["name", "user", "note", "visibility", "creation", "modified"],
-        order_by="creation desc",
-        limit=1,
+    return get_latest_org_communication_entry_for_user(
+        org_communication=thread_name,
+        user=sender_user,
     )
-    if not interaction_rows:
-        return None
-    row = dict(interaction_rows[0])
-    row["name"] = row.get("name")
-    return row
 
 
 def _save_case_interaction(
@@ -292,33 +250,22 @@ def _save_case_interaction(
     note: str,
     visibility: str,
 ) -> dict:
-    existing_name = frappe.db.get_value(
-        "Communication Interaction",
-        {"org_communication": thread_name, "user": actor_user},
-        "name",
+    saved_row = create_interaction_entry(
+        org_communication=thread_name,
+        user=actor_user,
+        intent_type=intent_type,
+        note=note,
+        visibility=visibility,
+        surface="Other",
     )
-    if existing_name:
-        doc = frappe.get_doc("Communication Interaction", existing_name)
-    else:
-        doc = frappe.new_doc("Communication Interaction")
-        doc.org_communication = thread_name
-        doc.user = actor_user
-
-    doc.intent_type = intent_type
-    doc.note = note
-    doc.visibility = visibility
-    doc.surface = "Other"
-    with _as_user(actor_user):
-        doc.save(ignore_permissions=True)
-    _append_interaction_entry(doc)
 
     return {
-        "name": _to_text(doc.name),
-        "user": _to_text(doc.user),
-        "note": _to_text(doc.note),
-        "visibility": _to_text(doc.visibility),
-        "creation": doc.creation,
-        "modified": doc.modified,
+        "name": _to_text(saved_row.get("name")),
+        "user": _to_text(saved_row.get("user")),
+        "note": _to_text(saved_row.get("note")),
+        "visibility": _to_text(saved_row.get("visibility")),
+        "creation": saved_row.get("creation"),
+        "modified": saved_row.get("modified"),
     }
 
 
@@ -331,7 +278,10 @@ def _serialize_message_row(*, row: dict, applicant_user: str) -> dict:
         applicant_user=applicant_user,
         visibility=visibility,
     )
-    full_name = _to_text(frappe.db.get_value("User", sender_user, "full_name") if sender_user else None) or sender_user
+    full_name = _to_text(row.get("full_name")) or _to_text(
+        frappe.db.get_value("User", sender_user, "full_name") if sender_user else None
+    )
+    full_name = full_name or sender_user
     return {
         "name": _to_text(row.get("name")),
         "user": sender_user,
@@ -360,65 +310,7 @@ def _get_read_receipt_time(user: str, thread_name: str) -> datetime | None:
     return _safe_datetime(read_at)
 
 
-def _upsert_portal_read_receipt(*, user: str, thread_name: str, read_at: datetime) -> None:
-    values = {
-        "name": frappe.generate_hash(length=10),
-        "created_at": read_at,
-        "modified_at": read_at,
-        "modified_by": user,
-        "owner": user,
-        "user": user,
-        "reference_doctype": READ_RECEIPT_REFERENCE_DOCTYPE,
-        "reference_name": thread_name,
-        "read_at": read_at,
-    }
-    lock_key = f"admissions:thread:read:{user}:{thread_name}"
-    with frappe.cache().lock(lock_key, timeout=8):
-        for attempt in range(1, READ_RECEIPT_DEADLOCK_RETRY_ATTEMPTS + 1):
-            values["name"] = frappe.generate_hash(length=10)
-            try:
-                frappe.db.sql(
-                    """
-                    INSERT INTO `tabPortal Read Receipt`
-                        (`name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `idx`,
-                         `user`, `reference_doctype`, `reference_name`, `read_at`)
-                    VALUES
-                        (%(name)s, %(created_at)s, %(modified_at)s, %(modified_by)s, %(owner)s, 0, 0,
-                         %(user)s, %(reference_doctype)s, %(reference_name)s, %(read_at)s)
-                    ON DUPLICATE KEY UPDATE
-                        `read_at` = VALUES(`read_at`),
-                        `modified` = VALUES(`modified`),
-                        `modified_by` = VALUES(`modified_by`)
-                    """,
-                    values,
-                )
-                return
-            except Exception as exc:
-                if not _is_query_deadlock_error(exc):
-                    raise
-                if attempt >= READ_RECEIPT_DEADLOCK_RETRY_ATTEMPTS:
-                    frappe.log_error(
-                        title="Admissions Communication read receipt deadlock",
-                        message=frappe.as_json(
-                            {
-                                "user": user,
-                                "reference_doctype": READ_RECEIPT_REFERENCE_DOCTYPE,
-                                "reference_name": thread_name,
-                                "attempts": attempt,
-                                "exc_type": exc.__class__.__name__,
-                            }
-                        ),
-                    )
-                    raise
-                time.sleep(READ_RECEIPT_RETRY_BASE_DELAY_SEC * attempt)
-
-
 def _count_unread_messages(*, thread_name: str, applicant_user: str, actor_user: str, actor_kind: str) -> int:
-    source_doctype = (
-        "Communication Interaction Entry"
-        if frappe.db.table_exists("Communication Interaction Entry")
-        else "Communication Interaction"
-    )
     read_at = _get_read_receipt_time(actor_user, thread_name)
 
     conditions = [
@@ -449,7 +341,7 @@ def _count_unread_messages(*, thread_name: str, applicant_user: str, actor_user:
     count_row = frappe.db.sql(
         f"""
         SELECT COUNT(*) AS unread_count
-        FROM `tab{source_doctype}` i
+        FROM `tab{ENTRY_DOCTYPE}` i
         WHERE {where_clause}
         """,
         values,
@@ -541,12 +433,6 @@ def get_admissions_case_thread(
     if not thread_name:
         return {"thread_name": None, "messages": [], "unread_count": 0}
 
-    source_doctype = (
-        "Communication Interaction Entry"
-        if frappe.db.table_exists("Communication Interaction Entry")
-        else "Communication Interaction"
-    )
-
     start = max(0, cint(limit_start or 0))
     page_length = cint(limit_page_length or 60)
     page_length = 200 if page_length > 200 else page_length
@@ -581,7 +467,7 @@ def get_admissions_case_thread(
             i.creation,
             i.modified,
             u.full_name
-        FROM `tab{source_doctype}` i
+        FROM `tab{ENTRY_DOCTYPE}` i
         LEFT JOIN `tabUser` u
           ON u.name = i.user
         WHERE {where_clause}
@@ -629,7 +515,11 @@ def mark_admissions_case_thread_read(
         return {"ok": True, "thread_name": None}
 
     read_at = now_datetime()
-    _upsert_portal_read_receipt(user=actor_user, thread_name=thread_name, read_at=read_at)
+    upsert_org_communication_read_receipt(
+        user=actor_user,
+        org_communication=thread_name,
+        read_at=read_at,
+    )
 
     return {"ok": True, "thread_name": thread_name, "read_at": read_at}
 
@@ -702,12 +592,6 @@ def get_admissions_thread_summaries_for_applicants(*, applicant_rows: list[dict]
         if _to_text(row.get("reference_name"))
     }
 
-    source_doctype = (
-        "Communication Interaction Entry"
-        if frappe.db.table_exists("Communication Interaction Entry")
-        else "Communication Interaction"
-    )
-
     entry_rows = frappe.db.sql(
         f"""
         SELECT
@@ -715,8 +599,11 @@ def get_admissions_thread_summaries_for_applicants(*, applicant_rows: list[dict]
             i.user,
             i.note,
             i.visibility,
-            i.creation
-        FROM `tab{source_doctype}` i
+            i.creation,
+            u.full_name
+        FROM `tab{ENTRY_DOCTYPE}` i
+        LEFT JOIN `tabUser` u
+          ON u.name = i.user
         WHERE i.org_communication IN %(thread_names)s
           AND COALESCE(TRIM(i.note), '') != ''
           AND i.visibility != 'Hidden'
