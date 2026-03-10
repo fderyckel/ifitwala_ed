@@ -272,15 +272,15 @@ class TestRecommendationIntake(FrappeTestCase):
 
         applicant_doc = frappe.get_doc("Student Applicant", self.applicant.name)
         documents = applicant_doc.has_required_documents()
-        recommendation_row = next(
-            row for row in (documents.get("required_rows") or []) if row.get("document_type") == self.document_type
-        )
+        recommendation_rows = [
+            row for row in (documents.get("uploaded_rows") or []) if row.get("document_type") == self.document_type
+        ]
 
-        self.assertEqual(recommendation_row.get("review_status"), "Approved")
-        self.assertEqual(int(recommendation_row.get("uploaded_count") or 0), 2)
-        self.assertEqual(int(recommendation_row.get("approved_count") or 0), 2)
-        self.assertTrue(bool(recommendation_row.get("uploaded_at")))
-        self.assertEqual(len(recommendation_row.get("items") or []), 2)
+        self.assertEqual(len(recommendation_rows), 2)
+        self.assertTrue(all(row.get("review_status") == "Approved" for row in recommendation_rows))
+        self.assertTrue(all(int(row.get("uploaded_count") or 0) == 2 for row in recommendation_rows))
+        self.assertTrue(all(int(row.get("approved_count") or 0) == 2 for row in recommendation_rows))
+        self.assertTrue(all(bool(row.get("uploaded_at")) for row in recommendation_rows))
         self.assertFalse(documents.get("missing"))
         self.assertFalse(documents.get("unapproved"))
 

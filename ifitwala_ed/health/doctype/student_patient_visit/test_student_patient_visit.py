@@ -65,4 +65,7 @@ def _make_student(prefix):
 
 
 def _make_student_patient(student_name):
+    existing_name = frappe.db.get_value("Student Patient", {"student": student_name}, "name")
+    if existing_name:
+        return frappe.get_doc("Student Patient", existing_name)
     return frappe.get_doc({"doctype": "Student Patient", "student": student_name}).insert()

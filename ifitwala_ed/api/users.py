@@ -403,27 +403,43 @@ def get_website_user_home_page(user=None) -> str:
 @frappe.whitelist()
 def get_users_with_role(doctype, txt, searchfield, start, page_len, filters):
     """Return enabled users matching the provided role for link-field queries."""
-    role = filters.get("role") if filters else None
+    query_filters = filters or {}
+    if isinstance(query_filters, str):
+        query_filters = frappe.parse_json(query_filters) or {}
+
+    role = query_filters.get("role")
     if not role:
         return []
 
-    query = """
-		SELECT u.name, u.full_name
-		FROM `tabUser` u
-		JOIN `tabHas Role` r ON u.name = r.parent
-		WHERE r.role = %(role)s
-			AND u.enabled = 1
-			AND (u.name LIKE %(txt)s OR u.full_name LIKE %(txt)s)
-		ORDER BY u.name
-		LIMIT %(start)s, %(page_len)s
-	"""
-
-    return frappe.db.sql(
-        query,
+    matching_usernames = list(
         {
-            "role": role,
-            "txt": f"%{txt}%",
-            "start": start,
-            "page_len": page_len,
-        },
+            row.get("parent")
+            for row in frappe.get_all(
+                "Has Role",
+                filters={"role": role, "parenttype": "User"},
+                fields=["parent"],
+                limit_page_length=0,
+            )
+            if row.get("parent")
+        }
     )
+    if not matching_usernames:
+        return []
+
+    search_txt = f"%{txt or ''}%"
+    rows = frappe.get_all(
+        "User",
+        filters={
+            "name": ["in", matching_usernames],
+            "enabled": 1,
+        },
+        or_filters=[
+            ["User", "name", "like", search_txt],
+            ["User", "full_name", "like", search_txt],
+        ],
+        fields=["name", "full_name"],
+        order_by="name asc",
+        start=int(start or 0),
+        page_length=int(page_len or 20),
+    )
+    return [(row.get("name"), row.get("full_name")) for row in rows]

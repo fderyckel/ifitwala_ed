@@ -944,10 +944,10 @@ def sync_student_applicant_contact_binding(*, student_applicant: str, contact_na
 
     seen: set[str] = set()
     emails_synced: list[str] = []
-    for value in (
-        applicant.get("applicant_email"),
-        applicant.get("portal_account_email"),
-        applicant.get("applicant_user"),
+    for source_fieldname, value in (
+        ("applicant_email", applicant.get("applicant_email")),
+        ("portal_account_email", applicant.get("portal_account_email")),
+        ("applicant_user", applicant.get("applicant_user")),
     ):
         normalized = normalize_email_value(value)
         if not normalized or normalized in seen:
@@ -981,6 +981,8 @@ def sync_student_applicant_contact_binding(*, student_applicant: str, contact_na
                     )
                 )
             if existing_link or existing_user_link:
+                continue
+            if source_fieldname == "applicant_user":
                 continue
         upsert_contact_email(resolved_contact, normalized, set_primary_if_missing=True)
         emails_synced.append(normalized)
@@ -1308,7 +1310,6 @@ def get_admission_officers(doctype, txt, searchfield, start, page_len, filters):
 
 
 @frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
 def get_inquiry_assignees(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
     ensure_admissions_permission()
     filters = filters or {}
