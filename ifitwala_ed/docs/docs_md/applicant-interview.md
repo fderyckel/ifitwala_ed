@@ -3,8 +3,8 @@ title: "Applicant Interview: Structured Interview Evidence"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.6.2"
-last_change_date: "2026-03-09"
+version: "1.6.3"
+last_change_date: "2026-03-10"
 summary: "Record interview evidence, participants, calendar projection, and per-interviewer feedback with audit trail comments on the Student Applicant timeline."
 seo_title: "Applicant Interview: Structured Interview Evidence"
 seo_description: "Record interview evidence, participants, calendar projection, and per-interviewer feedback with audit trail comments on the Student Applicant timeline."
@@ -59,7 +59,9 @@ Controller logic remains on the parent doctype; child table controller is intent
 4. Staff can open the same `AdmissionsWorkspaceOverlay` from two entry points:
    - StaffHome calendar (`School Event.reference_type = Applicant Interview`) in interview mode
    - Admissions Cockpit applicant card in applicant mode (file summary + interview list, then drill into a selected interview)
+   - guardian rows inside the applicant workspace open a stacked guardian-details overlay using the same overlay host
 5. Feedback is saved per interviewer via `Applicant Interview Feedback` (`Draft` / `Submitted`).
+   - the SPA presents this as one `Interview Notes` surface so users do not need to reason about the separate storage row
 6. Update interview records as evidence evolves; timeline comments keep a visible audit trail.
 7. Interview completion contributes to applicant readiness and admissions decision confidence.
 
@@ -132,6 +134,11 @@ Interviewers are child rows for structure only; workflow logic and validations a
   - unique index enforced in doctype controller (`on_doctype_update`)
   - interviewer feedback fields: strengths, concerns, shared values, other notes, recommendation, status (`Draft` / `Submitted`)
   - SPA workspace writes through server API `save_my_interview_feedback(...)` (upsert semantics)
+  - SPA labels collapse the storage split into a single `Interview Notes` experience for staff
+- **Guardian drill-in**:
+  - applicant/interview workspace payloads include the stored `Student Applicant Guardian` intake fields used by the stacked guardian-details overlay
+- **Governed file actions**:
+  - evidence and recommendation attachments in the workspace use governed admissions file URLs and are opened from the SPA without relying on guessed file paths
 - **Key hooks**:
   - `validate`: permission + applicant-state guard
   - `after_insert`: audit comment "Interview recorded"
@@ -154,6 +161,8 @@ Runtime controller rule:
 - Staff roles (`Admission` roles + `Academic Admin` + `System Manager`) are evaluated against applicant scope before create/update/read.
 - Scoped visibility is transfer-aware: access can follow linked student school context (for example, active enrollment/current anchor school) while preserving applicant-history linkage.
 - Non-admissions employees listed in `interviewers` can read/write only their assigned interview rows.
+- Delegated overall-application reviewers with an open `Applicant Review Assignment` for the applicant can open interview workspace payloads and governed interview-context file links read-only from the admissions workspace.
+- That delegated reviewer access does not widen Desk `Applicant Interview` doctype permission.
 - Interviewer write scope on parent interview remains restricted to `notes` and `outcome_impression`; schedule/participant fields stay staff-managed.
 - Structured per-interviewer notes should be captured in `Applicant Interview Feedback` from the SPA workspace.
 - Records are blocked when linked applicant is in terminal states (`Rejected`, `Promoted`).

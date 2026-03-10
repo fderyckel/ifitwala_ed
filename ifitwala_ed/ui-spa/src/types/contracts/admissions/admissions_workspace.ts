@@ -26,8 +26,15 @@ export interface InterviewWorkspaceInterview {
 
 export interface InterviewWorkspaceGuardian {
 	guardian?: string | null
+	contact?: string | null
+	use_applicant_contact?: boolean
 	full_name?: string | null
+	first_name?: string | null
+	last_name?: string | null
 	relationship?: string | null
+	can_consent?: boolean
+	salutation?: string | null
+	gender?: string | null
 	email?: string | null
 	mobile_phone?: string | null
 	work_email?: string | null
@@ -37,6 +44,9 @@ export interface InterviewWorkspaceGuardian {
 	is_financial_guardian?: boolean
 	user?: string | null
 	image?: string | null
+	employment_sector?: string | null
+	work_place?: string | null
+	designation?: string | null
 }
 
 export interface InterviewWorkspaceApplicant {

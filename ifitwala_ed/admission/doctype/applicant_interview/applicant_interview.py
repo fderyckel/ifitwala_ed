@@ -708,6 +708,20 @@ def _assert_interview_workspace_permission(
             student_applicant=student_applicant,
         ):
             return
+    else:
+        student_applicant = (
+            frappe.db.get_value("Applicant Interview", interview_name, "student_applicant") or ""
+        ).strip()
+
+    if (
+        student_applicant
+        and not require_write
+        and has_open_overall_application_review_access(
+            user=current_user,
+            student_applicant=student_applicant,
+        )
+    ):
+        return
 
     if _is_interviewer_on_interview(user=current_user, interview_name=interview_name):
         return
@@ -892,19 +906,27 @@ def _load_applicant_guardians_for_workspace(student_applicant: str) -> list[dict
         },
         fields=[
             "guardian",
+            "contact",
+            "use_applicant_contact",
             "relationship",
+            "is_primary",
+            "can_consent",
+            "salutation",
             "guardian_full_name",
             "guardian_first_name",
             "guardian_last_name",
+            "guardian_gender",
             "guardian_email",
             "guardian_mobile_phone",
             "guardian_work_email",
             "guardian_work_phone",
-            "is_primary",
             "is_primary_guardian",
             "is_financial_guardian",
             "user",
             "guardian_image",
+            "employment_sector",
+            "work_place",
+            "guardian_designation",
             "idx",
         ],
         order_by="idx asc",
@@ -920,17 +942,27 @@ def _load_applicant_guardians_for_workspace(student_applicant: str) -> list[dict
         out.append(
             {
                 "guardian": row.get("guardian"),
+                "contact": row.get("contact"),
+                "use_applicant_contact": bool(row.get("use_applicant_contact")),
                 "full_name": full_name,
+                "first_name": first_name or None,
+                "last_name": last_name or None,
                 "relationship": row.get("relationship"),
+                "is_primary": bool(row.get("is_primary")),
+                "can_consent": bool(row.get("can_consent")),
+                "salutation": row.get("salutation"),
+                "gender": row.get("guardian_gender"),
                 "email": row.get("guardian_email"),
                 "mobile_phone": row.get("guardian_mobile_phone"),
                 "work_email": row.get("guardian_work_email"),
                 "work_phone": row.get("guardian_work_phone"),
-                "is_primary": bool(row.get("is_primary")),
                 "is_primary_guardian": bool(row.get("is_primary_guardian")),
                 "is_financial_guardian": bool(row.get("is_financial_guardian")),
                 "user": row.get("user"),
                 "image": row.get("guardian_image"),
+                "employment_sector": row.get("employment_sector"),
+                "work_place": row.get("work_place"),
+                "designation": row.get("guardian_designation"),
             }
         )
     return out

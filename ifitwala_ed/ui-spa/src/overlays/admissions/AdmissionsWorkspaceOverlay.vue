@@ -85,7 +85,86 @@
 							</div>
 
 							<div v-else-if="hasWorkspace" class="space-y-4">
-								<section class="space-y-4">
+								<section v-if="isGuardianMode && selectedGuardian" class="space-y-4">
+									<article class="interview-card">
+										<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+											<div class="flex items-start gap-4">
+												<div
+													v-if="selectedGuardian.image"
+													class="h-16 w-16 overflow-hidden rounded-2xl border border-border/60 bg-slate-50"
+												>
+													<img
+														:src="selectedGuardian.image"
+														:alt="selectedGuardian.full_name || 'Guardian photo'"
+														class="h-full w-full object-cover"
+													/>
+												</div>
+												<div class="min-w-0">
+													<div class="flex flex-wrap items-center gap-2">
+														<h3 class="type-h3 text-ink">
+															{{ selectedGuardian.full_name || 'Guardian' }}
+														</h3>
+														<span
+															v-if="selectedGuardian.relationship"
+															class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700"
+														>
+															{{ selectedGuardian.relationship }}
+														</span>
+														<span
+															v-if="
+																selectedGuardian.is_primary || selectedGuardian.is_primary_guardian
+															"
+															class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-900"
+														>
+															Primary
+														</span>
+														<span
+															v-if="selectedGuardian.is_financial_guardian"
+															class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900"
+														>
+															Financial
+														</span>
+													</div>
+													<p class="mt-1 type-caption text-ink/65">
+														Guardian intake details captured on the applicant profile.
+													</p>
+												</div>
+											</div>
+										</div>
+									</article>
+
+									<article class="interview-card">
+										<h3 class="type-h3 text-ink">Profile</h3>
+										<div class="mt-3 grid gap-3 sm:grid-cols-2">
+											<div v-for="field in guardianProfileFields" :key="field.label">
+												<p class="type-caption text-ink/65">{{ field.label }}</p>
+												<p class="type-body text-ink break-words">{{ field.value }}</p>
+											</div>
+										</div>
+									</article>
+
+									<article class="interview-card">
+										<h3 class="type-h3 text-ink">Contact & Access</h3>
+										<div class="mt-3 grid gap-3 sm:grid-cols-2">
+											<div v-for="field in guardianContactFields" :key="field.label">
+												<p class="type-caption text-ink/65">{{ field.label }}</p>
+												<p class="type-body text-ink break-words">{{ field.value }}</p>
+											</div>
+										</div>
+									</article>
+
+									<article class="interview-card">
+										<h3 class="type-h3 text-ink">Work Details</h3>
+										<div class="mt-3 grid gap-3 sm:grid-cols-2">
+											<div v-for="field in guardianWorkFields" :key="field.label">
+												<p class="type-caption text-ink/65">{{ field.label }}</p>
+												<p class="type-body text-ink break-words">{{ field.value }}</p>
+											</div>
+										</div>
+									</article>
+								</section>
+
+								<section v-else class="space-y-4">
 									<article class="interview-card">
 										<h3 class="type-h3 text-ink">Applicant Brief</h3>
 										<div class="mt-3 grid gap-3 sm:grid-cols-2">
@@ -153,16 +232,29 @@
 											<li
 												v-for="guardian in workspaceApplicant?.guardians || []"
 												:key="guardian.guardian || guardian.full_name"
-												class="rounded-xl border border-border/60 bg-white px-3 py-2"
+												class="rounded-xl border border-border/60 bg-white"
 											>
-												<p class="type-body-strong text-ink">
-													{{ guardian.full_name || 'Guardian' }}
-													<span class="text-ink/60">· {{ guardian.relationship || '—' }}</span>
-												</p>
-												<p class="type-caption text-ink/70 mt-1">
-													{{ guardian.email || 'No personal email' }}
-													<span v-if="guardian.mobile_phone"> · {{ guardian.mobile_phone }}</span>
-												</p>
+												<button
+													type="button"
+													class="flex w-full items-start justify-between gap-3 px-3 py-2 text-left transition hover:bg-slate-50"
+													@click="openGuardianDetails(guardian)"
+												>
+													<div class="min-w-0">
+														<p class="type-body-strong text-ink">
+															{{ guardian.full_name || 'Guardian' }}
+															<span class="text-ink/60">· {{ guardian.relationship || '—' }}</span>
+														</p>
+														<p class="type-caption text-ink/70 mt-1">
+															{{ guardian.email || 'No personal email' }}
+															<span v-if="guardian.mobile_phone">
+																· {{ guardian.mobile_phone }}
+															</span>
+														</p>
+													</div>
+													<span class="type-caption text-canopy whitespace-nowrap">
+														Open details
+													</span>
+												</button>
 											</li>
 										</ul>
 									</article>
@@ -224,7 +316,7 @@
 
 									<template v-if="isInterviewMode && workspace">
 										<article class="interview-card">
-											<h3 class="type-h3 text-ink">Panel Feedback</h3>
+											<h3 class="type-h3 text-ink">Interview Team</h3>
 											<ul class="mt-3 space-y-2">
 												<li
 													v-for="member in workspace.feedback.panel"
@@ -244,9 +336,9 @@
 										</article>
 
 										<article class="interview-card">
-											<h3 class="type-h3 text-ink">My Interview Feedback</h3>
+											<h3 class="type-h3 text-ink">Interview Notes</h3>
 											<p class="type-caption text-ink/65 mt-1">
-												Separate notes per interviewer to avoid edit collisions.
+												Your notes are saved separately per interviewer to avoid edit collisions.
 											</p>
 
 											<div
@@ -329,7 +421,7 @@
 													:disabled="!canEdit || submitting"
 													@click="saveDraft"
 												>
-													{{ submitting ? 'Saving…' : 'Save Draft' }}
+													{{ submitting ? 'Saving…' : 'Save Notes' }}
 												</button>
 												<button
 													type="button"
@@ -337,11 +429,11 @@
 													:disabled="!canEdit || submitting"
 													@click="submitFeedback"
 												>
-													{{ submitting ? 'Submitting…' : 'Submit Feedback' }}
+													{{ submitting ? 'Submitting…' : 'Submit Notes' }}
 												</button>
 											</div>
 											<p v-if="!canEdit" class="type-caption text-ink/60 mt-3">
-												You are not assigned to edit feedback for this interview.
+												You are not assigned to add notes for this interview.
 											</p>
 										</article>
 									</template>
@@ -349,7 +441,7 @@
 									<article v-else class="interview-card">
 										<h3 class="type-h3 text-ink">Interview Notes</h3>
 										<p class="type-caption text-ink/70 mt-2">
-											Select an interview to view panel feedback and submit interviewer notes.
+											Select an interview to view the team status and add your notes.
 										</p>
 									</article>
 
@@ -387,15 +479,19 @@
 														:key="item.name || item.item_key || item.item_label"
 														class="type-caption text-ink/75"
 													>
-														<a
+														<button
 															v-if="item.file_url"
-															:href="item.file_url"
-															target="_blank"
-															rel="noreferrer"
+															type="button"
 															class="underline"
+															@click="
+																openWorkspaceFile(
+																	item.file_url,
+																	item.item_label || item.file_name || 'document file'
+																)
+															"
 														>
 															{{ item.item_label || item.file_name || 'View file' }}
-														</a>
+														</button>
 														<span v-else>{{
 															item.item_label || item.item_key || 'Document item'
 														}}</span>
@@ -591,15 +687,19 @@
 																<p class="mt-1 type-caption text-ink/65">
 																	{{ formatSubmissionMeta(item) }}
 																</p>
-																<a
+																<button
 																	v-if="item.file_url"
-																	:href="item.file_url"
-																	target="_blank"
-																	rel="noreferrer"
+																	type="button"
 																	class="mt-2 inline-flex text-sm font-medium text-canopy underline"
+																	@click="
+																		openWorkspaceFile(
+																			item.file_url,
+																			item.file_name || item.item_label || 'submitted file'
+																		)
+																	"
 																>
 																	{{ item.file_name || 'Open file' }}
-																</a>
+																</button>
 															</div>
 
 															<div
@@ -704,15 +804,19 @@
 															<p class="mt-1 type-caption text-ink/65">
 																{{ formatSubmissionMeta(row) }}
 															</p>
-															<a
+															<button
 																v-if="row.file_url"
-																:href="row.file_url"
-																target="_blank"
-																rel="noreferrer"
+																type="button"
 																class="mt-2 inline-flex text-sm font-medium text-canopy underline"
+																@click="
+																	openWorkspaceFile(
+																		row.file_url,
+																		row.file_name || row.label || 'submitted file'
+																	)
+																"
 															>
 																{{ row.file_name || 'Open file' }}
-															</a>
+															</button>
 														</div>
 
 														<div
@@ -1041,18 +1145,23 @@
 															>
 																{{ recommendationReview.recommendation.item_label }}
 															</span>
-															<a
+															<button
 																v-if="recommendationReview.recommendation.file_url"
-																:href="recommendationReview.recommendation.file_url"
-																target="_blank"
-																rel="noreferrer"
+																type="button"
 																class="text-sm font-medium text-canopy underline"
+																@click="
+																	openWorkspaceFile(
+																		recommendationReview.recommendation.file_url,
+																		recommendationReview.recommendation.file_name ||
+																			'recommendation attachment'
+																	)
+																"
 															>
 																{{
 																	recommendationReview.recommendation.file_name ||
 																	'Open attached file'
 																}}
-															</a>
+															</button>
 														</div>
 														<p
 															v-if="recommendationReview.recommendation.recommender_email"
@@ -1234,6 +1343,7 @@ import {
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
 
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import {
 	getApplicantWorkspace,
 	getInterviewWorkspace,
@@ -1251,6 +1361,7 @@ import type {
 	ApplicantWorkspaceUploadedRow,
 	ApplicantWorkspaceResponse,
 	InterviewWorkspaceInterview,
+	InterviewWorkspaceGuardian,
 	InterviewWorkspaceResponse,
 	RecommendationReviewPayload,
 	RecommendationReviewRow,
@@ -1261,8 +1372,10 @@ const props = defineProps<{
 	zIndex?: number;
 	interview?: string | null;
 	schoolEvent?: string | null;
-	mode?: 'interview' | 'applicant' | null;
+	mode?: 'interview' | 'applicant' | 'guardian' | null;
 	studentApplicant?: string | null;
+	guardian?: InterviewWorkspaceGuardian | null;
+	applicantDisplayName?: string | null;
 	recommendationRequest?: string | null;
 	recommendationSubmission?: string | null;
 	applicantDocumentItem?: string | null;
@@ -1270,7 +1383,8 @@ const props = defineProps<{
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
-type WorkspaceMode = 'interview' | 'applicant';
+type WorkspaceMode = 'interview' | 'applicant' | 'guardian';
+type GuardianDetailField = { label: string; value: string };
 
 function emptyApplicantDocumentReview(): ApplicantWorkspaceDocumentReview {
 	return {
@@ -1290,6 +1404,7 @@ const emit = defineEmits<{
 	(e: 'after-leave'): void;
 }>();
 
+const overlay = useOverlayStack();
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 70 }));
 const closeBtnRef = ref<HTMLButtonElement | null>(null);
 
@@ -1421,13 +1536,65 @@ const submissionRequiresNotes = computed(
 	() => submissionDecision.value === 'Needs Follow-Up' || submissionDecision.value === 'Rejected'
 );
 
-const hasWorkspace = computed(() => Boolean(workspace.value || applicantWorkspace.value));
 const isInterviewMode = computed(() => currentMode.value === 'interview');
+const isGuardianMode = computed(() => currentMode.value === 'guardian');
+const selectedGuardian = computed<InterviewWorkspaceGuardian | null>(() =>
+	isGuardianMode.value ? props.guardian || null : null
+);
+const hasWorkspace = computed(() =>
+	isGuardianMode.value
+		? Boolean(selectedGuardian.value)
+		: Boolean(workspace.value || applicantWorkspace.value)
+);
 const showBackToApplicant = computed(
 	() => isInterviewMode.value && Boolean(applicantWorkspace.value)
 );
 
-const applicantDisplayName = computed(() => workspaceApplicant.value?.display_name || '');
+const applicantDisplayName = computed(() => {
+	if (isGuardianMode.value) {
+		return String(props.applicantDisplayName || '').trim();
+	}
+	return workspaceApplicant.value?.display_name || '';
+});
+const guardianProfileFields = computed<GuardianDetailField[]>(() => {
+	const guardian = selectedGuardian.value;
+	if (!guardian) return [];
+	return [
+		{ label: 'Full Name', value: displayValue(guardian.full_name) },
+		{ label: 'First Name', value: displayValue(guardian.first_name) },
+		{ label: 'Last Name', value: displayValue(guardian.last_name) },
+		{ label: 'Relationship', value: displayValue(guardian.relationship) },
+		{ label: 'Salutation', value: displayValue(guardian.salutation) },
+		{ label: 'Gender', value: displayValue(guardian.gender) },
+		{ label: 'Guardian Record', value: displayValue(guardian.guardian) },
+		{ label: 'User ID', value: displayValue(guardian.user) },
+	];
+});
+const guardianContactFields = computed<GuardianDetailField[]>(() => {
+	const guardian = selectedGuardian.value;
+	if (!guardian) return [];
+	return [
+		{ label: 'Personal Email', value: displayValue(guardian.email) },
+		{ label: 'Mobile Phone', value: displayValue(guardian.mobile_phone) },
+		{ label: 'Work Email', value: displayValue(guardian.work_email) },
+		{ label: 'Work Phone', value: displayValue(guardian.work_phone) },
+		{ label: 'Contact Record', value: displayValue(guardian.contact) },
+		{ label: 'Use Applicant Contact', value: booleanValue(guardian.use_applicant_contact) },
+		{ label: 'Can Consent', value: booleanValue(guardian.can_consent) },
+		{ label: 'Is Primary', value: booleanValue(guardian.is_primary) },
+	];
+});
+const guardianWorkFields = computed<GuardianDetailField[]>(() => {
+	const guardian = selectedGuardian.value;
+	if (!guardian) return [];
+	return [
+		{ label: 'Employment Sector', value: displayValue(guardian.employment_sector) },
+		{ label: 'Work Place', value: displayValue(guardian.work_place) },
+		{ label: 'Designation', value: displayValue(guardian.designation) },
+		{ label: 'Is Primary Guardian', value: booleanValue(guardian.is_primary_guardian) },
+		{ label: 'Is Financial Guardian', value: booleanValue(guardian.is_financial_guardian) },
+	];
+});
 const selectedRecommendationRow = computed<RecommendationReviewRow | null>(() => {
 	const requestName = String(
 		recommendationReview.value?.recommendation?.recommendation_request ||
@@ -1474,11 +1641,15 @@ const nextPendingRecommendationRow = computed<RecommendationReviewRow | null>(()
 	);
 });
 
-const workspaceOverline = computed(() =>
-	isInterviewMode.value ? 'Admission Interview Workspace' : 'Admission Applicant Workspace'
-);
+const workspaceOverline = computed(() => {
+	if (isGuardianMode.value) return 'Admission Guardian Workspace';
+	return isInterviewMode.value ? 'Admission Interview Workspace' : 'Admission Applicant Workspace';
+});
 
 const interviewWindowLabel = computed(() => {
+	if (isGuardianMode.value) {
+		return 'Guardian intake details captured from the applicant admission form';
+	}
 	if (!isInterviewMode.value) {
 		return 'Applicant evidence, readiness, and interview summary';
 	}
@@ -1517,6 +1688,15 @@ function emitClose(reason: CloseReason = 'programmatic') {
 
 function onDialogClose(payload: unknown) {
 	void payload;
+}
+
+function displayValue(value: unknown, fallback = '—') {
+	const resolved = String(value ?? '').trim();
+	return resolved || fallback;
+}
+
+function booleanValue(value: unknown) {
+	return Boolean(value) ? 'Yes' : 'No';
 }
 
 function clearRuntimeMessages() {
@@ -1758,10 +1938,26 @@ async function loadApplicantWorkspace(studentApplicantName: string) {
 	}
 }
 
+function loadGuardianWorkspace() {
+	loading.value = false;
+	errorText.value = null;
+	clearRuntimeMessages();
+	resetApplicantActionState();
+	workspace.value = null;
+	applicantWorkspace.value = null;
+	currentMode.value = 'guardian';
+	activeInterviewName.value = '';
+
+	if (!selectedGuardian.value) {
+		errorText.value = 'Guardian details are missing from this admissions workspace action.';
+	}
+}
+
 function resolveRequestedMode(): WorkspaceMode {
 	const requested = String(props.mode || '')
 		.trim()
 		.toLowerCase();
+	if (requested === 'guardian') return 'guardian';
 	if (requested === 'applicant') return 'applicant';
 	if (requested === 'interview') return 'interview';
 	return String(props.interview || '').trim() ? 'interview' : 'applicant';
@@ -1769,6 +1965,11 @@ function resolveRequestedMode(): WorkspaceMode {
 
 async function loadWorkspace() {
 	const mode = resolveRequestedMode();
+	if (mode === 'guardian') {
+		loadGuardianWorkspace();
+		return;
+	}
+
 	if (mode === 'applicant') {
 		const applicantName = String(props.studentApplicant || '').trim();
 		if (applicantName) {
@@ -1828,6 +2029,38 @@ async function openInterview(interviewName: string | null | undefined) {
 		return;
 	}
 	await loadInterviewWorkspace(normalizedInterview, { preserveApplicantContext: true });
+}
+
+function openGuardianDetails(guardian: InterviewWorkspaceGuardian | null | undefined) {
+	const studentApplicant =
+		getApplicantWorkspaceName() || String(props.studentApplicant || '').trim();
+	if (!guardian || (!guardian.full_name && !guardian.guardian && !guardian.email)) {
+		documentActionError.value = 'Guardian details are not available for this applicant.';
+		return;
+	}
+
+	documentActionError.value = null;
+	overlay.open('admissions-workspace', {
+		mode: 'guardian',
+		studentApplicant: studentApplicant || null,
+		applicantDisplayName: applicantDisplayName.value || null,
+		guardian: { ...guardian },
+	});
+}
+
+function openWorkspaceFile(fileUrl: string | null | undefined, label?: string | null) {
+	const target = String(fileUrl || '').trim();
+	if (!target) {
+		documentActionError.value = `${displayValue(label, 'File')} is not available yet.`;
+		return;
+	}
+
+	documentActionError.value = null;
+	recommendationReviewError.value = null;
+	const opened = window.open(target, '_blank', 'noopener,noreferrer');
+	if (!opened) {
+		window.location.assign(target);
+	}
 }
 
 function newClientRequestId(prefix = 'admissions_workspace') {
@@ -2028,19 +2261,19 @@ function hasAnyFeedbackContent() {
 
 async function persistFeedback(status: 'Draft' | 'Submitted') {
 	if (!workspace.value || !isInterviewMode.value) {
-		formError.value = 'Open an interview before saving feedback.';
+		formError.value = 'Open an interview before saving notes.';
 		return;
 	}
 	formError.value = null;
 	saveNotice.value = null;
 
 	if (!canEdit.value) {
-		formError.value = 'You are not allowed to edit feedback for this interview.';
+		formError.value = 'You are not allowed to add notes for this interview.';
 		return;
 	}
 
 	if (status === 'Submitted' && !hasAnyFeedbackContent()) {
-		formError.value = 'Add at least one feedback note before submitting.';
+		formError.value = 'Add at least one note before submitting.';
 		return;
 	}
 
@@ -2060,9 +2293,9 @@ async function persistFeedback(status: 'Draft' | 'Submitted') {
 			workspace.value.feedback = result.feedback;
 		}
 		resetFormFromWorkspace();
-		saveNotice.value = status === 'Submitted' ? 'Feedback submitted.' : 'Draft saved.';
+		saveNotice.value = status === 'Submitted' ? 'Notes submitted.' : 'Notes saved.';
 	} catch (err) {
-		formError.value = err instanceof Error ? err.message : 'Failed to save feedback.';
+		formError.value = err instanceof Error ? err.message : 'Failed to save notes.';
 	} finally {
 		submitting.value = false;
 	}
@@ -2310,6 +2543,8 @@ watch(
 			props.interview,
 			props.mode,
 			props.studentApplicant,
+			props.guardian,
+			props.applicantDisplayName,
 			props.recommendationRequest,
 			props.recommendationSubmission,
 			props.applicantDocumentItem,

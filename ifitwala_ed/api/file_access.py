@@ -290,6 +290,8 @@ def _assert_context_permission(
             user=user, student_applicant=file_student_applicant
         ):
             return
+        if has_open_overall_application_review_access(user=user, student_applicant=file_student_applicant):
+            return
         if _is_interviewer_on_interview(user=user, interview_name=resolved_name):
             return
 
