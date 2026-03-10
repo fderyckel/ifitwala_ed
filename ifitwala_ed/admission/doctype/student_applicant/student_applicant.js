@@ -63,6 +63,7 @@ frappe.ui.form.on("Student Applicant", {
 		render_review_sections(frm);
 		add_decision_actions(frm);
 		add_portal_invite_action(frm);
+		add_enrollment_plan_action(frm);
 		add_recommendation_actions(frm);
 		add_create_interview_action(frm);
 		add_schedule_interview_action(frm);
@@ -150,6 +151,36 @@ frappe.ui.form.on("Student Applicant", {
 
 const TERMINAL_PORTAL_INVITE_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
 const TERMINAL_INTERVIEW_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
+
+function add_enrollment_plan_action(frm) {
+	frm.remove_custom_button(__("Manage Enrollment Plan"), __("Actions"));
+	frm.remove_custom_button(__("Manage Enrollment Plan"));
+
+	if (!frm.doc || frm.is_new()) {
+		return;
+	}
+
+	const status = String(frm.doc.application_status || "").trim();
+	if (status === "Rejected" || status === "Withdrawn") {
+		return;
+	}
+
+	frm.add_custom_button(__("Manage Enrollment Plan"), () => {
+		frappe.call({
+			method: "ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan.get_or_create_applicant_enrollment_plan",
+			args: { student_applicant: frm.doc.name },
+			freeze: true,
+			freeze_message: __("Opening enrollment plan..."),
+		}).then((res) => {
+			const name = res?.message?.name;
+			if (name) {
+				frappe.set_route("Form", "Applicant Enrollment Plan", name);
+			}
+		}).catch((err) => {
+			frappe.msgprint(err?.message || __("Unable to open the enrollment plan."));
+		});
+	}, __("Actions"));
+}
 
 function add_create_interview_action(frm) {
 	frm.remove_custom_button(__("Create Interview"), __("Actions"));

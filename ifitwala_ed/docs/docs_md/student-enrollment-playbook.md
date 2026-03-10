@@ -3,9 +3,9 @@ title: "Student Enrollment Playbook: Curriculum to Ready Enrollment"
 slug: student-enrollment-playbook
 category: Enrollment
 doc_order: 1
-version: "1.0.0"
-last_change_date: "2026-02-28"
-summary: "Run the full enrollment workflow end-to-end: prepare curriculum, publish offering constraints, validate requests, materialize Program Enrollment, and finalize course rosters safely."
+version: "1.1.0"
+last_change_date: "2026-03-10"
+summary: "Run the full enrollment workflow end-to-end: prepare curriculum, publish offering constraints, bridge admissions into draft requests safely, validate requests, materialize Program Enrollment, and finalize course rosters."
 seo_title: "Student Enrollment Playbook: Curriculum to Ready Enrollment"
 seo_description: "Run the full enrollment workflow end-to-end: prepare curriculum, publish offering constraints, validate requests, materialize Program Enrollment, and finalize course rosters safely."
 ---
@@ -29,7 +29,7 @@ This page is the operational path for enrolling students into programs and cours
 
 1. Prepare curriculum policy (`Program`, catalog rows, prerequisite snapshots).
 2. Publish operational availability (`Program Offering`, offering courses, basket rules, capacity model).
-3. Capture student intent in [**Program Enrollment Request**](/docs/en/program-enrollment-request/).
+3. Capture student intent in [**Program Enrollment Request**](/docs/en/program-enrollment-request/), either directly or by hydrating it from an accepted [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/) after promotion.
 4. Validate request snapshot (`validate_program_enrollment_request`).
 5. Approve with explicit override if required.
 6. Materialize approved request into [**Program Enrollment**](/docs/en/program-enrollment/) (`materialize_program_enrollment_request`).
@@ -72,7 +72,21 @@ This page is the operational path for enrolling students into programs and cours
 - [**Program**](/docs/en/program/)
 - [**Course**](/docs/en/course/)
 - [**Program Offering**](/docs/en/program-offering/)
+- [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/)
 - [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
 - [**Program Enrollment**](/docs/en/program-enrollment/)
 - [**Program Enrollment Tool**](/docs/en/program-enrollment-tool/)
 - [**Course Enrollment Tool**](/docs/en/course-enrollment-tool/)
+
+## Technical Notes (IT)
+
+### Latest Technical Snapshot (2026-03-10)
+
+- **Primary runtime owners**:
+  - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`
+  - `ifitwala_ed/schedule/enrollment_request_utils.py`
+  - `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`
+  - `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
+- **Admissions bridge nuance**:
+  - when enrollment starts in admissions, the playbook enters at `Applicant Enrollment Plan`
+  - the real transactional path still begins only once `Program Enrollment Request` exists

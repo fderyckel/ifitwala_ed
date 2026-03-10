@@ -676,10 +676,19 @@ class StudentApplicant(Document):
             frappe.throw(_("Applicant must be Approved before promotion."))
         if not self.student_joining_date:
             frappe.throw(_("Joining Date is required before promotion to Student."))
+        self._validate_enrollment_plan_for_promotion()
 
         if self.student:
+            hydrated_request = self._maybe_auto_hydrate_enrollment_request_after_promotion(self.student)
             self._copy_health_profile_to_student_patient(self.student, require_profile=False)
             self._set_status("Promoted", "Applicant promoted")
+            if hydrated_request:
+                self.add_comment(
+                    "Comment",
+                    text=_("Draft Program Enrollment Request {0} auto-hydrated after promotion.").format(
+                        frappe.bold(hydrated_request)
+                    ),
+                )
             return self.student
 
         existing = frappe.db.get_value("Student", {"student_applicant": self.name}, "name")
@@ -688,7 +697,15 @@ class StudentApplicant(Document):
             self.flags.from_promotion = True
             self.student = existing
             self.save(ignore_permissions=True)
+            hydrated_request = self._maybe_auto_hydrate_enrollment_request_after_promotion(existing)
             self._set_status("Promoted", "Applicant promoted")
+            if hydrated_request:
+                self.add_comment(
+                    "Comment",
+                    text=_("Draft Program Enrollment Request {0} auto-hydrated after promotion.").format(
+                        frappe.bold(hydrated_request)
+                    ),
+                )
             return existing
 
         prev_flag = getattr(frappe.flags, "from_applicant_promotion", False)
@@ -744,6 +761,7 @@ class StudentApplicant(Document):
         self.flags.from_promotion = True
         self.student = student.name
         self.save(ignore_permissions=True)
+        hydrated_request = self._maybe_auto_hydrate_enrollment_request_after_promotion(student.name)
         self._set_status("Promoted", "Applicant promoted")
         self.add_comment(
             "Comment",
@@ -752,6 +770,13 @@ class StudentApplicant(Document):
                 "{1} vaccination row(s) synced to Student Patient {2}."
             ).format(copied_docs, health_snapshot["vaccinations"], health_snapshot["student_patient"]),
         )
+        if hydrated_request:
+            self.add_comment(
+                "Comment",
+                text=_("Draft Program Enrollment Request {0} auto-hydrated after promotion.").format(
+                    frappe.bold(hydrated_request)
+                ),
+            )
 
         return student.name
 
@@ -840,6 +865,46 @@ class StudentApplicant(Document):
             return
         frappe.throw(_("Identity Upgrade requires an active Program Enrollment for Student {0}.").format(student_name))
 
+    def _validate_enrollment_plan_for_promotion(self):
+        from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
+            get_latest_applicant_enrollment_plan,
+        )
+
+        plan = get_latest_applicant_enrollment_plan(self.name)
+        if not plan:
+            return
+        if (plan.status or "").strip() in {"Offer Accepted", "Hydrated"}:
+            return
+        frappe.throw(_("Applicant Enrollment Plan must be Offer Accepted before promotion."))
+
+    def _maybe_auto_hydrate_enrollment_request_after_promotion(self, student_name: str) -> str | None:
+        try:
+            auto_hydrate = frappe.db.get_single_value(
+                "Admission Settings", "auto_hydrate_enrollment_request_after_promotion"
+            )
+        except Exception:
+            auto_hydrate = 0
+        if not int(auto_hydrate or 0):
+            return None
+
+        from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
+            get_latest_applicant_enrollment_plan,
+            hydrate_program_enrollment_request_from_applicant_plan,
+        )
+
+        plan = get_latest_applicant_enrollment_plan(self.name)
+        if not plan:
+            return None
+        if (plan.status or "").strip() == "Hydrated" and (plan.program_enrollment_request or "").strip():
+            return (plan.program_enrollment_request or "").strip()
+        if (plan.status or "").strip() != "Offer Accepted":
+            return None
+        if not student_name:
+            return None
+
+        result = hydrate_program_enrollment_request_from_applicant_plan(plan.name)
+        return (result or {}).get("name")
+
     def _resolve_upgrade_guardians(self) -> list[dict]:
         rows = self.get("guardians") or []
         resolved = []
@@ -879,10 +944,7 @@ class StudentApplicant(Document):
                 row_spec["contact"] = contact_name
             resolved.append(row_spec)
 
-        if resolved:
-            return resolved
-        fallback = self._create_or_reuse_guardian_from_contact()
-        return [fallback]
+        return resolved
 
     def _is_empty_applicant_guardian_row(self, row) -> bool:
         fields = (
@@ -996,67 +1058,6 @@ class StudentApplicant(Document):
             "contact": (row.get("contact") or "").strip() or None,
         }
 
-    def _create_or_reuse_guardian_from_contact(self) -> dict:
-        email = normalize_email_value(self.applicant_email) or normalize_email_value(self.portal_account_email)
-        if self.applicant_contact and not email:
-            email = get_contact_primary_email(self.applicant_contact)
-        mobile = None
-        contact_first_name = None
-        contact_last_name = None
-        if self.applicant_contact:
-            contact_row = frappe.db.get_value(
-                "Contact",
-                self.applicant_contact,
-                ["first_name", "last_name"],
-                as_dict=True,
-            )
-            if contact_row:
-                contact_first_name = contact_row.get("first_name")
-                contact_last_name = contact_row.get("last_name")
-            mobile = frappe.db.get_value(
-                "Contact Phone",
-                {"parent": self.applicant_contact, "is_primary_mobile_no": 1},
-                "phone",
-            )
-
-        if not email:
-            frappe.throw(
-                _("Identity Upgrade requires a guardian email. Add a Guardian row or Applicant Contact email.")
-            )
-        if not mobile:
-            frappe.throw(
-                _("Identity Upgrade requires a guardian mobile phone. Add a Guardian row or Applicant Contact mobile.")
-            )
-
-        existing = frappe.db.get_value("Guardian", {"guardian_email": email}, "name")
-        if existing:
-            guardian = frappe.get_doc("Guardian", existing)
-            if not guardian.guardian_mobile_phone:
-                guardian.guardian_mobile_phone = mobile
-                guardian.save(ignore_permissions=True)
-            return {
-                "guardian": guardian,
-                "relationship": "Other",
-                "contact": (self.applicant_contact or "").strip() or None,
-            }
-
-        first_name = (contact_first_name or "").strip() or (self.first_name or "").strip() or _("Guardian")
-        last_name = (contact_last_name or "").strip() or (self.last_name or "").strip() or _("Contact")
-        guardian = frappe.get_doc(
-            {
-                "doctype": "Guardian",
-                "guardian_first_name": first_name,
-                "guardian_last_name": last_name,
-                "guardian_email": email,
-                "guardian_mobile_phone": mobile,
-            }
-        ).insert(ignore_permissions=True)
-        return {
-            "guardian": guardian,
-            "relationship": "Other",
-            "contact": (self.applicant_contact or "").strip() or None,
-        }
-
     def _ensure_guardian_contact_links(self, *, guardian, student, contact_name: str | None = None):
         resolved_contact = (contact_name or "").strip()
         if not resolved_contact:
@@ -1100,6 +1101,8 @@ class StudentApplicant(Document):
             guardian.reload()
         if not guardian.user:
             frappe.throw(_("Guardian {0} must be linked to a User.").format(guardian.name))
+        if (guardian.user or "").strip() == (self.applicant_user or "").strip():
+            frappe.throw(_("Guardian user cannot match Applicant User. Applicant User is reserved for the student."))
         self._ensure_user_roles(
             guardian.user,
             add_roles={GUARDIAN_ROLE},

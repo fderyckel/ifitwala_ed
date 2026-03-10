@@ -28,6 +28,9 @@ from ifitwala_ed.admission.admission_utils import (
     upsert_contact_email,
 )
 from ifitwala_ed.admission.applicant_review_workflow import materialize_health_review_assignments
+from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
+    get_latest_applicant_enrollment_plan,
+)
 from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
 from ifitwala_ed.api.recommendation_intake import (
     get_recommendation_status_for_applicant,
@@ -1177,15 +1180,58 @@ def _ensure_applicant_match(student_applicant: str | None, user: str) -> dict:
     return row
 
 
-def _portal_status_for(application_status: str) -> str:
+def _serialize_enrollment_offer(plan) -> dict | None:
+    if not plan:
+        return None
+    status = _as_text(plan.get("status")).strip()
+    return {
+        "name": _as_text(plan.get("name")).strip(),
+        "status": status,
+        "academic_year": _as_text(plan.get("academic_year")).strip(),
+        "term": _as_text(plan.get("term")).strip(),
+        "program": _as_text(plan.get("program")).strip(),
+        "program_offering": _as_text(plan.get("program_offering")).strip(),
+        "offer_expires_on": _as_text(plan.get("offer_expires_on")).strip(),
+        "offer_sent_on": _as_text(plan.get("offer_sent_on")).strip(),
+        "offer_accepted_on": _as_text(plan.get("offer_accepted_on")).strip(),
+        "offer_declined_on": _as_text(plan.get("offer_declined_on")).strip(),
+        "offer_message": _as_text(plan.get("offer_message")).strip(),
+        "can_accept": status == "Offer Sent",
+        "can_decline": status == "Offer Sent",
+    }
+
+
+def _portal_status_for(application_status: str, enrollment_offer: dict | None = None) -> str:
+    offer_status = _as_text((enrollment_offer or {}).get("status")).strip()
+    if application_status == "Approved":
+        if offer_status == "Offer Sent":
+            return "Offer Sent"
+        if offer_status == "Offer Accepted":
+            return "Accepted"
+        if offer_status == "Offer Declined":
+            return "Declined"
+        if offer_status == "Offer Expired":
+            return "Offer Expired"
+        return "In Review"
     if application_status not in PORTAL_STATUS_MAP:
         frappe.throw(_("Invalid Application Status: {0}.").format(application_status))
     return PORTAL_STATUS_MAP[application_status]
 
 
-def _read_only_for(application_status: str) -> tuple[bool, str | None]:
+def _read_only_for(application_status: str, enrollment_offer: dict | None = None) -> tuple[bool, str | None]:
     if application_status in PORTAL_EDITABLE_STATUSES:
         return False, None
+    offer_status = _as_text((enrollment_offer or {}).get("status")).strip()
+    if application_status == "Approved":
+        if offer_status == "Offer Sent":
+            return True, _("Review your enrollment offer below.")
+        if offer_status == "Offer Accepted":
+            return True, _("Offer accepted.")
+        if offer_status == "Offer Declined":
+            return True, _("Offer declined.")
+        if offer_status == "Offer Expired":
+            return True, _("Offer expired.")
+        return True, _("Admissions decision is being finalized.")
     return True, READ_ONLY_REASON_MAP.get(application_status) or _("Application is read-only.")
 
 
@@ -1234,11 +1280,23 @@ def _completion_state_for_recommendations(summary: dict) -> str:
     return "pending"
 
 
-def _derive_next_actions(application_status: str, readiness: dict) -> list[dict]:
-    if application_status not in PORTAL_EDITABLE_STATUSES:
-        return []
-
+def _derive_next_actions(application_status: str, readiness: dict, enrollment_offer: dict | None = None) -> list[dict]:
     actions: list[dict] = []
+    offer_status = _as_text((enrollment_offer or {}).get("status")).strip()
+
+    if offer_status == "Offer Sent":
+        actions.append(
+            {
+                "label": _("Review and respond to your offer"),
+                "route_name": "admissions-status",
+                "intent": "primary",
+                "is_blocking": True,
+            }
+        )
+        return actions
+
+    if application_status not in PORTAL_EDITABLE_STATUSES:
+        return actions
 
     policies = readiness.get("policies") or {}
     documents = readiness.get("documents") or {}
@@ -1316,9 +1374,11 @@ def _derive_next_actions(application_status: str, readiness: dict) -> list[dict]
 def get_admissions_session():
     user = _require_admissions_applicant()
     row = _get_applicant_for_user(user)
+    latest_plan = get_latest_applicant_enrollment_plan(row.get("name"))
+    enrollment_offer = _serialize_enrollment_offer(latest_plan)
 
-    portal_status = _portal_status_for(row.get("application_status"))
-    is_read_only, reason = _read_only_for(row.get("application_status"))
+    portal_status = _portal_status_for(row.get("application_status"), enrollment_offer)
+    is_read_only, reason = _read_only_for(row.get("application_status"), enrollment_offer)
 
     user_row = frappe.db.get_value("User", user, ["name", "full_name"], as_dict=True) or {}
 
@@ -1340,6 +1400,7 @@ def get_admissions_session():
             "is_read_only": bool(is_read_only),
             "read_only_reason": reason,
         },
+        "enrollment_offer": enrollment_offer,
     }
 
 
@@ -1349,6 +1410,8 @@ def get_applicant_snapshot(student_applicant: str | None = None):
     row = _ensure_applicant_match(student_applicant, user)
 
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
+    latest_plan = get_latest_applicant_enrollment_plan(applicant.name)
+    enrollment_offer = _serialize_enrollment_offer(latest_plan)
     readiness = applicant.get_readiness_snapshot()
     portal_health = _portal_health_state(applicant.name)
     health_required_for_approval = bool((readiness.get("health") or {}).get("required_for_approval", True))
@@ -1380,8 +1443,8 @@ def get_applicant_snapshot(student_applicant: str | None = None):
         "recommendations": _completion_state_for_recommendations(recommendation_status),
     }
 
-    portal_status = _portal_status_for(applicant.application_status)
-    next_actions = _derive_next_actions(applicant.application_status, readiness_for_portal)
+    portal_status = _portal_status_for(applicant.application_status, enrollment_offer)
+    next_actions = _derive_next_actions(applicant.application_status, readiness_for_portal, enrollment_offer)
 
     return {
         "applicant": {
@@ -1394,8 +1457,41 @@ def get_applicant_snapshot(student_applicant: str | None = None):
         "profile": _serialize_applicant_profile(applicant),
         "completeness": completeness,
         "next_actions": next_actions,
+        "enrollment_offer": enrollment_offer,
         "recommendations_summary": recommendation_status,
     }
+
+
+@frappe.whitelist()
+def accept_enrollment_offer(student_applicant: str | None = None):
+    user = _require_admissions_applicant()
+    row = _ensure_applicant_match(student_applicant, user)
+    plan = get_latest_applicant_enrollment_plan(
+        row.get("name"),
+        statuses={"Offer Sent", "Offer Accepted"},
+    )
+    if not plan:
+        frappe.throw(_("No active enrollment offer is available."))
+
+    result = plan.accept_offer(user=user)
+    plan.reload()
+    return {"ok": True, "result": result, "enrollment_offer": _serialize_enrollment_offer(plan)}
+
+
+@frappe.whitelist()
+def decline_enrollment_offer(student_applicant: str | None = None):
+    user = _require_admissions_applicant()
+    row = _ensure_applicant_match(student_applicant, user)
+    plan = get_latest_applicant_enrollment_plan(
+        row.get("name"),
+        statuses={"Offer Sent", "Offer Declined"},
+    )
+    if not plan:
+        frappe.throw(_("No active enrollment offer is available."))
+
+    result = plan.decline_offer(user=user)
+    plan.reload()
+    return {"ok": True, "result": result, "enrollment_offer": _serialize_enrollment_offer(plan)}
 
 
 @frappe.whitelist()

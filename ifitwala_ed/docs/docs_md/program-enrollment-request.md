@@ -3,9 +3,9 @@ title: "Program Enrollment Request: Transactional Staging for Enrollment"
 slug: program-enrollment-request
 category: Enrollment
 doc_order: 4
-version: "1.0.0"
-last_change_date: "2026-02-28"
-summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment."
+version: "1.1.0"
+last_change_date: "2026-03-10"
+summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including requests hydrated from admissions."
 seo_title: "Program Enrollment Request: Transactional Staging for Enrollment"
 seo_description: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment."
 ---
@@ -13,6 +13,8 @@ seo_description: "Capture enrollment intent, run deterministic validation snapsh
 ## Program Enrollment Request: Transactional Staging for Enrollment
 
 `Program Enrollment Request` is the mandatory staging object for enrollment intent and validation snapshots before committed enrollment is created.
+
+It remains student-linked even when the request originates in admissions. If admissions uses [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/), the real request is hydrated only after promotion creates `Student`.
 
 ## Before You Start (Prerequisites)
 
@@ -32,6 +34,9 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
   - `materialize_program_enrollment_request(request_name)`
 - Enrollment engine (`evaluate_enrollment_request`) outputs stored into `validation_payload`.
 - [**Program Enrollment**](/docs/en/program-enrollment/) request-source linkage (`program_enrollment_request`).
+- Admissions bridge:
+  - `hydrate_program_enrollment_request_from_applicant_plan(applicant_enrollment_plan)`
+  - read-only provenance from `Student Applicant` / `Applicant Enrollment Plan`
 
 ## Lifecycle and Linked Documents
 
@@ -71,6 +76,13 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 3. Staff fills `override_reason`, sets `override_approved = 1`.
 4. Request can then move to `Approved` and materialize with explicit override provenance.
 
+### Example 3: Admissions-Bridge Hydration
+
+1. Applicant accepts an offer in [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/).
+2. Promotion creates `Student`.
+3. Server hydrates a draft request with the promoted student, program offering, academic year, and seeded course basket.
+4. Academic review still happens on the real request before approval/materialization.
+
 ## Technical Notes (IT)
 
 ### Schema and Controller Snapshot
@@ -94,6 +106,9 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
   - status-gated snapshot enforcement
   - basket-change/status-change aware revalidation
   - override approval gate before `Approved`
+- **Admissions provenance fields**:
+  - `source_student_applicant` (`Link`, read-only)
+  - `source_applicant_enrollment_plan` (`Link`, read-only)
 - **Materialization utility guarantees** (`enrollment_request_utils.py`):
   - only `Approved` + `Valid` requests can materialize
   - one enrollment target per `(student, program_offering, academic_year)`
@@ -112,5 +127,6 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 ## Related Docs
 
 - [**Program Offering**](/docs/en/program-offering/)
+- [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/)
 - [**Program Enrollment**](/docs/en/program-enrollment/)
 - [**Student Enrollment Playbook**](/docs/en/student-enrollment-playbook/)

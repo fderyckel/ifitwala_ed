@@ -1,0 +1,278 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:AEP-{YYYY}-{####}",
+ "creation": "2026-03-10 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_identity",
+  "student_applicant",
+  "student",
+  "organization",
+  "school",
+  "section_break_plan",
+  "academic_year",
+  "term",
+  "program",
+  "program_offering",
+  "courses",
+  "committee_notes",
+  "offer_message",
+  "section_break_offer",
+  "status",
+  "offer_expires_on",
+  "offer_sent_on",
+  "offer_sent_by",
+  "offer_accepted_on",
+  "offer_accepted_by",
+  "offer_declined_on",
+  "offer_declined_by",
+  "section_break_hydration",
+  "program_enrollment_request",
+  "hydrated_on",
+  "hydrated_by"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_identity",
+   "fieldtype": "Section Break",
+   "label": "Identity"
+  },
+  {
+   "fieldname": "student_applicant",
+   "fieldtype": "Link",
+   "label": "Student Applicant",
+   "options": "Student Applicant",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student",
+   "read_only": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization",
+   "read_only": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_plan",
+   "fieldtype": "Section Break",
+   "label": "Placement Plan"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "label": "Term",
+   "options": "Term"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program"
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "label": "Program Offering",
+   "options": "Program Offering"
+  },
+  {
+   "fieldname": "courses",
+   "fieldtype": "Table",
+   "label": "Planned Courses",
+   "options": "Applicant Enrollment Plan Course"
+  },
+  {
+   "fieldname": "committee_notes",
+   "fieldtype": "Small Text",
+   "label": "Committee Notes"
+  },
+  {
+   "fieldname": "offer_message",
+   "fieldtype": "Small Text",
+   "label": "Offer Message"
+  },
+  {
+   "fieldname": "section_break_offer",
+   "fieldtype": "Section Break",
+   "label": "Offer"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nReady for Committee\nCommittee Approved\nOffer Sent\nOffer Accepted\nOffer Declined\nOffer Expired\nHydrated\nCancelled\nSuperseded"
+  },
+  {
+   "fieldname": "offer_expires_on",
+   "fieldtype": "Date",
+   "label": "Offer Expires On"
+  },
+  {
+   "fieldname": "offer_sent_on",
+   "fieldtype": "Datetime",
+   "label": "Offer Sent On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "offer_sent_by",
+   "fieldtype": "Link",
+   "label": "Offer Sent By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "offer_accepted_on",
+   "fieldtype": "Datetime",
+   "label": "Offer Accepted On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "offer_accepted_by",
+   "fieldtype": "Link",
+   "label": "Offer Accepted By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "offer_declined_on",
+   "fieldtype": "Datetime",
+   "label": "Offer Declined On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "offer_declined_by",
+   "fieldtype": "Link",
+   "label": "Offer Declined By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_hydration",
+   "fieldtype": "Section Break",
+   "label": "Hydration"
+  },
+  {
+   "fieldname": "program_enrollment_request",
+   "fieldtype": "Link",
+   "label": "Program Enrollment Request",
+   "options": "Program Enrollment Request",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hydrated_on",
+   "fieldtype": "Datetime",
+   "label": "Hydrated On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hydrated_by",
+   "fieldtype": "Link",
+   "label": "Hydrated By",
+   "options": "User",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-10 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Applicant Enrollment Plan",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

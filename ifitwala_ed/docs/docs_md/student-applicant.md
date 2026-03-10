@@ -3,11 +3,11 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.14.6"
+version: "1.15.0"
 last_change_date: "2026-03-10"
-summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, and school-scoped health gating."
+summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
-seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, and school-scoped health gating."
+seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 ---
 
 ## Student Applicant: The Admission Record of Truth
@@ -19,6 +19,7 @@ seo_description: "Manage applicant lifecycle from invitation to promotion, with 
 - Define required [**Applicant Document Type**](/docs/en/applicant-document-type/) records and [**Applicant Interview**](/docs/en/applicant-interview/) review workflow before approval/promotion decisions. Define [**Applicant Health Profile**](/docs/en/applicant-health-profile/) workflow when the school requires health clearance for approval.
 - Ensure student-profile fields needed for promotion (`student_date_of_birth`, `student_gender`, `student_mobile_number`, `student_joining_date`, `student_first_language`, `student_nationality`, `residency_status`) are collected in the applicant profile step.
 - Optional promotion profile links `cohort` and `student_house` can also be captured on the applicant and are copied into the promoted `Student` record when set.
+- If your admissions flow uses offers before promotion, configure [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/) and [**Admission Settings**](/docs/en/admission-settings/).
 
 ### How Policy Acknowledgement Becomes Mandatory
 
@@ -61,6 +62,7 @@ Use the applicant readiness outputs, not guesswork:
 - Preserves institutional anchor (`organization`, `school`) as immutable once created.
 - Centralizes readiness checks across profile, policies, documents, recommendations, and school-scoped health requirements.
 - Links admissions to student creation and downstream enrollment operations.
+- Anchors the applicant side of the admissions-to-enrollment bridge while keeping offer workflow outside `application_status`.
 - Carries forward inquiry intent so teams do not restart data entry from zero.
 
 <Callout type="tip" title="Production value">
@@ -77,6 +79,17 @@ This is where admissions correctness is enforced. Client UX helps, but status tr
 <Callout type="note" title="Digital signature scope">
 Applicant policy acknowledgement in portal requires explicit electronic-signature controls: typed signer name must match the expected applicant signer name, and legal attestation must be confirmed before server insert. Evidence remains the immutable `Policy Acknowledgement` record with server timestamp.
 </Callout>
+
+## Offer and Enrollment Bridge
+
+`Student Applicant` stays the admissions record of truth, but it does not own the family-facing offer lifecycle.
+
+Current runtime split:
+
+- `Student Applicant.application_status` remains the internal admissions lifecycle (`Approved` is still the committee-approved applicant decision).
+- [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/) owns placement planning, `Offer Sent`, `Offer Accepted`, and `Offer Declined`.
+- The applicant user on `Student Applicant` is reserved for the future student identity, not for guardians.
+- If a latest Applicant Enrollment Plan exists, promotion is blocked until that latest plan is `Offer Accepted` or already `Hydrated`.
 
 ## Operational Guardrails
 
@@ -315,8 +328,11 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   <Step title="Review Readiness">
     Use readiness snapshot checks before approval or rejection decisions.
   </Step>
+  <Step title="Offer and Acceptance">
+    When the school uses the admissions-to-enrollment bridge, manage placement and family offer response in `Applicant Enrollment Plan`.
+  </Step>
   <Step title="Promote">
-    Promote approved applicants to `Student` records and copy governed artifacts forward.
+    Promote approved applicants to `Student` records, copy governed artifacts forward, and optionally auto-hydrate a draft Program Enrollment Request from an accepted Applicant Enrollment Plan.
   </Step>
 </Steps>
 
@@ -328,13 +344,13 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 ## Related Docs
 
 <RelatedDocs
-  slugs="inquiry,applicant-document-type,applicant-document,applicant-health-profile,applicant-interview,institutional-policy,policy-version,policy-acknowledgement"
+  slugs="inquiry,applicant-enrollment-plan,applicant-document-type,applicant-document,applicant-health-profile,applicant-interview,institutional-policy,policy-version,policy-acknowledgement"
   title="Related Applicant Lifecycle Docs"
 />
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-09)
+### Latest Technical Snapshot (2026-03-10)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
@@ -396,18 +412,23 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - `review_assignments_summary` is assignment-focused (Health + Overall Application); document reviewer metadata is surfaced in `documents_summary`
 - **Promotion side-effects (`promote_to_student`)**:
   - preconditions: applicant status must be `Approved` and `student_joining_date` is required
+  - if a latest `Applicant Enrollment Plan` exists, that latest plan must already be `Offer Accepted` or `Hydrated`
   - creates/links `Student`, writes `Student.student_applicant`, then sets applicant status to `Promoted`
   - copies applicant `cohort` and `student_house` links into the promoted `Student` when those applicant fields are populated
   - creates/syncs `Student Patient` from Applicant Health Profile data
   - copies approved admissions documents into Student-owned governed files; current runtime excludes only rows whose `promotion_target` is explicitly non-`Student`
   - copies applicant image through governed file dispatcher into Student profile image slot
+  - when `Admission Settings.auto_hydrate_enrollment_request_after_promotion = 1`, auto-hydrates a draft `Program Enrollment Request` from the accepted Applicant Enrollment Plan
   - does **not** create Guardian/User portal access or mutate portal roles
+  - does **not** create `Program Enrollment` directly
   - does **not** send welcome email or print-format welcome kit by itself
   - invite email behavior exists in staff portal endpoint `invite_applicant` (separate flow)
 - **Identity upgrade side-effects (`upgrade_identity`)**:
   - requires an active `Program Enrollment` for the promoted student
-  - provisions/links Guardian + Student access identities and roles
-  - links guardians to Student in canonical Student guardian rows
+  - provisions the applicant user as `Student` access and removes `Admissions Applicant`
+  - provisions guardians only from explicit applicant guardian rows; there is no applicant-contact fallback guardian creation
+  - applicant user is reserved for the student identity and cannot be reused as a guardian user
+  - links guardians to Student in canonical Student guardian rows when guardian rows exist
   - links tracked guardian Contact rows to `Student Applicant`, `Guardian`, and promoted `Student`
   - is idempotent (re-run does not duplicate users or guardian links)
 - **Link query endpoints**:
@@ -427,6 +448,8 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - `get_applicant_policies`
   - `acknowledge_policy`
   - `submit_application`
+  - `accept_enrollment_offer`
+  - `decline_enrollment_offer`
   - staff flow endpoint: `invite_applicant`
 - **Admissions policy overlay (SPA)**:
   - page launcher: `ui-spa/src/pages/admissions/ApplicantPolicies.vue`

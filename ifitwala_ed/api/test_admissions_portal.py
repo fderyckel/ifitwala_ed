@@ -15,7 +15,9 @@ from ifitwala_ed.api.admissions_portal import (
     _portal_status_for,
     _read_only_for,
     _send_applicant_invite_email,
+    accept_enrollment_offer,
     acknowledge_policy,
+    decline_enrollment_offer,
     get_applicant_policies,
     get_applicant_profile,
     get_applicant_snapshot,
@@ -514,6 +516,50 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertIn("profile", payload.get("completeness") or {})
         self.assertIn("recommendations", payload.get("completeness") or {})
         self.assertIn("recommendations_summary", payload)
+
+    def test_offer_sent_snapshot_surfaces_offer_response_action(self):
+        self._create_offer_plan(status="Offer Sent", offer_message="Review your place.")
+
+        frappe.set_user(self.applicant_user)
+        session_payload = admissions_portal_api.get_admissions_session()
+        snapshot = get_applicant_snapshot(student_applicant=self.applicant.name)
+
+        self.assertEqual((session_payload.get("applicant") or {}).get("portal_status"), "Offer Sent")
+        self.assertEqual((snapshot.get("enrollment_offer") or {}).get("status"), "Offer Sent")
+        self.assertTrue(bool((snapshot.get("enrollment_offer") or {}).get("can_accept")))
+        self.assertTrue(bool((snapshot.get("enrollment_offer") or {}).get("can_decline")))
+        self.assertEqual((snapshot.get("next_actions") or [])[0].get("route_name"), "admissions-status")
+        self.assertTrue(bool((snapshot.get("next_actions") or [])[0].get("is_blocking")))
+
+    def test_accept_enrollment_offer_is_idempotent(self):
+        self._create_offer_plan(status="Offer Sent")
+
+        frappe.set_user(self.applicant_user)
+        first = accept_enrollment_offer(student_applicant=self.applicant.name)
+        second = accept_enrollment_offer(student_applicant=self.applicant.name)
+        session_payload = admissions_portal_api.get_admissions_session()
+
+        self.assertTrue(first.get("ok"))
+        self.assertTrue(second.get("ok"))
+        self.assertEqual((first.get("result") or {}).get("status"), "Offer Accepted")
+        self.assertEqual((second.get("result") or {}).get("status"), "Offer Accepted")
+        self.assertEqual((session_payload.get("applicant") or {}).get("portal_status"), "Accepted")
+
+    def test_decline_enrollment_offer_is_idempotent_and_visible_after_decline(self):
+        self._create_offer_plan(status="Offer Sent")
+
+        frappe.set_user(self.applicant_user)
+        first = decline_enrollment_offer(student_applicant=self.applicant.name)
+        second = decline_enrollment_offer(student_applicant=self.applicant.name)
+        session_payload = admissions_portal_api.get_admissions_session()
+        snapshot = get_applicant_snapshot(student_applicant=self.applicant.name)
+
+        self.assertTrue(first.get("ok"))
+        self.assertTrue(second.get("ok"))
+        self.assertEqual((first.get("result") or {}).get("status"), "Offer Declined")
+        self.assertEqual((second.get("result") or {}).get("status"), "Offer Declined")
+        self.assertEqual((session_payload.get("applicant") or {}).get("portal_status"), "Declined")
+        self.assertEqual((snapshot.get("enrollment_offer") or {}).get("status"), "Offer Declined")
 
     def test_get_applicant_policies_includes_expected_signature_name(self):
         frappe.set_user(self.applicant_user)
@@ -1114,6 +1160,91 @@ class TestSubmitApplication(FrappeTestCase):
             "show_guardians_in_admissions_profile",
             1 if int(value or 0) else 0,
         )
+
+    def _create_offer_plan(self, *, status: str, offer_message: str | None = None):
+        academic_year = frappe.get_doc(
+            {
+                "doctype": "Academic Year",
+                "academic_year_name": f"AY {frappe.generate_hash(length=6)}",
+                "school": self.school,
+                "year_start_date": "2025-08-01",
+                "year_end_date": "2026-06-30",
+                "archived": 0,
+                "visible_to_admission": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Academic Year", academic_year.name))
+
+        grade_scale = frappe.get_doc(
+            {
+                "doctype": "Grade Scale",
+                "grade_scale_name": f"Scale {frappe.generate_hash(length=6)}",
+                "boundaries": [
+                    {"grade_code": "B-", "boundary_interval": 70},
+                    {"grade_code": "C", "boundary_interval": 60},
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Grade Scale", grade_scale.name))
+
+        course = frappe.get_doc(
+            {
+                "doctype": "Course",
+                "course_name": f"Offer Course {frappe.generate_hash(length=6)}",
+                "status": "Active",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Course", course.name))
+
+        program = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Program {frappe.generate_hash(length=6)}",
+                "grade_scale": grade_scale.name,
+                "courses": [{"course": course.name, "level": "None"}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Program", program.name))
+
+        offering = frappe.get_doc(
+            {
+                "doctype": "Program Offering",
+                "program": program.name,
+                "school": self.school,
+                "offering_title": f"Offering {frappe.generate_hash(length=6)}",
+                "offering_academic_years": [{"academic_year": academic_year.name}],
+                "offering_courses": [
+                    {
+                        "course": course.name,
+                        "course_name": course.course_name,
+                        "required": 1,
+                        "start_academic_year": academic_year.name,
+                        "end_academic_year": academic_year.name,
+                    }
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Program Offering", offering.name))
+
+        self.applicant.db_set("application_status", "Approved", update_modified=False)
+        self.applicant.db_set("academic_year", academic_year.name, update_modified=False)
+        self.applicant.db_set("program", program.name, update_modified=False)
+        self.applicant.db_set("program_offering", offering.name, update_modified=False)
+        self.applicant.reload()
+
+        plan = frappe.get_doc(
+            {
+                "doctype": "Applicant Enrollment Plan",
+                "student_applicant": self.applicant.name,
+                "academic_year": academic_year.name,
+                "program": program.name,
+                "program_offering": offering.name,
+                "status": status,
+                "offer_message": offer_message or "",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Enrollment Plan", plan.name))
+        return plan
 
     def _get_or_create_language_xtra(self) -> str:
         existing = frappe.get_all("Language Xtra", filters={"enabled": 1}, fields=["name"], limit=1)

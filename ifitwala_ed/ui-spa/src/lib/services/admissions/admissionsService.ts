@@ -30,6 +30,8 @@ import type {
 import type { Request as PoliciesRequest, Response as PoliciesResponse } from '@/types/contracts/admissions/get_applicant_policies'
 import type { Request as AcknowledgePolicyRequest, Response as AcknowledgePolicyResponse } from '@/types/contracts/admissions/acknowledge_policy'
 import type { Request as SubmitRequest, Response as SubmitResponse } from '@/types/contracts/admissions/submit_application'
+import type { Request as AcceptEnrollmentOfferRequest, Response as AcceptEnrollmentOfferResponse } from '@/types/contracts/admissions/accept_enrollment_offer'
+import type { Request as DeclineEnrollmentOfferRequest, Response as DeclineEnrollmentOfferResponse } from '@/types/contracts/admissions/decline_enrollment_offer'
 import type { Request as MessagesRequest, Response as MessagesResponse } from '@/types/contracts/admissions/get_applicant_messages'
 import type { Request as SendMessageRequest, Response as SendMessageResponse } from '@/types/contracts/admissions/send_applicant_message'
 import type {
@@ -118,6 +120,18 @@ export function createAdmissionsService() {
 
   const submitResource = createResource<SubmitResponse>({
     url: 'ifitwala_ed.api.admissions_portal.submit_application',
+    method: 'POST',
+    auto: false,
+  })
+
+  const acceptEnrollmentOfferResource = createResource<AcceptEnrollmentOfferResponse>({
+    url: 'ifitwala_ed.api.admissions_portal.accept_enrollment_offer',
+    method: 'POST',
+    auto: false,
+  })
+
+  const declineEnrollmentOfferResource = createResource<DeclineEnrollmentOfferResponse>({
+    url: 'ifitwala_ed.api.admissions_portal.decline_enrollment_offer',
     method: 'POST',
     auto: false,
   })
@@ -213,6 +227,22 @@ export function createAdmissionsService() {
     return result
   }
 
+  async function acceptEnrollmentOffer(
+    payload: AcceptEnrollmentOfferRequest = {}
+  ): Promise<AcceptEnrollmentOfferResponse> {
+    const result = await acceptEnrollmentOfferResource.submit(payload)
+    uiSignals.emit(SIGNAL_ADMISSIONS_PORTAL_INVALIDATE)
+    return result
+  }
+
+  async function declineEnrollmentOffer(
+    payload: DeclineEnrollmentOfferRequest = {}
+  ): Promise<DeclineEnrollmentOfferResponse> {
+    const result = await declineEnrollmentOfferResource.submit(payload)
+    uiSignals.emit(SIGNAL_ADMISSIONS_PORTAL_INVALIDATE)
+    return result
+  }
+
   async function getMessages(payload: MessagesRequest = {}): Promise<MessagesResponse> {
     return messagesResource.submit(payload)
   }
@@ -242,6 +272,8 @@ export function createAdmissionsService() {
     listPolicies,
     acknowledgePolicy,
     submitApplication,
+    acceptEnrollmentOffer,
+    declineEnrollmentOffer,
     getMessages,
     sendMessage,
     markMessagesRead,

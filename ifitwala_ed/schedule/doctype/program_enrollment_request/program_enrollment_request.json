@@ -30,6 +30,8 @@
   "override_by",
   "override_on",
   "section_break_audit",
+  "source_student_applicant",
+  "source_applicant_enrollment_plan",
   "submitted_on",
   "submitted_by"
  ],
@@ -172,6 +174,20 @@
    "fieldname": "section_break_audit",
    "fieldtype": "Section Break",
    "label": "Audit"
+  },
+  {
+   "fieldname": "source_student_applicant",
+   "fieldtype": "Link",
+   "label": "Source Student Applicant",
+   "options": "Student Applicant",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_applicant_enrollment_plan",
+   "fieldtype": "Link",
+   "label": "Source Applicant Enrollment Plan",
+   "options": "Applicant Enrollment Plan",
+   "read_only": 1
   },
   {
    "fieldname": "submitted_on",

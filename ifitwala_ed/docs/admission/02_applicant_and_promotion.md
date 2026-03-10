@@ -18,7 +18,7 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 
 The admissions runtime boundary is:
 
-`Inquiry -> Student Applicant -> Promotion -> Student -> Identity Upgrade`
+`Inquiry -> Student Applicant -> Applicant Enrollment Plan -> Promotion -> Student -> Program Enrollment Request -> Identity Upgrade`
 
 Authority split:
 
@@ -27,6 +27,7 @@ Authority split:
 3. `docs/admission/04_identity_upgrade.md` defines the post-promotion access boundary.
 4. `docs/admission/05_admission_portal.md` defines the applicant SPA surface.
 5. `docs/admission/06_recommendation_intake_architecture.md` defines confidential recommendation intake.
+6. `docs/admission/08_admission_program_enrollment_request_proposal.md` defines the implemented admissions-to-enrollment bridge.
 
 ## 2. Student Applicant
 
@@ -43,6 +44,8 @@ Current runtime invariants:
 - `applicant_contact`, `applicant_email`, `portal_account_email`, and `applicant_user` are server-owned identity fields.
 - `student` may only be set during promotion.
 - direct file attachment is forbidden except `applicant_image`.
+- `applicant_user` is reserved for the future student identity.
+- family-facing offer lifecycle is modeled on `Applicant Enrollment Plan`, not on `Student Applicant.application_status`.
 
 Lifecycle and editability are server-owned:
 
@@ -110,6 +113,7 @@ Runtime preconditions:
 
 - `Student Applicant.application_status = Approved`
 - `Student Applicant.student_joining_date` is set
+- if the latest `Applicant Enrollment Plan` exists, it must already be `Offer Accepted` or `Hydrated`
 
 Runtime effects:
 
@@ -120,6 +124,7 @@ Runtime effects:
 - copy Applicant Health Profile into `Student Patient`
 - copy approved submission-backed admissions evidence into new student-owned governed files
 - copy applicant image into the student image slot only when media consent exists
+- optionally auto-hydrate a draft `Program Enrollment Request` from the accepted `Applicant Enrollment Plan`
 - set `Student Applicant.student`
 - transition applicant status to `Promoted`
 
@@ -161,5 +166,6 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 | Evidence upload and storage | `ifitwala_ed.admission.admissions_portal.upload_applicant_document` | Portal documents page, governed file dispatcher | `test_admissions_document_items.py` | Implemented |
 | Evidence review workflow | `ifitwala_ed.admission.applicant_review_workflow` | Desk `Student Applicant`, admissions cockpit workspace, Focus for non-admissions reviewers, Focus-launched admissions workspace for delegated `Student Applicant` final reviewers | `test_student_applicant.py`, `test_applicant_interview.py`, `test_focus_applicant_review.py` | Implemented |
 | Approval readiness | `StudentApplicant.get_readiness_snapshot()` | Desk review snapshot, portal next actions | `test_student_applicant.py` | Implemented |
+| Admissions-to-enrollment bridge | `Applicant Enrollment Plan`, `StudentApplicant.promote_to_student()` | Desk applicant action, admissions portal status, post-promotion request hydration | `test_student_applicant.py`, `test_admissions_portal.py` | Implemented |
 | Promotion data boundary | `StudentApplicant.promote_to_student()` | Desk action | `test_student_applicant.py` | Implemented |
 | Identity upgrade access boundary | `StudentApplicant.upgrade_identity()` | Desk action after enrollment | `test_student_applicant.py` | Implemented |

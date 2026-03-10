@@ -35,7 +35,7 @@ Constraints:
   * shared URLs
   * password resets
   * partial completion
-  * future identity upgrade (Applicant → Guardian)
+  * later identity upgrade (Admissions Applicant → Student, with separate Guardian provisioning)
 
 This **cannot** be a Frappe Web Form.
 This **must** be a Vue SPA surface.
@@ -120,7 +120,7 @@ This gives:
 
 **Upgrade**
 
-* On acceptance → later promoted to Guardian
+* After promotion + active enrollment, applicant role is removed from the student account and guardians are provisioned separately
 * Old role removed
 * New permissions applied
 

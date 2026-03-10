@@ -30,7 +30,7 @@ Constraints:
   * shared URLs
   * password resets
   * partial completion
-  * future identity upgrade (Applicant → Guardian)
+  * later identity upgrade (Admissions Applicant → Student, with separate Guardian provisioning)
 
 This **cannot** be a Frappe Web Form.
 This **must** be a Vue SPA surface.
@@ -115,9 +115,9 @@ This gives:
 
 **Upgrade**
 
-* On acceptance → later promoted to Guardian
-* Old role removed
-* New permissions applied
+* After promotion + active enrollment, applicant role is removed from the student account
+* That applicant account becomes the `Student` identity
+* Guardian identities are provisioned separately from explicit guardian rows
 
 **Revoke**
 
@@ -958,7 +958,9 @@ No business logic.
 
 * Read-only state
 * Waiting / decision / outcome
-* Recommendation progress status only; no access to referee submission content or files
+* Recommendation progress status
+* Enrollment offer review / accept / decline when an Applicant Enrollment Plan offer is open
+* No access to referee submission content or files
 
 No edits.
 
@@ -1231,11 +1233,11 @@ Triggered by:
 | ------------------- | ----------------------- |
 | Applicant Rejected  | Disable user            |
 | Applicant Withdrawn | Disable user            |
-| Applicant Promoted  | Disable OR delete user  |
+| Applicant Promoted  | Keep applicant login until server-owned identity upgrade |
 | GDPR Erasure        | Anonymize or purge user |
 
-No role mutation.
-No role reuse.
+Role mutation happens only inside the server-owned identity-upgrade flow after active enrollment.
+No credential reuse across unrelated identities.
 No silent persistence.
 
 ---
@@ -1244,7 +1246,7 @@ No silent persistence.
 
 Codex **must not**:
 
-* Convert Admissions Applicant → Guardian
+* Reuse the applicant login as a guardian login
 * Share accounts across Applicants
 * Reuse credentials
 * Grant Website User role
@@ -1466,7 +1468,7 @@ export type AdmissionsSession = {
 
 Editing is blocked if **any** of the following is true:
 
-* Portal status ∈ {In Review, Accepted, Rejected, Withdrawn, Completed}
+* Portal status ∈ {In Review, Offer Sent, Offer Expired, Accepted, Declined, Rejected, Withdrawn, Completed}
 * Submission timestamp exists
 * Admissions staff explicitly locked the Applicant
 

@@ -15,7 +15,9 @@
   "sla_enabled",
   "sla_check_interval_hours",
   "portal_section",
-  "show_guardians_in_admissions_profile"
+  "show_guardians_in_admissions_profile",
+  "enrollment_section",
+  "auto_hydrate_enrollment_request_after_promotion"
  ],
  "fields": [
   {
@@ -69,6 +71,18 @@
    "fieldname": "show_guardians_in_admissions_profile",
    "fieldtype": "Check",
    "label": "Show Guardians In Admissions Profile"
+  },
+  {
+   "fieldname": "enrollment_section",
+   "fieldtype": "Section Break",
+   "label": "Admissions Enrollment Bridge"
+  },
+  {
+   "default": "1",
+   "description": "If enabled, promotion auto-hydrates a draft Program Enrollment Request from an accepted Applicant Enrollment Plan.",
+   "fieldname": "auto_hydrate_enrollment_request_after_promotion",
+   "fieldtype": "Check",
+   "label": "Auto Hydrate Enrollment Request After Promotion"
   }
  ],
  "grid_page_length": 50,
