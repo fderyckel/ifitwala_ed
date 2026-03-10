@@ -131,6 +131,7 @@ function render_catalog_list($list, rows) {
           data-course="${course}"
           data-course_name="${cname}"
           data-required="${req}"
+          data-elective_group="${frappe.utils.escape_html(r.elective_group || "")}"
         >
         <div class="flex-grow-1">
           <div class="fw-semibold">${cname}</div>
@@ -155,6 +156,7 @@ function get_checked_rows($list) {
       course: $cb.data("course"),
       course_name: $cb.data("course_name"),
       required: $cb.data("required") ? 1 : 0,
+      elective_group: $cb.data("elective_group") || "",
     });
   });
   return picked;
@@ -226,6 +228,33 @@ function fetch_catalog_rows(frm, search, on_done) {
 	}).then(r => on_done(r.message || []));
 }
 
+async function hydrate_catalog_row_defaults(frm, row) {
+	if (!frm.doc.program || !row || !row.course) return;
+
+	try {
+		const response = await frappe.call({
+			method: "ifitwala_ed.schedule.doctype.program_offering.program_offering.hydrate_catalog_rows",
+			args: {
+				program: frm.doc.program,
+				course_names: JSON.stringify([row.course]),
+			}
+		});
+		const hydrated = ((response && response.message) || [])[0];
+		if (!hydrated) return;
+
+		row.course_name = hydrated.course_name || row.course;
+		row.required = hydrated.required ? 1 : 0;
+		row.elective_group = hydrated.elective_group || "";
+		row.non_catalog = 0;
+		row.catalog_ref = hydrated.catalog_ref || `${frm.doc.program}::${row.course}`;
+	} catch (error) {
+		frappe.show_alert({
+			message: __("Could not hydrate Program Course defaults for this row."),
+			indicator: "orange",
+		});
+	}
+}
+
 function open_catalog_picker(frm) {
 	// 1) validate
 	if (!require_ay_span(frm)) return;
@@ -251,6 +280,7 @@ function open_catalog_picker(frm) {
 					course: r.course,
 					course_name: r.course_name || r.course,
 					required: !!r.required,
+					elective_group: r.elective_group || "",
 					non_catalog: 0,
 					catalog_ref: `${frm.doc.program}::${r.course}`,
 					start_academic_year: startAY,
@@ -696,9 +726,10 @@ frappe.ui.form.on("Program Offering Academic Year", {
 });
 
 frappe.ui.form.on("Program Offering Course", {
-	course(frm, cdt, cdn) {
+	async course(frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
 		if (row) {
+			await hydrate_catalog_row_defaults(frm, row);
 			const { startAY, endAY } = get_ay_bounds(frm);
 			if (startAY && !row.start_academic_year) row.start_academic_year = startAY;
 			if (endAY && !row.end_academic_year)     row.end_academic_year   = endAY;

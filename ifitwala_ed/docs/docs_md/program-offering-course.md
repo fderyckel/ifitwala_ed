@@ -3,8 +3,8 @@ title: "Program Offering Course: Delivery Window and Capacity Row"
 slug: program-offering-course
 category: Enrollment
 doc_order: 3
-version: "1.0.0"
-last_change_date: "2026-02-28"
+version: "1.0.1"
+last_change_date: "2026-03-10"
 summary: "Define per-course delivery windows, required/elective role, and capacity controls inside one Program Offering."
 seo_title: "Program Offering Course: Delivery Window and Capacity Row"
 seo_description: "Define per-course delivery windows, required/elective role, and capacity controls inside one Program Offering."
@@ -34,6 +34,8 @@ Effective delivery window is derived from AY bounds, optionally narrowed by star
 
 - Identity/policy:
   - `course`, `required`, `elective_group`, optional `grade_scale`
+  - for catalog-derived rows, `required` and `elective_group` default from the matching `Program Course` row
+  - offering staff may still override `elective_group` on the offering row when operational grouping differs from catalog grouping
 - Capacity controls:
   - `capacity`, `waitlist_enabled`, `reserved_seats`
 - Delivery window:

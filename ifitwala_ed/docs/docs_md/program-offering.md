@@ -3,8 +3,8 @@ title: "Program Offering: Operational Enrollment Contract"
 slug: program-offering
 category: Enrollment
 doc_order: 2
-version: "1.0.0"
-last_change_date: "2026-02-28"
+version: "1.0.1"
+last_change_date: "2026-03-10"
 summary: "Define where and when a program is delivered, including AY span, offering courses, basket rules, capacity policy, and activity-booking readiness gates."
 seo_title: "Program Offering: Operational Enrollment Contract"
 seo_description: "Define where and when a program is delivered, including AY span, offering courses, basket rules, capacity policy, and activity-booking readiness gates."
@@ -41,6 +41,7 @@ Program Offering must be anchored on a leaf (child) school. Ancestor-aware valid
   - seat-policy capacity counting
 - Desk tooling and APIs:
   - catalog/non-catalog hydration helpers
+  - catalog rows default `required` and offering `elective_group` from `Program Course` metadata
   - AY scoped link queries
   - activity readiness preview API
 

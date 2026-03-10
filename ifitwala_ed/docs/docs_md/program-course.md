@@ -3,8 +3,8 @@ title: "Program Course: Catalog Row Inside a Program"
 slug: program-course
 category: Curriculum
 doc_order: 3
-version: "1.0.0"
-last_change_date: "2026-02-28"
+version: "1.0.1"
+last_change_date: "2026-03-10"
 summary: "Configure how each course behaves inside a specific program, including mandatory/elective role, level, repeatability, and maximum attempts."
 seo_title: "Program Course: Catalog Row Inside a Program"
 seo_description: "Configure how each course behaves inside a specific program, including mandatory/elective role, level, repeatability, and maximum attempts."
@@ -36,7 +36,7 @@ A course can behave differently across programs. `repeatable` and `max_attempts`
 - Enrollment engine (`_get_program_courses` in `schedule/enrollment_engine.py`):
   - reads `repeatable`, `max_attempts`, `level`, `category`
   - enforces repeat/attempt eligibility per request
-- Program Offering course curation via catalog helpers.
+- Program Offering course curation via catalog helpers, which default `Program Offering Course.elective_group` from `Program Course.category`.
 
 ## Worked Examples
 
