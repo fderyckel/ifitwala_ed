@@ -1631,10 +1631,11 @@ function bind_document_summary_actions(frm) {
 function render_recommendation_review_dialog(payload) {
 	const recommendation = payload?.recommendation || {};
 	const answers = Array.isArray(recommendation.answers) ? recommendation.answers : [];
+	const canReviewSubmissions = can_review_document_submissions();
 	const canReview = Boolean(
 		recommendation.can_review &&
 		recommendation.applicant_document_item &&
-		can_review_document_submissions()
+		canReviewSubmissions
 	);
 	const reviewStatus = String(recommendation.review_status || "Pending").trim() || "Pending";
 
@@ -1675,7 +1676,11 @@ function render_recommendation_review_dialog(payload) {
 				</div>
 			</div>
 		`
-		: `<div class="text-muted" style="margin-top: 12px;">This recommendation has already been reviewed.</div>`;
+		: `<div class="text-muted" style="margin-top: 12px;">${
+			canReviewSubmissions
+				? escape_html(__("This recommendation has already been reviewed."))
+				: escape_html(__("You can view this recommendation here, but only admissions reviewers can record a decision."))
+		}</div>`;
 
 	return `
 		<div style="display:grid;gap:16px;">
@@ -1707,6 +1712,22 @@ function render_recommendation_review_dialog(payload) {
 	`;
 }
 
+function normalize_recommendation_review_anchor(anchor) {
+	const recommendationRequest = String(anchor?.recommendation_request || "").trim();
+	if (recommendationRequest) {
+		return { recommendation_request: recommendationRequest };
+	}
+	const recommendationSubmission = String(anchor?.recommendation_submission || "").trim();
+	if (recommendationSubmission) {
+		return { recommendation_submission: recommendationSubmission };
+	}
+	const applicantDocumentItem = String(anchor?.applicant_document_item || "").trim();
+	if (applicantDocumentItem) {
+		return { applicant_document_item: applicantDocumentItem };
+	}
+	return null;
+}
+
 function open_recommendation_review_dialog(frm, anchor) {
 	const dialog = new frappe.ui.Dialog({
 		title: __("Recommendation Review"),
@@ -1723,17 +1744,19 @@ function open_recommendation_review_dialog(frm, anchor) {
 	});
 
 	let currentPayload = null;
-	let currentAnchor = {
-		recommendation_request: String(anchor?.recommendation_request || "").trim(),
-		recommendation_submission: String(anchor?.recommendation_submission || "").trim(),
-		applicant_document_item: String(anchor?.applicant_document_item || "").trim(),
-	};
+	let currentAnchor = normalize_recommendation_review_anchor(anchor);
 
 	const renderLoading = () => {
 		dialog.fields_dict.body.$wrapper.html(`<div class="text-muted">${escape_html("Loading recommendation review...")}</div>`);
 	};
 
 	const loadPayload = () => {
+		if (!currentAnchor) {
+			dialog.fields_dict.body.$wrapper.html(
+				`<div class="text-danger">${escape_html(__("Recommendation reference is missing."))}</div>`
+			);
+			return Promise.resolve();
+		}
 		renderLoading();
 		return frappe.call({
 			method: "ifitwala_ed.api.recommendation_intake.get_recommendation_review_payload",

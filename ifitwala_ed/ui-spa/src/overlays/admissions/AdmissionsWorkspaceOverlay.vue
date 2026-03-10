@@ -1582,6 +1582,26 @@ function resolveRequestedRecommendationAnchor() {
 	return null;
 }
 
+function normalizeRecommendationReviewAnchor(anchor: {
+	recommendation_request?: string | null;
+	recommendation_submission?: string | null;
+	applicant_document_item?: string | null;
+}) {
+	const recommendationRequest = String(anchor.recommendation_request || '').trim();
+	if (recommendationRequest) {
+		return { recommendation_request: recommendationRequest };
+	}
+	const recommendationSubmission = String(anchor.recommendation_submission || '').trim();
+	if (recommendationSubmission) {
+		return { recommendation_submission: recommendationSubmission };
+	}
+	const applicantDocumentItem = String(anchor.applicant_document_item || '').trim();
+	if (applicantDocumentItem) {
+		return { applicant_document_item: applicantDocumentItem };
+	}
+	return null;
+}
+
 async function openRecommendationReview(anchor: {
 	recommendation_request?: string | null;
 	recommendation_submission?: string | null;
@@ -1593,10 +1613,8 @@ async function openRecommendationReview(anchor: {
 		return;
 	}
 
-	const recommendationRequest = String(anchor.recommendation_request || '').trim();
-	const recommendationSubmission = String(anchor.recommendation_submission || '').trim();
-	const applicantDocumentItem = String(anchor.applicant_document_item || '').trim();
-	if (!recommendationRequest && !recommendationSubmission && !applicantDocumentItem) {
+	const normalizedAnchor = normalizeRecommendationReviewAnchor(anchor);
+	if (!normalizedAnchor) {
 		recommendationReviewError.value = 'Recommendation reference is missing.';
 		return;
 	}
@@ -1607,13 +1625,13 @@ async function openRecommendationReview(anchor: {
 	try {
 		recommendationReview.value = await getRecommendationReviewPayload({
 			student_applicant: studentApplicant,
-			recommendation_request: recommendationRequest || null,
-			recommendation_submission: recommendationSubmission || null,
-			applicant_document_item: applicantDocumentItem || null,
+			recommendation_request: normalizedAnchor.recommendation_request || null,
+			recommendation_submission: normalizedAnchor.recommendation_submission || null,
+			applicant_document_item: normalizedAnchor.applicant_document_item || null,
 		});
 		selectedRecommendationRequest.value =
 			String(recommendationReview.value.recommendation.recommendation_request || '').trim() ||
-			recommendationRequest;
+			String(normalizedAnchor.recommendation_request || '').trim();
 	} catch (err) {
 		recommendationReview.value = null;
 		recommendationReviewError.value =

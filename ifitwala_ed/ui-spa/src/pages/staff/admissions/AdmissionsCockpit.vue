@@ -599,12 +599,8 @@ function openRecommendationReview(card: CockpitCard) {
 		recommendationRequest: shouldPrefill
 			? String(pendingReview?.recommendation_request || '').trim() || null
 			: null,
-		recommendationSubmission: shouldPrefill
-			? String(pendingReview?.recommendation_submission || '').trim() || null
-			: null,
-		applicantDocumentItem: shouldPrefill
-			? String(pendingReview?.applicant_document_item || '').trim() || null
-			: null,
+		recommendationSubmission: null,
+		applicantDocumentItem: null,
 	});
 }
 
