@@ -5,6 +5,7 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.schedule.doctype.program_offering.program_offering import program_course_link_query
 from ifitwala_ed.schedule.grade_scale_resolver_utils import resolve_grade_scale
 
 
@@ -80,6 +81,34 @@ class TestProgramOffering(FrappeTestCase):
 
         result = resolve_grade_scale(offering.name, course.name)
         self.assertEqual(result["grade_scale"], course_scale.name)
+
+    def test_program_course_link_query_scopes_to_program_catalog(self):
+        program_scale = _make_grade_scale("Program")
+        organization = _make_organization()
+        school = _make_school(organization)
+        academic_year = _make_academic_year(school)
+        course_one = _make_course("Course One")
+        course_two = _make_course("Course Two")
+        extra_course = _make_course("Extra Course")
+        program = _make_program(program_scale, [course_one.name, course_two.name])
+        _make_offering(
+            program,
+            school,
+            academic_year,
+            [{"course": course_one.name, "course_name": course_one.course_name}],
+        )
+
+        rows = program_course_link_query(
+            "Course",
+            "",
+            "name",
+            0,
+            20,
+            {"program": program.name, "exclude_courses": [course_one.name]},
+        )
+
+        self.assertEqual(rows, [[course_two.name, course_two.course_name]])
+        self.assertNotIn([extra_course.name, extra_course.course_name], rows)
 
 
 def _make_grade_scale(prefix):

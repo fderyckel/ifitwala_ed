@@ -70,6 +70,28 @@ function bind_offering_year_query(frm) {
 	}
 }
 
+function bind_program_course_query(frm) {
+	frm.set_query("course", "offering_courses", (doc, cdt, cdn) => {
+		const row = (cdt && cdn && locals[cdt] && locals[cdt][cdn]) || {};
+		const excludeCourses = (frm.doc.offering_courses || [])
+			.map((offeringRow) => offeringRow.course)
+			.filter(Boolean)
+			.filter((courseName) => courseName !== row.course);
+
+		if (!frm.doc.program) {
+			return { filters: [["Course", "name", "=", "___NONE___"]] };
+		}
+
+		return {
+			query: "ifitwala_ed.schedule.doctype.program_offering.program_offering.program_course_link_query",
+			filters: {
+				program: frm.doc.program,
+				exclude_courses: excludeCourses,
+			},
+		};
+	});
+}
+
 
 /* ---------- Catalog dialog rendering + helpers ---------- */
 
@@ -618,6 +640,7 @@ frappe.ui.form.on("Program Offering", {
 
 	onload(frm) {
 		bind_offering_year_query(frm);
+		bind_program_course_query(frm);
 		frm.set_query('school', () => {
 			return {
 				query: 'ifitwala_ed.utilities.school_tree.get_school_descendants',
@@ -631,6 +654,7 @@ frappe.ui.form.on("Program Offering", {
 		if (frm.clear_custom_buttons) frm.clear_custom_buttons();
 
 		bind_offering_year_query(frm);
+		bind_program_course_query(frm);
 
 		// Add from Catalog (blue, standalone on the left)
 		const addFrom = frm.add_custom_button(__("Add from Catalog"), () => open_catalog_picker(frm));
@@ -656,6 +680,7 @@ frappe.ui.form.on("Program Offering", {
 	},
 
 	program(frm) {
+		bind_program_course_query(frm);
 		apply_server_defaults_if_empty(frm);
 	},
 

@@ -918,6 +918,49 @@ def program_course_options(
     return out
 
 
+@frappe.validate_and_sanitize_search_inputs
+def program_course_link_query(doctype, txt, searchfield, start, page_len, filters):
+    filters = filters or {}
+    program = filters.get("program")
+    if not program:
+        return []
+
+    exclude_courses = filters.get("exclude_courses") or []
+    if isinstance(exclude_courses, str):
+        try:
+            exclude_courses = frappe.parse_json(exclude_courses) or []
+        except Exception:
+            exclude_courses = []
+    elif exclude_courses:
+        exclude_courses = list(exclude_courses)
+    else:
+        exclude_courses = []
+
+    db_filters = {"parent": program}
+    if exclude_courses:
+        db_filters["course"] = ["not in", exclude_courses]
+
+    search_txt = (txt or "").strip()
+    or_filters = None
+    if search_txt:
+        like_txt = f"%{search_txt}%"
+        or_filters = [
+            ["Program Course", "course", "like", like_txt],
+            ["Program Course", "course_name", "like", like_txt],
+        ]
+
+    rows = frappe.get_list(
+        "Program Course",
+        fields=["course", "course_name"],
+        filters=db_filters,
+        or_filters=or_filters,
+        order_by="idx asc",
+        start=int(start or 0),
+        page_length=int(page_len or 20),
+    )
+    return [[row.get("course"), (row.get("course_name") or row.get("course"))] for row in rows if row.get("course")]
+
+
 @frappe.whitelist()
 def hydrate_catalog_rows(program: str, course_names: str) -> list:
     """
