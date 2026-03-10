@@ -114,6 +114,8 @@ Status: Implemented
 
 Code refs:
 - `ifitwala_ed/patches/setup/p01_migrate_communication_interactions_to_entry_ledger.py`
+- `ifitwala_ed/patches/setup/p02_drop_communication_interaction_entry_legacy_link.py`
+- `ifitwala_ed/patches/setup/p03_delete_communication_interaction_doctype.py`
 - `ifitwala_ed/patches.txt`
 
 Test refs:
@@ -121,10 +123,11 @@ Test refs:
 
 Rules:
 
-1. Legacy `Communication Interaction` rows are backfilled into `Communication Interaction Entry` during migrate.
-2. The patch is idempotent and skips rows already represented in the entry ledger.
-3. The legacy link field on `Communication Interaction Entry` is dropped during the same migration.
-4. The `Communication Interaction` DocType is deleted during the same migration.
+1. Legacy `Communication Interaction` rows are backfilled in the `pre_model_sync` migrate phase.
+2. The backfill patch is idempotent and skips rows already represented in the entry ledger.
+3. Legacy schema cleanup runs in dedicated `post_model_sync` patches after model sync.
+4. The legacy link field on `Communication Interaction Entry` is dropped via a post-sync cleanup patch.
+5. The `Communication Interaction` DocType is deleted via a post-sync cleanup patch.
 
 ## 6. Contract Matrix
 
@@ -155,4 +158,4 @@ Test refs:
 | SPA/UI surfaces | Morning Brief, Archive, Activity panels, Applicant Messages | `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`, `ui-spa/src/pages/staff/OrgCommunicationArchive.vue`, `ui-spa/src/components/activity/ActivityCommunicationPanel.vue`, `ui-spa/src/pages/admissions/ApplicantMessages.vue` | `ui-spa/src/lib/services/communicationInteraction/__tests__/communicationInteractionService.test.ts` |
 | Reports / dashboards / briefings | Morning Brief, Archive, Guardian Home unread summaries | `api/org_communication_archive.py`, `api/guardian_home.py`, `ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue` | `api/test_org_communication_interactions.py` |
 | Scheduler / background jobs | None | None | None |
-| Migration / retirement | Legacy snapshot rows backfilled and legacy schema removed | `patches/setup/p01_migrate_communication_interactions_to_entry_ledger.py`, `patches.txt` | None |
+| Migration / retirement | Legacy snapshot rows backfilled in pre-sync; legacy schema removed in post-sync cleanup | `patches/setup/p01_migrate_communication_interactions_to_entry_ledger.py`, `patches/setup/p02_drop_communication_interaction_entry_legacy_link.py`, `patches/setup/p03_delete_communication_interaction_doctype.py`, `patches.txt` | None |

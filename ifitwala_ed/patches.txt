@@ -1,4 +1,5 @@
 # removed most stuff
+[pre_model_sync]
 ifitwala_ed.patches.website.p05_add_workflow_fields_website_pages
 ifitwala_ed.patches.website.p06_backfill_workflow_state_from_status
 ifitwala_ed.patches.website.p07_refactor_snippet_uniqueness_to_scoped
@@ -16,3 +17,7 @@ ifitwala_ed.patches.governance.p02_policy_acknowledgement_add_unique_evidence_in
 ifitwala_ed.patches.governance.p03_policy_acknowledgement_backfill_submitted_docstatus
 ifitwala_ed.patches.governance.p04_policy_version_backfill_based_on_version
 ifitwala_ed.patches.setup.p01_migrate_communication_interactions_to_entry_ledger
+
+[post_model_sync]
+ifitwala_ed.patches.setup.p02_drop_communication_interaction_entry_legacy_link
+ifitwala_ed.patches.setup.p03_delete_communication_interaction_doctype

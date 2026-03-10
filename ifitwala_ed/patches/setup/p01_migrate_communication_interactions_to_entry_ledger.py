@@ -9,7 +9,6 @@ LEGACY_TABLE = "tabCommunication Interaction"
 ENTRY_DOCTYPE = "Communication Interaction Entry"
 ENTRY_TABLE = "tabCommunication Interaction Entry"
 ENTRY_LINK_FIELD = "communication_interaction"
-
 LEGACY_REQUIRED_COLUMNS = (
     "name",
     "creation",
@@ -274,60 +273,14 @@ def _backfill_legacy_rows() -> dict[str, int]:
     return summary
 
 
-def _drop_entry_link_field_if_present() -> bool:
-    changed = False
-
-    if frappe.db.exists("DocField", {"parent": ENTRY_DOCTYPE, "fieldname": ENTRY_LINK_FIELD}):
-        docfield_names = frappe.get_all(
-            "DocField",
-            filters={"parent": ENTRY_DOCTYPE, "fieldname": ENTRY_LINK_FIELD},
-            pluck="name",
-        )
-        for docfield_name in docfield_names:
-            frappe.delete_doc("DocField", docfield_name, force=1, ignore_permissions=True)
-            changed = True
-
-    if frappe.db.table_exists(ENTRY_DOCTYPE) and frappe.db.has_column(ENTRY_DOCTYPE, ENTRY_LINK_FIELD):
-        frappe.db.sql(
-            f"""
-            ALTER TABLE `{ENTRY_TABLE}`
-            DROP COLUMN `{ENTRY_LINK_FIELD}`
-            """
-        )
-        changed = True
-
-    return changed
-
-
-def _delete_legacy_doctype_if_present() -> bool:
-    changed = False
-
-    if frappe.db.exists("DocType", LEGACY_DOCTYPE):
-        frappe.delete_doc("DocType", LEGACY_DOCTYPE, force=1, ignore_permissions=True)
-        changed = True
-
-    if frappe.db.table_exists(LEGACY_DOCTYPE):
-        frappe.db.sql(f"DROP TABLE `{LEGACY_TABLE}`")
-        changed = True
-
-    return changed
-
-
 def execute():
     summary = _backfill_legacy_rows()
-    link_removed = _drop_entry_link_field_if_present()
-    doctype_removed = _delete_legacy_doctype_if_present()
-
-    if link_removed or doctype_removed:
-        frappe.clear_cache()
 
     frappe.log_error(
         title="Communication Interaction migration summary",
         message=frappe.as_json(
             {
                 **summary,
-                "entry_link_field_removed": bool(link_removed),
-                "legacy_doctype_removed": bool(doctype_removed),
             }
         ),
     )
