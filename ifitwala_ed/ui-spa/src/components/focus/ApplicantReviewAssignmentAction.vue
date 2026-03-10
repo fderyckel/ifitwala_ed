@@ -22,7 +22,15 @@
 				</div>
 
 				<div class="shrink-0 flex items-center gap-2">
-					<button v-if="deskUrl" type="button" class="btn btn-quiet" @click="openInDesk">
+					<button
+						v-if="canOpenApplicantWorkspace"
+						type="button"
+						class="btn btn-quiet"
+						@click="openApplicantWorkspace"
+					>
+						Admissions Workspace
+					</button>
+					<button v-if="canOpenDesk" type="button" class="btn btn-quiet" @click="openInDesk">
 						Open in Desk
 					</button>
 					<button type="button" class="btn btn-quiet" @click="requestRefresh">Refresh</button>
@@ -183,6 +191,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import { __ } from '@/lib/i18n';
 import { createFocusService } from '@/lib/services/focus/focusService';
 
@@ -203,6 +212,7 @@ const emit = defineEmits<{
 }>();
 
 const focusService = createFocusService();
+const overlay = useOverlayStack();
 
 const assignment = ref<GetFocusContextResponse['review_assignment'] | null>(null);
 const decision = ref('');
@@ -229,6 +239,13 @@ const canReassign = computed(() =>
 	Boolean(assignment.value?.can_reassign && assignment.value?.assigned_to_role)
 );
 const roleCandidates = computed(() => assignment.value?.role_candidates || []);
+const canOpenApplicantWorkspace = computed(() => {
+	if (!assignment.value) return false;
+	return (
+		assignment.value.target_type === 'Student Applicant' &&
+		Boolean(assignment.value.student_applicant)
+	);
+});
 
 const deskUrl = computed(() => {
 	if (!assignment.value) return null;
@@ -240,6 +257,7 @@ const deskUrl = computed(() => {
 	}
 	return `/desk/student-applicant/${encodeURIComponent(assignment.value.student_applicant)}`;
 });
+const canOpenDesk = computed(() => Boolean(deskUrl.value) && !canOpenApplicantWorkspace.value);
 
 watch(
 	() => props.context,
@@ -266,6 +284,15 @@ function requestRefresh() {
 function openInDesk() {
 	if (!deskUrl.value) return;
 	window.open(deskUrl.value, '_blank', 'noopener');
+}
+
+function openApplicantWorkspace() {
+	const studentApplicant = String(assignment.value?.student_applicant || '').trim();
+	if (!studentApplicant) return;
+	overlay.open('admissions-workspace', {
+		mode: 'applicant',
+		studentApplicant,
+	});
 }
 
 function openPreviewFile() {

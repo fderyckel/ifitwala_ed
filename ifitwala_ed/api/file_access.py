@@ -10,6 +10,7 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.admission.admission_utils import (
+    has_open_overall_application_review_access,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
     normalize_email_value,
@@ -229,6 +230,9 @@ def _assert_can_access_student_applicant(*, user: str, student_applicant: str) -
     if "Admissions Applicant" in roles and _is_student_applicant_self_user(
         student_applicant=student_applicant, user=user
     ):
+        return
+
+    if has_open_overall_application_review_access(user=user, student_applicant=student_applicant):
         return
 
     frappe.throw(_("You do not have permission to access this applicant file."), frappe.PermissionError)

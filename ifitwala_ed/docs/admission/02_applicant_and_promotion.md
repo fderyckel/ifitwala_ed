@@ -157,7 +157,7 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 | Applicant lifecycle and status transitions | `StudentApplicant` controller | Desk applicant form, admissions portal status, lifecycle methods | `test_student_applicant.py`, `test_admissions_portal.py` | Implemented |
 | Applicant portal identity and editability | `ifitwala_ed.api.admissions_portal.*` | `/admissions` SPA | `test_admissions_portal.py` | Implemented |
 | Evidence upload and storage | `ifitwala_ed.admission.admissions_portal.upload_applicant_document` | Portal documents page, governed file dispatcher | `test_admissions_document_items.py` | Implemented |
-| Evidence review workflow | `ifitwala_ed.admission.applicant_review_workflow` | Desk `Student Applicant`, admissions cockpit workspace, Focus for non-admissions reviewers | `test_student_applicant.py`, `test_applicant_interview.py`, `test_focus_applicant_review.py` | Implemented |
+| Evidence review workflow | `ifitwala_ed.admission.applicant_review_workflow` | Desk `Student Applicant`, admissions cockpit workspace, Focus for non-admissions reviewers, Focus-launched admissions workspace for delegated `Student Applicant` final reviewers | `test_student_applicant.py`, `test_applicant_interview.py`, `test_focus_applicant_review.py` | Implemented |
 | Approval readiness | `StudentApplicant.get_readiness_snapshot()` | Desk review snapshot, portal next actions | `test_student_applicant.py` | Implemented |
 | Promotion data boundary | `StudentApplicant.promote_to_student()` | Desk action | `test_student_applicant.py` | Implemented |
 | Identity upgrade access boundary | `StudentApplicant.upgrade_identity()` | Desk action after enrollment | `test_student_applicant.py` | Implemented |

@@ -14,6 +14,7 @@ from ifitwala_ed.admission import admissions_portal as admission_upload_api
 from ifitwala_ed.admission.admission_utils import (
     ensure_admissions_permission,
     get_applicant_scope_ancestors,
+    has_open_overall_application_review_access,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
     is_applicant_document_type_in_scope,
@@ -607,15 +608,23 @@ def _require_staff_recommendation_access(*, student_applicant: str | None = None
     resolved_user = (user or frappe.session.user or "").strip()
     if not resolved_user or resolved_user == "Guest":
         frappe.throw(_("You need to sign in to perform this action."), frappe.PermissionError)
-    if not is_admissions_file_staff_user(resolved_user):
-        frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
 
     applicant_name = (student_applicant or "").strip()
-    if applicant_name and not has_scoped_staff_access_to_student_applicant(
+    if is_admissions_file_staff_user(resolved_user):
+        if applicant_name and not has_scoped_staff_access_to_student_applicant(
+            user=resolved_user,
+            student_applicant=applicant_name,
+        ):
+            frappe.throw(_("You do not have permission to access this Applicant."), frappe.PermissionError)
+        return resolved_user
+
+    if applicant_name and has_open_overall_application_review_access(
         user=resolved_user,
         student_applicant=applicant_name,
     ):
-        frappe.throw(_("You do not have permission to access this Applicant."), frappe.PermissionError)
+        return resolved_user
+
+    frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
     return resolved_user
 
 

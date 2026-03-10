@@ -103,7 +103,7 @@ The applicant portal is requirement-centric:
 ## 6. Staff Surface
 
 Status: Implemented
-Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`, `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`, `ifitwala_ed/api/focus_listing.py`, `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/api/focus_actions_applicant_review.py`
+Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.py`, `ifitwala_ed/admission/admission_utils.py`, `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/recommendation_intake.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`, `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`, `ifitwala_ed/ui-spa/src/components/focus/ApplicantReviewAssignmentAction.vue`, `ifitwala_ed/api/focus_listing.py`, `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/api/focus_actions_applicant_review.py`
 Test refs: `ifitwala_ed/api/test_focus_applicant_review.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/admission/doctype/applicant_interview/test_applicant_interview.py`
 
 Staff surface split is now explicit and role-based:
@@ -113,6 +113,8 @@ Staff surface split is now explicit and role-based:
   - Admissions Cockpit applicant workspace overlay
 - submitted recommendation letters now surface a recommendation-specific review action on both of those applicant-centered surfaces so staff can read the referee answers before deciding on the linked `Applicant Document Item`
 - non-admissions reviewers continue to use Focus for `Applicant Document Item` assignments
+- delegated `Student Applicant` final reviewers stay in Focus for their decision action, but Focus now exposes an `Admissions Workspace` launch so they can inspect the same applicant brief, documents, recommendations, guardians, and interview context without gaining Desk applicant access
+- assigned interviewers, including non-admissions staff, use the same `AdmissionsWorkspaceOverlay` from the interview event route so interview prep, applicant brief, evidence, and in-panel feedback stay in one overlay
 - admissions-workspace users are intentionally blocked from document-item Focus actions to avoid duplicate mental models
 - requirement overrides remain available only to `Admission Manager`, `Academic Admin`, and `System Manager`
 
@@ -124,7 +126,7 @@ Human workflow rule:
 ## 7. Permission and Visibility
 
 Status: Implemented
-Code refs: `ifitwala_ed/hooks.py`, `ifitwala_ed/admission/doctype/applicant_document_item/applicant_document_item.py`, `ifitwala_ed/admission/doctype/applicant_review_assignment/applicant_review_assignment.py`
+Code refs: `ifitwala_ed/hooks.py`, `ifitwala_ed/admission/doctype/applicant_document_item/applicant_document_item.py`, `ifitwala_ed/admission/doctype/applicant_review_assignment/applicant_review_assignment.py`, `ifitwala_ed/admission/admission_utils.py`, `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/recommendation_intake.py`, `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.py`
 Test refs: `ifitwala_ed/admission/doctype/applicant_document_item/test_applicant_document_item.py`, `ifitwala_ed/admission/doctype/applicant_review_assignment/test_applicant_review_assignment.py`
 
 Permission hardening implemented with this contract:
@@ -134,6 +136,8 @@ Permission hardening implemented with this contract:
 - scoped staff access is enforced on item reads/writes
 - `Applicant Review Assignment` now has canonical doctype scope hooks
 - raw doctype access no longer depends only on Focus or portal endpoints
+- delegated overall-application reviewers get read-only access to applicant workspace payloads, governed file links, and recommendation review payloads for applicants with an open `Student Applicant` review assignment
+- this does not widen Desk `Student Applicant` or admissions cockpit permissions for non-admissions staff
 
 ## 8. Legacy Retirement
 

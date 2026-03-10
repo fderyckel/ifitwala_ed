@@ -14,6 +14,7 @@ from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     READ_LIKE_PERMISSION_TYPES,
     build_admissions_file_scope_exists_sql,
+    has_open_overall_application_review_access,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
@@ -722,11 +723,15 @@ def _assert_applicant_workspace_permission(*, student_applicant: str, user: str 
     if not current_user or current_user == "Guest":
         frappe.throw(_("Please sign in to continue."), frappe.PermissionError)
 
-    if not _is_interview_privileged_user(current_user):
+    if _is_interview_privileged_user(current_user):
+        if has_scoped_staff_access_to_student_applicant(user=current_user, student_applicant=student_applicant):
+            return
         frappe.throw(_("You do not have permission to view this applicant workspace."), frappe.PermissionError)
 
-    if not has_scoped_staff_access_to_student_applicant(user=current_user, student_applicant=student_applicant):
-        frappe.throw(_("You do not have permission to view this applicant workspace."), frappe.PermissionError)
+    if has_open_overall_application_review_access(user=current_user, student_applicant=student_applicant):
+        return
+
+    frappe.throw(_("You do not have permission to view this applicant workspace."), frappe.PermissionError)
 
 
 def _normalize_feedback_status(value: str | None) -> str:

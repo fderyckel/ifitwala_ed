@@ -618,6 +618,37 @@ def is_admissions_workspace_user(user: str | None = None) -> bool:
     return bool(roles & ADMISSIONS_WORKSPACE_ROLES)
 
 
+def has_open_overall_application_review_access(*, user: str | None = None, student_applicant: str | None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    applicant_name = (student_applicant or "").strip()
+    if not resolved_user or resolved_user == "Guest" or not applicant_name:
+        return False
+    if resolved_user == "Administrator":
+        return True
+
+    roles = {(role_name or "").strip() for role_name in frappe.get_roles(resolved_user) if (role_name or "").strip()}
+
+    rows = frappe.get_all(
+        "Applicant Review Assignment",
+        filters={
+            "student_applicant": applicant_name,
+            "target_type": "Student Applicant",
+            "target_name": applicant_name,
+            "status": "Open",
+        },
+        fields=["assigned_to_user", "assigned_to_role"],
+        limit_page_length=200,
+    )
+    for row in rows:
+        assigned_user = (row.get("assigned_to_user") or "").strip()
+        assigned_role = (row.get("assigned_to_role") or "").strip()
+        if assigned_user and assigned_user == resolved_user:
+            return True
+        if assigned_role and assigned_role in roles:
+            return True
+    return False
+
+
 def get_admissions_file_staff_scope(user: str | None = None) -> dict:
     resolved_user = (user or frappe.session.user or "").strip()
     denied = {
