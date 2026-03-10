@@ -141,6 +141,7 @@ def _get_active_students(filters: dict, ctx: dict | None = None):
 			st.student_full_name,
 			st.anchor_school,
 			st.cohort,
+			st.student_house,
 			st.student_gender,
 			st.student_nationality,
 			st.student_second_nationality,
@@ -278,6 +279,10 @@ def _build_slice_hits(students: list[dict], sibling_flags: dict[str, set], guard
         if cohort:
             add(f"student:gender:{g}:cohort:{cohort}", sid)
 
+        house = (s.get("student_house") or "").strip()
+        if house and cohort:
+            add(f"student:student_house:{house}:cohort:{cohort}", sid)
+
         # Residency
         res = (s.get("residency_status") or "Other").strip()
         key = res
@@ -353,6 +358,7 @@ def _empty_dashboard():
         "nationality_distribution": [],
         "nationality_by_cohort": [],
         "gender_by_cohort": [],
+        "student_house_by_cohort": [],
         "residency_status": [],
         "age_distribution": [],
         "home_language": [],
@@ -554,6 +560,24 @@ def get_dashboard(filters=None):
             register_slice(slice_key, "student", f"{cohort} · {label}")
         gender_by_cohort.append(row)
 
+    # Student house by cohort
+    house_by_cohort = []
+    for cohort in sorted(cohorts):
+        counter = Counter()
+        for student in students:
+            if student.get("cohort") != cohort:
+                continue
+            house = (student.get("student_house") or "").strip()
+            if house:
+                counter[house] += 1
+
+        buckets = []
+        for house, count in sorted(counter.items()):
+            slice_key = f"student:student_house:{house}:cohort:{cohort}"
+            register_slice(slice_key, "student", f"{cohort} · {house}")
+            buckets.append({"label": house, "count": count, "sliceKey": slice_key})
+        house_by_cohort.append({"cohort": cohort, "buckets": buckets})
+
     # Residency status
     residency_items = []
     for key, label in [
@@ -723,6 +747,7 @@ def get_dashboard(filters=None):
         "nationality_distribution": nat_items,
         "nationality_by_cohort": nat_by_cohort,
         "gender_by_cohort": gender_by_cohort,
+        "student_house_by_cohort": house_by_cohort,
         "residency_status": residency_items,
         "age_distribution": age_buckets,
         "home_language": lang_items,
@@ -771,10 +796,12 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
 
     def student_row(name: str):
         s = student_by_name[name]
+        subtitle_parts = [part for part in [s.get("cohort"), s.get("student_house")] if part]
         return {
             "id": name,
             "name": s.get("student_full_name") or name,
             "cohort": s.get("cohort"),
+            "subtitle": " · ".join(subtitle_parts) if subtitle_parts else None,
             "nationality": s.get("student_nationality"),
         }
 
@@ -815,6 +842,19 @@ def get_slice_entities(slice_key: str | None = None, filters=None, start: int = 
                     continue
                 gender = norm(s.get("student_gender") or "Other")
                 if gender == target_n:
+                    results.append(student_row(s["name"]))
+
+        elif domain == "student_house":
+            # student:student_house:<house>[:cohort:<cohort>]
+            target = parts[2] if len(parts) > 2 else ""
+            target_n = norm(target)
+            cohort = parts[4] if len(parts) > 4 and parts[3] == "cohort" else None
+
+            for s in students:
+                if cohort and s.get("cohort") != cohort:
+                    continue
+                house = norm(s.get("student_house"))
+                if house == target_n:
                     results.append(student_row(s["name"]))
 
         elif domain == "residency":

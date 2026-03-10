@@ -717,6 +717,8 @@ class StudentApplicant(Document):
                     "student_nationality": self.student_nationality,
                     "student_second_nationality": self.student_second_nationality,
                     "residency_status": self.residency_status,
+                    "cohort": self.cohort,
+                    "student_house": self.student_house,
                     "anchor_school": self.school,
                     "student_applicant": self.name,
                 }

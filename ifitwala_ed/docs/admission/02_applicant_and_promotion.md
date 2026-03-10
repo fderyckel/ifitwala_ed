@@ -115,6 +115,8 @@ Runtime effects:
 
 - create or reuse `Student`
 - set `Student.student_applicant`
+- copy `Student Applicant.cohort` to `Student.cohort` when present
+- copy `Student Applicant.student_house` to `Student.student_house` when present
 - copy Applicant Health Profile into `Student Patient`
 - copy approved submission-backed admissions evidence into new student-owned governed files
 - copy applicant image into the student image slot only when media consent exists

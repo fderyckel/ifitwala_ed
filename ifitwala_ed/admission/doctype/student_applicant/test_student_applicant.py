@@ -844,6 +844,8 @@ class TestStudentApplicant(FrappeTestCase):
         country = self._get_any_country()
         if not country:
             self.skipTest("Country records are required for this profile mapping test.")
+        cohort = self._create_student_cohort()
+        student_house = self._create_student_house()
 
         applicant = self._create_student_applicant(
             student_preferred_name="Ada",
@@ -856,6 +858,8 @@ class TestStudentApplicant(FrappeTestCase):
             student_nationality=country,
             student_second_nationality=country,
             residency_status="Local Resident",
+            cohort=cohort,
+            student_house=student_house,
         )
         self._create_applicant_health_profile(applicant.name)
 
@@ -880,6 +884,8 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertEqual(student.student_nationality, country)
         self.assertEqual(student.student_second_nationality, country)
         self.assertEqual(student.residency_status, "Local Resident")
+        self.assertEqual(student.cohort, cohort)
+        self.assertEqual(student.student_house, student_house)
         self.assertEqual(student.anchor_school, applicant.school)
 
     def test_misconfigured_required_document_type_is_still_required_in_readiness(self):
@@ -1238,6 +1244,29 @@ class TestStudentApplicant(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Guardian", doc.name))
         return doc
+
+    def _create_student_cohort(self):
+        name = f"Cohort {frappe.generate_hash(length=6)}"
+        doc = frappe.get_doc(
+            {
+                "doctype": "Student Cohort",
+                "cohort_name": name,
+                "cohort_abbreviation": name[:8],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Student Cohort", doc.name))
+        return doc.name
+
+    def _create_student_house(self):
+        name = f"House {frappe.generate_hash(length=6)}"
+        doc = frappe.get_doc(
+            {
+                "doctype": "Student House",
+                "house_name": name,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Student House", doc.name))
+        return doc.name
 
     def _create_applicant_document_type(
         self,

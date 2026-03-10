@@ -50,6 +50,10 @@ type DashboardResponse = {
 		other: number;
 		sliceKeys?: Record<string, string>;
 	}[];
+	student_house_by_cohort: {
+		cohort: string;
+		buckets: { label: string; count: number; sliceKey?: string }[];
+	}[];
 	residency_status: { label: string; count: number; pct?: number; sliceKey?: string }[];
 	age_distribution: { bucket: string; count: number; sliceKey?: string }[];
 	home_language: { label: string; count: number; pct?: number; sliceKey?: string }[];
@@ -129,6 +133,7 @@ const emptyDashboard: DashboardResponse = {
 	nationality_distribution: [],
 	nationality_by_cohort: [],
 	gender_by_cohort: [],
+	student_house_by_cohort: [],
 	residency_status: [],
 	age_distribution: [],
 	home_language: [],
@@ -263,6 +268,13 @@ const siblingRows = computed(() =>
 
 const nationalityHeatmapRows = computed(() =>
 	dashboard.value.nationality_by_cohort.map(row => ({
+		row: row.cohort,
+		buckets: row.buckets,
+	}))
+);
+
+const studentHouseHeatmapRows = computed(() =>
+	dashboard.value.student_house_by_cohort.map(row => ({
 		row: row.cohort,
 		buckets: row.buckets,
 	}))
@@ -428,6 +440,11 @@ function setPreset(preset: ViewPreset) {
 						title="Gender Split by Cohort"
 						:series="stackedGenderSeries"
 						:rows="genderRows"
+						@select="openSliceDrawer"
+					/>
+					<HeatmapChart
+						title="Student House by Cohort"
+						:rows="studentHouseHeatmapRows"
 						@select="openSliceDrawer"
 					/>
 					<DonutSplit

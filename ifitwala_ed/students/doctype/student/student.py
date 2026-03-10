@@ -14,6 +14,7 @@ Students may be created through TWO explicit, supported pathways:
 1) Applicant Promotion (default, steady-state)
    - Created via StudentApplicant.promote_to_student()
    - `student_applicant` is set
+   - profile links such as `cohort` and `student_house` are carried from the applicant when present
    - Side effects (User, Student Patient, Contact) are GATED
      and intentionally NOT executed during Phase 1
    - Used for all future admissions flows

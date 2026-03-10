@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.14.5"
+version: "1.14.6"
 last_change_date: "2026-03-10"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, and school-scoped health gating."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -18,6 +18,7 @@ seo_description: "Manage applicant lifecycle from invitation to promotion, with 
 - If you intend to require applicant consent, configure active applicant-scoped policies first ([**Institutional Policy**](/docs/en/institutional-policy/) + active [**Policy Version**](/docs/en/policy-version/)).
 - Define required [**Applicant Document Type**](/docs/en/applicant-document-type/) records and [**Applicant Interview**](/docs/en/applicant-interview/) review workflow before approval/promotion decisions. Define [**Applicant Health Profile**](/docs/en/applicant-health-profile/) workflow when the school requires health clearance for approval.
 - Ensure student-profile fields needed for promotion (`student_date_of_birth`, `student_gender`, `student_mobile_number`, `student_joining_date`, `student_first_language`, `student_nationality`, `residency_status`) are collected in the applicant profile step.
+- Optional promotion profile links `cohort` and `student_house` can also be captured on the applicant and are copied into the promoted `Student` record when set.
 
 ### How Policy Acknowledgement Becomes Mandatory
 
@@ -396,6 +397,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 - **Promotion side-effects (`promote_to_student`)**:
   - preconditions: applicant status must be `Approved` and `student_joining_date` is required
   - creates/links `Student`, writes `Student.student_applicant`, then sets applicant status to `Promoted`
+  - copies applicant `cohort` and `student_house` links into the promoted `Student` when those applicant fields are populated
   - creates/syncs `Student Patient` from Applicant Health Profile data
   - copies approved admissions documents into Student-owned governed files; current runtime excludes only rows whose `promotion_target` is explicitly non-`Student`
   - copies applicant image through governed file dispatcher into Student profile image slot
