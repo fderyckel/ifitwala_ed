@@ -1855,6 +1855,26 @@ class StudentApplicant(Document):
                     continue
                 latest_file_by_item[parent_name] = row_file
 
+        recommendation_submission_by_item = {}
+        if item_names and frappe.db.table_exists("Recommendation Submission"):
+            recommendation_rows = frappe.get_all(
+                "Recommendation Submission",
+                filters={"applicant_document_item": ["in", item_names]},
+                fields=[
+                    "name",
+                    "applicant_document_item",
+                    "recommender_name",
+                    "recommender_email",
+                    "submitted_on",
+                ],
+                order_by="submitted_on desc, modified desc",
+            )
+            for row_submission in recommendation_rows:
+                item_name = row_submission.get("applicant_document_item")
+                if not item_name or item_name in recommendation_submission_by_item:
+                    continue
+                recommendation_submission_by_item[item_name] = row_submission
+
         documents_by_type = {row.get("document_type"): row for row in document_rows if row.get("document_type")}
         items_by_document = {}
         for row_item in item_rows:
@@ -1862,6 +1882,13 @@ class StudentApplicant(Document):
             if not parent:
                 continue
             latest_file = latest_file_by_item.get(row_item.get("name"), {})
+            recommendation_submission = recommendation_submission_by_item.get(row_item.get("name"), {})
+            uploaded_by = (
+                recommendation_submission.get("recommender_name")
+                or recommendation_submission.get("recommender_email")
+                or latest_file.get("owner")
+            )
+            uploaded_at = recommendation_submission.get("submitted_on") or latest_file.get("creation")
             items_by_document.setdefault(parent, []).append(
                 {
                     "name": row_item.get("name"),
@@ -1870,10 +1897,11 @@ class StudentApplicant(Document):
                     "review_status": row_item.get("review_status") or "Pending",
                     "reviewed_by": row_item.get("reviewed_by"),
                     "reviewed_on": row_item.get("reviewed_on"),
-                    "uploaded_by": latest_file.get("owner"),
-                    "uploaded_at": latest_file.get("creation"),
+                    "uploaded_by": uploaded_by,
+                    "uploaded_at": uploaded_at,
                     "file_url": _build_file_open_url(latest_file),
                     "file_name": latest_file.get("file_name"),
+                    "has_uploaded_artifact": bool(latest_file.get("name") or recommendation_submission.get("name")),
                     "modified": row_item.get("modified"),
                 }
             )
@@ -1913,7 +1941,7 @@ class StudentApplicant(Document):
                 continue
 
             item_group = list(items_by_document.get(document_row.get("name"), []))
-            uploaded_items = [row for row in item_group if row.get("file_url")]
+            uploaded_items = [row for row in item_group if row.get("has_uploaded_artifact")]
             approved_items = [row for row in uploaded_items if row.get("review_status") == "Approved"]
             rejected_items = [row for row in uploaded_items if row.get("review_status") == "Rejected"]
             uploaded_count = len(uploaded_items)
@@ -1987,7 +2015,7 @@ class StudentApplicant(Document):
                 required_count = max(1, cint(meta.get("min_items_required") or 1))
 
             item_group = list(items_by_document.get(document_row.get("name"), []))
-            uploaded_items = [row for row in item_group if row.get("file_url")]
+            uploaded_items = [row for row in item_group if row.get("has_uploaded_artifact")]
             approved_items = [row for row in uploaded_items if row.get("review_status") == "Approved"]
             for uploaded_item in uploaded_items:
                 item_label = (

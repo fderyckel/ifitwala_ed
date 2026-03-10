@@ -9,6 +9,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import get_applicant_workspace
 from ifitwala_ed.api.admission_cockpit import get_admissions_cockpit_data
+from ifitwala_ed.api.admissions_review import review_applicant_document_submission
 from ifitwala_ed.api.recommendation_intake import (
     create_recommendation_request,
     get_recommendation_intake_payload,
@@ -242,6 +243,46 @@ class TestRecommendationIntake(FrappeTestCase):
         self.assertEqual(len(review_rows), 1)
         self.assertEqual((review_rows[0] or {}).get("recommendation_request"), submitted["recommendation_request"])
         self.assertEqual((review_rows[0] or {}).get("applicant_document_item"), submitted["applicant_document_item"])
+
+    def test_form_only_recommendations_satisfy_required_document_counts(self):
+        frappe.db.set_value(
+            "Applicant Document Type",
+            self.document_type,
+            "min_items_required",
+            2,
+            update_modified=False,
+        )
+
+        first = self._create_submitted_recommendation()
+        second = self._create_submitted_recommendation()
+
+        frappe.set_user(self.staff_user.name)
+        review_applicant_document_submission(
+            student_applicant=self.applicant.name,
+            applicant_document_item=first["applicant_document_item"],
+            decision="Approved",
+            client_request_id=f"review-{frappe.generate_hash(length=6)}",
+        )
+        review_applicant_document_submission(
+            student_applicant=self.applicant.name,
+            applicant_document_item=second["applicant_document_item"],
+            decision="Approved",
+            client_request_id=f"review-{frappe.generate_hash(length=6)}",
+        )
+
+        applicant_doc = frappe.get_doc("Student Applicant", self.applicant.name)
+        documents = applicant_doc.has_required_documents()
+        recommendation_row = next(
+            row for row in (documents.get("required_rows") or []) if row.get("document_type") == self.document_type
+        )
+
+        self.assertEqual(recommendation_row.get("review_status"), "Approved")
+        self.assertEqual(int(recommendation_row.get("uploaded_count") or 0), 2)
+        self.assertEqual(int(recommendation_row.get("approved_count") or 0), 2)
+        self.assertTrue(bool(recommendation_row.get("uploaded_at")))
+        self.assertEqual(len(recommendation_row.get("items") or []), 2)
+        self.assertFalse(documents.get("missing"))
+        self.assertFalse(documents.get("unapproved"))
 
     def _feature_tables_ready(self) -> bool:
         required = (

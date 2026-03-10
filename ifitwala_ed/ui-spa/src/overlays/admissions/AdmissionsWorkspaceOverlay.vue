@@ -84,7 +84,7 @@
 								</div>
 							</div>
 
-							<div v-else-if="hasWorkspace" class="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
+							<div v-else-if="hasWorkspace" class="space-y-4">
 								<section class="space-y-4">
 									<article class="interview-card">
 										<h3 class="type-h3 text-ink">Applicant Brief</h3>
@@ -165,6 +165,192 @@
 												</p>
 											</li>
 										</ul>
+									</article>
+
+									<article class="interview-card">
+										<div class="flex items-center justify-between gap-2">
+											<h3 class="type-h3 text-ink">Interviews</h3>
+											<span
+												class="type-badge-label rounded-full bg-sky/20 px-2 py-0.5 text-ink/70"
+											>
+												{{ workspaceInterviews.length }}
+											</span>
+										</div>
+										<div v-if="!workspaceInterviews.length" class="mt-2 type-caption text-ink/60">
+											No interviews recorded yet for this applicant.
+										</div>
+										<ul v-else class="mt-3 space-y-2 max-h-72 overflow-y-auto pr-1">
+											<li
+												v-for="item in workspaceInterviews"
+												:key="item.name"
+												class="rounded-xl border px-3 py-2"
+												:class="
+													isActiveInterview(item.name)
+														? 'border-canopy bg-canopy/5'
+														: 'border-border/60 bg-white'
+												"
+											>
+												<div class="flex items-start justify-between gap-3">
+													<div class="min-w-0">
+														<p class="type-body-strong text-ink truncate">
+															{{ item.interview_type || 'Interview' }}
+															<span class="text-ink/60">· {{ item.name }}</span>
+														</p>
+														<p class="type-caption text-ink/70 mt-1">
+															{{ formatInterviewStart(item) }}
+															<span v-if="formatInterviewEnd(item)">
+																→ {{ formatInterviewEnd(item) }}</span
+															>
+														</p>
+														<p
+															v-if="item.interviewers?.length"
+															class="type-caption text-ink/65 mt-1 truncate"
+														>
+															{{ item.interviewers.map(row => row.name || row.user).join(', ') }}
+														</p>
+													</div>
+													<button
+														type="button"
+														class="if-action"
+														:disabled="loading"
+														@click="openInterview(item.name)"
+													>
+														{{ isActiveInterview(item.name) ? 'Opened' : 'Open' }}
+													</button>
+												</div>
+											</li>
+										</ul>
+									</article>
+
+									<template v-if="isInterviewMode && workspace">
+										<article class="interview-card">
+											<h3 class="type-h3 text-ink">Panel Feedback</h3>
+											<ul class="mt-3 space-y-2">
+												<li
+													v-for="member in workspace.feedback.panel"
+													:key="member.interviewer_user"
+													class="rounded-xl border border-border/60 px-3 py-2 flex items-center justify-between gap-2"
+												>
+													<p class="type-body text-ink">
+														{{ member.interviewer_name || member.interviewer_user }}
+													</p>
+													<span
+														class="type-caption rounded-full bg-sky/20 px-2 py-0.5 text-ink/70"
+													>
+														{{ member.feedback_status || 'Pending' }}
+													</span>
+												</li>
+											</ul>
+										</article>
+
+										<article class="interview-card">
+											<h3 class="type-h3 text-ink">My Interview Feedback</h3>
+											<p class="type-caption text-ink/65 mt-1">
+												Separate notes per interviewer to avoid edit collisions.
+											</p>
+
+											<div
+												v-if="formError"
+												class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 type-caption text-rose-900"
+											>
+												{{ formError }}
+											</div>
+											<div
+												v-if="saveNotice"
+												class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 type-caption text-emerald-900"
+											>
+												{{ saveNotice }}
+											</div>
+
+											<div class="mt-3 space-y-3">
+												<label class="block space-y-1">
+													<span class="type-caption text-ink/70">Recommendation</span>
+													<select
+														v-model="formRecommendation"
+														class="if-field"
+														:disabled="!canEdit || submitting"
+													>
+														<option value="">Select recommendation</option>
+														<option
+															v-for="option in recommendationOptions"
+															:key="option"
+															:value="option"
+														>
+															{{ option }}
+														</option>
+													</select>
+												</label>
+
+												<label class="block space-y-1">
+													<span class="type-caption text-ink/70">Strengths</span>
+													<textarea
+														v-model="formStrengths"
+														class="if-field"
+														rows="3"
+														:disabled="!canEdit || submitting"
+													></textarea>
+												</label>
+
+												<label class="block space-y-1">
+													<span class="type-caption text-ink/70">Concerns</span>
+													<textarea
+														v-model="formConcerns"
+														class="if-field"
+														rows="3"
+														:disabled="!canEdit || submitting"
+													></textarea>
+												</label>
+
+												<label class="block space-y-1">
+													<span class="type-caption text-ink/70">Shared Values</span>
+													<textarea
+														v-model="formSharedValues"
+														class="if-field"
+														rows="3"
+														:disabled="!canEdit || submitting"
+													></textarea>
+												</label>
+
+												<label class="block space-y-1">
+													<span class="type-caption text-ink/70">Other Notes</span>
+													<textarea
+														v-model="formOtherNotes"
+														class="if-field"
+														rows="4"
+														:disabled="!canEdit || submitting"
+													></textarea>
+												</label>
+											</div>
+
+											<div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+												<button
+													type="button"
+													class="if-action"
+													:disabled="!canEdit || submitting"
+													@click="saveDraft"
+												>
+													{{ submitting ? 'Saving…' : 'Save Draft' }}
+												</button>
+												<button
+													type="button"
+													class="if-action if-action--primary"
+													:disabled="!canEdit || submitting"
+													@click="submitFeedback"
+												>
+													{{ submitting ? 'Submitting…' : 'Submit Feedback' }}
+												</button>
+											</div>
+											<p v-if="!canEdit" class="type-caption text-ink/60 mt-3">
+												You are not assigned to edit feedback for this interview.
+											</p>
+										</article>
+									</template>
+
+									<article v-else class="interview-card">
+										<h3 class="type-h3 text-ink">Interview Notes</h3>
+										<p class="type-caption text-ink/70 mt-2">
+											Select an interview to view panel feedback and submit interviewer notes.
+										</p>
 									</article>
 
 									<article v-if="isInterviewMode" class="interview-card">
@@ -1026,194 +1212,6 @@
 												<p class="type-body text-ink/80 mt-1" v-html="row.renderedContent"></p>
 											</li>
 										</ul>
-									</article>
-								</section>
-
-								<section class="space-y-4">
-									<article class="interview-card">
-										<div class="flex items-center justify-between gap-2">
-											<h3 class="type-h3 text-ink">Interviews</h3>
-											<span
-												class="type-badge-label rounded-full bg-sky/20 px-2 py-0.5 text-ink/70"
-											>
-												{{ workspaceInterviews.length }}
-											</span>
-										</div>
-										<div v-if="!workspaceInterviews.length" class="mt-2 type-caption text-ink/60">
-											No interviews recorded yet for this applicant.
-										</div>
-										<ul v-else class="mt-3 space-y-2 max-h-72 overflow-y-auto pr-1">
-											<li
-												v-for="item in workspaceInterviews"
-												:key="item.name"
-												class="rounded-xl border px-3 py-2"
-												:class="
-													isActiveInterview(item.name)
-														? 'border-canopy bg-canopy/5'
-														: 'border-border/60 bg-white'
-												"
-											>
-												<div class="flex items-start justify-between gap-3">
-													<div class="min-w-0">
-														<p class="type-body-strong text-ink truncate">
-															{{ item.interview_type || 'Interview' }}
-															<span class="text-ink/60">· {{ item.name }}</span>
-														</p>
-														<p class="type-caption text-ink/70 mt-1">
-															{{ formatInterviewStart(item) }}
-															<span v-if="formatInterviewEnd(item)">
-																→ {{ formatInterviewEnd(item) }}</span
-															>
-														</p>
-														<p
-															v-if="item.interviewers?.length"
-															class="type-caption text-ink/65 mt-1 truncate"
-														>
-															{{ item.interviewers.map(row => row.name || row.user).join(', ') }}
-														</p>
-													</div>
-													<button
-														type="button"
-														class="if-action"
-														:disabled="loading"
-														@click="openInterview(item.name)"
-													>
-														{{ isActiveInterview(item.name) ? 'Opened' : 'Open' }}
-													</button>
-												</div>
-											</li>
-										</ul>
-									</article>
-
-									<template v-if="isInterviewMode && workspace">
-										<article class="interview-card">
-											<h3 class="type-h3 text-ink">Panel Feedback</h3>
-											<ul class="mt-3 space-y-2">
-												<li
-													v-for="member in workspace.feedback.panel"
-													:key="member.interviewer_user"
-													class="rounded-xl border border-border/60 px-3 py-2 flex items-center justify-between gap-2"
-												>
-													<p class="type-body text-ink">
-														{{ member.interviewer_name || member.interviewer_user }}
-													</p>
-													<span
-														class="type-caption rounded-full bg-sky/20 px-2 py-0.5 text-ink/70"
-													>
-														{{ member.feedback_status || 'Pending' }}
-													</span>
-												</li>
-											</ul>
-										</article>
-
-										<article class="interview-card">
-											<h3 class="type-h3 text-ink">My Interview Feedback</h3>
-											<p class="type-caption text-ink/65 mt-1">
-												Separate notes per interviewer to avoid edit collisions.
-											</p>
-
-											<div
-												v-if="formError"
-												class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 type-caption text-rose-900"
-											>
-												{{ formError }}
-											</div>
-											<div
-												v-if="saveNotice"
-												class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 type-caption text-emerald-900"
-											>
-												{{ saveNotice }}
-											</div>
-
-											<div class="mt-3 space-y-3">
-												<label class="block space-y-1">
-													<span class="type-caption text-ink/70">Recommendation</span>
-													<select
-														v-model="formRecommendation"
-														class="if-field"
-														:disabled="!canEdit || submitting"
-													>
-														<option value="">Select recommendation</option>
-														<option
-															v-for="option in recommendationOptions"
-															:key="option"
-															:value="option"
-														>
-															{{ option }}
-														</option>
-													</select>
-												</label>
-
-												<label class="block space-y-1">
-													<span class="type-caption text-ink/70">Strengths</span>
-													<textarea
-														v-model="formStrengths"
-														class="if-field"
-														rows="3"
-														:disabled="!canEdit || submitting"
-													></textarea>
-												</label>
-
-												<label class="block space-y-1">
-													<span class="type-caption text-ink/70">Concerns</span>
-													<textarea
-														v-model="formConcerns"
-														class="if-field"
-														rows="3"
-														:disabled="!canEdit || submitting"
-													></textarea>
-												</label>
-
-												<label class="block space-y-1">
-													<span class="type-caption text-ink/70">Shared Values</span>
-													<textarea
-														v-model="formSharedValues"
-														class="if-field"
-														rows="3"
-														:disabled="!canEdit || submitting"
-													></textarea>
-												</label>
-
-												<label class="block space-y-1">
-													<span class="type-caption text-ink/70">Other Notes</span>
-													<textarea
-														v-model="formOtherNotes"
-														class="if-field"
-														rows="4"
-														:disabled="!canEdit || submitting"
-													></textarea>
-												</label>
-											</div>
-
-											<div class="mt-4 flex flex-wrap items-center justify-end gap-2">
-												<button
-													type="button"
-													class="if-action"
-													:disabled="!canEdit || submitting"
-													@click="saveDraft"
-												>
-													{{ submitting ? 'Saving…' : 'Save Draft' }}
-												</button>
-												<button
-													type="button"
-													class="if-action if-action--primary"
-													:disabled="!canEdit || submitting"
-													@click="submitFeedback"
-												>
-													{{ submitting ? 'Submitting…' : 'Submit Feedback' }}
-												</button>
-											</div>
-											<p v-if="!canEdit" class="type-caption text-ink/60 mt-3">
-												You are not assigned to edit feedback for this interview.
-											</p>
-										</article>
-									</template>
-
-									<article v-else class="interview-card">
-										<h3 class="type-h3 text-ink">Interview Notes</h3>
-										<p class="type-caption text-ink/70 mt-2">
-											Select an interview to view panel feedback and submit interviewer notes.
-										</p>
 									</article>
 								</section>
 							</div>
