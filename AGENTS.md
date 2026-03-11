@@ -5,8 +5,6 @@ This repository is a **production-grade, multi-tenant Education ERP**.
 AI agents **MUST** follow the rules below exactly.
 If a rule is unclear or context is missing: **STOP. ASK. WAIT.**
 
-Silent assumptions are considered defects.
-
 ---
 
 ## 0. Prime Directive (Non-Negotiable)
@@ -17,8 +15,6 @@ Silent assumptions are considered defects.
 * Never rely on memory of “earlier versions”
 * Always work from files currently present in the workspace
 * If required files or schemas are missing → **STOP and ask**
-
-A correct pause is better than a confident mistake.
 
 ---
 
@@ -37,7 +33,6 @@ Agents must operate with a **product manager mindset** and prioritize friction r
 
 * Runtime baseline is **Frappe Framework v16**.
 * Any workflow, script, or setup instruction that pins framework branch/version must target **`version-16`**.
-* Agents must treat older branch pins (for example `version-15`) as drift and update them when encountered.
 
 ---
 
@@ -74,7 +69,7 @@ Agents MUST follow:
 * Architecture is **explicitly locked**
 * Markdown files under:
 
-  * `ifitwala_ed/docs/ are **authoritative**
+* ifitwala_ed/docs/ are **authoritative**
 * Code and documentation **must never diverge**
 * If behavior changes (when explicitly requested):
 
@@ -136,7 +131,6 @@ For Frappe metadata `.json` files (DocType, child table, workspace, report, etc.
 
 * As soon as a `.json` file is touched, agents MUST update its `modified` value to the actual change date/time.
 * Leaving a stale `modified` timestamp after editing metadata JSON is a bug.
-* This is required for reliable model sync and `bench migrate` behavior.
 
 ### 3.3 NestedSet Is Sacred
 
@@ -145,33 +139,6 @@ Any DocType using `NestedSet` (`lft`, `rgt`):
 * Must preserve hierarchy integrity
 * Must use framework helpers only
 * Manual SQL touching `lft` / `rgt` is forbidden
-
----
-
-## 4. Enrollment, Assessment & Academic Invariants
-
-### 4.1 Enrollment Is Transactional
-
-* Enrollment requests are evaluated **once**
-* Rule evaluation is snapshotted:
-
-  * rule evaluated
-  * value compared
-  * outcome
-* Approved enrollments are **never recomputed**
-* Rule changes affect **future requests only**
-
-### 4.2 Assessment Truth Model
-
-* Criterion-level outcomes are the **authoritative truth**
-* Task-level totals / grades are:
-
-  * Optional
-  * Derived
-* Official grades:
-
-  * MUST NOT link directly to child table rows
-* No duplication of grade truth across tables
 
 ---
 
@@ -376,23 +343,6 @@ Assume evaluation order issues before assuming logic or typing errors.
 
 ---
 
-### 7.4 Historically-Derived Invariants (Read Carefully)
-
-Some rules exist **not by design preference**, but because the team has already paid the cost of violating them.
-
-These include (non-exhaustive):
-
-* SPA payload shape rules
-* HeadlessUI overlay constraints
-* Tailwind CSS v4 single-entry discipline
-* Vue `<script setup>` declaration order rules
-
-Agents **MUST** treat these as **hard constraints**, even if they appear “over-strict” or redundant.
-
-They are locked because they prevent **silent failures** that are expensive to debug post-build and difficult to detect during review.
-
----
-
 ## 8. Tailwind, Styling & Typography
 
 ### 8.1 Styling Discipline
@@ -465,25 +415,6 @@ Permissions must be enforced **server-side**.
 
 ---
 
-## 12. Scheduling & Attendance Invariants
-
-* `rotation_day` → integer
-* `block_number` → integer
-* One instructor per schedule row
-* Validate overlaps:
-
-  * instructor
-  * student
-  * location
-* Attendance:
-
-  * Multi-block per day
-  * Update only changed values
-  * Inserts must include analytics fields
-  * Default `attendance_method = "Manual"` for tools
-
----
-
 ## 13. Files & Media Handling
 
 * Always use rename / move pattern
@@ -531,11 +462,6 @@ Permissions must be enforced **server-side**.
 ## 16. Documentation Synchronization (Mandatory)
 
 When architecture changes are made (if approved), agents MUST update corresponding docs, including but not limited to:
-
-* `assessment_notes.md`
-* `gradebook_notes.md`
-* `task_notes.md`
-* `curriculum_relationship_notes.md`
 
 Docs must reflect **reality**, not aspiration.
 
@@ -675,7 +601,11 @@ For Python modules using `from frappe import _`:
 * Shadowing `_` in whitelisted methods or validation code is a blocker because it can turn translatable error calls into runtime `TypeError`s.
 * When discarding unpacked values in these modules, use a descriptive unused name such as `unused_counts` or `_unused_counts`, never bare `_`.
 * Before finalizing a Python edit, agents MUST scan new locals and tuple unpacking for Ruff-class issues such as `F823` (translation alias shadowing) and `F841` (assigned but unused local variables).
+* Before attempting a commit, agents MUST run Ruff autofix and Ruff format on every touched Python file when those tools are available in the workspace.
+* If a change touches Vue / JS / TS / JSON-adjacent frontend assets that are governed by Prettier, agents MUST run Prettier on the touched files before attempting a commit.
+* Agents MUST ensure touched text files end with a newline and contain no trailing whitespace so pre-commit hook churn does not appear at commit time.
 * If a pre-commit or lint hook runs against staged content, agents MUST restage the corrected files before retrying so the index matches the fix.
+* If a pre-commit hook auto-fixes files during a commit attempt, agents MUST inspect which files changed, restage the intended files, and rerun the hook or commit until the tree is stable.
 
 ### 18.9 Query-Filter Schema Contract Safety (Non-Negotiable)
 
@@ -693,6 +623,42 @@ For changes touching calendar feeds, calendar details, or permission resolution 
 * PRs MUST include at least one regression test that exercises the affected whitelisted endpoint path end-to-end.
 * CI for pull requests MUST run the calendar regression test module (for example `ifitwala_ed.api.test_calendar`) as a blocking check.
 * Any refactor that splits/moves helpers across modules MUST include before/after contract parity checks for query filters and payload shape.
+
+### 18.11 High-Concurrency Frappe Patterns (Non-Negotiable)
+
+For any feature expected to serve staff, students, or guardians at scale, agents MUST design for high concurrency by default and use Frappe-native primitives before inventing custom patterns.
+
+* Request handlers MUST stay short. Heavy computation, fan-out work, report generation, rebuilds, bulk mutations, and slow network boundaries MUST leave the request via `frappe.enqueue(...)` onto explicit queues (`short`, `default`, `long`).
+* Background jobs MUST be idempotent, chunked, and observable:
+  * use job keys / duplicate guards for repeat clicks
+  * process large sets in bounded batches
+  * emit processed/skipped/failed summaries
+  * never rely on request-local state inside workers
+* Scheduler jobs MUST act as dispatchers, not giant processors:
+  * cron fetches IDs only
+  * cron enqueues chunks
+  * heavy per-record work happens in workers
+  * backpressure and queue depth must be considered before enqueuing unbounded workloads
+* Read paths MUST prefer cacheable, aggregated, scope-safe payloads:
+  * use `frappe.cache()`, `frappe.get_cached_value`, `frappe.get_cached_doc`, or documented Redis-backed caching where safe
+  * cache keys MUST include permission/user/filter scope
+  * invalidation rules MUST be explicit; stale cache without an invalidation plan is a bug
+* SPA initialization MUST avoid request waterfalls:
+  * prefer one aggregated context endpoint for tightly related page-init data
+  * reserve `Promise.all()` for independent domains only
+  * no view should require more than 5 API calls for foundational load without explicit justification
+* Realtime completion SHOULD use `frappe.publish_realtime(...)` for queued work, with a safe polling fallback when websockets are unavailable.
+* Batch writes MUST use the safest Frappe-native mechanism available for the workload:
+  * batched document saves when controller invariants are required
+  * `frappe.db.bulk_insert` / chunked SQL only when lifecycle bypass is explicitly safe
+  * lock scope, transaction size, and commit cadence must be minimized deliberately
+* Network-bound side effects such as email and notifications MUST be asynchronous and retryable; do not block requests on SMTP or third-party latency when Frappe queueing can handle the boundary.
+* High-traffic payload endpoints SHOULD support cache stamps / HTTP validation (`ETag`, `If-None-Match`, `304`) or an equivalent documented contract when payloads are expensive and frequently revisited.
+* Any proposal or implementation for dashboards, analytics, attendance, enrollment processing, reporting, or scheduler work MUST be reviewed against:
+  * `ifitwala_ed/docs/concurrency_01_proposal.md`
+  * `ifitwala_ed/docs/concurrency_02_proposal.md`
+  * `ifitwala_ed/docs/high_concurrency_03.md`
+  and agents MUST follow the most concurrency-safe option that fits the current contract.
 
 ---
 
