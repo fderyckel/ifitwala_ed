@@ -1,8 +1,7 @@
 name: Ifitwala Nightly
 
 on:
-  schedule:
-    - cron: "30 2 * * *"
+  # Scheduled nightly runs are disabled until the self-hosted runner is installed.
   workflow_dispatch:
 
 permissions:

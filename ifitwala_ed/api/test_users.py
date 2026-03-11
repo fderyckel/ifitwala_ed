@@ -400,7 +400,7 @@ class TestUserRedirect(FrappeTestCase):
         previous_in_import = bool(getattr(frappe.flags, "in_import", False))
         frappe.flags.in_import = True
         try:
-            student.save()
+            student.insert(ignore_permissions=True)
         finally:
             frappe.flags.in_import = previous_in_import
 

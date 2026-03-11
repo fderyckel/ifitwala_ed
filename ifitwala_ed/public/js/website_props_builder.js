@@ -136,6 +136,57 @@
 		);
 	}
 
+	function isImageField(fieldname, schema) {
+		const lower = (fieldname || '').toLowerCase();
+		const { primary } = normalizeSchemaType(schema || {});
+		if (primary !== 'string') return false;
+		if (Array.isArray(schema?.enum) && schema.enum.length) return false;
+		return (
+			lower === 'image' || lower.endsWith('_image') || lower.endsWith('_logo') || lower === 'logo'
+		);
+	}
+
+	function buildControlId(fieldname) {
+		const safeFieldname = String(fieldname || 'field').replace(/[^a-z0-9_]/gi, '_');
+		return `iw_builder_${safeFieldname}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+	}
+
+	function ensureBuilderStyles() {
+		if (document.getElementById('iw-props-builder-styles')) {
+			return;
+		}
+
+		const style = document.createElement('style');
+		style.id = 'iw-props-builder-styles';
+		style.textContent = `
+			.iw-props-builder .iw-checkbox-field {
+				margin-bottom: 1rem;
+			}
+			.iw-props-builder .iw-checkbox-label {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.625rem;
+				font-weight: 500;
+				cursor: pointer;
+			}
+			.iw-props-builder .iw-checkbox-label input[type="checkbox"] {
+				margin: 0;
+				position: static;
+				flex: 0 0 auto;
+			}
+			.iw-props-builder .iw-attach-field .control-input-wrapper,
+			.iw-props-builder .iw-attach-field .control-value {
+				min-height: auto;
+			}
+			.iw-props-builder .iw-field-help {
+				margin-top: 0.375rem;
+				font-size: 0.75rem;
+				color: var(--text-muted, #6b7280);
+			}
+		`;
+		document.head.appendChild(style);
+	}
+
 	function applyDefaults(schema, values, blockType) {
 		const output = {};
 		const incoming = values || {};
@@ -309,12 +360,27 @@
 		const wrapper = document.createElement('div');
 		wrapper.className = 'form-group';
 
-		const labelEl = document.createElement('label');
-		labelEl.className = 'control-label';
-		labelEl.textContent = label + (required ? ' *' : '');
-		wrapper.appendChild(labelEl);
-
 		let input;
+		if (type === 'checkbox') {
+			wrapper.className = 'form-group iw-checkbox-field';
+			const checkboxLabel = document.createElement('label');
+			checkboxLabel.className = 'iw-checkbox-label';
+			input = document.createElement('input');
+			input.type = 'checkbox';
+			input.className = 'form-check-input';
+			input.checked = Boolean(value);
+			const text = document.createElement('span');
+			text.textContent = label + (required ? ' *' : '');
+			checkboxLabel.appendChild(input);
+			checkboxLabel.appendChild(text);
+			wrapper.appendChild(checkboxLabel);
+		} else {
+			const labelEl = document.createElement('label');
+			labelEl.className = 'control-label';
+			labelEl.textContent = label + (required ? ' *' : '');
+			wrapper.appendChild(labelEl);
+		}
+
 		if (type === 'select') {
 			input = document.createElement('select');
 			input.className = 'form-control';
@@ -333,19 +399,12 @@
 			if (value !== undefined && value !== null) {
 				input.value = value;
 			}
-		} else if (type === 'checkbox') {
-			input = document.createElement('input');
-			input.type = 'checkbox';
-			input.className = 'form-check-input';
-			input.checked = Boolean(value);
-			labelEl.className = 'form-check-label';
-			wrapper.className = 'form-group form-check';
 		} else if (type === 'textarea') {
 			input = document.createElement('textarea');
 			input.className = 'form-control';
 			input.rows = 4;
 			input.value = value || '';
-		} else {
+		} else if (type !== 'checkbox') {
 			input = document.createElement('input');
 			input.type = type === 'number' ? 'number' : 'text';
 			input.className = 'form-control';
@@ -354,8 +413,60 @@
 			}
 		}
 
-		wrapper.appendChild(input);
+		if (input && type !== 'checkbox') {
+			wrapper.appendChild(input);
+		}
 		return { wrapper, input };
+	}
+
+	function createAttachImageInput({ label, value, required, fieldname }) {
+		const wrapper = document.createElement('div');
+		wrapper.className = 'form-group iw-attach-field';
+
+		const labelEl = document.createElement('label');
+		labelEl.className = 'control-label';
+		labelEl.textContent = label + (required ? ' *' : '');
+		wrapper.appendChild(labelEl);
+
+		const controlHost = document.createElement('div');
+		wrapper.appendChild(controlHost);
+
+		const help = document.createElement('div');
+		help.className = 'iw-field-help';
+		help.textContent = __('Upload or choose an image. The stored value is the file URL.');
+		wrapper.appendChild(help);
+
+		let onChange = null;
+		const control = frappe.ui.form.make_control({
+			df: {
+				fieldname: buildControlId(fieldname),
+				fieldtype: 'Attach Image',
+				label,
+				change() {
+					if (typeof onChange === 'function') {
+						onChange(control.get_value() || '');
+					}
+				},
+			},
+			parent: controlHost,
+			render_input: true,
+		});
+		control.refresh();
+		control.set_value(value || '');
+
+		return {
+			wrapper,
+			control,
+			onChange(handler) {
+				onChange = handler;
+			},
+			getValue() {
+				return control.get_value() || '';
+			},
+			setValue(nextValue) {
+				control.set_value(nextValue || '');
+			},
+		};
 	}
 
 	const BLOCK_REGISTRY_METHOD_GET_ONE =
@@ -814,6 +925,7 @@
 	}
 
 	function createBuilder({ container, schema, initial }) {
+		ensureBuilderStyles();
 		const wrapper = document.createElement('div');
 		wrapper.className = 'iw-props-builder';
 		container.innerHTML = '';
@@ -849,6 +961,7 @@
 			const label = toLabel(propName);
 			const isRequired = required.has(propName);
 			const value = state[propName];
+			const useImageControl = isImageField(propName, propSchema);
 			let fieldType = 'text';
 			let options = null;
 
@@ -861,6 +974,22 @@
 				fieldType = 'checkbox';
 			} else if (primary === 'string' && isMultiline(propName)) {
 				fieldType = 'textarea';
+			}
+
+			if (useImageControl) {
+				const imageField = createAttachImageInput({
+					label,
+					value,
+					required: isRequired,
+					fieldname: propName,
+				});
+				imageField.onChange(nextValue => {
+					if (isDisabled) return;
+					state[propName] = nextValue;
+					notify();
+				});
+				wrapper.appendChild(imageField.wrapper);
+				return;
 			}
 
 			const { wrapper: fieldWrap, input } = createInput({
@@ -955,6 +1084,7 @@
 							const fieldType = typeInfo.primary;
 							const fieldNullable = typeInfo.nullable;
 							const fieldEnum = Array.isArray(fieldSchema.enum) ? fieldSchema.enum : null;
+							const useImageControl = isImageField(itemKey, fieldSchema);
 							let inputType = 'text';
 							let options = null;
 							if (fieldEnum) {
@@ -966,6 +1096,23 @@
 								inputType = 'checkbox';
 							} else if (fieldType === 'string' && isMultiline(itemKey)) {
 								inputType = 'textarea';
+							}
+
+							if (useImageControl) {
+								const imageField = createAttachImageInput({
+									label: fieldLabel,
+									value: item[itemKey],
+									required: itemRequired.has(itemKey),
+									fieldname: `${propName}_${itemKey}`,
+								});
+								imageField.onChange(nextValue => {
+									if (isDisabled) return;
+									item[itemKey] = nextValue;
+									state[propName][index] = item;
+									notify();
+								});
+								itemBox.appendChild(imageField.wrapper);
+								return;
 							}
 
 							const { wrapper: fieldWrap, input } = createInput({
