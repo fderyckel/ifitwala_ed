@@ -6,7 +6,11 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-ALLOWED_PRIMARY_SUBJECT_TYPES = {"Student", "Guardian", "Employee", "Student Applicant"}
+from ifitwala_ed.utilities.file_classification_contract import (
+    ALLOWED_PRIMARY_SUBJECT_TYPES,
+    is_school_required_for_subject_type,
+)
+
 REQUIRED_FIELDS = (
     "file",
     "primary_subject_type",
@@ -29,7 +33,7 @@ class FileClassification(Document):
 
     def _validate_required_fields(self):
         for fieldname in REQUIRED_FIELDS:
-            if fieldname == "school" and self.primary_subject_type == "Employee":
+            if fieldname == "school" and not is_school_required_for_subject_type(self.primary_subject_type):
                 continue
             if not self.get(fieldname):
                 frappe.throw(_("{0} is required.").format(fieldname.replace("_", " ").title()))

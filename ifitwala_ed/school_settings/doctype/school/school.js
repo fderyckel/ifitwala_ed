@@ -74,7 +74,105 @@ function _open_school_website_page(frm) {
 				doc.page_type = "Standard";
 				doc.title = frm.doc.school_name || frm.doc.name;
 			});
+	});
+}
+
+function _ensure_saved_school(frm, actionLabel) {
+	if (frm.is_new() || frm.is_dirty()) {
+		frappe.msgprint(__("Please save the School before using {0}.", [actionLabel]));
+		return false;
+	}
+	return true;
+}
+
+function setup_governed_school_logo_upload(frm) {
+	const fieldname = "school_logo";
+	const openUploader = () => {
+		if (!_ensure_saved_school(frm, __("Upload School Logo"))) return;
+
+		new frappe.ui.FileUploader({
+			method: "ifitwala_ed.utilities.governed_uploads.upload_school_logo",
+			args: { school: frm.doc.name },
+			doctype: "School",
+			docname: frm.doc.name,
+			fieldname,
+			is_private: 0,
+			disable_private: true,
+			allow_multiple: false,
+			on_success(fileDoc) {
+				const payload =
+					fileDoc?.message
+					|| (Array.isArray(fileDoc) ? fileDoc[0] : fileDoc)
+					|| (typeof fileDoc === "string" ? { file_url: fileDoc } : null);
+				if (payload?.file_url) {
+					frm.set_value("school_logo", payload.file_url);
+					frm.set_value("school_logo_file", payload.file);
+				}
+				const reload = frm.reload_doc();
+				if (reload && reload.then) {
+					reload.then(() => frm.refresh_field(fieldname));
+				}
+			},
+			on_error() {
+				frappe.msgprint(__("School logo upload failed. Please try again."));
+			},
 		});
+	};
+
+	frm.set_df_property(fieldname, "read_only", 1);
+	frm.set_df_property(
+		fieldname,
+		"description",
+		__("Use Upload School Logo to attach a governed organization media file.")
+	);
+
+	frm.remove_custom_button(__("Upload School Logo"), __("Actions"));
+	frm.remove_custom_button(__("Upload School Logo"));
+	const $button = frm.add_custom_button(__("Upload School Logo"), openUploader, __("Actions"));
+	$button.addClass("btn-primary");
+}
+
+function setup_governed_gallery_upload(frm) {
+	const grid = frm.get_field("gallery_image")?.grid;
+	if (!grid) return;
+
+	grid.update_docfield_property("school_image", "read_only", 1);
+	grid.update_docfield_property("governed_file", "read_only", 1);
+	grid.update_docfield_property(
+		"school_image",
+		"description",
+		__("Managed by governed organization media uploads.")
+	);
+
+	if (grid.__organizationMediaUploadBound) return;
+	grid.__organizationMediaUploadBound = true;
+
+	const openUploader = () => {
+		if (!_ensure_saved_school(frm, __("Upload Gallery Image"))) return;
+
+		new frappe.ui.FileUploader({
+			method: "ifitwala_ed.utilities.governed_uploads.upload_school_gallery_image",
+			args: { school: frm.doc.name },
+			doctype: "School",
+			docname: frm.doc.name,
+			fieldname: "gallery_image",
+			is_private: 0,
+			disable_private: true,
+			allow_multiple: false,
+			on_success() {
+				const reload = frm.reload_doc();
+				if (reload && reload.then) {
+					reload.then(() => frm.refresh_field("gallery_image"));
+				}
+			},
+			on_error() {
+				frappe.msgprint(__("Gallery image upload failed. Please try again."));
+			},
+		});
+	};
+
+	const $button = grid.add_custom_button(__("Upload Gallery Image"), openUploader);
+	$button.addClass("btn-primary");
 }
 
 frappe.ui.form.on("School", {
@@ -140,6 +238,8 @@ frappe.ui.form.on("School", {
 		if (!frm.doc.__islocal) {
 			frappe.contacts.render_address_and_contact(frm);
 		}
+		setup_governed_school_logo_upload(frm);
+		setup_governed_gallery_upload(frm);
 
 		frm.set_query("current_school_calendar", function () {
 			return {

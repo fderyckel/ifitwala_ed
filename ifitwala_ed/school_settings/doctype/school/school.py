@@ -10,6 +10,11 @@ from frappe.contacts.address_and_contact import load_address_and_contact
 from frappe.utils import flt
 from frappe.utils.nestedset import NestedSet
 
+from ifitwala_ed.utilities.organization_media import (
+    ensure_organization_media_files_visible_to_school,
+    ensure_organization_media_visible_to_school_by_url,
+)
+
 
 class School(NestedSet):
     nsm_parent_field = "parent_school"
@@ -25,10 +30,85 @@ class School(NestedSet):
         self.apply_parent_attendance_threshold_defaults()
         self.validate_attendance_thresholds()
         self.validate_website_publication()
+        self.validate_governed_public_media()
 
         # prevent changing Organization on a node that has children.
         # Rationale: avoids accidental cross-org subtree drift and keeps "effective record" resolution sane.
         self.validate_organization_change_policy_a()
+
+    def validate_governed_public_media(self):
+        self._sync_school_logo_media()
+        self._sync_gallery_media_rows()
+
+    def _sync_school_logo_media(self):
+        logo_file = (self.school_logo_file or "").strip()
+        logo_url = (self.school_logo or "").strip()
+
+        if not logo_file and logo_url:
+            media_row = ensure_organization_media_visible_to_school_by_url(
+                school=self.name,
+                file_url=logo_url,
+            )
+            if media_row:
+                logo_file = media_row["file"]
+                self.school_logo_file = logo_file
+
+        if not logo_file:
+            if not logo_url:
+                self.school_logo_file = None
+            return
+
+        media_rows = ensure_organization_media_files_visible_to_school(
+            school=self.name,
+            file_names=[logo_file],
+        )
+        media_row = media_rows[logo_file]
+        media_url = (media_row.get("file_url") or "").strip()
+        if not media_url:
+            frappe.throw(_("School Logo file '{0}' is missing a file URL.").format(logo_file))
+
+        self.school_logo_file = logo_file
+        self.school_logo = media_url
+
+    def _sync_gallery_media_rows(self):
+        governed_files: list[str] = []
+
+        for row in self.gallery_image or []:
+            governed_file = (row.governed_file or "").strip()
+            row_image = (row.school_image or "").strip()
+
+            if not governed_file and row_image:
+                media_row = ensure_organization_media_visible_to_school_by_url(
+                    school=self.name,
+                    file_url=row_image,
+                )
+                if media_row:
+                    governed_file = media_row["file"]
+                    row.governed_file = governed_file
+
+            if governed_file:
+                governed_files.append(governed_file)
+
+        if not governed_files:
+            return
+
+        visible_rows = ensure_organization_media_files_visible_to_school(
+            school=self.name,
+            file_names=governed_files,
+        )
+
+        for row in self.gallery_image or []:
+            governed_file = (row.governed_file or "").strip()
+            if not governed_file:
+                continue
+
+            media_row = visible_rows[governed_file]
+            media_url = (media_row.get("file_url") or "").strip()
+            if not media_url:
+                frappe.throw(_("Gallery Image file '{0}' is missing a file URL.").format(governed_file))
+
+            row.governed_file = governed_file
+            row.school_image = media_url
 
     def on_update(self):
         NestedSet.on_update(self)

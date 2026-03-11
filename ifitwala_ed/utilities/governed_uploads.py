@@ -13,6 +13,12 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.utilities import file_dispatcher
+from ifitwala_ed.utilities.organization_media import (
+    build_organization_media_classification,
+    build_organization_media_context,
+    build_school_gallery_slot,
+    build_school_logo_slot,
+)
 
 
 def _get_uploaded_file() -> Tuple[str, bytes]:
@@ -48,6 +54,14 @@ def _require_doc(doctype: str, name: str):
         frappe.throw(_("Missing document name."))
     doc = frappe.get_doc(doctype, name)
     doc.check_permission("write")
+    return doc
+
+
+def _require_clean_saved_doc(doc, *, action_label: str):
+    if doc.is_new():
+        frappe.throw(_("Please save the document before using {0}.").format(action_label))
+    if doc.get("__unsaved"):
+        frappe.throw(_("Please save the document before using {0}.").format(action_label))
     return doc
 
 
@@ -120,6 +134,37 @@ def _file_url_exists_on_disk(file_url: str | None, is_private: int | None = 0) -
         abs_path = frappe.utils.get_site_path(base, rel_path)
 
     return os.path.exists(abs_path)
+
+
+def _upload_organization_media_file(
+    *,
+    organization: str,
+    slot: str,
+    school: str | None = None,
+    filename: str,
+    content: bytes,
+    upload_source: str = "Desk",
+):
+    return file_dispatcher.create_and_classify_file(
+        file_kwargs={
+            "attached_to_doctype": "Organization",
+            "attached_to_name": organization,
+            "file_name": filename,
+            "content": content,
+            "is_private": 0,
+        },
+        classification=build_organization_media_classification(
+            organization=organization,
+            school=school,
+            slot=slot,
+            upload_source=upload_source,
+        ),
+        context_override=build_organization_media_context(
+            organization=organization,
+            school=school,
+            slot=slot,
+        ),
+    )
 
 
 @frappe.whitelist()
@@ -278,6 +323,87 @@ def upload_task_submission_attachment(task_submission: str | None = None, **_kwa
     doc.save(ignore_permissions=True)
 
     return _response_payload(file_doc)
+
+
+@frappe.whitelist()
+def upload_school_logo(school: str | None = None, **_kwargs):
+    school = school or _get_form_arg("school") or frappe.form_dict.get("docname")
+    doc = _require_clean_saved_doc(_require_doc("School", school), action_label=_("Upload School Logo"))
+    if not doc.organization:
+        frappe.throw(_("Organization is required before uploading a school logo."))
+
+    filename, content = _get_uploaded_file()
+    slot = build_school_logo_slot(school=doc.name)
+    file_doc = _upload_organization_media_file(
+        organization=doc.organization,
+        school=doc.name,
+        slot=slot,
+        filename=filename,
+        content=content,
+    )
+    _ensure_file_on_disk(file_doc)
+
+    frappe.db.set_value(
+        "School",
+        doc.name,
+        {
+            "school_logo": file_doc.file_url,
+            "school_logo_file": file_doc.name,
+        },
+        update_modified=False,
+    )
+    payload = _response_payload(file_doc)
+    payload["school"] = doc.name
+    return payload
+
+
+@frappe.whitelist()
+def upload_school_gallery_image(school: str | None = None, row_name: str | None = None, **_kwargs):
+    school = school or _get_form_arg("school") or frappe.form_dict.get("docname")
+    row_name = row_name or _get_form_arg("row_name")
+    caption = (_get_form_arg("caption") or "").strip()
+    doc = _require_clean_saved_doc(_require_doc("School", school), action_label=_("Upload Gallery Image"))
+    if not doc.organization:
+        frappe.throw(_("Organization is required before uploading a gallery image."))
+
+    filename, content = _get_uploaded_file()
+
+    target_row = None
+    if row_name:
+        for row in doc.gallery_image or []:
+            if row.name == row_name:
+                target_row = row
+                break
+        if not target_row:
+            frappe.throw(_("Gallery row '{0}' was not found on School '{1}'.").format(row_name, doc.name))
+    else:
+        target_row = doc.append("gallery_image", {})
+        if not target_row.name:
+            target_row.name = frappe.generate_hash(length=10)
+        if caption:
+            target_row.caption = caption
+
+    slot = build_school_gallery_slot(row_name=target_row.name)
+    file_doc = _upload_organization_media_file(
+        organization=doc.organization,
+        school=doc.name,
+        slot=slot,
+        filename=filename,
+        content=content,
+    )
+    _ensure_file_on_disk(file_doc)
+
+    target_row.governed_file = file_doc.name
+    target_row.school_image = file_doc.file_url
+    if caption:
+        target_row.caption = caption
+    doc.save(ignore_permissions=True)
+
+    payload = _response_payload(file_doc)
+    payload["school"] = doc.name
+    payload["row_name"] = target_row.name
+    payload["caption"] = target_row.caption
+    return payload
 
 
 @frappe.whitelist()

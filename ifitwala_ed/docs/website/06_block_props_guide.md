@@ -39,6 +39,7 @@ Disallowed:
 
 * `hero.images` is optional.
 * If `hero.images` is **empty or missing**, the hero carousel uses `School.gallery_image` rows (field `school_image`).
+* `Gallery Image.school_image` is the canonical file URL mirrored from the governed `Gallery Image.governed_file` reference when available.
 
 ### 0.5 Context-aware block availability
 
