@@ -1,54 +1,10 @@
 # ifitwala_ed/website/validators.py
 
-import json
-
 import frappe
 from frappe import _
 
 from ifitwala_ed.website.block_registry import get_allowed_block_types, get_block_definition_map
 from ifitwala_ed.website.utils import parse_props, validate_props_schema
-
-
-def normalize_block_props(*, block_type: str, props: dict) -> dict:
-    """
-    Backward-compatible prop aliases for legacy website records.
-    Normalization happens before schema validation so old pages keep rendering.
-    """
-    normalized = dict(props or {})
-
-    if block_type == "cta":
-        if not normalized.get("button_label"):
-            normalized["button_label"] = normalized.get("cta_label") or normalized.get("label") or ""
-        if not normalized.get("button_link"):
-            normalized["button_link"] = (
-                normalized.get("cta_link") or normalized.get("url") or normalized.get("link") or ""
-            )
-        for legacy_key in ("cta_label", "cta_link", "label", "url", "link"):
-            normalized.pop(legacy_key, None)
-
-    elif block_type == "rich_text":
-        if not normalized.get("content_html") and normalized.get("content"):
-            normalized["content_html"] = normalized.get("content")
-
-    elif block_type == "admissions_overview":
-        if not normalized.get("content_html") and normalized.get("content"):
-            normalized["content_html"] = normalized.get("content")
-
-    elif block_type == "hero":
-        primary_cta = normalized.get("primary_cta")
-        cta = normalized.get("cta")
-        if isinstance(primary_cta, dict):
-            if not normalized.get("cta_label"):
-                normalized["cta_label"] = primary_cta.get("label")
-            if not normalized.get("cta_link"):
-                normalized["cta_link"] = primary_cta.get("link") or primary_cta.get("url")
-        if isinstance(cta, dict):
-            if not normalized.get("cta_label"):
-                normalized["cta_label"] = cta.get("label")
-            if not normalized.get("cta_link"):
-                normalized["cta_link"] = cta.get("link") or cta.get("url")
-
-    return normalized
 
 
 def _sorted_enabled_blocks(page) -> list:
@@ -116,7 +72,7 @@ def _validate_context_allowed_blocks(*, page, blocks: list):
     )
 
 
-def validate_page_blocks(page, *, normalize_legacy_props: bool = True):
+def validate_page_blocks(page):
     blocks = _sorted_enabled_blocks(page)
     definitions = get_block_definition_map()
 
@@ -137,12 +93,8 @@ def validate_page_blocks(page, *, normalize_legacy_props: bool = True):
         definition = definitions[block_type]
 
         props = parse_props(block.props)
-        normalized = normalize_block_props(block_type=block_type, props=props)
         validate_props_schema(
-            normalized,
+            props,
             definition["props_schema"],
             block_type=block_type,
         )
-
-        if normalize_legacy_props and normalized != props:
-            block.props = json.dumps(normalized, indent=2)

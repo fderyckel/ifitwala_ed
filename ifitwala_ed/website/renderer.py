@@ -17,7 +17,6 @@ from ifitwala_ed.website.utils import (
     validate_cta_link,
     validate_props_schema,
 )
-from ifitwala_ed.website.validators import normalize_block_props
 
 ROOT_ROUTE_ALIASES = {
     "/",
@@ -352,7 +351,6 @@ def _build_blocks(*, page, school):
                 ),
                 frappe.ValidationError,
             )
-        props = normalize_block_props(block_type=block.block_type, props=props)
         validate_props_schema(props, definition.props_schema, block_type=block.block_type)
         provider = _resolve_provider(definition.provider_path, block.block_type)
         ctx = provider(school=school, page=page, block_props=props) or {}

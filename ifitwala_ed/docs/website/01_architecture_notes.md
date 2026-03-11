@@ -569,19 +569,22 @@ High-level facts (years running, student count, ratios).
 ### 3.4 `program_list`
 
 **Purpose**
-Display academic offerings for a school.
+Display published program website profiles as discoverable cards.
 
 **Data source**
 
-* `school_programs` (published only)
+* `Program Website Profile` (`status = "Published"`)
+* `Program Offering` (school/program pairing)
+* `Program` (`is_published = 1`, `archive = 0`, slug required)
 
 **Props**
 
 ```json
 {
-  "layout": "grid|list",
-  "show_age_range": true,
-  "show_description": false
+  "school_scope": "current|all",
+  "show_intro": false,
+  "card_style": "standard|compact",
+  "limit": 6
 }
 ```
 
@@ -592,8 +595,8 @@ Display academic offerings for a school.
 
 **Notes**
 
-* No filtering logic in block
-* Filtering happens in provider only
+* Filtering and publication guards live in the provider only
+* Intro text rendering is optional via `show_intro`
 
 ---
 

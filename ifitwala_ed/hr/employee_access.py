@@ -4,6 +4,7 @@
 # ifitwala_ed/hr/employee_access.py
 
 import frappe
+from frappe import _
 from frappe.utils import getdate, nowdate
 from frappe.utils.caching import redis_cache
 
@@ -145,11 +146,12 @@ def _diff_user_roles(user_doc, target_roles: set[str]):
     return to_add, to_remove
 
 
-def sync_user_access_from_employee(emp):
+def sync_user_access_from_employee(emp, *, notify_role_additions: bool = False):
     """
     Called from Employee.after_save.
     - Adds/removes only managed roles.
     - Updates default workspace if effective workspace changed.
+    - Optionally notifies the current operator about newly added managed roles.
     """
     if not emp.user_id:
         return
@@ -167,6 +169,7 @@ def sync_user_access_from_employee(emp):
     target_roles, target_ws = compute_effective_access_from_employee(emp)
 
     to_add, to_remove = _diff_user_roles(user, target_roles)
+    added_roles = sorted(to_add)
     for role in to_add:
         user.append("roles", {"role": role, MANAGED_FLAG: 1})
     for ch in to_remove:
@@ -194,6 +197,16 @@ def sync_user_access_from_employee(emp):
                 send_workspace_notification(user.name, target_ws)
             except Exception:
                 pass
+
+    if notify_role_additions and added_roles:
+        frappe.msgprint(
+            _("Added default role(s) to {0}: {1}.").format(
+                frappe.bold(emp.user_id),
+                ", ".join(frappe.bold(role) for role in added_roles),
+            ),
+            title=_("Employee Access Updated"),
+            indicator="green",
+        )
 
 
 def effective_workspace_for_user(user: str) -> str | None:

@@ -79,6 +79,52 @@
 		return { primary, nullable };
 	}
 
+	function getSchemaTypes(schema) {
+		const raw = schema && schema.type ? schema.type : null;
+		if (!raw) return [];
+		return Array.isArray(raw) ? raw : [raw];
+	}
+
+	function joinSchemaPath(base, segment) {
+		if (typeof segment === 'number') {
+			return `${base}[${segment}]`;
+		}
+		return base ? `${base}.${segment}` : segment;
+	}
+
+	function formatSchemaPath(path) {
+		return path || 'root';
+	}
+
+	function schemaTypeLabel(types) {
+		return (types || []).filter(Boolean).join(' or ');
+	}
+
+	function valueMatchesSchemaType(value, expectedType) {
+		if (expectedType === 'object') {
+			return value !== null && typeof value === 'object' && !Array.isArray(value);
+		}
+		if (expectedType === 'array') {
+			return Array.isArray(value);
+		}
+		if (expectedType === 'string') {
+			return typeof value === 'string';
+		}
+		if (expectedType === 'integer') {
+			return Number.isInteger(value);
+		}
+		if (expectedType === 'number') {
+			return typeof value === 'number' && !Number.isNaN(value);
+		}
+		if (expectedType === 'boolean') {
+			return typeof value === 'boolean';
+		}
+		if (expectedType === 'null') {
+			return value === null;
+		}
+		return true;
+	}
+
 	function isMultiline(fieldname) {
 		const lower = (fieldname || '').toLowerCase();
 		return (
@@ -168,66 +214,95 @@
 		return output;
 	}
 
-	function validateAgainstSchema(schema, data) {
+	function validateValueAgainstSchema(schema, value, path = '') {
 		const errors = [];
-		if (!schema || schema.type !== 'object') {
+		if (!schema) {
 			return errors;
 		}
 
-		const props = schema.properties || {};
-		const required = new Set(schema.required || []);
-		const allowExtra = schema.additionalProperties !== false;
+		const expectedTypes = getSchemaTypes(schema);
+		if (
+			value !== undefined &&
+			expectedTypes.length &&
+			!expectedTypes.some(expectedType => valueMatchesSchemaType(value, expectedType))
+		) {
+			errors.push(`Field ${formatSchemaPath(path)} must be ${schemaTypeLabel(expectedTypes)}.`);
+			return errors;
+		}
 
-		Object.keys(data || {}).forEach(key => {
-			if (!props[key] && !allowExtra) {
-				errors.push(`Unexpected property: ${key}`);
-			}
-		});
+		if (value === undefined) {
+			return errors;
+		}
 
-		Object.keys(props).forEach(key => {
-			const propSchema = props[key] || {};
-			const value = data ? data[key] : undefined;
-			const { primary } = normalizeSchemaType(propSchema);
+		if (Array.isArray(schema.enum) && !schema.enum.includes(value)) {
+			errors.push(`Field ${formatSchemaPath(path)} must be one of: ${schema.enum.join(', ')}.`);
+		}
 
-			if (required.has(key) && (value === undefined || value === null || value === '')) {
-				errors.push(`Missing required field: ${key}`);
-				return;
+		if (typeof value === 'number' && !Number.isNaN(value)) {
+			if (schema.minimum !== undefined && value < schema.minimum) {
+				errors.push(
+					`Field ${formatSchemaPath(path)} must be greater than or equal to ${schema.minimum}.`
+				);
 			}
-			if (value === undefined || value === null || value === '') {
-				return;
+			if (schema.maximum !== undefined && value > schema.maximum) {
+				errors.push(
+					`Field ${formatSchemaPath(path)} must be less than or equal to ${schema.maximum}.`
+				);
 			}
-			if (primary === 'integer' && Number.isNaN(Number(value))) {
-				errors.push(`Field ${key} must be a number.`);
+		}
+
+		if (Array.isArray(value)) {
+			if (schema.minItems !== undefined && value.length < schema.minItems) {
+				errors.push(
+					`Field ${formatSchemaPath(path)} must have at least ${schema.minItems} items.`
+				);
 			}
-			if (Array.isArray(propSchema.enum) && !propSchema.enum.includes(value)) {
-				errors.push(`Field ${key} must be one of: ${propSchema.enum.join(', ')}`);
+			const itemSchema = schema.items;
+			if (itemSchema) {
+				value.forEach((itemValue, index) => {
+					errors.push(
+						...validateValueAgainstSchema(itemSchema, itemValue, joinSchemaPath(path, index))
+					);
+				});
 			}
-			if (primary === 'array' && Array.isArray(value)) {
-				if (propSchema.minItems && value.length < propSchema.minItems) {
-					errors.push(`Field ${key} must have at least ${propSchema.minItems} items.`);
+		}
+
+		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+			const properties = schema.properties || {};
+			const required = new Set(schema.required || []);
+			const allowExtra = schema.additionalProperties !== false;
+
+			Object.keys(value).forEach(key => {
+				if (!properties[key] && !allowExtra) {
+					errors.push(`Field ${formatSchemaPath(joinSchemaPath(path, key))} is not allowed.`);
 				}
-				if (propSchema.items && propSchema.items.type === 'object') {
-					const itemProps = propSchema.items.properties || {};
-					const itemRequired = new Set(propSchema.items.required || []);
-					const itemAllowExtra = propSchema.items.additionalProperties !== false;
-					value.forEach((item, idx) => {
-						Object.keys(item || {}).forEach(itemKey => {
-							if (!itemProps[itemKey] && !itemAllowExtra) {
-								errors.push(`Field ${key}[${idx}] has unexpected property: ${itemKey}`);
-							}
-						});
-						itemRequired.forEach(itemKey => {
-							const itemValue = item ? item[itemKey] : undefined;
-							if (itemValue === undefined || itemValue === null || itemValue === '') {
-								errors.push(`Field ${key}[${idx}] missing required: ${itemKey}`);
-							}
-						});
-					});
+			});
+
+			required.forEach(key => {
+				const childValue = value[key];
+				if (childValue === undefined || childValue === null || childValue === '') {
+					errors.push(`Missing required field: ${formatSchemaPath(joinSchemaPath(path, key))}.`);
 				}
-			}
-		});
+			});
+
+			Object.keys(properties).forEach(key => {
+				if (value[key] === undefined) {
+					return;
+				}
+				errors.push(
+					...validateValueAgainstSchema(properties[key], value[key], joinSchemaPath(path, key))
+				);
+			});
+		}
 
 		return errors;
+	}
+
+	function validateAgainstSchema(schema, data) {
+		if (!schema || schema.type !== 'object') {
+			return [];
+		}
+		return validateValueAgainstSchema(schema, data);
 	}
 
 	function createInput({ label, value, type, options, required, nullable }) {
@@ -333,7 +408,10 @@
 				);
 				if (extraKeys.length && schema.additionalProperties === false) {
 					frappe.msgprint(
-						__('Some props are not supported and will be ignored: {0}', [extraKeys.join(', ')])
+						__(
+							'Some props are not part of the current block contract and will be removed if you save through the builder: {0}',
+							[extraKeys.join(', ')]
+						)
 					);
 				}
 				const initial = applyDefaults(schema, parsedProps.value || {}, blockType);
@@ -348,9 +426,26 @@
 				if (parsedProps.error) {
 					dialog.set_value('use_raw', 1);
 					dialog.get_field('raw_json').set_value(row.props || '');
+					dialog.get_field('raw_json').$wrapper.show();
+					dialog.__builder.setDisabled(true);
 					frappe.msgprint(
 						__('Existing props are invalid JSON. Fix them in the JSON editor, then save.')
 					);
+				} else {
+					const existingErrors = validateAgainstSchema(schema, parsedProps.value || {});
+					if (existingErrors.length) {
+						dialog.set_value('use_raw', 1);
+						dialog.get_field('raw_json').set_value(row.props || '');
+						dialog.get_field('raw_json').$wrapper.show();
+						dialog.__builder.setDisabled(true);
+						frappe.msgprint({
+							message: __(
+								'Existing props do not match the current block contract. Fix them in the JSON editor before saving.<br>{0}',
+								[existingErrors.join('<br>')]
+							),
+							indicator: 'orange',
+						});
+					}
 				}
 
 				dialog.set_primary_action(__('Save Props'), () => {
@@ -577,6 +672,15 @@
 						dialog.set_value('use_raw', 1);
 						return;
 					}
+					const errors = validateAgainstSchema(currentSchema, parsed.value || {});
+					if (errors.length) {
+						frappe.msgprint({
+							message: __('Props validation failed:<br>{0}', [errors.join('<br>')]),
+							indicator: 'red',
+						});
+						dialog.set_value('use_raw', 1);
+						return;
+					}
 					currentBuilder.setValue(parsed.value || {});
 					rawField.$wrapper.hide();
 					currentBuilder.setDisabled(false);
@@ -681,6 +785,15 @@
 				const parsed = parseJson(rawField.get_value());
 				if (parsed.error) {
 					frappe.msgprint(__('Invalid JSON. Please fix it before switching back.'));
+					dialog.set_value('use_raw', 1);
+					return;
+				}
+				const errors = validateAgainstSchema(schema, parsed.value || {});
+				if (errors.length) {
+					frappe.msgprint({
+						message: __('Props validation failed:<br>{0}', [errors.join('<br>')]),
+						indicator: 'red',
+					});
 					dialog.set_value('use_raw', 1);
 					return;
 				}

@@ -74,6 +74,7 @@ Current create flow:
 
 Role handling now follows managed sync:
 - on employee save, `sync_user_access_from_employee` computes effective roles/workspace from employee history + designation defaults.
+- when the designation-trigger path adds new managed roles to the linked user, the Employee save flow shows an HR-facing dialog listing the roles that were added.
 - on employee save, linked user defaults are always aligned with Employee context:
   - `organization` default from `Employee.organization`
   - `school` default from `Employee.school`
@@ -185,3 +186,8 @@ Impact: permission checks now resolve organization/school defaults from `Default
 We decided the `HR` workspace shortcut `Active Employee` must open `List` view (not `Tree`).
 Reason: tree-root rendering can show only top-level scoped rows (e.g., "4 of 31"), which misrepresents scoped Employee visibility and creates operational confusion.
 Impact: staff users opening `Active Employee` now land on full scoped list behavior consistent with report/image view results.
+
+[2026-03-11] Decision:
+We decided designation-driven role additions must show an operator-facing dialog during Employee save.
+Reason: HR needs immediate feedback when the system adds managed roles to the linked user in the background.
+Impact: designation change and first-time user-link flows now surface the exact newly added managed roles without notifying unrelated non-UI sync paths such as login self-heal.
