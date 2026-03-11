@@ -27,8 +27,10 @@ Current implementation gap:
 
 * the dispatcher exists
 * governed uploads exist for person/applicant-centered flows
-* organization-owned public media classification now exists for school logo and school gallery flows
-* reuse-first organization media pickers for website block props are **not yet fully implemented**
+* organization-owned public media classification now exists for organization logo, school logo, school gallery, and generic organization media uploads
+* reuse-first organization media pickers now exist for school-context website block props and `Program Website Profile.hero_image`
+* a generic organization media management surface now exists from `Organization` and `School` Desk forms
+* legacy URL-only school/organization public media is no longer accepted and must be relinked or re-uploaded through governed organization media
 
 Therefore:
 

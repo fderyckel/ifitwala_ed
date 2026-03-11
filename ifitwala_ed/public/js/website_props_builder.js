@@ -183,8 +183,59 @@
 				font-size: 0.75rem;
 				color: var(--text-muted, #6b7280);
 			}
+			.iw-props-builder .iw-media-input {
+				display: grid;
+				gap: 0.75rem;
+			}
+			.iw-props-builder .iw-media-preview {
+				display: none;
+				width: 100%;
+				max-width: 260px;
+				aspect-ratio: 16 / 10;
+				border-radius: 14px;
+				overflow: hidden;
+				background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+				border: 1px solid var(--border-color, #d1d5db);
+			}
+			.iw-props-builder .iw-media-preview.is-visible {
+				display: block;
+			}
+			.iw-props-builder .iw-media-preview img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+			}
+			.iw-props-builder .iw-media-actions {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+			}
 		`;
 		document.head.appendChild(style);
+	}
+
+	let organizationMediaPromise = null;
+
+	function getOrganizationMediaApi() {
+		const existing = window.ifitwalaEd && window.ifitwalaEd.organizationMedia;
+		if (existing) {
+			return Promise.resolve(existing);
+		}
+		if (organizationMediaPromise) {
+			return organizationMediaPromise;
+		}
+
+		organizationMediaPromise = new Promise(resolve => {
+			frappe.require('/assets/ifitwala_ed/js/organization_media_dialog.js', () => {
+				resolve((window.ifitwalaEd && window.ifitwalaEd.organizationMedia) || null);
+			});
+		});
+		return organizationMediaPromise;
+	}
+
+	function resolveSchoolContext(frm) {
+		const school = String(frm?.doc?.school || '').trim();
+		return school || null;
 	}
 
 	function applyDefaults(schema, values, blockType) {
@@ -469,6 +520,115 @@
 		};
 	}
 
+	function createOrganizationMediaInput({ label, value, required, fieldname, school }) {
+		const wrapper = document.createElement('div');
+		wrapper.className = 'form-group iw-attach-field';
+
+		const labelEl = document.createElement('label');
+		labelEl.className = 'control-label';
+		labelEl.textContent = label + (required ? ' *' : '');
+		wrapper.appendChild(labelEl);
+
+		const controlHost = document.createElement('div');
+		controlHost.className = 'iw-media-input';
+		wrapper.appendChild(controlHost);
+
+		const preview = document.createElement('div');
+		preview.className = 'iw-media-preview';
+		const previewImage = document.createElement('img');
+		preview.appendChild(previewImage);
+		controlHost.appendChild(preview);
+
+		const valueInput = document.createElement('input');
+		valueInput.type = 'text';
+		valueInput.className = 'form-control';
+		valueInput.readOnly = true;
+		controlHost.appendChild(valueInput);
+
+		const actions = document.createElement('div');
+		actions.className = 'iw-media-actions';
+		controlHost.appendChild(actions);
+
+		const chooseButton = document.createElement('button');
+		chooseButton.type = 'button';
+		chooseButton.className = 'btn btn-default';
+		chooseButton.textContent = __('Choose from Organization Media');
+		actions.appendChild(chooseButton);
+
+		const clearButton = document.createElement('button');
+		clearButton.type = 'button';
+		clearButton.className = 'btn btn-default';
+		clearButton.textContent = __('Clear');
+		actions.appendChild(clearButton);
+
+		const help = document.createElement('div');
+		help.className = 'iw-field-help';
+		help.textContent = __(
+			'Choose or upload a governed organization media image. The stored value is the canonical file URL.'
+		);
+		wrapper.appendChild(help);
+
+		let currentValue = value || '';
+		let onChange = null;
+
+		const refresh = () => {
+			valueInput.value = currentValue;
+			clearButton.disabled = !currentValue;
+			if (currentValue) {
+				previewImage.src = currentValue;
+				previewImage.alt = label;
+				preview.classList.add('is-visible');
+				return;
+			}
+			previewImage.removeAttribute('src');
+			preview.classList.remove('is-visible');
+		};
+
+		chooseButton.addEventListener('click', async () => {
+			const mediaApi = await getOrganizationMediaApi();
+			if (!mediaApi || typeof mediaApi.openPicker !== 'function') {
+				frappe.msgprint(__('Organization Media is not available. Please refresh the page.'));
+				return;
+			}
+
+			mediaApi.openPicker({
+				school,
+				currentValue,
+				title: __('Choose {0}', [label]),
+				onSelect(item) {
+					currentValue = item.file_url || '';
+					refresh();
+					if (typeof onChange === 'function') {
+						onChange(currentValue);
+					}
+				},
+			});
+		});
+
+		clearButton.addEventListener('click', () => {
+			currentValue = '';
+			refresh();
+			if (typeof onChange === 'function') {
+				onChange(currentValue);
+			}
+		});
+
+		refresh();
+		return {
+			wrapper,
+			onChange(handler) {
+				onChange = handler;
+			},
+			getValue() {
+				return currentValue;
+			},
+			setValue(nextValue) {
+				currentValue = nextValue || '';
+				refresh();
+			},
+		};
+	}
+
 	const BLOCK_REGISTRY_METHOD_GET_ONE =
 		'ifitwala_ed.website.block_registry.get_block_definition_for_builder';
 	const BLOCK_REGISTRY_METHOD_GET_MANY =
@@ -532,6 +692,7 @@
 					schema,
 					initial,
 					rawText: row.props || '',
+					frm,
 				});
 
 				if (parsedProps.error) {
@@ -754,6 +915,7 @@
 						container: builderWrapper.get(0),
 						schema: currentSchema,
 						initial,
+						frm,
 					});
 					currentBuilder.onChange(value => {
 						if (!dialog.get_value('use_raw')) {
@@ -855,7 +1017,7 @@
 			});
 	}
 
-	function buildDialog({ blockType, blockLabel, schema, initial, rawText }) {
+	function buildDialog({ blockType, blockLabel, schema, initial, rawText, frm }) {
 		const dialog = new frappe.ui.Dialog({
 			title: __('Props Builder: {0}', [blockLabel || blockType]),
 			fields: [
@@ -883,6 +1045,7 @@
 			container: dialog.get_field('builder').$wrapper.get(0),
 			schema,
 			initial,
+			frm,
 		});
 		dialog.__builder = builder;
 
@@ -924,7 +1087,7 @@
 		return dialog;
 	}
 
-	function createBuilder({ container, schema, initial }) {
+	function createBuilder({ container, schema, initial, frm }) {
 		ensureBuilderStyles();
 		const wrapper = document.createElement('div');
 		wrapper.className = 'iw-props-builder';
@@ -936,6 +1099,7 @@
 		const required = new Set(schema.required || []);
 		const changeHandlers = [];
 		let isDisabled = false;
+		const schoolContext = resolveSchoolContext(frm);
 
 		const notify = () => {
 			changeHandlers.forEach(handler => handler(deepClone(state)));
@@ -977,12 +1141,20 @@
 			}
 
 			if (useImageControl) {
-				const imageField = createAttachImageInput({
-					label,
-					value,
-					required: isRequired,
-					fieldname: propName,
-				});
+				const imageField = schoolContext
+					? createOrganizationMediaInput({
+							label,
+							value,
+							required: isRequired,
+							fieldname: propName,
+							school: schoolContext,
+						})
+					: createAttachImageInput({
+							label,
+							value,
+							required: isRequired,
+							fieldname: propName,
+						});
 				imageField.onChange(nextValue => {
 					if (isDisabled) return;
 					state[propName] = nextValue;
@@ -1099,12 +1271,20 @@
 							}
 
 							if (useImageControl) {
-								const imageField = createAttachImageInput({
-									label: fieldLabel,
-									value: item[itemKey],
-									required: itemRequired.has(itemKey),
-									fieldname: `${propName}_${itemKey}`,
-								});
+								const imageField = schoolContext
+									? createOrganizationMediaInput({
+											label: fieldLabel,
+											value: item[itemKey],
+											required: itemRequired.has(itemKey),
+											fieldname: `${propName}_${itemKey}`,
+											school: schoolContext,
+										})
+									: createAttachImageInput({
+											label: fieldLabel,
+											value: item[itemKey],
+											required: itemRequired.has(itemKey),
+											fieldname: `${propName}_${itemKey}`,
+										});
 								imageField.onChange(nextValue => {
 									if (isDisabled) return;
 									item[itemKey] = nextValue;

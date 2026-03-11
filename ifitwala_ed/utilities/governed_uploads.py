@@ -14,8 +14,10 @@ from frappe import _
 
 from ifitwala_ed.utilities import file_dispatcher
 from ifitwala_ed.utilities.organization_media import (
+    build_organization_logo_slot,
     build_organization_media_classification,
     build_organization_media_context,
+    build_organization_media_slot,
     build_school_gallery_slot,
     build_school_logo_slot,
 )
@@ -165,6 +167,16 @@ def _upload_organization_media_file(
             slot=slot,
         ),
     )
+
+
+def _derive_generic_media_key(*, filename: str, media_key: str | None = None) -> str:
+    explicit = frappe.scrub((media_key or "").strip())
+    if explicit:
+        return explicit
+
+    base_name = os.path.splitext(filename or "media")[0]
+    slug_base = frappe.scrub(base_name) or "media"
+    return f"{slug_base}_{frappe.generate_hash(length=6)}"
 
 
 @frappe.whitelist()
@@ -403,6 +415,94 @@ def upload_school_gallery_image(school: str | None = None, row_name: str | None 
     payload["school"] = doc.name
     payload["row_name"] = target_row.name
     payload["caption"] = target_row.caption
+    return payload
+
+
+@frappe.whitelist()
+def upload_organization_media_asset(
+    organization: str | None = None,
+    school: str | None = None,
+    scope: str | None = None,
+    media_key: str | None = None,
+    **_kwargs,
+):
+    organization = organization or _get_form_arg("organization")
+    school = school or _get_form_arg("school")
+    scope = (scope or _get_form_arg("scope") or "organization").strip().lower()
+
+    if school and not organization:
+        school_doc = _require_clean_saved_doc(
+            _require_doc("School", school), action_label=_("Upload Organization Media")
+        )
+        organization = school_doc.organization
+    elif organization:
+        organization_doc = _require_clean_saved_doc(
+            _require_doc("Organization", organization),
+            action_label=_("Upload Organization Media"),
+        )
+        organization = organization_doc.name
+
+    if not organization:
+        frappe.throw(_("Organization is required before uploading organization media."))
+
+    if scope not in {"organization", "school"}:
+        frappe.throw(_("Scope must be 'organization' or 'school'."))
+    if scope == "school" and not school:
+        frappe.throw(_("School is required for school-scoped organization media."))
+    if scope == "organization":
+        school = None
+
+    filename, content = _get_uploaded_file()
+    slot = build_organization_media_slot(
+        media_key=_derive_generic_media_key(filename=filename, media_key=media_key),
+    )
+    file_doc = _upload_organization_media_file(
+        organization=organization,
+        school=school,
+        slot=slot,
+        filename=filename,
+        content=content,
+    )
+    _ensure_file_on_disk(file_doc)
+
+    payload = _response_payload(file_doc)
+    payload["organization"] = organization
+    payload["school"] = school
+    payload["scope"] = "school" if school else "organization"
+    payload["slot"] = slot
+    return payload
+
+
+@frappe.whitelist()
+def upload_organization_logo(organization: str | None = None, **_kwargs):
+    organization = organization or _get_form_arg("organization") or frappe.form_dict.get("docname")
+    doc = _require_clean_saved_doc(
+        _require_doc("Organization", organization),
+        action_label=_("Upload Organization Logo"),
+    )
+
+    filename, content = _get_uploaded_file()
+    slot = build_organization_logo_slot(organization=doc.name)
+    file_doc = _upload_organization_media_file(
+        organization=doc.name,
+        school=None,
+        slot=slot,
+        filename=filename,
+        content=content,
+    )
+    _ensure_file_on_disk(file_doc)
+
+    frappe.db.set_value(
+        "Organization",
+        doc.name,
+        {
+            "organization_logo": file_doc.file_url,
+            "organization_logo_file": file_doc.name,
+        },
+        update_modified=False,
+    )
+    payload = _response_payload(file_doc)
+    payload["organization"] = doc.name
     return payload
 
 

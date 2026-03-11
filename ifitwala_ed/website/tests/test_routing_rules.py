@@ -52,6 +52,8 @@ class TestRoutingRules(FrappeTestCase):
         self.assertNotIn("/staff/<path:subpath>", from_routes)
         self.assertNotIn("/guardian", from_routes)
         self.assertNotIn("/guardian/<path:subpath>", from_routes)
+        self.assertNotIn("/school", from_routes)
+        self.assertNotIn("/school/<path:route>", from_routes)
         self.assertNotIn("/inquiry", from_routes)
         self.assertNotIn("/registration-of-interest", from_routes)
         self.assertNotIn("/<path:route>", from_routes)

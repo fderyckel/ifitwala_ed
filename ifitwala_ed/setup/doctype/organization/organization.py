@@ -8,6 +8,8 @@ from frappe import _
 from frappe.utils import cint, cstr
 from frappe.utils.nestedset import NestedSet
 
+from ifitwala_ed.utilities.organization_media import get_governed_organization_media
+
 VIRTUAL_ROOT = "All Organizations"
 HR_SCOPE_ROLES = {"HR Manager", "HR User"}
 
@@ -23,6 +25,35 @@ class Organization(NestedSet):
                     _("Parent Organization must be a Group. '{0}' is not a Group.").format(self.parent_organization)
                 )
         self.validate_default_website_school()
+        self.validate_governed_public_media()
+
+    def validate_governed_public_media(self):
+        logo_file = (self.organization_logo_file or "").strip()
+        logo_url = (self.organization_logo or "").strip()
+
+        if not logo_file and logo_url:
+            frappe.throw(
+                _(
+                    "Organization Logo must use governed Organization Media. "
+                    "Re-upload it with Upload Organization Logo or relink it from Manage Organization Media."
+                )
+            )
+
+        if not logo_file:
+            if not logo_url:
+                self.organization_logo_file = None
+            return
+
+        media_row = get_governed_organization_media(logo_file)
+        if not media_row or media_row.get("organization") != self.name or media_row.get("school"):
+            frappe.throw(_("Organization Logo must reference an organization-scoped governed media file."))
+
+        media_url = (media_row.get("file_url") or "").strip()
+        if not media_url:
+            frappe.throw(_("Organization Logo file '{0}' is missing a file URL.").format(logo_file))
+
+        self.organization_logo_file = logo_file
+        self.organization_logo = media_url
 
     def validate_default_website_school(self):
         default_school = (self.default_website_school or "").strip()

@@ -12,7 +12,6 @@ from frappe.utils.nestedset import NestedSet
 
 from ifitwala_ed.utilities.organization_media import (
     ensure_organization_media_files_visible_to_school,
-    ensure_organization_media_visible_to_school_by_url,
 )
 
 
@@ -45,13 +44,12 @@ class School(NestedSet):
         logo_url = (self.school_logo or "").strip()
 
         if not logo_file and logo_url:
-            media_row = ensure_organization_media_visible_to_school_by_url(
-                school=self.name,
-                file_url=logo_url,
+            frappe.throw(
+                _(
+                    "School Logo must use governed Organization Media. "
+                    "Re-upload it with Upload School Logo or relink it from Manage Organization Media."
+                )
             )
-            if media_row:
-                logo_file = media_row["file"]
-                self.school_logo_file = logo_file
 
         if not logo_file:
             if not logo_url:
@@ -78,13 +76,12 @@ class School(NestedSet):
             row_image = (row.school_image or "").strip()
 
             if not governed_file and row_image:
-                media_row = ensure_organization_media_visible_to_school_by_url(
-                    school=self.name,
-                    file_url=row_image,
+                frappe.throw(
+                    _(
+                        "Gallery Image rows must use governed Organization Media. "
+                        "Re-upload the image with Upload Gallery Image or relink it from Manage Organization Media."
+                    )
                 )
-                if media_row:
-                    governed_file = media_row["file"]
-                    row.governed_file = governed_file
 
             if governed_file:
                 governed_files.append(governed_file)
@@ -114,8 +111,6 @@ class School(NestedSet):
         NestedSet.on_update(self)
 
     def after_save(self):
-        if self.has_value_changed("abbr"):
-            self.update_navbar_item_for_abbreviation_change()
         if self.has_value_changed("is_published") or self.has_value_changed("website_slug"):
             self.sync_website_page_publication()
 
@@ -307,21 +302,6 @@ class School(NestedSet):
                 update_modified=False,
             )
 
-    def update_navbar_item_for_abbreviation_change(self):
-        old_abbr = self.get_doc_before_save().abbr
-        new_url = f"/school/{self.abbr}"
-        old_url = f"/school/{old_abbr}"
-
-        ws = frappe.get_single("Website Settings")
-
-        for item in ws.top_bar_items:
-            if item.url == old_url:
-                item.url = new_url
-                item.label = self.school_name
-                ws.save(ignore_permissions=True)
-                frappe.msgprint(_("Navbar item updated to new abbreviation."))
-                break
-
 
 @frappe.whitelist()
 def enqueue_replace_abbr(school, old, new):
@@ -397,31 +377,3 @@ def add_node():
         args.parent_school = None
 
     frappe.get_doc(args).insert()
-
-
-@frappe.whitelist()
-def add_school_to_navbar(school_name, abbreviation, website_slug=None):
-    url_segment = website_slug or abbreviation
-    url_path = f"/school/{url_segment}"
-    ws = frappe.get_single("Website Settings")
-
-    existing = next((item for item in ws.top_bar_items if item.url == url_path), None)
-
-    if existing:
-        if existing.label != school_name:
-            existing.label = school_name
-            ws.save(ignore_permissions=True)
-            return "Updated existing nav item."
-        return "Nav item already exists."
-
-    # Add new item
-    ws.append(
-        "top_bar_items",
-        {
-            "label": school_name,
-            "url": url_path,
-            "parent_label": "Home",
-        },
-    )
-    ws.save(ignore_permissions=True)
-    return "Added new nav item."

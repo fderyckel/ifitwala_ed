@@ -85,6 +85,20 @@ function _ensure_saved_school(frm, actionLabel) {
 	return true;
 }
 
+function getOrganizationMediaDialog() {
+	return new Promise((resolve) => {
+		const existing = window.ifitwalaEd && window.ifitwalaEd.organizationMedia;
+		if (existing) {
+			resolve(existing);
+			return;
+		}
+
+		frappe.require("/assets/ifitwala_ed/js/organization_media_dialog.js", () => {
+			resolve((window.ifitwalaEd && window.ifitwalaEd.organizationMedia) || null);
+		});
+	});
+}
+
 function setup_governed_school_logo_upload(frm) {
 	const fieldname = "school_logo";
 	const openUploader = () => {
@@ -175,6 +189,29 @@ function setup_governed_gallery_upload(frm) {
 	$button.addClass("btn-primary");
 }
 
+function setup_organization_media_manager(frm) {
+	if (!frm.doc.organization || frm.is_new()) return;
+
+	const openManager = async () => {
+		if (!_ensure_saved_school(frm, __("Manage Organization Media"))) return;
+
+		const dialogApi = await getOrganizationMediaDialog();
+		if (!dialogApi || typeof dialogApi.openManager !== "function") {
+			frappe.msgprint(__("Organization Media is not available. Please refresh the page."));
+			return;
+		}
+
+		dialogApi.openManager({
+			organization: frm.doc.organization,
+			school: frm.doc.name,
+		});
+	};
+
+	frm.remove_custom_button(__("Manage Organization Media"), __("Actions"));
+	frm.remove_custom_button(__("Manage Organization Media"));
+	frm.add_custom_button(__("Manage Organization Media"), openManager, __("Actions"));
+}
+
 frappe.ui.form.on("School", {
 	onload: function (frm) {
 		_store_saved_publish_state(frm);
@@ -212,22 +249,6 @@ frappe.ui.form.on("School", {
 					sc.school = frm.doc.name;
 				});
 			});
-
-			frm.add_custom_button(__("Add to Website"), () => {
-				frappe.call({
-					method: "ifitwala_ed.school_settings.doctype.school.school.add_school_to_navbar",
-					args: {
-						school_name: frm.doc.school_name,
-						abbreviation: frm.doc.abbr,
-						website_slug: frm.doc.website_slug || null,
-					},
-					callback: (r) => {
-						if (r.message) {
-							frappe.msgprint(r.message);
-						}
-					},
-				});
-			});
 		}
 
 		if (!frm.doc.__islocal) {
@@ -240,6 +261,7 @@ frappe.ui.form.on("School", {
 		}
 		setup_governed_school_logo_upload(frm);
 		setup_governed_gallery_upload(frm);
+		setup_organization_media_manager(frm);
 
 		frm.set_query("current_school_calendar", function () {
 			return {

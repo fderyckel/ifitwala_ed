@@ -38,6 +38,13 @@ def build_school_logo_slot(*, school: str) -> str:
     return f"school_logo__{normalized}"
 
 
+def build_organization_logo_slot(*, organization: str) -> str:
+    normalized = frappe.scrub(_normalize(organization))
+    if not normalized:
+        frappe.throw(_("Organization is required for the organization logo slot."))
+    return f"organization_logo__{normalized}"
+
+
 def build_school_gallery_slot(*, row_name: str) -> str:
     normalized = frappe.scrub(_normalize(row_name))
     if not normalized:
@@ -187,22 +194,67 @@ def get_visible_organization_media_for_school(*, school: str) -> list[dict]:
     )
 
 
+def get_owned_organization_media_for_organization(*, organization: str, school: str | None = None) -> list[dict]:
+    organization = _normalize(organization)
+    school = _normalize(school)
+    if not organization:
+        frappe.throw(_("Organization is required."))
+    if school:
+        validate_school_belongs_to_organization(organization=organization, school=school)
+
+    rows = frappe.get_all(
+        "File Classification",
+        filters={
+            "primary_subject_type": ORGANIZATION_MEDIA_SUBJECT_TYPE,
+            "purpose": ORGANIZATION_MEDIA_PURPOSE,
+            "organization": organization,
+            "is_current_version": 1,
+        },
+        fields=[
+            "name",
+            "file",
+            "organization",
+            "school",
+            "slot",
+            "attached_doctype",
+            "attached_name",
+        ],
+    )
+    if school:
+        rows = [row for row in rows if _normalize(row.get("school")) == school]
+    if not rows:
+        return []
+
+    file_rows = frappe.get_all(
+        "File",
+        filters={"name": ["in", [row["file"] for row in rows if row.get("file")]]},
+        fields=["name", "file_url", "file_name", "is_private"],
+    )
+    file_map = {row["name"]: row for row in file_rows}
+
+    for row in rows:
+        file_row = file_map.get(row.get("file")) or {}
+        row["file_url"] = file_row.get("file_url")
+        row["file_name"] = file_row.get("file_name")
+        row["is_private"] = file_row.get("is_private")
+
+    return sorted(
+        rows,
+        key=lambda row: (
+            0 if _normalize(row.get("school")) else 1,
+            _normalize(row.get("school")),
+            _normalize(row.get("file_name")),
+            _normalize(row.get("slot")),
+        ),
+    )
+
+
 def get_visible_organization_media_files_for_school(*, school: str) -> dict[str, dict]:
     return {
         row["file"]: row
         for row in get_visible_organization_media_for_school(school=school)
         if _normalize(row.get("file"))
     }
-
-
-def find_visible_organization_media_by_url(*, school: str, file_url: str | None) -> dict | None:
-    target = _normalize(file_url)
-    if not target:
-        return None
-    for row in get_visible_organization_media_for_school(school=school):
-        if _normalize(row.get("file_url")) == target:
-            return row
-    return None
 
 
 def get_governed_organization_media(file_name: str | None) -> dict | None:
@@ -238,6 +290,74 @@ def get_governed_organization_media(file_name: str | None) -> dict | None:
     return row
 
 
+def _serialize_media_rows(rows: list[dict]) -> list[dict]:
+    if not rows:
+        return []
+
+    organization_names = sorted(
+        {_normalize(row.get("organization")) for row in rows if _normalize(row.get("organization"))}
+    )
+    school_names = sorted({_normalize(row.get("school")) for row in rows if _normalize(row.get("school"))})
+    organization_labels = {}
+    school_labels = {}
+
+    if organization_names:
+        organization_rows = frappe.get_all(
+            "Organization",
+            filters={"name": ["in", organization_names]},
+            fields=["name", "organization_name"],
+        )
+        organization_labels = {row["name"]: row.get("organization_name") or row["name"] for row in organization_rows}
+
+    if school_names:
+        school_rows = frappe.get_all(
+            "School",
+            filters={"name": ["in", school_names]},
+            fields=["name", "school_name"],
+        )
+        school_labels = {row["name"]: row.get("school_name") or row["name"] for row in school_rows}
+
+    items = []
+    for row in rows:
+        school = _normalize(row.get("school"))
+        organization = _normalize(row.get("organization"))
+        items.append(
+            {
+                "classification": row.get("name"),
+                "file": row.get("file"),
+                "file_url": row.get("file_url"),
+                "file_name": row.get("file_name"),
+                "organization": organization,
+                "organization_label": organization_labels.get(organization, organization),
+                "school": school or None,
+                "school_label": school_labels.get(school, school) if school else None,
+                "slot": row.get("slot"),
+                "scope_type": "school" if school else "organization",
+                "scope_label": school_labels.get(school, school) if school else _("Organization Shared"),
+                "attached_doctype": row.get("attached_doctype"),
+                "attached_name": row.get("attached_name"),
+            }
+        )
+
+    return items
+
+
+def _filter_serialized_media_items(items: list[dict], query: str | None, *, limit_page_length: int) -> list[dict]:
+    needle = _normalize(query).lower()
+    if needle:
+        items = [
+            item
+            for item in items
+            if needle in _normalize(item.get("file_name")).lower()
+            or needle in _normalize(item.get("scope_label")).lower()
+            or needle in _normalize(item.get("slot")).lower()
+            or needle in _normalize(item.get("organization_label")).lower()
+        ]
+    if limit_page_length > 0:
+        items = items[:limit_page_length]
+    return items
+
+
 def ensure_organization_media_files_visible_to_school(*, school: str, file_names: Iterable[str]) -> dict[str, dict]:
     visible = get_visible_organization_media_files_for_school(school=school)
     normalized = [_normalize(name) for name in file_names if _normalize(name)]
@@ -252,8 +372,58 @@ def ensure_organization_media_files_visible_to_school(*, school: str, file_names
     return {name: visible[name] for name in normalized}
 
 
-def ensure_organization_media_visible_to_school_by_url(*, school: str, file_url: str | None) -> dict | None:
-    row = find_visible_organization_media_by_url(school=school, file_url=file_url)
-    if not row:
-        return None
-    return row
+@frappe.whitelist()
+def list_visible_media_for_school(school: str, query: str | None = None, limit_page_length: int = 50) -> dict:
+    if not school:
+        frappe.throw(_("School is required."))
+    school_doc = frappe.get_doc("School", school)
+    school_doc.check_permission("read")
+
+    items = _serialize_media_rows(get_visible_organization_media_for_school(school=school))
+    return {
+        "organization": school_doc.organization,
+        "items": _filter_serialized_media_items(
+            items,
+            query,
+            limit_page_length=max(frappe.utils.cint(limit_page_length), 0),
+        ),
+    }
+
+
+@frappe.whitelist()
+def list_owned_media_for_organization(
+    organization: str,
+    school: str | None = None,
+    query: str | None = None,
+    limit_page_length: int = 50,
+) -> dict:
+    if not organization:
+        frappe.throw(_("Organization is required."))
+    organization_doc = frappe.get_doc("Organization", organization)
+    organization_doc.check_permission("read")
+
+    school = _normalize(school) or None
+    if school:
+        validate_school_belongs_to_organization(organization=organization_doc.name, school=school)
+
+    items = _serialize_media_rows(
+        get_owned_organization_media_for_organization(
+            organization=organization_doc.name,
+            school=school,
+        )
+    )
+    schools = frappe.get_all(
+        "School",
+        filters={"organization": organization_doc.name},
+        fields=["name", "school_name"],
+        order_by="school_name asc",
+    )
+    return {
+        "organization": organization_doc.name,
+        "items": _filter_serialized_media_items(
+            items,
+            query,
+            limit_page_length=max(frappe.utils.cint(limit_page_length), 0),
+        ),
+        "schools": [{"name": row["name"], "label": row.get("school_name") or row["name"]} for row in schools],
+    }

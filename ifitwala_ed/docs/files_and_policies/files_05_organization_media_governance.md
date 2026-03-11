@@ -119,15 +119,21 @@ This precedence must be implemented by shared server helpers, not by client-side
 
 ## 4. Media Selection Workflow
 
-**Status:** Planned
-**Code refs:** `ifitwala_ed/public/js/website_props_builder.js`, `ifitwala_ed/website/block_registry.py`, `ifitwala_ed/website/providers/*.py`
-**Test refs:** None
+**Status:** Partial
+**Code refs:** `ifitwala_ed/public/js/website_props_builder.js`, `ifitwala_ed/public/js/organization_media_dialog.js`, `ifitwala_ed/setup/doctype/organization/organization.js`, `ifitwala_ed/school_settings/doctype/school/school.js`, `ifitwala_ed/school_site/doctype/program_website_profile/program_website_profile.js`, `ifitwala_ed/website/block_registry.py`, `ifitwala_ed/website/providers/*.py`
+**Test refs:** `ifitwala_ed/utilities/test_organization_media.py` (server), `None` (Desk JS)
 
 For every school/organization image picker in Desk:
 
 * the primary action is `Choose from Organization Media`
 * the secondary action is `Upload to Organization Media`
 * free-form file URL typing is not the primary workflow
+
+Implemented now:
+
+* school-context website block props use the organization media picker instead of a raw image field
+* `Program Website Profile.hero_image` uses the same organization media picker
+* `Organization` and `School` forms expose `Manage Organization Media`
 
 ### 4.1 Reuse-first rule
 
@@ -189,14 +195,16 @@ Implemented values:
   * `school_gallery_image__<gallery_row_name>`
   * `organization_media__<media_key>`
 
-School surfaces currently use the following persisted references:
+School and organization surfaces currently use the following persisted references:
 
 * `School.school_logo_file` stores the governed `File`
 * `School.school_logo` stores the canonical returned file URL
 * `Gallery Image.governed_file` stores the governed `File`
 * `Gallery Image.school_image` stores the canonical returned file URL
+* `Organization.organization_logo_file` stores the governed `File`
+* `Organization.organization_logo` stores the canonical returned file URL
 
-Legacy rows that still hold only a URL are tolerated temporarily, but new uploads must enter through the governed flow.
+Legacy URL-only values are no longer canonical. Save-time validation must reject them and require re-upload / re-link through governed organization media.
 
 ### 5.4 Storage discipline
 
@@ -245,7 +253,7 @@ If organization media is intended for public website use:
 ## 7. Contract Matrix
 
 **Status:** Partial
-**Code refs:** `ifitwala_ed/utilities/file_dispatcher.py`, `ifitwala_ed/utilities/governed_uploads.py`, `ifitwala_ed/utilities/organization_media.py`, `ifitwala_ed/school_settings/doctype/school/school.json`, `ifitwala_ed/school_settings/doctype/school/school.py`, `ifitwala_ed/school_settings/doctype/school/school.js`, `ifitwala_ed/school_site/doctype/gallery_image/gallery_image.json`, `ifitwala_ed/public/js/website_props_builder.js`
+**Code refs:** `ifitwala_ed/utilities/file_dispatcher.py`, `ifitwala_ed/utilities/governed_uploads.py`, `ifitwala_ed/utilities/organization_media.py`, `ifitwala_ed/setup/doctype/organization/organization.py`, `ifitwala_ed/setup/doctype/organization/organization.js`, `ifitwala_ed/school_settings/doctype/school/school.json`, `ifitwala_ed/school_settings/doctype/school/school.py`, `ifitwala_ed/school_settings/doctype/school/school.js`, `ifitwala_ed/school_site/doctype/gallery_image/gallery_image.json`, `ifitwala_ed/school_site/doctype/program_website_profile/program_website_profile.js`, `ifitwala_ed/public/js/website_props_builder.js`, `ifitwala_ed/public/js/organization_media_dialog.js`
 **Test refs:** `ifitwala_ed/utilities/test_organization_media.py`
 
 | Area | Current state | Required state | Status |
@@ -255,9 +263,11 @@ If organization media is intended for public website use:
 | Dispatcher path | Generic dispatcher exists | Organization media must use dispatcher-only flow | Partial |
 | Classification schema | Person/applicant-centric | Add explicit organization media subject/purpose contract | Implemented |
 | School gallery storage | Plain attach child rows | Governed references to classified files | Partial |
-| Props-builder UX | Raw image strings / attach controls without org media scope | Reuse-first media picker + governed upload | Partial |
+| Organization media management surface | No generic Desk entry point | Shared management surface from Organization/School forms | Implemented |
+| Props-builder UX | Raw image strings / attach controls without org media scope | Reuse-first media picker + governed upload | Implemented |
 | Storage decoupling | Architecture note says storage may change | Explicit no-local-path dependency contract | Partial |
-| Tests | No organization-media governance tests | Scope, inheritance, and upload contract tests required | Partial |
+| Legacy raw URL tolerance | URL-only public media values tolerated | URL-only values fail validation and must be relinked through governed media | Implemented |
+| Tests | No organization-media governance tests | Scope, inheritance, upload, list, and strict-validation tests required | Partial |
 
 Unknown rows are not allowed in this matrix. The gaps above must be resolved before implementation work is claimed complete.
 
