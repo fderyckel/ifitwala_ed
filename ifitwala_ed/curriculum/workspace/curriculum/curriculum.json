@@ -27,6 +27,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+<<<<<<< Updated upstream
    "label": "Assessments",
    "link_count": 4,
    "link_type": "DocType",
@@ -39,6 +40,11 @@
    "label": "Task",
    "link_count": 0,
    "link_to": "Task",
+=======
+   "label": "Team",
+   "link_count": 0,
+   "link_to": "Team",
+>>>>>>> Stashed changes
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -46,9 +52,15 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+<<<<<<< Updated upstream
    "label": "Assessment Criteria",
    "link_count": 0,
    "link_to": "Assessment Criteria",
+=======
+   "label": "Meeting",
+   "link_count": 0,
+   "link_to": "Meeting",
+>>>>>>> Stashed changes
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -56,16 +68,24 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+<<<<<<< Updated upstream
    "label": "Grade Scale",
    "link_count": 0,
    "link_to": "Grade Scale",
    "link_type": "DocType",
+=======
+   "label": "Instructor Schedule Calendar",
+   "link_count": 0,
+   "link_to": "schedule_calendar",
+   "link_type": "Page",
+>>>>>>> Stashed changes
    "onboard": 0,
    "type": "Link"
   },
   {
    "hidden": 0,
    "is_query_report": 0,
+<<<<<<< Updated upstream
    "label": "Assessment Category",
    "link_count": 0,
    "link_to": "Assessment Category",
@@ -148,6 +168,12 @@
    "link_count": 0,
    "link_to": "Employee",
    "link_type": "DocType",
+=======
+   "label": "School Schedule",
+   "link_count": 0,
+   "link_to": "school_schedule_calendar",
+   "link_type": "Page",
+>>>>>>> Stashed changes
    "onboard": 0,
    "type": "Link"
   },
@@ -281,6 +307,48 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+<<<<<<< Updated upstream
+=======
+   "label": "Program",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program",
+   "link_count": 0,
+   "link_to": "Program",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Course",
+   "link_count": 0,
+   "link_to": "Course",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Basket Group",
+   "link_count": 0,
+   "link_to": "Basket Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+>>>>>>> Stashed changes
    "label": "Orgs & HR",
    "link_count": 4,
    "link_type": "DocType",
@@ -428,6 +496,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+<<<<<<< Updated upstream
    "label": "Program",
    "link_count": 4,
    "link_type": "DocType",
@@ -479,6 +548,10 @@
    "is_query_report": 0,
    "label": "Curriculum",
    "link_count": 3,
+=======
+   "label": "Curriculum",
+   "link_count": 4,
+>>>>>>> Stashed changes
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -512,9 +585,25 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+<<<<<<< Updated upstream
   }
  ],
  "modified": "2026-03-11 13:56:31.848146",
+=======
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Course Group",
+   "link_count": 0,
+   "link_to": "Course Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-03-11 11:36:07.237063",
+>>>>>>> Stashed changes
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",
