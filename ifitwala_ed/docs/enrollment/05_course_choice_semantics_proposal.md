@@ -292,19 +292,21 @@ Implemented cutover sequence:
 
 ## 7. Implementation Notes for Applicant / Self-Enrollment UX
 
-Status: Planned
-Code refs: `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantStatus.vue`, `ifitwala_ed/docs/docs_md/applicant-enrollment-plan.md`
-Test refs: `None`
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantEnrollmentChoices.vue`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantStatus.vue`, `ifitwala_ed/docs/docs_md/applicant-enrollment-plan.md`
+Test refs: `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/ui-spa/src/pages/admissions/applicantEnrollmentChoices.test.ts`
 
 This cleanup is now the runtime contract for applicant-facing choice pages.
 
 If the applicant is choosing courses from a program offering:
 
 - required rows should be shown as locked information
+- if a required row belongs to multiple basket groups, the applicant must still resolve which basket group it counts toward
 - optional rows should be presented in basket-group context
 - when a course belongs to multiple basket groups, the UI must let the applicant indicate which basket group the choice is intended to satisfy
 - `choice_rank` should only exist within one selected basket group
 - the resulting `Applicant Enrollment Plan` should carry `required`, basket-group membership, selected basket-group, and `choice_rank` semantics clearly enough to hydrate a real request later
+- offer acceptance must be blocked server-side until required basket selections are complete
 
 If this cleanup is not done first, the portal will have to guess whether:
 
@@ -329,7 +331,7 @@ Test refs: `ifitwala_ed/schedule/doctype/program_offering/test_program_offering.
 | Request-row snapshot | none | `Program Enrollment Request Course.required`, `applied_basket_group`, `choice_rank` | Implemented |
 | Committed-row snapshot | none | `Program Enrollment Course.required`, `credited_basket_group` | Implemented |
 | Engine basket coverage | single offering `elective_group` | basket-group membership + resolved allocation | Implemented |
-| Applicant/self-enrollment UI | ambiguous group semantics | basket-group aware selection + scoped `choice_rank` | Planned |
+| Applicant/self-enrollment UI | ambiguous group semantics | basket-group aware selection + scoped `choice_rank` | Implemented |
 
 ## 9. Final Recommendation
 

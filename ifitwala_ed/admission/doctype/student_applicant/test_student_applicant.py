@@ -1225,6 +1225,46 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertEqual(request.source_applicant_enrollment_plan, plan.name)
         self.assertEqual([row.course for row in request.get("courses") or []], [offer_context["required_course"].name])
 
+    def test_promote_auto_hydrates_request_appending_required_courses_after_explicit_optional_choices(self):
+        offer_context = self._create_offer_context(include_optional_course=True)
+        applicant = self._create_student_applicant(
+            student_joining_date=frappe.utils.nowdate(),
+            academic_year=self.visible_ay,
+            program=offer_context["program"].name,
+            program_offering=offer_context["offering"].name,
+        )
+        self._create_applicant_health_profile(applicant.name)
+        self._advance_applicant_to_approved(applicant)
+
+        plan = frappe.get_doc(
+            {
+                "doctype": "Applicant Enrollment Plan",
+                "student_applicant": applicant.name,
+                "academic_year": self.visible_ay,
+                "program": offer_context["program"].name,
+                "program_offering": offer_context["offering"].name,
+                "status": "Offer Accepted",
+                "courses": [
+                    {
+                        "course": offer_context["optional_course"].name,
+                    }
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Enrollment Plan", plan.name))
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+
+        plan.reload()
+        request = frappe.get_doc("Program Enrollment Request", plan.program_enrollment_request)
+        self._created.append(("Program Enrollment Request", request.name))
+
+        self.assertEqual(
+            [row.course for row in request.get("courses") or []],
+            [offer_context["optional_course"].name, offer_context["required_course"].name],
+        )
+
     def _ensure_admissions_role(self, user, role):
         if not frappe.db.exists("Role", role):
             frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)
@@ -1469,7 +1509,7 @@ class TestStudentApplicant(FrappeTestCase):
         applicant.reload()
         return applicant
 
-    def _create_offer_context(self):
+    def _create_offer_context(self, include_optional_course=False):
         grade_scale = frappe.get_doc(
             {
                 "doctype": "Grade Scale",
@@ -1491,12 +1531,26 @@ class TestStudentApplicant(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Course", required_course.name))
 
+        optional_course = None
+        if include_optional_course:
+            optional_course = frappe.get_doc(
+                {
+                    "doctype": "Course",
+                    "course_name": f"Optional {frappe.generate_hash(length=6)}",
+                    "status": "Active",
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("Course", optional_course.name))
+
         program = frappe.get_doc(
             {
                 "doctype": "Program",
                 "program_name": f"Program {frappe.generate_hash(length=6)}",
                 "grade_scale": grade_scale.name,
-                "courses": [{"course": required_course.name, "level": "None"}],
+                "courses": [
+                    {"course": required_course.name, "level": "None"},
+                    *([{"course": optional_course.name, "level": "None"}] if optional_course else []),
+                ],
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Program", program.name))
@@ -1515,7 +1569,20 @@ class TestStudentApplicant(FrappeTestCase):
                         "required": 1,
                         "start_academic_year": self.visible_ay,
                         "end_academic_year": self.visible_ay,
-                    }
+                    },
+                    *(
+                        [
+                            {
+                                "course": optional_course.name,
+                                "course_name": optional_course.course_name,
+                                "required": 0,
+                                "start_academic_year": self.visible_ay,
+                                "end_academic_year": self.visible_ay,
+                            }
+                        ]
+                        if optional_course
+                        else []
+                    ),
                 ],
             }
         ).insert(ignore_permissions=True)
@@ -1524,6 +1591,7 @@ class TestStudentApplicant(FrappeTestCase):
         return {
             "grade_scale": grade_scale,
             "required_course": required_course,
+            "optional_course": optional_course,
             "program": program,
             "offering": offering,
         }

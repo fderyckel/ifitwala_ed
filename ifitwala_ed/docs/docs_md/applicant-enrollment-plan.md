@@ -3,7 +3,7 @@ title: "Applicant Enrollment Plan: Admissions to Enrollment Bridge"
 slug: applicant-enrollment-plan
 category: Admission
 doc_order: 5
-version: "1.1.0"
+version: "1.2.0"
 last_change_date: "2026-03-11"
 summary: "Stage placement, offer, family response, and pre-request basket choices before student promotion, then hydrate the real Program Enrollment Request without duplicating admissions truth."
 seo_title: "Applicant Enrollment Plan: Admissions to Enrollment Bridge"
@@ -70,9 +70,10 @@ This is not the real enrollment transaction. The committed enrollment path still
 3. Planned course rows sync `required` from the offering.
 4. Optional rows may carry `applied_basket_group` and `choice_rank`.
 5. Staff marks the plan ready for committee, records committee approval, and sends the offer.
-6. The applicant user responds inside `/admissions/status`.
-7. Promotion to `Student` is allowed only when the latest plan is `Offer Accepted` or already `Hydrated`.
-8. After promotion, the system can auto-hydrate or staff can manually hydrate the real [**Program Enrollment Request**](/docs/en/program-enrollment-request/).
+6. If the offering includes optional basket choices, the applicant user completes them inside `/admissions/course-choices`.
+7. The applicant user responds to the offer inside `/admissions/status`.
+8. Promotion to `Student` is allowed only when the latest plan is `Offer Accepted` or already `Hydrated`.
+9. After promotion, the system can auto-hydrate or staff can manually hydrate the real [**Program Enrollment Request**](/docs/en/program-enrollment-request/).
 
 ## Hydration Rules
 
@@ -81,13 +82,16 @@ This is not the real enrollment transaction. The committed enrollment path still
 - The request is created only after `Student` exists.
 - Course seeding order is:
   1. explicit AEP planned courses
-  2. required `Program Offering Course` rows
+  2. required `Program Offering Course` rows missing from the explicit plan
 - The generated request stays `Draft`; validation and approval still happen on the real request.
 
 ## Portal Behavior
 
 - Offer acceptance and decline happen only in the authenticated admissions portal.
 - The portal status page shows the latest offer package from the applicant's latest plan.
+- If the offering exposes optional basket choices, the portal shows them on `/admissions/course-choices` using `Basket Group` semantics from the selected `Program Offering`.
+- Required offering courses stay visible as locked reference rows; only optional selections and required multi-group basket resolution are editable by the applicant.
+- Offer acceptance is server-gated until required basket selections are complete.
 - Repeated accept or decline clicks are safe; the server returns the already-recorded outcome instead of creating duplicate state.
 - If a selected course belongs to more than one basket group, the accepted-plan course row must keep an explicit `applied_basket_group` before hydration can complete.
 
@@ -114,8 +118,10 @@ This is not the real enrollment transaction. The committed enrollment path still
   - `approve_committee`
   - `send_offer`
   - `hydrate_program_enrollment_request`
+  - `update_portal_choices`
   - module whitelisted: `get_or_create_applicant_enrollment_plan`
   - module whitelisted: `hydrate_program_enrollment_request_from_applicant_plan`
+  - module helper: `get_applicant_enrollment_choice_state`
 
 - **DocType**: `Applicant Enrollment Plan` (`ifitwala_ed/admission/doctype/applicant_enrollment_plan/`)
 - **Autoname**: `format:AEP-{YYYY}-{####}`
@@ -136,6 +142,8 @@ This is not the real enrollment transaction. The committed enrollment path still
   - reject hydration without a student or seedable basket
 - **Portal/runtime integration**:
   - latest-plan lookup powers `/admissions/status`
+  - latest-plan basket-choice payload powers `/admissions/course-choices`
+  - `get_applicant_enrollment_choices` / `update_applicant_enrollment_choices` run through `ifitwala_ed/api/admissions_portal.py`
   - `accept_enrollment_offer` / `decline_enrollment_offer` call plan methods through `ifitwala_ed/api/admissions_portal.py`
   - `StudentApplicant.promote_to_student()` validates latest-plan eligibility and can auto-hydrate via Admission Settings
 - **Request provenance written to PER**:

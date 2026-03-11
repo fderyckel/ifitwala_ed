@@ -129,6 +129,7 @@ const navItems = [
 	{ name: 'documents', label: 'Documents', route: 'admissions-documents' },
 	{ name: 'policies', label: 'Policies', route: 'admissions-policies' },
 	{ name: 'messages', label: 'Messages', route: 'admissions-messages' },
+	{ name: 'course-choices', label: 'Course Choices', route: 'admissions-course-choices' },
 	{ name: 'submit', label: 'Submit', route: 'admissions-submit' },
 	{ name: 'status', label: 'Status', route: 'admissions-status' },
 ];

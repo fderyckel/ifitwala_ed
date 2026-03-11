@@ -38,6 +38,14 @@ import type {
   Request as MarkMessagesReadRequest,
   Response as MarkMessagesReadResponse,
 } from '@/types/contracts/admissions/mark_applicant_messages_read'
+import type {
+  Request as EnrollmentChoicesRequest,
+  Response as EnrollmentChoicesResponse,
+} from '@/types/contracts/admissions/get_applicant_enrollment_choices'
+import type {
+  Request as UpdateEnrollmentChoicesRequest,
+  Response as UpdateEnrollmentChoicesResponse,
+} from '@/types/contracts/admissions/update_applicant_enrollment_choices'
 
 export function createAdmissionsService() {
   const sessionResource = createResource<SessionResponse>({
@@ -132,6 +140,18 @@ export function createAdmissionsService() {
 
   const declineEnrollmentOfferResource = createResource<DeclineEnrollmentOfferResponse>({
     url: 'ifitwala_ed.api.admissions_portal.decline_enrollment_offer',
+    method: 'POST',
+    auto: false,
+  })
+
+  const enrollmentChoicesResource = createResource<EnrollmentChoicesResponse>({
+    url: 'ifitwala_ed.api.admissions_portal.get_applicant_enrollment_choices',
+    method: 'POST',
+    auto: false,
+  })
+
+  const updateEnrollmentChoicesResource = createResource<UpdateEnrollmentChoicesResponse>({
+    url: 'ifitwala_ed.api.admissions_portal.update_applicant_enrollment_choices',
     method: 'POST',
     auto: false,
   })
@@ -243,6 +263,20 @@ export function createAdmissionsService() {
     return result
   }
 
+  async function getApplicantEnrollmentChoices(
+    payload: EnrollmentChoicesRequest = {}
+  ): Promise<EnrollmentChoicesResponse> {
+    return enrollmentChoicesResource.submit(payload)
+  }
+
+  async function updateApplicantEnrollmentChoices(
+    payload: UpdateEnrollmentChoicesRequest
+  ): Promise<UpdateEnrollmentChoicesResponse> {
+    const result = await updateEnrollmentChoicesResource.submit(payload)
+    uiSignals.emit(SIGNAL_ADMISSIONS_PORTAL_INVALIDATE)
+    return result
+  }
+
   async function getMessages(payload: MessagesRequest = {}): Promise<MessagesResponse> {
     return messagesResource.submit(payload)
   }
@@ -274,6 +308,8 @@ export function createAdmissionsService() {
     submitApplication,
     acceptEnrollmentOffer,
     declineEnrollmentOffer,
+    getApplicantEnrollmentChoices,
+    updateApplicantEnrollmentChoices,
     getMessages,
     sendMessage,
     markMessagesRead,

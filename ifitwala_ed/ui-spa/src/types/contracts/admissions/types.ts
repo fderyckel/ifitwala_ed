@@ -32,6 +32,28 @@ export type ApplicantApplicationContext = {
   program_offering?: string | null
 }
 
+export type AdmissionsEnrollmentOffer = {
+  name: string
+  status: string
+  academic_year?: string | null
+  term?: string | null
+  program?: string | null
+  program_offering?: string | null
+  offer_expires_on?: string | null
+  offer_sent_on?: string | null
+  offer_accepted_on?: string | null
+  offer_declined_on?: string | null
+  offer_message?: string | null
+  can_accept?: boolean
+  can_decline?: boolean
+  course_choices_available?: boolean
+  course_choices_can_edit?: boolean
+  course_choices_ready?: boolean
+  course_choice_blocking_reasons?: string[]
+  course_choice_optional_count?: number
+  course_choice_selected_optional_count?: number
+}
+
 export type ApplicantProfile = {
   student_preferred_name?: string | null
   student_date_of_birth?: string | null

@@ -18,12 +18,14 @@ from ifitwala_ed.api.admissions_portal import (
     accept_enrollment_offer,
     acknowledge_policy,
     decline_enrollment_offer,
+    get_applicant_enrollment_choices,
     get_applicant_policies,
     get_applicant_profile,
     get_applicant_snapshot,
     get_invite_email_options,
     invite_applicant,
     submit_application,
+    update_applicant_enrollment_choices,
     update_applicant_health,
     update_applicant_profile,
     upload_applicant_guardian_image,
@@ -530,6 +532,113 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertTrue(bool((snapshot.get("enrollment_offer") or {}).get("can_decline")))
         self.assertEqual((snapshot.get("next_actions") or [])[0].get("route_name"), "admissions-status")
         self.assertTrue(bool((snapshot.get("next_actions") or [])[0].get("is_blocking")))
+
+    def test_offer_sent_snapshot_surfaces_course_choice_action_when_choices_are_incomplete(self):
+        humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
+        self._create_offer_plan(
+            status="Offer Sent",
+            optional_course_basket_groups=[humanities_group],
+            enrollment_rules=[{"rule_type": "REQUIRE_GROUP_COVERAGE", "basket_group": humanities_group}],
+        )
+
+        frappe.set_user(self.applicant_user)
+        snapshot = get_applicant_snapshot(student_applicant=self.applicant.name)
+
+        actions = snapshot.get("next_actions") or []
+        self.assertEqual(actions[0].get("route_name"), "admissions-course-choices")
+        self.assertEqual(actions[1].get("route_name"), "admissions-status")
+        self.assertFalse(bool((snapshot.get("enrollment_offer") or {}).get("course_choices_ready")))
+
+    def test_get_applicant_enrollment_choices_exposes_required_and_optional_offering_rows(self):
+        core_group = f"Core Basket {frappe.generate_hash(length=6)}"
+        humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
+        sciences_group = f"Group 4 Sciences {frappe.generate_hash(length=6)}"
+        context = self._create_offer_plan(
+            status="Offer Sent",
+            required_course_basket_groups=[core_group],
+            optional_course_basket_groups=[humanities_group, sciences_group],
+        )
+
+        frappe.set_user(self.applicant_user)
+        payload = get_applicant_enrollment_choices(student_applicant=self.applicant.name)
+
+        self.assertEqual((payload.get("plan") or {}).get("status"), "Offer Sent")
+        self.assertEqual((payload.get("summary") or {}).get("required_course_count"), 1)
+        self.assertEqual((payload.get("summary") or {}).get("optional_course_count"), 1)
+
+        rows_by_course = {row.get("course"): row for row in (payload.get("courses") or [])}
+        self.assertTrue(bool(rows_by_course.get(context["required_course"].name, {}).get("required")))
+        self.assertEqual(
+            rows_by_course.get(context["optional_course"].name, {}).get("basket_groups"),
+            [humanities_group, sciences_group],
+        )
+
+    def test_update_applicant_enrollment_choices_persists_selection_and_required_group_resolution(self):
+        required_group_one = f"Group 1 {frappe.generate_hash(length=6)}"
+        required_group_two = f"Group 2 {frappe.generate_hash(length=6)}"
+        humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
+        context = self._create_offer_plan(
+            status="Offer Sent",
+            required_course_basket_groups=[required_group_one, required_group_two],
+            optional_course_basket_groups=[humanities_group],
+        )
+
+        frappe.set_user(self.applicant_user)
+        payload = update_applicant_enrollment_choices(
+            student_applicant=self.applicant.name,
+            courses=[
+                {
+                    "course": context["required_course"].name,
+                    "applied_basket_group": required_group_one,
+                },
+                {
+                    "course": context["optional_course"].name,
+                    "applied_basket_group": humanities_group,
+                    "choice_rank": 1,
+                },
+            ],
+        )
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual((payload.get("summary") or {}).get("selected_optional_count"), 1)
+
+        context["plan"].reload()
+        rows_by_course = {row.course: row for row in context["plan"].get("courses") or []}
+        self.assertEqual(
+            (rows_by_course[context["required_course"].name].applied_basket_group or "").strip(),
+            required_group_one,
+        )
+        self.assertEqual(
+            (rows_by_course[context["optional_course"].name].applied_basket_group or "").strip(),
+            humanities_group,
+        )
+        self.assertEqual(rows_by_course[context["optional_course"].name].choice_rank, 1)
+
+    def test_accept_enrollment_offer_requires_complete_course_choices(self):
+        humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
+        context = self._create_offer_plan(
+            status="Offer Sent",
+            optional_course_basket_groups=[humanities_group],
+            enrollment_rules=[{"rule_type": "REQUIRE_GROUP_COVERAGE", "basket_group": humanities_group}],
+        )
+
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.ValidationError):
+            accept_enrollment_offer(student_applicant=self.applicant.name)
+
+        update_applicant_enrollment_choices(
+            student_applicant=self.applicant.name,
+            courses=[
+                {
+                    "course": context["optional_course"].name,
+                    "applied_basket_group": humanities_group,
+                }
+            ],
+        )
+
+        payload = accept_enrollment_offer(student_applicant=self.applicant.name)
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual((payload.get("result") or {}).get("status"), "Offer Accepted")
 
     def test_accept_enrollment_offer_is_idempotent(self):
         self._create_offer_plan(status="Offer Sent")
@@ -1161,7 +1270,25 @@ class TestSubmitApplication(FrappeTestCase):
             1 if int(value or 0) else 0,
         )
 
-    def _create_offer_plan(self, *, status: str, offer_message: str | None = None):
+    def _create_basket_group(self, basket_group_name: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Basket Group",
+                "basket_group_name": basket_group_name,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Basket Group", doc.name))
+        return doc
+
+    def _create_offer_plan(
+        self,
+        *,
+        status: str,
+        offer_message: str | None = None,
+        required_course_basket_groups: list[str] | None = None,
+        optional_course_basket_groups: list[str] | None = None,
+        enrollment_rules: list[dict] | None = None,
+    ):
         academic_year = frappe.get_doc(
             {
                 "doctype": "Academic Year",
@@ -1187,21 +1314,58 @@ class TestSubmitApplication(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Grade Scale", grade_scale.name))
 
-        course = frappe.get_doc(
+        required_course = frappe.get_doc(
             {
                 "doctype": "Course",
                 "course_name": f"Offer Course {frappe.generate_hash(length=6)}",
                 "status": "Active",
             }
         ).insert(ignore_permissions=True)
-        self._created.append(("Course", course.name))
+        self._created.append(("Course", required_course.name))
+
+        optional_course = None
+        if optional_course_basket_groups is not None:
+            optional_course = frappe.get_doc(
+                {
+                    "doctype": "Course",
+                    "course_name": f"Optional Offer Course {frappe.generate_hash(length=6)}",
+                    "status": "Active",
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("Course", optional_course.name))
+
+        for basket_group in sorted(
+            {
+                *set(required_course_basket_groups or []),
+                *set(optional_course_basket_groups or []),
+                *{
+                    (row.get("basket_group") or "").strip()
+                    for row in (enrollment_rules or [])
+                    if (row.get("basket_group") or "").strip()
+                },
+            }
+        ):
+            self._create_basket_group(basket_group)
 
         program = frappe.get_doc(
             {
                 "doctype": "Program",
                 "program_name": f"Program {frappe.generate_hash(length=6)}",
                 "grade_scale": grade_scale.name,
-                "courses": [{"course": course.name, "level": "None"}],
+                "courses": [
+                    {"course": required_course.name, "level": "None"},
+                    *([{"course": optional_course.name, "level": "None"}] if optional_course else []),
+                ],
+                "course_basket_groups": [
+                    *[
+                        {"course": required_course.name, "basket_group": basket_group}
+                        for basket_group in (required_course_basket_groups or [])
+                    ],
+                    *[
+                        {"course": optional_course.name, "basket_group": basket_group}
+                        for basket_group in (optional_course_basket_groups or [])
+                    ],
+                ],
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Program", program.name))
@@ -1215,13 +1379,37 @@ class TestSubmitApplication(FrappeTestCase):
                 "offering_academic_years": [{"academic_year": academic_year.name}],
                 "offering_courses": [
                     {
-                        "course": course.name,
-                        "course_name": course.course_name,
+                        "course": required_course.name,
+                        "course_name": required_course.course_name,
                         "required": 1,
                         "start_academic_year": academic_year.name,
                         "end_academic_year": academic_year.name,
-                    }
+                    },
+                    *(
+                        [
+                            {
+                                "course": optional_course.name,
+                                "course_name": optional_course.course_name,
+                                "required": 0,
+                                "start_academic_year": academic_year.name,
+                                "end_academic_year": academic_year.name,
+                            }
+                        ]
+                        if optional_course
+                        else []
+                    ),
                 ],
+                "offering_course_basket_groups": [
+                    *[
+                        {"course": required_course.name, "basket_group": basket_group}
+                        for basket_group in (required_course_basket_groups or [])
+                    ],
+                    *[
+                        {"course": optional_course.name, "basket_group": basket_group}
+                        for basket_group in (optional_course_basket_groups or [])
+                    ],
+                ],
+                "enrollment_rules": enrollment_rules or [],
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Program Offering", offering.name))
@@ -1244,7 +1432,14 @@ class TestSubmitApplication(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Enrollment Plan", plan.name))
-        return plan
+        return {
+            "plan": plan,
+            "academic_year": academic_year,
+            "program": program,
+            "offering": offering,
+            "required_course": required_course,
+            "optional_course": optional_course,
+        }
 
     def _get_or_create_language_xtra(self) -> str:
         existing = frappe.get_all("Language Xtra", filters={"enabled": 1}, fields=["name"], limit=1)

@@ -17,6 +17,60 @@ SUPPORTED_CAPACITY_POLICIES = {
 }
 
 
+def _normalize_requested_course_rows(requested_courses):
+    requested_counts = {}
+    requested_rows = []
+    seen = set()
+
+    for entry in requested_courses or []:
+        if isinstance(entry, dict):
+            course = ((entry or {}).get("course") or "").strip()
+            applied_basket_group = ((entry or {}).get("applied_basket_group") or "").strip()
+            choice_rank = (entry or {}).get("choice_rank")
+        else:
+            course = (entry or "").strip()
+            applied_basket_group = ""
+            choice_rank = None
+
+        if not course:
+            continue
+
+        requested_counts[course] = requested_counts.get(course, 0) + 1
+        if course in seen:
+            continue
+
+        seen.add(course)
+        requested_rows.append(
+            {
+                "course": course,
+                "applied_basket_group": applied_basket_group,
+                "choice_rank": choice_rank,
+            }
+        )
+
+    return requested_counts, requested_rows
+
+
+def evaluate_basket_selection(*, program_offering, requested_courses):
+    if not program_offering:
+        frappe.throw(_("Program Offering is required."))
+
+    _requested_counts, requested_rows = _normalize_requested_course_rows(requested_courses)
+    offering = frappe.db.get_value("Program Offering", program_offering, ["program"], as_dict=True) or {}
+    program = offering.get("program")
+    offering_courses = _get_offering_courses(program_offering)
+    program_courses = _get_program_courses(program) if program else {}
+
+    return _evaluate_basket(
+        requested_rows,
+        offering_courses,
+        {
+            "program_offering": program_offering,
+            "program_courses": program_courses,
+        },
+    )
+
+
 def evaluate_enrollment_request(payload):
     student = (payload or {}).get("student")
     program_offering = (payload or {}).get("program_offering")
@@ -39,32 +93,7 @@ def evaluate_enrollment_request(payload):
     # Normalize + count requested courses once (prevents duplicate row inflation)
     # - requested_counts is the only source of "requested_count"
     # - unique_courses is stable order (first occurrence wins)
-    requested_counts = {}
-    requested_rows = []
-    seen = set()
-
-    for entry in requested_courses:
-        if isinstance(entry, dict):
-            c = ((entry or {}).get("course") or "").strip()
-            applied_basket_group = ((entry or {}).get("applied_basket_group") or "").strip()
-            choice_rank = (entry or {}).get("choice_rank")
-        else:
-            c = (entry or "").strip()
-            applied_basket_group = ""
-            choice_rank = None
-        if not c:
-            continue
-        requested_counts[c] = requested_counts.get(c, 0) + 1
-        if c in seen:
-            continue
-        seen.add(c)
-        requested_rows.append(
-            {
-                "course": c,
-                "applied_basket_group": applied_basket_group,
-                "choice_rank": choice_rank,
-            }
-        )
+    requested_counts, requested_rows = _normalize_requested_course_rows(requested_courses)
 
     if not requested_rows:
         frappe.throw(_("requested_courses is required."))

@@ -10,6 +10,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/documents', name: 'admissions-documents', component: () => import('@/pages/admissions/ApplicantDocuments.vue') },
   { path: '/policies', name: 'admissions-policies', component: () => import('@/pages/admissions/ApplicantPolicies.vue') },
   { path: '/messages', name: 'admissions-messages', component: () => import('@/pages/admissions/ApplicantMessages.vue') },
+  { path: '/course-choices', name: 'admissions-course-choices', component: () => import('@/pages/admissions/ApplicantEnrollmentChoices.vue') },
   { path: '/submit', name: 'admissions-submit', component: () => import('@/pages/admissions/ApplicantSubmit.vue') },
   { path: '/status', name: 'admissions-status', component: () => import('@/pages/admissions/ApplicantStatus.vue') },
 ]

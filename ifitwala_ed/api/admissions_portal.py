@@ -29,6 +29,7 @@ from ifitwala_ed.admission.admission_utils import (
 )
 from ifitwala_ed.admission.applicant_review_workflow import materialize_health_review_assignments
 from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
+    get_applicant_enrollment_choice_state,
     get_latest_applicant_enrollment_plan,
 )
 from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
@@ -1180,10 +1181,41 @@ def _ensure_applicant_match(student_applicant: str | None, user: str) -> dict:
     return row
 
 
+def _empty_applicant_enrollment_choice_state(message: str | None = None) -> dict:
+    return {
+        "plan": None,
+        "summary": {
+            "has_plan": False,
+            "has_courses": False,
+            "has_selectable_courses": False,
+            "can_edit_choices": False,
+            "ready_for_offer_response": True,
+            "required_course_count": 0,
+            "optional_course_count": 0,
+            "selected_optional_count": 0,
+            "message": message or "",
+        },
+        "validation": {
+            "status": None,
+            "ready_for_offer_response": True,
+            "reasons": [],
+            "violations": [],
+            "missing_required_courses": [],
+            "ambiguous_courses": [],
+            "group_summary": {},
+        },
+        "required_basket_groups": [],
+        "courses": [],
+    }
+
+
 def _serialize_enrollment_offer(plan) -> dict | None:
     if not plan:
         return None
     status = _as_text(plan.get("status")).strip()
+    choice_state = get_applicant_enrollment_choice_state(plan)
+    choice_summary = choice_state.get("summary") or {}
+    choice_validation = choice_state.get("validation") or {}
     return {
         "name": _as_text(plan.get("name")).strip(),
         "status": status,
@@ -1198,6 +1230,12 @@ def _serialize_enrollment_offer(plan) -> dict | None:
         "offer_message": _as_text(plan.get("offer_message")).strip(),
         "can_accept": status == "Offer Sent",
         "can_decline": status == "Offer Sent",
+        "course_choices_available": bool(choice_summary.get("has_courses")),
+        "course_choices_can_edit": bool(choice_summary.get("can_edit_choices")),
+        "course_choices_ready": bool(choice_validation.get("ready_for_offer_response")),
+        "course_choice_blocking_reasons": list(choice_validation.get("reasons") or []),
+        "course_choice_optional_count": cint(choice_summary.get("optional_course_count") or 0),
+        "course_choice_selected_optional_count": cint(choice_summary.get("selected_optional_count") or 0),
     }
 
 
@@ -1285,11 +1323,20 @@ def _derive_next_actions(application_status: str, readiness: dict, enrollment_of
     offer_status = _as_text((enrollment_offer or {}).get("status")).strip()
 
     if offer_status == "Offer Sent":
+        if not bool((enrollment_offer or {}).get("course_choices_ready", True)):
+            actions.append(
+                {
+                    "label": _("Choose your courses"),
+                    "route_name": "admissions-course-choices",
+                    "intent": "primary",
+                    "is_blocking": True,
+                }
+            )
         actions.append(
             {
                 "label": _("Review and respond to your offer"),
                 "route_name": "admissions-status",
-                "intent": "primary",
+                "intent": "secondary" if actions else "primary",
                 "is_blocking": True,
             }
         )
@@ -1460,6 +1507,43 @@ def get_applicant_snapshot(student_applicant: str | None = None):
         "enrollment_offer": enrollment_offer,
         "recommendations_summary": recommendation_status,
     }
+
+
+@frappe.whitelist()
+def get_applicant_enrollment_choices(student_applicant: str | None = None):
+    user = _require_admissions_applicant()
+    row = _ensure_applicant_match(student_applicant, user)
+    plan = get_latest_applicant_enrollment_plan(row.get("name"))
+    if not plan:
+        return _empty_applicant_enrollment_choice_state(
+            _("Course choices will appear once admissions sends your enrollment offer.")
+        )
+
+    payload = get_applicant_enrollment_choice_state(plan)
+    summary = payload.get("summary") or {}
+    summary["message"] = (
+        _("No program-offering courses are configured for this offer.") if not summary.get("has_courses") else ""
+    )
+    payload["summary"] = summary
+    return payload
+
+
+@frappe.whitelist()
+def update_applicant_enrollment_choices(*, student_applicant: str | None = None, courses=None):
+    user = _require_admissions_applicant()
+    row = _ensure_applicant_match(student_applicant, user)
+    plan = get_latest_applicant_enrollment_plan(row.get("name"))
+    if not plan:
+        frappe.throw(_("No enrollment plan is available."))
+
+    parsed_courses = frappe.parse_json(courses) if courses is not None else []
+    if parsed_courses is None:
+        parsed_courses = []
+    if not isinstance(parsed_courses, list):
+        frappe.throw(_("Courses payload must be a list."))
+
+    payload = plan.update_portal_choices(user=user, courses=parsed_courses)
+    return {"ok": True, **payload}
 
 
 @frappe.whitelist()
