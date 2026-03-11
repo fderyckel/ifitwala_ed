@@ -77,18 +77,22 @@ class Program(NestedSet):
             course = (row.course or "").strip()
             basket_group = (row.basket_group or "").strip()
             if not course:
-                frappe.throw(_("Course Basket Group row {0}: Course is required.").format(idx))
+                frappe.throw(_("Enrollment basket membership row {0}: Course is required.").format(idx))
             if course not in valid_courses:
                 frappe.throw(
-                    _("Course Basket Group row {0}: Course {1} is not present in Program Courses.").format(idx, course)
+                    _("Enrollment basket membership row {0}: Course {1} is not present in Program Courses.").format(
+                        idx, course
+                    )
                 )
             if not basket_group:
-                frappe.throw(_("Course Basket Group row {0}: Basket Group is required.").format(idx))
+                frappe.throw(
+                    _("Enrollment basket membership row {0}: Basket Group (Enrollment) is required.").format(idx)
+                )
 
             key = (course, basket_group)
             if key in seen:
                 frappe.throw(
-                    _("Course Basket Group row {0}: duplicate mapping for {1} -> {2}.").format(
+                    _("Enrollment basket membership row {0}: duplicate mapping for {1} -> {2}.").format(
                         idx, course, basket_group
                     )
                 )

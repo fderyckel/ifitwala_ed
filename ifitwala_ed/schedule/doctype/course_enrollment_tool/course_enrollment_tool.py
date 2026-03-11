@@ -80,6 +80,44 @@ def _pe_has_course(pe_name: str, course: str) -> bool:
     return bool(row)
 
 
+def _validate_source_filter_inputs(source_program_offering: str, source_academic_year: str, source_course: str):
+    values = [source_program_offering, source_academic_year, source_course]
+    provided = [bool((value or "").strip()) for value in values]
+    if any(provided) and not all(provided):
+        frappe.throw(
+            _(
+                "Source Program Offering, Source Academic Year, and Source Course are all required when using source filtering."
+            )
+        )
+
+
+def _source_course_membership(
+    students: list[str], source_program_offering: str, source_academic_year: str, source_course: str
+) -> set[str]:
+    _validate_source_filter_inputs(source_program_offering, source_academic_year, source_course)
+    if not students or not source_program_offering:
+        return set()
+
+    placeholders = ", ".join(["%s"] * len(students))
+    params = tuple(students) + (source_program_offering, source_academic_year, source_course)
+    rows = frappe.db.sql(
+        f"""
+        SELECT DISTINCT pe.student
+        FROM `tabProgram Enrollment` pe
+        JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name
+        WHERE pe.student IN ({placeholders})
+          AND pe.program_offering = %s
+          AND pe.academic_year = %s
+          AND pe.docstatus < 2
+          AND pec.course = %s
+          AND IFNULL(pec.status, 'Enrolled') != 'Dropped'
+    """,
+        params,
+        as_list=True,
+    )
+    return {row[0] for row in rows}
+
+
 def _warn_if_basket_group_conflict(pe_name: str, course: str, offering_course_meta: dict):
     """Soft warning if another course in the same basket group already exists in PE."""
     meta = offering_course_meta.get(course)
@@ -125,6 +163,11 @@ class CourseEnrollmentTool(Document):
         """
         if not self.program_offering:
             frappe.throw(_("Please select a Program Offering."))
+        _validate_source_filter_inputs(
+            (self.source_program_offering or "").strip(),
+            (self.source_academic_year or "").strip(),
+            (self.source_course or "").strip(),
+        )
 
         offering = _get_offering_meta(self.program_offering)
         if not offering:
@@ -159,11 +202,21 @@ class CourseEnrollmentTool(Document):
         # Batch resolve Program Enrollments for listed students
         students = [r.student for r in (self.students or []) if r.student]
         pe_by_student = _pe_by_student_offering_ay(students, self.program_offering, self.academic_year)
+        source_members = _source_course_membership(
+            students,
+            (self.source_program_offering or "").strip(),
+            (self.source_academic_year or "").strip(),
+            (self.source_course or "").strip(),
+        )
 
         missed = []
+        source_missed = []
         modified_pes: dict[str, dict] = {}  # pe_name -> {school, rows: [child rows to append]}
         for r in self.students or []:
             if not r.student:
+                continue
+            if source_members and r.student not in source_members:
+                source_missed.append(r.student)
                 continue
             info = pe_by_student.get(r.student)
             if not info:
@@ -233,6 +286,14 @@ class CourseEnrollmentTool(Document):
                 indicator="orange",
             )
 
+        if source_missed:
+            frappe.msgprint(
+                _("These student(s) do not match the source-course filter and were skipped: {0}").format(
+                    ", ".join(source_missed)
+                ),
+                indicator="orange",
+            )
+
         # Batch save per PE
         for pe_name, payload in modified_pes.items():
             pe = frappe.get_doc("Program Enrollment", pe_name)
@@ -265,15 +326,36 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
     academic_year = filters.get("academic_year")
     program_offering = filters.get("program_offering")
     course = filters.get("course")
+    source_program_offering = (filters.get("source_program_offering") or "").strip()
+    source_academic_year = (filters.get("source_academic_year") or "").strip()
+    source_course = (filters.get("source_course") or "").strip()
 
     if not academic_year or not program_offering or not course:
         frappe.throw(_("Program Offering, Academic Year, and Course are required."))
+    _validate_source_filter_inputs(source_program_offering, source_academic_year, source_course)
 
     values = [program_offering, academic_year, course]
     txt_filter = ""
     if txt:
         txt_filter = "AND (s.name LIKE %s OR s.student_full_name LIKE %s)"
         values += [f"%{txt}%", f"%{txt}%"]
+
+    source_join = ""
+    if source_program_offering:
+        source_join = """
+          AND EXISTS (
+                SELECT 1
+                FROM `tabProgram Enrollment` pe_source
+                JOIN `tabProgram Enrollment Course` pec_source ON pec_source.parent = pe_source.name
+                WHERE pe_source.student = pe.student
+                  AND pe_source.program_offering = %s
+                  AND pe_source.academic_year = %s
+                  AND pe_source.docstatus < 2
+                  AND pec_source.course = %s
+                  AND IFNULL(pec_source.status, 'Enrolled') != 'Dropped'
+          )
+        """
+        values += [source_program_offering, source_academic_year, source_course]
 
     query = f"""
         SELECT DISTINCT s.name AS student, s.student_full_name, pe.name AS program_enrollment
@@ -289,6 +371,7 @@ def fetch_eligible_students(doctype, txt, searchfield, start, page_len, filters=
                 FROM `tabProgram Enrollment Course`
                 WHERE course = %s
           )
+          {source_join}
           {txt_filter}
         ORDER BY s.student_full_name, s.name
         LIMIT {start}, {page_len}

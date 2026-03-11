@@ -1,6 +1,9 @@
 # Ifitwala Ed — Fiscal Year Proposal
 
-This document proposes how Ifitwala Ed should introduce `Fiscal Year` as the legal accounting-year authority while preserving the existing separation between education operations and finance operations.
+Status: Deprecated proposal record
+Replacement: `ifitwala_ed/docs/accounting/accounting_notes.md`
+
+This document captured the original fiscal-year proposal. The implementation now exists in the workspace; use `accounting_notes.md` as the live contract and treat this file as historical context only.
 
 ---
 

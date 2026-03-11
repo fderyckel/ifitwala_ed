@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | Organization (legal entity) | Company | Same doctype; surfaced as Organization. |
 | Accounting Settings (org-level) | Accounts Settings | Org-level defaults. |
-| Fiscal Year | Fiscal Year | Planned next-step authority for legal accounting year. Not implemented in Phase 0. |
+| Fiscal Year | Fiscal Year | Implemented as the legal accounting-year authority above posting locks. |
 | Chart of Accounts Template | Chart of Accounts Importer + chart template JSON/Python files | Templates live under `ifitwala_ed/accounting/doctype/account/chart_of_accounts`. Current packaged default is `standard_chart_of_accounts` (English); additional templates can be added later in the same module. |
 | Account | Account | ERPNext account tree. |
 | GL Entry | GL Entry | Ledger row. |
@@ -377,8 +377,8 @@ Prevent accidental or silent corruption.
 
 Clarification:
 
-* Phase 0 implements posting locks, not fiscal-year governance.
-* `Fiscal Year` is a separate planned object and should be introduced additively, not by repurposing `Accounting Period`.
+* Phase 0 established posting locks.
+* Current workspace now adds `Fiscal Year` additively above those locks; `Accounting Period` was not repurposed.
 
 ### Final Outcomes
 
@@ -611,7 +611,6 @@ Phase 0.1 is complete only when:
 
 ### What did *not* change
 
-* Fiscal Year is still proposed, not implemented
 * Accounting Period locking stays as-is
 * Payment Entry & Reconciliation logic remains valid
 * Account Holder as legal debtor remains untouched

@@ -252,7 +252,7 @@ class ProgramEnrollment(Document):
 
             if credited_group and credited_group not in allowed_groups:
                 frappe.throw(
-                    _("Course row {0}: Credited Basket Group {1} is not allowed for course {2}.").format(
+                    _("Course row {0}: Credited Basket Group (Enrollment) {1} is not allowed for course {2}.").format(
                         idx, credited_group, course
                     )
                 )
@@ -262,7 +262,9 @@ class ProgramEnrollment(Document):
                 credited_group = allowed_groups[0]
 
             if not int(row.required or 0) and len(allowed_groups) > 1 and not credited_group:
-                frappe.throw(_("Course row {0}: select a Credited Basket Group for course {1}.").format(idx, course))
+                frappe.throw(
+                    _("Course row {0}: select a Credited Basket Group (Enrollment) for course {1}.").format(idx, course)
+                )
 
     def before_save(self):
         # A) Only one active enrollment per student (if not archived)

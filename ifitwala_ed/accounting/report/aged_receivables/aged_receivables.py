@@ -1,10 +1,13 @@
 import frappe
 from frappe.utils import flt, getdate, today
 
+from ifitwala_ed.accounting.fiscal_year_utils import fill_date_range_from_fiscal_year
+
 
 def execute(filters=None):
     filters = filters or {}
-    as_of = getdate(filters.get("as_of_date") or today())
+    from_date, to_date = fill_date_range_from_fiscal_year(filters)
+    as_of = getdate(filters.get("as_of_date") or to_date or today())
 
     columns = [
         {
@@ -46,6 +49,16 @@ def execute(filters=None):
             "exists (select 1 from `tabSales Invoice Item` sii where sii.parent = si.name and sii.program = %(program)s)"
         )
         params["program"] = filters.get("program")
+    if from_date and to_date:
+        conditions.append("si.posting_date between %(from_date)s and %(to_date)s")
+        params["from_date"] = from_date
+        params["to_date"] = to_date
+    elif from_date:
+        conditions.append("si.posting_date >= %(from_date)s")
+        params["from_date"] = from_date
+    elif to_date:
+        conditions.append("si.posting_date <= %(to_date)s")
+        params["to_date"] = to_date
 
     invoices = frappe.db.sql(
         f"""

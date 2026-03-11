@@ -47,7 +47,7 @@ It must not be re-used as:
 * tax reporting boundary
 * accounting period lock proxy
 
-Accounting must use `Fiscal Year` plus `Accounting Period` in its own domain. The absence of a live `Fiscal Year` doctype today is a finance-module gap, not a reason to overload Academic Year.
+Accounting must use live `Fiscal Year` plus `Accounting Period` in its own domain. Academic Year must not be overloaded to carry accounting legality.
 
 ---
 

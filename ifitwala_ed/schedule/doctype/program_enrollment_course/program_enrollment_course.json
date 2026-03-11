@@ -60,7 +60,8 @@
   {
    "fieldname": "credited_basket_group",
    "fieldtype": "Link",
-   "label": "Credited Basket Group",
+   "description": "Resolved enrollment basket this enrolled course row satisfies.",
+   "label": "Credited Basket Group (Enrollment)",
    "options": "Basket Group"
   },
   {
@@ -105,7 +106,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-23 07:19:23",
+ "modified": "2026-03-11 12:23:16",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Course",

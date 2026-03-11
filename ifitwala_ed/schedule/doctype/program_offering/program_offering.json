@@ -303,14 +303,15 @@
   {
    "fieldname": "offering_course_basket_groups",
    "fieldtype": "Table",
-   "label": "Offering Course Basket Groups",
+   "description": "Map each offering course to the enrollment baskets it can satisfy.",
+   "label": "Enrollment Basket Memberships",
    "options": "Program Offering Course Basket Group"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-13 09:44:11",
+ "modified": "2026-03-11 12:23:16",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering",

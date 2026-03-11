@@ -1,6 +1,8 @@
 import frappe
 from frappe.utils import flt
 
+from ifitwala_ed.accounting.fiscal_year_utils import fill_date_range_from_fiscal_year
+
 
 def execute(filters=None):
     filters = filters or {}
@@ -28,12 +30,13 @@ def execute(filters=None):
     if filters.get("program"):
         data_filters["program"] = filters.get("program")
 
-    if filters.get("from_date") and filters.get("to_date"):
-        data_filters["posting_date"] = ["between", [filters.get("from_date"), filters.get("to_date")]]
-    elif filters.get("from_date"):
-        data_filters["posting_date"] = [">=", filters.get("from_date")]
-    elif filters.get("to_date"):
-        data_filters["posting_date"] = ["<=", filters.get("to_date")]
+    from_date, to_date = fill_date_range_from_fiscal_year(filters)
+    if from_date and to_date:
+        data_filters["posting_date"] = ["between", [from_date, to_date]]
+    elif from_date:
+        data_filters["posting_date"] = [">=", from_date]
+    elif to_date:
+        data_filters["posting_date"] = ["<=", to_date]
 
     entries = frappe.get_all(
         "GL Entry",

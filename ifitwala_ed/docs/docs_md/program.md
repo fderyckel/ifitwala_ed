@@ -3,7 +3,7 @@ title: "Program: Curriculum Container and Enrollment Policy Anchor"
 slug: program
 category: Curriculum
 doc_order: 1
-version: "1.1.0"
+version: "1.1.1"
 last_change_date: "2026-03-11"
 summary: "Define the academic program tree, its catalog courses, basket-group memberships, assessment model, and prerequisite policy foundation used by offerings and enrollment validation."
 seo_title: "Program: Curriculum Container and Enrollment Policy Anchor"
@@ -47,6 +47,7 @@ In enrollment architecture, Program is intent/structure. Enrollment truth is com
 1. Create program identity and optional tree parent.
 2. Add `courses` rows ([**Program Course**](/docs/en/program-course/)).
 3. Add `course_basket_groups` rows when catalog courses may satisfy one or more basket requirements.
+   In the form, this table is labeled `Enrollment Basket Memberships`.
 4. Add prerequisite rows ([**Program Course Prerequisite**](/docs/en/program-course-prerequisite/)).
 5. Configure assessment settings and `assessment_categories` rows.
 6. Publish only when website fields are valid (`program_slug`, not archived).

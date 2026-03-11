@@ -67,7 +67,8 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Course Group",
+   "description": "Catalog/display grouping used for colors, imagery, and assessment organization. Not used for enrollment basket rules.",
+   "label": "Course Group (Catalog)",
    "options": "Course Group"
   },
   {
@@ -183,7 +184,7 @@
  "image_field": "course_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-19 15:22:24.635010",
+ "modified": "2026-03-11 12:23:16",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Course",

@@ -1,5 +1,7 @@
 import frappe
 
+from ifitwala_ed.accounting.fiscal_year_utils import fill_date_range_from_fiscal_year
+
 
 def execute(filters=None):
     filters = filters or {}
@@ -36,15 +38,16 @@ def execute(filters=None):
     conditions = ["si.organization = %(organization)s", "si.docstatus = 1"]
     params = {"organization": filters.get("organization")}
 
-    if filters.get("from_date") and filters.get("to_date"):
+    from_date, to_date = fill_date_range_from_fiscal_year(filters)
+    if from_date and to_date:
         conditions.append("si.posting_date between %(from_date)s and %(to_date)s")
-        params.update({"from_date": filters.get("from_date"), "to_date": filters.get("to_date")})
-    elif filters.get("from_date"):
+        params.update({"from_date": from_date, "to_date": to_date})
+    elif from_date:
         conditions.append("si.posting_date >= %(from_date)s")
-        params.update({"from_date": filters.get("from_date")})
-    elif filters.get("to_date"):
+        params.update({"from_date": from_date})
+    elif to_date:
         conditions.append("si.posting_date <= %(to_date)s")
-        params.update({"to_date": filters.get("to_date")})
+        params.update({"to_date": to_date})
 
     if filters.get("student"):
         conditions.append("sii.student = %(student)s")

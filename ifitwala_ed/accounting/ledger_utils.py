@@ -2,6 +2,8 @@ import frappe
 from frappe import _
 from frappe.utils import flt, getdate
 
+from ifitwala_ed.accounting.fiscal_year_utils import resolve_fiscal_year
+
 
 def get_organization_currency(organization):
     return frappe.db.get_value("Organization", organization, "default_currency")
@@ -19,6 +21,8 @@ def get_account_currency(account, organization=None):
 def validate_posting_date(organization, posting_date):
     if not (organization and posting_date):
         return
+
+    resolve_fiscal_year(organization, posting_date)
 
     lock_until_date = frappe.db.get_value("Accounts Settings", organization, "lock_until_date")
     if lock_until_date and getdate(posting_date) <= getdate(lock_until_date):

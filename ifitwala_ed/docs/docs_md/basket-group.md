@@ -3,7 +3,7 @@ title: "Basket Group: Enrollment Basket Requirement Vocabulary"
 slug: basket-group
 category: Enrollment
 doc_order: 2
-version: "1.0.0"
+version: "1.1.0"
 last_change_date: "2026-03-11"
 summary: "Define named basket requirement groups used by Program, Program Offering, Applicant Enrollment Plan, Program Enrollment Request, and Program Enrollment."
 seo_title: "Basket Group: Enrollment Basket Requirement Vocabulary"
@@ -15,6 +15,8 @@ seo_description: "Define named basket requirement groups used across program pla
 `Basket Group` is the canonical master for enrollment basket semantics.
 
 It is not course taxonomy. Course taxonomy stays on `Course.course_group`. `Basket Group` is used only for requirement families, choice families, and resolved basket assignments.
+
+In staff forms, basket-related fields are labeled `Basket Group (Enrollment)`, and the program/offering mapping tables appear as `Enrollment Basket Memberships`.
 
 ## Before You Start (Prerequisites)
 

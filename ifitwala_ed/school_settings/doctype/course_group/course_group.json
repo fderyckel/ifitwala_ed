@@ -25,7 +25,8 @@
   {
    "fieldname": "course_group_name",
    "fieldtype": "Data",
-   "label": "Course Group Name",
+   "description": "Catalog/display grouping used for course colors, imagery, and assessment organization.",
+   "label": "Course Group Name (Catalog)",
    "unique": 1
   },
   {
@@ -69,7 +70,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-21 21:08:44.423395",
+ "modified": "2026-03-11 12:23:16",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Course Group",

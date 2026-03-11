@@ -89,7 +89,8 @@
   {
    "fieldname": "course_basket_groups",
    "fieldtype": "Table",
-   "label": "Course Basket Groups",
+   "description": "Map each program course to the enrollment baskets it can satisfy.",
+   "label": "Enrollment Basket Memberships",
    "options": "Program Course Basket Group"
   },
   {
@@ -306,7 +307,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-01-23 13:25:23",
+ "modified": "2026-03-11 12:23:16",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",

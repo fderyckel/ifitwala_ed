@@ -130,6 +130,14 @@ Allowed sources:
 
 If schema is incomplete or ambiguous → ASK.
 
+### 3.2.1 JSON Metadata Timestamp Discipline (Non-Negotiable)
+
+For Frappe metadata `.json` files (DocType, child table, workspace, report, etc.):
+
+* As soon as a `.json` file is touched, agents MUST update its `modified` value to the actual change date/time.
+* Leaving a stale `modified` timestamp after editing metadata JSON is a bug.
+* This is required for reliable model sync and `bench migrate` behavior.
+
 ### 3.3 NestedSet Is Sacred
 
 Any DocType using `NestedSet` (`lft`, `rgt`):
@@ -665,6 +673,9 @@ For Python modules using `from frappe import _`:
 
 * `_` MUST NOT be reused as a local variable, tuple sink, or throwaway placeholder.
 * Shadowing `_` in whitelisted methods or validation code is a blocker because it can turn translatable error calls into runtime `TypeError`s.
+* When discarding unpacked values in these modules, use a descriptive unused name such as `unused_counts` or `_unused_counts`, never bare `_`.
+* Before finalizing a Python edit, agents MUST scan new locals and tuple unpacking for Ruff-class issues such as `F823` (translation alias shadowing) and `F841` (assigned but unused local variables).
+* If a pre-commit or lint hook runs against staged content, agents MUST restage the corrected files before retrying so the index matches the fix.
 
 ### 18.9 Query-Filter Schema Contract Safety (Non-Negotiable)
 

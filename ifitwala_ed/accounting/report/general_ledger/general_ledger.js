@@ -14,6 +14,12 @@ frappe.query_reports["General Ledger"] = {
 			options: "Account",
 		},
 		{
+			fieldname: "fiscal_year",
+			label: __("Fiscal Year"),
+			fieldtype: "Link",
+			options: "Fiscal Year",
+		},
+		{
 			fieldname: "school",
 			label: __("School"),
 			fieldtype: "Link",

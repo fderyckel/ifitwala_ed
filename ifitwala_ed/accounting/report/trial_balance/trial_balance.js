@@ -13,6 +13,12 @@ frappe.query_reports["Trial Balance"] = {
 			fieldtype: "Date",
 		},
 		{
+			fieldname: "fiscal_year",
+			label: __("Fiscal Year"),
+			fieldtype: "Link",
+			options: "Fiscal Year",
+		},
+		{
 			fieldname: "school",
 			label: __("School"),
 			fieldtype: "Link",

@@ -3,9 +3,9 @@ title: "Student Enrollment Playbook: Curriculum to Ready Enrollment"
 slug: student-enrollment-playbook
 category: Enrollment
 doc_order: 1
-version: "1.1.0"
-last_change_date: "2026-03-10"
-summary: "Run the full enrollment workflow end-to-end: prepare curriculum, publish offering constraints, bridge admissions into draft requests safely, validate requests, materialize Program Enrollment, and finalize course rosters."
+version: "1.2.0"
+last_change_date: "2026-03-11"
+summary: "Run the full enrollment workflow end-to-end: prepare curriculum, publish offering constraints, bridge admissions into draft requests safely, validate requests, materialize Program Enrollment, and finalize course rosters with the in-product tools."
 seo_title: "Student Enrollment Playbook: Curriculum to Ready Enrollment"
 seo_description: "Run the full enrollment workflow end-to-end: prepare curriculum, publish offering constraints, validate requests, materialize Program Enrollment, and finalize course rosters safely."
 ---
@@ -33,9 +33,9 @@ This page is the operational path for enrolling students into programs and cours
 4. Validate request snapshot (`validate_program_enrollment_request`).
 5. Approve with explicit override if required.
 6. Materialize approved request into [**Program Enrollment**](/docs/en/program-enrollment/) (`materialize_program_enrollment_request`).
-7. Finalize or adjust course rows using in-product tools:
-   - [**Program Enrollment Tool**](/docs/en/program-enrollment-tool/) for cohort/offering rollover
-   - [**Course Enrollment Tool**](/docs/en/course-enrollment-tool/) for adding one course across many enrollments
+7. Finalize or adjust enrollment in-product:
+   - [**Program Enrollment Tool**](/docs/en/program-enrollment-tool/) for batch request preparation, validation, approval, and materialization during cohort/offering rollover
+   - [**Course Enrollment Tool**](/docs/en/course-enrollment-tool/) for adding one course across many enrollments, including source-course-based course promotion
 
 <DoDont doTitle="Do" dontTitle="Don't">
   <Do>Use request validation snapshots before approval and materialization.</Do>
@@ -64,8 +64,9 @@ This page is the operational path for enrolling students into programs and cours
 
 1. In Program Enrollment Tool, source students from old `Program Enrollment` + AY.
 2. Target new Program Offering + new AY.
-3. Tool skips duplicates, creates missing enrollments, and returns created/skipped/failed counts.
-4. For batches over 100 rows, job runs in queue and publishes realtime completion summary.
+3. Tool prepares draft `Program Enrollment Request` rows for missing students.
+4. Staff batch-validates, approves valid requests, and materializes the destination enrollments.
+5. For batches over 100 rows, job runs in queue and publishes realtime completion summary.
 
 ## Related Docs
 

@@ -79,6 +79,33 @@ class TestSalesInvoice(FrappeTestCase):
         settings.save()
         return settings
 
+    def make_fiscal_year(self, organization, year="2026"):
+        existing = frappe.get_all(
+            "Fiscal Year Organization",
+            filters={"organization": organization},
+            fields=["parent"],
+            limit_page_length=100,
+        )
+        for row in existing:
+            fiscal_year = frappe.get_doc("Fiscal Year", row.parent)
+            if (
+                str(fiscal_year.year_start_date) == f"{year}-01-01"
+                and str(fiscal_year.year_end_date) == f"{year}-12-31"
+            ):
+                return fiscal_year
+
+        fiscal_year = frappe.get_doc(
+            {
+                "doctype": "Fiscal Year",
+                "year": f"{organization}-{year}-{frappe.generate_hash(length=4)}",
+                "year_start_date": f"{year}-01-01",
+                "year_end_date": f"{year}-12-31",
+                "organizations": [{"organization": organization}],
+            }
+        )
+        fiscal_year.insert()
+        return fiscal_year
+
     def make_account_holder(self, organization, holder_type="Individual", prefix="Account Holder"):
         account_holder = frappe.get_doc(
             {
@@ -162,6 +189,7 @@ class TestSalesInvoice(FrappeTestCase):
     def _base_context(self):
         org = self.make_organization("SI")
         school = self.make_school(org.name, "SI School")
+        self.make_fiscal_year(org.name)
 
         receivable = self.make_account(
             organization=org.name,

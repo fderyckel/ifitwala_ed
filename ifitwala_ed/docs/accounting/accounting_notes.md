@@ -20,7 +20,7 @@ This file is the canonical reference and will be updated incrementally as decisi
 | --- | --- | --- |
 | Organization (legal entity) | Company | Same doctype; surfaced as Organization. |
 | Accounting Settings (org-level) | Accounts Settings | Org-level defaults. |
-| Fiscal Year | Fiscal Year | Planned. Legal accounting-year authority, distinct from Academic Year and retained separately from Accounting Period. See `fiscal_year_proposal.md`. |
+| Fiscal Year | Fiscal Year | Implemented. Legal accounting-year authority, distinct from Academic Year and retained separately from Accounting Period. |
 | Chart of Accounts Template | Chart of Accounts Importer + chart template JSON/Python files | Templates live under `ifitwala_ed/accounting/doctype/account/chart_of_accounts`. Current packaged default is `standard_chart_of_accounts` (English); additional templates can be added later in the same module. |
 | Account | Account | ERPNext account tree. |
 | GL Entry | GL Entry | Ledger row. |
@@ -89,12 +89,13 @@ Ifitwala Ed must keep the accounting and education time domains explicitly separ
 
 Current implemented state:
 
+* `Fiscal Year` is implemented as the legal accounting-year authority per Organization scope.
 * `Accounting Period` and `Accounts Settings.lock_until_date` are implemented.
-* `Fiscal Year` is not yet implemented in this workspace.
+* accounting posting validation now resolves `Fiscal Year` before applying lock-date and closed-period checks.
 
-Planned direction:
+Locked direction:
 
-* introduce `Fiscal Year` modeled on ERPNext v16
+* keep `Fiscal Year` modeled on ERPNext v16 semantics
 * keep `Accounting Period` as a lock surface, not as the accounting-year master
 * never infer accounting legality from `Academic Year`
 

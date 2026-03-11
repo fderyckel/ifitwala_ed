@@ -76,6 +76,42 @@ class AccountingTestMixin:
         settings.save()
         return settings
 
+    def make_fiscal_year(
+        self,
+        organization,
+        year=None,
+        year_start_date=None,
+        year_end_date=None,
+        is_short_year=0,
+    ):
+        posting_year = str(year or frappe.utils.getdate(nowdate()).year)
+        start_date = year_start_date or f"{posting_year}-01-01"
+        end_date = year_end_date or f"{posting_year}-12-31"
+
+        existing = frappe.get_all(
+            "Fiscal Year Organization",
+            filters={"organization": organization},
+            fields=["parent"],
+            limit_page_length=100,
+        )
+        for row in existing:
+            fiscal_year = frappe.get_doc("Fiscal Year", row.parent)
+            if str(fiscal_year.year_start_date) == start_date and str(fiscal_year.year_end_date) == end_date:
+                return fiscal_year
+
+        doc = frappe.get_doc(
+            {
+                "doctype": "Fiscal Year",
+                "year": f"{organization}-{posting_year}-{frappe.generate_hash(length=4)}",
+                "year_start_date": start_date,
+                "year_end_date": end_date,
+                "is_short_year": is_short_year,
+                "organizations": [{"organization": organization}],
+            }
+        )
+        doc.insert()
+        return doc
+
     def make_account_holder(self, organization, holder_type="Individual", prefix="Account Holder"):
         account_holder = frappe.get_doc(
             {
@@ -184,13 +220,15 @@ class AccountingTestMixin:
         posting_date=None,
         payment_terms_template=None,
     ):
+        invoice_posting_date = posting_date or nowdate()
+        self.make_fiscal_year(organization, year=frappe.utils.getdate(invoice_posting_date).year)
         invoice = frappe.get_doc(
             {
                 "doctype": "Sales Invoice",
                 "account_holder": account_holder,
                 "organization": organization,
                 "program_offering": program_offering,
-                "posting_date": posting_date or nowdate(),
+                "posting_date": invoice_posting_date,
                 "payment_terms_template": payment_terms_template,
                 "items": [
                     {

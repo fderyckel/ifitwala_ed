@@ -3,7 +3,7 @@ title: "Program Enrollment Request: Transactional Staging for Enrollment"
 slug: program-enrollment-request
 category: Enrollment
 doc_order: 4
-version: "1.2.0"
+version: "1.3.0"
 last_change_date: "2026-03-11"
 summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including basket-group snapshots and requests hydrated from admissions."
 seo_title: "Program Enrollment Request: Transactional Staging for Enrollment"
@@ -31,9 +31,11 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 - Enrollment validation service:
   - `validate_program_enrollment_request(request_name, force=...)`
 - Enrollment materialization service:
-  - `materialize_program_enrollment_request(request_name)`
+  - `materialize_program_enrollment_request(request_name, enrollment_date=...)`
 - Enrollment engine (`evaluate_enrollment_request`) outputs stored into `validation_payload`
 - [**Program Enrollment**](/docs/en/program-enrollment/) request-source linkage (`program_enrollment_request`)
+- Batch staff tooling:
+  - [**Program Enrollment Tool**](/docs/en/program-enrollment-tool/) prepares, validates, approves, and materializes requests for cohort rollover
 - Admissions bridge:
   - `hydrate_program_enrollment_request_from_applicant_plan(applicant_enrollment_plan)`
   - read-only provenance from `Student Applicant` / `Applicant Enrollment Plan`
@@ -129,6 +131,7 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
   - one enrollment target per `(student, program_offering, academic_year)`
   - request-source lock (`enrollment_source = Request`)
   - idempotent add and update of course rows
+  - accepts an explicit enrollment date when a batch tool supplies one
   - copies `required` and `credited_basket_group` into `Program Enrollment Course`
 
 ### Permission Matrix

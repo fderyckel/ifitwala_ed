@@ -8,7 +8,7 @@
 				<p class="mt-1 type-caption text-ink/60">
 					{{
 						__(
-							'Choose elective courses from your program offering. Required courses stay visible for reference.'
+							'Choose optional courses from your program offering. Required courses stay visible for reference, and enrollment baskets show which requirement group each course can satisfy.'
 						)
 					}}
 				</p>
@@ -155,13 +155,16 @@
 
 							<p v-if="course.basket_groups.length" class="mt-2 type-caption text-ink/60">
 								{{
-									__('Eligible basket groups: {0}').replace('{0}', course.basket_groups.join(', '))
+									__('Eligible enrollment baskets: {0}').replace(
+										'{0}',
+										course.basket_groups.join(', ')
+									)
 								}}
 							</p>
 
 							<div v-if="course.basket_groups.length > 1" class="mt-3 max-w-sm">
 								<label class="type-caption text-ink/60">
-									{{ __('Counts for basket group') }}
+									{{ __('Counts toward enrollment basket') }}
 								</label>
 								<select
 									class="mt-1 w-full rounded-xl border border-border/70 bg-white px-3 py-2 text-sm text-ink disabled:bg-surface"
@@ -169,7 +172,7 @@
 									:value="course.applied_basket_group || ''"
 									@change="handleRequiredBasketGroupChange(course.course, $event)"
 								>
-									<option value="">{{ __('Choose a basket group') }}</option>
+									<option value="">{{ __('Choose an enrollment basket') }}</option>
 									<option
 										v-for="basketGroup in course.basket_groups"
 										:key="`${course.course}:${basketGroup}`"
@@ -182,7 +185,9 @@
 									v-if="course.requires_basket_group_selection"
 									class="mt-2 type-caption text-amber-800"
 								>
-									{{ __('Choose the basket group this required course should count toward.') }}
+									{{
+										__('Choose the enrollment basket this required course should count toward.')
+									}}
 								</p>
 							</div>
 
@@ -190,7 +195,7 @@
 								v-else-if="course.basket_groups.length === 1"
 								class="mt-3 type-caption text-ink/60"
 							>
-								{{ __('Counts for {0}').replace('{0}', course.basket_groups[0]) }}
+								{{ __('Counts toward {0}').replace('{0}', course.basket_groups[0]) }}
 							</p>
 						</div>
 					</div>
@@ -209,14 +214,16 @@
 									v-if="section.required_by_rule"
 									class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 type-caption text-amber-900"
 								>
-									{{ __('Required basket') }}
+									{{ __('Required enrollment basket') }}
 								</span>
 							</div>
 							<p class="mt-1 type-caption text-ink/60">
 								{{
 									section.required_by_rule
-										? __('Choose at least one course in this basket before accepting the offer.')
-										: __('Optional basket group.')
+										? __(
+												'Choose at least one course in this enrollment basket before accepting the offer.'
+											)
+										: __('Optional enrollment basket.')
 								}}
 							</p>
 						</div>

@@ -7,7 +7,7 @@ import json
 
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
+from frappe.utils import getdate, now_datetime
 
 
 def _map_offering_seat_policy_to_capacity_policy(seat_policy: str | None) -> str:
@@ -131,8 +131,25 @@ def validate_program_enrollment_request(request_name, force=0):
     return engine_payload
 
 
+def _resolve_materialization_enrollment_date(academic_year: str, enrollment_date=None):
+    if not academic_year:
+        frappe.throw(_("Academic Year is required to materialize enrollment."))
+
+    ay = frappe.get_doc("Academic Year", academic_year)
+    if not ay.year_start_date or not ay.year_end_date:
+        frappe.throw(_("Academic Year {0} must have start and end dates.").format(academic_year))
+
+    if enrollment_date:
+        resolved = getdate(enrollment_date)
+        if resolved < getdate(ay.year_start_date) or resolved > getdate(ay.year_end_date):
+            frappe.throw(_("Enrollment Date must fall inside Academic Year {0}.").format(academic_year))
+        return resolved
+
+    return frappe.utils.nowdate()
+
+
 @frappe.whitelist()
-def materialize_program_enrollment_request(request_name):
+def materialize_program_enrollment_request(request_name, enrollment_date=None):
     if not request_name:
         frappe.throw(_("Program Enrollment Request is required."))
 
@@ -150,8 +167,7 @@ def materialize_program_enrollment_request(request_name):
     if not req.validation_payload:
         frappe.throw(_("Validation Payload is required before materializing enrollment."))
 
-    if not req.academic_year:
-        frappe.throw(_("Academic Year is required to materialize enrollment."))
+    materialization_enrollment_date = _resolve_materialization_enrollment_date(req.academic_year, enrollment_date)
 
     # 2) Collect unique request rows from request (no duplicate courses)
     request_rows = []
@@ -237,7 +253,7 @@ def materialize_program_enrollment_request(request_name):
                 "program_offering": req.program_offering,
                 "academic_year": req.academic_year,
                 "school": school,
-                "enrollment_date": frappe.utils.nowdate(),
+                "enrollment_date": materialization_enrollment_date,
                 "enrollment_source": "Request",
                 "program_enrollment_request": req.name,
                 "courses": [

@@ -3,7 +3,7 @@ title: "Program Offering: Operational Enrollment Contract"
 slug: program-offering
 category: Enrollment
 doc_order: 2
-version: "1.1.0"
+version: "1.1.1"
 last_change_date: "2026-03-11"
 summary: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, and activity-booking readiness gates."
 seo_title: "Program Offering: Operational Enrollment Contract"
@@ -54,6 +54,7 @@ Program Offering must be anchored on a leaf (child) school. Ancestor-aware valid
 3. Configure optional head window (`start_date`, `end_date`) inside AY span.
 4. Add [**Program Offering Course**](/docs/en/program-offering-course/) rows.
 5. Add `offering_course_basket_groups` rows for any offering course that belongs to one or more basket groups.
+   In the form, this table is labeled `Enrollment Basket Memberships`.
 6. Configure `enrollment_rules` (`Program Offering Enrollment Rule`) and seat policy.
 7. Move offering lifecycle (`Planned` -> `Active` -> `Archived`) as operations evolve.
 

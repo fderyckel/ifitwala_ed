@@ -378,19 +378,22 @@ class ProgramOffering(Document):
         for idx, row in enumerate(self.offering_course_basket_groups or [], start=1):
             course = (row.course or "").strip()
             basket_group = (row.basket_group or "").strip()
-            _assert(course, _("Offering Course Basket Group row {0}: Course is required.").format(idx))
+            _assert(course, _("Enrollment basket membership row {0}: Course is required.").format(idx))
             _assert(
                 course in valid_courses,
-                _("Offering Course Basket Group row {0}: Course {1} is not present in Offering Courses.").format(
+                _("Enrollment basket membership row {0}: Course {1} is not present in Offering Courses.").format(
                     idx, course
                 ),
             )
-            _assert(basket_group, _("Offering Course Basket Group row {0}: Basket Group is required.").format(idx))
+            _assert(
+                basket_group,
+                _("Enrollment basket membership row {0}: Basket Group (Enrollment) is required.").format(idx),
+            )
 
             key = (course, basket_group)
             _assert(
                 key not in seen,
-                _("Offering Course Basket Group row {0}: duplicate mapping for {1} -> {2}.").format(
+                _("Enrollment basket membership row {0}: duplicate mapping for {1} -> {2}.").format(
                     idx, course, basket_group
                 ),
             )
@@ -404,7 +407,9 @@ class ProgramOffering(Document):
             rule_type = (row.rule_type or "").strip()
             if rule_type == "REQUIRE_GROUP_COVERAGE" and not (row.basket_group or "").strip():
                 frappe.throw(
-                    _("Enrollment Rule row {0}: Basket Group is required for REQUIRE_GROUP_COVERAGE.").format(idx)
+                    _(
+                        "Enrollment Rule row {0}: Basket Group (Enrollment) is required for REQUIRE_GROUP_COVERAGE."
+                    ).format(idx)
                 )
 
     def _get_ay_envelope(self) -> tuple[str | None, str | None]:

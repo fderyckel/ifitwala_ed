@@ -242,7 +242,7 @@ Accounting time rule:
 
 * Invoice generation may use `academic_year` to decide what should be billed.
 * Invoice posting validity must be determined by `organization + posting_date`, never by `academic_year`.
-* When `Fiscal Year` is implemented, draft generation must resolve against that server-owned accounting boundary.
+* Draft generation must resolve against the live server-owned `Fiscal Year` boundary.
 
 **Hard constraints**
 

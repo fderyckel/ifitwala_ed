@@ -133,7 +133,7 @@ class ProgramEnrollmentRequest(Document):
 
             if applied_group and applied_group not in allowed_groups:
                 frappe.throw(
-                    _("Course row {0}: Basket Group {1} is not allowed for course {2}.").format(
+                    _("Course row {0}: Applied Basket Group (Enrollment) {1} is not allowed for course {2}.").format(
                         idx, applied_group, course
                     )
                 )
@@ -143,12 +143,14 @@ class ProgramEnrollmentRequest(Document):
                 applied_group = allowed_groups[0]
 
             if row.choice_rank and not applied_group:
-                frappe.throw(_("Course row {0}: Choice Rank requires an Applied Basket Group.").format(idx))
+                frappe.throw(
+                    _("Course row {0}: Choice Rank requires an Applied Basket Group (Enrollment).").format(idx)
+                )
 
             if (self.status or "").strip() in gate_statuses and len(allowed_groups) > 1 and not applied_group:
                 frappe.throw(
                     _(
-                        "Course row {0}: select an Applied Basket Group for course {1} before the request can advance."
+                        "Course row {0}: select an Applied Basket Group (Enrollment) for course {1} before the request can advance."
                     ).format(idx, course)
                 )
 

@@ -50,9 +50,9 @@ These defaults drive posting and payment behavior.
 
 Current accounting-year status:
 
-- the live workspace does not yet define a dedicated `Fiscal Year` DocType
-- posting legality is currently enforced by `posting_date`, `Accounts Settings.lock_until_date`, and closed `Accounting Period` ranges
-- the planned direction is to add `Fiscal Year` above those controls so finance can manage legal accounting years independently of `Academic Year`
+- the live workspace now defines a dedicated `Fiscal Year` DocType
+- posting legality is enforced by active `Fiscal Year`, then `Accounts Settings.lock_until_date`, then closed `Accounting Period` ranges
+- finance can manage legal accounting years independently of `Academic Year`
 
 ### 2.2 Create the payer record
 
@@ -120,7 +120,7 @@ At minimum:
 
 Important separation:
 
-- `Posting Date` is accounting time and must eventually resolve through `Fiscal Year` + `Accounting Period`
+- `Posting Date` is accounting time and resolves through `Fiscal Year` + `Accounting Period`
 - `Program Offering` and student context are academic/billing context and must not be used as fiscal-year proxies
 
 Optional but important:

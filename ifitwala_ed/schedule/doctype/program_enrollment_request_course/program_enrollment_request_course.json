@@ -40,7 +40,8 @@
   {
    "fieldname": "applied_basket_group",
    "fieldtype": "Link",
-   "label": "Applied Basket Group",
+   "description": "Resolved enrollment basket this request row is intended to satisfy.",
+   "label": "Applied Basket Group (Enrollment)",
    "options": "Basket Group"
   },
   {
@@ -67,7 +68,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-03-01 00:00:07",
+ "modified": "2026-03-11 12:23:16",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Request Course",

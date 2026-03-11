@@ -13,6 +13,12 @@ frappe.query_reports["Aged Receivables"] = {
 			fieldtype: "Date",
 		},
 		{
+			fieldname: "fiscal_year",
+			label: __("Fiscal Year"),
+			fieldtype: "Link",
+			options: "Fiscal Year",
+		},
+		{
 			fieldname: "account_holder",
 			label: __("Account Holder"),
 			fieldtype: "Link",

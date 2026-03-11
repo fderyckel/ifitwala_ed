@@ -8,7 +8,7 @@ Accounting time guardrail:
 
 * `academic_year` in billing-plan documents is educational scope only.
 * Do not derive accounting legality or fiscal-year membership from `academic_year`.
-* Accounting posting must remain owned by `organization + posting_date` and, once implemented, `Fiscal Year`.
+* Accounting posting must remain owned by `organization + posting_date` and live `Fiscal Year`.
 
 ## Task 0 — Preconditions / Safety Gates
 

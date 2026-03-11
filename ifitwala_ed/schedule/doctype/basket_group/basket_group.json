@@ -15,7 +15,8 @@
    "fieldname": "basket_group_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Basket Group Name",
+   "description": "Enrollment requirement/choice group used by programs, offerings, requests, and enrollments.",
+   "label": "Basket Group Name (Enrollment)",
    "reqd": 1,
    "unique": 1
   },
@@ -27,7 +28,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-11 00:00:00.000000",
+ "modified": "2026-03-11 12:23:16",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Basket Group",
