@@ -72,15 +72,37 @@ def _resolve_row_access(h) -> dict:
     return {"roles": d.get("roles", set()), "workspace": d.get("workspace"), "priority": int(d.get("priority") or 0)}
 
 
+def _row_is_current(h) -> bool:
+    """
+    Derive current-ness from the row date window first.
+
+    Employee.sync_employee_history() mutates rows during save, after validate() has already
+    recomputed `is_current`. Access sync runs in that same save cycle, so the date window is
+    the reliable source when the flag is momentarily stale.
+    """
+    try:
+        today = getdate(nowdate())
+        start = getdate(h.get("from_date")) if h.get("from_date") else None
+        end = getdate(h.get("to_date")) if h.get("to_date") else None
+    except Exception:
+        return bool(h.get("is_current"))
+
+    if start and start > today:
+        return False
+    if end and end < today:
+        return False
+    if start or end:
+        return True
+    return bool(h.get("is_current"))
+
+
 def _active_history_rows(emp) -> list[dict]:
-    # You already compute is_current server-side; we trust that.
     rows = []
     for h in emp.employee_history or []:
         if not h.get("designation"):
             continue
-        if not h.get("is_current"):
+        if not _row_is_current(h):
             continue
-        # Optionally enforce strict date window here if you prefer
         rows.append(h)
     return rows
 

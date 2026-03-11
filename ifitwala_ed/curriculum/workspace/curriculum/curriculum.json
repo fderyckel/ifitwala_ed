@@ -27,7 +27,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-<<<<<<< Updated upstream
    "label": "Assessments",
    "link_count": 4,
    "link_type": "DocType",
@@ -213,8 +212,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-=======
->>>>>>> Stashed changes
    "label": "Team",
    "link_count": 0,
    "link_to": "Team",
@@ -615,11 +612,7 @@
    "type": "Link"
   }
  ],
-<<<<<<< Updated upstream
  "modified": "2026-03-11 12:23:16",
-=======
- "modified": "2026-03-11 11:36:07.237063",
->>>>>>> Stashed changes
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",

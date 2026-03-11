@@ -83,6 +83,45 @@ class TestEmployee(FrappeTestCase):
         self.assertEqual(roles, set())
         self.assertIsNone(workspace)
 
+    def test_compute_effective_access_uses_date_window_when_is_current_flags_are_stale(self):
+        emp = frappe._dict(
+            designation="Principal",
+            date_of_joining=add_days(nowdate(), -30),
+            employee_history=[
+                frappe._dict(
+                    {
+                        "designation": "Teacher",
+                        "from_date": add_days(nowdate(), -30),
+                        "to_date": add_days(nowdate(), -1),
+                        "is_current": 1,
+                        "access_mode": "Follow Designation",
+                    }
+                ),
+                frappe._dict(
+                    {
+                        "designation": "Principal",
+                        "from_date": nowdate(),
+                        "to_date": None,
+                        "is_current": 0,
+                        "access_mode": "Follow Designation",
+                    }
+                ),
+            ],
+        )
+
+        def designation_defaults(designation):
+            if designation == "Teacher":
+                return {"roles": {"Academic Staff"}, "workspace": "Academics", "priority": 5}
+            if designation == "Principal":
+                return {"roles": {"Academic Admin"}, "workspace": "Admin", "priority": 10}
+            return {"roles": set(), "workspace": None, "priority": 0}
+
+        with patch("ifitwala_ed.hr.employee_access._designation_defaults", side_effect=designation_defaults):
+            roles, workspace = employee_access.compute_effective_access_from_employee(emp)
+
+        self.assertEqual(roles, {"Academic Admin"})
+        self.assertEqual(workspace, "Admin")
+
     def test_sync_user_access_disables_non_active_employee_user(self):
         emp = frappe._dict(
             user_id="nonactive.employee@example.com",
