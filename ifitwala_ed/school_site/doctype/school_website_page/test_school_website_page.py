@@ -132,6 +132,28 @@ class TestSchoolWebsitePage(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             validate_page_blocks(page)
 
+    def test_validate_page_blocks_rejects_invalid_cta_link(self):
+        page = frappe._dict(
+            {
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Home"}, order=1),
+                    _row(
+                        block_type="cta",
+                        props={
+                            "title": "Apply",
+                            "text": "Start here.",
+                            "button_label": "Inquire",
+                            "button_link": "inqiury",
+                        },
+                        order=2,
+                    ),
+                ]
+            }
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            validate_page_blocks(page)
+
     def test_patch_normalizes_legacy_cta_props_to_current_contract(self):
         normalized, error_code = _normalize_row_props(
             block_type="cta",

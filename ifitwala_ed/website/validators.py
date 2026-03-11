@@ -4,7 +4,13 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.website.block_registry import get_allowed_block_types, get_block_definition_map
-from ifitwala_ed.website.utils import parse_props, validate_props_schema
+from ifitwala_ed.website.utils import parse_props, validate_cta_link, validate_props_schema
+
+CTA_LINK_FIELDS_BY_BLOCK = {
+    "hero": ("cta_link",),
+    "section_carousel": ("cta_link",),
+    "cta": ("button_link",),
+}
 
 
 def _sorted_enabled_blocks(page) -> list:
@@ -72,6 +78,11 @@ def _validate_context_allowed_blocks(*, page, blocks: list):
     )
 
 
+def _validate_block_semantics(*, block_type: str, props: dict):
+    for fieldname in CTA_LINK_FIELDS_BY_BLOCK.get(block_type, ()):
+        validate_cta_link(props.get(fieldname))
+
+
 def validate_page_blocks(page):
     blocks = _sorted_enabled_blocks(page)
     definitions = get_block_definition_map()
@@ -98,3 +109,4 @@ def validate_page_blocks(page):
             definition["props_schema"],
             block_type=block_type,
         )
+        _validate_block_semantics(block_type=block_type, props=props)
