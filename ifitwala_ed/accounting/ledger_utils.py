@@ -45,6 +45,10 @@ def make_gl_entries(entries, voucher_type, voucher_no, cancel=False):
         gl.organization = entry["organization"]
         gl.posting_date = entry["posting_date"]
         gl.account = entry["account"]
+        gl.school = entry.get("school")
+        gl.program = entry.get("program")
+        gl.program_offering = entry.get("program_offering")
+        gl.student = entry.get("student")
         gl.party_type = entry.get("party_type")
         gl.party = entry.get("party")
         gl.against = entry.get("against")
@@ -77,6 +81,10 @@ def cancel_gl_entries(voucher_type, voucher_no):
             "account",
             "debit",
             "credit",
+            "school",
+            "program",
+            "program_offering",
+            "student",
             "party_type",
             "party",
             "against",
@@ -99,6 +107,10 @@ def cancel_gl_entries(voucher_type, voucher_no):
                     "remarks": entry.remarks,
                     "debit": entry.debit,
                     "credit": entry.credit,
+                    "school": entry.school,
+                    "program": entry.program,
+                    "program_offering": entry.program_offering,
+                    "student": entry.student,
                 }
             ],
             voucher_type,

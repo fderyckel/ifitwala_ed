@@ -9,6 +9,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, get_link_to_form
 
+from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
 from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 
 
@@ -28,21 +29,10 @@ def _get_offering_meta(offering: str) -> dict:
 
 
 def _offering_course_map(offering: str) -> dict:
-    """Map course → Program Offering Course row (elective_group, required, AY/term dates/terms)."""
+    """Map course → normalized Program Offering semantics."""
     if not offering:
         return {}
-    rows = frappe.db.sql(
-        """
-        SELECT poc.course, poc.elective_group, poc.required,
-               poc.start_academic_year, poc.end_academic_year,
-               poc.start_academic_term, poc.end_academic_term
-        FROM `tabProgram Offering Course` poc
-        WHERE poc.parent = %s
-    """,
-        (offering,),
-        as_dict=True,
-    )
-    return {r.course: r for r in rows}
+    return get_offering_course_semantics(offering)
 
 
 def _offering_ay_set(offering: str) -> set[str]:
@@ -90,11 +80,11 @@ def _pe_has_course(pe_name: str, course: str) -> bool:
     return bool(row)
 
 
-def _warn_if_elective_conflict(pe_name: str, course: str, offering_course_meta: dict):
-    """Soft warning if another course in the same elective group already exists in PE."""
+def _warn_if_basket_group_conflict(pe_name: str, course: str, offering_course_meta: dict):
+    """Soft warning if another course in the same basket group already exists in PE."""
     meta = offering_course_meta.get(course)
-    eg = (meta or {}).get("elective_group")
-    if not eg:
+    basket_groups = set((meta or {}).get("basket_groups") or [])
+    if not basket_groups:
         return
     # find all existing courses in the same elective group (using current offering map)
     existing = frappe.db.sql(
@@ -108,13 +98,15 @@ def _warn_if_elective_conflict(pe_name: str, course: str, offering_course_meta: 
     )
     existing_courses = {r[0] for r in existing}
     conflicts = [
-        c for c in existing_courses if c != course and (offering_course_meta.get(c) or {}).get("elective_group") == eg
+        c
+        for c in existing_courses
+        if c != course and basket_groups & set((offering_course_meta.get(c) or {}).get("basket_groups") or [])
     ]
     if conflicts:
         frappe.msgprint(
-            _("Elective note: Program Enrollment {0} already has a course in group “{1}”. (Existing: {2})").format(
-                get_link_to_form("Program Enrollment", pe_name), eg, ", ".join(conflicts)
-            ),
+            _(
+                "Basket-group note: Program Enrollment {0} already has a course in one of the same groups. (Existing: {1})"
+            ).format(get_link_to_form("Program Enrollment", pe_name), ", ".join(conflicts)),
             alert=True,
         )
 
@@ -188,7 +180,20 @@ class CourseEnrollmentTool(Document):
                 continue
 
             # Determine term window
-            child = {"course": self.course, "status": "Enrolled"}
+            child = {
+                "course": self.course,
+                "status": "Enrolled",
+                "required": 1 if int(oc.get("required") or 0) == 1 else 0,
+            }
+            basket_groups = list(oc.get("basket_groups") or [])
+            if not child["required"] and len(basket_groups) == 1:
+                child["credited_basket_group"] = basket_groups[0]
+            elif not child["required"] and len(basket_groups) > 1:
+                frappe.throw(
+                    _(
+                        "Course {0} belongs to multiple basket groups. Add it through a basket-aware enrollment flow and choose the credited group."
+                    ).format(get_link_to_form("Course", self.course))
+                )
 
             if term_long:
                 # Tool term required/optional: if set, use (term, term), else leave blank
@@ -216,8 +221,8 @@ class CourseEnrollmentTool(Document):
             modified_pes.setdefault(pe_name, {"school": info["school"], "rows": []})
             modified_pes[pe_name]["rows"].append(child)
 
-            # Soft elective conflict warning
-            _warn_if_elective_conflict(pe_name, self.course, offering_courses)
+            # Soft basket-group conflict warning
+            _warn_if_basket_group_conflict(pe_name, self.course, offering_courses)
 
         # Inform about students with no matching PE
         if missed:

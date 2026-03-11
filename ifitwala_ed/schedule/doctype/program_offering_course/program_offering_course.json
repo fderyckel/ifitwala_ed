@@ -9,7 +9,6 @@
   "course",
   "course_name",
   "grade_scale",
-  "elective_group",
   "required",
   "capacity",
   "waitlist_enabled",
@@ -69,12 +68,6 @@
    "fieldname": "reserved_seats",
    "fieldtype": "Int",
    "label": "Reserved Seats"
-  },
-  {
-   "fieldname": "elective_group",
-   "fieldtype": "Link",
-   "label": "Elective Group",
-   "options": "Course Group"
   },
   {
    "fieldname": "column_break_50gf",

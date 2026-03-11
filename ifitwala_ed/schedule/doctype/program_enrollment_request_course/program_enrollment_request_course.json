@@ -8,6 +8,8 @@
  "field_order": [
   "course",
   "course_name",
+  "required",
+  "applied_basket_group",
   "apply_to_level",
   "choice_rank",
   "status"
@@ -27,6 +29,19 @@
    "fieldtype": "Data",
    "label": "Course Name",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "required",
+   "fieldtype": "Check",
+   "label": "Required",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applied_basket_group",
+   "fieldtype": "Link",
+   "label": "Applied Basket Group",
+   "options": "Basket Group"
   },
   {
    "fieldname": "apply_to_level",

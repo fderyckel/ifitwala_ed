@@ -7,6 +7,7 @@
  "field_order": [
   "reference_doctype",
   "reference_name",
+  "payment_schedule_term",
   "total_amount",
   "outstanding_amount",
   "allocated_amount"
@@ -27,6 +28,12 @@
    "label": "Reference Name",
    "options": "reference_doctype",
    "reqd": 1
+  },
+  {
+   "fieldname": "payment_schedule_term",
+   "fieldtype": "Data",
+   "label": "Payment Schedule Term",
+   "read_only": 1
   },
   {
    "fieldname": "total_amount",

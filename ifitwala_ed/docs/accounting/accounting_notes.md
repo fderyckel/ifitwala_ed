@@ -10,16 +10,17 @@ This file is the canonical reference and will be updated incrementally as decisi
 
 ### ERPNext Baseline & Scope (Locked)
 
-* Baseline ERPNext version: v15 (accounting module only).
+* Baseline ERPNext version: v16 (accounting module only).
 * ERPNext Company doctype is used as Organization (same doctype, education naming).
 * Manufacturing / production modules are explicitly out of scope for education accounting.
 
-### ERPNext v15 Doctype Mapping (Accounting)
+### ERPNext v16 Doctype Mapping (Accounting)
 
-| Ifitwala Doctype / Concept | ERPNext v15 Doctype | Notes |
+| Ifitwala Doctype / Concept | ERPNext v16 Doctype | Notes |
 | --- | --- | --- |
 | Organization (legal entity) | Company | Same doctype; surfaced as Organization. |
 | Accounting Settings (org-level) | Accounts Settings | Org-level defaults. |
+| Fiscal Year | Fiscal Year | Planned. Legal accounting-year authority, distinct from Academic Year and retained separately from Accounting Period. See `fiscal_year_proposal.md`. |
 | Chart of Accounts Template | Chart of Accounts Importer + chart template JSON/Python files | Templates live under `ifitwala_ed/accounting/doctype/account/chart_of_accounts`. Current packaged default is `standard_chart_of_accounts` (English); additional templates can be added later in the same module. |
 | Account | Account | ERPNext account tree. |
 | GL Entry | GL Entry | Ledger row. |
@@ -33,7 +34,7 @@ This file is the canonical reference and will be updated incrementally as decisi
 | Tax Line | Sales Taxes and Charges | Child table for tax lines. |
 | Tax Category | Tax Category | Tax classification. |
 | Billable Offering | Item + Item Price; Subscription Plan/Subscription (recurring) | Single education abstraction. |
-| Accounting Period | Accounting Period | Period locks. |
+| Accounting Period | Accounting Period | Period locks, not the fiscal-year authority. |
 
 ---
 
@@ -77,6 +78,25 @@ This file is the canonical reference and will be updated incrementally as decisi
   * Inventory & Assets (future)
 
 Schools are **operational units only** and are used for analytical dimensions, not legal accounting truth.
+
+### 2.2 Accounting Time Domains
+
+Ifitwala Ed must keep the accounting and education time domains explicitly separate:
+
+* **Academic Year** is the school-scoped educational container for enrollment, scheduling, attendance, and term reporting.
+* **Fiscal Year** is the organization-scoped legal accounting year for financial reporting and posting governance.
+* **Accounting Period** is the narrower transaction-control layer used to lock/close posting windows.
+
+Current implemented state:
+
+* `Accounting Period` and `Accounts Settings.lock_until_date` are implemented.
+* `Fiscal Year` is not yet implemented in this workspace.
+
+Planned direction:
+
+* introduce `Fiscal Year` modeled on ERPNext v16
+* keep `Accounting Period` as a lock surface, not as the accounting-year master
+* never infer accounting legality from `Academic Year`
 
 ---
 
@@ -153,6 +173,7 @@ The system must structurally support:
 * Application fees (one‑off)
 * Registration / enrollment / capital fees (one‑off)
 * Term‑based tuition billing
+* Installment schedules via payment terms templates
 * Recurring subscriptions (monthly, term, annual)
 * Usage‑based subscriptions (e.g. lunches per month)
 * Ad‑hoc charges
@@ -289,55 +310,104 @@ The system must allow mapping each Offering to the appropriate account.
 * Debit: Bank / Cash
 * Credit: Accounts Receivable (or Advances if prepayment)
 
+### Credit Note Submission
+
+* Debit: Income accounts (reversal)
+* Debit: Tax Payable (reversal, if applicable)
+* Credit: Accounts Receivable
+* Credit notes reduce the outstanding amount of the source invoice and are linked via adjustment traceability.
+
+### Advance Reconciliation
+
+* Debit: Advances / Unearned Revenue
+* Credit: Accounts Receivable
+* Reconciliation is tied to an explicit Payment Entry source, not an implicit oldest‑first sweep.
+
 No silent mutation of posted entries.
 
 ---
 
-## 13. Reporting (Phase 0)
+## 13. Receivables Operations (Current)
+
+Receivables operations now include:
+
+* `Payment Terms Template` for installment schedules
+* `Sales Invoice Payment Schedule` for per‑invoice due rows
+* `Payment Request` for payer outreach tied to a submitted invoice
+* `Dunning Notice` for overdue receivable follow‑up
+* `Statement Of Accounts Run` for finance statement processing queues
+* Linked credit notes and debit notes via `Sales Invoice.adjustment_type`
+* Rich invoice statuses:
+
+  * Draft
+  * Unpaid
+  * Partly Paid
+  * Paid
+  * Overdue
+  * Credit Note
+  * Partly Credited
+  * Credited
+  * Cancelled
+
+Analytical dimensions supported in the current accounting layer:
+
+* School
+* Program
+* Program Offering
+* Student (line / GL analytic context only)
+
+These dimensions are for reporting and operational insight. They do **not** replace Organization or Account Holder as legal accounting anchors.
+
+---
+
+## 14. Reporting (Current)
 
 Operational:
 
 * Account Holder statement
 * Student financial attribution view
 * Aged receivables
+* Payment request register (list view / doctype workflow)
+* Dunning notice work queue (list view / doctype workflow)
+* Statement processing run queue (list view / doctype workflow)
 
 Accounting:
 
 * General Ledger
 * Trial Balance
 * Income by Offering / Program
+* School / Program filtered ledger reporting
 
 ---
 
-## 14. Non‑Goals (Phase 0)
+## 15. Non‑Goals (Phase 0)
 
 * Manufacturing / production modules
 * Payroll processing
 * Inventory valuation
-* Automated revenue schedules
+* Automated revenue recognition schedules
 * Multi‑currency
 * Consolidation across organizations
 
 ---
 
-## 15. Forward Compatibility
+## 16. Forward Compatibility
 
 This architecture explicitly keeps doors open for:
 
 * Payroll
 * Inventory & asset tracking (IT devices, book loans)
-* Automated revenue recognition
+* Online payment gateway integration
 * Consolidated reporting
 
 No Phase‑0 shortcuts may block these paths.
 
 ---
 
-## 16. Open for Future Locking
+## 17. Open for Future Locking
 
-* Credit allocation automation vs manual
 * Capital fee accounting defaults
 * Recognition schedule automation
-* Online payment gateway integration
+* Automated collections dispatch (email/SMS/portal)
 
 (These are intentionally not locked yet.)

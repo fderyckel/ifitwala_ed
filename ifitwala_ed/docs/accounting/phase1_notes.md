@@ -96,6 +96,7 @@ Defines *how a specific Program Offering is billed*.
 **Rules**
 
 * One active Billing Plan per Program Offering per Academic Year.
+* `academic_year` here is educational billing scope, not accounting fiscal-year truth.
 * No pricing logic here.
 * No accounting logic here.
 * No invoice creation here.
@@ -236,6 +237,12 @@ The method MUST:
    * `billing_schedule_row.sales_invoice = invoice.name`
 
 5. Set Billing Schedule Row status → `Invoiced`
+
+Accounting time rule:
+
+* Invoice generation may use `academic_year` to decide what should be billed.
+* Invoice posting validity must be determined by `organization + posting_date`, never by `academic_year`.
+* When `Fiscal Year` is implemented, draft generation must resolve against that server-owned accounting boundary.
 
 **Hard constraints**
 

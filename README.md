@@ -120,6 +120,7 @@ We separate **Curriculum** (what we plan) from **Delivery** (what we teach) and 
 
 * Curriculum is reusable and standards-friendly.
 * It exists independently of the academic year.
+* Academic year is educational scope only; accounting must use a separate fiscal year.
 
 ### 2. Assessment as a Mode
 

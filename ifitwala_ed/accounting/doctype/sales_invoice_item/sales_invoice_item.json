@@ -7,6 +7,8 @@
  "field_order": [
   "billable_offering",
   "program_offering",
+  "school",
+  "program",
   "charge_source",
   "description",
   "student",
@@ -28,6 +30,20 @@
    "fieldtype": "Link",
    "label": "Program Offering",
    "options": "Program Offering"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program",
+   "read_only": 1
   },
   {
    "fieldname": "charge_source",

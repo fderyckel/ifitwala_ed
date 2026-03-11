@@ -15,9 +15,9 @@
 
 ---
 
-## ERPNext v15 Alignment Notes (Locked)
+## ERPNext v16 Alignment Notes (Locked)
 
-* Baseline ERPNext version: v15 (accounting module only).
+* Baseline ERPNext version: v16 (accounting module only).
 * ERPNext Company doctype is used as Organization (same doctype, education naming).
 * Account Holder is the education-tailored replacement for ERPNext Customer (legal counterparty).
 * Phase 0 explicitly includes ERPNext core accounting doctypes: Account, GL Entry, Journal Entry, Payment Entry.
@@ -25,12 +25,13 @@
 
 ---
 
-## ERPNext v15 Doctype Mapping (Phase 0)
+## ERPNext v16 Doctype Mapping (Phase 0)
 
-| Ifitwala Doctype / Concept | ERPNext v15 Doctype | Notes |
+| Ifitwala Doctype / Concept | ERPNext v16 Doctype | Notes |
 | --- | --- | --- |
 | Organization (legal entity) | Company | Same doctype; surfaced as Organization. |
 | Accounting Settings (org-level) | Accounts Settings | Org-level defaults. |
+| Fiscal Year | Fiscal Year | Planned next-step authority for legal accounting year. Not implemented in Phase 0. |
 | Chart of Accounts Template | Chart of Accounts Importer + chart template JSON/Python files | Templates live under `ifitwala_ed/accounting/doctype/account/chart_of_accounts`. Current packaged default is `standard_chart_of_accounts` (English); additional templates can be added later in the same module. |
 | Account | Account | ERPNext account tree. |
 | GL Entry | GL Entry | Ledger row. |
@@ -44,7 +45,7 @@
 | Tax Line | Sales Taxes and Charges | Child table for tax lines. |
 | Tax Category | Tax Category | Tax classification. |
 | Billable Offering | Item + Item Price; Subscription Plan/Subscription (recurring) | Single education abstraction. |
-| Accounting Period | Accounting Period | Period locks. |
+| Accounting Period | Accounting Period | Period locks only; not the fiscal-year authority. |
 | Apply Advance Tool | Payment Reconciliation | Manual allocation tool alignment. |
 
 ---
@@ -374,6 +375,11 @@ Prevent accidental or silent corruption.
 * Lock-until-date per Organization
 * Role-based permissions
 
+Clarification:
+
+* Phase 0 implements posting locks, not fiscal-year governance.
+* `Fiscal Year` is a separate planned object and should be introduced additively, not by repurposing `Accounting Period`.
+
 ### Final Outcomes
 
 * Past periods protected
@@ -605,6 +611,7 @@ Phase 0.1 is complete only when:
 
 ### What did *not* change
 
+* Fiscal Year is still proposed, not implemented
 * Accounting Period locking stays as-is
 * Payment Entry & Reconciliation logic remains valid
 * Account Holder as legal debtor remains untouched

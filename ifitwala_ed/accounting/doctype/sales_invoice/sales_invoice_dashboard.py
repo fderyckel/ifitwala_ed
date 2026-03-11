@@ -7,7 +7,7 @@ def get_data():
         "transactions": [
             {
                 "label": _("Payment"),
-                "items": ["Payment Entry", "Journal Entry", "Payment Reconciliation"],
+                "items": ["Payment Entry", "Journal Entry", "Payment Reconciliation", "Payment Request"],
             },
         ],
     }

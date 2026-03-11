@@ -45,6 +45,7 @@
   "courses_and_prerequisites",
   "course_section_section",
   "courses",
+  "course_basket_groups",
   "course_prerequisites_section",
   "prerequisites",
   "old_parent",
@@ -84,6 +85,12 @@
    "fieldtype": "Table",
    "label": "Courses",
    "options": "Program Course"
+  },
+  {
+   "fieldname": "course_basket_groups",
+   "fieldtype": "Table",
+   "label": "Course Basket Groups",
+   "options": "Program Course Basket Group"
   },
   {
    "fieldname": "description_section",

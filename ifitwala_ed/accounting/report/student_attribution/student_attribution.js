@@ -24,6 +24,18 @@ frappe.query_reports["Student Attribution"] = {
 			options: "Student",
 		},
 		{
+			fieldname: "school",
+			label: __("School"),
+			fieldtype: "Link",
+			options: "School",
+		},
+		{
+			fieldname: "program",
+			label: __("Program"),
+			fieldtype: "Link",
+			options: "Program",
+		},
+		{
 			fieldname: "account_holder",
 			label: __("Account Holder"),
 			fieldtype: "Link",

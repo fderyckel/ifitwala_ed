@@ -7,6 +7,8 @@ def execute(filters=None):
 
     columns = [
         {"label": "Posting Date", "fieldname": "posting_date", "fieldtype": "Date", "width": 110},
+        {"label": "School", "fieldname": "school", "fieldtype": "Link", "options": "School", "width": 160},
+        {"label": "Program", "fieldname": "program", "fieldtype": "Link", "options": "Program", "width": 160},
         {"label": "Voucher Type", "fieldname": "voucher_type", "fieldtype": "Data", "width": 120},
         {"label": "Voucher No", "fieldname": "voucher_no", "fieldtype": "Data", "width": 140},
         {"label": "Debit", "fieldname": "debit", "fieldtype": "Currency", "width": 120},
@@ -21,6 +23,10 @@ def execute(filters=None):
         "party": filters.get("account_holder"),
         "is_cancelled": 0,
     }
+    if filters.get("school"):
+        data_filters["school"] = filters.get("school")
+    if filters.get("program"):
+        data_filters["program"] = filters.get("program")
 
     if filters.get("from_date") and filters.get("to_date"):
         data_filters["posting_date"] = ["between", [filters.get("from_date"), filters.get("to_date")]]
@@ -32,7 +38,7 @@ def execute(filters=None):
     entries = frappe.get_all(
         "GL Entry",
         filters=data_filters,
-        fields=["posting_date", "voucher_type", "voucher_no", "debit", "credit", "remarks"],
+        fields=["posting_date", "school", "program", "voucher_type", "voucher_no", "debit", "credit", "remarks"],
         order_by="posting_date asc, name asc",
     )
 
@@ -43,6 +49,8 @@ def execute(filters=None):
         rows.append(
             {
                 "posting_date": entry.posting_date,
+                "school": entry.school,
+                "program": entry.program,
                 "voucher_type": entry.voucher_type,
                 "voucher_no": entry.voucher_no,
                 "debit": entry.debit,

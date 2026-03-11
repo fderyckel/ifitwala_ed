@@ -3,27 +3,28 @@ title: "Course Enrollment Tool: Add One Course to Many Enrollments"
 slug: course-enrollment-tool
 category: Enrollment
 doc_order: 7
-version: "1.0.0"
-last_change_date: "2026-02-28"
-summary: "Add a selected offering course to many eligible students' Program Enrollments using server-side eligibility checks and term-window defaults."
+version: "1.1.0"
+last_change_date: "2026-03-11"
+summary: "Add a selected offering course to many eligible students' Program Enrollments using server-side eligibility checks, term-window defaults, and basket-group safety rules."
 seo_title: "Course Enrollment Tool: Add One Course to Many Enrollments"
-seo_description: "Add a selected offering course to many eligible students' Program Enrollments using server-side eligibility checks and term-window defaults."
+seo_description: "Add a selected offering course to many eligible students' Program Enrollments using server-side eligibility checks, term-window defaults, and basket-group safety rules."
 ---
 
 ## Course Enrollment Tool: Add One Course to Many Enrollments
 
-`Course Enrollment Tool` is a single doctype for assigning one selected course to multiple students who already have matching Program Enrollment context.
+`Course Enrollment Tool` is a single doctype for assigning one selected course to multiple students who already have matching `Program Enrollment` context.
 
 ## Before You Start (Prerequisites)
 
 - Select `program_offering`, `academic_year`, and `course`.
 - Ensure selected course exists in the offering-course rows.
-- Ensure target students already have active `Program Enrollment` in that offering/year.
+- Ensure target students already have active `Program Enrollment` in that offering and year.
+- Use a basket-aware flow instead of this tool when the selected optional course belongs to more than one basket group.
 
 ## Why It Matters
 
 - Prevents manual per-enrollment course row edits.
-- Uses server eligibility query to list only students without that course already.
+- Uses a server eligibility query to list only students without that course already.
 - Preserves offering-bound course policy and term precedence when adding rows.
 
 <Callout type="tip" title="Term precedence on insert">
@@ -49,18 +50,21 @@ When adding a course row: `Course.term_long + tool.term` wins first, then offeri
 - Tool lists only students with matching enrollment and without existing `Visual Arts` row.
 - Action appends `Program Enrollment Course(status=Enrolled)` on each eligible enrollment.
 
-### Example 2: Term-Long Course
+### Example 2: Basket-Aware Boundary
 
-- Course has `term_long = 1`
-- Staff selects `term = Term-2`
-- Inserted enrollment-course row is set with `term_start = term_end = Term-2`.
+- Course: `ESS`
+- Offering basket groups:
+  - `ESS -> Group 3 Humanities`
+  - `ESS -> Group 4 Sciences`
 
-<DoDont doTitle="Do" dontTitle="Don't">
-  <Do>Use offering-scoped selectors so only valid course/AY combinations are applied.</Do>
-  <Do>Review warnings for elective-group overlaps before finalizing batch updates.</Do>
-  <Dont>Add courses not present in the offering course map.</Dont>
-  <Dont>Rely on manual guesses for term bounds when school AY terms are missing.</Dont>
-</DoDont>
+Result: the tool does not guess the credited basket group. It stops with a clear error so staff use a basket-aware workflow instead of creating ambiguous enrollment truth.
+
+## Related Docs
+
+- [**Program Enrollment**](/docs/en/program-enrollment/)
+- [**Program Offering Course**](/docs/en/program-offering-course/)
+- [**Basket Group**](/docs/en/basket-group/)
+- [**Student Enrollment Playbook**](/docs/en/student-enrollment-playbook/)
 
 ## Technical Notes (IT)
 
@@ -72,7 +76,7 @@ When adding a course row: `Course.term_long + tool.term` wins first, then offeri
   - `program_offering` (`Link`)
   - `academic_year` (`Link`)
   - `course` (`Link`)
-- **Lifecycle hooks in controller**: none beyond standard document behavior.
+- **Lifecycle hooks in controller**: none beyond standard document behavior
 - **Operational/public methods**:
   - document method `add_course_to_program_enrollment()` (whitelisted)
   - `fetch_eligible_students(...)`
@@ -84,8 +88,11 @@ When adding a course row: `Course.term_long + tool.term` wins first, then offeri
 - **Server checks**:
   - selected AY must be in offering AY set
   - selected course must exist in offering-course map
-  - rows are added only for existing active Program Enrollments in that offering/AY
+  - rows are added only for existing active Program Enrollments in that offering and AY
   - duplicate course rows per enrollment are prevented
+  - `required` is synced from offering semantics
+  - single-group optional courses auto-fill `credited_basket_group`
+  - multi-group optional courses are rejected so the tool cannot invent a basket assignment
 
 ### Permission Matrix
 
@@ -96,9 +103,3 @@ When adding a course row: `Course.term_long + tool.term` wins first, then offeri
 | `Academic Admin` | Yes | Yes | Yes | Yes |
 | `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
 | `Academic Assistant` | Yes | Yes | Yes | Yes |
-
-## Related Docs
-
-- [**Program Enrollment**](/docs/en/program-enrollment/)
-- [**Program Offering Course**](/docs/en/program-offering-course/)
-- [**Student Enrollment Playbook**](/docs/en/student-enrollment-playbook/)

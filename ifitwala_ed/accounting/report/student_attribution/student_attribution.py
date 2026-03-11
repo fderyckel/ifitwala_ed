@@ -6,6 +6,8 @@ def execute(filters=None):
 
     columns = [
         {"label": "Student", "fieldname": "student", "fieldtype": "Link", "options": "Student", "width": 160},
+        {"label": "School", "fieldname": "school", "fieldtype": "Link", "options": "School", "width": 160},
+        {"label": "Program", "fieldname": "program", "fieldtype": "Link", "options": "Program", "width": 160},
         {
             "label": "Account Holder",
             "fieldname": "account_holder",
@@ -51,6 +53,12 @@ def execute(filters=None):
     if filters.get("account_holder"):
         conditions.append("si.account_holder = %(account_holder)s")
         params.update({"account_holder": filters.get("account_holder")})
+    if filters.get("school"):
+        conditions.append("sii.school = %(school)s")
+        params.update({"school": filters.get("school")})
+    if filters.get("program"):
+        conditions.append("sii.program = %(program)s")
+        params.update({"program": filters.get("program")})
 
     where_clause = " and ".join(conditions)
 
@@ -58,6 +66,8 @@ def execute(filters=None):
         f"""
 		select
 			sii.student as student,
+			sii.school as school,
+			sii.program as program,
 			si.account_holder as account_holder,
 			si.name as sales_invoice,
 			si.posting_date as posting_date,

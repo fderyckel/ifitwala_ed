@@ -1,15 +1,18 @@
+# ifitwala_ed/accounting/doctype/payment_reconciliation/payment_reconciliation.py
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt
 
 from ifitwala_ed.accounting.ledger_utils import cancel_gl_entries, make_gl_entries, validate_posting_date
+from ifitwala_ed.accounting.receivables import clamp_money, is_zero, money, persist_submitted_invoice_runtime_state
 
 
 class PaymentReconciliation(Document):
     def validate(self):
         self.validate_party()
         self.validate_allocations()
+        self.set_reference_dimensions()
         validate_posting_date(self.organization, self.posting_date)
 
     def validate_party(self):
@@ -21,10 +24,30 @@ class PaymentReconciliation(Document):
         if not self.allocations:
             frappe.throw(_("At least one allocation is required"))
 
-        total_allocated = 0
+        totals_by_payment = {}
+        total_allocated = 0.0
         for row in self.allocations:
-            if flt(row.allocated_amount) <= 0:
+            allocated_amount = money(row.allocated_amount or 0)
+            if allocated_amount <= 0:
                 frappe.throw(_("Allocated amount must be greater than zero"))
+            if not row.payment_entry:
+                frappe.throw(_("Payment Entry is required on each reconciliation row"))
+
+            payment_entry = frappe.db.get_value(
+                "Payment Entry",
+                row.payment_entry,
+                ["organization", "party", "unallocated_amount", "docstatus", "school", "program"],
+                as_dict=True,
+            )
+            if not payment_entry:
+                frappe.throw(_("Payment Entry {0} not found").format(row.payment_entry))
+            if payment_entry.docstatus != 1:
+                frappe.throw(_("Payment Entry {0} must be submitted").format(row.payment_entry))
+            if payment_entry.organization != self.organization:
+                frappe.throw(_("Payment Entry must belong to the same Organization"))
+            if payment_entry.party != self.account_holder:
+                frappe.throw(_("Payment Entry must belong to the same Account Holder"))
+
             invoice = frappe.db.get_value(
                 "Sales Invoice",
                 row.sales_invoice,
@@ -40,14 +63,34 @@ class PaymentReconciliation(Document):
             if invoice.account_holder != self.account_holder:
                 frappe.throw(_("Sales Invoice must belong to the same Account Holder"))
 
-            row.outstanding_amount = invoice.outstanding_amount
-            if flt(row.allocated_amount) > flt(invoice.outstanding_amount):
+            row.outstanding_amount = money(invoice.outstanding_amount or 0)
+            row.payment_entry_unallocated_amount = money(payment_entry.unallocated_amount or 0)
+            if allocated_amount > row.outstanding_amount and not is_zero(allocated_amount - row.outstanding_amount):
                 frappe.throw(_("Allocated amount cannot exceed outstanding amount"))
-            total_allocated += flt(row.allocated_amount)
+
+            totals_by_payment[row.payment_entry] = money(totals_by_payment.get(row.payment_entry, 0) + allocated_amount)
+            if totals_by_payment[row.payment_entry] > row.payment_entry_unallocated_amount and not is_zero(
+                totals_by_payment[row.payment_entry] - row.payment_entry_unallocated_amount
+            ):
+                frappe.throw(_("Allocated amount exceeds the selected Payment Entry's unallocated amount"))
+
+            total_allocated = money(total_allocated + allocated_amount)
 
         available = get_unallocated_advance(self.organization, self.account_holder)
-        if total_allocated > available:
+        if total_allocated > available and not is_zero(total_allocated - available):
             frappe.throw(_("Allocated amount exceeds available advance balance"))
+
+    def set_reference_dimensions(self):
+        rows = frappe.get_all(
+            "Sales Invoice",
+            filters={"name": ["in", [row.sales_invoice for row in self.allocations if row.sales_invoice]]},
+            fields=["school", "program"],
+            limit_page_length=max(50, len(self.allocations) + 10),
+        )
+        schools = {row.get("school") for row in rows if row.get("school")}
+        programs = {row.get("program") for row in rows if row.get("program")}
+        self.school = next(iter(schools)) if len(schools) == 1 else None
+        self.program = next(iter(programs)) if len(programs) == 1 else None
 
     def on_submit(self):
         settings = frappe.get_doc("Accounts Settings", self.organization)
@@ -56,7 +99,7 @@ class PaymentReconciliation(Document):
         if not ar_account or not advance_account:
             frappe.throw(_("Default receivable and advance accounts are required"))
 
-        total_allocated = sum(flt(row.allocated_amount) for row in self.allocations)
+        total_allocated = money(sum(money(row.allocated_amount) for row in self.allocations))
 
         entries = [
             {
@@ -69,6 +112,8 @@ class PaymentReconciliation(Document):
                 "remarks": "Advance allocation",
                 "debit": total_allocated,
                 "credit": 0,
+                "school": self.school,
+                "program": self.program,
             },
             {
                 "organization": self.organization,
@@ -80,36 +125,53 @@ class PaymentReconciliation(Document):
                 "remarks": "Advance allocation",
                 "debit": 0,
                 "credit": total_allocated,
+                "school": self.school,
+                "program": self.program,
             },
         ]
 
         make_gl_entries(entries, "Payment Reconciliation", self.name)
 
         for row in self.allocations:
+            allocated_amount = money(row.allocated_amount or 0)
             frappe.db.set_value(
                 "Sales Invoice",
                 row.sales_invoice,
                 "outstanding_amount",
-                flt(row.outstanding_amount) - flt(row.allocated_amount),
+                clamp_money(money(row.outstanding_amount or 0) - allocated_amount),
             )
-
-        apply_advance_to_payment_entries(self.organization, self.account_holder, total_allocated)
+            payment_unallocated = money(
+                frappe.db.get_value("Payment Entry", row.payment_entry, "unallocated_amount") or 0
+            )
+            frappe.db.set_value(
+                "Payment Entry",
+                row.payment_entry,
+                "unallocated_amount",
+                clamp_money(payment_unallocated - allocated_amount),
+            )
+            persist_submitted_invoice_runtime_state(row.sales_invoice)
 
     def on_cancel(self):
         cancel_gl_entries("Payment Reconciliation", self.name)
         for row in self.allocations:
-            inv_outstanding = frappe.db.get_value("Sales Invoice", row.sales_invoice, "outstanding_amount")
-            if inv_outstanding is None:
-                continue
+            allocated_amount = money(row.allocated_amount or 0)
+            inv_outstanding = money(frappe.db.get_value("Sales Invoice", row.sales_invoice, "outstanding_amount") or 0)
             frappe.db.set_value(
                 "Sales Invoice",
                 row.sales_invoice,
                 "outstanding_amount",
-                flt(inv_outstanding) + flt(row.allocated_amount),
+                clamp_money(inv_outstanding + allocated_amount),
             )
-        apply_advance_to_payment_entries(
-            self.organization, self.account_holder, -sum(flt(row.allocated_amount) for row in self.allocations)
-        )
+            payment_unallocated = money(
+                frappe.db.get_value("Payment Entry", row.payment_entry, "unallocated_amount") or 0
+            )
+            frappe.db.set_value(
+                "Payment Entry",
+                row.payment_entry,
+                "unallocated_amount",
+                clamp_money(payment_unallocated + allocated_amount),
+            )
+            persist_submitted_invoice_runtime_state(row.sales_invoice)
 
 
 def get_unallocated_advance(organization, account_holder):
@@ -123,38 +185,38 @@ def get_unallocated_advance(organization, account_holder):
         },
         pluck="unallocated_amount",
     )
-    return sum(flt(a) for a in amounts)
+    return money(sum(money(a) for a in amounts))
 
 
-def apply_advance_to_payment_entries(organization, account_holder, amount):
-    if amount == 0:
-        return
+@frappe.whitelist()
+def load_open_invoices(name: str) -> str:
+    doc = frappe.get_doc("Payment Reconciliation", name)
+    if not doc.account_holder:
+        frappe.throw(_("Account Holder is required before loading open invoices."))
 
-    payments = frappe.get_all(
-        "Payment Entry",
+    invoices = frappe.get_all(
+        "Sales Invoice",
         filters={
-            "organization": organization,
-            "party": account_holder,
+            "organization": doc.organization,
+            "account_holder": doc.account_holder,
             "docstatus": 1,
+            "outstanding_amount": [">", 0],
         },
-        fields=["name", "unallocated_amount", "posting_date"],
-        order_by="posting_date asc, name asc",
+        fields=["name", "outstanding_amount"],
+        order_by="due_date asc, posting_date asc",
+        limit_page_length=2000,
     )
 
-    remaining = abs(flt(amount))
-    for payment in payments:
-        if remaining <= 0:
-            break
-        current = flt(payment.unallocated_amount)
-        if amount > 0:
-            reduce_by = min(current, remaining)
-            new_value = current - reduce_by
-            remaining -= reduce_by
-        else:
-            increase_by = remaining
-            new_value = current + increase_by
-            remaining = 0
-        frappe.db.set_value("Payment Entry", payment.name, "unallocated_amount", new_value)
-
-    if remaining > 0:
-        frappe.throw(_("Unable to reconcile full advance allocation"))
+    doc.set(
+        "allocations",
+        [
+            {
+                "sales_invoice": row.get("name"),
+                "outstanding_amount": money(row.get("outstanding_amount") or 0),
+                "allocated_amount": 0,
+            }
+            for row in invoices
+        ],
+    )
+    doc.save()
+    return doc.name

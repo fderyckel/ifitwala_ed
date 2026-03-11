@@ -9,7 +9,7 @@
   "rule_type",
   "int_value_1",
   "int_value_2",
-  "course_group",
+  "basket_group",
   "level",
   "notes"
  ],
@@ -32,10 +32,10 @@
    "label": "Value 2"
   },
   {
-   "fieldname": "course_group",
+   "fieldname": "basket_group",
    "fieldtype": "Link",
-   "label": "Course Group",
-   "options": "Course Group"
+   "label": "Basket Group",
+   "options": "Basket Group"
   },
   {
    "fieldname": "level",

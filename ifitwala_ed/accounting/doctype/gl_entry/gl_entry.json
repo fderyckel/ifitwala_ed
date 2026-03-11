@@ -7,6 +7,10 @@
   "organization",
   "posting_date",
   "account",
+  "school",
+  "program",
+  "program_offering",
+  "student",
   "account_currency",
   "debit",
   "credit",
@@ -43,6 +47,30 @@
    "label": "Account",
    "options": "Account",
    "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program"
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "label": "Program Offering",
+   "options": "Program Offering"
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student"
   },
   {
    "fieldname": "account_currency",

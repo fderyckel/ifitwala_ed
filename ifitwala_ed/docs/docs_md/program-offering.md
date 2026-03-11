@@ -3,11 +3,11 @@ title: "Program Offering: Operational Enrollment Contract"
 slug: program-offering
 category: Enrollment
 doc_order: 2
-version: "1.0.1"
-last_change_date: "2026-03-10"
-summary: "Define where and when a program is delivered, including AY span, offering courses, basket rules, capacity policy, and activity-booking readiness gates."
+version: "1.1.0"
+last_change_date: "2026-03-11"
+summary: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, and activity-booking readiness gates."
 seo_title: "Program Offering: Operational Enrollment Contract"
-seo_description: "Define where and when a program is delivered, including AY span, offering courses, basket rules, capacity policy, and activity-booking readiness gates."
+seo_description: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, and activity-booking readiness gates."
 ---
 
 ## Program Offering: Operational Enrollment Contract
@@ -19,13 +19,14 @@ seo_description: "Define where and when a program is delivered, including AY spa
 - Create base [**Program**](/docs/en/program/) and [**Course**](/docs/en/course/) records.
 - Create `Academic Year` records and required `Term` rows for the target school tree.
 - Decide offering seat policy and basket-rule policy before request intake opens.
+- Decide whether any offering course belongs to one or more [**Basket Group**](/docs/en/basket-group/) memberships.
 
 ## Why It Matters
 
-- Defines what is actually available now (not just curriculum intent).
+- Defines what is actually available now, not just curriculum intent.
 - Provides the official AY scope consumed by requests and enrollments.
-- Hosts offering-level basket rules and course capacity constraints.
-- Enables activity booking with server-side pre-open conflict/readiness gates.
+- Hosts offering-level basket-group memberships, basket rules, and course capacity constraints.
+- Enables activity booking with server-side pre-open conflict and readiness gates.
 
 <Callout type="warning" title="School anchoring invariant">
 Program Offering must be anchored on a leaf (child) school. Ancestor-aware validation is applied for AY and term references.
@@ -36,13 +37,14 @@ Program Offering must be anchored on a leaf (child) school. Ancestor-aware valid
 - [**Program Enrollment Request**](/docs/en/program-enrollment-request/) target (`program_offering`).
 - [**Program Enrollment**](/docs/en/program-enrollment/) canonical spine source (`program`, `school`, `cohort`, AY membership).
 - Enrollment engine:
-  - offering course list
-  - offering basket rules
-  - seat-policy capacity counting
+  - loads offering course semantics
+  - loads offering basket-group memberships
+  - evaluates offering basket rules
+  - runs seat-policy capacity counting
 - Desk tooling and APIs:
   - catalog/non-catalog hydration helpers
-  - catalog rows default `required` and offering `elective_group` from `Program Course` metadata
-  - AY scoped link queries
+  - catalog rows default `required` and `basket_groups` from `Program` metadata
+  - AY-scoped link queries
   - activity readiness preview API
 
 ## Lifecycle and Linked Documents
@@ -51,15 +53,16 @@ Program Offering must be anchored on a leaf (child) school. Ancestor-aware valid
 2. Add `offering_academic_years` rows (must be non-overlapping and ancestry-valid).
 3. Configure optional head window (`start_date`, `end_date`) inside AY span.
 4. Add [**Program Offering Course**](/docs/en/program-offering-course/) rows.
-5. Configure `enrollment_rules` (`Program Offering Enrollment Rule`) and seat policy.
-6. Move offering lifecycle (`Planned` -> `Active` -> `Archived`) as operations evolve.
+5. Add `offering_course_basket_groups` rows for any offering course that belongs to one or more basket groups.
+6. Configure `enrollment_rules` (`Program Offering Enrollment Rule`) and seat policy.
+7. Move offering lifecycle (`Planned` -> `Active` -> `Archived`) as operations evolve.
 
 ### Activity Booking Mode (Optional)
 
 When `activity_booking_enabled = 1`, server enforces:
 
 - valid activity status (`Draft`, `Ready`, `Open`, `Closed`)
-- valid age/waitlist/payment controls
+- valid age, waitlist, and payment controls
 - active activity section integrity
 - pre-open readiness checks (location + instructor conflicts)
 
@@ -70,21 +73,24 @@ When `activity_booking_enabled = 1`, server enforces:
 - Program: `IB DP`
 - School: `High School A`
 - AY spine: `AY-2026-2027`
-- Offering courses include required and elective rows with capacity values.
+- Offering course basket-group rows include:
+  - `ESS -> Group 3 Humanities`
+  - `ESS -> Group 4 Sciences`
+- Basket rule: `REQUIRE_GROUP_COVERAGE -> Group 3 Humanities`
 - Seat policy: `Approved Requests Hold Seats`
 
-Result: enrollment request validation and materialization use this offering as authoritative scope.
+Result: request validation and materialization use this offering as authoritative scope, including explicit basket-group resolution for ESS.
 
 ### Example 2: Non-catalog Exception
 
-A course not present in Program catalog can appear in offering only when row is explicitly marked `non_catalog = 1` and exception justification is provided (if `exception_reason` exists on the row).
+A course not present in Program catalog can appear in offering only when the row is explicitly marked `non_catalog = 1` and exception justification is provided when the field exists.
 
-<DoDont doTitle="Do" dontTitle="Don't">
-  <Do>Keep offering AY rows explicit and ordered to avoid ambiguous enrollment windows.</Do>
-  <Do>Use offering course rows as the single operational course set for requests.</Do>
-  <Dont>Use global/unscoped AY assumptions outside the offering spine.</Dont>
-  <Dont>Open activity booking without resolving readiness conflicts.</Dont>
-</DoDont>
+## Related Docs
+
+- [**Program Offering Course**](/docs/en/program-offering-course/)
+- [**Basket Group**](/docs/en/basket-group/)
+- [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
+- [**Program Enrollment**](/docs/en/program-enrollment/)
 
 ## Technical Notes (IT)
 
@@ -109,12 +115,16 @@ A course not present in Program catalog can appear in offering only when row is 
 - **Key child tables**:
   - `offering_academic_years` -> `Program Offering Academic Year`
   - `offering_courses` -> `Program Offering Course`
+  - `offering_course_basket_groups` -> `Program Offering Course Basket Group`
   - `enrollment_rules` -> `Program Offering Enrollment Rule`
 - **Core validation guarantees** (`program_offering.py`):
-  - school must be leaf school
+  - school must be a leaf school
   - AY rows must exist, be ancestry-valid, and non-overlapping
   - head start/end dates must lie within AY span
-  - offering-course windows validated against AY/term/head bounds
+  - offering-course windows validated against AY, term, and head bounds
+  - basket-group mappings must point to courses already present in `offering_courses`
+  - duplicate `(course, basket_group)` mappings are blocked
+  - `REQUIRE_GROUP_COVERAGE` rules require `basket_group`
   - catalog membership enforced unless explicit non-catalog exception
   - status restricted to `Planned|Active|Archived`
   - activity booking guardrails and readiness gates enforced server-side
@@ -133,9 +143,3 @@ A course not present in Program catalog can appear in offering only when row is 
 | `Academic Staff` | Yes | No | No | No |
 | `Admission Manager` | Yes | No | No | No |
 | `Admission Officer` | Yes | No | No | No |
-
-## Related Docs
-
-- [**Program Offering Course**](/docs/en/program-offering-course/)
-- [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
-- [**Program Enrollment**](/docs/en/program-enrollment/)

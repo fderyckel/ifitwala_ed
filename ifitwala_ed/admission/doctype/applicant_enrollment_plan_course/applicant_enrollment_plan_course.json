@@ -7,7 +7,10 @@
  "engine": "InnoDB",
  "field_order": [
   "course",
-  "course_name"
+  "course_name",
+  "required",
+  "applied_basket_group",
+  "choice_rank"
  ],
  "fields": [
   {
@@ -23,6 +26,24 @@
    "fieldtype": "Data",
    "label": "Course Name",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "required",
+   "fieldtype": "Check",
+   "label": "Required",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applied_basket_group",
+   "fieldtype": "Link",
+   "label": "Applied Basket Group",
+   "options": "Basket Group"
+  },
+  {
+   "fieldname": "choice_rank",
+   "fieldtype": "Int",
+   "label": "Choice Rank"
   }
  ],
  "grid_page_length": 50,

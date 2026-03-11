@@ -21,3 +21,4 @@ ifitwala_ed.patches.setup.p01_migrate_communication_interactions_to_entry_ledger
 [post_model_sync]
 ifitwala_ed.patches.setup.p02_drop_communication_interaction_entry_legacy_link
 ifitwala_ed.patches.setup.p03_delete_communication_interaction_doctype
+ifitwala_ed.patches.schedule.p01_migrate_basket_group_semantics

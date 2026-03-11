@@ -7,6 +7,8 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
+from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics, get_program_course_semantics
+
 SUPPORTED_CAPACITY_POLICIES = {
     "committed_only",
     "approved_requests",
@@ -38,21 +40,37 @@ def evaluate_enrollment_request(payload):
     # - requested_counts is the only source of "requested_count"
     # - unique_courses is stable order (first occurrence wins)
     requested_counts = {}
-    unique_courses = []
+    requested_rows = []
     seen = set()
 
-    for course in requested_courses:
-        c = (course or "").strip()
+    for entry in requested_courses:
+        if isinstance(entry, dict):
+            c = ((entry or {}).get("course") or "").strip()
+            applied_basket_group = ((entry or {}).get("applied_basket_group") or "").strip()
+            choice_rank = (entry or {}).get("choice_rank")
+        else:
+            c = (entry or "").strip()
+            applied_basket_group = ""
+            choice_rank = None
         if not c:
             continue
         requested_counts[c] = requested_counts.get(c, 0) + 1
         if c in seen:
             continue
         seen.add(c)
-        unique_courses.append(c)
+        requested_rows.append(
+            {
+                "course": c,
+                "applied_basket_group": applied_basket_group,
+                "choice_rank": choice_rank,
+            }
+        )
 
-    if not unique_courses:
+    if not requested_rows:
         frappe.throw(_("requested_courses is required."))
+
+    unique_courses = [row["course"] for row in requested_rows]
+    requested_row_map = {row["course"]: row for row in requested_rows}
 
     offering = (
         frappe.db.get_value(
@@ -83,6 +101,7 @@ def evaluate_enrollment_request(payload):
 
     for course in unique_courses:
         course_row = offering_courses.get(course)
+        requested_row = requested_row_map.get(course) or {}
         reasons = []
         evidence = []
         blocked = False
@@ -148,6 +167,8 @@ def evaluate_enrollment_request(payload):
         course_results.append(
             {
                 "course": course,
+                "applied_basket_group": requested_row.get("applied_basket_group") or "",
+                "basket_groups": list((course_row or {}).get("basket_groups") or []),
                 "eligible": eligible,
                 "blocked": blocked,
                 "override_required": override_required,
@@ -161,7 +182,7 @@ def evaluate_enrollment_request(payload):
 
     # Basket rules are offering-scoped and can invalidate the entire request.
     basket_result = _evaluate_basket(
-        unique_courses,
+        requested_rows,
         offering_courses,
         {
             "program_offering": program_offering,
@@ -187,6 +208,7 @@ def evaluate_enrollment_request(payload):
         "program_offering": program_offering,
         # Canonical output: unique + stable order (first occurrence wins).
         "requested_courses": unique_courses,
+        "requested_rows": requested_rows,
         # Optional: preserve raw duplication counts for audit/debug without reintroducing O(n^2).
         "requested_counts": requested_counts,
         "generated_at": now_datetime(),
@@ -271,26 +293,7 @@ def _get_student_results(student):
 
 
 def _get_offering_courses(program_offering):
-    rows = frappe.get_all(
-        "Program Offering Course",
-        filters={"parent": program_offering, "parenttype": "Program Offering"},
-        fields=[
-            "course",
-            "required",
-            "elective_group",
-            "start_academic_year",
-            "start_academic_term",
-            "from_date",
-            "end_academic_year",
-            "end_academic_term",
-            "to_date",
-            "capacity",
-            "waitlist_enabled",
-            "reserved_seats",
-        ],
-    )
-
-    return {row.get("course"): row for row in rows if row.get("course")}
+    return get_offering_course_semantics(program_offering)
 
 
 def _get_prerequisite_rows(program, course):
@@ -456,7 +459,7 @@ def _evaluate_capacity(course, offering_course_row, capacity_counts, requested_c
     return result
 
 
-def _evaluate_basket(requested_courses, offering_course_rows, basket_policy):
+def _evaluate_basket(requested_rows, offering_course_rows, basket_policy):
     """
     Basket rules (Option B - structured child table) evaluation.
 
@@ -467,19 +470,24 @@ def _evaluate_basket(requested_courses, offering_course_rows, basket_policy):
     - Efficient: 1 DB call for rule rows, no per-rule DB calls.
 
     Inputs:
-    - requested_courses: list of unique course names (engine already de-dupes upstream).
-    - offering_course_rows: dict[course] -> Program Offering Course row (required/elective_group metadata).
+    - requested_rows: list of unique request rows with course + applied_basket_group.
+    - offering_course_rows: dict[course] -> Program Offering semantics (required/basket_groups metadata).
     - basket_policy: dict with "program_offering" and optionally "program_courses" (future).
     """
 
     program_offering = (basket_policy or {}).get("program_offering")
-    requested_courses = requested_courses or []
+    requested_rows = requested_rows or []
+    requested_courses = [
+        ((row or {}).get("course") or "").strip() for row in requested_rows if (row or {}).get("course")
+    ]
     requested_set = set(requested_courses)
 
     # 0) Pre-compute required courses + elective group coverage from offering metadata.
     # Keep this deterministic: sort derived lists and never rely on dict iteration order.
     required_courses = []
     group_summary = {}
+    ambiguous_courses = []
+    requested_assignment = {}
 
     for course, row in (offering_course_rows or {}).items():
         c = (course or "").strip()
@@ -489,12 +497,29 @@ def _evaluate_basket(requested_courses, offering_course_rows, basket_policy):
         if int((row or {}).get("required") or 0) == 1:
             required_courses.append(c)
 
-        group = ((row or {}).get("elective_group") or "").strip()
-        if group:
-            group_summary[group] = group_summary.get(group, 0) + (1 if c in requested_set else 0)
-
     required_courses = sorted(set(required_courses))
     missing_required = [c for c in required_courses if c not in requested_set]
+
+    for row in requested_rows:
+        course = ((row or {}).get("course") or "").strip()
+        if not course:
+            continue
+        offering_row = (offering_course_rows or {}).get(course) or {}
+        allowed_groups = list(offering_row.get("basket_groups") or [])
+        applied_group = ((row or {}).get("applied_basket_group") or "").strip()
+
+        if applied_group:
+            group_summary[applied_group] = group_summary.get(applied_group, 0) + 1
+            requested_assignment[course] = applied_group
+            continue
+
+        if len(allowed_groups) == 1:
+            group_summary[allowed_groups[0]] = group_summary.get(allowed_groups[0], 0) + 1
+            requested_assignment[course] = allowed_groups[0]
+            continue
+
+        if len(allowed_groups) > 1:
+            ambiguous_courses.append(course)
 
     # 1) Load structured rules (Option B). If none exist, that's a valid configuration state.
     rule_rows = []
@@ -502,7 +527,7 @@ def _evaluate_basket(requested_courses, offering_course_rows, basket_policy):
         rule_rows = frappe.get_all(
             "Program Offering Enrollment Rule",
             filters={"parent": program_offering, "parenttype": "Program Offering"},
-            fields=["idx", "rule_type", "int_value_1", "int_value_2", "course_group", "level", "notes"],
+            fields=["idx", "rule_type", "int_value_1", "int_value_2", "basket_group", "level", "notes"],
             order_by="idx asc",
         )
 
@@ -527,6 +552,11 @@ def _evaluate_basket(requested_courses, offering_course_rows, basket_policy):
     # 3) Always enforce offering-level required courses first (basket-level constraint).
     if missing_required:
         _violate("missing_required", "Missing required courses in basket.")
+    if ambiguous_courses:
+        _violate(
+            "ambiguous_basket_group",
+            "One or more selected courses must be assigned to a basket group before validation can pass.",
+        )
 
     # 4) Evaluate rules (pure, one pass, stable order by idx asc).
     total_courses = len(requested_courses)
@@ -545,12 +575,12 @@ def _evaluate_basket(requested_courses, offering_course_rows, basket_policy):
                 _violate("max_total_courses", f"Maximum total courses is {max_total}.", rule)
 
         elif rule_type == "REQUIRE_GROUP_COVERAGE":
-            # Uses offering elective_group summary as the lightweight group signal.
-            group = (rule.get("course_group") or "").strip() or ""
+            # Uses resolved basket-group assignments from offering semantics.
+            group = (rule.get("basket_group") or "").strip() or ""
             if not group:
                 _violate(
                     "misconfigured_rule",
-                    "Basket rule REQUIRE_GROUP_COVERAGE is misconfigured (course_group is required).",
+                    "Basket rule REQUIRE_GROUP_COVERAGE is misconfigured (basket_group is required).",
                     rule,
                 )
             else:
@@ -587,7 +617,9 @@ def _evaluate_basket(requested_courses, offering_course_rows, basket_policy):
         "reasons": reasons,
         "violations": violations,
         "missing_required_courses": missing_required,
+        "ambiguous_courses": ambiguous_courses,
         "group_summary": group_summary,
+        "requested_assignment": requested_assignment,
         "meta": {
             "total_courses": total_courses,
             "rules_evaluated": len(rule_rows or []),
@@ -596,12 +628,7 @@ def _evaluate_basket(requested_courses, offering_course_rows, basket_policy):
 
 
 def _get_program_courses(program):
-    rows = frappe.get_all(
-        "Program Course",
-        filters={"parent": program, "parenttype": "Program"},
-        fields=["course", "repeatable", "max_attempts", "level", "category"],
-    )
-    return {row.get("course"): row for row in rows if row.get("course")}
+    return get_program_course_semantics(program)
 
 
 def _select_best_attempt(attempts):

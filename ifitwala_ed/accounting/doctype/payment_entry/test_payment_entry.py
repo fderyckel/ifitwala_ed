@@ -298,3 +298,65 @@ class TestPaymentEntry(FrappeTestCase):
                     ],
                 }
             ).insert()
+
+    def test_payment_entry_updates_invoice_status_and_payment_schedule(self):
+        ctx = self._base_context()
+        terms = frappe.get_doc(
+            {
+                "doctype": "Payment Terms Template",
+                "title": f"Terms {frappe.generate_hash(length=6)}",
+                "organization": ctx["org"].name,
+                "terms": [
+                    {"term_name": "Deposit", "invoice_portion": 50, "due_days": 0},
+                    {"term_name": "Final", "invoice_portion": 50, "due_days": 30},
+                ],
+            }
+        )
+        terms.insert()
+
+        invoice = self.make_sales_invoice(
+            organization=ctx["org"].name,
+            account_holder=ctx["account_holder"].name,
+            posting_date="2026-01-10",
+            items=[
+                {
+                    "billable_offering": ctx["invoice"].items[0].billable_offering,
+                    "charge_source": "Extra",
+                    "qty": 1,
+                    "rate": 100,
+                    "income_account": ctx["income"].name,
+                }
+            ],
+        )
+        invoice.payment_terms_template = terms.name
+        invoice.save()
+        invoice.submit()
+
+        pe = frappe.get_doc(
+            {
+                "doctype": "Payment Entry",
+                "payment_type": "Receive",
+                "party_type": "Account Holder",
+                "party": ctx["account_holder"].name,
+                "organization": ctx["org"].name,
+                "posting_date": nowdate(),
+                "paid_to": ctx["bank"].name,
+                "paid_amount": 50,
+                "references": [
+                    {
+                        "reference_doctype": "Sales Invoice",
+                        "reference_name": invoice.name,
+                        "allocated_amount": 50,
+                    }
+                ],
+            }
+        )
+        pe.insert()
+        pe.submit()
+
+        invoice.reload()
+        self.assertEqual(invoice.status, "Partly Paid")
+        self.assertEqual(flt(invoice.paid_amount), 50)
+        self.assertEqual(flt(invoice.outstanding_amount), 50)
+        self.assertEqual(invoice.payment_schedule[0].status, "Paid")
+        self.assertEqual(invoice.payment_schedule[1].status, "Pending")

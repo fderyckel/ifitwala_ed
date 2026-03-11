@@ -19,6 +19,22 @@ frappe.ui.form.on("Program", {
 			};
 		});
 
+		frm.set_query("course", "course_basket_groups", function (doc) {
+			const validCourses = (doc.courses || [])
+				.filter(r => r.course)
+				.map(r => r.course);
+
+			if (!validCourses.length) {
+				return {
+					filters: [["Course", "name", "=", "___NONE___"]]
+				};
+			}
+
+			return {
+				filters: [["Course", "name", "in", validCourses]]
+			};
+		});
+
 		// Avoid picking the same Assessment Category twice in the grid
 		frm.set_query("assessment_category", "assessment_categories", function (doc) {
 			const chosen = (doc.assessment_categories || [])

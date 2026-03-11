@@ -9,6 +9,8 @@
   "section_break_i1gn",
   "course",
   "status",
+  "required",
+  "credited_basket_group",
   "term_start",
   "column_break_ikkd",
   "course_name",
@@ -47,6 +49,19 @@
    "in_list_view": 1,
    "label": "Status",
    "options": "Enrolled\nDropped\nCompleted"
+  },
+  {
+   "default": "0",
+   "fieldname": "required",
+   "fieldtype": "Check",
+   "label": "Required",
+   "read_only": 1
+  },
+  {
+   "fieldname": "credited_basket_group",
+   "fieldtype": "Link",
+   "label": "Credited Basket Group",
+   "options": "Basket Group"
   },
   {
    "columns": 2,

@@ -15,6 +15,18 @@ frappe.query_reports["Account Holder Statement"] = {
 			reqd: 1,
 		},
 		{
+			fieldname: "school",
+			label: __("School"),
+			fieldtype: "Link",
+			options: "School",
+		},
+		{
+			fieldname: "program",
+			label: __("Program"),
+			fieldtype: "Link",
+			options: "Program",
+		},
+		{
 			fieldname: "from_date",
 			label: __("From Date"),
 			fieldtype: "Date",

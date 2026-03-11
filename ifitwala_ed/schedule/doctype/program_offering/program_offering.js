@@ -90,6 +90,20 @@ function bind_program_course_query(frm) {
 			},
 		};
 	});
+
+	frm.set_query("course", "offering_course_basket_groups", (doc) => {
+		const validCourses = (doc.offering_courses || [])
+			.map(row => row.course)
+			.filter(Boolean);
+
+		if (!validCourses.length) {
+			return { filters: [["Course", "name", "=", "___NONE___"]] };
+		}
+
+		return {
+			filters: [["Course", "name", "in", validCourses]]
+		};
+	});
 }
 
 
@@ -131,7 +145,7 @@ function render_catalog_list($list, rows) {
           data-course="${course}"
           data-course_name="${cname}"
           data-required="${req}"
-          data-elective_group="${frappe.utils.escape_html(r.elective_group || "")}"
+          data-basket_groups="${frappe.utils.escape_html(JSON.stringify(r.basket_groups || []))}"
         >
         <div class="flex-grow-1">
           <div class="fw-semibold">${cname}</div>
@@ -156,10 +170,43 @@ function get_checked_rows($list) {
       course: $cb.data("course"),
       course_name: $cb.data("course_name"),
       required: $cb.data("required") ? 1 : 0,
-      elective_group: $cb.data("elective_group") || "",
+      basket_groups: JSON.parse($cb.attr("data-basket_groups") || "[]"),
     });
   });
   return picked;
+}
+
+function prune_orphaned_offering_basket_groups(frm) {
+	const validCourses = new Set(
+		(frm.doc.offering_courses || [])
+			.map(row => row.course)
+			.filter(Boolean)
+	);
+
+	const kept = (frm.doc.offering_course_basket_groups || []).filter(row => {
+		const course = (row.course || "").trim();
+		return course && validCourses.has(course);
+	});
+
+	if (kept.length === (frm.doc.offering_course_basket_groups || []).length) {
+		return;
+	}
+
+	frm.doc.offering_course_basket_groups = kept;
+}
+
+function replace_offering_basket_groups_for_course(frm, course, basketGroups) {
+	if (!course) return;
+
+	const normalized = [...new Set((basketGroups || []).map(group => `${group || ""}`.trim()).filter(Boolean))];
+	const kept = (frm.doc.offering_course_basket_groups || []).filter(row => row.course !== course);
+	frm.doc.offering_course_basket_groups = kept;
+
+	normalized.forEach((basketGroup) => {
+		const row = frm.add_child("offering_course_basket_groups");
+		row.course = course;
+		row.basket_group = basketGroup;
+	});
 }
 
 // Safe add (skip if already present). Returns true if added.
@@ -176,13 +223,14 @@ function add_offering_course_if_new(frm, payload) {
   row.course = payload.course || null;
   row.course_name = payload.course_name || payload.course || null;
   row.required = payload.required ? 1 : 0;
-  row.elective_group = payload.elective_group || "";
   row.non_catalog = payload.non_catalog ? 1 : 0;
   row.catalog_ref = payload.catalog_ref || null;
 
   // If caller provided AY span, keep it; else leave empty
   if (payload.start_academic_year) row.start_academic_year = payload.start_academic_year;
   if (payload.end_academic_year)   row.end_academic_year   = payload.end_academic_year;
+
+  replace_offering_basket_groups_for_course(frm, row.course, payload.basket_groups || []);
 
   return true;
 }
@@ -244,9 +292,9 @@ async function hydrate_catalog_row_defaults(frm, row) {
 
 		row.course_name = hydrated.course_name || row.course;
 		row.required = hydrated.required ? 1 : 0;
-		row.elective_group = hydrated.elective_group || "";
 		row.non_catalog = 0;
 		row.catalog_ref = hydrated.catalog_ref || `${frm.doc.program}::${row.course}`;
+		replace_offering_basket_groups_for_course(frm, row.course, hydrated.basket_groups || []);
 	} catch (error) {
 		frappe.show_alert({
 			message: __("Could not hydrate Program Course defaults for this row."),
@@ -280,7 +328,7 @@ function open_catalog_picker(frm) {
 					course: r.course,
 					course_name: r.course_name || r.course,
 					required: !!r.required,
-					elective_group: r.elective_group || "",
+					basket_groups: r.basket_groups || [],
 					non_catalog: 0,
 					catalog_ref: `${frm.doc.program}::${r.course}`,
 					start_academic_year: startAY,
@@ -289,7 +337,9 @@ function open_catalog_picker(frm) {
 				if (ok) added++;
 			}
 			if (added) {
+				prune_orphaned_offering_basket_groups(frm);
 				frm.refresh_field("offering_courses");
+				frm.refresh_field("offering_course_basket_groups");
 				const term = (d.get_value("search") || "").trim();
 				fetch_catalog_rows(frm, term, rows => render_catalog_list($list, rows));
 			}
@@ -399,7 +449,9 @@ function open_non_catalog_picker(frm) {
 				if (ok) added++;
 			}
 			if (added) {
+				prune_orphaned_offering_basket_groups(frm);
 				frm.refresh_field("offering_courses");
+				frm.refresh_field("offering_course_basket_groups");
 				const term = (d.get_value("search") || "").trim();
 				// refresh list to hide just-added
 				fetch_non_catalog_rows(frm, term, (rows) => render_catalog_list($list, rows));
@@ -716,6 +768,10 @@ frappe.ui.form.on("Program Offering", {
 
 	school(frm) {
 		apply_server_defaults_if_empty(frm);
+	},
+
+	before_save(frm) {
+		prune_orphaned_offering_basket_groups(frm);
 	}
 });
 
@@ -730,10 +786,12 @@ frappe.ui.form.on("Program Offering Course", {
 		const row = locals[cdt][cdn];
 		if (row) {
 			await hydrate_catalog_row_defaults(frm, row);
+			prune_orphaned_offering_basket_groups(frm);
 			const { startAY, endAY } = get_ay_bounds(frm);
 			if (startAY && !row.start_academic_year) row.start_academic_year = startAY;
 			if (endAY && !row.end_academic_year)     row.end_academic_year   = endAY;
 			frm.refresh_field("offering_courses");
+			frm.refresh_field("offering_course_basket_groups");
 		}
 	},
 });

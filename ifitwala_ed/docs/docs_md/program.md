@@ -3,11 +3,11 @@ title: "Program: Curriculum Container and Enrollment Policy Anchor"
 slug: program
 category: Curriculum
 doc_order: 1
-version: "1.0.0"
-last_change_date: "2026-02-28"
-summary: "Define the academic program tree, its catalog courses, assessment model, and prerequisite policy foundation used by offerings and enrollment validation."
+version: "1.1.0"
+last_change_date: "2026-03-11"
+summary: "Define the academic program tree, its catalog courses, basket-group memberships, assessment model, and prerequisite policy foundation used by offerings and enrollment validation."
 seo_title: "Program: Curriculum Container and Enrollment Policy Anchor"
-seo_description: "Define the academic program tree, its catalog courses, assessment model, and prerequisite policy foundation used by offerings and enrollment validation."
+seo_description: "Define the academic program tree, its catalog courses, basket-group memberships, assessment model, and prerequisite policy foundation used by offerings and enrollment validation."
 ---
 
 ## Program: Curriculum Container and Enrollment Policy Anchor
@@ -19,11 +19,12 @@ seo_description: "Define the academic program tree, its catalog courses, assessm
 - Create all relevant [**Course**](/docs/en/course/) records first.
 - Prepare the default [**Grade Scale**](/docs/en/grade-scale/) for program-level prerequisite resolution.
 - Decide parent/child structure if you need a program tree (`NestedSet`).
+- Decide whether any catalog course should belong to one or more [**Basket Group**](/docs/en/basket-group/) memberships for later offering and enrollment rules.
 
 ## Why It Matters
 
 - Defines program identity and hierarchy (`parent_program`, `is_group`, `lft`, `rgt`).
-- Holds catalog rows (`Program Course`) and prerequisite rows (`Program Course Prerequisite`).
+- Holds catalog rows (`Program Course`), basket-group memberships, and prerequisite rows (`Program Course Prerequisite`).
 - Feeds [**Program Offering**](/docs/en/program-offering/) as the operational enrollment surface.
 - Supplies baseline grade-scale intent for prerequisite threshold resolution.
 
@@ -37,20 +38,22 @@ In enrollment architecture, Program is intent/structure. Enrollment truth is com
 - [**Program Enrollment**](/docs/en/program-enrollment/) denormalized program anchor.
 - Enrollment engine (`ifitwala_ed/schedule/enrollment_engine.py`):
   - loads `Program Course` metadata (`repeatable`, `max_attempts`, `level`)
+  - loads program basket-group memberships for offering hydration and basket validation
   - loads `Program Course Prerequisite` rows for DNF prerequisite checks
-- Admissions/intent surfaces that collect program choice.
+- Admissions and self-enrollment surfaces that collect program choice and course intent.
 
 ## Lifecycle and Linked Documents
 
-1. Create program identity and (optional) tree parent.
+1. Create program identity and optional tree parent.
 2. Add `courses` rows ([**Program Course**](/docs/en/program-course/)).
-3. Add prerequisite rows ([**Program Course Prerequisite**](/docs/en/program-course-prerequisite/)).
-4. Configure assessment settings and `assessment_categories` rows.
-5. Publish only when website fields are valid (`program_slug`, not archived).
+3. Add `course_basket_groups` rows when catalog courses may satisfy one or more basket requirements.
+4. Add prerequisite rows ([**Program Course Prerequisite**](/docs/en/program-course-prerequisite/)).
+5. Configure assessment settings and `assessment_categories` rows.
+6. Publish only when website fields are valid (`program_slug`, not archived).
 
 <DoDont doTitle="Do" dontTitle="Don't">
   <Do>Keep only `Course.status = Active` rows in the program catalog.</Do>
-  <Do>Use program prerequisites for enrollment policy, not course-level prerequisite fields.</Do>
+  <Do>Use basket-group membership rows when a course can satisfy one or more requirement families.</Do>
   <Dont>Add duplicate course rows in `courses`.</Dont>
   <Dont>Publish archived programs or publish without `program_slug`.</Dont>
 </DoDont>
@@ -63,14 +66,26 @@ In enrollment architecture, Program is intent/structure. Enrollment truth is com
 - Catalog rows:
   - `Biology HL` (required)
   - `English A` (required)
-  - `Visual Arts` (elective)
-- Program prerequisite rows enforce minimum prior-course performance for selected HL courses.
+  - `ESS` (optional)
+- Basket-group memberships:
+  - `ESS -> Group 3 Humanities`
+  - `ESS -> Group 4 Sciences`
+
+Result: the catalog keeps one course row for ESS while the basket-group table records that it may count in more than one requirement family.
 
 ### Example 2: Parent/Child Program Tree
 
 - Parent program: `High School` (`is_group = 1`)
 - Child programs: `Grade 11`, `Grade 12`
-- Each child has its own catalog and prerequisite rows while preserving tree navigation.
+- Each child has its own catalog, basket-group map, and prerequisite rows while preserving tree navigation.
+
+## Related Docs
+
+- [**Program Course**](/docs/en/program-course/)
+- [**Program Course Prerequisite**](/docs/en/program-course-prerequisite/)
+- [**Basket Group**](/docs/en/basket-group/)
+- [**Course**](/docs/en/course/)
+- [**Program Offering**](/docs/en/program-offering/)
 
 ## Technical Notes (IT)
 
@@ -91,13 +106,16 @@ In enrollment architecture, Program is intent/structure. Enrollment truth is com
   - `nsm_parent_field = parent_program`
 - **Child tables**:
   - `courses` -> `Program Course`
+  - `course_basket_groups` -> `Program Course Basket Group`
   - `prerequisites` -> `Program Course Prerequisite`
   - `assessment_categories` -> `Program Assessment Category`
   - `program_coordinators` -> `Program Coordinator`
 - **Validation guarantees** (`program.py`):
   - duplicate course rows are blocked
   - only Active courses can be added
-  - publish guard (`archive` + `program_slug`) enforced
+  - each basket-group mapping must point to a course already present in `courses`
+  - duplicate `(course, basket_group)` mappings are blocked
+  - publish guard (`archive` + `program_slug`) enforced only when published
   - assessment-category duplicate and weight guards
   - when `points = 1`, active category weights must exist and total must be `<= 100`
 
@@ -114,10 +132,3 @@ In enrollment architecture, Program is intent/structure. Enrollment truth is com
 | `Instructor` | Yes | No | No | No |
 | `Academic Staff` | Yes | No | No | No |
 | `Accreditation Visitor` | Yes | No | No | No |
-
-## Related Docs
-
-- [**Program Course**](/docs/en/program-course/)
-- [**Program Course Prerequisite**](/docs/en/program-course-prerequisite/)
-- [**Course**](/docs/en/course/)
-- [**Program Offering**](/docs/en/program-offering/)

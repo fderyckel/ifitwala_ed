@@ -4,6 +4,12 @@ Below is the **exact Phase-1 task breakdown for Codex**, written as a linear exe
 
 # Phase 1 Task Breakdown (Codex Execution Plan)
 
+Accounting time guardrail:
+
+* `academic_year` in billing-plan documents is educational scope only.
+* Do not derive accounting legality or fiscal-year membership from `academic_year`.
+* Accounting posting must remain owned by `organization + posting_date` and, once implemented, `Fiscal Year`.
+
 ## Task 0 — Preconditions / Safety Gates
 
 **Goal:** Ensure Phase 0.1 gates are satisfied before Phase 1 work begins.
@@ -212,6 +218,7 @@ Validate:
 * Plan organization matches program_offering → school → org
 * Components’ billable_offering.organization matches plan.organization
 * Only one active plan per (org, program_offering, academic_year)
+* `academic_year` must remain academic scope only; no fiscal-year derivation here
 
 **Acceptance**
 

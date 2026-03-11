@@ -4,6 +4,8 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import flt, nowdate
 
+from ifitwala_ed.accounting.doctype.sales_invoice.sales_invoice import make_credit_note, make_debit_note
+
 
 class TestSalesInvoice(FrappeTestCase):
     def make_organization(self, prefix="Org"):
@@ -495,3 +497,163 @@ class TestSalesInvoice(FrappeTestCase):
                     ],
                 }
             ).insert()
+
+    def test_payment_terms_template_generates_schedule_and_dimensions(self):
+        ctx = self._base_context()
+        student = self.make_student(
+            organization=ctx["org"].name,
+            account_holder=ctx["ah_primary"].name,
+            school=ctx["school"].name,
+            prefix="Schedule",
+        )
+        offering = self.make_billable_offering(
+            organization=ctx["org"].name,
+            income_account=ctx["income"].name,
+            offering_type="Program",
+            pricing_mode="Fixed",
+        )
+        program_offering = self.make_program_offering(ctx["org"].name, school=ctx["school"].name)
+        terms = frappe.get_doc(
+            {
+                "doctype": "Payment Terms Template",
+                "title": f"Terms {frappe.generate_hash(length=6)}",
+                "organization": ctx["org"].name,
+                "terms": [
+                    {"term_name": "Deposit", "invoice_portion": 50, "due_days": 0},
+                    {"term_name": "Final", "invoice_portion": 50, "due_days": 30},
+                ],
+            }
+        )
+        terms.insert()
+
+        invoice = frappe.get_doc(
+            {
+                "doctype": "Sales Invoice",
+                "organization": ctx["org"].name,
+                "account_holder": ctx["ah_primary"].name,
+                "posting_date": "2026-01-10",
+                "program_offering": program_offering.name,
+                "payment_terms_template": terms.name,
+                "items": [
+                    {
+                        "billable_offering": offering.name,
+                        "charge_source": "Program Offering",
+                        "program_offering": program_offering.name,
+                        "student": student.name,
+                        "qty": 1,
+                        "rate": 100,
+                        "income_account": ctx["income"].name,
+                    }
+                ],
+            }
+        )
+        invoice.insert()
+
+        self.assertEqual(invoice.school, ctx["school"].name)
+        self.assertEqual(invoice.program, program_offering.program)
+        self.assertEqual(len(invoice.payment_schedule), 2)
+        self.assertEqual(flt(invoice.payment_schedule[0].payment_amount), 50)
+        self.assertEqual(flt(invoice.payment_schedule[1].payment_amount), 50)
+        self.assertEqual(str(invoice.payment_schedule[0].due_date), "2026-01-10")
+        self.assertEqual(str(invoice.payment_schedule[1].due_date), "2026-02-09")
+
+        invoice.submit()
+        gl_rows = frappe.get_all(
+            "GL Entry",
+            filters={"voucher_type": "Sales Invoice", "voucher_no": invoice.name, "is_cancelled": 0},
+            fields=["account", "school", "program", "student", "credit"],
+        )
+        self.assertTrue(
+            any(
+                row.account == ctx["income"].name
+                and row.school == ctx["school"].name
+                and row.program == program_offering.program
+                and row.student == student.name
+                and flt(row.credit) == 100
+                for row in gl_rows
+            )
+        )
+
+    def test_credit_note_reduces_source_outstanding_and_marks_source_credited(self):
+        ctx = self._base_context()
+        offering = self.make_billable_offering(
+            organization=ctx["org"].name,
+            income_account=ctx["income"].name,
+            offering_type="One-off Fee",
+            pricing_mode="Fixed",
+        )
+
+        invoice = frappe.get_doc(
+            {
+                "doctype": "Sales Invoice",
+                "organization": ctx["org"].name,
+                "account_holder": ctx["ah_primary"].name,
+                "posting_date": nowdate(),
+                "items": [
+                    {
+                        "billable_offering": offering.name,
+                        "charge_source": "Extra",
+                        "qty": 1,
+                        "rate": 100,
+                        "income_account": ctx["income"].name,
+                    }
+                ],
+            }
+        )
+        invoice.insert()
+        invoice.submit()
+
+        credit_name = make_credit_note(invoice.name)
+        credit = frappe.get_doc("Sales Invoice", credit_name)
+        credit.submit()
+
+        invoice.reload()
+        self.assertEqual(invoice.status, "Credited")
+        self.assertEqual(flt(invoice.outstanding_amount), 0)
+        self.assertEqual(flt(invoice.credit_note_total), 100)
+
+        gl_rows = frappe.get_all(
+            "GL Entry",
+            filters={"voucher_type": "Sales Invoice", "voucher_no": credit.name, "is_cancelled": 0},
+            fields=["account", "debit", "credit"],
+        )
+        self.assertTrue(any(row.account == ctx["receivable"].name and flt(row.credit) == 100 for row in gl_rows))
+        self.assertTrue(any(row.account == ctx["income"].name and flt(row.debit) == 100 for row in gl_rows))
+
+    def test_make_debit_note_creates_linked_draft(self):
+        ctx = self._base_context()
+        offering = self.make_billable_offering(
+            organization=ctx["org"].name,
+            income_account=ctx["income"].name,
+            offering_type="One-off Fee",
+            pricing_mode="Fixed",
+        )
+        invoice = frappe.get_doc(
+            {
+                "doctype": "Sales Invoice",
+                "organization": ctx["org"].name,
+                "account_holder": ctx["ah_primary"].name,
+                "posting_date": nowdate(),
+                "items": [
+                    {
+                        "billable_offering": offering.name,
+                        "charge_source": "Extra",
+                        "qty": 1,
+                        "rate": 100,
+                        "income_account": ctx["income"].name,
+                    }
+                ],
+            }
+        )
+        invoice.insert()
+        invoice.submit()
+
+        debit_name = make_debit_note(invoice.name)
+        debit = frappe.get_doc("Sales Invoice", debit_name)
+        self.assertEqual(debit.docstatus, 0)
+        self.assertEqual(debit.adjustment_type, "Debit Note")
+        self.assertEqual(debit.against_sales_invoice, invoice.name)
+        self.assertEqual(len(debit.items), 1)
+        self.assertEqual(debit.items[0].charge_source, "Extra")
+        self.assertEqual(flt(debit.items[0].qty), 1)
+        self.assertEqual(flt(debit.items[0].rate), 100)

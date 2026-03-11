@@ -18,5 +18,17 @@ frappe.query_reports["Aged Receivables"] = {
 			fieldtype: "Link",
 			options: "Account Holder",
 		},
+		{
+			fieldname: "school",
+			label: __("School"),
+			fieldtype: "Link",
+			options: "School",
+		},
+		{
+			fieldname: "program",
+			label: __("Program"),
+			fieldtype: "Link",
+			options: "Program",
+		},
 	],
 };

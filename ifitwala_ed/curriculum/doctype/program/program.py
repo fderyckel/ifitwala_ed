@@ -18,6 +18,7 @@ class Program(NestedSet):
         # Keep existing validations
         self._validate_duplicate_course()
         self._validate_active_courses()
+        self._validate_course_basket_groups()
         self._validate_website_publication()
 
         # New/updated validations for assessment model
@@ -65,6 +66,33 @@ class Program(NestedSet):
                 _("Program slug is required before publishing."),
                 frappe.ValidationError,
             )
+
+    def _validate_course_basket_groups(self):
+        valid_courses = {(row.course or "").strip() for row in (self.courses or []) if (row.course or "").strip()}
+        if not getattr(self, "course_basket_groups", None):
+            return
+
+        seen = set()
+        for idx, row in enumerate(self.course_basket_groups or [], start=1):
+            course = (row.course or "").strip()
+            basket_group = (row.basket_group or "").strip()
+            if not course:
+                frappe.throw(_("Course Basket Group row {0}: Course is required.").format(idx))
+            if course not in valid_courses:
+                frappe.throw(
+                    _("Course Basket Group row {0}: Course {1} is not present in Program Courses.").format(idx, course)
+                )
+            if not basket_group:
+                frappe.throw(_("Course Basket Group row {0}: Basket Group is required.").format(idx))
+
+            key = (course, basket_group)
+            if key in seen:
+                frappe.throw(
+                    _("Course Basket Group row {0}: duplicate mapping for {1} -> {2}.").format(
+                        idx, course, basket_group
+                    )
+                )
+            seen.add(key)
 
     # ──────────────────────────────────────────────────────────────────────────────
     # Assessment Categories (Program Assessment Category child)

@@ -24,6 +24,7 @@
   "allow_self_enroll",
   "courses_section",
   "offering_courses",
+  "offering_course_basket_groups",
   "enrollment_rules_section",
   "enrollment_rules",
   "activity_booking_section",
@@ -298,6 +299,12 @@
    "fieldtype": "Table",
    "label": "Offering Courses",
    "options": "Program Offering Course"
+  },
+  {
+   "fieldname": "offering_course_basket_groups",
+   "fieldtype": "Table",
+   "label": "Offering Course Basket Groups",
+   "options": "Program Offering Course Basket Group"
   }
  ],
  "grid_page_length": 50,

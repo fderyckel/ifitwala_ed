@@ -9,6 +9,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, now_datetime, nowdate
 
+from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
+
 STAFF_ROLES = {
     "Admission Manager",
     "Admission Officer",
@@ -38,6 +40,8 @@ class ApplicantEnrollmentPlan(Document):
         applicant_row = self._get_applicant_row()
         self._sync_from_applicant(applicant_row)
         self._normalize_courses()
+        self._sync_course_semantics_from_offering()
+        self._validate_course_rows()
         self._validate_status()
         self._validate_single_active_plan()
         self._validate_offer_expiry()
@@ -102,10 +106,67 @@ class ApplicantEnrollmentPlan(Document):
             if not course or course in seen:
                 continue
             seen.add(course)
-            normalized.append({"course": course})
+            normalized.append(
+                {
+                    "course": course,
+                    "required": 1 if int(row.required or 0) == 1 else 0,
+                    "applied_basket_group": (row.applied_basket_group or "").strip(),
+                    "choice_rank": row.choice_rank,
+                }
+            )
         if len(normalized) == len(self.get("courses") or []):
             return
         self.set("courses", normalized)
+
+    def _sync_course_semantics_from_offering(self):
+        if not self.program_offering or not getattr(self, "courses", None):
+            return
+
+        offering_semantics = get_offering_course_semantics(self.program_offering)
+        for row in self.get("courses") or []:
+            course = (row.course or "").strip()
+            if not course:
+                continue
+            row.required = 1 if (offering_semantics.get(course) or {}).get("required") else 0
+
+    def _validate_course_rows(self):
+        if not getattr(self, "courses", None):
+            return
+
+        offering_semantics = get_offering_course_semantics(self.program_offering) if self.program_offering else {}
+        gate_statuses = {"Offer Accepted", "Hydrated"}
+        seen = set()
+
+        for idx, row in enumerate(self.get("courses") or [], start=1):
+            course = (row.course or "").strip()
+            if not course:
+                frappe.throw(_("Planned Course row {0}: Course is required.").format(idx))
+            if course in seen:
+                frappe.throw(_("Planned Course row {0}: duplicate course {1}.").format(idx, course))
+            seen.add(course)
+
+            semantics = offering_semantics.get(course) or {}
+            allowed_groups = list(semantics.get("basket_groups") or [])
+            applied_group = (row.applied_basket_group or "").strip()
+
+            if applied_group and applied_group not in allowed_groups:
+                frappe.throw(
+                    _("Planned Course row {0}: Basket Group {1} is not allowed for course {2}.").format(
+                        idx, applied_group, course
+                    )
+                )
+
+            if not applied_group and len(allowed_groups) == 1 and not int(row.required or 0):
+                row.applied_basket_group = allowed_groups[0]
+                applied_group = allowed_groups[0]
+
+            if row.choice_rank and not applied_group:
+                frappe.throw(_("Planned Course row {0}: Choice Rank requires an Applied Basket Group.").format(idx))
+
+            if (self.status or "").strip() in gate_statuses and len(allowed_groups) > 1 and not applied_group:
+                frappe.throw(
+                    _("Planned Course row {0}: select an Applied Basket Group for course {1}.").format(idx, course)
+                )
 
     def _validate_status(self):
         status = (self.status or "Draft").strip() or "Draft"
@@ -388,7 +449,17 @@ def hydrate_program_enrollment_request_from_applicant_plan(applicant_enrollment_
             "program_offering": plan.program_offering,
             "academic_year": plan.academic_year,
             "status": "Draft",
-            "courses": [{"course": course} for course in selected_courses],
+            "courses": [
+                {
+                    "course": row.course,
+                    "required": 1 if int(row.required or 0) == 1 else 0,
+                    "applied_basket_group": (row.applied_basket_group or "").strip(),
+                    "choice_rank": row.choice_rank,
+                }
+                for row in (plan.get("courses") or [])
+                if (row.course or "").strip() in selected_courses
+            ]
+            or [{"course": course, "required": 1} for course in selected_courses],
             "source_student_applicant": plan.student_applicant,
             "source_applicant_enrollment_plan": plan.name,
         }

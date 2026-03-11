@@ -5,18 +5,23 @@ frappe.listview_settings["Sales Invoice"] = {
 		"outstanding_amount",
 		"posting_date",
 		"organization",
+		"status",
+		"adjustment_type",
 	],
-	get_indicator: function (doc) {
-		if (doc.docstatus === 0) {
-			return [__("Draft"), "red", "docstatus,=,0"];
-		}
-		if (doc.docstatus === 2) {
-			return [__("Cancelled"), "grey", "docstatus,=,2"];
-		}
-		if (doc.outstanding_amount === 0) {
-			return [__("Paid"), "green", "outstanding_amount,=,0"];
-		}
-		return [__("Unpaid"), "orange", "outstanding_amount,>,0"];
+	get_indicator(doc) {
+		const palette = {
+			Draft: "red",
+			Cancelled: "grey",
+			Unpaid: "orange",
+			"Partly Paid": "yellow",
+			Paid: "green",
+			Overdue: "red",
+			"Credit Note": "blue",
+			"Partly Credited": "cyan",
+			Credited: "blue",
+		};
+		const status = doc.status || (doc.docstatus === 2 ? "Cancelled" : "Draft");
+		return [__(status), palette[status] || "orange", `status,=,${status}`];
 	},
 	right_column: "grand_total",
 };

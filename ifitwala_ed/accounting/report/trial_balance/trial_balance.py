@@ -25,6 +25,12 @@ def execute(filters=None):
     elif filters.get("to_date"):
         conditions.append("gl.posting_date <= %(to_date)s")
         params.update({"to_date": filters.get("to_date")})
+    if filters.get("school"):
+        conditions.append("gl.school = %(school)s")
+        params.update({"school": filters.get("school")})
+    if filters.get("program"):
+        conditions.append("gl.program = %(program)s")
+        params.update({"program": filters.get("program")})
 
     where_clause = " and ".join(conditions)
 

@@ -1,9 +1,9 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt
 
 from ifitwala_ed.accounting.ledger_utils import cancel_gl_entries, make_gl_entries, validate_posting_date
+from ifitwala_ed.accounting.receivables import is_zero, money
 
 
 class JournalEntry(Document):
@@ -26,17 +26,17 @@ class JournalEntry(Document):
             if account.is_group:
                 frappe.throw(_("Cannot post to a group account"))
 
-            row_debit = flt(row.debit)
-            row_credit = flt(row.credit)
+            row_debit = money(row.debit)
+            row_credit = money(row.credit)
             if row_debit and row_credit:
                 frappe.throw(_("Debit and Credit cannot both be non-zero on the same row"))
-            if not row_debit and not row_credit:
+            if is_zero(row_debit) and is_zero(row_credit):
                 frappe.throw(_("Either Debit or Credit is required on each row"))
 
     def set_totals(self):
-        self.total_debit = sum(flt(row.debit) for row in self.accounts)
-        self.total_credit = sum(flt(row.credit) for row in self.accounts)
-        if self.total_debit != self.total_credit:
+        self.total_debit = money(sum(money(row.debit) for row in self.accounts))
+        self.total_credit = money(sum(money(row.credit) for row in self.accounts))
+        if not is_zero(self.total_debit - self.total_credit):
             frappe.throw(_("Total Debit must equal Total Credit"))
 
     def on_submit(self):
@@ -53,6 +53,10 @@ class JournalEntry(Document):
                     "remarks": self.remark,
                     "debit": row.debit,
                     "credit": row.credit,
+                    "school": row.school,
+                    "program": row.program,
+                    "program_offering": row.program_offering,
+                    "student": row.student,
                 }
             )
         make_gl_entries(entries, "Journal Entry", self.name)

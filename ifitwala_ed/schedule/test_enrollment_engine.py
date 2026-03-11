@@ -155,6 +155,62 @@ class TestEnrollmentEngine(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             enrollment.save()
 
+    def test_multi_group_course_requires_explicit_assignment(self):
+        humanities_group = _make_basket_group("Group 3 Humanities")
+        sciences_group = _make_basket_group("Group 4 Sciences")
+        context = _setup_context(
+            score=95,
+            target_basket_groups=[humanities_group.name, sciences_group.name],
+            offering_basket_groups=[humanities_group.name, sciences_group.name],
+            enrollment_rules=[{"rule_type": "REQUIRE_GROUP_COVERAGE", "basket_group": humanities_group.name}],
+        )
+
+        result = evaluate_enrollment_request(
+            {
+                "student": context["student"].name,
+                "program_offering": context["offering"].name,
+                "requested_courses": [{"course": context["target_course"].name}],
+            }
+        )
+
+        basket = (result.get("results") or {}).get("basket") or {}
+        self.assertFalse(bool((result.get("summary") or {}).get("valid")))
+        self.assertEqual((basket.get("status") or "").strip(), "invalid")
+        self.assertIn(context["target_course"].name, basket.get("ambiguous_courses") or [])
+
+    def test_multi_group_assignment_satisfies_basket_rule(self):
+        humanities_group = _make_basket_group("Group 3 Humanities")
+        sciences_group = _make_basket_group("Group 4 Sciences")
+        context = _setup_context(
+            score=95,
+            target_basket_groups=[humanities_group.name, sciences_group.name],
+            offering_basket_groups=[humanities_group.name, sciences_group.name],
+            enrollment_rules=[{"rule_type": "REQUIRE_GROUP_COVERAGE", "basket_group": humanities_group.name}],
+        )
+
+        result = evaluate_enrollment_request(
+            {
+                "student": context["student"].name,
+                "program_offering": context["offering"].name,
+                "requested_courses": [
+                    {
+                        "course": context["target_course"].name,
+                        "applied_basket_group": humanities_group.name,
+                    }
+                ],
+            }
+        )
+
+        basket = (result.get("results") or {}).get("basket") or {}
+        course_result = _find_course(result, context["target_course"].name)
+        self.assertTrue(bool((result.get("summary") or {}).get("valid")))
+        self.assertEqual((basket.get("status") or "").strip(), "ok")
+        self.assertEqual(
+            (basket.get("requested_assignment") or {}).get(context["target_course"].name),
+            humanities_group.name,
+        )
+        self.assertEqual(course_result["applied_basket_group"], humanities_group.name)
+
 
 def _find_course(result, course):
     for row in result["results"]["courses"]:
@@ -170,6 +226,9 @@ def _setup_context(
     concurrency_ok=0,
     include_result=True,
     include_history=True,
+    target_basket_groups=None,
+    offering_basket_groups=None,
+    enrollment_rules=None,
 ):
     grade_scale = _make_grade_scale()
     organization = _make_organization()
@@ -186,8 +245,18 @@ def _setup_context(
         required_course,
         repeatable=repeatable,
         concurrency_ok=concurrency_ok,
+        target_basket_groups=target_basket_groups,
     )
-    offering = _make_offering(program, school, academic_year, target_course, required_course, capacity=capacity)
+    offering = _make_offering(
+        program,
+        school,
+        academic_year,
+        target_course,
+        required_course,
+        capacity=capacity,
+        offering_basket_groups=offering_basket_groups or target_basket_groups,
+        enrollment_rules=enrollment_rules,
+    )
 
     if include_history:
         _make_enrollment(
@@ -324,11 +393,25 @@ def _make_course(label):
     return course
 
 
-def _make_program(grade_scale, target_course, required_course, repeatable=1, concurrency_ok=0):
+def _make_basket_group(label):
+    basket_group = frappe.get_doc(
+        {
+            "doctype": "Basket Group",
+            "basket_group_name": f"{label} {frappe.generate_hash(length=6)}",
+        }
+    )
+    basket_group.insert()
+    return basket_group
+
+
+def _make_program(
+    grade_scale, target_course, required_course, repeatable=1, concurrency_ok=0, target_basket_groups=None
+):
     program = frappe.get_doc(
         {
             "doctype": "Program",
             "program_name": f"Program {frappe.generate_hash(length=6)}",
+            "program_slug": f"program-{frappe.generate_hash(length=8)}",
             "grade_scale": grade_scale.name,
             "courses": [
                 {
@@ -341,6 +424,10 @@ def _make_program(grade_scale, target_course, required_course, repeatable=1, con
                     "level": "None",
                     "repeatable": 1,
                 },
+            ],
+            "course_basket_groups": [
+                {"course": target_course.name, "basket_group": basket_group}
+                for basket_group in (target_basket_groups or [])
             ],
             "prerequisites": [
                 {
@@ -358,7 +445,16 @@ def _make_program(grade_scale, target_course, required_course, repeatable=1, con
     return program
 
 
-def _make_offering(program, school, academic_year, target_course, required_course, capacity=None):
+def _make_offering(
+    program,
+    school,
+    academic_year,
+    target_course,
+    required_course,
+    capacity=None,
+    offering_basket_groups=None,
+    enrollment_rules=None,
+):
     offering = frappe.get_doc(
         {
             "doctype": "Program Offering",
@@ -366,7 +462,7 @@ def _make_offering(program, school, academic_year, target_course, required_cours
             "school": school.name,
             "offering_title": f"Offering {frappe.generate_hash(length=6)}",
             "offering_academic_years": [{"academic_year": academic_year.name}],
-            "enrollment_rules": [{"rule_type": "MIN_TOTAL_COURSES", "int_value_1": 1}],
+            "enrollment_rules": enrollment_rules or [{"rule_type": "MIN_TOTAL_COURSES", "int_value_1": 1}],
             "offering_courses": [
                 {
                     "course": target_course.name,
@@ -382,6 +478,10 @@ def _make_offering(program, school, academic_year, target_course, required_cours
                     "start_academic_year": academic_year.name,
                     "end_academic_year": academic_year.name,
                 },
+            ],
+            "offering_course_basket_groups": [
+                {"course": target_course.name, "basket_group": basket_group}
+                for basket_group in (offering_basket_groups or [])
             ],
         }
     ).insert()

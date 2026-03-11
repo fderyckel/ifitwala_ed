@@ -40,7 +40,7 @@ def validate_program_enrollment_request(request_name, force=0):
                 return {"validation_payload": doc.validation_payload}
         return {}
 
-    # Build requested course list (unique, stable order)
+    # Build requested course rows (unique by course, stable order)
     requested = []
     seen = set()
     for r in doc.courses or []:
@@ -48,7 +48,13 @@ def validate_program_enrollment_request(request_name, force=0):
         if not c or c in seen:
             continue
         seen.add(c)
-        requested.append(c)
+        requested.append(
+            {
+                "course": c,
+                "applied_basket_group": (r.applied_basket_group or "").strip(),
+                "choice_rank": r.choice_rank,
+            }
+        )
 
     if not requested:
         frappe.throw(_("No courses selected to validate."))
@@ -147,17 +153,23 @@ def materialize_program_enrollment_request(request_name):
     if not req.academic_year:
         frappe.throw(_("Academic Year is required to materialize enrollment."))
 
-    # 2) Collect unique courses from request (no duplicates)
-    request_courses = []
+    # 2) Collect unique request rows from request (no duplicate courses)
+    request_rows = []
     seen = set()
     for row in req.courses or []:
         course = (row.course or "").strip()
         if not course or course in seen:
             continue
         seen.add(course)
-        request_courses.append(course)
+        request_rows.append(
+            {
+                "course": course,
+                "required": 1 if int(row.required or 0) == 1 else 0,
+                "credited_basket_group": (row.applied_basket_group or "").strip(),
+            }
+        )
 
-    if not request_courses:
+    if not request_rows:
         frappe.throw(_("No courses selected to materialize."))
 
     # 3) Resolve program + school from request/offering (single fetch)
@@ -199,11 +211,22 @@ def materialize_program_enrollment_request(request_name):
         enrollment.program_enrollment_request = req.name
 
         existing = {r.course: r for r in (enrollment.courses or []) if r.course}
-        for course in request_courses:
+        for row in request_rows:
+            course = row["course"]
             if course in existing:
                 existing[course].status = "Enrolled"
+                existing[course].required = row["required"]
+                existing[course].credited_basket_group = row["credited_basket_group"]
             else:
-                enrollment.append("courses", {"course": course, "status": "Enrolled"})
+                enrollment.append(
+                    "courses",
+                    {
+                        "course": course,
+                        "status": "Enrolled",
+                        "required": row["required"],
+                        "credited_basket_group": row["credited_basket_group"],
+                    },
+                )
 
     else:
         enrollment = frappe.get_doc(
@@ -217,7 +240,15 @@ def materialize_program_enrollment_request(request_name):
                 "enrollment_date": frappe.utils.nowdate(),
                 "enrollment_source": "Request",
                 "program_enrollment_request": req.name,
-                "courses": [{"course": c, "status": "Enrolled"} for c in request_courses],
+                "courses": [
+                    {
+                        "course": row["course"],
+                        "status": "Enrolled",
+                        "required": row["required"],
+                        "credited_basket_group": row["credited_basket_group"],
+                    }
+                    for row in request_rows
+                ],
             }
         )
 
