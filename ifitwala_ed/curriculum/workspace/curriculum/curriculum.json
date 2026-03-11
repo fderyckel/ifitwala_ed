@@ -1,7 +1,7 @@
 {
  "app": "ifitwala_ed",
  "charts": [],
- "content": "[{\"id\":\"_FX-g_w8DJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Hub\",\"col\":3}},{\"id\":\"ORoV-qyamd\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Curriculum</span>\",\"col\":12}},{\"id\":\"o7SexzSw2d\",\"type\":\"card\",\"data\":{\"card_name\":\"Program\",\"col\":4}},{\"id\":\"yWxdh7-iFL\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}},{\"id\":\"u_Dlt5hBor\",\"type\":\"card\",\"data\":{\"card_name\":\"Assessments\",\"col\":4}},{\"id\":\"oKL0uhbVgR\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Enrollment</b></span>\",\"col\":12}},{\"id\":\"H5GTRTzzKa\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"-l6YhDaF-f\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Tools\",\"col\":4}},{\"id\":\"rvQBFpS1iz\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Students &amp; Monitoring</b></span>\",\"col\":12}},{\"id\":\"_-iVGTsSnn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"LOQMhvtNgO\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Organization &amp; Schools</b></span>\",\"col\":12}},{\"id\":\"DalBqmQQSw\",\"type\":\"card\",\"data\":{\"card_name\":\"Orgs & HR\",\"col\":4}},{\"id\":\"xSi9MbWE7L\",\"type\":\"card\",\"data\":{\"card_name\":\"Collaboration\",\"col\":4}}]",
+ "content": "[{\"id\":\"_FX-g_w8DJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Hub\",\"col\":3}},{\"id\":\"cgQtt_y51E\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Team\",\"col\":3}},{\"id\":\"Cgg5kJHyTO\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Meeting\",\"col\":3}},{\"id\":\"fSE6h-Doh7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Schedule Calendar\",\"col\":3}},{\"id\":\"ORoV-qyamd\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Curriculum</span>\",\"col\":12}},{\"id\":\"o7SexzSw2d\",\"type\":\"card\",\"data\":{\"card_name\":\"Program\",\"col\":4}},{\"id\":\"yWxdh7-iFL\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}},{\"id\":\"u_Dlt5hBor\",\"type\":\"card\",\"data\":{\"card_name\":\"Assessments\",\"col\":4}},{\"id\":\"oKL0uhbVgR\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Enrollment</b></span>\",\"col\":12}},{\"id\":\"H5GTRTzzKa\",\"type\":\"card\",\"data\":{\"card_name\":\"Schedule\",\"col\":4}},{\"id\":\"e-q2jSbyX5\",\"type\":\"card\",\"data\":{\"card_name\":\"Enrollment\",\"col\":4}},{\"id\":\"-l6YhDaF-f\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Tools\",\"col\":4}},{\"id\":\"rvQBFpS1iz\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Students &amp; Monitoring</b></span>\",\"col\":12}},{\"id\":\"_-iVGTsSnn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"LOQMhvtNgO\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Organization &amp; Schools</b></span>\",\"col\":12}},{\"id\":\"DalBqmQQSw\",\"type\":\"card\",\"data\":{\"card_name\":\"Orgs & HR\",\"col\":4}}]",
  "creation": "2024-12-08 11:58:32.394967",
  "custom_blocks": [],
  "docstatus": 0,
@@ -27,6 +27,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+<<<<<<< Updated upstream
    "label": "Assessments",
    "link_count": 4,
    "link_type": "DocType",
@@ -212,6 +213,8 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+=======
+>>>>>>> Stashed changes
    "label": "Team",
    "link_count": 0,
    "link_to": "Team",
@@ -246,55 +249,6 @@
    "link_count": 0,
    "link_to": "school_schedule_calendar",
    "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Program",
-   "link_count": 4,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Program",
-   "link_count": 0,
-   "link_to": "Program",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Course",
-   "link_count": 0,
-   "link_to": "Course",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "School",
-   "link_count": 0,
-   "link_to": "School",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Organization",
-   "link_count": 0,
-   "link_to": "Organization",
-   "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
   },
@@ -375,9 +329,297 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Enrollment",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Enrollment",
+   "link_count": 0,
+   "link_to": "Program Enrollment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Enrollment Request",
+   "link_count": 0,
+   "link_to": "Program Enrollment Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Enrollment Tool",
+   "link_count": 0,
+   "link_to": "Program Enrollment Tool",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Course Enrollment Tool",
+   "link_count": 0,
+   "link_to": "Course Enrollment Tool",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program",
+   "link_count": 0,
+   "link_to": "Program",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Course",
+   "link_count": 0,
+   "link_to": "Course",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Basket Group",
+   "link_count": 0,
+   "link_to": "Basket Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Orgs & HR",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Staff Calendar",
+   "link_count": 0,
+   "link_to": "Staff Calendar",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employee",
+   "link_count": 0,
+   "link_to": "Employee",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School",
+   "link_count": 0,
+   "link_to": "School",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Organization",
+   "link_count": 0,
+   "link_to": "Organization",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Schedule",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Offering",
+   "link_count": 0,
+   "link_to": "Program Offering",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Instructor",
+   "link_count": 0,
+   "link_to": "Instructor",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Student Group",
+   "link_count": 0,
+   "link_to": "Student Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School Schedule",
+   "link_count": 0,
+   "link_to": "School Schedule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Assessments",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Task",
+   "link_count": 0,
+   "link_to": "Task",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Assessment Criteria",
+   "link_count": 0,
+   "link_to": "Assessment Criteria",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Grade Scale",
+   "link_count": 0,
+   "link_to": "Grade Scale",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Assessment Category",
+   "link_count": 0,
+   "link_to": "Assessment Category",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Curriculum",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Learning Unit",
+   "link_count": 0,
+   "link_to": "Learning Unit",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Lesson",
+   "link_count": 0,
+   "link_to": "Lesson",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Learning Standards",
+   "link_count": 0,
+   "link_to": "Learning Standards",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Course Group",
+   "link_count": 0,
+   "link_to": "Course Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
+<<<<<<< Updated upstream
  "modified": "2026-03-11 12:23:16",
+=======
+ "modified": "2026-03-11 11:36:07.237063",
+>>>>>>> Stashed changes
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",
@@ -408,9 +650,32 @@
   {
    "color": "Grey",
    "doc_view": "List",
+   "label": "Team",
+   "link_to": "Team",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
    "label": "Hub",
    "type": "URL",
    "url": "/hub/staff"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Schedule Calendar",
+   "link_to": "schedule_calendar",
+   "type": "Page"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Meeting",
+   "link_to": "Meeting",
+   "stats_filter": "[]",
+   "type": "DocType"
   }
  ],
  "title": "Curriculum",
