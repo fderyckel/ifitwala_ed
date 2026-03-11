@@ -6,15 +6,32 @@
  "doctype": "Desktop Icon",
  "hidden": 0,
  "icon_type": "Link",
- "idx": 0,
+ "idx": 5,
  "label": "HR",
  "link_to": "HR",
  "link_type": "Workspace Sidebar",
- "modified": "2026-02-27 14:13:58.304520",
+ "modified": "2026-03-11 14:23:01.920046",
  "modified_by": "Administrator",
  "name": "HR",
  "owner": "Administrator",
  "restrict_removal": 0,
- "roles": [],
+ "roles": [
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Administrator"
+  },
+  {
+   "role": "Accreditation Visitor"
+  }
+ ],
+ "sidebar": "HR",
  "standard": 1
 }

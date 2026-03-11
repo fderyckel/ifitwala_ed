@@ -1,0 +1,48 @@
+{
+ "app": "ifitwala_ed",
+ "bg_color": "blue",
+ "creation": "2026-03-11 14:30:20.611592",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "Link",
+ "idx": 8,
+ "label": "Public Site",
+ "link_to": "Public Site",
+ "link_type": "Workspace Sidebar",
+ "modified": "2026-03-11 14:54:29.385369",
+ "modified_by": "Administrator",
+ "name": "Public Site",
+ "owner": "Administrator",
+ "restrict_removal": 1,
+ "roles": [
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Administrator"
+  },
+  {
+   "role": "Accreditation Visitor"
+  },
+  {
+   "role": "Curriculum Coordinator"
+  },
+  {
+   "role": "Admission Manager"
+  },
+  {
+   "role": "Admission Officer"
+  },
+  {
+   "role": "Website Manager"
+  },
+  {
+   "role": "Marketing Manager"
+  },
+  {
+   "role": "Marketing User"
+  }
+ ],
+ "standard": 1
+}
