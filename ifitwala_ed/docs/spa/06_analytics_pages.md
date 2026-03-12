@@ -74,6 +74,7 @@ When an analytics card supports a zoom/expanded view:
 * it MUST reuse the shared analytics expand overlay via `OverlayHost`
 * it MUST NOT introduce a page-specific modal/overlay implementation
 * chart-card click may open the expanded view, but data-point click must preserve the primary drill-down action
+* clicking the backdrop or any empty overlay space outside the expanded panel MUST close the expanded view
 
 This avoids overlay drift and keeps analytics interactions consistent across pages.
 
