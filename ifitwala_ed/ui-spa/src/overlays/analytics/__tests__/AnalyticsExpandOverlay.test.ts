@@ -3,6 +3,35 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, type App } from 'vue';
 
+vi.mock('frappe-ui', async () => {
+	const { defineComponent, h } = await import('vue');
+
+	return {
+		FeatherIcon: defineComponent({
+			name: 'FeatherIconStub',
+			props: {
+				name: {
+					type: String,
+					required: false,
+					default: '',
+				},
+			},
+			setup(props) {
+				return () => h('span', { 'data-feather-icon': props.name });
+			},
+		}),
+	};
+});
+
+vi.mock('@/components/analytics/AnalyticsChart.vue', () => ({
+	default: defineComponent({
+		name: 'AnalyticsChartStub',
+		setup() {
+			return () => h('div', { 'data-testid': 'analytics-chart-stub' });
+		},
+	}),
+}));
+
 import AnalyticsExpandOverlay from '@/overlays/analytics/AnalyticsExpandOverlay.vue';
 
 const cleanupFns: Array<() => void> = [];

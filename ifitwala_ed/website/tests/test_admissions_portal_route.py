@@ -9,20 +9,26 @@ from frappe.utils import nowdate
 from ifitwala_ed.www.admissions.index import get_context
 
 
+def _admission_settings_has_field(fieldname: str) -> bool:
+    if not frappe.db.exists("DocType", "Admission Settings"):
+        return False
+    return bool(frappe.get_meta("Admission Settings").has_field(fieldname))
+
+
 class TestAdmissionsPortalRoute(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._access_mode_before = (
             frappe.db.get_single_value("Admission Settings", "admissions_access_mode")
-            if frappe.db.has_column("Admission Settings", "admissions_access_mode")
+            if _admission_settings_has_field("admissions_access_mode")
             else None
         )
         self.organization = self._create_organization().name
 
     def tearDown(self):
         frappe.set_user("Administrator")
-        if frappe.db.has_column("Admission Settings", "admissions_access_mode"):
+        if _admission_settings_has_field("admissions_access_mode"):
             frappe.db.set_single_value(
                 "Admission Settings",
                 "admissions_access_mode",
@@ -116,7 +122,7 @@ class TestAdmissionsPortalRoute(FrappeTestCase):
             self._restore_request(original_request)
 
     def test_family_workspace_user_loads_admissions_context(self):
-        if not frappe.db.has_column("Admission Settings", "admissions_access_mode"):
+        if not _admission_settings_has_field("admissions_access_mode"):
             self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
 
         self._set_admissions_access_mode("Family Workspace")

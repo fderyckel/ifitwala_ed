@@ -23,6 +23,12 @@ from ifitwala_ed.api.users import (
 )
 
 
+def _admission_settings_has_field(fieldname: str) -> bool:
+    if not frappe.db.exists("DocType", "Admission Settings"):
+        return False
+    return bool(frappe.get_meta("Admission Settings").has_field(fieldname))
+
+
 def _ensure_test_organization() -> str:
     name = frappe.db.get_value("Organization", {"organization_name": "Redirect Test Org"}, "name")
     if name:
@@ -380,7 +386,7 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("User", user.email, force=True)
 
     def test_admissions_family_redirects_to_admissions_when_family_workspace_is_open(self):
-        if not frappe.db.has_column("Admission Settings", "admissions_access_mode"):
+        if not _admission_settings_has_field("admissions_access_mode"):
             self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
 
         previous_mode = frappe.db.get_single_value("Admission Settings", "admissions_access_mode")

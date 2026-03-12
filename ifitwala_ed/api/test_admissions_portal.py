@@ -36,6 +36,12 @@ from ifitwala_ed.api.admissions_portal import (
 from ifitwala_ed.utilities import file_dispatcher
 
 
+def _admission_settings_has_field(fieldname: str) -> bool:
+    if not frappe.db.exists("DocType", "Admission Settings"):
+        return False
+    return bool(frappe.get_meta("Admission Settings").has_field(fieldname))
+
+
 class TestAdmissionsPortalAuthGuards(FrappeTestCase):
     def test_require_admissions_applicant_rejects_none_literal_as_unauthenticated(self):
         with patch("ifitwala_ed.api.admissions_portal._session_user", return_value=""):
@@ -144,7 +150,7 @@ class TestInviteApplicant(FrappeTestCase):
         self._ensure_admin_admissions_role("Admission Manager")
         self._admissions_access_mode_before = (
             frappe.db.get_single_value("Admission Settings", "admissions_access_mode")
-            if frappe.db.has_column("Admission Settings", "admissions_access_mode")
+            if _admission_settings_has_field("admissions_access_mode")
             else None
         )
         frappe.clear_cache(user="Administrator")
@@ -157,7 +163,7 @@ class TestInviteApplicant(FrappeTestCase):
 
     def tearDown(self):
         frappe.set_user("Administrator")
-        if frappe.db.has_column("Admission Settings", "admissions_access_mode"):
+        if _admission_settings_has_field("admissions_access_mode"):
             frappe.db.set_single_value(
                 "Admission Settings",
                 "admissions_access_mode",
@@ -382,7 +388,7 @@ class TestInviteApplicant(FrappeTestCase):
                 invite_applicant(student_applicant=self.applicant.name, email=other_contact_email)
 
     def test_invite_family_collaborator_creates_guardian_user_and_links_row(self):
-        if not frappe.db.has_column("Admission Settings", "admissions_access_mode"):
+        if not _admission_settings_has_field("admissions_access_mode"):
             self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
 
         self._set_admissions_access_mode("Family Workspace")
@@ -565,7 +571,7 @@ class TestSubmitApplication(FrappeTestCase):
         )
         self._admissions_access_mode_before = (
             frappe.db.get_single_value("Admission Settings", "admissions_access_mode")
-            if frappe.db.has_column("Admission Settings", "admissions_access_mode")
+            if _admission_settings_has_field("admissions_access_mode")
             else None
         )
         self.organization = self._create_organization()
@@ -584,7 +590,7 @@ class TestSubmitApplication(FrappeTestCase):
             "show_guardians_in_admissions_profile",
             self._guardians_setting_before or 0,
         )
-        if frappe.db.has_column("Admission Settings", "admissions_access_mode"):
+        if _admission_settings_has_field("admissions_access_mode"):
             frappe.db.set_single_value(
                 "Admission Settings",
                 "admissions_access_mode",
@@ -661,7 +667,7 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertFalse(bool((snapshot.get("enrollment_offer") or {}).get("course_choices_ready")))
 
     def test_get_admissions_session_family_workspace_returns_all_linked_applicants(self):
-        if not frappe.db.has_column("Admission Settings", "admissions_access_mode"):
+        if not _admission_settings_has_field("admissions_access_mode"):
             self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
 
         self._set_admissions_access_mode("Family Workspace")
@@ -872,7 +878,7 @@ class TestSubmitApplication(FrappeTestCase):
         self._created.append(("Policy Acknowledgement", ack.get("name")))
 
     def test_acknowledge_policy_family_mode_creates_guardian_context(self):
-        if not frappe.db.has_column("Admission Settings", "admissions_access_mode"):
+        if not _admission_settings_has_field("admissions_access_mode"):
             self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
         if not frappe.db.has_column("Institutional Policy", "admissions_acknowledgement_mode"):
             self.skipTest(
