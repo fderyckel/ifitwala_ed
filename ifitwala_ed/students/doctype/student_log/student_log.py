@@ -18,6 +18,142 @@ except Exception:
     assign_remove = None
 
 
+AUTO_CLOSE_CHUNK_SIZE = 200
+AUTO_CLOSE_DISPATCH_LOCK_KEY = "ifitwala_ed:scheduler:auto_close_completed_logs:dispatch"
+AUTO_CLOSE_SUMMARY_CACHE_KEY = "ifitwala_ed:scheduler:auto_close_completed_logs:last_run"
+
+
+def _chunk_values(values, chunk_size):
+    chunk_size = max(cint(chunk_size) or AUTO_CLOSE_CHUNK_SIZE, 1)
+    for start in range(0, len(values), chunk_size):
+        yield values[start : start + chunk_size]
+
+
+def _record_auto_close_summary(summary):
+    frappe.cache().set_value(
+        AUTO_CLOSE_SUMMARY_CACHE_KEY,
+        frappe.as_json(summary),
+        expires_in_sec=60 * 60 * 24 * 7,
+    )
+    frappe.logger("student_log_scheduler", allow_site=True).info(summary)
+
+
+def _get_auto_close_eligible_rows(log_names=None):
+    filters = {"follow_up_status": "In Progress", "auto_close_after_days": [">", 0]}
+    if log_names:
+        filters["name"] = ["in", list(dict.fromkeys(log_names))]
+
+    rows = frappe.get_all(
+        "Student Log",
+        filters=filters,
+        fields=["name", "modified", "auto_close_after_days"],
+    )
+    if not rows:
+        return []
+
+    today = frappe.utils.today()
+    eligible = []
+    for row in rows:
+        last_updated = get_datetime(row.modified)
+        if date_diff(today, last_updated.date()) >= row.auto_close_after_days:
+            eligible.append(row)
+    return eligible
+
+
+def dispatch_auto_close_completed_logs(chunk_size=AUTO_CLOSE_CHUNK_SIZE):
+    chunk_size = max(cint(chunk_size) or AUTO_CLOSE_CHUNK_SIZE, 1)
+    cache = frappe.cache()
+    with cache.lock(AUTO_CLOSE_DISPATCH_LOCK_KEY, timeout=60 * 15):
+        eligible_rows = _get_auto_close_eligible_rows()
+        eligible_names = [row.name for row in eligible_rows]
+        chunk_count = 0
+        for chunk in _chunk_values(eligible_names, chunk_size):
+            frappe.enqueue(
+                "ifitwala_ed.students.doctype.student_log.student_log.process_auto_close_completed_logs_chunk",
+                queue="long",
+                log_names=chunk,
+            )
+            chunk_count += 1
+
+        summary = {
+            "job": "auto_close_completed_logs",
+            "status": "queued",
+            "candidate_count": len(eligible_names),
+            "chunk_count": chunk_count,
+            "chunk_size": chunk_size,
+        }
+        _record_auto_close_summary(summary)
+        return summary
+
+
+def process_auto_close_completed_logs_chunk(log_names=None):
+    log_names = list(dict.fromkeys(log_names or []))
+    if not log_names:
+        summary = {
+            "job": "auto_close_completed_logs",
+            "status": "processed",
+            "requested_count": 0,
+            "processed_count": 0,
+        }
+        _record_auto_close_summary(summary)
+        return summary
+
+    eligible_rows = _get_auto_close_eligible_rows(log_names)
+    eligible_names = [row.name for row in eligible_rows]
+
+    if eligible_names:
+        frappe.db.sql(
+            f"""
+            UPDATE `tabToDo`
+            SET status = 'Closed'
+            WHERE reference_type = 'Student Log'
+              AND status = 'Open'
+              AND reference_name IN ({", ".join(["%s"] * len(eligible_names))})
+            """,
+            tuple(eligible_names),
+        )
+
+        for row in eligible_rows:
+            frappe.db.set_value("Student Log", row.name, "follow_up_status", "Completed")
+            message = f"Auto-completed after {row.auto_close_after_days or 0} days of inactivity."
+            already = frappe.db.exists(
+                "Comment",
+                {
+                    "reference_doctype": "Student Log",
+                    "reference_name": row.name,
+                    "comment_type": "Info",
+                    "content": ("like", "Auto-completed after%"),
+                },
+            )
+            if already:
+                continue
+            try:
+                frappe.get_doc(
+                    {
+                        "doctype": "Comment",
+                        "comment_type": "Info",
+                        "reference_doctype": "Student Log",
+                        "reference_name": row.name,
+                        "content": message,
+                    }
+                ).insert(ignore_permissions=True)
+            except Exception:
+                frappe.logger("student_log_scheduler", allow_site=True).exception(
+                    "Failed to insert auto-close comment for Student Log %s",
+                    row.name,
+                )
+
+    summary = {
+        "job": "auto_close_completed_logs",
+        "status": "processed",
+        "requested_count": len(log_names),
+        "processed_count": len(eligible_names),
+        "skipped_count": len(log_names) - len(eligible_names),
+    }
+    _record_auto_close_summary(summary)
+    return summary
+
+
 class StudentLog(Document):
     # ---------------------------------------------------------------------
     # Status & timeline helpers
@@ -680,72 +816,11 @@ def auto_close_completed_logs():
     - Adds a concise audit comment per log
     Returns: number of logs completed.
     """
-    today = frappe.utils.today()
-
-    rows = frappe.get_all(
-        "Student Log",
-        filters={"follow_up_status": "In Progress", "auto_close_after_days": [">", 0]},
-        fields=["name", "modified", "auto_close_after_days"],
-    )
-
-    if not rows:
-        return 0
-
-    eligible = []
-    threshold_by_log = {}
-    for r in rows:
-        last_updated = get_datetime(r.modified)
-        if date_diff(today, last_updated.date()) >= r.auto_close_after_days:
-            eligible.append(r.name)
-            threshold_by_log[r.name] = r.auto_close_after_days
-
-    if not eligible:
-        return 0
-
-    # 1) Close any OPEN ToDos for these logs in a single SQL
-    frappe.db.sql(
-        f"""
-        UPDATE `tabToDo`
-        SET status = 'Closed'
-        WHERE reference_type = 'Student Log'
-          AND status = 'Open'
-          AND reference_name IN ({", ".join(["%s"] * len(eligible))})
-        """,
-        tuple(eligible),
-    )
-
-    # 2) Update status → Completed (use set_value per row to update 'modified' properly)
-    for name in eligible:
-        frappe.db.set_value("Student Log", name, "follow_up_status", "Completed")
-
-    # 3) Add one concise audit comment per log (idempotent)
-    for name in eligible:
-        msg = f"Auto-completed after {threshold_by_log.get(name, 0)} days of inactivity."
-        already = frappe.db.exists(
-            "Comment",
-            {
-                "reference_doctype": "Student Log",
-                "reference_name": name,
-                "comment_type": "Info",
-                "content": ("like", "Auto-completed after%"),
-            },
-        )
-        if already:
-            continue
-        try:
-            frappe.get_doc(
-                {
-                    "doctype": "Comment",
-                    "comment_type": "Info",
-                    "reference_doctype": "Student Log",
-                    "reference_name": name,
-                    "content": msg,
-                }
-            ).insert(ignore_permissions=True)
-        except Exception:
-            pass
-
-    return len(eligible)
+    eligible_rows = _get_auto_close_eligible_rows()
+    processed = 0
+    for chunk in _chunk_values([row.name for row in eligible_rows], AUTO_CLOSE_CHUNK_SIZE):
+        processed += process_auto_close_completed_logs_chunk(chunk).get("processed_count", 0)
+    return processed
 
 
 @frappe.whitelist()

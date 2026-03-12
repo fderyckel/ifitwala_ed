@@ -301,10 +301,10 @@ scheduler_events = {
         "ifitwala_ed.schedule.attendance_jobs.prewarm_meeting_dates_hourly_guard",
     ],
     "daily": [
-        "ifitwala_ed.students.doctype.student_log.student_log.auto_close_completed_logs",
-        "ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry.process_expired_allocation",
-        "ifitwala_ed.hr.utils.allocate_earned_leaves",
-        "ifitwala_ed.hr.utils.generate_leave_encashment",
+        "ifitwala_ed.students.doctype.student_log.student_log.dispatch_auto_close_completed_logs",
+        "ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry.dispatch_process_expired_allocation",
+        "ifitwala_ed.hr.utils.dispatch_allocate_earned_leaves",
+        "ifitwala_ed.hr.utils.dispatch_generate_leave_encashment",
     ],
 }
 

@@ -6,6 +6,10 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import DATE_FORMAT, flt, formatdate, get_link_to_form, getdate, today
 
+LEAVE_EXPIRY_CHUNK_SIZE = 100
+LEAVE_EXPIRY_DISPATCH_LOCK_KEY = "ifitwala_ed:scheduler:leave_expiry:dispatch"
+LEAVE_EXPIRY_SUMMARY_CACHE_KEY = "ifitwala_ed:scheduler:leave_expiry:last_run"
+
 
 class InvalidLeaveLedgerEntry(frappe.ValidationError):
     pass
@@ -128,6 +132,97 @@ def get_previous_expiry_ledger_entry(ledger):
     )
 
 
+def _chunk_values(values, chunk_size):
+    chunk_size = max(int(chunk_size or LEAVE_EXPIRY_CHUNK_SIZE), 1)
+    for start in range(0, len(values), chunk_size):
+        yield values[start : start + chunk_size]
+
+
+def _record_leave_expiry_summary(summary):
+    frappe.cache().set_value(
+        LEAVE_EXPIRY_SUMMARY_CACHE_KEY,
+        frappe.as_json(summary),
+        expires_in_sec=60 * 60 * 24 * 7,
+    )
+    frappe.logger("leave_expiry_scheduler", allow_site=True).info(summary)
+
+
+def _leave_expiry_scheduler_enabled():
+    if frappe.db.exists("DocType", "HR Settings"):
+        return bool(frappe.db.get_single_value("HR Settings", "enable_leave_expiry_scheduler"))
+    return True
+
+
+def _get_expired_allocation_rows(allocation_names=None):
+    leave_type_records = frappe.db.get_values(
+        "Leave Type",
+        filters={"expire_carry_forwarded_leaves_after_days": (">", 0)},
+        fieldname=["name"],
+    )
+    leave_types = [record[0] for record in leave_type_records] or [""]
+    filters = [tuple(leave_types), today()]
+    allocation_clause = ""
+    if allocation_names:
+        allocation_names = list(dict.fromkeys(allocation_names))
+        allocation_clause = f" AND l.transaction_name IN ({', '.join(['%s'] * len(allocation_names))})"
+        filters.extend(allocation_names)
+
+    return frappe.db.sql(
+        f"""
+        SELECT
+            leaves, to_date, from_date, employee, leave_type,
+            is_carry_forward, transaction_name as name, transaction_type
+        FROM `tabLeave Ledger Entry` l
+        WHERE (NOT EXISTS
+            (SELECT name
+                FROM `tabLeave Ledger Entry`
+                WHERE
+                    transaction_name = l.transaction_name
+                    AND transaction_type = 'Leave Allocation'
+                    AND name<>l.name
+                    AND docstatus = 1
+                    AND (
+                        is_carry_forward=l.is_carry_forward
+                        OR (is_carry_forward = 0 AND leave_type not in %s)
+        )))
+            AND transaction_type = 'Leave Allocation'
+            AND to_date < %s
+            {allocation_clause}""",
+        tuple(filters),
+        as_dict=1,
+    )
+
+
+def dispatch_process_expired_allocation(chunk_size=LEAVE_EXPIRY_CHUNK_SIZE):
+    if not _leave_expiry_scheduler_enabled():
+        summary = {"job": "process_expired_allocation", "status": "disabled"}
+        _record_leave_expiry_summary(summary)
+        return summary
+
+    chunk_size = max(int(chunk_size or LEAVE_EXPIRY_CHUNK_SIZE), 1)
+    cache = frappe.cache()
+    with cache.lock(LEAVE_EXPIRY_DISPATCH_LOCK_KEY, timeout=60 * 15):
+        allocation_names = list(dict.fromkeys(row.name for row in _get_expired_allocation_rows()))
+        chunk_count = 0
+        for chunk in _chunk_values(allocation_names, chunk_size):
+            frappe.enqueue(
+                "ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry.process_expired_allocation_chunk",
+                queue="long",
+                allocation_names=chunk,
+            )
+            chunk_count += 1
+
+        summary = {
+            "job": "process_expired_allocation",
+            "status": "queued",
+            "candidate_count": len(allocation_names),
+            "chunk_count": chunk_count,
+            "chunk_size": chunk_size,
+        }
+        _record_leave_expiry_summary(summary)
+        return summary
+
+
 def process_expired_allocation():
     """Check if a carry forwarded allocation has expired and create a expiry ledger entry
     Case 1: carry forwarded expiry period is set for the leave type,
@@ -135,44 +230,40 @@ def process_expired_allocation():
     Case 2: leave type has no specific expiry period for carry forwarded leaves
             and there is no carry forwarded leave allocation, create a single expiry against the remaining leaves.
     """
-    if frappe.db.exists("DocType", "HR Settings"):
-        if not frappe.db.get_single_value("HR Settings", "enable_leave_expiry_scheduler"):
-            return
+    if not _leave_expiry_scheduler_enabled():
+        return 0
 
-    # fetch leave type records that has carry forwarded leaves expiry
-    leave_type_records = frappe.db.get_values(
-        "Leave Type", filters={"expire_carry_forwarded_leaves_after_days": (">", 0)}, fieldname=["name"]
-    )
+    expired_allocations = _get_expired_allocation_rows()
+    if expired_allocations:
+        create_expiry_ledger_entry(expired_allocations)
+    return len(expired_allocations)
 
-    leave_type = [record[0] for record in leave_type_records] or [""]
 
-    # fetch non expired leave ledger entry of transaction_type allocation
-    expire_allocation = frappe.db.sql(
-        """
-		SELECT
-			leaves, to_date, from_date, employee, leave_type,
-			is_carry_forward, transaction_name as name, transaction_type
-		FROM `tabLeave Ledger Entry` l
-		WHERE (NOT EXISTS
-			(SELECT name
-				FROM `tabLeave Ledger Entry`
-				WHERE
-					transaction_name = l.transaction_name
-					AND transaction_type = 'Leave Allocation'
-					AND name<>l.name
-					AND docstatus = 1
-					AND (
-						is_carry_forward=l.is_carry_forward
-						OR (is_carry_forward = 0 AND leave_type not in %s)
-			)))
-			AND transaction_type = 'Leave Allocation'
-			AND to_date < %s""",
-        (leave_type, today()),
-        as_dict=1,
-    )
+def process_expired_allocation_chunk(allocation_names=None):
+    allocation_names = list(dict.fromkeys(allocation_names or []))
+    if not allocation_names:
+        summary = {
+            "job": "process_expired_allocation",
+            "status": "processed",
+            "requested_count": 0,
+            "processed_count": 0,
+        }
+        _record_leave_expiry_summary(summary)
+        return summary
 
-    if expire_allocation:
-        create_expiry_ledger_entry(expire_allocation)
+    expired_allocations = _get_expired_allocation_rows(allocation_names)
+    if expired_allocations:
+        create_expiry_ledger_entry(expired_allocations)
+
+    summary = {
+        "job": "process_expired_allocation",
+        "status": "processed",
+        "requested_count": len(allocation_names),
+        "processed_count": len(expired_allocations),
+        "skipped_count": len(allocation_names) - len(expired_allocations),
+    }
+    _record_leave_expiry_summary(summary)
+    return summary
 
 
 def create_expiry_ledger_entry(allocations):

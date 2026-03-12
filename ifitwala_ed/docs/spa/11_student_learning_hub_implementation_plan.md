@@ -84,9 +84,9 @@ Exit criteria:
 
 ## Phase 2: Read-only course learning surface
 
-Status: Partial
-Code refs: `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/Courses.vue`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/docs/docs_md/learning-unit.md`, `ifitwala_ed/docs/docs_md/lesson.md`, `ifitwala_ed/docs/docs_md/lesson-activity.md`, `ifitwala_ed/docs/docs_md/task.md`
-Test refs: None
+Status: Implemented
+Code refs: `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/lib/studentCourseDetail.ts`, `ifitwala_ed/ui-spa/src/pages/student/Courses.vue`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/docs/docs_md/learning-unit.md`, `ifitwala_ed/docs/docs_md/lesson.md`, `ifitwala_ed/docs/docs_md/lesson-activity.md`, `ifitwala_ed/docs/docs_md/task.md`
+Test refs: `ifitwala_ed/ui-spa/src/lib/__tests__/studentCourseDetail.test.ts`
 
 Goal: make `My Courses` the real LMS surface before the planning layer becomes the primary student experience.
 
@@ -100,15 +100,16 @@ Scope:
 
 Execution notes:
 
-- A first read-only curriculum outline is already present in `CourseDetail.vue`.
-- Show structure first: unit navigator, lesson sequence, activity flow, and linked work.
-- Keep teacher framing visible where possible: current lesson, success criteria, due work, and resume target if available.
-- Do not block this phase on interactive blocks, checkpoint state, or marketplace features.
+- `CourseDetail.vue` now uses one active-unit and active-lesson view instead of a flat curriculum dump.
+- The student can navigate through a route-driven course map of units and lessons without creating new workflow state.
+- Linked work is now rendered inline at course, unit, and lesson level using the existing `Task` and `Task Delivery` contract.
+- Teacher framing is limited to live schema fields already present today: unit overview, essential understanding, misconceptions, lesson type, lesson date, duration, and due-work context.
+- This phase remains read-only; progress state, resume state, and execution overlays stay in later phases.
 
 Exit criteria:
 
 - A student can open a course and understand what unit, lesson, and activity comes next.
-- A task clicked from Home can land inside the relevant course context.
+- A task or route anchor can land inside the relevant course context.
 - The course page works even when `Lesson Instance` context is absent.
 
 ## Phase 3: Today cockpit and server-curated work board

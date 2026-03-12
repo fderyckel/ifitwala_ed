@@ -102,17 +102,19 @@ def get_attendance_ledger_context():
 **The Solution:** The `submit` action should transition the DocType state to `Processing`. An enqueued task performs the heavy transactional work and then transitions it to `Enrolled`. This ensures that parent sessions do not lock up the database connection.
 
 ## 10. Refactor SLA and Cron Scheduling (Deep Dive)
-**The Problem:** The `ifitwala_ed/hooks.py` relies heavily on massive scheduler events:
+**Status update (2026-03-12):** The daily scheduler hooks named below now use dispatcher entrypoints that enqueue chunk workers. The remaining concurrency concern is keeping dispatcher fan-out bounded and applying the same pattern to other heavy scheduled workflows such as SLA recomputation.
+
+**Historical problem:** The `ifitwala_ed/hooks.py` relied heavily on massive scheduler events:
 ```python
 scheduler_events = {
     "hourly": ["run_hourly_sla_sweep", "prewarm_meeting_dates_hourly_guard"],
     "daily": ["auto_close_completed_logs", "process_expired_allocation", "allocate_earned_leaves"]
 }
 ```
-Currently, a job like `auto_close_completed_logs` or `process_expired_allocation` iterates over potentially thousands of records inside the main `scheduler` process loop. If a daily cron triggers while night-shift staff or international parents are logged in, the single massive database transaction locks rows and table indices, causing extreme application-wide latency.
+Previously, jobs like `auto_close_completed_logs` or `process_expired_allocation` iterated over potentially thousands of records inside one scheduled job body. Under concurrency, those long write-heavy runs increased contention on shared operational tables.
 
 **The Concrete Solution:** Move from "Cron acts on data" to "Cron dispatches jobs".
-The daily cron (`process_expired_allocation`) should fetch ONLY the IDs of the records that need processing, then map them into chunked queue payloads.
+The daily cron should fetch ONLY canonical IDs, then map them into chunked queue payloads.
 ```python
 def process_expired_allocation():
     # 1. Fetch only names
@@ -127,17 +129,17 @@ def process_expired_allocation():
             queue="long"
         )
 ```
-*Why this matters for Frappe v16:* Frappe’s `bench worker` system allows you to spin up multiple background workers. By breaking the cron job into chunks and enqueuing them, the scheduler finishes instantly, and the 3 or 4 `long` workers process the items concurrently over smaller, safe transactions that do not lock the database for active users.
+*Why this matters for Frappe v16:* Frappe’s worker system allows the scheduled hook to return quickly while `long` queue workers process smaller, safer transactions that reduce contention for active users.
 
 ### Codebase Instances: Cron & Scheduler Batching (Point 10)
-*These periodic cron jobs currently query large datasets and iteratively process them inside the same synchronous Gunicorn/Scheduler thread. Under concurrency, these will cause long-running database locks. They must be refactored into "Dispatcher Cron Jobs" that enqueue chunks to the background Redis workers.*
+*These periodic cron jobs should use "Dispatcher Cron Jobs" that enqueue chunks to the background Redis workers. The daily jobs below now follow that model; remaining scheduled hotspots should be aligned to the same contract.*
 
 | Scheduled Job (`ifitwala_ed.hooks.scheduler_events`) | Scope of Synchronous Loop | Proposed Dispatcher Pattern |
 | :--- | :--- | :--- |
-| `auto_close_completed_logs` (Daily) | Queries and closes potentially thousands of `Student Log` and `ToDo` items synchronously. | The cron fetches eligible `Student Log` string names, chunks them into 500s, and enqueues `frappe.enqueue("...close_log_chunk", chunk)`. |
-| `process_expired_allocation` (Daily) | Queries all expired Leave Ledger Entries based on policies and iteratively processes them. | Cron fetches list of expired Entry IDs, enqueues `process_leave_ledger_chunk` via `frappe.enqueue()` for background processing. |
-| `allocate_earned_leaves` (Daily) | Loops over all eligible leave types and employee allocations to modify their ledgers. | Plucks employee allocation IDs and enqueues the heavy ledger evaluation logic to a background worker to avoid blocking the scheduler event loop. |
-| `generate_leave_encashment` (Daily) | Finds all leave allocations matching policy and directly calls `create_leave_encashment()`. | Cron finds the array of `leave_allocations`, pushes them to the queue, and background workers generate the actual encashments. |
+| `dispatch_auto_close_completed_logs` (Daily) | Dispatcher only; fetches eligible `Student Log` names and enqueues chunk workers. | Implemented: chunk workers re-check current eligibility before mutating `Student Log`, `ToDo`, and `Comment`. |
+| `dispatch_process_expired_allocation` (Daily) | Dispatcher only; fetches canonical `Leave Allocation` names and enqueues chunk workers. | Implemented: chunk workers re-query live `Leave Ledger Entry` rows before creating expiry entries. |
+| `dispatch_allocate_earned_leaves` (Daily) | Dispatcher only; groups allocation names per earned `Leave Type` and enqueues chunks. | Implemented: chunk workers apply per-allocation locks and write summaries. |
+| `dispatch_generate_leave_encashment` (Daily) | Dispatcher only; fetches eligible `Leave Allocation` names and enqueues chunks. | Implemented: chunk workers skip allocations that already have a `Leave Encashment`. |
 | `run_hourly_sla_sweep` (Hourly) | Runs `check_sla_breaches()` which likely iterates over open admissions queues. | Fetches Open Admission IDs only, then enqueues the heavy SLA metric computations to the background in batches of 100. |
 
 ## 11. Page Payload Versioning & Cache Stamps

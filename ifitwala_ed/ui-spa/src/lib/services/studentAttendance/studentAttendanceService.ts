@@ -5,8 +5,16 @@ import { createResource } from 'frappe-ui'
 import { uiSignals, SIGNAL_ATTENDANCE_INVALIDATE } from '@/lib/uiSignals'
 
 import type {
+	AttendanceLedgerContextRequest,
+	AttendanceLedgerContextResponse,
 	AttendanceRecordedDatesRequest,
 	AttendanceRecordedDatesResponse,
+	AttendanceToolBootstrapRequest,
+	AttendanceToolBootstrapResponse,
+	AttendanceToolGroupContextRequest,
+	AttendanceToolGroupContextResponse,
+	AttendanceToolRosterContextRequest,
+	AttendanceToolRosterContextResponse,
 	BulkUpsertAttendanceRequest,
 	BulkUpsertAttendanceResponse,
 	FetchActiveProgramsRequest,
@@ -46,6 +54,30 @@ import type {
 export function createStudentAttendanceService() {
 	const schoolContextResource = createResource<FetchSchoolFilterContextResponse>({
 		url: 'ifitwala_ed.api.student_attendance.fetch_school_filter_context',
+		method: 'POST',
+		auto: false,
+	})
+
+	const attendanceLedgerContextResource = createResource<AttendanceLedgerContextResponse>({
+		url: 'ifitwala_ed.api.student_attendance.fetch_attendance_ledger_context',
+		method: 'POST',
+		auto: false,
+	})
+
+	const attendanceToolBootstrapResource = createResource<AttendanceToolBootstrapResponse>({
+		url: 'ifitwala_ed.api.student_attendance.fetch_attendance_tool_bootstrap',
+		method: 'POST',
+		auto: false,
+	})
+
+	const attendanceToolGroupContextResource = createResource<AttendanceToolGroupContextResponse>({
+		url: 'ifitwala_ed.api.student_attendance.fetch_attendance_tool_group_context',
+		method: 'POST',
+		auto: false,
+	})
+
+	const attendanceToolRosterContextResource = createResource<AttendanceToolRosterContextResponse>({
+		url: 'ifitwala_ed.api.student_attendance.fetch_attendance_tool_roster_context',
 		method: 'POST',
 		auto: false,
 	})
@@ -177,6 +209,30 @@ export function createStudentAttendanceService() {
 		return schoolContextResource.submit(payload)
 	}
 
+	async function fetchAttendanceLedgerContext(
+		payload: AttendanceLedgerContextRequest = {},
+	): Promise<AttendanceLedgerContextResponse> {
+		return attendanceLedgerContextResource.submit(payload)
+	}
+
+	async function fetchAttendanceToolBootstrap(
+		payload: AttendanceToolBootstrapRequest = {},
+	): Promise<AttendanceToolBootstrapResponse> {
+		return attendanceToolBootstrapResource.submit(payload)
+	}
+
+	async function fetchAttendanceToolGroupContext(
+		payload: AttendanceToolGroupContextRequest,
+	): Promise<AttendanceToolGroupContextResponse> {
+		return attendanceToolGroupContextResource.submit(payload)
+	}
+
+	async function fetchAttendanceToolRosterContext(
+		payload: AttendanceToolRosterContextRequest,
+	): Promise<AttendanceToolRosterContextResponse> {
+		return attendanceToolRosterContextResource.submit(payload)
+	}
+
 	async function fetchPrograms(
 		payload: FetchActiveProgramsRequest = {},
 	): Promise<FetchActiveProgramsResponse> {
@@ -295,6 +351,10 @@ export function createStudentAttendanceService() {
 
 	return {
 		fetchSchoolContext,
+		fetchAttendanceLedgerContext,
+		fetchAttendanceToolBootstrap,
+		fetchAttendanceToolGroupContext,
+		fetchAttendanceToolRosterContext,
 		fetchPrograms,
 		fetchAcademicYears,
 		fetchTerms,

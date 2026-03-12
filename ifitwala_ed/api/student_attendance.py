@@ -1,11 +1,24 @@
 # ifitwala_ed/api/student_attendance.py
 
+import hashlib
+import json
+
 import frappe
 from frappe import _
+from frappe.utils import getdate, nowdate
 from frappe.utils.caching import redis_cache
 from frappe.utils.nestedset import get_descendants_of
 
 from ifitwala_ed.api.student_groups import _instructor_group_names, _user_roles
+from ifitwala_ed.schedule.attendance_utils import (
+    attendance_recorded_dates,
+    fetch_blocks_for_day,
+    fetch_existing_attendance,
+    fetch_students,
+    get_meeting_dates,
+    list_attendance_codes,
+    previous_status_map,
+)
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
 from ifitwala_ed.utilities.school_tree import _is_adminish, get_school_lineage, get_user_default_school
 
@@ -27,6 +40,8 @@ PORTAL_GROUP_FIELDS = [
     "academic_year",
     "status",
 ]
+
+ATTENDANCE_CONTEXT_TTL = 300
 
 
 @frappe.whitelist()
@@ -230,6 +245,160 @@ def fetch_active_programs():
 
 
 @frappe.whitelist()
+def fetch_attendance_ledger_context(
+    school: str | None = None,
+    program: str | None = None,
+    academic_year: str | None = None,
+    term: str | None = None,
+    student_group: str | None = None,
+):
+    requested = {
+        "school": _clean_value(school),
+        "program": _clean_value(program),
+        "academic_year": _clean_value(academic_year),
+        "term": _clean_value(term),
+        "student_group": _clean_value(student_group),
+    }
+
+    def _build():
+        school_context = fetch_school_filter_context()
+        schools = school_context.get("schools") or []
+        selected_school = _pick_named_value(
+            requested["school"],
+            schools,
+            fallback=school_context.get("default_school"),
+            allow_first=True,
+        )
+        programs = fetch_active_programs()
+        selected_program = _pick_named_value(requested["program"], programs)
+
+        groups = fetch_portal_student_groups(
+            school=selected_school,
+            program=selected_program,
+        )
+        academic_years = fetch_portal_academic_years(school=selected_school)
+        if not academic_years:
+            academic_years = _derive_academic_year_rows_from_groups(groups)
+
+        selected_academic_year = _pick_named_value(
+            requested["academic_year"],
+            academic_years,
+            fallback=academic_years[0]["name"] if academic_years else None,
+            allow_first=True,
+        )
+        terms = fetch_portal_terms(
+            academic_year=selected_academic_year,
+            school=selected_school,
+        )
+        selected_term = _pick_named_value(requested["term"], terms)
+        selected_group = _pick_named_value(requested["student_group"], groups)
+
+        return {
+            "schools": schools,
+            "default_school": selected_school,
+            "programs": programs,
+            "default_program": selected_program,
+            "academic_years": academic_years,
+            "default_academic_year": selected_academic_year,
+            "terms": terms,
+            "default_term": selected_term,
+            "student_groups": groups,
+            "default_student_group": selected_group,
+        }
+
+    return _cached_context(
+        "attendance_ledger_context",
+        requested,
+        _build,
+    )
+
+
+@frappe.whitelist()
+def fetch_attendance_tool_bootstrap(
+    school: str | None = None,
+    program: str | None = None,
+    student_group: str | None = None,
+):
+    requested = {
+        "school": _clean_value(school),
+        "program": _clean_value(program),
+        "student_group": _clean_value(student_group),
+    }
+
+    def _build():
+        school_context = fetch_school_filter_context()
+        schools = school_context.get("schools") or []
+        selected_school = _pick_named_value(
+            requested["school"],
+            schools,
+            fallback=school_context.get("default_school"),
+            allow_first=True,
+        )
+        programs = fetch_active_programs()
+        selected_program = _pick_named_value(requested["program"], programs)
+        groups = fetch_portal_student_groups(
+            school=selected_school,
+            program=selected_program,
+        )
+        attendance_codes = list_attendance_codes()
+        selected_group = _pick_named_value(requested["student_group"], groups)
+        if not selected_group and len(groups) == 1:
+            selected_group = groups[0]["name"]
+
+        return {
+            "schools": schools,
+            "default_school": selected_school,
+            "programs": programs,
+            "default_program": selected_program,
+            "student_groups": groups,
+            "default_student_group": selected_group,
+            "attendance_codes": attendance_codes,
+            "default_code": attendance_codes[0]["name"] if attendance_codes else None,
+        }
+
+    return _cached_context(
+        "attendance_tool_bootstrap",
+        requested,
+        _build,
+    )
+
+
+@frappe.whitelist()
+def fetch_attendance_tool_group_context(student_group: str):
+    group_name = _clean_value(student_group)
+    if not group_name:
+        frappe.throw(_("Student Group is required."))
+
+    weekend_days = get_weekend_days(group_name)
+    meeting_dates = get_meeting_dates(group_name)
+    recorded_dates = attendance_recorded_dates(group_name)
+
+    return {
+        "weekend_days": weekend_days or [6, 0],
+        "meeting_dates": meeting_dates,
+        "recorded_dates": recorded_dates,
+        "default_selected_date": _pick_default_meeting_date(meeting_dates),
+    }
+
+
+@frappe.whitelist()
+def fetch_attendance_tool_roster_context(student_group: str, attendance_date: str):
+    group_name = _clean_value(student_group)
+    selected_date = _clean_value(attendance_date)
+    if not group_name:
+        frappe.throw(_("Student Group is required."))
+    if not selected_date:
+        frappe.throw(_("Attendance Date is required."))
+
+    return {
+        "roster": fetch_students(group_name, start=0, page_length=500),
+        "prev_map": previous_status_map(group_name, selected_date),
+        "existing_map": fetch_existing_attendance(group_name, selected_date),
+        "blocks": fetch_blocks_for_day(group_name, selected_date),
+    }
+
+
+@frappe.whitelist()
 def fetch_portal_academic_years(school: str | None = None):
     """Return Academic Years visible in scope, with nearest-ancestor calendar fallback."""
     user = frappe.session.user
@@ -391,3 +560,80 @@ def _query_terms(
         params,
         as_dict=True,
     )
+
+
+def _cached_context(prefix: str, requested: dict[str, str | None], builder):
+    cache_key = _build_cache_key(prefix, requested)
+    cache = frappe.cache()
+    cached = cache.get_value(cache_key)
+    if cached is not None:
+        return cached
+
+    payload = builder()
+    cache.set_value(cache_key, payload, expires_in_sec=ATTENDANCE_CONTEXT_TTL)
+    return payload
+
+
+def _build_cache_key(prefix: str, requested: dict[str, str | None]) -> str:
+    raw = json.dumps(
+        {
+            "user": frappe.session.user,
+            "requested": requested,
+            "default_school": get_user_default_school(),
+        },
+        sort_keys=True,
+    )
+    digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()
+    return f"ifw:{prefix}:{digest}"
+
+
+def _clean_value(value: str | None) -> str | None:
+    cleaned = (value or "").strip()
+    return cleaned or None
+
+
+def _pick_named_value(
+    requested: str | None,
+    rows: list[dict],
+    *,
+    fallback: str | None = None,
+    allow_first: bool = False,
+) -> str | None:
+    names = {row.get("name") for row in rows if row.get("name")}
+    if requested and requested in names:
+        return requested
+    if fallback and fallback in names:
+        return fallback
+    if allow_first and rows:
+        return rows[0]["name"]
+    return None
+
+
+def _derive_academic_year_rows_from_groups(groups: list[dict]) -> list[dict]:
+    names = sorted(
+        {
+            row.get("academic_year")
+            for row in groups
+            if isinstance(row.get("academic_year"), str) and row.get("academic_year", "").strip()
+        },
+        reverse=True,
+    )
+    return [{"name": value} for value in names]
+
+
+def _pick_default_meeting_date(meeting_dates: list[str]) -> str | None:
+    if not meeting_dates:
+        return None
+
+    today = getdate(nowdate())
+    parsed_dates = sorted(
+        {value: getdate(value) for value in meeting_dates if isinstance(value, str) and value.strip()}.items(),
+        key=lambda item: item[1],
+    )
+    if not parsed_dates:
+        return None
+
+    past_or_today = [iso for iso, parsed in parsed_dates if parsed <= today]
+    if past_or_today:
+        return past_or_today[-1]
+    return parsed_dates[0][0]

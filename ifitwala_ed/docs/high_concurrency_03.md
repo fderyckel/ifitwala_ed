@@ -213,6 +213,8 @@ Ensure atomic child-record creation per applicant (idempotent with applicant id)
 
 You got right: cron should enqueue batches, not process everything.
 
+Status update (2026-03-12): the daily Student Log / HR leave scheduler hooks now dispatch chunk workers instead of processing the full sweep inline.
+
 Critical gap: if cron enqueues too much too fast, you’ll backpressure Redis and workers and latency will spike anyway.
 
 Improvements
@@ -340,6 +342,10 @@ Use your own “aggregated context endpoint” rule for the worst offenders:
 
 AttendanceLedger.vue: aggregate context into one get_attendance_ledger_context() endpoint (your report already calls this out).
 
+Implemented read-model contract:
+
+fetch_attendance_ledger_context(school, program, academic_year, term, student_group) → schools, programs, academic_years, terms, student_groups, resolved defaults.
+
 AttendanceAnalytics.vue: aggregate into get_attendance_analytics_context() instead of scattered calls (context + groups + dashboard payload).
 
 InquiryAnalytics.vue: aggregate get_inquiry_analytics_context() (types/users/years/orgs/schools in one).
@@ -347,6 +353,14 @@ InquiryAnalytics.vue: aggregate get_inquiry_analytics_context() (types/users/yea
 RoomUtilization.vue: aggregate dashboard payload to avoid “freeRooms + timeUtil + capacity + analyticsAccess” as separate calls.
 
 Admissions Cockpit / heavy SPA views: add a cockpit-context endpoint that returns all dependent dropdown lookups in one call, then reserve Promise.all for truly independent payloads (not tightly coupled primitives).
+
+StudentAttendanceTool.vue should stay bounded, not monolithic:
+
+fetch_attendance_tool_bootstrap(school, program, student_group) → schools, programs, codes, groups, resolved defaults
+
+fetch_attendance_tool_group_context(student_group) → weekend_days, meeting_dates, recorded_dates, default_selected_date
+
+fetch_attendance_tool_roster_context(student_group, attendance_date) → roster, previous_status, existing_attendance, blocks
 
 
 

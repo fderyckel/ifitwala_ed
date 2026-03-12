@@ -12,8 +12,32 @@ from ifitwala_ed.students.doctype.student_log.student_log import (
     StudentLog,
     _interpolate_sql_params,
     _is_accreditation_visitor_only,
+    dispatch_auto_close_completed_logs,
     get_student_log_visibility_predicate,
+    process_auto_close_completed_logs_chunk,
 )
+
+
+class _DummyLock:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class _DummyCache:
+    def __init__(self):
+        self.store = {}
+
+    def get_value(self, key):
+        return self.store.get(key)
+
+    def set_value(self, key, value, expires_in_sec=None):
+        self.store[key] = value
+
+    def lock(self, key, timeout=15):
+        return _DummyLock()
 
 
 class TestStudentLog(TestCase):
@@ -98,3 +122,67 @@ class TestStudentLog(TestCase):
 
         with self.assertRaises(frappe.ValidationError):
             doc._assert_core_fields_immutable_after_follow_up()
+
+    def test_dispatch_auto_close_completed_logs_enqueues_long_queue_chunks(self):
+        cache = _DummyCache()
+        eligible_rows = [
+            frappe._dict({"name": "LOG-0001"}),
+            frappe._dict({"name": "LOG-0002"}),
+            frappe._dict({"name": "LOG-0003"}),
+        ]
+
+        with (
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.cache", return_value=cache),
+            patch(
+                "ifitwala_ed.students.doctype.student_log.student_log._get_auto_close_eligible_rows",
+                return_value=eligible_rows,
+            ),
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.enqueue") as enqueue,
+        ):
+            summary = dispatch_auto_close_completed_logs(chunk_size=2)
+
+        self.assertEqual(summary["candidate_count"], 3)
+        self.assertEqual(summary["chunk_count"], 2)
+        self.assertEqual(enqueue.call_count, 2)
+        first_call = enqueue.call_args_list[0]
+        self.assertEqual(first_call.kwargs["queue"], "long")
+        self.assertEqual(first_call.kwargs["log_names"], ["LOG-0001", "LOG-0002"])
+        second_call = enqueue.call_args_list[1]
+        self.assertEqual(second_call.kwargs["log_names"], ["LOG-0003"])
+
+    def test_process_auto_close_completed_logs_chunk_only_updates_currently_eligible_logs(self):
+        cache = _DummyCache()
+        eligible_rows = [frappe._dict({"name": "LOG-0001", "auto_close_after_days": 7})]
+        inserted_comments = []
+
+        class _FakeComment:
+            def __init__(self, payload):
+                self.payload = payload
+
+            def insert(self, ignore_permissions=False):
+                inserted_comments.append((self.payload, ignore_permissions))
+                return self
+
+        with (
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.cache", return_value=cache),
+            patch(
+                "ifitwala_ed.students.doctype.student_log.student_log._get_auto_close_eligible_rows",
+                return_value=eligible_rows,
+            ),
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.db.sql") as db_sql,
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.db.set_value") as db_set_value,
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.db.exists", return_value=False),
+            patch(
+                "ifitwala_ed.students.doctype.student_log.student_log.frappe.get_doc",
+                side_effect=lambda payload: _FakeComment(payload),
+            ),
+        ):
+            summary = process_auto_close_completed_logs_chunk(["LOG-0001", "LOG-0002"])
+
+        self.assertEqual(summary["requested_count"], 2)
+        self.assertEqual(summary["processed_count"], 1)
+        self.assertEqual(summary["skipped_count"], 1)
+        db_sql.assert_called_once()
+        db_set_value.assert_called_once_with("Student Log", "LOG-0001", "follow_up_status", "Completed")
+        self.assertEqual(len(inserted_comments), 1)
+        self.assertEqual(inserted_comments[0][0]["reference_name"], "LOG-0001")

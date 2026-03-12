@@ -11,6 +11,7 @@ import frappe
 from frappe import _
 from frappe.utils import (
     add_days,
+    cint,
     date_diff,
     flt,
     get_first_day,
@@ -21,6 +22,28 @@ from frappe.utils import (
     get_year_start,
     getdate,
 )
+
+EARNED_LEAVE_CHUNK_SIZE = 100
+EARNED_LEAVE_DISPATCH_LOCK_KEY = "ifitwala_ed:scheduler:earned_leave:dispatch"
+EARNED_LEAVE_SUMMARY_CACHE_KEY = "ifitwala_ed:scheduler:earned_leave:last_run"
+LEAVE_ENCASHMENT_CHUNK_SIZE = 100
+LEAVE_ENCASHMENT_DISPATCH_LOCK_KEY = "ifitwala_ed:scheduler:leave_encashment:dispatch"
+LEAVE_ENCASHMENT_SUMMARY_CACHE_KEY = "ifitwala_ed:scheduler:leave_encashment:last_run"
+
+
+def _chunk_values(values, chunk_size):
+    chunk_size = max(cint(chunk_size) or 1, 1)
+    for start in range(0, len(values), chunk_size):
+        yield values[start : start + chunk_size]
+
+
+def _record_scheduler_summary(cache_key, logger_name, summary):
+    frappe.cache().set_value(
+        cache_key,
+        frappe.as_json(summary),
+        expires_in_sec=60 * 60 * 24 * 7,
+    )
+    frappe.logger(logger_name, allow_site=True).info(summary)
 
 
 def set_employee_name(doc):
@@ -276,7 +299,7 @@ def get_earned_leaves():
     )
 
 
-def get_leave_allocations(date, leave_type):
+def get_leave_allocations(date, leave_type, allocation_names=None):
     employee = frappe.qb.DocType("Employee")
     leave_allocation = frappe.qb.DocType("Leave Allocation")
     earned_leave_schedule = frappe.qb.DocType("Earned Leave Schedule")
@@ -308,6 +331,8 @@ def get_leave_allocations(date, leave_type):
         )
         .groupby(leave_allocation.name)
     )
+    if allocation_names:
+        query = query.where(leave_allocation.name.isin(list(dict.fromkeys(allocation_names))))
     return query.run(as_dict=1) or []
 
 
@@ -371,19 +396,45 @@ def update_previous_leave_allocation(allocation, annual_allocation, leave_type, 
     ).run()
 
 
-def allocate_earned_leaves():
+def _earned_leave_scheduler_enabled():
     if not frappe.db.exists("DocType", "HR Settings"):
-        return
-    if not frappe.db.get_single_value("HR Settings", "enable_earned_leave_scheduler"):
-        return
+        return False
+    return bool(frappe.db.get_single_value("HR Settings", "enable_earned_leave_scheduler"))
 
-    e_leave_types = get_earned_leaves()
-    today_date = frappe.flags.current_date or getdate()
+
+def _leave_encashment_scheduler_enabled():
+    if not frappe.db.exists("DocType", "HR Settings"):
+        return False
+    if not frappe.db.get_single_value("HR Settings", "enable_leave_encashment"):
+        return False
+    if not frappe.db.get_single_value("HR Settings", "auto_leave_encashment"):
+        return False
+    return frappe.db.exists("DocType", "Leave Encashment")
+
+
+def _get_today_date():
+    return getattr(frappe.flags, "current_date", None) or getdate()
+
+
+def _get_leave_type_details(leave_type_name):
+    leave_type = frappe.db.get_value(
+        "Leave Type",
+        leave_type_name,
+        ["name", "max_leaves_allowed", "earned_leave_frequency", "rounding", "allocate_on_day"],
+        as_dict=True,
+    )
+    return frappe._dict(leave_type or {})
+
+
+def _process_earned_leave_rows(leave_type, leave_allocations, today_date):
     failed_allocations = []
+    processed = 0
+    skipped = 0
+    cache = frappe.cache()
 
-    for leave_type in e_leave_types:
-        leave_allocations = get_leave_allocations(today_date, leave_type.name)
-        for allocation in leave_allocations:
+    for allocation in leave_allocations:
+        lock_key = f"ifitwala_ed:scheduler:earned_leave:allocation:{allocation.name}"
+        with cache.lock(lock_key, timeout=60):
             if allocation.earned_leave_schedule_exists:
                 allocation_date, earned_leaves = get_upcoming_earned_leave_from_schedule(
                     allocation.name, today_date
@@ -406,41 +457,132 @@ def allocate_earned_leaves():
                 )
 
             if not allocation_date or allocation_date != today_date:
+                skipped += 1
                 continue
 
             try:
                 update_previous_leave_allocation(allocation, annual_allocation, leave_type, earned_leaves, today_date)
+                processed += 1
             except Exception as err:
                 log_allocation_error(allocation.name, err)
                 failed_allocations.append(allocation.name)
+
+    return {
+        "processed_count": processed,
+        "skipped_count": skipped,
+        "failed_count": len(failed_allocations),
+        "failed_allocations": failed_allocations,
+    }
+
+
+def dispatch_allocate_earned_leaves(chunk_size=EARNED_LEAVE_CHUNK_SIZE):
+    if not _earned_leave_scheduler_enabled():
+        summary = {"job": "allocate_earned_leaves", "status": "disabled"}
+        _record_scheduler_summary(EARNED_LEAVE_SUMMARY_CACHE_KEY, "earned_leave_scheduler", summary)
+        return summary
+
+    chunk_size = max(cint(chunk_size) or EARNED_LEAVE_CHUNK_SIZE, 1)
+    today_date = _get_today_date()
+    cache = frappe.cache()
+    with cache.lock(EARNED_LEAVE_DISPATCH_LOCK_KEY, timeout=60 * 15):
+        chunk_count = 0
+        candidate_count = 0
+        for leave_type in get_earned_leaves():
+            allocation_names = [row.name for row in get_leave_allocations(today_date, leave_type.name)]
+            candidate_count += len(allocation_names)
+            for chunk in _chunk_values(allocation_names, chunk_size):
+                frappe.enqueue(
+                    "ifitwala_ed.hr.utils.process_earned_leave_allocation_chunk",
+                    queue="long",
+                    leave_type_name=leave_type.name,
+                    allocation_names=chunk,
+                    today_date=str(today_date),
+                )
+                chunk_count += 1
+
+        summary = {
+            "job": "allocate_earned_leaves",
+            "status": "queued",
+            "candidate_count": candidate_count,
+            "chunk_count": chunk_count,
+            "chunk_size": chunk_size,
+        }
+        _record_scheduler_summary(EARNED_LEAVE_SUMMARY_CACHE_KEY, "earned_leave_scheduler", summary)
+        return summary
+
+
+def allocate_earned_leaves():
+    if not _earned_leave_scheduler_enabled():
+        return {"processed_count": 0, "skipped_count": 0, "failed_count": 0}
+
+    e_leave_types = get_earned_leaves()
+    today_date = _get_today_date()
+    failed_allocations = []
+    processed = 0
+    skipped = 0
+
+    for leave_type in e_leave_types:
+        leave_allocations = get_leave_allocations(today_date, leave_type.name)
+        result = _process_earned_leave_rows(leave_type, leave_allocations, today_date)
+        processed += result["processed_count"]
+        skipped += result["skipped_count"]
+        failed_allocations.extend(result["failed_allocations"])
 
     if failed_allocations:
         frappe.log_error(
             title="Earned Leave Allocation Failures",
             message=f"Failed allocations: {', '.join(failed_allocations)}",
         )
+    return {
+        "processed_count": processed,
+        "skipped_count": skipped,
+        "failed_count": len(failed_allocations),
+    }
 
 
-def generate_leave_encashment():
-    if not frappe.db.exists("DocType", "HR Settings"):
-        return
-    if not frappe.db.get_single_value("HR Settings", "enable_leave_encashment"):
-        return
-    if not frappe.db.get_single_value("HR Settings", "auto_leave_encashment"):
-        return
-    if not frappe.db.exists("DocType", "Leave Encashment"):
-        return
+def process_earned_leave_allocation_chunk(leave_type_name, allocation_names=None, today_date=None):
+    allocation_names = list(dict.fromkeys(allocation_names or []))
+    if not allocation_names:
+        summary = {
+            "job": "allocate_earned_leaves",
+            "status": "processed",
+            "requested_count": 0,
+            "processed_count": 0,
+        }
+        _record_scheduler_summary(EARNED_LEAVE_SUMMARY_CACHE_KEY, "earned_leave_scheduler", summary)
+        return summary
 
-    from ifitwala_ed.hr.doctype.leave_encashment.leave_encashment import create_leave_encashment
+    target_date = getdate(today_date) if today_date else _get_today_date()
+    leave_type = _get_leave_type_details(leave_type_name)
+    leave_allocations = get_leave_allocations(target_date, leave_type_name, allocation_names=allocation_names)
+    result = _process_earned_leave_rows(leave_type, leave_allocations, target_date)
+    summary = {
+        "job": "allocate_earned_leaves",
+        "status": "processed",
+        "leave_type": leave_type_name,
+        "requested_count": len(allocation_names),
+        "processed_count": result["processed_count"],
+        "skipped_count": len(allocation_names) - result["processed_count"] - result["failed_count"],
+        "failed_count": result["failed_count"],
+    }
+    _record_scheduler_summary(EARNED_LEAVE_SUMMARY_CACHE_KEY, "earned_leave_scheduler", summary)
+    return summary
 
+
+def _get_leave_encashment_rows(target_date, allocation_names=None):
     leave_types = frappe.get_all("Leave Type", filters={"allow_encashment": 1}, pluck="name")
     if not leave_types:
-        return
+        return []
 
-    leave_allocations = frappe.get_all(
+    filters = [["to_date", "=", target_date], ["leave_type", "in", leave_types]]
+    if allocation_names:
+        filters.append(["name", "in", list(dict.fromkeys(allocation_names))])
+
+    return frappe.get_all(
         "Leave Allocation",
-        filters=[["to_date", "=", add_days(getdate(), -1)], ["leave_type", "in", leave_types]],
+        filters=filters,
         fields=[
+            "name",
             "employee",
             "leave_period",
             "leave_type",
@@ -449,4 +591,108 @@ def generate_leave_encashment():
             "new_leaves_allocated",
         ],
     )
-    create_leave_encashment(leave_allocation=leave_allocations)
+
+
+def _process_leave_encashment_rows(leave_allocations):
+    from ifitwala_ed.hr.doctype.leave_encashment.leave_encashment import (
+        create_leave_encashment,
+        get_assigned_salary_structure,
+    )
+
+    processed = 0
+    skipped = 0
+    failed = 0
+    cache = frappe.cache()
+
+    for allocation in leave_allocations:
+        lock_key = f"ifitwala_ed:scheduler:leave_encashment:allocation:{allocation.name}"
+        with cache.lock(lock_key, timeout=60):
+            if frappe.db.exists("Leave Encashment", {"leave_allocation": allocation.name, "docstatus": ["<", 2]}):
+                skipped += 1
+                continue
+            if not get_assigned_salary_structure(allocation.employee, allocation.to_date):
+                skipped += 1
+                continue
+            try:
+                create_leave_encashment(leave_allocation=[allocation])
+                processed += 1
+            except Exception:
+                failed += 1
+                frappe.logger("leave_encashment_scheduler", allow_site=True).exception(
+                    "Failed to create leave encashment for allocation %s",
+                    allocation.name,
+                )
+
+    return {
+        "processed_count": processed,
+        "skipped_count": skipped,
+        "failed_count": failed,
+    }
+
+
+def dispatch_generate_leave_encashment(chunk_size=LEAVE_ENCASHMENT_CHUNK_SIZE):
+    if not _leave_encashment_scheduler_enabled():
+        summary = {"job": "generate_leave_encashment", "status": "disabled"}
+        _record_scheduler_summary(LEAVE_ENCASHMENT_SUMMARY_CACHE_KEY, "leave_encashment_scheduler", summary)
+        return summary
+
+    chunk_size = max(cint(chunk_size) or LEAVE_ENCASHMENT_CHUNK_SIZE, 1)
+    target_date = add_days(getdate(), -1)
+    cache = frappe.cache()
+    with cache.lock(LEAVE_ENCASHMENT_DISPATCH_LOCK_KEY, timeout=60 * 15):
+        allocations = _get_leave_encashment_rows(target_date)
+        chunk_count = 0
+        for chunk in _chunk_values([row.name for row in allocations], chunk_size):
+            frappe.enqueue(
+                "ifitwala_ed.hr.utils.process_leave_encashment_chunk",
+                queue="long",
+                allocation_names=chunk,
+                target_date=str(target_date),
+            )
+            chunk_count += 1
+
+        summary = {
+            "job": "generate_leave_encashment",
+            "status": "queued",
+            "candidate_count": len(allocations),
+            "chunk_count": chunk_count,
+            "chunk_size": chunk_size,
+        }
+        _record_scheduler_summary(LEAVE_ENCASHMENT_SUMMARY_CACHE_KEY, "leave_encashment_scheduler", summary)
+        return summary
+
+
+def generate_leave_encashment():
+    if not _leave_encashment_scheduler_enabled():
+        return {"processed_count": 0, "skipped_count": 0, "failed_count": 0}
+
+    target_date = add_days(getdate(), -1)
+    leave_allocations = _get_leave_encashment_rows(target_date)
+    return _process_leave_encashment_rows(leave_allocations)
+
+
+def process_leave_encashment_chunk(allocation_names=None, target_date=None):
+    allocation_names = list(dict.fromkeys(allocation_names or []))
+    if not allocation_names:
+        summary = {
+            "job": "generate_leave_encashment",
+            "status": "processed",
+            "requested_count": 0,
+            "processed_count": 0,
+        }
+        _record_scheduler_summary(LEAVE_ENCASHMENT_SUMMARY_CACHE_KEY, "leave_encashment_scheduler", summary)
+        return summary
+
+    run_date = getdate(target_date) if target_date else add_days(getdate(), -1)
+    leave_allocations = _get_leave_encashment_rows(run_date, allocation_names=allocation_names)
+    result = _process_leave_encashment_rows(leave_allocations)
+    summary = {
+        "job": "generate_leave_encashment",
+        "status": "processed",
+        "requested_count": len(allocation_names),
+        "processed_count": result["processed_count"],
+        "skipped_count": result["skipped_count"],
+        "failed_count": result["failed_count"],
+    }
+    _record_scheduler_summary(LEAVE_ENCASHMENT_SUMMARY_CACHE_KEY, "leave_encashment_scheduler", summary)
+    return summary

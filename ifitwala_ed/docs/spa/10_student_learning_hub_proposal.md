@@ -185,18 +185,15 @@ The course-space language should stay `My Courses`, not `My Learning`.
 
 ### 5. Course Detail becomes the real LMS surface
 
-The current Phase 1 `CourseDetail.vue` outline should evolve into the main learning space for a course.
+The student `CourseDetail.vue` surface should be the main learning space for a course.
 
-The page should have four vertically ordered bands:
+Current implementation direction:
 
-1. **Course header**
-   Teacher presence, today's lesson, current unit, success criteria, and a resume button.
-2. **Unit navigator**
-   Ordered `Learning Unit` list with clear current / completed / upcoming states.
-3. **Lesson surface**
-   Ordered `Lesson` list for the selected unit, with the current lesson expanded by default.
-4. **Activity flow**
-   Ordered `Lesson Activity` blocks plus linked tasks and due work.
+- keep the course header as the top orientation band
+- add a persistent course map for ordered `Learning Unit` and `Lesson` navigation
+- keep one active unit and one active lesson in focus at a time
+- render ordered `Lesson Activity` blocks plus linked unit and lesson work inside that lesson flow
+- keep success-criteria style framing and durable resume actions for the later progress/focus phase, because the current lesson schema does not yet expose a richer progress contract
 
 ### 6. Activity blocks should behave like interactive textbook pages
 
@@ -471,7 +468,7 @@ Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/ui-spa/src/lib/servic
 | SPA routes | `/student`, `/student/courses`, `/student/courses/:course_id` exist and course detail now accepts optional deep-link query anchors for `learning_unit`, `lesson`, and `lesson_instance` | Keep routes stable and upgrade meaning of existing pages | Need more producers of deep-link context from learning entry points |
 | Home payload | Student home now uses one aggregated Hub payload for identity, today's classes, and a next-learning-step card | Upgrade to a `Today` cockpit with a top orientation strip, a compact `My Work Board`, and a dated learning timeline | Needs board and dated learning timeline layers |
 | Planning board | No student planning board exists | Add a compact kanban-style planning layer with student-managed `Now` and system-curated `Soon/Later/Done` support | Needs a student-side planning state model that does not overwrite canonical task status |
-| Course payload | Course detail now has one aggregated payload with course metadata, curriculum outline, linked tasks, and deep-link resolution | Upgrade course detail into the LMS learning surface | Needs richer lesson rendering, progress state, and execution affordances |
+| Course payload | Course detail now has one aggregated payload with course metadata, deep-link resolution, course-map navigation, active unit framing, active lesson flow, and inline linked tasks | Upgrade course detail into the LMS learning surface | Needs progress state and execution affordances |
 | Curriculum model | `Learning Unit`, `Lesson`, `Lesson Activity` exist; task stack exists | Surface native curriculum model to students | Needs visibility/progress contract |
 | Task model | `Task` and `Task Delivery` exist with dated delivery context | Embed tasks in board, timeline, and lesson context; deep-link `Now` into pedagogical context | Needs student-facing join logic without duplicating workflow |
 | Portfolio / reflection | Portfolio and reflection surfaces already exist, but mostly as a separate destination | Pull reflection and portfolio prompts into the learning loop | Needs in-flow integration without pretending the current lesson schema already contains a reflection block type |
@@ -480,7 +477,7 @@ Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/ui-spa/src/lib/servic
 | Retrieval checkpoints | Lessons can propose reading checks or quizzes, but Task Delivery is heavy | Use lightweight checkpoint state for micro-retrieval | Needs a separate checkpoint contract outside formal gradebook truth |
 | Lesson runtime context | `Lesson Instance` exists but is lightly used | Use when available to show "what happened in class" context | Must remain optional |
 | Interoperability | No student-facing cmi5/SCORM layer is present | Build cmi5-first external content compatibility | Needs separate integration architecture and launch/runtime tracking |
-| Tests | Backend contract tests now exist for Home and course-detail payload logic, and SPA service tests exist for canonical method usage | Add contract tests before implementation | Needs component-level route/render tests once node tooling is available in the workspace |
+| Tests | Backend contract tests exist for Home and course-detail payload logic, SPA service tests exist for canonical method usage, and helper tests now cover lesson selection and adjacency logic | Add contract tests before implementation | Needs component-level route/render tests once node tooling is available in the workspace |
 
 ## Technical Notes (IT)
 

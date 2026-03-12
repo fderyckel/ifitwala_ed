@@ -188,6 +188,12 @@ Completed is the only terminal state.
 
 `auto_close_after_days` is a **case-level** policy. It may close after inactivity.
 
+Operational contract:
+
+* The daily scheduler hook is dispatcher-only and enqueues chunk workers rather than sweeping every eligible log in one run.
+* Each chunk worker re-checks current `Student Log` state before closing `ToDo` items or marking the log `Completed`.
+* Auto-close writes a per-run summary to logs/cache for operational visibility.
+
 Locked rule:
 
 * It must never be treated as “follow-up submitted = auto-complete”.

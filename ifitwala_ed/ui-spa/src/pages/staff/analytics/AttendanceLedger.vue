@@ -97,6 +97,7 @@ const studentOptions = computed(() => ledger.value?.filter_options?.students || 
 
 let loadRunId = 0;
 let reloadTimer: number | null = null;
+let hydratingFilters = false;
 
 function isoDate(value: Date): string {
 	return value.toISOString().slice(0, 10);
@@ -250,87 +251,43 @@ function scheduleReload() {
 	}, 350);
 }
 
-async function loadStudentGroups() {
+function applyFilterContext(
+	context: Awaited<ReturnType<typeof attendanceService.fetchAttendanceLedgerContext>>
+) {
+	schools.value = context.schools || [];
+	programs.value = context.programs || [];
+	academicYears.value = context.academic_years || [];
+	terms.value = context.terms || [];
+	studentGroups.value = context.student_groups || [];
+
+	filters.school = context.default_school || null;
+	filters.program = context.default_program || null;
+	filters.academic_year = context.default_academic_year || null;
+	filters.term = context.default_term || null;
+	filters.student_group = context.default_student_group || null;
+}
+
+async function reloadFilterContext() {
 	try {
-		const groups = await attendanceService.fetchStudentGroups({
+		const context = await attendanceService.fetchAttendanceLedgerContext({
 			school: filters.school,
 			program: filters.program,
-		});
-		studentGroups.value = groups;
-		if (filters.student_group && !groups.some(group => group.name === filters.student_group)) {
-			filters.student_group = null;
-		}
-	} catch (error) {
-		studentGroups.value = [];
-		filters.student_group = null;
-		actionError.value = formatError(error);
-	}
-}
-
-async function loadAcademicYears() {
-	try {
-		let years = await attendanceService.fetchAcademicYears({ school: filters.school });
-		if (!years.length) {
-			const groups = studentGroups.value.length
-				? studentGroups.value
-				: await attendanceService.fetchStudentGroups({
-						school: filters.school,
-						program: filters.program,
-					});
-			if (!studentGroups.value.length && groups.length) {
-				studentGroups.value = groups;
-			}
-			const derivedYears = Array.from(
-				new Set(
-					groups
-						.map(group => group.academic_year)
-						.filter(
-							(value): value is string => typeof value === 'string' && value.trim().length > 0
-						)
-				)
-			).sort((left, right) => right.localeCompare(left));
-			years = derivedYears.map(name => ({ name }));
-		}
-		academicYears.value = years;
-		if (filters.academic_year && !years.some(year => year.name === filters.academic_year)) {
-			filters.academic_year = years[0]?.name || null;
-		}
-		if (!filters.academic_year) {
-			filters.academic_year = years[0]?.name || null;
-		}
-	} catch (error) {
-		academicYears.value = [];
-		filters.academic_year = null;
-		actionError.value = formatError(error);
-	}
-}
-
-async function loadTerms() {
-	try {
-		const values = await attendanceService.fetchTerms({
-			school: filters.school,
 			academic_year: filters.academic_year,
+			term: filters.term,
+			student_group: filters.student_group,
 		});
-		terms.value = values;
-		if (filters.term && !values.some(term => term.name === filters.term)) {
-			filters.term = null;
-		}
+		hydratingFilters = true;
+		applyFilterContext(context);
+		await Promise.resolve();
+		hydratingFilters = false;
 	} catch (error) {
-		terms.value = [];
-		filters.term = null;
+		hydratingFilters = false;
 		actionError.value = formatError(error);
 	}
 }
 
 async function initializeFilters() {
-	const schoolContext = await attendanceService.fetchSchoolContext();
-	schools.value = schoolContext.schools || [];
-	filters.school = schoolContext.default_school || schoolContext.schools?.[0]?.name || null;
-
-	programs.value = await attendanceService.fetchPrograms();
-	await loadAcademicYears();
-	await loadTerms();
-	await loadStudentGroups();
+	await reloadFilterContext();
 }
 
 async function reloadLedger() {
@@ -362,13 +319,11 @@ async function reloadLedger() {
 watch(
 	() => filters.school,
 	async () => {
-		if (!filtersReady.value) return;
+		if (!filtersReady.value || hydratingFilters) return;
 		filters.term = null;
 		filters.student_group = null;
 		page.value = 1;
-		await loadAcademicYears();
-		await loadTerms();
-		await loadStudentGroups();
+		await reloadFilterContext();
 		scheduleReload();
 	}
 );
@@ -376,10 +331,10 @@ watch(
 watch(
 	() => filters.academic_year,
 	async () => {
-		if (!filtersReady.value) return;
+		if (!filtersReady.value || hydratingFilters) return;
 		filters.term = null;
 		page.value = 1;
-		await loadTerms();
+		await reloadFilterContext();
 		scheduleReload();
 	}
 );
@@ -387,10 +342,10 @@ watch(
 watch(
 	() => filters.program,
 	async () => {
-		if (!filtersReady.value) return;
+		if (!filtersReady.value || hydratingFilters) return;
 		filters.student_group = null;
 		page.value = 1;
-		await loadStudentGroups();
+		await reloadFilterContext();
 		scheduleReload();
 	}
 );

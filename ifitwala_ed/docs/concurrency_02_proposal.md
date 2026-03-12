@@ -45,22 +45,21 @@ Location:
 
 ### 1) Add a view payload endpoint (backend)
 
-Create a new whitelisted method (example name; exact name must be consistent with your repo’s naming conventions):
+Implemented whitelisted method:
 
 **`ifitwala_ed.api.student_attendance.fetch_attendance_ledger_context`**
 
-Expected input (JSON payload):
+Implemented input (JSON payload):
 
-* `{ school?: string|null, program?: string|null, include_ledger?: 0|1 }`
+* `{ school?: string|null, program?: string|null, academic_year?: string|null, term?: string|null, student_group?: string|null }`
 
-Expected output shape (JSON):
+Implemented output shape (JSON):
 
 * `schools`, `default_school`
-* `programs`
+* `programs`, `default_program`
 * `academic_years`, `default_academic_year`
 * `terms`, `default_term`
 * `student_groups`, `default_student_group`
-* OPTIONAL: `ledger` (same contract as `AttendanceLedgerResponse`)
 
 **Backend requirements**
 
@@ -68,10 +67,9 @@ Expected output shape (JSON):
 * Cache context objects by key:
 
   * `user_id` (or session)
-  * `school`
-  * `program`
-  * include queryable metadata (e.g., `last_updated_ts`) if available
-* If `include_ledger=1`, still return only **first page** unless specified otherwise. Do not “bulk dump all pages”.
+  * requested filter scope
+  * resolved default school
+* Keep ledger rows separate from context payloads; the page still calls the ledger analytics endpoint after context hydration.
 
 ### 2) Extend the student attendance service (frontend)
 
@@ -98,7 +96,9 @@ with one call:
 const ctx = await attendanceService.fetchAttendanceLedgerContext({
   school: filters.school,
   program: filters.program,
-  include_ledger: 0,
+  academic_year: filters.academic_year,
+  term: filters.term,
+  student_group: filters.student_group,
 })
 
 schools.value = ctx.schools
@@ -114,14 +114,38 @@ filters.program = ctx.default_program
 filters.student_group = ctx.default_student_group
 ```
 
-### 4) Decide on ledger initialization
+### 4) Attendance tool contract update
 
-Two acceptable strategies:
+The implemented attendance tool takes the bounded multi-endpoint route instead of one oversized mega-payload. This preserves the concurrency goal while keeping payloads small and mode-specific.
 
-* **Strategy A (preferred)**: `include_ledger=0`, then `await reloadLedger()`
-* **Strategy B (init latency optimized)**: `include_ledger=1`, hydrate `ledger.value = ctx.ledger`, and still keep `reloadLedger()` logic unchanged.
+Implemented backend endpoints:
 
-### 5) Optimize watchers (reduce waterfall on filter change)
+* `ifitwala_ed.api.student_attendance.fetch_attendance_tool_bootstrap`
+* `ifitwala_ed.api.student_attendance.fetch_attendance_tool_group_context`
+* `ifitwala_ed.api.student_attendance.fetch_attendance_tool_roster_context`
+
+Implemented responsibilities:
+
+* `fetch_attendance_tool_bootstrap(school, program, student_group)`
+  returns schools, programs, student groups, attendance codes, and resolved defaults.
+* `fetch_attendance_tool_group_context(student_group)`
+  returns weekend days, meeting dates, recorded dates, and `default_selected_date`.
+* `fetch_attendance_tool_roster_context(student_group, attendance_date)`
+  returns roster, previous-status map, existing attendance, and block list.
+
+Implemented SPA impact:
+
+* `StudentAttendanceTool.vue` now hydrates with 1 bootstrap call, 1 group-context call, and 1 roster-context call on the preselected-group path.
+* The old fragmented client orchestration remains available in the service layer only as lower-level utilities; the page no longer assembles foundational context from many independent calls.
+
+### 5) Decide on ledger initialization
+
+Implemented strategy:
+
+* Context endpoint hydrates filters only.
+* `AttendanceLedger.vue` then calls `reloadLedger()` against `ifitwala_ed.api.attendance.get`.
+
+### 6) Optimize watchers (reduce waterfall on filter change)
 
 Goal: fewer sequential calls when filters change, without correctness regression.
 
@@ -136,7 +160,7 @@ Fallback option:
   * school change: `[fetchAcademicYears, fetchStudentGroups]` parallel, then `fetchTerms` using chosen academic_year
   * program change: `fetchStudentGroups` only (already scoped)
 
-### 6) Instrumentation & testing
+### 7) Instrumentation & testing
 
 Add metrics in dev/staging:
 
@@ -251,14 +275,21 @@ For every mutation endpoint (acknowledgement, assignment, policy admin actions):
 1. Backend endpoints:
 
    * `fetch_attendance_ledger_context`
+   * `fetch_attendance_tool_bootstrap`
+   * `fetch_attendance_tool_group_context`
+   * `fetch_attendance_tool_roster_context`
    * `fetch_policy_signature_context`
 2. Frontend service additions:
 
    * `fetchAttendanceLedgerContext(...)`
+   * `fetchAttendanceToolBootstrap(...)`
+   * `fetchAttendanceToolGroupContext(...)`
+   * `fetchAttendanceToolRosterContext(...)`
    * `fetchPolicySignatureContext(...)`
 3. Component rewrites:
 
    * `AttendanceLedger.vue` init + watchers
+   * `StudentAttendanceTool.vue` bootstrap + group/roster hydration
    * `PolicySignatureAnalytics.vue` init (and optionally watchers)
 4. Updated endpoint docs/README (short contract summary)
 5. Instrumentation hooks (dev-only) for init call count & elapsed time
