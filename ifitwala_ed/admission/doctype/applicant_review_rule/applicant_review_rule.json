@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "APPL-REV-RULE-.####",
+ "autoname": "ADM-REV-RULE-.####",
  "creation": "2026-02-23 00:00:00",
  "description": "Defines which users/roles must review admissions artifacts for a school/program scope.",
  "doctype": "DocType",
@@ -79,7 +79,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-09 21:56:15.962923",
+ "modified": "2026-03-12 08:29:49.882204",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Review Rule",

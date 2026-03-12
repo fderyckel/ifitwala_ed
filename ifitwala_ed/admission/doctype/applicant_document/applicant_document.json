@@ -108,7 +108,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-12 07:44:51.213928",
+ "modified": "2026-03-12 08:54:26.129836",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Document",
@@ -197,5 +197,6 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "student_applicant"
 }

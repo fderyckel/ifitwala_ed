@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "format:INQ-{YYYY}-{MM}-{DD}-{##}",
+ "autoname": "INQ-.YY.-.MM.-.DD.-.###",
  "creation": "2025-06-23 20:28:16.109115",
  "description": "Capture, assign, and track inquiry follow-up with SLA visibility, assignment ownership, and conversion into Student Applicant.",
  "doctype": "DocType",
@@ -247,11 +247,11 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2026-03-05 12:40:37",
+ "modified": "2026-03-12 08:58:44.314921",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

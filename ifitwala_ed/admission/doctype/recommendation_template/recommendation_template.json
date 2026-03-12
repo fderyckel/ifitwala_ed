@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "ADM-REC-TEM-.###",
  "creation": "2026-03-01 00:00:00",
  "description": "School-scoped recommendation intake template for external recommender submissions.",
  "doctype": "DocType",
@@ -60,7 +60,7 @@
    "description": "Optional. Leave empty to let the system auto-link or create a managed recommendation document type for this school scope.",
    "fieldname": "target_document_type",
    "fieldtype": "Link",
-   "in_standard_filter": 1,
+   "in_list_view": 1,
    "label": "Target Document Type",
    "options": "Applicant Document Type"
   },
@@ -68,6 +68,7 @@
    "default": "1",
    "fieldname": "minimum_required",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Minimum Required",
    "reqd": 1
   },
@@ -75,6 +76,7 @@
    "default": "3",
    "fieldname": "maximum_allowed",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Maximum Allowed",
    "reqd": 1
   },
@@ -122,10 +124,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-01 07:003:00",
+ "modified": "2026-03-12 08:56:31.921412",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Recommendation Template",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -177,7 +180,9 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "template_name"
 }
