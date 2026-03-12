@@ -6,7 +6,8 @@ from urllib.parse import quote
 
 import frappe
 
-ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
+from ifitwala_ed.admission.access import ADMISSIONS_PORTAL_ROLES, has_open_admissions_portal_access
+
 CANONICAL_PORTAL_PREFIX = "/hub"
 
 PORTAL_SECTION_PRIORITY = ("staff", "student", "guardian")
@@ -181,7 +182,7 @@ def resolve_login_redirect_path(*, user: str, roles: set[str]) -> str:
     if has_staff_portal_access(user=user, roles=roles):
         return canonical_path_for_section("staff")
 
-    if ADMISSIONS_APPLICANT_ROLE in roles:
+    if roles & ADMISSIONS_PORTAL_ROLES and has_open_admissions_portal_access(user=user, roles=roles):
         return "/admissions"
 
     sections = resolve_portal_sections(user=user, roles=roles)

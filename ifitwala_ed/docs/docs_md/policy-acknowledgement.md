@@ -3,9 +3,9 @@ title: "Policy Acknowledgement: Append-Only Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "1.5.0"
-last_change_date: "2026-03-01"
-summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, organization-scope validation, and staff policy-signature workflows that present amendment diffs first."
+version: "1.6.0"
+last_change_date: "2026-03-12"
+summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, organization-scope validation, admissions family-signature rules, and staff policy-signature workflows that present amendment diffs first."
 seo_title: "Policy Acknowledgement: Append-Only Consent Evidence"
 seo_description: "Record immutable who/what/when acknowledgement evidence with strict context, role, and organization-scope validation."
 ---
@@ -42,11 +42,12 @@ seo_description: "Record immutable who/what/when acknowledgement evidence with s
 
 ## Role and Context Rules
 
-- Applicant acknowledgements require role `Admissions Applicant` and matching applicant user linkage.
+- Applicant acknowledgements require role `Admissions Applicant` or `Admissions Family` and matching applicant linkage to the selected `Student Applicant`.
 - Student acknowledgements allow:
   - users with `Student` role
   - guardian role only when guardian is linked to that student.
 - Guardian acknowledgements require guardian self-context.
+  - admissions family acknowledgements are allowed only for the actor's own linked `Guardian` record.
 - Staff acknowledgements require staff role (`Academic Staff` or `Employee`).
 - `System Manager` can bypass role validation, and override inserts are comment-audited.
 
@@ -96,7 +97,9 @@ The internal workflow for staff policy signatures is campaign-based and scope-dr
 - Admissions policy acknowledgement requires explicit e-sign payload:
   - `typed_signature_name`
   - `attestation_confirmed`
-- Signature is server-validated against the applicant identity context (expected signer name shown in portal UI).
+- Signature is server-validated against the expected admissions signer context shown in portal UI.
+  - child-scoped policies sign against the selected applicant identity
+  - family-scoped policies sign against the consenting guardian identity
 - One-click acknowledgement without typed signature + attestation is rejected.
 
 ## Where It Is Used Across the ERP
@@ -105,10 +108,15 @@ The internal workflow for staff policy signatures is campaign-based and scope-dr
   - applicant policy readiness checks
   - admissions portal policy status display
 - Admissions portal endpoint `ifitwala_ed.api.admissions_portal.acknowledge_policy`:
-  - creates applicant acknowledgement rows with context:
-    - `acknowledged_for = Applicant`
-    - `context_doctype = Student Applicant`
-    - `context_name = <applicant>`
+  - creates admissions acknowledgement rows with context:
+    - child-scoped admissions policies:
+      - `acknowledged_for = Applicant`
+      - `context_doctype = Student Applicant`
+      - `context_name = <applicant>`
+    - family-scoped admissions policies:
+      - `acknowledged_for = Guardian`
+      - `context_doctype = Guardian`
+      - `context_name = <guardian>`
   - requires applicant electronic-signature fields:
     - `typed_signature_name` (must match expected applicant signer name)
     - `attestation_confirmed` (required true/1)
@@ -183,6 +191,7 @@ Acknowledgements are immutable records. Corrections should be handled by new pol
 | `Admission Officer` | Yes | No | No | No | Read-only |
 | `Admission Manager` | Yes | No | No | No | Read-only |
 | `Admissions Applicant` | Yes | No | Yes | No | Must match applicant context linkage |
+| `Admissions Family` | Yes | No | Yes | No | Applicant or guardian context must be explicitly linked to that user |
 
 Runtime visibility is enforced server-side via `permission_query_conditions` + `has_permission` hooks by role and context (organization/school scope, applicant linkage, guardian linkage, student self, staff self).
 

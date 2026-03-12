@@ -1,7 +1,7 @@
-<!-- ui-spa/src/overlays/analytics/StudentLogAnalyticsExpandOverlay.vue -->
+<!-- ifitwala_ed/ui-spa/src/overlays/analytics/AnalyticsExpandOverlay.vue -->
 <template>
 	<TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
-		<Dialog as="div" class="if-overlay if-overlay--student-log-analytics" @close="onDialogClose">
+		<Dialog as="div" class="if-overlay if-overlay--analytics-expand" @close="onDialogClose">
 			<TransitionChild
 				as="template"
 				enter="if-overlay__fade-enter"

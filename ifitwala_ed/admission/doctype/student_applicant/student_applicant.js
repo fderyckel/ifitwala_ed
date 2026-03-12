@@ -63,6 +63,7 @@ frappe.ui.form.on("Student Applicant", {
 		render_review_sections(frm);
 		add_decision_actions(frm);
 		add_portal_invite_action(frm);
+		add_family_portal_invite_action(frm);
 		add_enrollment_plan_action(frm);
 		add_recommendation_actions(frm);
 		add_create_interview_action(frm);
@@ -590,6 +591,22 @@ function add_portal_invite_action(frm) {
 	frm.add_custom_button(label, () => prompt_portal_invite(frm), __("Actions"));
 }
 
+function add_family_portal_invite_action(frm) {
+	frm.remove_custom_button(__("Invite Family Collaborator"), __("Actions"));
+	frm.remove_custom_button(__("Invite Family Collaborator"));
+
+	if (!frm.doc || frm.is_new()) {
+		return;
+	}
+
+	const status = String(frm.doc.application_status || "").trim();
+	if (TERMINAL_PORTAL_INVITE_STATUSES.has(status)) {
+		return;
+	}
+
+	frm.add_custom_button(__("Invite Family Collaborator"), () => prompt_family_portal_invite(frm), __("Actions"));
+}
+
 function prompt_portal_invite(frm) {
 	const linkedEmail = String(frm.doc.applicant_user || "").trim().toLowerCase();
 	const hasLinkedUser = Boolean(linkedEmail);
@@ -676,6 +693,112 @@ function prompt_portal_invite(frm) {
 		})
 		.catch((err) => {
 			frappe.msgprint(err?.message || __("Unable to load applicant invite email options."));
+		});
+}
+
+function prompt_family_portal_invite(frm) {
+	frappe.call({
+		method: "ifitwala_ed.api.admissions_portal.get_family_invite_options",
+		args: {
+			student_applicant: frm.doc.name,
+		},
+	})
+		.then((res) => {
+			const payload = res?.message || {};
+			const guardians = Array.isArray(payload.guardians) ? payload.guardians : [];
+			if (!guardians.length) {
+				frappe.msgprint(__("Add at least one guardian row before inviting family workspace access."));
+				return;
+			}
+
+			const eligible = guardians.filter(row => Boolean(row?.eligible));
+			if (!eligible.length) {
+				const reasons = guardians
+					.map(row => String(row?.reason || "").trim())
+					.filter(Boolean);
+				frappe.msgprint(
+					reasons.length
+						? reasons.join("<br>")
+						: __("No guardian row is currently eligible for family workspace access.")
+				);
+				return;
+			}
+
+			const optionMap = new Map();
+			const options = eligible.map((row) => {
+				const label = `${String(row.label || __("Guardian")).trim()} (${String(row.relationship || __("Guardian")).trim()})${row.email ? ` - ${String(row.email).trim()}` : ""}`;
+				optionMap.set(label, row);
+				return label;
+			});
+			const defaultRow = eligible[0] || {};
+
+			frappe.prompt(
+				[
+					{
+						label: __("Guardian"),
+						fieldname: "guardian_option",
+						fieldtype: "Select",
+						reqd: 1,
+						options: options.join("\n"),
+						default: options[0],
+					},
+					{
+						label: __("Email"),
+						fieldname: "new_email",
+						fieldtype: "Data",
+						options: "Email",
+						reqd: !defaultRow.email,
+						default: defaultRow.email || "",
+						description: __("Use the guardian personal email for this collaborator."),
+					},
+				],
+				(values) => {
+					const selected = optionMap.get(String(values.guardian_option || "").trim());
+					if (!selected?.name) {
+						frappe.msgprint(__("Select a guardian row to invite."));
+						return;
+					}
+					const email = String(values.new_email || selected.email || "").trim().toLowerCase();
+					if (!email) {
+						frappe.msgprint(__("Enter a guardian email before sending the invite."));
+						return;
+					}
+
+					frappe.call({
+						method: "ifitwala_ed.api.admissions_portal.invite_family_collaborator",
+						args: {
+							student_applicant: frm.doc.name,
+							guardian_row: selected.name,
+							email,
+						},
+						freeze: true,
+						freeze_message: __("Inviting family collaborator..."),
+					})
+						.then((inviteRes) => {
+							const message = inviteRes?.message || {};
+							const resent = Boolean(message.resent);
+							const emailSent = message.email_sent !== false;
+							frappe.show_alert({
+								message: emailSent
+									? (resent ? __("Family invite email re-sent.") : __("Family invite email sent."))
+									: __("Family access linked, but invite email could not be sent."),
+								indicator: "green",
+							});
+							if (!emailSent) {
+								frappe.msgprint(__("Family collaborator access was linked, but email sending failed. Ask them to use Forgot Password on /login or resend the invite later."));
+							}
+							frm.reload_doc();
+						})
+						.catch((err) => {
+							frappe.msgprint(err?.message || __("Unable to send family collaborator invite."));
+						});
+				},
+				__("Invite Family Collaborator"),
+				__("Invite")
+			);
+		})
+		.catch((err) => {
+			frappe.msgprint(err?.message || __("Unable to load family invite options."));
 		});
 }
 

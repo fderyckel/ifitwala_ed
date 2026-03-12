@@ -22,6 +22,15 @@ def _user_has_any_role(roles: set[str]) -> bool:
     return bool(set(frappe.get_roles(frappe.session.user)) & roles)
 
 
+def _auto_upgrade_identity_for_active_enrollment(*, student_name: str, program_enrollment: str):
+    from ifitwala_ed.admission.doctype.student_applicant.student_applicant import auto_upgrade_identity_for_student
+
+    return auto_upgrade_identity_for_student(
+        student_name=student_name,
+        program_enrollment=program_enrollment,
+    )
+
+
 class ProgramEnrollment(Document):
     def before_insert(self):
         # Canonical spine sync + optional seeding of required courses
@@ -279,6 +288,27 @@ class ProgramEnrollment(Document):
 
     def on_update(self):
         self.update_student_joining_date()
+        self._auto_upgrade_identity_after_activation()
+
+    def _auto_upgrade_identity_after_activation(self):
+        if not self._is_first_active_enrollment_transition():
+            return
+        if not (self.student or "").strip():
+            return
+        _auto_upgrade_identity_for_active_enrollment(
+            student_name=self.student,
+            program_enrollment=self.name,
+        )
+
+    def _is_first_active_enrollment_transition(self) -> bool:
+        if int(self.archived or 0) == 1:
+            return False
+
+        previous = self.get_doc_before_save()
+        if not previous:
+            return True
+
+        return int(previous.archived or 0) == 1
 
     def on_trash(self):
         # when deleting an enrollment, recompute from remaining rows

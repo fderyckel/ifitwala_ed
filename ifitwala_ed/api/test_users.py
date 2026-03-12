@@ -379,6 +379,84 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("Guardian", guardian.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
+    def test_admissions_family_redirects_to_admissions_when_family_workspace_is_open(self):
+        if not frappe.db.has_column("Admission Settings", "admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+
+        previous_mode = frappe.db.get_single_value("Admission Settings", "admissions_access_mode")
+
+        user = frappe.new_doc("User")
+        user.email = f"test_admissions_family_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Family"
+        user.last_name = "Admissions"
+        user.enabled = 1
+        _append_role(user, "Admissions Family")
+        user.insert(ignore_permissions=True)
+
+        guardian = frappe.new_doc("Guardian")
+        guardian.guardian_first_name = "Family"
+        guardian.guardian_last_name = "Admissions"
+        guardian.guardian_email = user.email
+        guardian.guardian_mobile_phone = "+14155550141"
+        guardian.user = user.email
+        guardian.save(ignore_permissions=True)
+
+        school = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": f"Redirect Family School {frappe.generate_hash(length=6)}",
+                "abbr": f"RF{frappe.generate_hash(length=4)}",
+                "organization": _ensure_test_organization(),
+            }
+        ).insert(ignore_permissions=True)
+
+        applicant = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                "first_name": "Family",
+                "last_name": "Applicant",
+                "organization": school.organization,
+                "school": school.name,
+                "application_status": "Invited",
+                "guardians": [
+                    {
+                        "guardian": guardian.name,
+                        "user": user.email,
+                        "relationship": "Mother",
+                        "can_consent": 1,
+                        "is_primary": 1,
+                        "guardian_first_name": "Family",
+                        "guardian_last_name": "Admissions",
+                        "guardian_email": user.email,
+                        "guardian_mobile_phone": "+14155550141",
+                        "guardian_image": "/private/files/family-admissions.png",
+                    }
+                ],
+            }
+        ).insert(ignore_permissions=True)
+
+        try:
+            frappe.db.set_single_value("Admission Settings", "admissions_access_mode", "Family Workspace")
+
+            frappe.set_user(user.email)
+            frappe.local.response = {}
+
+            redirect_user_to_entry_portal()
+
+            self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
+            self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
+        finally:
+            frappe.set_user("Administrator")
+            frappe.db.set_single_value(
+                "Admission Settings",
+                "admissions_access_mode",
+                previous_mode or "Single Applicant Workspace",
+            )
+            frappe.delete_doc("Student Applicant", applicant.name, force=True)
+            frappe.delete_doc("School", school.name, force=True)
+            frappe.delete_doc("Guardian", guardian.name, force=True)
+            frappe.delete_doc("User", user.email, force=True)
+
     def test_student_redirects_to_student_portal(self):
         """Students should be redirected to /hub/student."""
         # Create test user with Student role

@@ -3,9 +3,9 @@ title: "Institutional Policy: Policy Identity and Scope Anchor"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "1.0.3"
-last_change_date: "2026-02-28"
-summary: "Define policy identity, organization/school scope, and target audience so active policy versions can be resolved and acknowledged correctly."
+version: "1.1.0"
+last_change_date: "2026-03-12"
+summary: "Define policy identity, organization/school scope, target audience, and admissions acknowledgement mode so active policy versions can be resolved and acknowledged correctly."
 seo_title: "Institutional Policy: Policy Identity and Scope Anchor"
 seo_description: "Define policy identity, organization/school scope, and target audience so active policy versions can be resolved and acknowledged correctly."
 ---
@@ -54,6 +54,10 @@ There is no separate "policy key catalog" DocType in the current model. Existing
 - `school` is optional; blank means organization-wide scope.
 - `school` can be set one time if initially blank, then becomes immutable.
 - `policy_category` must be one of the locked categories in governance utilities.
+- `admissions_acknowledgement_mode` controls how admissions portal acknowledgement is written:
+  - `Child Acknowledgement`
+  - `Family Acknowledgement`
+  - `Child Optional Consent`
 - `school` must be inside policy organization scope (organization descendants allowed).
 - Deletion is blocked; policy should be deactivated instead (`is_active = 0`).
 - Runtime visibility is scope-enforced server-side:
@@ -74,6 +78,7 @@ There is no separate "policy key catalog" DocType in the current model. Existing
 - [**Student Applicant**](/docs/en/student-applicant/):
   - readiness policy requirements (`has_required_policies`)
   - admissions portal policy list (`get_applicant_policies`)
+  - family-wide admissions acknowledgement resolution when `admissions_acknowledgement_mode = Family Acknowledgement`
 - Media consent publish gate:
   - `policy_key = media_consent`
   - read by `has_applicant_policy_acknowledgement` during applicant promotion image publish logic.
@@ -122,6 +127,7 @@ Treat this record as long-lived identity. Version the legal text in [**Policy Ve
   - `policy_title` (Data, required)
   - `policy_category` (Select, required)
   - `applies_to` (MultiSelect, required): `Applicant`, `Student`, `Guardian`, `Staff`
+  - `admissions_acknowledgement_mode` (Select, default `Child Acknowledgement`): `Child Acknowledgement`, `Family Acknowledgement`, `Child Optional Consent`
   - `organization` (Link -> [**Organization**](/docs/en/organization/), required)
   - `school` (Link -> School, optional)
   - `description` (Small Text)

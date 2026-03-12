@@ -216,7 +216,7 @@ import type {
 
 const service = createAdmissionsService();
 const overlay = useOverlayStack();
-const { session } = useAdmissionsSession();
+const { session, currentApplicantName } = useAdmissionsSession();
 
 const health = ref<HealthResponse | null>(null);
 const loading = ref(false);
@@ -337,11 +337,16 @@ function displayText(value: unknown): string {
 }
 
 async function loadHealth() {
+	if (!currentApplicantName.value) {
+		health.value = createEmptyHealth();
+		error.value = null;
+		return;
+	}
 	loading.value = true;
 	error.value = null;
 	actionError.value = '';
 	try {
-		health.value = await service.getHealth();
+		health.value = await service.getHealth({ student_applicant: currentApplicantName.value });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : __('Unable to load health information.');
 		error.value = message;
@@ -358,6 +363,7 @@ function openEdit() {
 	actionError.value = '';
 	overlay.open('admissions-health', {
 		initial: health.value || createEmptyHealth(),
+		studentApplicant: currentApplicantName.value,
 		readOnly: isReadOnly.value,
 	});
 }

@@ -67,6 +67,16 @@ Note:
 
 * `FiltersBar.vue` is a shared layout component that lives under `components/filters/`.
 
+### 1.3 Expanded chart view is shared
+
+When an analytics card supports a zoom/expanded view:
+
+* it MUST reuse the shared analytics expand overlay via `OverlayHost`
+* it MUST NOT introduce a page-specific modal/overlay implementation
+* chart-card click may open the expanded view, but data-point click must preserve the primary drill-down action
+
+This avoids overlay drift and keeps analytics interactions consistent across pages.
+
 ---
 
 ## 2. Filter Architecture (Critical)

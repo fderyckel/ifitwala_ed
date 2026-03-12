@@ -11,6 +11,12 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, get_datetime, now_datetime
 
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_APPLICANT_ROLE,
+    ADMISSIONS_FAMILY_ROLE,
+    build_admissions_portal_access_exists_sql,
+    user_can_access_student_applicant,
+)
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     READ_LIKE_PERMISSION_TYPES,
@@ -27,21 +33,15 @@ from ifitwala_ed.admission.admission_utils import (
 )
 from ifitwala_ed.admission.applicant_document_readiness import build_document_review_payload_for_applicant
 from ifitwala_ed.admission.applicant_review_workflow import apply_review_decision
-from ifitwala_ed.governance.policy_scope_utils import (
-    get_organization_ancestors_including_self,
-    get_school_ancestors_including_self,
-    select_nearest_policy_rows_by_key,
-)
 from ifitwala_ed.governance.policy_utils import (
     MEDIA_CONSENT_POLICY_KEY,
-    ensure_policy_applies_to_column,
+    get_applicant_policy_status,
     has_applicant_policy_acknowledgement,
 )
 from ifitwala_ed.utilities import file_dispatcher
 from ifitwala_ed.utilities.school_tree import get_school_scope_for_academic_year
 
-FAMILY_ROLES = {"Guardian"}
-ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
+FAMILY_ROLES = {ADMISSIONS_FAMILY_ROLE}
 GUARDIAN_ROLE = "Guardian"
 STUDENT_ROLE = "Student"
 SYSTEM_MANAGER_ROLE = "System Manager"
@@ -330,7 +330,7 @@ class StudentApplicant(Document):
         user = frappe.session.user
         roles = set(frappe.get_roles(user))
         is_admissions = bool(roles & ADMISSIONS_ROLES)
-        is_family = bool(roles & FAMILY_ROLES)
+        is_family_role = bool(roles & FAMILY_ROLES)
         is_applicant = ADMISSIONS_APPLICANT_ROLE in roles
         is_system_manager = SYSTEM_MANAGER_ROLE in roles
 
@@ -370,7 +370,9 @@ class StudentApplicant(Document):
                 frappe.throw(_("Edits are not allowed when status is {0}.").format(status_for_edit))
             return
 
-        if not is_admissions and not is_family and not is_applicant:
+        has_family_access = is_family_role and user_can_access_student_applicant(user=user, student_applicant=self.name)
+
+        if not is_admissions and not has_family_access and not is_applicant:
             if self._has_changes(before):
                 frappe.throw(_("You do not have permission to edit this Applicant."))
             return
@@ -382,7 +384,9 @@ class StudentApplicant(Document):
                 frappe.throw(_("Family edits are not allowed when status is {0}.").format(status_for_edit))
             return
 
-        if is_family:
+        if is_family_role:
+            if not has_family_access and self._has_changes(before):
+                frappe.throw(_("You do not have permission to edit this Applicant."))
             if not rules["family"] and self._has_changes(before):
                 frappe.throw(_("Family edits are not allowed when status is {0}.").format(status_for_edit))
             return
@@ -544,10 +548,7 @@ class StudentApplicant(Document):
 
     def _ensure_applicant_actor(self):
         user = frappe.session.user
-        roles = set(frappe.get_roles(user))
-        if ADMISSIONS_APPLICANT_ROLE not in roles:
-            frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
-        if self.applicant_user != user:
+        if not user_can_access_student_applicant(user=user, student_applicant=self.name):
             frappe.throw(_("You do not have permission to modify this Applicant."), frappe.PermissionError)
         return user
 
@@ -677,6 +678,7 @@ class StudentApplicant(Document):
         self._validate_enrollment_plan_for_promotion()
 
         if self.student:
+            self._carry_guardians_to_promoted_student(self.student)
             hydrated_request = self._maybe_auto_hydrate_enrollment_request_after_promotion(self.student)
             self._copy_health_profile_to_student_patient(self.student, require_profile=False)
             self._set_status("Promoted", "Applicant promoted")
@@ -691,6 +693,7 @@ class StudentApplicant(Document):
 
         existing = frappe.db.get_value("Student", {"student_applicant": self.name}, "name")
         if existing:
+            self._carry_guardians_to_promoted_student(existing)
             self._copy_health_profile_to_student_patient(existing, require_profile=False)
             self.flags.from_promotion = True
             self.student = existing
@@ -742,6 +745,7 @@ class StudentApplicant(Document):
         finally:
             frappe.flags.from_applicant_promotion = prev_flag
 
+        self._carry_guardians_to_promoted_student(student.name)
         health_snapshot = self._copy_health_profile_to_student_patient(student.name)
         copied_docs = self._copy_promotable_documents_to_student(student)
 
@@ -780,8 +784,13 @@ class StudentApplicant(Document):
 
     @frappe.whitelist()
     def upgrade_identity(self):
-        ensure_admissions_permission()
+        return self._run_identity_upgrade()
 
+    def _run_identity_upgrade(self, *, trigger_detail: str | None = None):
+        ensure_admissions_permission()
+        return self._run_identity_upgrade_without_permission(trigger_detail=trigger_detail)
+
+    def _run_identity_upgrade_without_permission(self, *, trigger_detail: str | None = None):
         if self.application_status != "Promoted":
             frappe.throw(_("Identity Upgrade is only allowed once the applicant is Promoted."))
 
@@ -810,6 +819,7 @@ class StudentApplicant(Document):
             linked_guardians.append({"guardian": guardian, "relationship": relationship, "contact": contact_name})
 
         added_guardians = self._ensure_student_guardian_links(student, linked_guardians)
+        added_siblings = self._sync_student_siblings_from_shared_guardians(student)
 
         student_user = self._ensure_student_user_access(student)
         if student_user:
@@ -827,19 +837,25 @@ class StudentApplicant(Document):
         guardian_list = (
             ", ".join(sorted({row["guardian"].name for row in linked_guardians})) if linked_guardians else _("none")
         )
+        trigger_suffix = ""
+        if (trigger_detail or "").strip():
+            trigger_suffix = _(" Trigger: {0}.").format(trigger_detail.strip())
         self.add_comment(
             "Comment",
             text=_(
                 "Identity Upgrade completed by {0} on {1}. "
                 "State: Promoted -> Identity Upgraded. "
-                "Student: {2}. Guardians linked: {3} (new links: {4}). Users updated: {5}."
+                "Student: {2}. Guardians linked: {3} (new links: {4}). "
+                "Sibling links added: {5}. Users updated: {6}.{7}"
             ).format(
                 frappe.bold(frappe.session.user),
                 now_datetime(),
                 frappe.bold(student_name),
                 guardian_list,
                 added_guardians,
+                added_siblings,
                 user_list,
+                trigger_suffix,
             ),
         )
         return {
@@ -847,6 +863,7 @@ class StudentApplicant(Document):
             "student": student_name,
             "guardians_linked": [row["guardian"].name for row in linked_guardians],
             "guardians_added": added_guardians,
+            "siblings_added": added_siblings,
             "users_updated": sorted(touched_users),
             "student_user": student_user,
         }
@@ -1124,6 +1141,77 @@ class StudentApplicant(Document):
             )
             existing.add(guardian_name)
             added += 1
+        if added:
+            student.save(ignore_permissions=True)
+        return added
+
+    def _carry_guardians_to_promoted_student(self, student_name: str) -> dict:
+        resolved_student = (student_name or "").strip()
+        if not resolved_student:
+            return {"guardians_added": 0, "siblings_added": 0}
+
+        student = frappe.get_doc("Student", resolved_student)
+        guardian_specs = self._resolve_upgrade_guardians()
+        linked_guardians = []
+        for spec in guardian_specs:
+            guardian = spec["guardian"]
+            relationship = spec["relationship"]
+            contact_name = (spec.get("contact") or "").strip() or None
+            self._ensure_guardian_contact_links(
+                guardian=guardian,
+                student=student,
+                contact_name=contact_name,
+            )
+            linked_guardians.append({"guardian": guardian, "relationship": relationship, "contact": contact_name})
+
+        added_guardians = self._ensure_student_guardian_links(student, linked_guardians)
+        added_siblings = self._sync_student_siblings_from_shared_guardians(student)
+        return {"guardians_added": added_guardians, "siblings_added": added_siblings}
+
+    def _sync_student_siblings_from_shared_guardians(self, student) -> int:
+        guardian_names = sorted(
+            {
+                (row.get("guardian") or "").strip()
+                for row in (student.get("guardians") or [])
+                if (row.get("guardian") or "").strip()
+            }
+        )
+        if not guardian_names:
+            return 0
+
+        sibling_rows = frappe.get_all(
+            "Student Guardian",
+            filters={
+                "guardian": ["in", guardian_names],
+                "parenttype": "Student",
+                "parentfield": "guardians",
+            },
+            fields=["parent"],
+            limit_page_length=max(20, len(guardian_names) * 8),
+        )
+        sibling_names = sorted(
+            {
+                (row.get("parent") or "").strip()
+                for row in sibling_rows
+                if (row.get("parent") or "").strip() and (row.get("parent") or "").strip() != student.name
+            }
+        )
+        if not sibling_names:
+            return 0
+
+        existing = {
+            (row.get("student") or "").strip()
+            for row in (student.get("siblings") or [])
+            if (row.get("student") or "").strip()
+        }
+        added = 0
+        for sibling_name in sibling_names:
+            if sibling_name in existing:
+                continue
+            student.append("siblings", {"student": sibling_name})
+            existing.add(sibling_name)
+            added += 1
+
         if added:
             student.save(ignore_permissions=True)
         return added
@@ -1631,113 +1719,15 @@ class StudentApplicant(Document):
         return bool(cint(required_value))
 
     def has_required_policies(self):
-        if not self.organization:
-            return {"ok": False, "missing": [], "required": [], "rows": []}
-
-        ancestor_orgs = get_organization_ancestors_including_self(self.organization)
-        if not ancestor_orgs:
-            return {"ok": True, "missing": [], "required": [], "rows": []}
-        school_ancestors = get_school_ancestors_including_self(self.school)
-
-        schema_check = ensure_policy_applies_to_column(caller="StudentApplicant.has_required_policies")
-        if not schema_check.get("ok"):
-            self.flags.policy_schema_error = schema_check.get("message")
-            return {
-                "ok": False,
-                "missing": [],
-                "required": [],
-                "rows": [],
-            }
-
-        org_placeholders = ", ".join(["%s"] * len(ancestor_orgs))
-        school_scope_sql = ""
-        school_params: tuple[str, ...] = ()
-        if school_ancestors:
-            school_placeholders = ", ".join(["%s"] * len(school_ancestors))
-            school_scope_sql = f" OR ip.school IN ({school_placeholders})"
-            school_params = tuple(school_ancestors)
-        rows = frappe.db.sql(
-            f"""
-            SELECT ip.name AS policy_name,
-                   ip.policy_key AS policy_key,
-                   ip.policy_title AS policy_title,
-                   ip.organization AS policy_organization,
-                   ip.school AS policy_school,
-                   pv.name AS policy_version
-              FROM `tabInstitutional Policy` ip
-              JOIN `tabPolicy Version` pv
-                ON pv.institutional_policy = ip.name
-             WHERE ip.is_active = 1
-               AND pv.is_active = 1
-               AND ip.organization IN ({org_placeholders})
-               AND (ip.school IS NULL OR ip.school = ''{school_scope_sql})
-               AND ip.applies_to LIKE %s
-            """,
-            (*ancestor_orgs, *school_params, "%Applicant%"),
-            as_dict=True,
+        payload = get_applicant_policy_status(
+            student_applicant=self.name,
+            organization=self.organization,
+            school=self.school,
         )
-        rows = select_nearest_policy_rows_by_key(
-            rows=rows,
-            context_organization=self.organization,
-            context_school=self.school,
-            policy_key_field="policy_key",
-            policy_organization_field="policy_organization",
-            policy_school_field="policy_school",
-        )
-
-        if not rows:
-            return {"ok": True, "missing": [], "required": [], "rows": []}
-
-        versions = [row["policy_version"] for row in rows]
-        acknowledgement_rows = frappe.get_all(
-            "Policy Acknowledgement",
-            filters={
-                "policy_version": ["in", versions],
-                "acknowledged_for": "Applicant",
-                "context_doctype": "Student Applicant",
-                "context_name": self.name,
-            },
-            fields=["policy_version", "acknowledged_by", "acknowledged_at"],
-            order_by="acknowledged_at desc",
-        )
-        acknowledgements_by_version = {}
-        for row_ack in acknowledgement_rows:
-            version = row_ack.get("policy_version")
-            if not version:
-                continue
-            acknowledgements_by_version.setdefault(version, []).append(
-                {
-                    "acknowledged_by": row_ack.get("acknowledged_by"),
-                    "acknowledged_at": row_ack.get("acknowledged_at"),
-                }
-            )
-
-        required = []
-        missing = []
-        policy_rows = []
-        for row_policy in rows:
-            label = row_policy.get("policy_key") or row_policy.get("policy_title") or row_policy.get("policy_name")
-            required.append(label)
-            version = row_policy.get("policy_version")
-            signers = acknowledgements_by_version.get(version, [])
-            if not signers:
-                missing.append(label)
-            primary_signer = signers[0] if signers else {}
-            policy_rows.append(
-                {
-                    "policy_name": row_policy.get("policy_name"),
-                    "policy_key": row_policy.get("policy_key"),
-                    "policy_title": row_policy.get("policy_title"),
-                    "policy_version": version,
-                    "label": label,
-                    "is_acknowledged": bool(signers),
-                    "acknowledged_by": primary_signer.get("acknowledged_by"),
-                    "acknowledged_at": primary_signer.get("acknowledged_at"),
-                    "signers": signers,
-                }
-            )
-
-        return {"ok": not missing, "missing": missing, "required": required, "rows": policy_rows}
+        schema_error = payload.get("schema_error")
+        if schema_error:
+            self.flags.policy_schema_error = schema_error
+        return payload
 
     def has_required_documents(self):
         return build_document_review_payload_for_applicant(
@@ -2213,6 +2203,38 @@ class StudentApplicant(Document):
         }
 
 
+def auto_upgrade_identity_for_student(*, student_name: str, program_enrollment: str | None = None):
+    resolved_student = (student_name or "").strip()
+    if not resolved_student:
+        return None
+
+    applicant_name = frappe.db.get_value("Student", resolved_student, "student_applicant") or frappe.db.get_value(
+        "Student Applicant", {"student": resolved_student}, "name"
+    )
+    if not applicant_name:
+        return None
+
+    applicant_row = (
+        frappe.db.get_value(
+            "Student Applicant",
+            applicant_name,
+            ["name", "application_status", "student"],
+            as_dict=True,
+        )
+        or {}
+    )
+    if (applicant_row.get("application_status") or "").strip() != "Promoted":
+        return None
+    if (applicant_row.get("student") or "").strip() != resolved_student:
+        return None
+
+    applicant = frappe.get_doc("Student Applicant", applicant_name)
+    trigger_detail = _("Automatic trigger from active Program Enrollment {0}").format(
+        frappe.bold(program_enrollment or _("unknown"))
+    )
+    return applicant._run_identity_upgrade_without_permission(trigger_detail=trigger_detail)
+
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def academic_year_intent_query(doctype, txt, searchfield, start, page_len, filters):
@@ -2280,10 +2302,12 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
         if staff_condition != "1=0":
             conditions.append(f"({staff_condition})")
 
-    roles = set(frappe.get_roles(resolved_user))
-    if ADMISSIONS_APPLICANT_ROLE in roles:
-        escaped_user = frappe.db.escape(resolved_user)
-        conditions.append(f"`tabStudent Applicant`.`applicant_user` = {escaped_user}")
+    portal_condition = build_admissions_portal_access_exists_sql(
+        user=resolved_user,
+        student_applicant_expr_sql="`tabStudent Applicant`.`name`",
+    )
+    if portal_condition != "1=0":
+        conditions.append(f"({portal_condition})")
 
     return " OR ".join(conditions) if conditions else "1=0"
 
@@ -2308,7 +2332,7 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
         return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=applicant_name)
 
     roles = set(frappe.get_roles(resolved_user))
-    if ADMISSIONS_APPLICANT_ROLE not in roles:
+    if not roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE}:
         return False
 
     applicant_ops = READ_LIKE_PERMISSION_TYPES | {"write"}
@@ -2318,7 +2342,7 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
     if not doc:
         return op in READ_LIKE_PERMISSION_TYPES
 
-    return _is_applicant_self_user(resolved_user, doc)
+    return user_can_access_student_applicant(user=resolved_user, student_applicant=_resolve_student_applicant_name(doc))
 
 
 def _resolve_student_applicant_name(doc) -> str:
@@ -2330,17 +2354,4 @@ def _resolve_student_applicant_name(doc) -> str:
 
 
 def _is_applicant_self_user(user: str, doc) -> bool:
-    applicant_name = _resolve_student_applicant_name(doc)
-    if not applicant_name:
-        return False
-
-    row = frappe.db.get_value(
-        "Student Applicant",
-        applicant_name,
-        ["applicant_user"],
-        as_dict=True,
-    )
-    if not row:
-        return False
-
-    return (row.get("applicant_user") or "").strip() == user
+    return user_can_access_student_applicant(user=user, student_applicant=_resolve_student_applicant_name(doc))

@@ -179,7 +179,7 @@ import type { Response as DocumentsResponse } from '@/types/contracts/admissions
 
 const service = createAdmissionsService();
 const overlay = useOverlayStack();
-const { session } = useAdmissionsSession();
+const { session, currentApplicantName } = useAdmissionsSession();
 
 const documents = ref<DocumentsResponse['documents']>([]);
 const documentTypes = ref<DocumentTypesResponse['document_types']>([]);
@@ -479,13 +479,19 @@ const requiredSummaryText = computed(() => {
 });
 
 async function loadDocuments() {
+	if (!currentApplicantName.value) {
+		documents.value = [];
+		documentTypes.value = [];
+		error.value = null;
+		return;
+	}
 	loading.value = true;
 	error.value = null;
 	actionError.value = '';
 	try {
 		const [docsResp, typesResp] = await Promise.all([
-			service.listDocuments(),
-			service.listDocumentTypes(),
+			service.listDocuments({ student_applicant: currentApplicantName.value }),
+			service.listDocumentTypes({ student_applicant: currentApplicantName.value }),
 		]);
 		documents.value = docsResp.documents || [];
 		documentTypes.value = typesResp.document_types || [];
@@ -520,6 +526,7 @@ function openUpload(doc: DisplayDocument, item: DisplayItem | null) {
 	}
 	actionError.value = '';
 	overlay.open('admissions-document-upload', {
+		studentApplicant: currentApplicantName.value,
 		documentType: doc.document_type,
 		documentLabel: doc.label,
 		description: doc.description || '',

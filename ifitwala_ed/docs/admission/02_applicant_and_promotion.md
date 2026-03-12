@@ -18,7 +18,7 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 
 The admissions runtime boundary is:
 
-`Inquiry -> Student Applicant -> Applicant Enrollment Plan -> Promotion -> Student -> Program Enrollment Request -> Identity Upgrade`
+`Inquiry -> Student Applicant -> Applicant Enrollment Plan -> Promotion -> Student -> Program Enrollment Request -> Program Enrollment -> Identity Upgrade`
 
 Authority split:
 
@@ -45,6 +45,7 @@ Current runtime invariants:
 - `student` may only be set during promotion.
 - direct file attachment is forbidden except `applicant_image`.
 - `applicant_user` is reserved for the future student identity.
+- family admissions collaboration is a separate access mode resolved from explicit applicant guardian rows; it does not change the `Student Applicant` data boundary.
 - family-facing offer lifecycle is modeled on `Applicant Enrollment Plan`, not on `Student Applicant.application_status`.
 
 Lifecycle and editability are server-owned:
@@ -109,6 +110,8 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 
 Promotion is the only implemented admissions path that creates or links a `Student`.
 
+Current promotion side-effects also carry forward explicit guardians into `Student.guardians` and seed `Student.siblings` from shared guardians when multiple promoted students belong to the same family.
+
 Runtime preconditions:
 
 - `Student Applicant.application_status = Approved`
@@ -133,9 +136,9 @@ Explicit non-effects:
 - no Guardian or Student role provisioning
 - no `Program Enrollment` creation
 - no billing or finance setup
-- no identity upgrade side-effects
+- no direct identity upgrade side-effects during promotion
 
-Identity upgrade remains a separate workflow after promotion and active enrollment.
+Identity upgrade remains a separate workflow after promotion and active enrollment. The first active `Program Enrollment` can trigger that separate server-owned workflow automatically; promotion itself still stops at the data boundary.
 
 Current runtime nuance:
 
@@ -168,4 +171,4 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 | Approval readiness | `StudentApplicant.get_readiness_snapshot()` | Desk review snapshot, portal next actions | `test_student_applicant.py` | Implemented |
 | Admissions-to-enrollment bridge | `Applicant Enrollment Plan`, `StudentApplicant.promote_to_student()` | Desk applicant action, admissions portal status, post-promotion request hydration | `test_student_applicant.py`, `test_admissions_portal.py` | Implemented |
 | Promotion data boundary | `StudentApplicant.promote_to_student()` | Desk action | `test_student_applicant.py` | Implemented |
-| Identity upgrade access boundary | `StudentApplicant.upgrade_identity()` | Desk action after enrollment | `test_student_applicant.py` | Implemented |
+| Identity upgrade access boundary | `StudentApplicant.upgrade_identity()`, `ProgramEnrollment.on_update()` | Desk action or first active `Program Enrollment` trigger | `test_student_applicant.py`, `test_program_enrollment.py` | Implemented |

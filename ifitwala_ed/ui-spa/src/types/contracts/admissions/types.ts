@@ -54,6 +54,21 @@ export type AdmissionsEnrollmentOffer = {
   course_choice_selected_optional_count?: number
 }
 
+export type AdmissionsSessionApplicant = {
+  name: string
+  display_name: string
+  portal_status: PortalApplicantStatus
+  application_status?: string | null
+  school: string
+  organization: string
+  academic_year?: string | null
+  term?: string | null
+  program?: string | null
+  program_offering?: string | null
+  is_read_only: boolean
+  read_only_reason: string | null
+}
+
 export type ApplicantProfile = {
   student_preferred_name?: string | null
   student_date_of_birth?: string | null
@@ -147,8 +162,11 @@ export type ApplicantPolicy = {
   name: string
   policy_version: string
   content_html: string
+  is_required?: boolean
+  acknowledgement_mode?: string | null
   is_acknowledged: boolean
   acknowledged_at?: string | null
+  acknowledged_by?: string | null
   expected_signature_name: string
 }
 

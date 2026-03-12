@@ -120,7 +120,7 @@ This gives:
 
 **Upgrade**
 
-* After promotion + active enrollment, applicant role is removed from the student account and guardians are provisioned separately
+* After promotion + active enrollment, the first active `Program Enrollment` can trigger the server-owned identity upgrade that removes the applicant role from the student account and provisions guardians separately
 * Old role removed
 * New permissions applied
 
@@ -1217,14 +1217,14 @@ Any attempt → redirect to login.
 - Removes `Admissions Applicant` and assigns long-term portal roles (`Guardian`, `Student`)
 - Links Guardian <-> Student in SIS records
 
-Promotion and Identity Upgrade are independent actions and may happen at different times.
+Promotion and Identity Upgrade remain separate boundaries. Identity Upgrade can be triggered automatically by the first active `Program Enrollment` or rerun manually from `Student Applicant`.
 
 ### User Creation
 
 Triggered by:
 
 * Invite to Apply
-* Identity Upgrade (Guardian/Student access provisioning)
+* Identity Upgrade (Guardian/Student access provisioning, triggered automatically after first active enrollment or rerun manually)
 
 ### User Deactivation (MANDATORY)
 
@@ -1232,7 +1232,7 @@ Triggered by:
 | ------------------- | ----------------------- |
 | Applicant Rejected  | Disable user            |
 | Applicant Withdrawn | Disable user            |
-| Applicant Promoted  | Disable OR delete user  |
+| Applicant Promoted  | Keep applicant login until server-owned identity upgrade |
 | GDPR Erasure        | Anonymize or purge user |
 
 Role mutation is allowed only inside Identity Upgrade.
@@ -1263,8 +1263,9 @@ Codex must:
 * [x] Enforce record scoping in admissions-portal endpoints
 * [x] Block all non-admissions routes
 * [x] Disable user at Phase 3 completion
-* [x] Keep promotion and identity upgrade as separate server actions
+* [x] Keep promotion and identity upgrade as separate server-owned boundaries
 * [x] Gate identity upgrade on active Program Enrollment
+* [x] Allow first active Program Enrollment to auto-trigger identity upgrade
 * [x] Make identity upgrade idempotent for Users/Guardians/links
 
 ---

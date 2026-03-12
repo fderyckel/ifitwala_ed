@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.15.2"
+version: "1.17.0"
 last_change_date: "2026-03-12"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -79,7 +79,7 @@ This is where admissions correctness is enforced. Client UX helps, but status tr
 - **Operations edge**: applicant timeline now records document upload/replace events and applicant-document review/edit events for fast audit trace.
 
 <Callout type="note" title="Digital signature scope">
-Applicant policy acknowledgement in portal requires explicit electronic-signature controls: typed signer name must match the expected applicant signer name, and legal attestation must be confirmed before server insert. Evidence remains the immutable `Policy Acknowledgement` record with server timestamp.
+Applicant policy acknowledgement in portal requires explicit electronic-signature controls: typed signer name must match the expected signer name shown for the selected policy, and legal attestation must be confirmed before server insert. Family-scoped admissions policies sign on `Guardian` context; child-scoped admissions policies sign on `Student Applicant` context. Evidence remains the immutable `Policy Acknowledgement` record with server timestamp.
 </Callout>
 
 ## Offer and Enrollment Bridge
@@ -92,6 +92,7 @@ Current runtime split:
 - [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/) owns placement planning, `Offer Sent`, `Offer Accepted`, and `Offer Declined`.
 - The applicant user on `Student Applicant` is reserved for the future student identity, not for guardians.
 - If a latest Applicant Enrollment Plan exists, promotion is blocked until that latest plan is `Offer Accepted` or already `Hydrated`.
+- Identity upgrade remains separate from promotion and can auto-run when the first active [**Program Enrollment**](/docs/en/program-enrollment/) is created or reactivated for the promoted student.
 
 ## Operational Guardrails
 
@@ -142,8 +143,9 @@ Current runtime split:
 Portal login invite is done directly from Desk on the `Student Applicant` form:
 
 1. Open the applicant record.
-2. Click `Actions` -> `Invite Applicant Portal` (or `Resend Portal Invite` if already linked).
-3. Pick an email from Contact email options, or enter a new one in the same dialog.
+2. Click `Actions` -> `Invite Applicant Portal` (or `Resend Portal Invite` if already linked) when `Admission Settings.admissions_access_mode = Single Applicant Workspace`.
+3. Click `Actions` -> `Invite Family Collaborator` when `Admission Settings.admissions_access_mode = Family Workspace`.
+4. Pick an email from Contact email options, or enter a new one in the same dialog.
 
 This triggers the server flow `invite_applicant` and requires:
 
@@ -163,6 +165,19 @@ Behavior in code:
 - `Student Applicant.portal_account_email` is set to the chosen invite email
 - if applicant is already linked to a different email/user, invite is blocked
 
+### Family Workspace Login and Collaboration
+
+When `Admission Settings.admissions_access_mode = Family Workspace`, `/admissions` becomes a family workspace instead of a single-applicant workspace.
+
+- family collaborators use role `Admissions Family`
+- access is resolved from explicit `Student Applicant Guardian` rows with `can_consent = 1`
+- one adult user can be linked to multiple active applicants and switch between them inside `/admissions`
+- collaboration is multi-user, not shared-login:
+  - each adult has their own `User`
+  - saves, uploads, and acknowledgements are attributed to the actual actor
+- child identity field `Student Applicant.applicant_user` remains reserved for the future student identity and is not reused as a family workspace identity
+- applicant profile and health saves use optimistic concurrency tokens (`record_modified` / `expected_modified`) so one adult cannot silently overwrite another adult's more recent save
+
 <Callout type="warning" title="Login identity source of truth">
 The applicant username/email is `Student Applicant.portal_account_email` (set by `invite_applicant` from the selected Contact email). This is the identity used to sign in to the admissions portal.
 </Callout>
@@ -180,8 +195,9 @@ If email delivery fails, portal linkage still succeeds (`User` + role + applican
 - Applicant opens `/admissions`.
 - Server gate (`ifitwala_ed/www/admissions/index.py`) requires:
   - authenticated user (not Guest)
-  - role `Admissions Applicant`
-  - exactly one linked `Student Applicant` via `applicant_user`
+  - either:
+    - `Admissions Applicant` with applicant access resolved from `Student Applicant.applicant_user`
+    - `Admissions Family` with family-workspace mode enabled and explicit guardian linkage to one-or-more applicants
 - If checks fail, user is redirected to login/logout-login flow.
 
 ### Applicant Credentials and URL
@@ -189,6 +205,7 @@ If email delivery fails, portal linkage still succeeds (`User` + role + applican
 - Portal URL: `/admissions` (for example `https://<your-domain>/admissions`)
 - Document upload URL: `/admissions/documents`
 - Username/email: `Student Applicant.portal_account_email` (chosen by admissions from Contact emails during invite)
+- In family workspace mode, invited adult collaborators log in with their own invited guardian/family user email, not with `Student Applicant.portal_account_email`.
 - Password:
   - new invited user: set via welcome/reset email sent during invite
   - existing user: use existing password (or reset via forgot password)
@@ -429,12 +446,15 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - invite email behavior exists in staff portal endpoint `invite_applicant` (separate flow)
 - **Identity upgrade side-effects (`upgrade_identity`)**:
   - requires an active `Program Enrollment` for the promoted student
+  - the same server-owned logic is reachable from the named `upgrade_identity` action and from the first active `Program Enrollment` transition
   - provisions the applicant user as `Student` access and removes `Admissions Applicant`
   - provisions guardians only from explicit applicant guardian rows; there is no applicant-contact fallback guardian creation
   - applicant user is reserved for the student identity and cannot be reused as a guardian user
   - links guardians to Student in canonical Student guardian rows when guardian rows exist
+  - syncs `Student.siblings` from shared explicit guardians carried forward from admissions
   - links tracked guardian Contact rows to `Student Applicant`, `Guardian`, and promoted `Student`
   - is idempotent (re-run does not duplicate users or guardian links)
+  - ordinary edits to an already-active `Program Enrollment` do not re-trigger the automatic identity-upgrade path
 - **Link query endpoints**:
   - `academic_year_intent_query`
   - `school_by_organization_query`
@@ -454,7 +474,10 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - `submit_application`
   - `accept_enrollment_offer`
   - `decline_enrollment_offer`
-  - staff flow endpoint: `invite_applicant`
+  - staff flow endpoints:
+    - `invite_applicant`
+    - `get_family_invite_options`
+    - `invite_family_collaborator`
 - **Admissions policy overlay (SPA)**:
   - page launcher: `ui-spa/src/pages/admissions/ApplicantPolicies.vue`
   - overlay component: `ui-spa/src/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue`
@@ -497,6 +520,7 @@ What to do (site operations):
 | `Academic Admin` | Yes | No | No | No | Scoped read visibility |
 | `Academic Assistant` | No | No | No | No | Not in runtime admissions-file access contract |
 | `Admissions Applicant` | Yes | Yes | No | No | Own applicant only (self-link enforced) |
+| `Admissions Family` | Yes | Yes | No | No | Family workspace only; explicit guardian linkage required |
 
 Runtime controller rules (server):
 - Only admissions staff can create new records.

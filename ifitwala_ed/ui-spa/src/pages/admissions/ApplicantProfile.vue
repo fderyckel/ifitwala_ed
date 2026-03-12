@@ -699,7 +699,7 @@ import type {
 } from '@/types/contracts/admissions/types';
 
 const service = createAdmissionsService();
-const { session } = useAdmissionsSession();
+const { session, currentApplicantName } = useAdmissionsSession();
 
 const loading = ref(false);
 const saving = ref(false);
@@ -707,6 +707,7 @@ const uploadingImage = ref(false);
 const error = ref<string | null>(null);
 const actionError = ref('');
 const applicantImage = ref('');
+const recordModified = ref('');
 const selectedImageFile = ref<File | null>(null);
 const imageInput = ref<HTMLInputElement | null>(null);
 const selectedGuardianImageFiles = ref<Record<number, File | null>>({});
@@ -842,6 +843,10 @@ async function uploadGuardianImage(index: number) {
 		actionError.value = __('This application is read-only.');
 		return;
 	}
+	if (!currentApplicantName.value) {
+		actionError.value = __('Applicant context is unavailable.');
+		return;
+	}
 	if (error.value) {
 		actionError.value = __('Please reload profile information before uploading.');
 		return;
@@ -861,6 +866,7 @@ async function uploadGuardianImage(index: number) {
 	try {
 		const content = await readAsBase64(file);
 		const payload = await service.uploadApplicantGuardianImage({
+			student_applicant: currentApplicantName.value,
 			file_name: file.name,
 			content,
 		});
@@ -895,6 +901,7 @@ function applyPayload(payload: ApplicantProfileResponse) {
 	guardians.value = ((payload.guardians || []) as ApplicantGuardianProfile[]).map(row =>
 		normalizeGuardianRow(row)
 	);
+	recordModified.value = String(payload.record_modified || '').trim();
 	savedGuardians.value = guardianRowsForSubmit(guardians.value);
 	clearGuardianImageUploadState();
 	applicantImage.value = (payload.applicant_image || '').trim();
@@ -903,11 +910,23 @@ function applyPayload(payload: ApplicantProfileResponse) {
 }
 
 async function loadProfile() {
+	if (!currentApplicantName.value) {
+		profile.value = createEmptyProfile();
+		guardians.value = [];
+		savedGuardians.value = [];
+		options.value = createEmptyOptions();
+		completeness.value = createEmptyCompleteness();
+		applicationContext.value = createEmptyApplicationContext();
+		applicantImage.value = '';
+		recordModified.value = '';
+		error.value = null;
+		return;
+	}
 	loading.value = true;
 	error.value = null;
 	actionError.value = '';
 	try {
-		const payload = await service.getProfile();
+		const payload = await service.getProfile({ student_applicant: currentApplicantName.value });
 		applyPayload(payload);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : __('Unable to load profile information.');
@@ -922,6 +941,10 @@ async function saveProfile() {
 		actionError.value = __('This application is read-only.');
 		return;
 	}
+	if (!currentApplicantName.value) {
+		actionError.value = __('Applicant context is unavailable.');
+		return;
+	}
 	if (error.value) {
 		actionError.value = __('Please reload profile information before saving.');
 		return;
@@ -931,6 +954,8 @@ async function saveProfile() {
 	actionError.value = '';
 	try {
 		const updatePayload: UpdateApplicantProfileRequest = {
+			student_applicant: currentApplicantName.value,
+			expected_modified: recordModified.value,
 			student_preferred_name: profile.value.student_preferred_name || '',
 			student_date_of_birth: profile.value.student_date_of_birth || '',
 			student_gender: profile.value.student_gender || '',
@@ -1001,6 +1026,10 @@ async function uploadSelectedImage() {
 		actionError.value = __('This application is read-only.');
 		return;
 	}
+	if (!currentApplicantName.value) {
+		actionError.value = __('Applicant context is unavailable.');
+		return;
+	}
 	if (error.value) {
 		actionError.value = __('Please reload profile information before uploading.');
 		return;
@@ -1015,6 +1044,7 @@ async function uploadSelectedImage() {
 	try {
 		const content = await readAsBase64(selectedImageFile.value);
 		const payload = await service.uploadApplicantProfileImage({
+			student_applicant: currentApplicantName.value,
 			file_name: selectedImageFile.value.name,
 			content,
 		});

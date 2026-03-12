@@ -51,7 +51,7 @@ import AttendanceRemarkOverlay from '@/overlays/attendance/AttendanceRemarkOverl
 import StudentLogCreateOverlay from '@/overlays/student/StudentLogCreateOverlay.vue';
 import StudentLogFollowUpOverlay from '@/overlays/student/StudentLogFollowUpOverlay.vue';
 import FocusRouterOverlay from '@/overlays/focus/FocusRouterOverlay.vue';
-import StudentLogAnalyticsExpandOverlay from '@/overlays/analytics/StudentLogAnalyticsExpandOverlay.vue';
+import AnalyticsExpandOverlay from '@/overlays/analytics/AnalyticsExpandOverlay.vue';
 import OrganizationChartPersonOverlay from '@/overlays/staff/OrganizationChartPersonOverlay.vue';
 import StaffPolicyInformOverlay from '@/overlays/staff/StaffPolicyInformOverlay.vue';
 import StaffPolicyCampaignOverlay from '@/overlays/staff/StaffPolicyCampaignOverlay.vue';
@@ -187,8 +187,8 @@ function resolveComponent(type: OverlayType) {
 			return StudentLogCreateOverlay;
 		case 'student-log-follow-up':
 			return StudentLogFollowUpOverlay;
-		case 'student-log-analytics-expand':
-			return StudentLogAnalyticsExpandOverlay;
+		case 'analytics-expand':
+			return AnalyticsExpandOverlay;
 		case 'org-chart-person':
 			return OrganizationChartPersonOverlay;
 		case 'staff-policy-inform':

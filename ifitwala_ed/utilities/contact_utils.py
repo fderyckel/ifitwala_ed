@@ -50,23 +50,7 @@ from frappe.contacts.address_and_contact import has_permission as _core_has_perm
 #  Doc‑level gate
 # ------------------------------------------------------------------ #
 def contact_has_permission(doc, ptype, user):
-    """Allow Academic Admin to read any Contact that links to a Student he/she can read."""
-    # Non‑read checks → fall back
-    if ptype != "read":
-        return _core_has_permission(doc, ptype, user)
-
-    # Site owner always ok
-    if user == "Administrator":
-        return True
-
-    if "Academic Admin" in frappe.get_roles(user):
-        for link in doc.links:
-            if link.link_doctype == "Student" and frappe.has_permission(
-                "Student", "read", user=user, doc=link.link_name
-            ):
-                return True
-
-    # Everything else → default logic (owner, other roles, etc.)
+    """Defer Contact permission checks to the Frappe core implementation."""
     return _core_has_permission(doc, ptype, user)
 
 
@@ -74,15 +58,5 @@ def contact_has_permission(doc, ptype, user):
 #  List / report filter
 # ------------------------------------------------------------------ #
 def contact_permission_query_conditions(user):
-    """Academic Admin sees only contacts that reference a Student."""
-    if "Academic Admin" not in frappe.get_roles(user):
-        return ""  # everyone else — no extra condition
-
-    return """
-        EXISTS (
-            SELECT 1 FROM `tabDynamic Link` dl
-            WHERE dl.parent = `tabContact`.name
-              AND dl.parenttype = 'Contact'
-              AND dl.link_doctype = 'Student'
-        )
-    """
+    """Do not add app-level list scoping on top of Contact DocPerm rules."""
+    return ""

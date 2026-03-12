@@ -5,6 +5,12 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, now_datetime
 
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_APPLICANT_ROLE,
+    ADMISSIONS_FAMILY_ROLE,
+    build_admissions_portal_access_exists_sql,
+    user_can_access_student_applicant,
+)
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     READ_LIKE_PERMISSION_TYPES,
@@ -13,8 +19,12 @@ from ifitwala_ed.admission.admission_utils import (
     is_admissions_file_staff_user,
 )
 
-ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
-UPLOAD_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager", ADMISSIONS_APPLICANT_ROLE}
+UPLOAD_ROLES = ADMISSIONS_ROLES | {
+    "Academic Admin",
+    "System Manager",
+    ADMISSIONS_APPLICANT_ROLE,
+    ADMISSIONS_FAMILY_ROLE,
+}
 REVIEW_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
 OVERRIDE_ROLES = {"Admission Manager", "Academic Admin", "System Manager"}
 ALLOWED_REQUIREMENT_OVERRIDES = {"Waived", "Exception Approved"}
@@ -79,9 +89,11 @@ class ApplicantDocument(Document):
                 frappe.throw(_("You do not have permission to manage this Applicant Document."), frappe.PermissionError)
 
         is_staff_reviewer = bool(user_roles & REVIEW_ROLES)
-        is_applicant = ADMISSIONS_APPLICANT_ROLE in user_roles
-        if is_applicant and not is_staff_reviewer:
-            if not _is_student_applicant_self_user(self.student_applicant, frappe.session.user):
+        is_portal_actor = bool(user_roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE})
+        if is_portal_actor and not is_staff_reviewer:
+            if not user_can_access_student_applicant(
+                user=frappe.session.user, student_applicant=self.student_applicant
+            ):
                 frappe.throw(_("You do not have permission to manage this Applicant Document."), frappe.PermissionError)
 
     def _validate_applicant_state(self):
@@ -346,18 +358,12 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
         if staff_condition != "1=0":
             conditions.append(f"({staff_condition})")
 
-    roles = set(frappe.get_roles(resolved_user))
-    if ADMISSIONS_APPLICANT_ROLE in roles:
-        escaped_user = frappe.db.escape(resolved_user)
-        conditions.append(
-            "("
-            "EXISTS ("
-            "SELECT 1 FROM `tabStudent Applicant` sa "
-            "WHERE sa.name = `tabApplicant Document`.`student_applicant` "
-            f"AND sa.applicant_user = {escaped_user}"
-            ")"
-            ")"
-        )
+    portal_condition = build_admissions_portal_access_exists_sql(
+        user=resolved_user,
+        student_applicant_expr_sql="`tabApplicant Document`.`student_applicant`",
+    )
+    if portal_condition != "1=0":
+        conditions.append(f"({portal_condition})")
 
     return " OR ".join(conditions) if conditions else "1=0"
 
@@ -381,7 +387,7 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
         return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=student_applicant)
 
     roles = set(frappe.get_roles(resolved_user))
-    if ADMISSIONS_APPLICANT_ROLE not in roles:
+    if not roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE}:
         return False
 
     applicant_ops = READ_LIKE_PERMISSION_TYPES | {"write", "create"}
@@ -421,19 +427,7 @@ def _resolve_document_student_applicant(doc) -> str:
 def _is_student_applicant_self_user(student_applicant: str | None, user: str | None) -> bool:
     applicant_name = (student_applicant or "").strip()
     resolved_user = (user or "").strip()
-    if not applicant_name or not resolved_user:
-        return False
-
-    applicant_row = frappe.db.get_value(
-        "Student Applicant",
-        applicant_name,
-        ["applicant_user"],
-        as_dict=True,
-    )
-    if not applicant_row:
-        return False
-
-    return (applicant_row.get("applicant_user") or "").strip() == resolved_user
+    return user_can_access_student_applicant(user=resolved_user, student_applicant=applicant_name)
 
 
 def _is_document_applicant_self_user(*, doc, user: str) -> bool:

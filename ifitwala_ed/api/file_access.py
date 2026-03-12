@@ -9,6 +9,11 @@ from urllib.parse import urlencode
 import frappe
 from frappe import _
 
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_APPLICANT_ROLE,
+    ADMISSIONS_FAMILY_ROLE,
+    user_can_access_student_applicant,
+)
 from ifitwala_ed.admission.admission_utils import (
     has_open_overall_application_review_access,
     has_scoped_staff_access_to_student_applicant,
@@ -200,16 +205,7 @@ def _resolve_student_applicant_from_file(file_row: dict) -> str:
 
 
 def _is_student_applicant_self_user(*, student_applicant: str, user: str) -> bool:
-    row = frappe.db.get_value(
-        "Student Applicant",
-        student_applicant,
-        ["applicant_user"],
-        as_dict=True,
-    )
-    if not row:
-        return False
-
-    return (row.get("applicant_user") or "").strip() == user
+    return user_can_access_student_applicant(user=user, student_applicant=student_applicant)
 
 
 def _assert_can_access_student_applicant(*, user: str, student_applicant: str) -> None:
@@ -219,8 +215,9 @@ def _assert_can_access_student_applicant(*, user: str, student_applicant: str) -
         frappe.throw(_("You do not have permission to access this applicant file."), frappe.PermissionError)
 
     roles = set(frappe.get_roles(user))
-    if "Admissions Applicant" in roles and _is_student_applicant_self_user(
-        student_applicant=student_applicant, user=user
+    if roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE} and _is_student_applicant_self_user(
+        student_applicant=student_applicant,
+        user=user,
     ):
         return
 

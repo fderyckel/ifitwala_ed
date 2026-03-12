@@ -10,6 +10,7 @@
   "policy_title",
   "policy_category",
   "applies_to",
+  "admissions_acknowledgement_mode",
   "organization",
   "school",
   "description",
@@ -51,6 +52,14 @@
    "reqd": 1
   },
   {
+   "default": "Child Acknowledgement",
+   "description": "Admissions-only policy signature scope. Ignored for non-Applicant policies.",
+   "fieldname": "admissions_acknowledgement_mode",
+   "fieldtype": "Select",
+   "label": "Admissions Acknowledgement Mode",
+   "options": "Child Acknowledgement\nFamily Acknowledgement\nChild Optional Consent"
+  },
+  {
    "fieldname": "organization",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -81,7 +90,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-12 07:38:21.812723",
+ "modified": "2026-03-12 11:43:41.000000",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Institutional Policy",

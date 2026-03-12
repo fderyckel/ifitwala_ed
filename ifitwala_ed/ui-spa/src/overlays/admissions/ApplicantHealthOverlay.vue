@@ -425,6 +425,7 @@ const props = defineProps<{
 	zIndex?: number;
 	overlayId?: string;
 	initial?: HealthPayload | null;
+	studentApplicant?: string | null;
 	readOnly?: boolean;
 }>();
 const emit = defineEmits(['close', 'after-leave', 'done']);
@@ -742,6 +743,8 @@ async function submit() {
 		);
 
 		await service.updateHealth({
+			student_applicant: props.studentApplicant || undefined,
+			expected_modified: props.initial?.record_modified ?? '',
 			blood_group: cleanValue(form.blood_group),
 			allergies: Boolean(form.allergies),
 			food_allergies: cleanValue(form.food_allergies),

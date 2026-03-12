@@ -14,7 +14,7 @@
 				</p>
 			</div>
 			<RouterLink
-				:to="{ name: 'admissions-status' }"
+				:to="buildRouteLocation('admissions-status')"
 				class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/75"
 			>
 				{{ __('Review offer') }}
@@ -365,6 +365,7 @@ import { RouterLink } from 'vue-router';
 import { Spinner } from 'frappe-ui';
 
 import { createAdmissionsService } from '@/lib/services/admissions/admissionsService';
+import { useAdmissionsSession } from '@/composables/useAdmissionsSession';
 import {
 	buildEnrollmentChoiceSections,
 	haveEnrollmentChoiceRowsChanged,
@@ -379,6 +380,7 @@ import type {
 } from '@/types/contracts/admissions/get_applicant_enrollment_choices';
 
 const service = createAdmissionsService();
+const { currentApplicantName, buildRouteLocation } = useAdmissionsSession();
 
 const payload = ref<EnrollmentChoicesResponse | null>(null);
 const formRows = ref<ApplicantEnrollmentChoiceCourse[]>([]);
@@ -425,12 +427,21 @@ function cloneRows(rows: ApplicantEnrollmentChoiceCourse[]) {
 }
 
 async function loadChoices() {
+	if (!currentApplicantName.value) {
+		payload.value = null;
+		formRows.value = [];
+		savedRows.value = [];
+		error.value = null;
+		return;
+	}
 	loading.value = true;
 	error.value = null;
 	actionError.value = '';
 	successMessage.value = '';
 	try {
-		const response = await service.getApplicantEnrollmentChoices();
+		const response = await service.getApplicantEnrollmentChoices({
+			student_applicant: currentApplicantName.value,
+		});
 		payload.value = response;
 		savedRows.value = cloneRows(response.courses || []);
 		formRows.value = cloneRows(response.courses || []);
@@ -515,12 +526,17 @@ async function saveChoices() {
 		actionError.value = __('No course-choice changes to save.');
 		return;
 	}
+	if (!currentApplicantName.value) {
+		actionError.value = __('Applicant context is unavailable.');
+		return;
+	}
 
 	saving.value = true;
 	actionError.value = '';
 	successMessage.value = '';
 	try {
 		const response = await service.updateApplicantEnrollmentChoices({
+			student_applicant: currentApplicantName.value,
 			courses: enrollmentChoiceRowsForSubmit(formRows.value),
 		});
 		payload.value = response;

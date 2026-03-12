@@ -973,6 +973,63 @@ class TestStudentApplicant(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             applicant.upgrade_identity()
 
+    def test_program_enrollment_creation_auto_upgrades_identity_for_promoted_applicant(self):
+        offer_context = self._create_offer_context()
+        applicant_user = self._create_user("Applicant", "Auto Upgrade", add_role="Admissions Applicant")
+        applicant = self._create_student_applicant(
+            student_joining_date=frappe.utils.nowdate(),
+            academic_year=self.visible_ay,
+            program=offer_context["program"].name,
+            program_offering=offer_context["offering"].name,
+        )
+        self._create_applicant_health_profile(applicant.name)
+
+        applicant.flags.from_applicant_invite = True
+        applicant.flags.from_contact_sync = True
+        applicant.applicant_user = applicant_user.name
+        applicant.applicant_email = applicant_user.name
+        applicant.portal_account_email = applicant_user.name
+        applicant.save(ignore_permissions=True)
+
+        self._advance_applicant_to_approved(applicant)
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+
+        roles_before = set(
+            frappe.get_all(
+                "Has Role",
+                filters={"parent": applicant_user.name, "parenttype": "User"},
+                pluck="role",
+            )
+        )
+        self.assertIn("Admissions Applicant", roles_before)
+        self.assertNotIn("Student", roles_before)
+
+        enrollment = frappe.get_doc(
+            {
+                "doctype": "Program Enrollment",
+                "student": student_name,
+                "program": offer_context["program"].name,
+                "program_offering": offer_context["offering"].name,
+                "academic_year": self.visible_ay,
+                "enrollment_date": frappe.utils.nowdate(),
+                "enrollment_source": "Admin",
+                "enrollment_override_reason": "Auto identity upgrade test",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Program Enrollment", enrollment.name))
+
+        roles_after = set(
+            frappe.get_all(
+                "Has Role",
+                filters={"parent": applicant_user.name, "parenttype": "User"},
+                pluck="role",
+            )
+        )
+        self.assertIn("Student", roles_after)
+        self.assertNotIn("Admissions Applicant", roles_after)
+
     def test_upgrade_identity_is_idempotent_and_provisions_roles(self):
         applicant_user = self._create_user("Applicant", "Portal", add_role="Admissions Applicant")
         guardian_user = self._create_user("Guardian", "Portal")
@@ -1167,6 +1224,42 @@ class TestStudentApplicant(FrappeTestCase):
                 )
             )
         )
+
+    def test_promote_to_student_links_siblings_from_shared_guardian(self):
+        shared_guardian = self._create_guardian(
+            first_name="Shared",
+            last_name="Guardian",
+            email=f"shared-{frappe.generate_hash(length=8)}@example.com",
+            mobile="+14155550124",
+        )
+        first_applicant = self._create_student_applicant(student_joining_date=frappe.utils.nowdate())
+        second_applicant = self._create_student_applicant(student_joining_date=frappe.utils.nowdate())
+        self._create_applicant_health_profile(first_applicant.name)
+        self._create_applicant_health_profile(second_applicant.name)
+
+        for applicant in (first_applicant, second_applicant):
+            applicant.append(
+                "guardians",
+                {
+                    "guardian": shared_guardian.name,
+                    "relationship": "Mother",
+                    "is_primary": 1,
+                    "can_consent": 1,
+                },
+            )
+            applicant.save(ignore_permissions=True)
+            self._advance_applicant_to_approved(applicant)
+
+        first_student_name = first_applicant.promote_to_student()
+        second_student_name = second_applicant.promote_to_student()
+        self._created.append(("Student", first_student_name))
+        self._created.append(("Student", second_student_name))
+
+        first_student = frappe.get_doc("Student", first_student_name)
+        second_student = frappe.get_doc("Student", second_student_name)
+
+        self.assertIn(second_student_name, [row.sibling for row in (first_student.get("siblings") or [])])
+        self.assertIn(first_student_name, [row.sibling for row in (second_student.get("siblings") or [])])
 
     def test_promote_blocks_when_latest_enrollment_plan_is_not_accepted(self):
         offer_context = self._create_offer_context()

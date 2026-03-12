@@ -5,6 +5,12 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_APPLICANT_ROLE,
+    ADMISSIONS_FAMILY_ROLE,
+    build_admissions_portal_access_exists_sql,
+    user_can_access_student_applicant,
+)
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     READ_LIKE_PERMISSION_TYPES,
@@ -13,11 +19,15 @@ from ifitwala_ed.admission.admission_utils import (
     is_admissions_file_staff_user,
 )
 from ifitwala_ed.admission.doctype.applicant_document.applicant_document import (
-    _is_student_applicant_self_user,
     sync_applicant_document_review_from_items,
 )
 
-UPLOAD_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager", "Admissions Applicant"}
+UPLOAD_ROLES = ADMISSIONS_ROLES | {
+    "Academic Admin",
+    "System Manager",
+    ADMISSIONS_APPLICANT_ROLE,
+    ADMISSIONS_FAMILY_ROLE,
+}
 REVIEW_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
 
 
@@ -72,8 +82,8 @@ class ApplicantDocumentItem(Document):
                 frappe.throw(
                     _("You do not have permission to manage this Applicant Document Item."), frappe.PermissionError
                 )
-        elif "Admissions Applicant" in user_roles:
-            if not _is_student_applicant_self_user(student_applicant, frappe.session.user):
+        elif user_roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE}:
+            if not user_can_access_student_applicant(user=frappe.session.user, student_applicant=student_applicant):
                 frappe.throw(
                     _("You do not have permission to manage this Applicant Document Item."), frappe.PermissionError
                 )
@@ -179,21 +189,16 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
         if staff_condition != "1=0":
             conditions.append(f"({staff_condition})")
 
-    roles = set(frappe.get_roles(resolved_user))
-    if "Admissions Applicant" in roles:
-        escaped_user = frappe.db.escape(resolved_user)
-        conditions.append(
-            "("
-            "EXISTS ("
-            "SELECT 1 "
+    portal_condition = build_admissions_portal_access_exists_sql(
+        user=resolved_user,
+        student_applicant_expr_sql=(
+            "(SELECT ad.student_applicant "
             "FROM `tabApplicant Document` ad "
-            "JOIN `tabStudent Applicant` sa "
-            "  ON sa.name = ad.student_applicant "
-            "WHERE ad.name = `tabApplicant Document Item`.`applicant_document` "
-            f"AND sa.applicant_user = {escaped_user}"
-            ")"
-            ")"
-        )
+            "WHERE ad.name = `tabApplicant Document Item`.`applicant_document`)"
+        ),
+    )
+    if portal_condition != "1=0":
+        conditions.append(f"({portal_condition})")
 
     return " OR ".join(conditions) if conditions else "1=0"
 
@@ -216,7 +221,7 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
         return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=student_applicant)
 
     roles = set(frappe.get_roles(resolved_user))
-    if "Admissions Applicant" not in roles:
+    if not roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE}:
         return False
 
     applicant_ops = READ_LIKE_PERMISSION_TYPES | {"write", "create"}
@@ -226,7 +231,10 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
         return True
     if not doc:
         return op in READ_LIKE_PERMISSION_TYPES
-    return _is_student_applicant_self_user(_resolve_item_student_applicant(doc), resolved_user)
+    return user_can_access_student_applicant(
+        user=resolved_user,
+        student_applicant=_resolve_item_student_applicant(doc),
+    )
 
 
 def _resolve_item_student_applicant(doc) -> str:

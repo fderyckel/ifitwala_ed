@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentDemographicAnalytics.vue -->
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { createResource } from 'frappe-ui';
 
 import FiltersBar from '@/components/filters/FiltersBar.vue';
@@ -12,8 +12,11 @@ import DonutSplit from '@/components/analytics/DonutSplit.vue';
 import HistogramBuckets from '@/components/analytics/HistogramBuckets.vue';
 import TagCloudBar from '@/components/analytics/TagCloudBar.vue';
 import SideDrawerList from '@/components/analytics/SideDrawerList.vue';
+import { useOverlayStack } from '@/composables/useOverlayStack';
+import { openAnalyticsChartOverlay } from '@/lib/analyticsOverlay';
 
 type ViewPreset = 'student' | 'admissions' | 'marketing';
+type ChartOption = Record<string, unknown>;
 
 type FilterState = {
 	school: string | null;
@@ -250,6 +253,8 @@ const siblingSeries = [
 	{ key: 'younger', label: 'Has younger siblings', color: '#fbbf24' },
 ];
 
+const nationalityHeatmapPalette = ['#fff7ed', '#f9a03f', '#e76f51', '#7f1d1d'];
+
 const genderRows = computed(() =>
 	dashboard.value.gender_by_cohort.map(row => ({
 		category: row.cohort,
@@ -285,6 +290,7 @@ const activeSliceKey = ref<string | null>(null);
 const sliceRows = ref<any[]>([]);
 const sliceStart = ref(0);
 const slicePageLength = 50;
+const overlay = useOverlayStack();
 
 const sliceResource = createResource({
 	url: 'ifitwala_ed.api.student_demographics_dashboard.get_slice_entities',
@@ -342,6 +348,10 @@ function closeSliceDrawer() {
 function studentDeskUrl(studentId: string | null | undefined) {
 	if (!studentId) return '#';
 	return `/desk/student/${encodeURIComponent(studentId)}`;
+}
+
+function openChartOverlay(title: string, option: ChartOption) {
+	openAnalyticsChartOverlay(overlay, title, option);
 }
 
 function setPreset(preset: ViewPreset) {
@@ -429,28 +439,41 @@ function setPreset(preset: ViewPreset) {
 					<HorizontalBarTopN
 						title="Nationality Distribution (Top 10 + Other)"
 						:items="dashboard.nationality_distribution"
+						expandable
 						@select="openSliceDrawer"
+						@expand="
+							option => openChartOverlay('Nationality Distribution (Top 10 + Other)', option)
+						"
 					/>
 					<HeatmapChart
 						title="Nationality by Cohort"
 						:rows="nationalityHeatmapRows"
+						:color-range="nationalityHeatmapPalette"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Nationality by Cohort', option)"
 					/>
 					<StackedBarChart
 						title="Gender Split by Cohort"
 						:series="stackedGenderSeries"
 						:rows="genderRows"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Gender Split by Cohort', option)"
 					/>
 					<HeatmapChart
 						title="Student House by Cohort"
 						:rows="studentHouseHeatmapRows"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Student House by Cohort', option)"
 					/>
 					<DonutSplit
 						title="Residency Status"
 						:items="dashboard.residency_status"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Residency Status', option)"
 					/>
 					<HistogramBuckets
 						title="Age Distribution"
@@ -461,7 +484,9 @@ function setPreset(preset: ViewPreset) {
 								sliceKey: b.sliceKey,
 							}))
 						"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Age Distribution', option)"
 					/>
 				</div>
 
@@ -469,12 +494,16 @@ function setPreset(preset: ViewPreset) {
 					<DonutSplit
 						title="Home Language Distribution"
 						:items="dashboard.home_language"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Home Language Distribution', option)"
 					/>
 					<DonutSplit
 						title="Multilingual Profile (1 / 2 / 3+)"
 						:items="dashboard.multilingual_profile"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Multilingual Profile (1 / 2 / 3+)', option)"
 					/>
 				</div>
 
@@ -488,7 +517,9 @@ function setPreset(preset: ViewPreset) {
 							title="Sibling Distribution"
 							:series="siblingSeries"
 							:rows="siblingRows"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Sibling Distribution', option)"
 						/>
 						<HistogramBuckets
 							title="Family Size Histogram"
@@ -499,7 +530,9 @@ function setPreset(preset: ViewPreset) {
 									sliceKey: b.sliceKey,
 								}))
 							"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Family Size Histogram', option)"
 						/>
 					</div>
 				</section>
@@ -510,33 +543,45 @@ function setPreset(preset: ViewPreset) {
 						<HorizontalBarTopN
 							title="Guardian Nationality (Top)"
 							:items="dashboard.guardian_nationality"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Guardian Nationality (Top)', option)"
 						/>
 						<DonutSplit
 							title="Preferred Communication Language"
 							:items="dashboard.guardian_comm_language"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Preferred Communication Language', option)"
 						/>
 						<HorizontalBarTopN
 							title="Guardian Residence (Country)"
 							:items="dashboard.guardian_residence_country"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Guardian Residence (Country)', option)"
 						/>
 						<TagCloudBar
 							title="Guardian Residence (City)"
 							:items="dashboard.guardian_residence_city"
 							:max="12"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Guardian Residence (City)', option)"
 						/>
 						<HorizontalBarTopN
 							title="Guardian Employment Sector"
 							:items="dashboard.guardian_sector"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Guardian Employment Sector', option)"
 						/>
 						<DonutSplit
 							title="Financial Guardian Spread"
 							:items="dashboard.financial_guardian"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Financial Guardian Spread', option)"
 						/>
 					</div>
 				</section>

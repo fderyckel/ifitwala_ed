@@ -114,7 +114,8 @@ def get_filter_meta():
                 "student": ["in", student_scope],
                 "archived": 0,
             },
-            fields=["distinct school", "program"],
+            fields=["school", "program"],
+            distinct=True,
         )
         school_names = sorted({r.school for r in pe_rows if r.school})
         program_names = sorted({r.program for r in pe_rows if r.program})
@@ -902,10 +903,12 @@ def _history_block(student: str, program: str | None):
     att_years = frappe.get_all(
         "Student Attendance",
         filters={"student": student},
-        fields=["distinct academic_year as ay"],
+        fields=["academic_year"],
+        distinct=True,
+        order_by="academic_year desc",
     )
     for row in att_years:
-        ay = row.ay
+        ay = row.academic_year
         stats = _attendance_block(student, ay)["summary"]
         attendance_trend.append(
             {

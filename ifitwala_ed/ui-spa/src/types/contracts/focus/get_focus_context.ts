@@ -23,6 +23,7 @@ export type Response = {
     follow_up_person?: string | null
     follow_up_role?: string | null
     date?: string | null
+    time?: string | null
     follow_up_status?: string | null
     log_html?: string | null
     log_author?: string | null

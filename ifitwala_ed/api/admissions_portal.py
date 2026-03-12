@@ -13,6 +13,18 @@ from frappe.utils import cint, now_datetime, validate_email_address, validate_ph
 from PIL import Image, UnidentifiedImageError
 
 from ifitwala_ed.admission import admissions_portal as admission_api
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_ACCESS_MODE_FAMILY,
+    ADMISSIONS_FAMILY_ROLE,
+    ADMISSIONS_PORTAL_ROLES,
+    get_admissions_access_mode,
+    get_admissions_portal_applicant_names_for_user,
+    get_guardian_names_for_user,
+    is_family_workspace_enabled,
+)
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_APPLICANT_ROLE as ADMISSIONS_ROLE,
+)
 from ifitwala_ed.admission.admission_utils import (
     ensure_admissions_permission,
     ensure_contact_dynamic_link,
@@ -37,15 +49,12 @@ from ifitwala_ed.api.recommendation_intake import (
     get_recommendation_status_for_applicant,
     get_recommendation_template_rows_for_applicant,
 )
-from ifitwala_ed.governance.policy_scope_utils import (
-    get_organization_ancestors_including_self,
-    get_school_ancestors_including_self,
-    select_nearest_policy_rows_by_key,
+from ifitwala_ed.governance.policy_utils import (
+    ADMISSIONS_POLICY_MODE_FAMILY,
+    get_applicant_policy_status,
 )
-from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
 from ifitwala_ed.utilities import file_dispatcher
 
-ADMISSIONS_ROLE = "Admissions Applicant"
 INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
 
 PORTAL_STATUS_MAP = {
@@ -461,6 +470,7 @@ def _serialize_health_doc(doc) -> dict:
         payload["applicant_health_declared_complete"] = 1 if _as_text(doc.get("review_status")) == "Cleared" else 0
         payload["applicant_health_declared_by"] = ""
         payload["applicant_health_declared_on"] = ""
+    payload["record_modified"] = _as_text(doc.get("modified")).strip()
     return payload
 
 
@@ -506,9 +516,27 @@ def _build_profile_payload(applicant) -> dict:
         "application_context": _application_context_payload(applicant),
         "options": _profile_reference_options(),
         "applicant_image": _as_text(applicant.get("applicant_image")).strip(),
+        "record_modified": _as_text(applicant.get("modified")).strip(),
         "guardian_section_enabled": guardians_enabled,
         "guardians": _serialize_applicant_guardians(applicant) if guardians_enabled else [],
     }
+
+
+def _normalize_record_modified(value) -> str:
+    return _as_text(value).strip()
+
+
+def _assert_record_modified_matches(*, expected_modified, current_modified, section_label: str) -> None:
+    if expected_modified is None:
+        return
+    expected = _normalize_record_modified(expected_modified)
+    current = _normalize_record_modified(current_modified)
+    if expected == current:
+        return
+    frappe.throw(
+        _("{0} was updated by another user. Reload this page before saving again.").format(section_label),
+        frappe.ValidationError,
+    )
 
 
 def _profile_reference_options() -> dict:
@@ -1083,33 +1111,57 @@ def _apply_guardians_to_applicant(*, applicant, guardians_payload: list[dict]):
         )
 
 
-def _require_admissions_applicant() -> str:
+def _require_admissions_portal_user() -> str:
     user = _session_user()
     if not user:
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
     roles = set(frappe.get_roles(user))
-    if ADMISSIONS_ROLE not in roles:
+    if not roles & ADMISSIONS_PORTAL_ROLES:
         frappe.throw(_("You do not have permission to access the admissions portal."), frappe.PermissionError)
 
     return user
 
 
-def _get_applicant_rows_for_user(*, user: str, fields: list[str], limit: int = 2) -> list[dict]:
+def _require_admissions_applicant() -> str:
+    return _require_admissions_portal_user()
+
+
+def _get_applicant_rows_for_user(
+    *,
+    user: str,
+    fields: list[str],
+    limit: int = 25,
+    include_promoted: bool = False,
+) -> list[dict]:
     selected_fields = [field for field in fields if field]
     if "name" not in selected_fields:
         selected_fields = ["name", *selected_fields]
 
+    applicant_names = get_admissions_portal_applicant_names_for_user(user=user, include_promoted=include_promoted)
+    if not applicant_names:
+        return []
+
     return frappe.get_all(
         "Student Applicant",
-        filters={"applicant_user": user},
+        filters={"name": ["in", applicant_names]},
         fields=selected_fields,
         limit_page_length=limit,
-        order_by="creation desc",
+        order_by="creation asc",
     )
 
 
-def _get_applicant_for_user(user: str, fields: list[str] | None = None) -> dict:
+def _family_workspace_available_for_user(user: str) -> bool:
+    roles = set(frappe.get_roles(user))
+    return ADMISSIONS_FAMILY_ROLE in roles and is_family_workspace_enabled()
+
+
+def _get_applicant_for_user(
+    user: str,
+    fields: list[str] | None = None,
+    *,
+    student_applicant: str | None = None,
+) -> dict:
     fields = fields or [
         "name",
         "application_status",
@@ -1124,15 +1176,22 @@ def _get_applicant_for_user(user: str, fields: list[str] | None = None) -> dict:
         "last_name",
         *APPLICANT_PROFILE_FIELDS,
     ]
-    rows = _get_applicant_rows_for_user(user=user, fields=fields, limit=2)
+    rows = _get_applicant_rows_for_user(user=user, fields=fields, limit=50, include_promoted=False)
     if not rows:
         frappe.throw(
             _(
-                "Admissions access is not linked to any Applicant. Contact the admissions office to relink your account."
+                "Admissions access is not linked to any active Applicant. Contact the admissions office to relink your account."
             ),
             frappe.PermissionError,
         )
-    if len(rows) > 1:
+
+    if student_applicant:
+        for row in rows:
+            if (row.get("name") or "").strip() == (student_applicant or "").strip():
+                return row
+        frappe.throw(_("You do not have permission to access this Applicant."), frappe.PermissionError)
+
+    if len(rows) > 1 and not _family_workspace_available_for_user(user):
         frappe.log_error(
             title="Admissions Portal applicant identity conflict",
             message=frappe.as_json(
@@ -1154,10 +1213,71 @@ def _get_applicant_for_user(user: str, fields: list[str] | None = None) -> dict:
 
 
 def _ensure_applicant_match(student_applicant: str | None, user: str) -> dict:
-    row = _get_applicant_for_user(user)
-    if student_applicant and row.get("name") != student_applicant:
-        frappe.throw(_("You do not have permission to access this Applicant."), frappe.PermissionError)
-    return row
+    return _get_applicant_for_user(user, student_applicant=student_applicant)
+
+
+def _applicant_summary_payload(row: dict) -> dict:
+    portal_status = _portal_status_for(_as_text(row.get("application_status")).strip())
+    is_read_only, reason = _read_only_for(_as_text(row.get("application_status")).strip())
+    return {
+        "name": row.get("name"),
+        "display_name": _build_applicant_display_name(row),
+        "portal_status": portal_status,
+        "application_status": row.get("application_status"),
+        "school": row.get("school"),
+        "organization": row.get("organization"),
+        "academic_year": row.get("academic_year"),
+        "term": row.get("term"),
+        "program": row.get("program"),
+        "program_offering": row.get("program_offering"),
+        "is_read_only": bool(is_read_only),
+        "read_only_reason": reason,
+    }
+
+
+def _resolve_family_guardian_context(*, student_applicant: str, user: str) -> str:
+    direct_rows = frappe.get_all(
+        "Student Applicant Guardian",
+        filters={
+            "parent": student_applicant,
+            "parenttype": "Student Applicant",
+            "parentfield": "guardians",
+            "user": user,
+            "can_consent": 1,
+        },
+        fields=["guardian"],
+        limit_page_length=5,
+        order_by="is_primary desc, idx asc",
+    )
+    for row in direct_rows:
+        guardian_name = (row.get("guardian") or "").strip()
+        if guardian_name:
+            return guardian_name
+
+    guardian_names = get_guardian_names_for_user(user=user)
+    if guardian_names:
+        linked_rows = frappe.get_all(
+            "Student Applicant Guardian",
+            filters={
+                "parent": student_applicant,
+                "parenttype": "Student Applicant",
+                "parentfield": "guardians",
+                "guardian": ["in", guardian_names],
+                "can_consent": 1,
+            },
+            fields=["guardian"],
+            limit_page_length=5,
+            order_by="is_primary desc, idx asc",
+        )
+        for row in linked_rows:
+            guardian_name = (row.get("guardian") or "").strip()
+            if guardian_name:
+                return guardian_name
+
+    frappe.throw(
+        _("Your account is not linked to a consenting family collaborator record for this Applicant."),
+        frappe.PermissionError,
+    )
 
 
 def _empty_applicant_enrollment_choice_state(message: str | None = None) -> dict:
@@ -1397,9 +1517,23 @@ def _derive_next_actions(application_status: str, readiness: dict, enrollment_of
 
 
 @frappe.whitelist()
-def get_admissions_session():
-    user = _require_admissions_applicant()
-    row = _get_applicant_for_user(user)
+def get_admissions_session(student_applicant: str | None = None):
+    user = _require_admissions_portal_user()
+    list_fields = [
+        "name",
+        "application_status",
+        "organization",
+        "school",
+        "academic_year",
+        "term",
+        "program",
+        "program_offering",
+        "first_name",
+        "middle_name",
+        "last_name",
+    ]
+    available_rows = _get_applicant_rows_for_user(user=user, fields=list_fields, limit=50, include_promoted=False)
+    row = _get_applicant_for_user(user, fields=list_fields, student_applicant=student_applicant)
     latest_plan = get_latest_applicant_enrollment_plan(row.get("name"))
     enrollment_offer = _serialize_enrollment_offer(latest_plan)
 
@@ -1407,15 +1541,21 @@ def get_admissions_session():
     is_read_only, reason = _read_only_for(row.get("application_status"), enrollment_offer)
 
     user_row = frappe.db.get_value("User", user, ["name", "full_name"], as_dict=True) or {}
+    roles = sorted(set(frappe.get_roles(user)) & ADMISSIONS_PORTAL_ROLES)
 
     return {
         "user": {
             "name": user_row.get("name") or user,
             "full_name": user_row.get("full_name") or user,
-            "roles": [ADMISSIONS_ROLE],
+            "roles": roles,
         },
+        "access_mode": get_admissions_access_mode(),
+        "family_workspace_enabled": bool(get_admissions_access_mode() == ADMISSIONS_ACCESS_MODE_FAMILY),
+        "selected_applicant": row.get("name"),
+        "available_applicants": [_applicant_summary_payload(candidate) for candidate in available_rows],
         "applicant": {
             "name": row.get("name"),
+            "display_name": _build_applicant_display_name(row),
             "portal_status": portal_status,
             "school": row.get("school"),
             "organization": row.get("organization"),
@@ -1570,6 +1710,7 @@ def get_applicant_profile(student_applicant: str | None = None):
 def update_applicant_profile(
     *,
     student_applicant: str | None = None,
+    expected_modified: str | None = None,
     student_preferred_name: str | None = None,
     student_date_of_birth: str | None = None,
     student_gender: str | None = None,
@@ -1586,6 +1727,11 @@ def update_applicant_profile(
     row = _ensure_applicant_match(student_applicant, user)
 
     applicant = frappe.get_doc("Student Applicant", row.get("name"))
+    _assert_record_modified_matches(
+        expected_modified=expected_modified,
+        current_modified=applicant.get("modified"),
+        section_label=_("Profile information"),
+    )
     incoming_joining_date = _as_text(student_joining_date).strip() if student_joining_date is not None else None
     existing_joining_date = _as_text(applicant.get("student_joining_date")).strip()
     if incoming_joining_date is not None and incoming_joining_date != existing_joining_date:
@@ -1782,6 +1928,7 @@ def get_applicant_health(student_applicant: str | None = None):
     if not health_name:
         payload = _default_health_payload()
         payload["applicant_display_name"] = applicant_display_name
+        payload["record_modified"] = ""
         return payload
 
     doc = frappe.get_doc("Applicant Health Profile", health_name)
@@ -1794,6 +1941,7 @@ def get_applicant_health(student_applicant: str | None = None):
 def update_applicant_health(
     *,
     student_applicant: str | None = None,
+    expected_modified: str | None = None,
     blood_group: str | None = None,
     allergies=None,
     food_allergies: str | None = None,
@@ -1840,6 +1988,11 @@ def update_applicant_health(
                 "student_applicant": row.get("name"),
             }
         )
+    _assert_record_modified_matches(
+        expected_modified=expected_modified,
+        current_modified=doc.get("modified"),
+        section_label=_("Health information"),
+    )
     has_declaration_column = _has_health_declaration_column()
     if has_declaration_column:
         previous_declared_complete = bool(cint(doc.get("applicant_health_declared_complete")))
@@ -1959,6 +2112,7 @@ def update_applicant_health(
     return {
         "ok": True,
         "applicant_health_declared_complete": declared_complete,
+        "record_modified": _as_text(doc.get("modified")).strip(),
     }
 
 
@@ -2363,104 +2517,49 @@ def upload_applicant_document(
 
 @frappe.whitelist()
 def get_applicant_policies(student_applicant: str | None = None):
-    user = _require_admissions_applicant()
+    user = _require_admissions_portal_user()
     row = _ensure_applicant_match(student_applicant, user)
-
-    organization = row.get("organization")
-    school = row.get("school")
-
-    if not organization:
-        return {"policies": []}
-
-    ancestor_orgs = get_organization_ancestors_including_self(organization)
-    if not ancestor_orgs:
-        return {"policies": []}
-    school_ancestors = get_school_ancestors_including_self(school)
-
-    ensure_policy_applies_to_column(
-        caller="admissions_portal.get_applicant_policies",
-        throw=True,
+    policy_status = get_applicant_policy_status(
+        student_applicant=row.get("name"),
+        organization=row.get("organization"),
+        school=row.get("school"),
+        user=user,
     )
-
-    cache = frappe.cache()
-    cache_key = f"admissions:policies:{organization}:{school or 'all'}"
-    cached = cache.get_value(cache_key)
-    policies_source = None
-    if cached:
-        try:
-            policies_source = frappe.parse_json(cached)
-        except Exception:
-            policies_source = None
-
-    if policies_source is None:
-        org_placeholders = ", ".join(["%s"] * len(ancestor_orgs))
-        school_scope_sql = ""
-        school_params: tuple[str, ...] = ()
-        if school_ancestors:
-            school_placeholders = ", ".join(["%s"] * len(school_ancestors))
-            school_scope_sql = f" OR ip.school IN ({school_placeholders})"
-            school_params = tuple(school_ancestors)
-        policies_source = frappe.db.sql(
-            f"""
-            SELECT ip.name AS policy_name,
-                   ip.policy_key AS policy_key,
-                   ip.policy_title AS policy_title,
-                   ip.organization AS policy_organization,
-                   ip.school AS policy_school,
-                   pv.name AS policy_version,
-                   pv.policy_text AS policy_text
-              FROM `tabInstitutional Policy` ip
-              JOIN `tabPolicy Version` pv
-                ON pv.institutional_policy = ip.name
-             WHERE ip.is_active = 1
-               AND pv.is_active = 1
-               AND ip.organization IN ({org_placeholders})
-               AND (ip.school IS NULL OR ip.school = ''{school_scope_sql})
-               AND ip.applies_to LIKE %s
-            """,
-            (*ancestor_orgs, *school_params, "%Applicant%"),
-            as_dict=True,
-        )
-        policies_source = select_nearest_policy_rows_by_key(
-            rows=policies_source,
-            context_organization=organization,
-            context_school=school,
-            policy_key_field="policy_key",
-            policy_organization_field="policy_organization",
-            policy_school_field="policy_school",
-        )
-        cache.set_value(cache_key, frappe.as_json(policies_source), expires_in_sec=600)
-
-    if not policies_source:
+    policy_rows = policy_status.get("rows") or []
+    if not policy_rows:
         return {"policies": []}
 
-    versions = [row_policy["policy_version"] for row_policy in policies_source]
-    ack_rows = frappe.get_all(
-        "Policy Acknowledgement",
-        filters={
-            "policy_version": ["in", versions],
-            "acknowledged_for": "Applicant",
-            "context_doctype": "Student Applicant",
-            "context_name": row.get("name"),
-        },
-        fields=["policy_version", "acknowledged_at"],
+    versions = [
+        (row_policy.get("policy_version") or "").strip()
+        for row_policy in policy_rows
+        if row_policy.get("policy_version")
+    ]
+    version_rows = frappe.get_all(
+        "Policy Version",
+        filters={"name": ["in", versions]},
+        fields=["name", "policy_text"],
+        limit_page_length=max(20, len(versions)),
     )
-    ack_map = {row_ack["policy_version"]: row_ack.get("acknowledged_at") for row_ack in ack_rows}
-    expected_signature_name = _build_applicant_display_name(row)
+    policy_text_by_version = {
+        (row_version.get("name") or "").strip(): row_version.get("policy_text") or ""
+        for row_version in version_rows
+        if (row_version.get("name") or "").strip()
+    }
 
     payload = []
-    for row_policy in policies_source:
-        policy_version = row_policy["policy_version"]
-        acknowledged_at = ack_map.get(policy_version)
-        label = row_policy.get("policy_key") or row_policy.get("policy_title") or row_policy.get("policy_name")
+    for row_policy in policy_rows:
+        policy_version = row_policy.get("policy_version")
         payload.append(
             {
-                "name": label,
+                "name": row_policy.get("label"),
                 "policy_version": policy_version,
-                "content_html": row_policy.get("policy_text") or "",
-                "is_acknowledged": bool(acknowledged_at),
-                "acknowledged_at": acknowledged_at,
-                "expected_signature_name": expected_signature_name,
+                "content_html": policy_text_by_version.get(policy_version, ""),
+                "is_required": bool(row_policy.get("is_required")),
+                "acknowledgement_mode": row_policy.get("admissions_acknowledgement_mode"),
+                "is_acknowledged": bool(row_policy.get("is_acknowledged")),
+                "acknowledged_at": row_policy.get("acknowledged_at"),
+                "acknowledged_by": row_policy.get("acknowledged_by"),
+                "expected_signature_name": row_policy.get("expected_signature_name") or "",
             }
         )
 
@@ -2475,27 +2574,34 @@ def acknowledge_policy(
     typed_signature_name: str | None = None,
     attestation_confirmed: int | str | bool | None = None,
 ):
-    user = _require_admissions_applicant()
+    user = _require_admissions_portal_user()
     row = _ensure_applicant_match(student_applicant, user)
 
     if not policy_version:
         frappe.throw(_("policy_version is required."))
 
-    existing = frappe.db.get_value(
-        "Policy Acknowledgement",
-        {
-            "policy_version": policy_version,
-            "acknowledged_for": "Applicant",
-            "context_doctype": "Student Applicant",
-            "context_name": row.get("name"),
-        },
-        ["name", "acknowledged_at"],
-        as_dict=True,
+    policy_status = get_applicant_policy_status(
+        student_applicant=row.get("name"),
+        organization=row.get("organization"),
+        school=row.get("school"),
+        user=user,
     )
-    if existing:
-        return {"ok": True, "acknowledged_at": existing.get("acknowledged_at")}
+    selected_policy = next(
+        (
+            row_policy
+            for row_policy in (policy_status.get("rows") or [])
+            if (row_policy.get("policy_version") or "").strip() == (policy_version or "").strip()
+        ),
+        None,
+    )
+    if not selected_policy:
+        frappe.throw(_("This policy is not assigned to the selected Applicant."), frappe.PermissionError)
+    if selected_policy.get("is_acknowledged"):
+        return {"ok": True, "acknowledged_at": selected_policy.get("acknowledged_at")}
 
-    expected_signature_name = _build_applicant_display_name(row)
+    expected_signature_name = _as_text(
+        selected_policy.get("expected_signature_name")
+    ).strip() or _build_applicant_display_name(row)
     normalized_typed_name = _normalize_signature_name(typed_signature_name)
     expected_candidates = {
         normalized
@@ -2521,14 +2627,22 @@ def acknowledge_policy(
             frappe.ValidationError,
         )
 
+    acknowledged_for = "Applicant"
+    context_doctype = "Student Applicant"
+    context_name = row.get("name")
+    if selected_policy.get("admissions_acknowledgement_mode") == ADMISSIONS_POLICY_MODE_FAMILY:
+        acknowledged_for = "Guardian"
+        context_doctype = "Guardian"
+        context_name = _resolve_family_guardian_context(student_applicant=row.get("name"), user=user)
+
     doc = frappe.get_doc(
         {
             "doctype": "Policy Acknowledgement",
             "policy_version": policy_version,
             "acknowledged_by": user,
-            "acknowledged_for": "Applicant",
-            "context_doctype": "Student Applicant",
-            "context_name": row.get("name"),
+            "acknowledged_for": acknowledged_for,
+            "context_doctype": context_doctype,
+            "context_name": context_name,
         }
     )
     doc.insert(ignore_permissions=True)
@@ -2599,6 +2713,37 @@ def _ensure_admissions_applicant_role(user_doc) -> None:
         user_doc.save(ignore_permissions=True)
 
 
+def _ensure_admissions_family_role(user_doc) -> None:
+    changed = False
+    role_names = []
+    seen = set()
+
+    for row in user_doc.roles or []:
+        role = (row.role or "").strip()
+        if not role or role in seen:
+            continue
+        seen.add(role)
+        role_names.append(role)
+
+    if ADMISSIONS_FAMILY_ROLE not in seen:
+        role_names.append(ADMISSIONS_FAMILY_ROLE)
+        changed = True
+
+    if changed:
+        user_doc.set("roles", [{"role": role} for role in role_names])
+
+    if not (user_doc.user_type or "").strip():
+        user_doc.user_type = "Website User"
+        changed = True
+
+    if not int(user_doc.enabled or 0):
+        user_doc.enabled = 1
+        changed = True
+
+    if changed:
+        user_doc.save(ignore_permissions=True)
+
+
 def _call_user_method_if_available(user_doc, method_name: str) -> bool:
     target = getattr(user_doc, method_name, None)
     if not callable(target):
@@ -2661,9 +2806,202 @@ def _resolve_applicant_contact(
     return contact_name or None
 
 
+def _require_family_workspace_mode() -> None:
+    if not is_family_workspace_enabled():
+        frappe.throw(
+            _("Family Workspace mode is not enabled in Admission Settings."),
+            frappe.ValidationError,
+        )
+
+
+def _guardian_row_display_name(row) -> str:
+    full_name = _as_text(row.get("guardian_full_name")).strip()
+    if full_name:
+        return full_name
+    parts = [
+        _as_text(row.get("guardian_first_name")).strip(),
+        _as_text(row.get("guardian_last_name")).strip(),
+    ]
+    name = " ".join(part for part in parts if part).strip()
+    return name or _as_text(row.get("relationship")).strip() or _as_text(row.get("name")).strip()
+
+
+def _get_applicant_guardian_row(applicant, guardian_row_name: str):
+    target_name = (guardian_row_name or "").strip()
+    if not target_name:
+        frappe.throw(_("guardian_row is required."))
+    for row in applicant.get("guardians") or []:
+        if (row.name or "").strip() == target_name:
+            return row
+    frappe.throw(_("Guardian row {0} was not found on this Applicant.").format(target_name), frappe.DoesNotExistError)
+
+
+def _ensure_family_guardian_user(*, guardian, email: str, applicant_name: str, row_payload: dict):
+    resolved_email = normalize_email_value(email)
+    if not resolved_email:
+        frappe.throw(_("Guardian email is required."))
+
+    existing_user_guardian = frappe.db.get_value("Guardian", {"user": resolved_email}, "name")
+    if existing_user_guardian and existing_user_guardian != guardian.name:
+        frappe.throw(_("This email is already linked to a different Guardian account."))
+
+    existing_applicant = frappe.db.get_value("Student Applicant", {"applicant_user": resolved_email}, "name")
+    if existing_applicant:
+        frappe.throw(
+            _(
+                "This email is already reserved as an Applicant login ({0}). Use a different family collaborator email."
+            ).format(existing_applicant)
+        )
+
+    resent = False
+    if guardian.user:
+        linked_user = normalize_email_value(guardian.user)
+        if linked_user != resolved_email:
+            frappe.throw(_("Guardian is already linked to a different user account."))
+        user_doc = frappe.get_doc("User", linked_user)
+        resent = True
+    elif frappe.db.exists("User", resolved_email):
+        user_doc = frappe.get_doc("User", resolved_email)
+    else:
+        user_doc = frappe.get_doc(
+            {
+                "doctype": "User",
+                "enabled": 1,
+                "first_name": row_payload.get("guardian_first_name") or resolved_email,
+                "last_name": row_payload.get("guardian_last_name") or "",
+                "email": resolved_email,
+                "username": resolved_email,
+                "mobile_no": row_payload.get("guardian_mobile_phone") or "",
+                "user_type": "Website User",
+            }
+        )
+        user_doc.append("roles", {"role": ADMISSIONS_FAMILY_ROLE})
+        user_doc.insert(ignore_permissions=True)
+
+    _ensure_admissions_family_role(user_doc)
+
+    if not (guardian.user or "").strip():
+        guardian.db_set("user", user_doc.name, update_modified=False)
+    if (guardian.user or "").strip() != user_doc.name:
+        frappe.throw(_("Guardian is already linked to a different user account."))
+
+    return user_doc, resent
+
+
+@frappe.whitelist()
+def get_family_invite_options(*, student_applicant: str | None = None) -> dict:
+    ensure_admissions_permission()
+    _require_family_workspace_mode()
+
+    if not student_applicant:
+        frappe.throw(_("student_applicant is required."))
+
+    applicant = frappe.get_doc("Student Applicant", student_applicant)
+    guardian_payload = []
+    for row in applicant.get("guardians") or []:
+        email = normalize_email_value(row.get("guardian_email"))
+        eligible = bool(email and cint(row.get("can_consent")))
+        reason = ""
+        if not cint(row.get("can_consent")):
+            reason = _("Enable Can Consent on this guardian row before inviting portal access.")
+        elif not email:
+            reason = _("Add a guardian personal email before inviting portal access.")
+        guardian_payload.append(
+            {
+                "name": row.name,
+                "label": _guardian_row_display_name(row),
+                "relationship": _as_text(row.get("relationship")).strip(),
+                "email": email,
+                "user": _as_text(row.get("user")).strip() or None,
+                "guardian": _as_text(row.get("guardian")).strip() or None,
+                "can_consent": bool(cint(row.get("can_consent"))),
+                "eligible": eligible,
+                "reason": reason or None,
+            }
+        )
+
+    return {"guardians": guardian_payload}
+
+
+@frappe.whitelist()
+def invite_family_collaborator(
+    *,
+    student_applicant: str | None = None,
+    guardian_row: str | None = None,
+    email: str | None = None,
+) -> dict:
+    ensure_admissions_permission()
+    _require_family_workspace_mode()
+
+    if not student_applicant:
+        frappe.throw(_("student_applicant is required."))
+
+    applicant = frappe.get_doc("Student Applicant", student_applicant)
+    target_row = _get_applicant_guardian_row(applicant, guardian_row or "")
+    if not cint(target_row.get("can_consent")):
+        frappe.throw(_("Only guardian rows marked Can Consent may be invited to the family workspace."))
+
+    invite_email = normalize_email_value(email or target_row.get("guardian_email"))
+    if not invite_email:
+        frappe.throw(_("email is required."))
+
+    row_payload = dict(target_row.as_dict())
+    row_payload["guardian_email"] = invite_email
+    row_payload = _validate_guardian_profile_row(_normalize_guardian_row(row_payload))
+    contact_name = _create_or_update_guardian_contact(
+        applicant=applicant,
+        row_payload=row_payload,
+        existing_contact_name=_as_text(target_row.get("contact")).strip() or None,
+    )
+    row_payload["contact"] = contact_name
+
+    if (target_row.get("guardian") or "").strip():
+        guardian_doc = frappe.get_doc("Guardian", target_row.get("guardian"))
+    else:
+        guardian_spec = applicant._create_or_reuse_guardian_from_profile_row(row_payload)
+        guardian_doc = guardian_spec["guardian"]
+
+    user_doc, resent = _ensure_family_guardian_user(
+        guardian=guardian_doc,
+        email=invite_email,
+        applicant_name=applicant.name,
+        row_payload=row_payload,
+    )
+
+    if contact_name:
+        ensure_contact_dynamic_link(contact_name=contact_name, link_doctype="Guardian", link_name=guardian_doc.name)
+        contact_user = _as_text(frappe.db.get_value("Contact", contact_name, "user")).strip()
+        if not contact_user:
+            frappe.db.set_value("Contact", contact_name, "user", user_doc.name, update_modified=False)
+
+    target_row.guardian = guardian_doc.name
+    target_row.contact = contact_name
+    target_row.user = user_doc.name
+    target_row.guardian_email = invite_email
+    target_row.guardian_full_name = _guardian_row_display_name(row_payload)
+    applicant.save(ignore_permissions=True)
+
+    email_sent = _send_applicant_invite_email(user_doc, invite_email)
+    applicant.add_comment(
+        "Comment",
+        text=_("Family admissions portal access invited for {0} ({1}) by {2}.").format(
+            frappe.bold(_guardian_row_display_name(target_row)),
+            frappe.bold(invite_email),
+            frappe.bold(frappe.session.user),
+        ),
+    )
+
+    return {"ok": True, "user": user_doc.name, "resent": resent, "email_sent": email_sent}
+
+
 @frappe.whitelist()
 def get_invite_email_options(*, student_applicant: str | None = None) -> dict:
     ensure_admissions_permission()
+    if is_family_workspace_enabled():
+        frappe.throw(
+            _("Single applicant invites are disabled while Family Workspace mode is enabled."),
+            frappe.ValidationError,
+        )
 
     if not student_applicant:
         frappe.throw(_("student_applicant is required."))
@@ -2704,6 +3042,11 @@ def get_invite_email_options(*, student_applicant: str | None = None) -> dict:
 @frappe.whitelist()
 def invite_applicant(*, student_applicant: str | None = None, email: str | None = None) -> dict:
     ensure_admissions_permission()
+    if is_family_workspace_enabled():
+        frappe.throw(
+            _("Use Invite Family Collaborator while Family Workspace mode is enabled."),
+            frappe.ValidationError,
+        )
 
     if not student_applicant:
         frappe.throw(_("student_applicant is required."))

@@ -9,6 +9,7 @@ from unittest.mock import patch
 import frappe
 
 from ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment import (
+    ProgramEnrollment,
     _compute_effective_course_span,
     _offering_ay_names,
     _offering_ay_spine,
@@ -70,3 +71,50 @@ class TestProgramEnrollment(TestCase):
 
         self.assertEqual(str(start_dt), "2025-09-01")
         self.assertEqual(str(end_dt), "2026-05-15")
+
+    @patch(
+        "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment._auto_upgrade_identity_for_active_enrollment"
+    )
+    @patch.object(ProgramEnrollment, "update_student_joining_date")
+    def test_on_update_auto_upgrades_when_inserted_active(self, mock_update_joining_date, mock_auto_upgrade):
+        enrollment = ProgramEnrollment({"name": "PE-TEST-NEW", "student": "STU-TEST", "archived": 0})
+
+        with patch.object(enrollment, "get_doc_before_save", return_value=None):
+            enrollment.on_update()
+
+        mock_update_joining_date.assert_called_once()
+        mock_auto_upgrade.assert_called_once_with(
+            student_name="STU-TEST",
+            program_enrollment="PE-TEST-NEW",
+        )
+
+    @patch(
+        "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment._auto_upgrade_identity_for_active_enrollment"
+    )
+    @patch.object(ProgramEnrollment, "update_student_joining_date")
+    def test_on_update_skips_auto_upgrade_for_active_edit(self, mock_update_joining_date, mock_auto_upgrade):
+        enrollment = ProgramEnrollment({"name": "PE-TEST-EDIT", "student": "STU-TEST", "archived": 0})
+        before = frappe._dict({"archived": 0})
+
+        with patch.object(enrollment, "get_doc_before_save", return_value=before):
+            enrollment.on_update()
+
+        mock_update_joining_date.assert_called_once()
+        mock_auto_upgrade.assert_not_called()
+
+    @patch(
+        "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment._auto_upgrade_identity_for_active_enrollment"
+    )
+    @patch.object(ProgramEnrollment, "update_student_joining_date")
+    def test_on_update_auto_upgrades_when_unarchived(self, mock_update_joining_date, mock_auto_upgrade):
+        enrollment = ProgramEnrollment({"name": "PE-TEST-UNARCHIVE", "student": "STU-TEST", "archived": 0})
+        before = frappe._dict({"archived": 1})
+
+        with patch.object(enrollment, "get_doc_before_save", return_value=before):
+            enrollment.on_update()
+
+        mock_update_joining_date.assert_called_once()
+        mock_auto_upgrade.assert_called_once_with(
+            student_name="STU-TEST",
+            program_enrollment="PE-TEST-UNARCHIVE",
+        )

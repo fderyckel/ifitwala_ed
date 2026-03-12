@@ -3,8 +3,8 @@ title: "Program Enrollment: Committed Academic Enrollment Truth"
 slug: program-enrollment
 category: Enrollment
 doc_order: 5
-version: "1.1.0"
-last_change_date: "2026-03-11"
+version: "1.2.0"
+last_change_date: "2026-03-12"
 summary: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions including required and credited basket-group snapshots."
 seo_title: "Program Enrollment: Committed Academic Enrollment Truth"
 seo_description: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions."
@@ -30,7 +30,7 @@ seo_description: "Store one committed enrollment per student/offering/year with 
 - Enrollment engine history source for repeat and completion checks.
 - Course-level truth rows (`Program Enrollment Course`) for enrolled, dropped, and completed states.
 - Course add-many workflows and batch enrollment tools.
-- Admissions identity-upgrade and post-admission readiness checks.
+- Admissions identity-upgrade trigger for promoted applicants and post-admission readiness checks.
 
 ## Lifecycle and Linked Documents
 
@@ -40,6 +40,7 @@ seo_description: "Store one committed enrollment per student/offering/year with 
 4. Course rows sync `required` from the offering and keep `credited_basket_group` when applicable.
 5. Course rows progress through `Enrolled`, `Dropped`, `Completed`.
 6. Archiving marks historical, non-current enrollment state.
+7. When this row becomes the first active enrollment for a promoted applicant, the server can auto-trigger identity upgrade; ordinary edits to an already-active row do not.
 
 ### Source Modes
 
@@ -111,6 +112,7 @@ seo_description: "Store one committed enrollment per student/offering/year with 
   - offering spine lock (`program`, `school`, optional `cohort` alignment)
   - AY must belong to offering AY spine
   - one active enrollment per student (`archived = 0` guard)
+  - first active transition (new active row or unarchive) can auto-trigger admissions identity upgrade for promoted applicants
   - no duplicate `(student, program_offering, academic_year)`
   - per-course existence in offering + overlap window checks
   - enrollment course rows sync `required` from offering semantics

@@ -351,6 +351,9 @@ Student Log generates Focus items automatically (users do not create tasks manua
 
 Focus is a SPA surface reflecting server truth. SPA does not create Focus items.
 
+Focus follow-up surfaces render the parent log timestamp in a human-readable label using stored `date` + `time`.
+Follow-up history rows render a human-readable date only unless the source DocType has a real time field.
+
 ---
 
 ## 11. Source of truth for staff scoping

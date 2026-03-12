@@ -160,6 +160,7 @@ const props = defineProps<{
 	open: boolean;
 	zIndex?: number;
 	overlayId?: string;
+	studentApplicant?: string | null;
 	documentType?: string;
 	documentLabel?: string;
 	description?: string;
@@ -316,6 +317,7 @@ async function submit() {
 		const content = await readAsBase64(selectedFile.value);
 		const clientRequestId = `admissions_upload_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 		await service.uploadDocument({
+			student_applicant: props.studentApplicant || undefined,
 			document_type: props.documentType,
 			applicant_document_item: props.applicantDocumentItem || null,
 			item_key: mode.value === 'replace' ? props.itemKey || null : null,

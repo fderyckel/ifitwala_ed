@@ -7,6 +7,7 @@ import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
 import StatsTile from '@/components/analytics/StatsTile.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { openAnalyticsChartOverlay, openAnalyticsTableOverlay } from '@/lib/analyticsOverlay';
 import {
 	createDebouncedRunner,
 	useStudentLogDashboard,
@@ -156,21 +157,11 @@ onMounted(() => {
 });
 
 function openChartOverlay(title: string, option: ChartOption) {
-	overlay.open('student-log-analytics-expand', {
-		title,
-		chartOption: option,
-		kind: 'chart',
-	});
+	openAnalyticsChartOverlay(overlay, title, option);
 }
 
 function openTableOverlay(title: string, rows: TableRow[], subtitle?: string | null) {
-	overlay.open('student-log-analytics-expand', {
-		title,
-		chartOption: {},
-		kind: 'table',
-		rows,
-		subtitle: subtitle ?? null,
-	});
+	openAnalyticsTableOverlay(overlay, title, rows, subtitle);
 }
 
 function selectStudentFromRecent(row: StudentLogRecentRow) {

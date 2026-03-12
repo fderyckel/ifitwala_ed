@@ -11,8 +11,8 @@ Define the post-promotion access upgrade boundary as a separate workflow from ad
 ## 2. Boundary Model
 
 Status: Implemented
-Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/docs/admission/02_applicant_and_promotion.md`
-Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
+Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/schedule/doctype/program_enrollment/program_enrollment.py`, `ifitwala_ed/docs/admission/02_applicant_and_promotion.md`
+Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/schedule/doctype/program_enrollment/test_program_enrollment.py`
 
 1. Promotion (data boundary)
    - Converts `Student Applicant` -> `Student`
@@ -24,17 +24,22 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 2. Identity Upgrade (access boundary)
    - Runs only after promotion and active enrollment
    - Enrollment confirmation signal: active `Program Enrollment` (`archived = 0`) for the promoted student
+   - Public rerun surface remains the named `Student Applicant` action, but the first active `Program Enrollment` insert or reactivation can trigger the same server-owned logic automatically
    - Removes `Admissions Applicant` from the applicant user and provisions the student-facing role set
    - Provisions guardian access only from explicit guardian rows
+   - Re-runs sibling sync from shared explicit guardians after guardian carryover
 
 ## 3. Canonical Entry Point
 
 Status: Implemented
-Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
-Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
+Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/schedule/doctype/program_enrollment/program_enrollment.py`
+Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/schedule/doctype/program_enrollment/test_program_enrollment.py`
 
-- Server method: `StudentApplicant.upgrade_identity()`
-- Trigger surface: explicit Desk action on promoted applicants
+- Public server method: `StudentApplicant.upgrade_identity()`
+- Internal auto-trigger path: `ProgramEnrollment.on_update()` -> `auto_upgrade_identity_for_student()`
+- Trigger surfaces:
+  - explicit Desk action on promoted applicants
+  - first active `Program Enrollment` transition for that promoted student (new active insert or `archived: 1 -> 0`)
 
 ## 4. Preconditions
 
@@ -59,6 +64,7 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 - Ensure each guardian is linked to its own `User`
 - Reject any attempt to reuse the applicant user as a guardian user
 - Link Guardian <-> Student in `Student.guardians`
+- Sync `Student.siblings` from shared explicit guardians carried over from admissions
 - Link tracked guardian `Contact` rows to `Student Applicant`, `Guardian`, and promoted `Student`
 
 ## 6. Explicit Non-Effects
@@ -88,7 +94,7 @@ Re-running identity upgrade must not:
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
-Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
+Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/schedule/doctype/program_enrollment/test_program_enrollment.py`
 
 Identity upgrade records:
 
@@ -98,6 +104,7 @@ Identity upgrade records:
 - student id
 - guardian links added
 - users updated
+- trigger detail when the automatic enrollment trigger is the initiating surface
 
 ## 9. Failure Behavior
 
@@ -112,12 +119,13 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 ## 10. Contract Matrix
 
 Status: Implemented
-Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
-Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
+Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/schedule/doctype/program_enrollment/program_enrollment.py`
+Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/schedule/doctype/program_enrollment/test_program_enrollment.py`
 
 | Area | Runtime owner | Surface | State |
 | --- | --- | --- | --- |
-| Enrollment gate | `StudentApplicant._require_active_enrollment()` | Desk upgrade action | Implemented |
-| Student identity provisioning | `StudentApplicant._ensure_student_user_access()` | Desk upgrade action | Implemented |
-| Guardian provisioning | `StudentApplicant._resolve_upgrade_guardians()` and related helpers | Desk upgrade action | Implemented |
-| Applicant-role removal | `StudentApplicant._ensure_user_roles()` | Desk upgrade action | Implemented |
+| Enrollment gate | `StudentApplicant._require_active_enrollment()` | Desk upgrade action and automatic enrollment trigger | Implemented |
+| Automatic trigger | `ProgramEnrollment.on_update()` and `auto_upgrade_identity_for_student()` | First active `Program Enrollment` insert or reactivation | Implemented |
+| Student identity provisioning | `StudentApplicant._ensure_student_user_access()` | Desk upgrade action and automatic enrollment trigger | Implemented |
+| Guardian provisioning | `StudentApplicant._resolve_upgrade_guardians()` and related helpers | Desk upgrade action and automatic enrollment trigger | Implemented |
+| Applicant-role removal | `StudentApplicant._ensure_user_roles()` | Desk upgrade action and automatic enrollment trigger | Implemented |

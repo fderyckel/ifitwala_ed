@@ -137,6 +137,7 @@ def get_focus_context(
                 "follow_up_person": log_doc.follow_up_person,
                 "follow_up_role": log_doc.follow_up_role,
                 "date": str(log_doc.date) if log_doc.date else None,
+                "time": str(log_doc.time) if log_doc.time else None,
                 "follow_up_status": log_doc.follow_up_status,
                 "log_html": log_doc.log or "",
                 "log_author": log_author,

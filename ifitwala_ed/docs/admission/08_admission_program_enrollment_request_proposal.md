@@ -115,9 +115,10 @@ The applicant portal identity belongs to the student.
 Current runtime meaning:
 
 - applicant user is the future student user
-- after promotion + active enrollment + identity upgrade, that same user loses `Admissions Applicant` and gains `Student`
+- after promotion + active enrollment, the first active `Program Enrollment` can auto-trigger identity upgrade; that same user then loses `Admissions Applicant` and gains `Student`
 - guardians are provisioned separately from explicit guardian rows
 - the applicant user cannot be reused as a guardian user
+- the named `StudentApplicant.upgrade_identity()` action remains the public rerun path when staff need to retry the idempotent access upgrade
 
 ## 7. Admissions Hub / Staff Workflow Impact
 
@@ -147,5 +148,6 @@ Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applica
 | Applicant offer acceptance/decline | `ifitwala_ed.api.admissions_portal.*` | `/admissions/status` | Implemented |
 | Promotion gate on latest accepted plan | `StudentApplicant.promote_to_student()` | Desk applicant form | Implemented |
 | Draft PER hydration | `hydrate_program_enrollment_request_from_applicant_plan()` | Desk applicant form / AEP form | Implemented |
+| Automatic identity upgrade trigger | `ProgramEnrollment.on_update()` -> `auto_upgrade_identity_for_student()` | First active `Program Enrollment` transition | Implemented |
 | PER provenance fields | `Program Enrollment Request` schema | Desk PER form, downstream audit | Implemented |
 | Admissions Cockpit AEP visualization | `ifitwala_ed.api.admission_cockpit`, `AdmissionsCockpit.vue` | `/staff/admissions/cockpit` | Planned |

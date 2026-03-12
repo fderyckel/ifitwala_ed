@@ -115,7 +115,7 @@ This gives:
 
 **Upgrade**
 
-* After promotion + active enrollment, applicant role is removed from the student account
+* After promotion + active enrollment, the first active `Program Enrollment` can trigger the server-owned identity upgrade that removes the applicant role from the student account
 * That applicant account becomes the `Student` identity
 * Guardian identities are provisioned separately from explicit guardian rows
 
@@ -140,11 +140,22 @@ It is **not optional**.
 
 The role represents:
 
-> “A pre-guardian identity allowed to complete and review admissions materials for a single applicant.”
+> “A pre-student admissions identity allowed to complete and review admissions materials within the configured admissions access mode.”
 
-It is **not** a family role
 It is **not** a student role
 It is **not** a staff role
+
+### 4.2.1 Additional role: `Admissions Family`
+
+When `Admission Settings.admissions_access_mode = Family Workspace`, a second website role is active:
+
+> “A pre-guardian admissions collaborator allowed to work on all explicitly linked applicants in one family workspace.”
+
+This role:
+
+* is distinct from `Admissions Applicant`
+* is anchored through explicit `Student Applicant Guardian` rows with `can_consent = 1`
+* uses one real user per adult collaborator; shared logins are not allowed
 
 ---
 
@@ -201,8 +212,10 @@ Applicants can **add**, not curate history.
 All endpoints used by the Admissions Portal must:
 
 * explicitly check `frappe.session.user`
-* verify role = `Admissions Applicant`
-* verify ownership via `student_applicant`
+* verify role = `Admissions Applicant` or `Admissions Family`
+* verify applicant ownership via one of:
+  * `Student Applicant.applicant_user` in single-applicant mode
+  * explicit consenting applicant guardian linkage in family-workspace mode
 * fail fast with translated errors
 
 No implicit trust.
@@ -296,17 +309,22 @@ No implicit completion.
 
 ## 9. Data Ownership & Safety
 
-### 9.1 Single-applicant scope
+### 9.1 Admissions access modes
 
-An Admissions Applicant user is linked to **exactly one** Student Applicant.
+Admissions access is site-configured in `Admission Settings.admissions_access_mode`.
 
-No:
+`Single Applicant Workspace`
 
-* sibling browsing
-* multiple applicants
-* switching context
+* `Admissions Applicant` user is linked to exactly one `Student Applicant`
+* no applicant switching
 
-This is enforced **server-side**, not via UI hiding.
+`Family Workspace`
+
+* `Admissions Family` user can access one-or-more explicitly linked applicants
+* sibling switching is allowed inside `/admissions`
+* access is resolved only from explicit guardian rows, never from guessed shared email matches
+
+In both modes, access is enforced **server-side**, not via UI hiding.
 
 ---
 
@@ -427,10 +445,15 @@ AdmissionsSession {
   user: {
     name: string
     full_name: string
-    roles: ["Admissions Applicant"]
+    roles: ["Admissions Applicant" | "Admissions Family"]
   }
+  access_mode: "Single Applicant Workspace" | "Family Workspace"
+  family_workspace_enabled: boolean
+  selected_applicant: string
+  available_applicants: AdmissionsSessionApplicant[]
   applicant: {
     name: string
+    display_name: string
     portal_status: PortalApplicantStatus
     school: string
     organization: string
@@ -442,8 +465,9 @@ AdmissionsSession {
 
 ### Invariants
 
-* Exactly **one applicant**
-* If no applicant → **403**
+* Single-applicant mode resolves exactly one applicant via `applicant_user`
+* Family-workspace mode resolves one-or-more applicants via explicit consenting guardian linkage
+* If no applicant access exists → **403**
 * If role mismatch → **403**
 
 ---
@@ -1063,7 +1087,7 @@ Admissions Applicant
 | ---------------------------- | --------------------------------- |
 | Desk access                  | ❌ No                              |
 | Portal access                | ✅ Yes                             |
-| Scope                        | Exactly **one Student Applicant** |
+| Scope                        | Site-configured: one applicant or all explicitly linked family applicants |
 | Duration                     | Temporary                         |
 | Can mutate canonical records | ❌ No                              |
 | Can promote applicant        | ❌ No                              |
@@ -1081,8 +1105,10 @@ Admissions Applicant
 
 ### User Creation
 
-* Created by **admissions staff** during “Invite to Apply”
-* Assigned **only** one role: `Admissions Applicant`
+* Created by **admissions staff**
+* Assigned:
+  * `Admissions Applicant` for single-applicant login invite
+  * `Admissions Family` for family-workspace adult collaborator invite
 
 ### User Identity Rules
 
@@ -1183,9 +1209,9 @@ Permissions alone are **insufficient**.
 Every API must enforce:
 
 ```
-User → Admissions Applicant role
+User has role Admissions Applicant or Admissions Family
 AND
-User is linked to exactly one Student Applicant
+Applicant access resolves from the configured admissions access mode
 AND
 Requested record belongs to that Applicant
 ```
@@ -1226,6 +1252,7 @@ Any attempt → redirect to login.
 Triggered by:
 
 * Invite to Apply
+* Identity Upgrade (server-owned, after first active enrollment or manual rerun)
 
 ### User Deactivation (MANDATORY)
 

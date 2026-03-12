@@ -70,7 +70,7 @@
 						</p>
 					</div>
 					<RouterLink
-						:to="{ name: 'admissions-course-choices' }"
+						:to="buildRouteLocation('admissions-course-choices')"
 						class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/75"
 					>
 						{{ needsCourseChoices ? __('Open course choices') : __('View course choices') }}
@@ -170,7 +170,7 @@ import { __ } from '@/lib/i18n';
 import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals';
 import type { Response as ApplicantSnapshot } from '@/types/contracts/admissions/get_applicant_snapshot';
 
-const { session, refresh } = useAdmissionsSession();
+const { session, refresh, currentApplicantName, buildRouteLocation } = useAdmissionsSession();
 const service = createAdmissionsService();
 const snapshot = ref<ApplicantSnapshot | null>(null);
 const loading = ref(false);
@@ -209,10 +209,15 @@ const recommendationRows = computed(() => snapshot.value?.recommendations_summar
 const missingTemplates = computed(() => snapshot.value?.recommendations_summary?.missing || []);
 
 async function loadSnapshot() {
+	if (!currentApplicantName.value) {
+		snapshot.value = null;
+		error.value = null;
+		return;
+	}
 	loading.value = true;
 	error.value = null;
 	try {
-		snapshot.value = await service.getSnapshot();
+		snapshot.value = await service.getSnapshot({ student_applicant: currentApplicantName.value });
 	} catch (err) {
 		error.value = err instanceof Error ? err.message : __('Unable to load recommendation status.');
 	} finally {
@@ -235,7 +240,7 @@ async function acceptOffer() {
 	offerLoading.value = true;
 	offerError.value = null;
 	try {
-		await service.acceptEnrollmentOffer();
+		await service.acceptEnrollmentOffer({ student_applicant: currentApplicantName.value });
 		await Promise.all([refresh(), loadSnapshot()]);
 	} catch (err) {
 		offerError.value = err instanceof Error ? err.message : __('Unable to accept the offer.');
@@ -248,7 +253,7 @@ async function declineOffer() {
 	offerLoading.value = true;
 	offerError.value = null;
 	try {
-		await service.declineEnrollmentOffer();
+		await service.declineEnrollmentOffer({ student_applicant: currentApplicantName.value });
 		await Promise.all([refresh(), loadSnapshot()]);
 	} catch (err) {
 		offerError.value = err instanceof Error ? err.message : __('Unable to decline the offer.');

@@ -8,7 +8,15 @@
   - StudentDemographicAnalytics.vue
 -->
 <template>
-	<section class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+	<section
+		class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+		:class="expandable ? 'analytics-card--interactive' : ''"
+		:role="expandable ? 'button' : undefined"
+		:tabindex="expandable ? 0 : undefined"
+		@click="handleSectionClick"
+		@keydown.enter.prevent="handleKeyboardExpand"
+		@keydown.space.prevent="handleKeyboardExpand"
+	>
 		<header class="mb-2 flex items-center justify-between">
 			<h3 class="text-sm font-semibold text-slate-700">{{ title }}</h3>
 			<slot name="actions" />
@@ -36,14 +44,23 @@ type Item = {
 	sliceKey?: string;
 };
 
-const props = defineProps<{
-	title: string;
-	items: Item[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		title: string;
+		items: Item[];
+		expandable?: boolean;
+	}>(),
+	{
+		expandable: false,
+	}
+);
 
 const emit = defineEmits<{
 	(e: 'select', sliceKey: string): void;
+	(e: 'expand', option: Record<string, unknown>): void;
 }>();
+
+let suppressExpand = false;
 
 const option = computed<ChartOption>(() => {
 	const labels = props.items.map(i => i.label);
@@ -80,6 +97,31 @@ const option = computed<ChartOption>(() => {
 
 function handleClick(params: any) {
 	const sliceKey = params?.data?.sliceKey;
-	if (sliceKey) emit('select', sliceKey);
+	if (sliceKey) {
+		suppressNextExpand();
+		emit('select', sliceKey);
+		return;
+	}
+	if (props.expandable) {
+		suppressNextExpand();
+		emit('expand', option.value as Record<string, unknown>);
+	}
+}
+
+function handleSectionClick() {
+	if (!props.expandable || suppressExpand) return;
+	emit('expand', option.value as Record<string, unknown>);
+}
+
+function handleKeyboardExpand() {
+	if (!props.expandable) return;
+	emit('expand', option.value as Record<string, unknown>);
+}
+
+function suppressNextExpand() {
+	suppressExpand = true;
+	window.setTimeout(() => {
+		suppressExpand = false;
+	}, 0);
 }
 </script>
