@@ -3,8 +3,8 @@ title: "Task Submission: Versioned Student Evidence with Governance"
 slug: task-submission
 category: Assessment
 doc_order: 8
-version: "1.0.0"
-last_change_date: "2026-02-25"
+version: "1.1.0"
+last_change_date: "2026-03-12"
 summary: "Capture append-only student evidence (files, text, links), enforce versioning, and keep outcomes and portfolio workflows synchronized."
 seo_title: "Task Submission: Versioned Student Evidence with Governance"
 seo_description: "Capture append-only student evidence (files, text, links), enforce versioning, and keep outcomes and portfolio workflows synchronized."
@@ -12,45 +12,61 @@ seo_description: "Capture append-only student evidence (files, text, links), enf
 
 ## Task Submission: Versioned Student Evidence with Governance
 
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task_submission/task_submission.json`, `ifitwala_ed/assessment/doctype/task_submission/task_submission.py`, `ifitwala_ed/assessment/task_submission_service.py`, `ifitwala_ed/api/task_submission.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_submission/test_task_submission.py`, `ifitwala_ed/api/test_task_submission.py`
+
+`Task Submission` is the governed evidence layer for task work. Students can submit and resubmit over time, and every version is preserved for grading, moderation, and audit.
+
 ## Before You Start (Prerequisites)
 
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task_submission/task_submission.json`, `ifitwala_ed/assessment/doctype/task_submission/task_submission.py`, `ifitwala_ed/assessment/task_submission_service.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_submission/test_task_submission.py`, `ifitwala_ed/api/test_task_submission.py`
+
 - Create the target `Task Outcome` first.
-- Ensure submitter user identity is valid for the submission context.
-- If attachments are used, confirm governed upload handling is configured and used.
-
-`Task Submission` is the evidence layer. Students can submit and resubmit work over time, and every version is preserved so grading and moderation stay auditable.
-
-<Callout type="warning" title="Append-only model">
-Existing submission evidence cannot be overwritten. New evidence must be added as a new submission version.
-</Callout>
+- Ensure submitter identity is valid for the submission context.
+- If attachments are used, route them through the governed upload flow.
 
 ## Where It Is Used Across the ERP
 
-- Linked directly to [**Task Outcome**](/docs/en/task-outcome/) (`task_outcome`).
+Status: Implemented
+Code refs: `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/assessment/task_submission_service.py`, `ifitwala_ed/assessment/task_contribution_service.py`, `ifitwala_ed/api/student_portfolio.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_submission/test_task_submission.py`, `ifitwala_ed/api/test_task_submission.py`
+
+- Anchored to [**Task Outcome**](/docs/en/task-outcome/).
 - Referenced by [**Task Contribution**](/docs/en/task-contribution/) for version-accurate grading.
-- Student portal upload APIs:
-  - `ifitwala_ed.api.task_submission.create_or_resubmit`
-  - `ifitwala_ed.api.task_submission.get_latest_submission`
-- Gradebook draft/submit/moderation flows auto-resolve or auto-create evidence stubs.
-- Portfolio and reflection ecosystem:
-  - `ifitwala_ed.api.student_portfolio.*` can ingest Task Submissions as evidence items
-  - `Student Portfolio Item`, `Student Reflection Entry`, and `Evidence Tag` reference Task Submission
-- Desk governed attachment flow:
-  - custom upload action in `task_submission.js`
-  - server endpoint `ifitwala_ed.utilities.governed_uploads.upload_task_submission_attachment`
+- Student portal submission endpoints live in `ifitwala_ed/api/task_submission.py`.
+- Gradebook draft, submit, and moderation flows auto-resolve the latest submission or create evidence stubs when allowed.
+- Portfolio and reflection surfaces can reuse submission evidence through `ifitwala_ed/api/student_portfolio.py`.
 
 ## Lifecycle and Linked Documents
 
-1. Create evidence against a valid `Task Outcome`.
-2. Each resubmission creates a new version rather than mutating past evidence.
-3. Contributions resolve against the appropriate/latest submission version for grading integrity.
-4. Portfolio and reflection features may reuse this governed evidence stream.
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task_submission/task_submission.py`, `ifitwala_ed/assessment/task_submission_service.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_submission/test_task_submission.py`, `ifitwala_ed/api/test_task_submission.py`
 
-<Callout type="tip" title="Version discipline">
-Keep submission notes and attachments complete per version. This improves moderation, parent communication, and auditability.
-</Callout>
+1. Create evidence against a valid `Task Outcome`.
+2. Each resubmission creates a new `version` rather than mutating prior evidence.
+3. Submission insertion updates the parent outcome state (`has_submission`, `has_new_submission`, submission status).
+4. Contribution flows resolve against a real or stub submission version for grading integrity.
+
+## Related Docs
+
+Status: Implemented
+Code refs: None (documentation cross-reference section)
+Test refs: None
+
+- [**Task Outcome**](/docs/en/task-outcome/)
+- [**Task Contribution**](/docs/en/task-contribution/)
+- [**Task Delivery**](/docs/en/task-delivery/)
+- [**Task**](/docs/en/task/)
 
 ## Technical Notes (IT)
+
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task_submission/task_submission.json`, `ifitwala_ed/assessment/doctype/task_submission/task_submission.py`, `ifitwala_ed/assessment/task_submission_service.py`, `ifitwala_ed/api/task_submission.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_submission/test_task_submission.py`, `ifitwala_ed/api/test_task_submission.py`
 
 ### Schema and Controller Snapshot
 
@@ -61,52 +77,23 @@ Keep submission notes and attachments complete per version. This improves modera
   - `version` (`Int`)
   - `submitted_by` (`Link` -> `User`)
   - `submitted_on` (`Datetime`)
-- **Lifecycle hooks in controller**: `before_validate`, `validate`, `after_insert`, `on_doctype_update`
-- **Operational/public methods**: none beyond standard document behavior.
+- **Child table**:
+  - `attachments` (`Attached Document`)
+- **Lifecycle hooks in controller**:
+  - `before_validate`
+  - `validate`
+  - `after_insert`
+  - `on_doctype_update`
 
-- **DocType**: `Task Submission` (`ifitwala_ed/assessment/doctype/task_submission/`)
-- **Autoname**: `TSU-{YYYY}-{#####}`
-- **Child table**: `attachments` (`Attached Document`)
-- **Key links**:
-  - `task_outcome`, `task_delivery`, `task`, `submitted_by`, `cloned_from`, `student`, `student_group`, `school`, `course`, `academic_year`
-- **Lifecycle behavior** (`task_submission.py`):
-  - `before_validate`:
-    - requires outcome
-    - stamps denormalized context
-    - sets metadata (`submitted_by`, `submitted_on`, version)
-  - `validate`:
-    - lock-date and late-submission checks
-    - evidence presence check (file/text/link)
-    - append-only guard on edits
-  - `after_insert`:
-    - applies outcome submission effects (`has_submission`, `has_new_submission`, statuses)
-- **Service layer** (`assessment/task_submission_service.py`):
-  - student submissions + file attachment handling
-  - evidence stub creation for offline grading paths
-  - group-clone infrastructure hooks
-- **Indexing**:
-  - unique (`task_outcome`, `version`)
-  - secondary index (`task_delivery`, `student`)
-- **Desk client script** (`task_submission.js`):
-  - governed upload button
-  - direct inline file edit disabled on child attachment rows
-- **Architecture guarantees (embedded from assessment + portal/file governance notes)**:
-  - submission evidence is append-only and versioned; no in-place overwrite of prior evidence
-  - student resubmission marks prior teacher contributions as stale and raises `has_new_submission`
-  - offline evidence is supported with governed evidence stubs when submission is required
-  - uploads must follow governed file routing/classification patterns, including private handling for sensitive student evidence
+### Current Contract
 
-### Permission Matrix
+- `before_validate()` stamps denormalized context and default submission metadata.
+- `validate()` enforces append-only behavior, evidence presence, and lock-date / late-submission policy.
+- `after_insert()` applies outcome submission effects.
+- `task_submission_service.py` owns student submission orchestration, file handling, and evidence stub creation.
+- File governance still applies: uploads must follow governed routing and classification rules.
 
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Instructor` | Yes | Yes | Yes | Yes |
+### Verified Coverage
 
-## Related Docs
-
-- [**Task Outcome**](/docs/en/task-outcome/)
-- [**Task Contribution**](/docs/en/task-contribution/)
-- [**Task Delivery**](/docs/en/task-delivery/)
-- [**Task**](/docs/en/task/)
+- `test_task_submission.py` covers attachment-change and unique-index helper behavior.
+- `api/test_task_submission.py` covers secure rewriting of private attachment links to the guarded download endpoint.

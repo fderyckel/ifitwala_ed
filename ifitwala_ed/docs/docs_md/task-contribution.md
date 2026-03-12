@@ -3,8 +3,8 @@ title: "Task Contribution: Teacher and Moderator Judgment Inputs"
 slug: task-contribution
 category: Assessment
 doc_order: 9
-version: "1.0.0"
-last_change_date: "2026-02-25"
+version: "1.1.0"
+last_change_date: "2026-03-12"
 summary: "Store non-destructive grading contributions per submission version, then derive official outcomes through policy-aware services."
 seo_title: "Task Contribution: Teacher and Moderator Judgment Inputs"
 seo_description: "Store non-destructive grading contributions per submission version, then derive official outcomes through policy-aware services."
@@ -12,42 +12,65 @@ seo_description: "Store non-destructive grading contributions per submission ver
 
 ## Task Contribution: Teacher and Moderator Judgment Inputs
 
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task_contribution/task_contribution.json`, `ifitwala_ed/assessment/doctype/task_contribution/task_contribution.py`, `ifitwala_ed/assessment/task_contribution_service.py`, `ifitwala_ed/api/gradebook.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_contribution/test_task_contribution.py`)
+
+`Task Contribution` stores teacher, reviewer, and moderator grading inputs without overwriting history. Official student truth is derived from these rows into `Task Outcome`.
+
 ## Before You Start (Prerequisites)
 
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task_contribution/task_contribution.json`, `ifitwala_ed/assessment/doctype/task_contribution/task_contribution.py`, `ifitwala_ed/assessment/task_contribution_service.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_contribution/test_task_contribution.py`)
+
 - Create the target `Task Outcome` first.
-- Ensure contributor users and grading permissions are set for the delivery context.
-- If evidence-based grading is used, ensure at least one `Task Submission` version exists.
-
-`Task Contribution` captures who graded what, when, and against which submission version. It preserves collaboration history (self, review, moderation) without overwriting prior judgments.
-
-<Callout type="info" title="Separation of concerns">
-Contributions are professional inputs. Official student truth is still written to [Task Outcome](/docs/en/task-outcome/) through service logic.
-</Callout>
+- Ensure contributor identity and grading permissions are valid for the delivery context.
+- If evidence-based grading is required, resolve a valid `Task Submission` first.
 
 ## Where It Is Used Across the ERP
 
+Status: Implemented
+Code refs: `ifitwala_ed/api/gradebook.py`, `ifitwala_ed/assessment/task_contribution_service.py`, `ifitwala_ed/assessment/task_outcome_service.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_contribution/test_task_contribution.py`)
+
 - Anchored to [**Task Outcome**](/docs/en/task-outcome/) and usually to [**Task Submission**](/docs/en/task-submission/).
-- Gradebook endpoints (`ifitwala_ed/api/gradebook.py`):
+- Gradebook mutations run through:
   - `save_draft`
   - `submit_contribution`
   - `moderator_action`
   - `save_contribution_draft`
-- Feeds official outcome recomputation via `assessment/task_outcome_service.py`.
-- Staleness updates triggered when student evidence changes (`mark_contributions_stale`).
-- Criteria-mode grading stores row-level marks in child table `Task Contribution Criterion`.
+- Criteria-mode grading stores row-level marks in [**Task Contribution Criterion**](/docs/en/task-contribution-criterion/).
+- `task_outcome_service.py` reads contribution rows to recompute official outcome truth.
 
 ## Lifecycle and Linked Documents
 
-1. Start from an existing `Task Outcome` and, where required, linked `Task Submission` evidence.
-2. Teachers/reviewers create contribution entries (draft, submit, moderate, or override flows).
-3. Contribution services recompute official outcome data without destroying historical contribution rows.
-4. Use moderation and staleness flags to keep official outcomes aligned with latest evidence.
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task_contribution/task_contribution.py`, `ifitwala_ed/assessment/task_contribution_service.py`, `ifitwala_ed/assessment/task_outcome_service.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_contribution/test_task_contribution.py`)
 
-<Callout type="warning" title="Do not bypass outcome services">
-Directly editing official outcome fields without contribution/service flow can break moderation traceability.
-</Callout>
+1. Start from an existing `Task Outcome` and, where required, a linked `Task Submission`.
+2. Create draft, submitted, moderator, or override contribution rows as additive records.
+3. Recompute official outcome fields from contribution services without deleting grading history.
+4. Mark older contributions stale when student evidence changes.
+
+## Related Docs
+
+Status: Implemented
+Code refs: None (documentation cross-reference section)
+Test refs: None
+
+- [**Task Outcome**](/docs/en/task-outcome/)
+- [**Task Submission**](/docs/en/task-submission/)
+- [**Task Contribution Criterion**](/docs/en/task-contribution-criterion/)
+- [**Task Delivery**](/docs/en/task-delivery/)
+- [**Task Rubric Version**](/docs/en/task-rubric-version/)
 
 ## Technical Notes (IT)
+
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task_contribution/task_contribution.json`, `ifitwala_ed/assessment/doctype/task_contribution/task_contribution.py`, `ifitwala_ed/assessment/task_contribution_service.py`, `ifitwala_ed/assessment/task_outcome_service.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_contribution/test_task_contribution.py`)
 
 ### Schema and Controller Snapshot
 
@@ -58,46 +81,22 @@ Directly editing official outcome fields without contribution/service flow can b
   - `contributor` (`Link` -> `User`)
   - `contribution_type` (`Select`)
   - `submitted_on` (`Datetime`)
-- **Lifecycle hooks in controller**: `before_validate`, `validate`, `after_insert`, `on_doctype_update`
-- **Operational/public methods**: none beyond standard document behavior.
+- **Child table**:
+  - `rubric_scores` (`Task Contribution Criterion`)
+- **Lifecycle hooks in controller**:
+  - `before_validate`
+  - `validate`
+  - `after_insert`
+  - `on_doctype_update`
 
-- **DocType**: `Task Contribution` (`ifitwala_ed/assessment/doctype/task_contribution/`)
-- **Autoname**: `TCO-{YYYY}-{#####}`
-- **Child table**: `rubric_scores` (`Task Contribution Criterion`)
-- **Key links**:
-  - `task_outcome`, `task_submission`, `contributor`, `grade_scale`, `task_delivery`, `task`, `student`, `student_group`, `course`, `academic_year`, `school`
-- **Lifecycle behavior** (`task_contribution.py`):
-  - `before_validate`:
-    - stamps context from outcome
-    - enforces submission belongs to selected outcome
-    - enforces latest submission version usage
-  - `validate`:
-    - submission requirement based on delivery rules and draft/submit status
-    - grade symbol/value consistency against grade scale
-    - payload coherence by grading mode (points/criteria/ungraded)
-  - `after_insert`:
-    - non-draft contributions trigger official outcome recomputation
-- **Indexing**:
-  - (`task_outcome`, `is_stale`, `modified`)
-  - (`task_submission`)
-  - (`contributor`, `modified`)
-- **Desk client script**: stub-only (`task_contribution.js`)
-- **Architecture guarantees (embedded from gradebook/task notes)**:
-  - contributions are non-destructive, additive records (no overwrite model)
-  - contribution rows represent professional judgment inputs; official fields are derived server-side into Task Outcome
-  - moderation and peer-review decisions stay in contribution history for audit trail continuity
+### Current Contract
 
-### Permission Matrix
+- `before_validate()` stamps context from outcome and ensures any linked submission belongs to the outcome.
+- `validate()` enforces grading-mode coherence and grade-scale consistency.
+- `after_insert()` triggers official outcome recomputation for non-draft rows.
+- `task_contribution_service.py` owns the named workflow actions used by gradebook.
 
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Instructor` | Yes | Yes | Yes | Yes |
+### Verified Gap
 
-## Related Docs
-
-- [**Task Outcome**](/docs/en/task-outcome/)
-- [**Task Submission**](/docs/en/task-submission/)
-- [**Task Delivery**](/docs/en/task-delivery/)
-- [**Task Rubric Version**](/docs/en/task-rubric-version/)
+- The controller/service contract exists, but meaningful regression coverage is still missing; the current test file is scaffold-only.
+- Any implementation change to contribution semantics should land with real tests, not with more documentation alone.

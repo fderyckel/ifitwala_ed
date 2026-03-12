@@ -333,12 +333,22 @@ function truncate(text: string, max = 140) {
 			     Change: bump body typography from caption -> body
 			   ============================================================ -->
 			<AnalyticsCard
+				class="md:col-span-2 xl:col-span-2"
 				title="Recent Student Logs"
 				@expand="openTableOverlay('Recent Student Logs', recentRows)"
 			>
 				<template #body>
 					<div class="max-h-[320px] overflow-auto">
-						<table class="min-w-full border-collapse text-ink/80">
+						<table class="min-w-[720px] w-full table-fixed border-collapse text-ink/80">
+							<colgroup>
+								<col style="width: 9%" />
+								<col style="width: 14%" />
+								<col style="width: 12%" />
+								<col style="width: 11%" />
+								<col style="width: 36%" />
+								<col style="width: 12%" />
+								<col style="width: 6%" />
+							</colgroup>
 							<thead>
 								<tr class="border-b border-slate-200 bg-slate-50">
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Date</th>
@@ -370,7 +380,10 @@ function truncate(text: string, max = 140) {
 									<td class="px-2 py-2 align-top whitespace-nowrap">
 										{{ row.log_type }}
 									</td>
-									<td class="px-2 py-2 align-top" :title="stripHtml(row.content || '')">
+									<td
+										class="px-2 py-2 align-top break-words leading-6"
+										:title="stripHtml(row.content || '')"
+									>
 										{{ truncate(stripHtml(row.content || '')) }}
 									</td>
 									<td class="px-2 py-2 align-top whitespace-nowrap">
@@ -413,6 +426,7 @@ function truncate(text: string, max = 140) {
 			     Change: bump body typography from caption -> body
 			   ============================================================ -->
 			<AnalyticsCard
+				class="md:col-span-2 xl:col-span-3"
 				title="Selected Student Logs"
 				@expand="
 					openTableOverlay(

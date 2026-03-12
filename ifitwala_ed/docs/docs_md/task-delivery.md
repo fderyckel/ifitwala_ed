@@ -3,8 +3,8 @@ title: "Task Delivery: Turning a Task into a Real Teaching Event"
 slug: task-delivery
 category: Assessment
 doc_order: 5
-version: "1.0.0"
-last_change_date: "2026-02-25"
+version: "1.1.0"
+last_change_date: "2026-03-12"
 summary: "Assign a task to a specific student group with dates, grading mode, and evidence rules, then generate student outcomes at scale."
 seo_title: "Task Delivery: Turning a Task into a Real Teaching Event"
 seo_description: "Assign a task to a specific student group with dates, grading mode, and evidence rules, then generate student outcomes at scale."
@@ -12,44 +12,72 @@ seo_description: "Assign a task to a specific student group with dates, grading 
 
 ## Task Delivery: Turning a Task into a Real Teaching Event
 
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`)
+
+`Task Delivery` is where a reusable task becomes real for a specific student group, within a specific time window and grading/evidence policy.
+
+Current workspace note: the canonical lifecycle is submit-driven, but the live creation paths are split. `task_delivery.py` defines `on_submit()` behavior, `task_delivery_service.py` tries to use `doc.submit()`, and `task_creation_service.py` currently inserts a draft delivery without submitting it.
+
 ## Before You Start (Prerequisites)
 
-- Create the `Task` first.
-- Create the `Student Group` first (with roster aligned to the teaching context).
-- Prepare grading setup first (`Grade Scale`, and criteria readiness if using criteria grading mode).
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`)
 
-`Task Delivery` is where a reusable task becomes real: for this group, in this context, on these dates, with these evidence and grading rules.
-
-<Callout type="warning" title="Important invariant">
-Once a delivery has outcomes/evidence, grading configuration is intentionally locked to protect historical integrity.
-</Callout>
+- Create the parent `Task` first.
+- Create the `Student Group` first, with roster and context aligned to the teaching situation.
+- Prepare grading setup first (`Grade Scale`, and task criteria readiness if using criteria grading mode).
 
 ## Where It Is Used Across the ERP
 
-- Created from [**Task**](/docs/en/task/) planning flows.
-- Parent context for [**Task Outcome**](/docs/en/task-outcome/) rows (one per student).
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/api/gradebook.py`, `ifitwala_ed/api/guardian_home.py`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
+Test refs: None
+
+- Parent context for [**Task Outcome**](/docs/en/task-outcome/) rows.
 - Referenced by [**Task Submission**](/docs/en/task-submission/) and [**Task Contribution**](/docs/en/task-contribution/).
-- Rubric snapshot source for [**Task Rubric Version**](/docs/en/task-rubric-version/) when criteria grading is used.
-- Staff portal + grading UX:
-  - `/staff/gradebook` task list and grading context
-  - Class Hub task review/evidence overlays (`class-hub-task-review`, `class-hub-quick-evidence`, `class-hub-quick-cfu`)
-- Guardian-facing timelines:
-  - `ifitwala_ed.api.guardian_home.get_guardian_home_snapshot` builds due-task and upcoming-assessment chips from Task Delivery dates/status.
-- Student reflections and portfolio linkage:
-  - `Student Reflection Entry` can reference Task Delivery.
+- Criteria-mode deliveries feed [**Task Rubric Version**](/docs/en/task-rubric-version/).
+- `/staff/gradebook` reads delivery rows through `ifitwala_ed/api/gradebook.py`.
+- Guardian home chips read due-task and upcoming-assessment context from `ifitwala_ed/api/guardian_home.py`.
+- The staff overlay `ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue` creates deliveries through `assessment/task_creation_service.py`.
 
 ## Lifecycle and Linked Documents
 
-1. Create delivery from reusable `Task` + target `Student Group` context.
-2. Submit delivery to generate student-level `Task Outcome` records.
-3. Collect submissions/contributions under this delivery context during teaching and grading.
-4. Protect historical integrity by keeping grading configuration stable after evidence exists.
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`)
 
-<Callout type="info" title="Fresh-site sequencing">
-Do not create deliveries before roster and course context are stable. Rework later is expensive once outcomes exist.
-</Callout>
+1. Create the delivery from a reusable `Task` plus target `Student Group`.
+2. Canonical contract: submit the delivery to generate student-level `Task Outcome` rows and, for criteria mode, a `Task Rubric Version`.
+3. Collect submissions and contributions under this delivery context during teaching and grading.
+4. Protect historical integrity by locking grading configuration once outcomes or evidence exist.
+
+Current workspace drift:
+
+- `task_delivery.py` puts outcome generation and rubric snapshotting in `on_submit()`.
+- `task_delivery_service.py::create_delivery()` calls `doc.submit()` even though the current DocType schema is not marked `is_submittable`.
+- `task_creation_service.py::create_task_and_delivery()` inserts the delivery and returns immediately, which leaves deliveries without outcomes on that path.
+
+## Related Docs
+
+Status: Implemented
+Code refs: None (documentation cross-reference section)
+Test refs: None
+
+- [**Task**](/docs/en/task/)
+- [**Task Outcome**](/docs/en/task-outcome/)
+- [**Task Submission**](/docs/en/task-submission/)
+- [**Task Contribution**](/docs/en/task-contribution/)
+- [**Task Rubric Version**](/docs/en/task-rubric-version/)
+- [**Task Rubric Criterion**](/docs/en/task-rubric-criterion/)
 
 ## Technical Notes (IT)
+
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`)
 
 ### Schema and Controller Snapshot
 
@@ -59,50 +87,35 @@ Do not create deliveries before roster and course context are stable. Rework lat
   - `task` (`Link` -> `Task`)
   - `student_group` (`Link` -> `Student Group`)
   - `delivery_mode` (`Select`)
-- **Lifecycle hooks in controller**: `before_validate`, `validate`, `on_submit`, `on_cancel`
-- **Operational/public methods**: none beyond standard document behavior.
-
-- **DocType**: `Task Delivery` (`ifitwala_ed/assessment/doctype/task_delivery/`)
-- **Autoname**: `TDL-{YYYY}-{#####}`
+- **Lifecycle hooks in controller**:
+  - `before_validate`
+  - `validate`
+  - `on_submit`
+  - `on_cancel`
 - **Key links**:
-  - `task`, `student_group`, `grade_scale`, `rubric_version`, `course`, `academic_year`, `school`, `lesson_instance`
-- **Lifecycle behavior** (`task_delivery.py`):
-  - `before_validate`:
-    - requires task + group
-    - stamps denormalized context from group
-    - validates task/course alignment
-    - optionally resolves/creates lesson instance context
-  - `validate`:
-    - delivery mode coherence (`Assign Only`, `Collect Work`, `Assess`)
-    - date validation (`available_from <= due_date <= lock_date`)
-    - grading/rubric requirements for assess mode
-    - group submission hard-block (paused)
-    - immutability checks when submitted/outcomes exist
-  - `on_submit`:
-    - optional rubric snapshot generation for criteria grading
-    - bulk outcome creation for all eligible students
-  - `on_cancel`:
-    - blocked once evidence exists
-    - otherwise removes linked Task Outcomes
-- **Service dependencies**:
-  - `assessment/task_delivery_service.py` (`get_delivery_context`, `bulk_create_outcomes`, lesson-instance resolution)
-- **Desk client script**: currently stub-only (`task_delivery.js`)
-- **Architecture guarantees (embedded from assessment doctrine)**:
-  - delivery snapshots assessment behavior for historical stability
-  - criteria deliveries snapshot rubric rows so later task edits do not rewrite history
-  - one delivery can lead to many outcomes, but each student still gets exactly one official outcome row for that delivery
+  - `task`
+  - `student_group`
+  - `grade_scale`
+  - `rubric_version`
+  - `course`
+  - `academic_year`
+  - `school`
+  - `lesson_instance`
 
-### Permission Matrix
+### Current Contract
 
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Instructor` | Yes | Yes | Yes | Yes |
+- `before_validate()` stamps denormalized context from `Student Group`, checks task/course alignment, and optionally resolves lesson instance context.
+- `validate()` enforces delivery-mode coherence, date rules, criteria requirements, and the current hard block on `group_submission`.
+- `on_submit()` is the canonical place for:
+  - criteria snapshot creation
+  - bulk `Task Outcome` creation for eligible students
+- `on_cancel()` removes linked outcomes only when no evidence exists.
 
-## Related Docs
+### Current Drift To Preserve In Review
 
-- [**Task**](/docs/en/task/)
-- [**Task Outcome**](/docs/en/task-outcome/)
-- [**Task Rubric Version**](/docs/en/task-rubric-version/)
-- [**Task Submission**](/docs/en/task-submission/)
+- The DocType schema currently lacks `is_submittable: 1`, so the submit-driven contract is not fully represented in metadata.
+- Not every creation path reaches `on_submit()`, which is the direct cause of draft deliveries with no generated outcomes.
+- Any code fix in this area must update:
+  - this page
+  - [**Task Outcome**](/docs/en/task-outcome/)
+  - [**Task Rubric Version**](/docs/en/task-rubric-version/)

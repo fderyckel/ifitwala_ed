@@ -3,56 +3,82 @@ title: "Task Outcome: The Official Student-Level Assessment Record"
 slug: task-outcome
 category: Assessment
 doc_order: 7
-version: "1.0.0"
-last_change_date: "2026-02-25"
-summary: "Maintain one authoritative outcome per student per delivery, with official scores/grades, criterion truth, statuses, and publication controls."
+version: "1.1.0"
+last_change_date: "2026-03-12"
+summary: "Maintain one authoritative outcome per student per delivery, with official scores, criterion truth, statuses, and publication controls."
 seo_title: "Task Outcome: The Official Student-Level Assessment Record"
-seo_description: "Maintain one authoritative outcome per student per delivery, with official scores/grades, criterion truth, statuses, and publication controls."
+seo_description: "Maintain one authoritative outcome per student per delivery, with official scores, criterion truth, statuses, and publication controls."
 ---
 
 ## Task Outcome: The Official Student-Level Assessment Record
 
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task_outcome/task_outcome.json`, `ifitwala_ed/assessment/doctype/task_outcome/task_outcome.py`, `ifitwala_ed/assessment/task_outcome_service.py`, `ifitwala_ed/api/gradebook.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
+
+`Task Outcome` is the institutional truth row for a student on a specific delivery. Submissions and contributions can evolve over time, but official grading and publication state live here.
+
+Current workspace note: the outcome model itself is implemented, but generation is only as reliable as the delivery path that actually reaches delivery submission semantics.
+
 ## Before You Start (Prerequisites)
 
-- Submit the parent `Task Delivery` first; outcomes are generated from delivery + student roster.
-- Ensure the student is part of the linked group at generation time.
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task_outcome/task_outcome.json`, `ifitwala_ed/assessment/doctype/task_outcome/task_outcome.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
+
+- Create the parent `Task Delivery` first.
+- Ensure the target student belongs to the linked group at generation time.
 - Lock grading policy inputs at delivery level before active grading begins.
-
-`Task Outcome` is the institutional truth row for a student on a specific delivery. Submissions and contributions can evolve, but the outcome is where official status and released results live.
-
-<Callout type="tip" title="Core guarantee">
-Exactly one outcome exists for each `Task Delivery × Student` pair, protected by controller guards and a database unique index.
-</Callout>
 
 ## Where It Is Used Across the ERP
 
-- Generated automatically from [**Task Delivery**](/docs/en/task-delivery/) submission.
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/task_outcome_service.py`, `ifitwala_ed/api/gradebook.py`, `ifitwala_ed/api/outcome_publish.py`, `ifitwala_ed/api/guardian_home.py`, `ifitwala_ed/assessment/term_reporting.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
+
 - Receives evidence from [**Task Submission**](/docs/en/task-submission/).
-- Receives teacher/moderation input through [**Task Contribution**](/docs/en/task-contribution/).
-- Stores official criterion truth via child table `Task Outcome Criterion`.
-- Publication pipeline:
-  - `ifitwala_ed.api.outcome_publish.publish_outcomes`
-  - `ifitwala_ed.api.outcome_publish.unpublish_outcomes`
-- Staff grading surfaces:
-  - gradebook drawer/grid endpoints in `ifitwala_ed/api/gradebook.py` (`get_grid`, `get_drawer`, submit/moderate actions)
-  - staff analytics trend in `ifitwala_ed/api/attendance.py` (Academic Standing from Task Outcome values)
-- Guardian portal snapshots:
-  - `ifitwala_ed.api.guardian_home.get_guardian_home_snapshot` uses published outcomes for recent task results.
-- Term reporting source data:
-  - `ifitwala_ed/assessment/term_reporting.py` aggregates outcomes into [**Course Term Result**](/docs/en/course-term-result/).
+- Receives grading and moderation input through [**Task Contribution**](/docs/en/task-contribution/).
+- Stores official criterion truth via [**Task Outcome Criterion**](/docs/en/task-outcome-criterion/).
+- Gradebook reads outcomes through `ifitwala_ed/api/gradebook.py`.
+- Publication controls run through `ifitwala_ed/api/outcome_publish.py`.
+- Guardian snapshots read published outcomes via `ifitwala_ed/api/guardian_home.py`.
+- Term reporting aggregates outcomes in `ifitwala_ed/assessment/term_reporting.py`.
 
 ## Lifecycle and Linked Documents
 
-1. Generate outcomes from submitted delivery (one row per student).
-2. Accept submissions and contribution inputs over time while preserving grading traceability.
-3. Maintain official criterion and grade truth in this doctype.
-4. Publish/unpublish outcomes as part of controlled communication and reporting workflows.
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_delivery_service.py`, `ifitwala_ed/assessment/task_outcome_service.py`, `ifitwala_ed/api/gradebook.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
 
-<Callout type="warning" title="Identity immutability">
-Outcome identity (`task_delivery`, `task`, `student`) is protected by controller and index guards to prevent duplicate truth rows.
-</Callout>
+1. Generate outcomes from a launched delivery, one row per `Task Delivery x Student`.
+2. Accept submissions and contributions over time while preserving auditability.
+3. Recompute official truth from contribution services, not from client-side gradebook math.
+4. Publish and unpublish outcomes as a controlled visibility action.
+
+Current workspace drift:
+
+- Outcomes are supposed to appear when the parent delivery is launched.
+- The current overlay creation path can leave draft deliveries with no generated outcomes.
+- When that happens, gradebook shows an empty roster because it correctly reads `Task Outcome` rows only.
+
+## Related Docs
+
+Status: Implemented
+Code refs: None (documentation cross-reference section)
+Test refs: None
+
+- [**Task Delivery**](/docs/en/task-delivery/)
+- [**Task Outcome Criterion**](/docs/en/task-outcome-criterion/)
+- [**Task Submission**](/docs/en/task-submission/)
+- [**Task Contribution**](/docs/en/task-contribution/)
+- [**Course Term Result**](/docs/en/course-term-result/)
+- [**Reporting Cycle**](/docs/en/reporting-cycle/)
 
 ## Technical Notes (IT)
+
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task_outcome/task_outcome.json`, `ifitwala_ed/assessment/doctype/task_outcome/task_outcome.py`, `ifitwala_ed/assessment/task_outcome_service.py`, `ifitwala_ed/api/gradebook.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
 
 ### Schema and Controller Snapshot
 
@@ -62,50 +88,24 @@ Outcome identity (`task_delivery`, `task`, `student`) is protected by controller
   - `task_delivery` (`Link` -> `Task Delivery`)
   - `task` (`Link` -> `Task`)
   - `student` (`Link` -> `Student`)
-- **Lifecycle hooks in controller**: `before_validate`, `validate`, `on_update`, `on_doctype_update`
-- **Operational/public methods**: none beyond standard document behavior.
+- **Child table**:
+  - `official_criteria` (`Task Outcome Criterion`)
+- **Lifecycle hooks in controller**:
+  - `before_validate`
+  - `validate`
+  - `on_update`
+  - `on_doctype_update`
 
-- **DocType**: `Task Outcome` (`ifitwala_ed/assessment/doctype/task_outcome/`)
-- **Autoname**: `TOU-{YYYY}-{MM}-{#####}`
-- **Child table**: `official_criteria` (`Task Outcome Criterion`)
-- **Key links**:
-  - `task_delivery`, `task`, `student`, `student_group`, `grade_scale`, `school`, `academic_year`, `course`, `program`, `course_group`
-- **Lifecycle behavior** (`task_outcome.py`):
-  - `before_validate`:
-    - requires `task_delivery` + `student`
-    - backfills denormalized context from delivery
-    - blocks identity mutation on existing rows
-    - blocks duplicate outcomes
-  - `validate`:
-    - procedural status coherence (`Excused`, `Extension Granted`)
-    - release/official-result consistency checks
-    - grade symbol/value validation against grade scale
-    - captures official field edits for audit
-  - `on_update`:
-    - writes info comments when official values are edited directly
-- **Hard DB invariant**:
-  - unique index on (`task_delivery`, `student`) enforced in `on_doctype_update`
-- **Service orchestration**:
-  - official recomputation: `assessment/task_outcome_service.py`
-  - new-evidence flag handling: `mark_new_submission_seen`
-- **Desk client script**: stub-only (`task_outcome.js`)
-- **Architecture guarantees (embedded from assessment doctrine)**:
-  - outcome is the official fact table; submissions and contributions are supporting layers
-  - per-criterion official results are always preserved; task totals are strategy-dependent
-  - publication status is a visibility gate and does not redefine grading truth
+### Current Contract
 
-### Permission Matrix
+- `before_validate()` backfills delivery context, blocks identity mutation, and guards against duplicate outcomes.
+- `validate()` enforces procedural-status coherence, release consistency, and grade symbol/value checks against grade scale.
+- `on_update()` records info comments when official values are edited directly.
+- `task_outcome_service.py` is the canonical official-truth recompute layer.
+- `api/gradebook.py` and reporting readers consume outcome truth and outcome criterion truth rather than computing totals client-side.
 
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Instructor` | Yes | Yes | Yes | Yes |
+### Current Drift To Preserve In Review
 
-## Related Docs
-
-- [**Task Delivery**](/docs/en/task-delivery/)
-- [**Task Submission**](/docs/en/task-submission/)
-- [**Task Contribution**](/docs/en/task-contribution/)
-- [**Course Term Result**](/docs/en/course-term-result/)
-- [**Reporting Cycle**](/docs/en/reporting-cycle/)
+- The outcome table is canonical, but delivery launch drift can prevent rows from being created.
+- That generation gap must be fixed at the delivery layer, not by teaching gradebook to invent roster rows client-side.
+- Any implementation change here must keep the outcome fact-table rule intact: correctness belongs on the server.

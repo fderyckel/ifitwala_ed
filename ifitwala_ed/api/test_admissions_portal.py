@@ -1242,8 +1242,8 @@ class TestSubmitApplication(FrappeTestCase):
     def test_upload_applicant_profile_image_creates_governed_file(self):
         fake_file = SimpleNamespace(
             name=f"FILE-{frappe.generate_hash(length=8)}",
-            file_url=f"/private/files/applicant-{frappe.generate_hash(length=6)}.png",
-            file_name="student.png",
+            file_url=f"/private/files/applicant-{frappe.generate_hash(length=6)}.jpg",
+            file_name="applicant_profile_image_test.jpg",
             file_size=128,
             is_private=1,
         )
@@ -1255,7 +1255,6 @@ class TestSubmitApplication(FrappeTestCase):
                 return_value=fake_file,
             ) as mocked_dispatcher,
             patch("ifitwala_ed.api.admissions_portal._ensure_file_on_disk"),
-            patch("ifitwala_ed.api.admissions_portal._validate_profile_image_content"),
         ):
             payload = upload_applicant_profile_image(
                 student_applicant=self.applicant.name,
@@ -1275,6 +1274,9 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(kwargs["file_kwargs"]["attached_to_name"], self.applicant.name)
         self.assertEqual(kwargs["file_kwargs"]["attached_to_field"], "applicant_image")
         self.assertEqual(kwargs["file_kwargs"]["is_private"], 1)
+        self.assertTrue(kwargs["file_kwargs"]["file_name"].startswith("applicant_profile_image_"))
+        self.assertTrue(kwargs["file_kwargs"]["file_name"].endswith(".jpg"))
+        self.assertTrue(kwargs["file_kwargs"]["content"].startswith(b"\xff\xd8\xff"))
 
         classification = kwargs["classification"]
         self.assertEqual(classification["primary_subject_type"], "Student Applicant")
@@ -1287,11 +1289,60 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(classification["school"], self.school)
         self.assertEqual(classification["upload_source"], "SPA")
 
+    def test_upload_applicant_profile_image_rejects_heic_extension(self):
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.ValidationError) as error_context:
+            upload_applicant_profile_image(
+                student_applicant=self.applicant.name,
+                file_name="IMG_1157.HEIC",
+                content=self._tiny_png_base64(),
+            )
+
+        self.assertIn("Only JPG, JPEG, PNG image files are accepted", str(error_context.exception))
+
+    def test_upload_applicant_profile_image_rejects_extension_content_mismatch(self):
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.ValidationError) as error_context:
+            upload_applicant_profile_image(
+                student_applicant=self.applicant.name,
+                file_name="student.jpg",
+                content=self._tiny_png_base64(),
+            )
+
+        self.assertIn("extension does not match", str(error_context.exception))
+
+    def test_upload_applicant_profile_image_rejects_files_larger_than_limit(self):
+        oversized_content = base64.b64encode(b"\xff\xd8\xff" + b"a" * (11 * 1024 * 1024)).decode()
+
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.ValidationError) as error_context:
+            upload_applicant_profile_image(
+                student_applicant=self.applicant.name,
+                file_name="student.jpg",
+                content=oversized_content,
+            )
+
+        self.assertIn("Max file size is 10 MB", str(error_context.exception))
+
+    def test_upload_applicant_profile_image_rejects_images_over_pixel_limit(self):
+        frappe.set_user(self.applicant_user)
+        with (
+            patch.object(admissions_portal_api, "PROFILE_IMAGE_MAX_PIXELS", 0),
+            self.assertRaises(frappe.ValidationError) as error_context,
+        ):
+            upload_applicant_profile_image(
+                student_applicant=self.applicant.name,
+                file_name="student.png",
+                content=self._tiny_png_base64(),
+            )
+
+        self.assertIn("Max image size is", str(error_context.exception))
+
     def test_upload_applicant_guardian_image_creates_governed_file(self):
         fake_file = SimpleNamespace(
             name=f"FILE-{frappe.generate_hash(length=8)}",
-            file_url=f"/private/files/guardian-{frappe.generate_hash(length=6)}.png",
-            file_name="guardian.png",
+            file_url=f"/private/files/guardian-{frappe.generate_hash(length=6)}.jpg",
+            file_name="guardian_profile_image_test.jpg",
             file_size=256,
             is_private=1,
         )
@@ -1303,7 +1354,6 @@ class TestSubmitApplication(FrappeTestCase):
                 return_value=fake_file,
             ) as mocked_dispatcher,
             patch("ifitwala_ed.api.admissions_portal._ensure_file_on_disk"),
-            patch("ifitwala_ed.api.admissions_portal._validate_profile_image_content"),
         ):
             payload = upload_applicant_guardian_image(
                 student_applicant=self.applicant.name,
@@ -1320,6 +1370,9 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(kwargs["file_kwargs"]["attached_to_name"], self.applicant.name)
         self.assertEqual(kwargs["file_kwargs"]["attached_to_field"], "guardians")
         self.assertEqual(kwargs["file_kwargs"]["is_private"], 1)
+        self.assertTrue(kwargs["file_kwargs"]["file_name"].startswith("guardian_profile_image_"))
+        self.assertTrue(kwargs["file_kwargs"]["file_name"].endswith(".jpg"))
+        self.assertTrue(kwargs["file_kwargs"]["content"].startswith(b"\xff\xd8\xff"))
 
         classification = kwargs["classification"]
         self.assertEqual(classification["primary_subject_type"], "Student Applicant")

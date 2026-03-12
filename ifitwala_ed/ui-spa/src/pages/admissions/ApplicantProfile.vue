@@ -72,12 +72,15 @@
 						<p class="mt-1 type-caption text-ink/60">
 							{{ __('Upload a clear photo of the student for identity and profile use.') }}
 						</p>
+						<p class="mt-2 type-caption text-ink/55">
+							{{ acceptedImageHelpText }}
+						</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
 						<input
 							ref="imageInput"
 							type="file"
-							accept="image/*"
+							:accept="acceptedImageInput"
 							class="hidden"
 							:disabled="isReadOnly || uploadingImage"
 							@change="onImageSelected"
@@ -562,11 +565,14 @@
 
 							<div class="block md:col-span-2">
 								<p class="type-caption text-ink/60">{{ __('Photo *') }}</p>
+								<p class="mt-1 type-caption text-ink/55">
+									{{ acceptedImageHelpText }}
+								</p>
 								<div class="mt-2 flex flex-wrap items-center gap-2">
 									<input
 										:ref="element => setGuardianImageInputRef(idx, element)"
 										type="file"
-										accept="image/*"
+										:accept="acceptedImageInput"
 										class="hidden"
 										:disabled="isReadOnly || saving || uploadingGuardianImageIndex === idx"
 										@change="event => onGuardianImageSelected(idx, event)"
@@ -700,6 +706,17 @@ import type {
 
 const service = createAdmissionsService();
 const { session, currentApplicantName } = useAdmissionsSession();
+const acceptedImageInput = '.jpg,.jpeg,.png,image/jpeg,image/png';
+const acceptedImageHelpText = __(
+	'Accepted formats: JPG or PNG, up to 10 MB. Convert iPhone HEIC or HEIF photos to JPG before uploading.'
+);
+const acceptedImageExtensions = new Set(['jpg', 'jpeg', 'png']);
+const acceptedImageMimeTypes = new Set(['image/jpeg', 'image/png']);
+const maxAcceptedImageBytes = 10 * 1024 * 1024;
+const invalidImageFormatMessage = __(
+	'Please choose a JPG or PNG image. Convert HEIC or HEIF photos to JPG before uploading.'
+);
+const imageTooLargeMessage = __('Image is too large. Max file size is 10 MB.');
 
 const loading = ref(false);
 const saving = ref(false);
@@ -813,6 +830,33 @@ function selectedGuardianImageFileName(index: number): string {
 	return selectedGuardianImageFiles.value[index]?.name || '';
 }
 
+function imageExtension(fileName: string): string {
+	const normalizedName = String(fileName || '')
+		.trim()
+		.toLowerCase();
+	const dotIndex = normalizedName.lastIndexOf('.');
+	return dotIndex >= 0 ? normalizedName.slice(dotIndex + 1) : '';
+}
+
+function validateSelectedImageFile(file: File): string | null {
+	if (!acceptedImageExtensions.has(imageExtension(file.name))) {
+		return invalidImageFormatMessage;
+	}
+
+	const mimeType = String(file.type || '')
+		.trim()
+		.toLowerCase();
+	if (mimeType && !acceptedImageMimeTypes.has(mimeType)) {
+		return invalidImageFormatMessage;
+	}
+
+	if (file.size > maxAcceptedImageBytes) {
+		return imageTooLargeMessage;
+	}
+
+	return null;
+}
+
 function openGuardianImagePicker(index: number) {
 	if (isReadOnly.value) {
 		actionError.value = __('This application is read-only.');
@@ -828,8 +872,9 @@ function onGuardianImageSelected(index: number, event: Event) {
 		delete selectedGuardianImageFiles.value[index];
 		return;
 	}
-	if (!file.type || !file.type.startsWith('image/')) {
-		actionError.value = __('Please choose a valid image file.');
+	const validationError = validateSelectedImageFile(file);
+	if (validationError) {
+		actionError.value = validationError;
 		delete selectedGuardianImageFiles.value[index];
 		if (target) target.value = '';
 		return;
@@ -998,8 +1043,9 @@ function onImageSelected(event: Event) {
 		selectedImageFile.value = null;
 		return;
 	}
-	if (!file.type || !file.type.startsWith('image/')) {
-		actionError.value = __('Please choose a valid image file.');
+	const validationError = validateSelectedImageFile(file);
+	if (validationError) {
+		actionError.value = validationError;
 		selectedImageFile.value = null;
 		if (target) target.value = '';
 		return;

@@ -5,12 +5,13 @@ from __future__ import annotations
 import base64
 import io
 import os
+import warnings
 from urllib.parse import parse_qs, urlparse
 
 import frappe
 from frappe import _
 from frappe.utils import cint, now_datetime, validate_email_address, validate_phone_number
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from ifitwala_ed.admission import admissions_portal as admission_api
 from ifitwala_ed.admission.access import (
@@ -81,6 +82,15 @@ READ_ONLY_REASON_MAP = {
     "Withdrawn": _("Application withdrawn."),
     "Promoted": _("Application completed."),
 }
+
+PROFILE_IMAGE_ALLOWED_EXTENSIONS = {
+    ".jpg": "JPEG",
+    ".jpeg": "JPEG",
+    ".png": "PNG",
+}
+PROFILE_IMAGE_ALLOWED_ACCEPT_LABEL = "JPG, JPEG, PNG"
+PROFILE_IMAGE_MAX_BYTES = 10 * 1024 * 1024
+PROFILE_IMAGE_MAX_PIXELS = 25_000_000
 
 APPLICANT_HEALTH_FIELDS = (
     "blood_group",
@@ -290,12 +300,103 @@ def _decode_profile_image_content(content_text: str | None) -> bytes:
     return content
 
 
-def _validate_profile_image_content(content: bytes) -> None:
+def _profile_image_allowed_formats_message() -> str:
+    return _("Only {0} image files are accepted. Convert HEIC or HEIF photos to JPG before uploading.").format(
+        PROFILE_IMAGE_ALLOWED_ACCEPT_LABEL
+    )
+
+
+def _profile_image_invalid_content_message() -> str:
+    return _("Uploaded profile image must be a valid {0} image.").format(PROFILE_IMAGE_ALLOWED_ACCEPT_LABEL)
+
+
+def _profile_image_extension_mismatch_message() -> str:
+    return _("The selected file extension does not match the uploaded image content. Please upload a JPG or PNG image.")
+
+
+def _profile_image_size_limit_message() -> str:
+    return _("Image is too large. Max file size is {0} MB.").format(PROFILE_IMAGE_MAX_BYTES // (1024 * 1024))
+
+
+def _profile_image_pixel_limit_message() -> str:
+    return _("Image is too large. Max image size is {0} megapixels.").format(PROFILE_IMAGE_MAX_PIXELS // 1_000_000)
+
+
+def _profile_image_output_filename(prefix: str) -> str:
+    return f"{prefix}_{frappe.generate_hash(length=12)}.jpg"
+
+
+def _profile_image_extension(upload_name: str | None) -> str:
+    return os.path.splitext(_as_text(upload_name).strip().lower())[1]
+
+
+def _sniff_profile_image_format(content: bytes) -> str | None:
+    if content.startswith(b"\xff\xd8\xff"):
+        return "JPEG"
+    if content.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "PNG"
+    return None
+
+
+def _profile_image_to_rgb(image_obj):
+    if image_obj.mode in {"RGBA", "LA"} or (image_obj.mode == "P" and "transparency" in getattr(image_obj, "info", {})):
+        rgba_image = image_obj.convert("RGBA")
+        background = Image.new("RGB", rgba_image.size, (255, 255, 255))
+        background.paste(rgba_image, mask=rgba_image.getchannel("A"))
+        return background
+    return image_obj.convert("RGB")
+
+
+def _normalize_profile_image_bytes(content: bytes) -> bytes:
     try:
-        with Image.open(io.BytesIO(content)) as img:
-            img.verify()
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(io.BytesIO(content)) as source_image:
+                image_format = (_as_text(getattr(source_image, "format", None)).strip() or "").upper()
+                if image_format not in {"JPEG", "PNG"}:
+                    frappe.throw(_profile_image_invalid_content_message())
+
+                width, height = source_image.size or (0, 0)
+                if width <= 0 or height <= 0:
+                    frappe.throw(_profile_image_invalid_content_message())
+                if width * height > PROFILE_IMAGE_MAX_PIXELS:
+                    frappe.throw(_profile_image_pixel_limit_message())
+
+                source_image.load()
+                normalized_image = ImageOps.exif_transpose(source_image)
+                normalized_rgb = _profile_image_to_rgb(normalized_image)
+                output_buffer = io.BytesIO()
+                normalized_rgb.save(output_buffer, format="JPEG", optimize=True, quality=85)
+                normalized_bytes = output_buffer.getvalue()
+                if not normalized_bytes:
+                    frappe.throw(_profile_image_invalid_content_message())
+                return normalized_bytes
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning):
+        frappe.throw(_profile_image_pixel_limit_message())
     except (UnidentifiedImageError, OSError, ValueError, SyntaxError):
-        frappe.throw(_("Uploaded profile image must be a valid image file."))
+        frappe.throw(_profile_image_invalid_content_message())
+
+
+def _prepare_profile_image_upload(
+    *, upload_name: str | None, content: bytes, filename_prefix: str
+) -> tuple[str, bytes]:
+    extension = _profile_image_extension(upload_name)
+    if extension not in PROFILE_IMAGE_ALLOWED_EXTENSIONS:
+        frappe.throw(_profile_image_allowed_formats_message())
+
+    if len(content) > PROFILE_IMAGE_MAX_BYTES:
+        frappe.throw(_profile_image_size_limit_message())
+
+    sniffed_format = _sniff_profile_image_format(content)
+    if not sniffed_format:
+        frappe.throw(_profile_image_invalid_content_message())
+
+    expected_format = PROFILE_IMAGE_ALLOWED_EXTENSIONS.get(extension)
+    if sniffed_format != expected_format:
+        frappe.throw(_profile_image_extension_mismatch_message())
+
+    normalized_bytes = _normalize_profile_image_bytes(content)
+    return _profile_image_output_filename(filename_prefix), normalized_bytes
 
 
 def _ensure_file_on_disk(file_doc) -> None:
@@ -1803,7 +1904,11 @@ def upload_applicant_profile_image(
         frappe.throw(_("file_name is required."))
 
     upload_content = _decode_profile_image_content(_as_text(content))
-    _validate_profile_image_content(upload_content)
+    normalized_file_name, normalized_content = _prepare_profile_image_upload(
+        upload_name=upload_name,
+        content=upload_content,
+        filename_prefix="applicant_profile_image",
+    )
 
     applicant = frappe.get_doc("Student Applicant", applicant_name)
     if not applicant.get("organization") or not applicant.get("school"):
@@ -1814,8 +1919,8 @@ def upload_applicant_profile_image(
             "attached_to_doctype": "Student Applicant",
             "attached_to_name": applicant.name,
             "attached_to_field": "applicant_image",
-            "file_name": upload_name,
-            "content": upload_content,
+            "file_name": normalized_file_name,
+            "content": normalized_content,
             "is_private": 1,
         },
         classification={
@@ -1874,7 +1979,11 @@ def upload_applicant_guardian_image(
         frappe.throw(_("file_name is required."))
 
     upload_content = _decode_profile_image_content(_as_text(content))
-    _validate_profile_image_content(upload_content)
+    normalized_file_name, normalized_content = _prepare_profile_image_upload(
+        upload_name=upload_name,
+        content=upload_content,
+        filename_prefix="guardian_profile_image",
+    )
 
     applicant = frappe.get_doc("Student Applicant", applicant_name)
     if not applicant.get("organization") or not applicant.get("school"):
@@ -1885,8 +1994,8 @@ def upload_applicant_guardian_image(
             "attached_to_doctype": "Student Applicant",
             "attached_to_name": applicant.name,
             "attached_to_field": "guardians",
-            "file_name": upload_name,
-            "content": upload_content,
+            "file_name": normalized_file_name,
+            "content": normalized_content,
             "is_private": 1,
         },
         classification={

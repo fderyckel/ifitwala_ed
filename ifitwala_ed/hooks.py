@@ -341,7 +341,7 @@ scheduler_events = {
 
 # Request Events
 # ----------------
-# after_request = ["ifitwala.utils.after_request"]
+after_request = ["ifitwala_ed.request_hooks.apply_default_security_headers"]
 
 # Job Events
 # ----------

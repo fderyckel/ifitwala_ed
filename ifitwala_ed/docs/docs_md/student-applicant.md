@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.17.0"
+version: "1.18.0"
 last_change_date: "2026-03-12"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -258,6 +258,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - governed upload endpoint: `ifitwala_ed.utilities.governed_uploads.upload_applicant_image`
   - admissions portal self-upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_profile_image`
   - admissions portal guardian photo upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_guardian_image`
+  - admissions portal applicant/guardian photo uploads accept only `JPG`/`JPEG`/`PNG`, reject `HEIC`/`HEIF`, rewrite accepted uploads to server-owned stripped `JPEG`, and enforce `10 MB` / `25 megapixel` limits before file dispatcher storage
   - all other admissions docs routed via `Applicant Document` + file classification
 - **Recommendation intake (runtime)**:
   - external recommender submissions use a separate intake surface (`/admissions/recommendation/<token>`) and do not use applicant portal authentication
