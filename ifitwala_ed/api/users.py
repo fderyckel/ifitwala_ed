@@ -413,14 +413,14 @@ def get_users_with_role(doctype, txt, searchfield, start, page_len, filters):
 
     matching_usernames = list(
         {
-            row.get("parent")
-            for row in frappe.get_all(
+            parent
+            for parent in frappe.get_all(
                 "Has Role",
                 filters={"role": role, "parenttype": "User"},
-                fields=["parent"],
-                limit_page_length=0,
+                pluck="parent",
+                limit_page_length=5000,
             )
-            if row.get("parent")
+            if parent
         }
     )
     if not matching_usernames:

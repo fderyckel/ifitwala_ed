@@ -11,19 +11,21 @@ type ResourceRecord = {
 	submit: ReturnType<typeof vi.fn>
 }
 
-const resourceRecords: ResourceRecord[] = []
-const createResourceMock = vi.fn((config: ResourceRecord['config']) => {
-	const record: ResourceRecord = {
-		config,
-		submit: vi.fn(),
-	}
-	resourceRecords.push(record)
-	return {
-		submit: record.submit,
-	}
+const { createResourceMock, emitMock, resourceRecords } = vi.hoisted(() => {
+	const resourceRecords: ResourceRecord[] = []
+	const createResourceMock = vi.fn((config: ResourceRecord['config']) => {
+		const record: ResourceRecord = {
+			config,
+			submit: vi.fn(),
+		}
+		resourceRecords.push(record)
+		return {
+			submit: record.submit,
+		}
+	})
+	const emitMock = vi.fn()
+	return { createResourceMock, emitMock, resourceRecords }
 })
-
-const emitMock = vi.fn()
 
 vi.mock('frappe-ui', () => ({
 	createResource: createResourceMock,

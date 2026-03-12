@@ -49,7 +49,11 @@ def _normalize_choice_rank(value) -> int | None:
     except (TypeError, ValueError):
         frappe.throw(_("Choice Rank must be a positive whole number."))
 
-    if rank <= 0:
+    # Frappe Int child-table fields round-trip blank values as 0.
+    if rank == 0:
+        return None
+
+    if rank < 0:
         frappe.throw(_("Choice Rank must be a positive whole number."))
 
     return rank

@@ -6,7 +6,10 @@ from frappe import _
 from frappe.model.document import Document
 
 from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
-from ifitwala_ed.schedule.enrollment_request_utils import validate_program_enrollment_request
+from ifitwala_ed.schedule.enrollment_request_utils import (
+    build_program_enrollment_request_validation,
+    validate_program_enrollment_request,
+)
 
 
 class ProgramEnrollmentRequest(Document):
@@ -88,8 +91,10 @@ class ProgramEnrollmentRequest(Document):
                 frappe.throw(_("Request must be Valid before it can be Approved."))
             return
 
-        # Force validation refresh (single truth)
-        validate_program_enrollment_request(self.name, force=1)
+        # Validate the current in-memory request snapshot before save persists it.
+        _engine_payload, validation_updates = build_program_enrollment_request_validation(self, force=1)
+        for fieldname, value in (validation_updates or {}).items():
+            self.set(fieldname, value)
 
         # Enforce gates after refresh
         if target_status == "Approved":

@@ -92,9 +92,14 @@ class TestCalendarApi(TestCase):
         cache = _DummyCache()
         captured_payloads = []
 
-        def _fake_get_doc(payload):
-            captured_payloads.append(payload)
-            return _FakeDoc(payload, "MTG-TEST-0001")
+        def _fake_get_doc(*args, **kwargs):
+            if len(args) == 1 and isinstance(args[0], dict):
+                payload = args[0]
+                captured_payloads.append(payload)
+                return _FakeDoc(payload, "MTG-TEST-0001")
+            if args == ("System Settings", "System Settings"):
+                return frappe._dict({"time_zone": "Asia/Bangkok"})
+            raise AssertionError(f"Unexpected get_doc call: args={args!r} kwargs={kwargs!r}")
 
         with (
             patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
@@ -127,9 +132,14 @@ class TestCalendarApi(TestCase):
         cache = _DummyCache()
         captured_payloads = []
 
-        def _fake_get_doc(payload):
-            captured_payloads.append(payload)
-            return _FakeDoc(payload, "SEVENT-2026-000001")
+        def _fake_get_doc(*args, **kwargs):
+            if len(args) == 1 and isinstance(args[0], dict):
+                payload = args[0]
+                captured_payloads.append(payload)
+                return _FakeDoc(payload, "SEVENT-2026-000001")
+            if args == ("System Settings", "System Settings"):
+                return frappe._dict({"time_zone": "Asia/Bangkok"})
+            raise AssertionError(f"Unexpected get_doc call: args={args!r} kwargs={kwargs!r}")
 
         with (
             patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),

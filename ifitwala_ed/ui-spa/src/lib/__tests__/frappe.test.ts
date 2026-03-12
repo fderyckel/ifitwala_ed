@@ -2,8 +2,10 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const setConfigMock = vi.fn()
-const frappeRequestMock = vi.fn()
+const { setConfigMock, frappeRequestMock } = vi.hoisted(() => ({
+	setConfigMock: vi.fn(),
+	frappeRequestMock: vi.fn(),
+}))
 
 vi.mock('frappe-ui', () => ({
 	setConfig: setConfigMock,

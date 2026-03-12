@@ -591,8 +591,12 @@ class TestSubmitApplication(FrappeTestCase):
                 self._admissions_access_mode_before or "Single Applicant Workspace",
             )
         for doctype, name in reversed(self._created):
-            if frappe.db.exists(doctype, name):
-                frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+            if not frappe.db.exists(doctype, name):
+                continue
+            if doctype == "Policy Acknowledgement":
+                frappe.db.delete("Policy Acknowledgement", {"name": name})
+                continue
+            frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
     def test_submit_application_accepts_invited_state(self):
         frappe.set_user(self.applicant_user)
@@ -865,6 +869,7 @@ class TestSubmitApplication(FrappeTestCase):
         )
         self.assertTrue(bool(ack))
         self.assertEqual(ack.get("acknowledged_by"), self.applicant_user)
+        self._created.append(("Policy Acknowledgement", ack.get("name")))
 
     def test_acknowledge_policy_family_mode_creates_guardian_context(self):
         if not frappe.db.has_column("Admission Settings", "admissions_access_mode"):
@@ -912,10 +917,11 @@ class TestSubmitApplication(FrappeTestCase):
                 "context_doctype": "Guardian",
                 "context_name": guardian.name,
             },
-            ["acknowledged_by"],
+            ["name", "acknowledged_by"],
             as_dict=True,
         )
         self.assertTrue(bool(ack))
+        self._created.append(("Policy Acknowledgement", ack.get("name")))
         self.assertEqual((ack.get("acknowledged_by") or "").strip(), family_user.name)
 
     def test_update_applicant_profile_persists_values(self):

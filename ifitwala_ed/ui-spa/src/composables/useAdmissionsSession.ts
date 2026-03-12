@@ -1,7 +1,7 @@
 // ifitwala_ed/ui-spa/src/composables/useAdmissionsSession.ts
 
 import { computed, inject, provide, ref, watch, type Ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, type LocationQueryRaw, type RouteLocationNamedRaw } from 'vue-router'
 import { createAdmissionsService } from '@/lib/services/admissions/admissionsService'
 import type { Response as AdmissionsSession } from '@/types/contracts/admissions/get_admissions_session'
 
@@ -12,7 +12,7 @@ export type AdmissionsSessionContext = {
   loading: Ref<boolean>
   error: Ref<string | null>
   currentApplicantName: Ref<string>
-  buildRouteLocation: (routeName: string) => { name: string; query: Record<string, unknown> }
+  buildRouteLocation: (routeName: string) => RouteLocationNamedRaw
   selectApplicant: (studentApplicant: string) => Promise<void>
   refresh: () => Promise<void>
 }
@@ -32,8 +32,8 @@ export function provideAdmissionsSession(): AdmissionsSessionContext {
     return raw.trim()
   }
 
-  function buildRouteLocation(routeName: string) {
-    const query: Record<string, unknown> = { ...route.query }
+  function buildRouteLocation(routeName: string): RouteLocationNamedRaw {
+    const query: LocationQueryRaw = { ...route.query }
     if (currentApplicantName.value) {
       query.student_applicant = currentApplicantName.value
     }

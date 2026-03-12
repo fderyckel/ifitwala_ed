@@ -10,56 +10,39 @@ from frappe import _
 from frappe.utils import getdate, now_datetime
 
 
-def _map_offering_seat_policy_to_capacity_policy(seat_policy: str | None) -> str:
-    policy = (seat_policy or "").strip()
-    if policy == "Committed Only":
-        return "committed_only"
-    if policy == "Approved Requests Hold Seats":
-        return "approved_requests"
-    if policy == "Submitted Holds Seats":
-        return "submitted_holds"
-    return "committed_only"
+def _requested_course_rows_from_doc(doc) -> list[dict]:
+    requested = []
+    seen = set()
+    for row in doc.courses or []:
+        course = (getattr(row, "course", None) or "").strip()
+        if not course or course in seen:
+            continue
+        seen.add(course)
+        requested.append(
+            {
+                "course": course,
+                "applied_basket_group": (getattr(row, "applied_basket_group", None) or "").strip(),
+                "choice_rank": getattr(row, "choice_rank", None),
+            }
+        )
+    return requested
 
 
-@frappe.whitelist()
-def validate_program_enrollment_request(request_name, force=0):
-    if not request_name:
-        frappe.throw(_("Program Enrollment Request is required."))
-
-    _assert_no_catalog_prereqs()
-
-    doc = frappe.get_doc("Program Enrollment Request", request_name)
+def build_program_enrollment_request_validation(doc, *, force=0):
     force = int(force or 0)
 
-    # If already Valid and we have a payload, return it (unless forced)
     if not force and (doc.validation_status or "").strip() == "Valid":
         if doc.validation_payload:
             try:
-                return json.loads(doc.validation_payload)
+                return json.loads(doc.validation_payload), None
             except Exception:
-                return {"validation_payload": doc.validation_payload}
-        return {}
+                return {"validation_payload": doc.validation_payload}, None
+        return {}, None
 
-    # Build requested course rows (unique by course, stable order)
-    requested = []
-    seen = set()
-    for r in doc.courses or []:
-        c = (r.course or "").strip()
-        if not c or c in seen:
-            continue
-        seen.add(c)
-        requested.append(
-            {
-                "course": c,
-                "applied_basket_group": (r.applied_basket_group or "").strip(),
-                "choice_rank": r.choice_rank,
-            }
-        )
-
+    requested = _requested_course_rows_from_doc(doc)
     if not requested:
         frappe.throw(_("No courses selected to validate."))
 
-    # Single source of truth: enrollment_engine.evaluate_enrollment_request
     from ifitwala_ed.schedule.enrollment_engine import evaluate_enrollment_request
 
     seat_policy = frappe.db.get_value("Program Offering", doc.program_offering, "seat_policy")
@@ -79,9 +62,6 @@ def validate_program_enrollment_request(request_name, force=0):
     results = engine_payload.get("results") or {}
     basket = results.get("basket") or {}
 
-    # Canonical validity rule (Phase 2):
-    # all_ok = all(course not blocked) AND basket.status in {"ok", "valid"}
-    # requires_override = any course override_required OR basket.override_required
     basket_status = (summary.get("basket_status") or basket.get("status") or "").strip()
     basket_pass = basket_status in {"ok", "valid"}
     basket_override_required = bool(basket.get("override_required") or summary.get("override_required"))
@@ -89,45 +69,60 @@ def validate_program_enrollment_request(request_name, force=0):
     all_ok = True
     requires_override = False
 
-    # Prefer engine summary.valid when present (single authoritative evaluation path),
-    # but keep deterministic fallbacks for older snapshots.
     if "valid" in summary:
         all_ok = bool(summary.get("valid"))
     else:
-        # Fallback for older engine payloads
-        for r in results.get("courses") or []:
-            if r.get("blocked"):
+        for row in results.get("courses") or []:
+            if row.get("blocked"):
                 all_ok = False
-            if r.get("override_required"):
+            if row.get("override_required"):
                 requires_override = True
         if not basket_pass:
             all_ok = False
 
-    # Override requirement: course-level OR basket-level
     requires_override = bool(
         requires_override
-        or any(bool(r.get("override_required")) for r in (results.get("courses") or []))
+        or any(bool(row.get("override_required")) for row in (results.get("courses") or []))
         or basket_override_required
     )
 
-    # Enforce Phase-2 validity invariant even if summary.valid drifts:
-    # basket invalid must invalidate request.
     if not basket_pass:
         all_ok = False
 
     validation_status = "Valid" if all_ok else "Invalid"
-
     updates = {
         "validation_status": validation_status,
         "validation_payload": json.dumps(engine_payload, sort_keys=True, default=str),
         "validated_on": now_datetime(),
         "validated_by": frappe.session.user,
         "request_kind": (doc.request_kind or "Academic").strip() or "Academic",
-        # keep PER flags aligned for workflow UX
         "requires_override": 1 if requires_override else 0,
     }
+    return engine_payload, updates
 
-    doc.db_set(updates, update_modified=True)
+
+def _map_offering_seat_policy_to_capacity_policy(seat_policy: str | None) -> str:
+    policy = (seat_policy or "").strip()
+    if policy == "Committed Only":
+        return "committed_only"
+    if policy == "Approved Requests Hold Seats":
+        return "approved_requests"
+    if policy == "Submitted Holds Seats":
+        return "submitted_holds"
+    return "committed_only"
+
+
+@frappe.whitelist()
+def validate_program_enrollment_request(request_name, force=0):
+    if not request_name:
+        frappe.throw(_("Program Enrollment Request is required."))
+
+    _assert_no_catalog_prereqs()
+
+    doc = frappe.get_doc("Program Enrollment Request", request_name)
+    engine_payload, updates = build_program_enrollment_request_validation(doc, force=force)
+    if updates:
+        doc.db_set(updates, update_modified=True)
     return engine_payload
 
 
