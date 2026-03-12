@@ -1100,34 +1100,13 @@ def _get_applicant_rows_for_user(*, user: str, fields: list[str], limit: int = 2
     if "name" not in selected_fields:
         selected_fields = ["name", *selected_fields]
 
-    rows_by_name: dict[str, dict] = {}
-    search_filters = [{"applicant_user": user}]
-    normalized_user = normalize_email_value(user)
-    if normalized_user:
-        search_filters.extend(
-            [
-                {"portal_account_email": normalized_user},
-                {"applicant_email": normalized_user},
-            ]
-        )
-
-    for filters in search_filters:
-        rows = frappe.get_all(
-            "Student Applicant",
-            filters=filters,
-            fields=selected_fields,
-            limit_page_length=limit,
-            order_by="creation desc",
-        )
-        for row in rows or []:
-            name = _as_text(row.get("name")).strip()
-            if not name or name in rows_by_name:
-                continue
-            rows_by_name[name] = row
-            if len(rows_by_name) >= limit:
-                return list(rows_by_name.values())
-
-    return list(rows_by_name.values())
+    return frappe.get_all(
+        "Student Applicant",
+        filters={"applicant_user": user},
+        fields=selected_fields,
+        limit_page_length=limit,
+        order_by="creation desc",
+    )
 
 
 def _get_applicant_for_user(user: str, fields: list[str] | None = None) -> dict:

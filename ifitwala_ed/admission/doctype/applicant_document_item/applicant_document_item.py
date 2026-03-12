@@ -190,9 +190,7 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
             "JOIN `tabStudent Applicant` sa "
             "  ON sa.name = ad.student_applicant "
             "WHERE ad.name = `tabApplicant Document Item`.`applicant_document` "
-            f"AND (sa.applicant_user = {escaped_user} "
-            f"OR sa.portal_account_email = {escaped_user} "
-            f"OR sa.applicant_email = {escaped_user})"
+            f"AND sa.applicant_user = {escaped_user}"
             ")"
             ")"
         )

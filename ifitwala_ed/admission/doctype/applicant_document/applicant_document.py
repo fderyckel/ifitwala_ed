@@ -11,7 +11,6 @@ from ifitwala_ed.admission.admission_utils import (
     build_admissions_file_scope_exists_sql,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
-    normalize_email_value,
 )
 
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
@@ -355,9 +354,7 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
             "EXISTS ("
             "SELECT 1 FROM `tabStudent Applicant` sa "
             "WHERE sa.name = `tabApplicant Document`.`student_applicant` "
-            f"AND (sa.applicant_user = {escaped_user} "
-            f"OR sa.portal_account_email = {escaped_user} "
-            f"OR sa.applicant_email = {escaped_user})"
+            f"AND sa.applicant_user = {escaped_user}"
             ")"
             ")"
         )
@@ -430,20 +427,13 @@ def _is_student_applicant_self_user(student_applicant: str | None, user: str | N
     applicant_row = frappe.db.get_value(
         "Student Applicant",
         applicant_name,
-        ["applicant_user", "portal_account_email", "applicant_email"],
+        ["applicant_user"],
         as_dict=True,
     )
     if not applicant_row:
         return False
 
-    if (applicant_row.get("applicant_user") or "").strip() == resolved_user:
-        return True
-
-    normalized_user = normalize_email_value(resolved_user)
-    return normalized_user in {
-        normalize_email_value(applicant_row.get("portal_account_email")),
-        normalize_email_value(applicant_row.get("applicant_email")),
-    }
+    return (applicant_row.get("applicant_user") or "").strip() == resolved_user
 
 
 def _is_document_applicant_self_user(*, doc, user: str) -> bool:

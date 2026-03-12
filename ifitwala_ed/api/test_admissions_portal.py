@@ -43,16 +43,12 @@ class TestAdmissionsPortalAuthGuards(FrappeTestCase):
     def test_portal_session_endpoint_is_whitelisted(self):
         self.assertIn(admissions_portal_api.get_admissions_session, frappe.whitelisted)
 
-    def test_get_applicant_for_user_resolves_portal_account_email_fallback(self):
+    def test_get_applicant_for_user_uses_canonical_applicant_user_only(self):
         def fake_get_all(doctype, **kwargs):
             self.assertEqual(doctype, "Student Applicant")
             filters = kwargs.get("filters") or {}
             if filters == {"applicant_user": "applicant@example.com"}:
-                return []
-            if filters == {"portal_account_email": "applicant@example.com"}:
-                return [{"name": "APP-PORTAL"}]
-            if filters == {"applicant_email": "applicant@example.com"}:
-                return []
+                return [{"name": "APP-CANONICAL"}]
             return []
 
         with patch("ifitwala_ed.api.admissions_portal.frappe.get_all", side_effect=fake_get_all):
@@ -61,7 +57,26 @@ class TestAdmissionsPortalAuthGuards(FrappeTestCase):
                 fields=["name"],
             )
 
-        self.assertEqual(row.get("name"), "APP-PORTAL")
+        self.assertEqual(row.get("name"), "APP-CANONICAL")
+
+    def test_get_applicant_for_user_rejects_email_only_matches(self):
+        def fake_get_all(doctype, **kwargs):
+            self.assertEqual(doctype, "Student Applicant")
+            filters = kwargs.get("filters") or {}
+            if filters == {"applicant_user": "applicant@example.com"}:
+                return []
+            if filters == {"portal_account_email": "applicant@example.com"}:
+                raise AssertionError("undocumented portal_account_email fallback should not be queried")
+            if filters == {"applicant_email": "applicant@example.com"}:
+                raise AssertionError("undocumented applicant_email fallback should not be queried")
+            return []
+
+        with patch("ifitwala_ed.api.admissions_portal.frappe.get_all", side_effect=fake_get_all):
+            with self.assertRaises(frappe.PermissionError):
+                admissions_portal_api._get_applicant_for_user(
+                    "applicant@example.com",
+                    fields=["name"],
+                )
 
 
 class TestAdmissionsPortalContracts(FrappeTestCase):

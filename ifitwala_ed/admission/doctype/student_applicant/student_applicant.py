@@ -2582,13 +2582,7 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
     roles = set(frappe.get_roles(resolved_user))
     if ADMISSIONS_APPLICANT_ROLE in roles:
         escaped_user = frappe.db.escape(resolved_user)
-        conditions.append(
-            "("
-            f"`tabStudent Applicant`.`applicant_user` = {escaped_user} "
-            f"OR `tabStudent Applicant`.`portal_account_email` = {escaped_user} "
-            f"OR `tabStudent Applicant`.`applicant_email` = {escaped_user}"
-            ")"
-        )
+        conditions.append(f"`tabStudent Applicant`.`applicant_user` = {escaped_user}")
 
     return " OR ".join(conditions) if conditions else "1=0"
 
@@ -2642,17 +2636,10 @@ def _is_applicant_self_user(user: str, doc) -> bool:
     row = frappe.db.get_value(
         "Student Applicant",
         applicant_name,
-        ["applicant_user", "portal_account_email", "applicant_email"],
+        ["applicant_user"],
         as_dict=True,
     )
     if not row:
         return False
 
-    if (row.get("applicant_user") or "").strip() == user:
-        return True
-
-    normalized_user = normalize_email_value(user)
-    return normalized_user in {
-        normalize_email_value(row.get("portal_account_email")),
-        normalize_email_value(row.get("applicant_email")),
-    }
+    return (row.get("applicant_user") or "").strip() == user

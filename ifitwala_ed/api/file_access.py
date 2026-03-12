@@ -13,7 +13,6 @@ from ifitwala_ed.admission.admission_utils import (
     has_open_overall_application_review_access,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
-    normalize_email_value,
 )
 
 ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document Item", "Student Applicant", "Contact"}
@@ -204,20 +203,13 @@ def _is_student_applicant_self_user(*, student_applicant: str, user: str) -> boo
     row = frappe.db.get_value(
         "Student Applicant",
         student_applicant,
-        ["applicant_user", "portal_account_email", "applicant_email"],
+        ["applicant_user"],
         as_dict=True,
     )
     if not row:
         return False
 
-    if (row.get("applicant_user") or "").strip() == user:
-        return True
-
-    normalized_user = normalize_email_value(user)
-    return normalized_user in {
-        normalize_email_value(row.get("portal_account_email")),
-        normalize_email_value(row.get("applicant_email")),
-    }
+    return (row.get("applicant_user") or "").strip() == user
 
 
 def _assert_can_access_student_applicant(*, user: str, student_applicant: str) -> None:
