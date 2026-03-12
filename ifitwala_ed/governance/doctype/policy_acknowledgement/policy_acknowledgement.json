@@ -1,8 +1,7 @@
 {
  "actions": [],
- "allow_rename": 0,
- "autoname": "hash",
- "creation": "2026-02-01 00:00:00.000000",
+ "autoname": "POL-ACK-.YY.-.MM.-.####",
+ "creation": "2026-02-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -11,12 +10,14 @@
   "acknowledged_for",
   "context_doctype",
   "context_name",
-  "acknowledged_at"
+  "acknowledged_at",
+  "amended_from"
  ],
  "fields": [
   {
    "fieldname": "policy_version",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Policy Version",
    "options": "Policy Version",
    "reqd": 1
@@ -24,6 +25,7 @@
   {
    "fieldname": "acknowledged_by",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Acknowledged By",
    "options": "User",
    "reqd": 1
@@ -31,6 +33,7 @@
   {
    "fieldname": "acknowledged_for",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Acknowledged For",
    "options": "Applicant\nStudent\nGuardian\nStaff",
    "reqd": 1
@@ -38,6 +41,7 @@
   {
    "fieldname": "context_doctype",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Context DocType",
    "reqd": 1
   },
@@ -53,15 +57,26 @@
    "label": "Acknowledged At",
    "read_only": 1,
    "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Policy Acknowledgement",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-06 00:11:07",
+ "modified": "2026-03-12 07:34:09.204271",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Policy Acknowledgement",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -105,6 +120,7 @@
    "role": "Admissions Applicant"
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

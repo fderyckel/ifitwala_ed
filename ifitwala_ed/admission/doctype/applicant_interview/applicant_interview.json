@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "INTERVIEW-.YYYY.-.###",
+ "autoname": "INTERVIEW-.YY.-.MM.-.###",
  "creation": "2026-02-01 00:00:00",
  "description": "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline.",
  "doctype": "DocType",
@@ -49,8 +49,6 @@
   {
    "fieldname": "interview_start",
    "fieldtype": "Datetime",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Interview Start"
   },
   {
@@ -104,7 +102,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-08 12:03:59.810758",
+ "modified": "2026-03-12 07:52:53.484880",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Interview",

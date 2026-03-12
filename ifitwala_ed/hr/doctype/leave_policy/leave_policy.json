@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "HR-LPOL-.YYYY.-.#####",
+ "autoname": "HR-LPOL-.YY.-MM.-.#####",
  "creation": "2018-04-13 16:06:19.507624",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -55,11 +55,11 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2024-03-27 13:10:01.602911",
+ "modified": "2026-03-12 07:36:31.805465",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Leave Policy",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -108,6 +108,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "title",
  "sort_field": "creation",
  "sort_order": "DESC",

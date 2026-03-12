@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "APPL-HEALTH-.YYYY.-.###",
+ "autoname": "ADM-APPL-HEALTH-.YY.-.MM.-.###",
  "creation": "2026-02-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -267,7 +267,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-08 12:05:05.932842",
+ "modified": "2026-03-12 07:49:51.955519",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Health Profile",
@@ -347,5 +347,6 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "student_applicant"
 }

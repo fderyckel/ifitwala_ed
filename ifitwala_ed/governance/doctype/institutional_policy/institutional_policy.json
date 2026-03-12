@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "GOV-POL-.####",
  "creation": "2026-02-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -29,7 +29,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Policy Title",
-   "reqd": 1
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fieldname": "policy_category",
@@ -80,11 +81,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-28 23:13:42.507783",
+ "modified": "2026-03-12 07:38:21.812723",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Institutional Policy",
- "naming_rule": "Random",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
