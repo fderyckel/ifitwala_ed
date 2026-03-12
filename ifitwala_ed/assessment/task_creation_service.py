@@ -5,7 +5,8 @@
 
 import frappe
 from frappe import _
-from frappe.utils import cint
+
+from ifitwala_ed.assessment.check_flags import to_check_value
 
 V1_GRADING_MODES = {"None", "Completion", "Binary", "Points"}
 
@@ -159,7 +160,7 @@ def create_task_and_delivery(
         if data.get("task_type"):
             task.task_type = data["task_type"]
 
-        task.is_template = cint(data.get("is_template")) if data.get("is_template") is not None else 0
+        task.is_template = to_check_value(data.get("is_template"))
 
         course = frappe.db.get_value("Student Group", data["student_group"], "course")
         if not course:
@@ -188,10 +189,10 @@ def create_task_and_delivery(
             delivery.lock_date = data["lock_date"]
 
         allow_late = data.get("allow_late_submission")
-        delivery.allow_late_submission = cint(allow_late) if allow_late is not None else 1
+        delivery.allow_late_submission = 1 if allow_late is None else to_check_value(allow_late)
 
         group_sub = data.get("group_submission")
-        delivery.group_submission = cint(group_sub) if group_sub is not None else 0
+        delivery.group_submission = to_check_value(group_sub)
 
         if data.get("grading_mode"):
             delivery.grading_mode = data["grading_mode"]
@@ -200,10 +201,17 @@ def create_task_and_delivery(
         if data.get("grade_scale"):
             delivery.grade_scale = data["grade_scale"]
 
-        delivery.insert()
+        delivery.insert(ignore_permissions=True)
+        delivery.flags.ignore_permissions = True
+        delivery.submit()
+        delivery.materialize_roster()
 
     except Exception:
         frappe.db.rollback(save_point="create_task_and_delivery")
         raise
 
-    return {"task": task.name, "task_delivery": delivery.name}
+    return {
+        "task": task.name,
+        "task_delivery": delivery.name,
+        "outcomes_created": frappe.db.count("Task Outcome", {"task_delivery": delivery.name}),
+    }

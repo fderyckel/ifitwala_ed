@@ -16,6 +16,10 @@ from ifitwala_ed.api.calendar import (
     _time_to_str,
     create_meeting_quick,
     create_school_event_quick,
+    get_meeting_team_attendees,
+    search_meeting_attendees,
+    suggest_meeting_rooms,
+    suggest_meeting_slots,
 )
 
 
@@ -91,6 +95,10 @@ class TestCalendarApi(TestCase):
     def test_create_meeting_quick_is_idempotent(self):
         cache = _DummyCache()
         captured_payloads = []
+        user_rows = {
+            "staff@example.com": frappe._dict({"name": "staff@example.com", "full_name": "Staff Example"}),
+            "student@example.com": frappe._dict({"name": "student@example.com", "full_name": "Student Example"}),
+        }
 
         def _fake_get_doc(*args, **kwargs):
             if len(args) == 1 and isinstance(args[0], dict):
@@ -101,11 +109,24 @@ class TestCalendarApi(TestCase):
                 return frappe._dict({"time_zone": "Asia/Bangkok"})
             raise AssertionError(f"Unexpected get_doc call: args={args!r} kwargs={kwargs!r}")
 
+        def _fake_get_all(doctype, filters=None, fields=None, **kwargs):
+            if doctype == "Employee":
+                return []
+            if doctype == "User":
+                requested = (filters or {}).get("name", [None, []])[1] or []
+                return [user_rows[name] for name in requested if name in user_rows]
+            raise AssertionError(f"Unexpected get_all call: doctype={doctype!r}")
+
         with (
             patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc", side_effect=_fake_get_doc),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_all", side_effect=_fake_get_all),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._get_quick_create_scope",
+                return_value={"base_school": "SCHOOL-1"},
+            ),
         ):
             first = create_meeting_quick(
                 client_request_id="req-1",
@@ -113,6 +134,8 @@ class TestCalendarApi(TestCase):
                 date="2026-02-01",
                 start_time="09:00",
                 end_time="10:00",
+                school="SCHOOL-1",
+                participants=[{"user": "student@example.com", "kind": "student", "label": "Student Example"}],
             )
             second = create_meeting_quick(
                 client_request_id="req-1",
@@ -120,13 +143,23 @@ class TestCalendarApi(TestCase):
                 date="2026-02-01",
                 start_time="09:00",
                 end_time="10:00",
+                school="SCHOOL-1",
+                participants=[{"user": "student@example.com", "kind": "student", "label": "Student Example"}],
             )
 
         self.assertEqual(first.get("status"), "created")
         self.assertEqual(second.get("status"), "already_processed")
         self.assertEqual(second.get("idempotent"), True)
         self.assertEqual(len(captured_payloads), 1)
-        self.assertEqual(captured_payloads[0].get("participants"), [{"participant": "staff@example.com"}])
+        self.assertEqual(captured_payloads[0].get("school"), "SCHOOL-1")
+        self.assertEqual(captured_payloads[0].get("visibility_scope"), "Participants Only")
+        self.assertEqual(
+            captured_payloads[0].get("participants"),
+            [
+                {"participant": "student@example.com", "participant_name": "Student Example"},
+                {"participant": "staff@example.com", "participant_name": "Staff Example"},
+            ],
+        )
 
     def test_create_school_event_quick_defaults_custom_users_to_session_user(self):
         cache = _DummyCache()
@@ -191,3 +224,81 @@ class TestCalendarApi(TestCase):
         for filters in observed_filters:
             self.assertEqual(filters.get("parenttype"), "Student Group")
             self.assertNotIn("active", filters)
+
+    def test_search_meeting_attendees_facade_delegates_new_contract(self):
+        expected = {"results": [{"value": "student@example.com"}], "notes": ["note"]}
+
+        with patch("ifitwala_ed.api.calendar._search_meeting_attendees", return_value=expected) as mocked:
+            payload = search_meeting_attendees(
+                query="stu",
+                attendee_kinds=["employee", "student"],
+                limit=6,
+            )
+
+        mocked.assert_called_once_with(
+            query="stu",
+            attendee_kinds=["employee", "student"],
+            limit=6,
+        )
+        self.assertEqual(payload, expected)
+
+    def test_get_meeting_team_attendees_facade_delegates_new_contract(self):
+        expected = {"team": "TEAM-1", "results": [{"value": "staff@example.com"}]}
+
+        with patch("ifitwala_ed.api.calendar._get_meeting_team_attendees", return_value=expected) as mocked:
+            payload = get_meeting_team_attendees(team="TEAM-1")
+
+        mocked.assert_called_once_with(team="TEAM-1")
+        self.assertEqual(payload, expected)
+
+    def test_suggest_meeting_slots_facade_delegates_new_contract(self):
+        expected = {
+            "slots": [{"start": "2026-02-01T09:00:00"}],
+            "fallback_slots": [],
+            "notes": [],
+            "duration_minutes": 45,
+            "attendees": [],
+        }
+
+        with patch("ifitwala_ed.api.calendar._suggest_meeting_slots", return_value=expected) as mocked:
+            payload = suggest_meeting_slots(
+                attendees=[{"user": "student@example.com", "kind": "student"}],
+                duration_minutes=45,
+                date_from="2026-02-01",
+                date_to="2026-02-05",
+                day_start_time="08:00",
+                day_end_time="17:00",
+            )
+
+        mocked.assert_called_once_with(
+            attendees=[{"user": "student@example.com", "kind": "student"}],
+            duration_minutes=45,
+            date_from="2026-02-01",
+            date_to="2026-02-05",
+            day_start_time="08:00",
+            day_end_time="17:00",
+        )
+        self.assertEqual(payload, expected)
+
+    def test_suggest_meeting_rooms_facade_delegates_new_contract(self):
+        expected = {"rooms": [{"value": "ROOM-1"}], "notes": []}
+
+        with patch("ifitwala_ed.api.calendar._suggest_meeting_rooms", return_value=expected) as mocked:
+            payload = suggest_meeting_rooms(
+                school="SCHOOL-1",
+                date="2026-02-01",
+                start_time="09:00",
+                end_time="10:00",
+                capacity_needed=4,
+                limit=5,
+            )
+
+        mocked.assert_called_once_with(
+            school="SCHOOL-1",
+            date="2026-02-01",
+            start_time="09:00",
+            end_time="10:00",
+            capacity_needed=4,
+            limit=5,
+        )
+        self.assertEqual(payload, expected)

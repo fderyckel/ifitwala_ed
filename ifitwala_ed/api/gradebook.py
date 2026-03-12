@@ -363,7 +363,14 @@ def mark_new_submission_seen(outcome: str):
 
 
 @frappe.whitelist()
-def fetch_groups(search: str | None = None, limit: int | None = None):
+def fetch_groups(
+    search: str | None = None,
+    limit: int | None = None,
+    school: str | None = None,
+    academic_year: str | None = None,
+    program: str | None = None,
+    course: str | None = None,
+):
     """
     Return visible student groups for current gradebook users.
     Compatibility shape for existing Gradebook.vue.
@@ -372,6 +379,15 @@ def fetch_groups(search: str | None = None, limit: int | None = None):
         frappe.throw(_("Not permitted."), frappe.PermissionError)
 
     filters = {}
+    if school:
+        filters["school"] = school
+    if academic_year:
+        filters["academic_year"] = academic_year
+    if program:
+        filters["program"] = program
+    if course:
+        filters["course"] = course
+
     if _is_instructor_scoped_user():
         names = sorted(_instructor_group_names(frappe.session.user))
         if not names:
@@ -404,13 +420,14 @@ def fetch_groups(search: str | None = None, limit: int | None = None):
                 or needle in str(row.get("name") or "").lower()
             ]
 
-    cap = 100
+    cap = None
     if limit not in (None, ""):
         try:
             cap = max(1, min(int(limit), 500))
         except Exception:
             cap = 100
-    rows = rows[:cap]
+    if cap is not None:
+        rows = rows[:cap]
 
     return [
         {
@@ -612,6 +629,49 @@ def get_task_gradebook(task: str):
         "task": task_payload,
         "criteria": criteria_payload,
         "students": students_payload,
+    }
+
+
+@frappe.whitelist()
+def repair_task_roster(task: str):
+    """
+    Backfill missing Task Outcome rows for a delivery already visible in gradebook.
+    """
+    if not _can_write_gradebook():
+        frappe.throw(_("Not permitted."), frappe.PermissionError)
+    _require(task, "Task Delivery")
+
+    delivery = frappe.get_doc("Task Delivery", task)
+    _assert_group_access(delivery.student_group)
+
+    before_count = frappe.db.count("Task Outcome", {"task_delivery": delivery.name})
+    was_draft = int(delivery.docstatus or 0) == 0
+
+    if was_draft:
+        delivery.flags.ignore_permissions = True
+        delivery.submit()
+        delivery = frappe.get_doc("Task Delivery", task)
+
+    materialized = delivery.materialize_roster()
+    after_count = frappe.db.count("Task Outcome", {"task_delivery": delivery.name})
+    outcomes_created = max(after_count - before_count, 0)
+    eligible_students = materialized.get("eligible_students", after_count)
+
+    if outcomes_created:
+        message = _("Roster synced for {0} students.").format(outcomes_created)
+    elif after_count:
+        message = _("Roster is already up to date.")
+    else:
+        message = _("No active students are currently in this student group.")
+
+    return {
+        "task_delivery": delivery.name,
+        "docstatus": int(delivery.docstatus or 0),
+        "was_draft": 1 if was_draft else 0,
+        "eligible_students": eligible_students,
+        "outcomes_created": outcomes_created,
+        "outcomes_total": after_count,
+        "message": message,
     }
 
 

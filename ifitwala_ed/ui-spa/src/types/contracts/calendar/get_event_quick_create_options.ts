@@ -5,6 +5,11 @@ export type SelectOption = {
 	label: string
 }
 
+export type AttendeeKindOption = {
+	value: 'employee' | 'student' | 'guardian'
+	label: string
+}
+
 export type Request = Record<string, never>
 
 export type Response = {
@@ -17,7 +22,11 @@ export type Response = {
 	teams: SelectOption[]
 	student_groups: SelectOption[]
 	locations: SelectOption[]
+	attendee_kinds: AttendeeKindOption[]
 	defaults: {
 		school: string | null
+		day_start_time: string
+		day_end_time: string
+		duration_minutes: number
 	}
 }

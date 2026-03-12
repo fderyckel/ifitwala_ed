@@ -8,6 +8,8 @@ from frappe import _
 from frappe.model.naming import make_autoname
 from frappe.utils import now
 
+from ifitwala_ed.assessment.check_flags import is_checked
+
 
 def get_delivery_context(student_group):
     if not student_group:
@@ -189,13 +191,10 @@ def create_delivery(payload):
 
     if not isinstance(payload, dict):
         frappe.throw(_("Delivery payload must be a dict."))
-    if payload.get("group_submission") in (1, "1", True):
+    if is_checked(payload.get("group_submission")):
         frappe.throw(_("Group submission is paused: subgroup model not implemented."))
 
     doc = frappe.new_doc("Task Delivery")
-
-    if payload.get("group_submission"):
-        frappe.throw(_("Group submission is currently disabled pending subgroup model implementation."))
 
     allowed_fields = {
         "task",
@@ -217,7 +216,9 @@ def create_delivery(payload):
             setattr(doc, field, value)
 
     doc.insert(ignore_permissions=True)
+    doc.flags.ignore_permissions = True
     doc.submit()
+    doc.materialize_roster()
 
     outcome_count = frappe.db.count("Task Outcome", {"task_delivery": doc.name})
     return {

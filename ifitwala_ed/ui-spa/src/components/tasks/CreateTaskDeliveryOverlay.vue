@@ -220,14 +220,11 @@
 											/>
 											Allow late submissions
 										</label>
-										<label class="flex items-center gap-2 text-sm text-ink/80">
-											<input
-												v-model="form.group_submission"
-												type="checkbox"
-												class="rounded border-border/70 text-jacaranda"
-											/>
-											Group submission
-										</label>
+										<div
+											class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-3 py-2 text-sm text-ink/70"
+										>
+											Group submission is paused until the subgroup workflow is implemented.
+										</div>
 									</div>
 								</section>
 
@@ -615,10 +612,7 @@ function toFrappeDatetime(value: string) {
 }
 
 /**
- * ✅ Frappe-UI canonical mutation: use createResource + submit(payload)
- * - This matches your groupResource pattern.
- * - It also guarantees the request is sent as form_dict kwargs (payload key present),
- *   which matches your current server signature: create_task_and_delivery(payload)
+ * SPA POST contract: send the payload body directly.
  */
 const createTaskResource = createResource({
 	url: 'ifitwala_ed.assessment.task_creation_service.create_task_and_delivery',
@@ -677,7 +671,6 @@ async function submit() {
 	}
 
 	try {
-		// ✅ server expects `payload` argument -> submit({ payload })
 		const res = await createTaskResource.submit(payload);
 		const out = res as CreateTaskDeliveryPayload | undefined;
 

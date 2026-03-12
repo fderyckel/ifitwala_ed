@@ -3,6 +3,7 @@
 export type CreateTaskDeliveryPayload = {
 	task: string;
 	task_delivery: string;
+	outcomes_created?: number;
 };
 
 export type CreateTaskDeliveryInput = {

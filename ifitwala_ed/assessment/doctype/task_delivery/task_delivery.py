@@ -6,6 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime
 
+from ifitwala_ed.assessment.check_flags import is_checked
 from ifitwala_ed.assessment.task_delivery_service import (
     bulk_create_outcomes,
     get_delivery_context,
@@ -30,11 +31,18 @@ class TaskDelivery(Document):
         self._validate_group_submission()
 
     def on_submit(self):
+        self.materialize_roster()
+
+    def materialize_roster(self):
         if self.delivery_mode == "Assess" and self.grading_mode == "Criteria":
             self._ensure_rubric_snapshot()
 
         students = get_eligible_students(self.student_group)
-        bulk_create_outcomes(self, students, context=self._current_context())
+        outcomes_created = bulk_create_outcomes(self, students, context=self._current_context())
+        return {
+            "eligible_students": len(students),
+            "outcomes_created": outcomes_created,
+        }
 
     def on_cancel(self):
         if self._has_evidence():
@@ -243,7 +251,7 @@ class TaskDelivery(Document):
                     frappe.throw(_("Rubric Scoring Strategy is required for Criteria grading."))
 
     def _validate_group_submission(self):
-        if self.group_submission:
+        if is_checked(self.group_submission):
             frappe.throw(_("Group submission is paused: subgroup model not implemented."))
 
     def _get_task_criteria_rows(self):

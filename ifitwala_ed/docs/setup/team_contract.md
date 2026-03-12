@@ -73,7 +73,29 @@ Rules:
 5. `get_schedulable_academic_years` resolves academic years from the team school first, then school ancestors.
 6. `get_team_meeting_book` is the printable team meeting-book endpoint and requires `Team` read permission before meeting-level visibility is applied.
 
-## 4. Contract Matrix
+## 4. SPA Quick-Create Integration
+
+Status: Partial
+
+Code refs:
+- `ifitwala_ed/ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`
+- `ifitwala_ed/ui-spa/src/lib/services/calendar/eventQuickCreateService.ts`
+- `ifitwala_ed/api/calendar.py`
+- `ifitwala_ed/api/calendar_quick_create.py`
+
+Test refs:
+- `ifitwala_ed/api/test_calendar.py`
+
+Rules:
+
+1. `EventQuickCreateOverlay` supports a team scheduling mode via `meetingMode='team'`.
+2. In team mode, the selected team is part of the workflow contract and team attendees are hydrated from the named endpoint `get_meeting_team_attendees`.
+3. Team attendees loaded from team mode are locked by context inside the overlay because the meeting submit path also persists the `team` field server-side.
+4. Staff Home currently opens the overlay in `meetingMode='ad_hoc'`, not team mode.
+5. No SPA team-owned entry point is wired to open quick create in `meetingMode='team'` yet, so this integration remains partial even though the overlay contract exists.
+
+## 5. Contract Matrix
 
 Status: Implemented
 
@@ -86,21 +108,26 @@ Code refs:
 - `ifitwala_ed/setup/doctype/team_member/team_member.py`
 - `ifitwala_ed/setup/doctype/meeting/meeting.py`
 - `ifitwala_ed/setup/doctype/meeting_series/meeting_series.json`
+- `ifitwala_ed/ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`
+- `ifitwala_ed/ui-spa/src/lib/services/calendar/eventQuickCreateService.ts`
+- `ifitwala_ed/api/calendar.py`
+- `ifitwala_ed/api/calendar_quick_create.py`
 
 Test refs:
 - `ifitwala_ed/setup/doctype/team/test_team.py`
+- `ifitwala_ed/api/test_calendar.py`
 
 | Concern | Canonical owner | Code refs | Test refs |
 | --- | --- | --- | --- |
 | Schema / DocType | `Team`, `Team Member` | `setup/doctype/team/team.json`, `setup/doctype/team_member/team_member.json` | `setup/doctype/team/test_team.py` |
 | Controller / workflow logic | `Team` parent controller | `setup/doctype/team/team.py` | `setup/doctype/team/test_team.py` |
 | API endpoints | `get_children`, `add_node`, `get_eligible_users`, `get_schedulable_academic_years`, `schedule_recurring_meetings`, `get_team_meeting_book` | `setup/doctype/team/team.py`, `setup/doctype/meeting/meeting.py` | `setup/doctype/team/test_team.py` |
-| Desk / UI surfaces | Team form and Team tree | `setup/doctype/team/team.js`, `setup/doctype/team/team_tree.js` | `None` |
+| Desk / UI surfaces | Team form, Team tree, and team-aware quick-create contract | `setup/doctype/team/team.js`, `setup/doctype/team/team_tree.js`, `ui-spa/src/overlays/calendar/EventQuickCreateOverlay.vue`, `ui-spa/src/pages/staff/StaffHome.vue` | `ifitwala_ed/api/test_calendar.py` |
 | Reports / dashboards / briefings | Team meeting book only | `setup/doctype/meeting/meeting.py` | `None` |
 | Scheduler / background jobs | None | None | None |
-| Tests | Team tree contract regression coverage | `setup/doctype/team/test_team.py` | `setup/doctype/team/test_team.py` |
+| Tests | Team tree contract regression coverage plus calendar quick-create facade coverage | `setup/doctype/team/test_team.py`, `ifitwala_ed/api/test_calendar.py` | `setup/doctype/team/test_team.py`, `ifitwala_ed/api/test_calendar.py` |
 
-## 5. Technical Notes (IT)
+## 6. Technical Notes (IT)
 
 Status: Implemented
 

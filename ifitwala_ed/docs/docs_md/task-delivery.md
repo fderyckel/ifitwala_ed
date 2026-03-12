@@ -3,7 +3,7 @@ title: "Task Delivery: Turning a Task into a Real Teaching Event"
 slug: task-delivery
 category: Assessment
 doc_order: 5
-version: "1.1.0"
+version: "1.2.0"
 last_change_date: "2026-03-12"
 summary: "Assign a task to a specific student group with dates, grading mode, and evidence rules, then generate student outcomes at scale."
 seo_title: "Task Delivery: Turning a Task into a Real Teaching Event"
@@ -13,12 +13,12 @@ seo_description: "Assign a task to a specific student group with dates, grading 
 ## Task Delivery: Turning a Task into a Real Teaching Event
 
 Status: Partial
-Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`
-Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`)
+Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`, `ifitwala_ed/api/gradebook.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/api/test_gradebook.py`
 
 `Task Delivery` is where a reusable task becomes real for a specific student group, within a specific time window and grading/evidence policy.
 
-Current workspace note: the canonical lifecycle is submit-driven, but the live creation paths are split. `task_delivery.py` defines `on_submit()` behavior, `task_delivery_service.py` tries to use `doc.submit()`, and `task_creation_service.py` currently inserts a draft delivery without submitting it.
+Current workspace note: delivery launch is now submit-driven across both creation services, and gradebook exposes an explicit roster repair action for legacy deliveries that were created before this contract was restored.
 
 ## Before You Start (Prerequisites)
 
@@ -46,19 +46,19 @@ Test refs: None
 ## Lifecycle and Linked Documents
 
 Status: Partial
-Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`
-Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`)
+Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`, `ifitwala_ed/api/gradebook.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/api/test_gradebook.py`
 
 1. Create the delivery from a reusable `Task` plus target `Student Group`.
 2. Canonical contract: submit the delivery to generate student-level `Task Outcome` rows and, for criteria mode, a `Task Rubric Version`.
 3. Collect submissions and contributions under this delivery context during teaching and grading.
 4. Protect historical integrity by locking grading configuration once outcomes or evidence exist.
 
-Current workspace drift:
+Current workspace constraints:
 
-- `task_delivery.py` puts outcome generation and rubric snapshotting in `on_submit()`.
-- `task_delivery_service.py::create_delivery()` calls `doc.submit()` even though the current DocType schema is not marked `is_submittable`.
-- `task_creation_service.py::create_task_and_delivery()` inserts the delivery and returns immediately, which leaves deliveries without outcomes on that path.
+- `task_delivery.py` keeps outcome generation and rubric snapshotting behind delivery launch semantics.
+- `task_creation_service.py::create_task_and_delivery()` and `task_delivery_service.py::create_delivery()` both submit the delivery and then enforce roster materialization idempotently.
+- `api/gradebook.py::repair_task_roster()` exists to backfill outcomes for deliveries created before the launch contract was restored, and to catch up later roster additions safely.
 
 ## Related Docs
 
@@ -77,7 +77,7 @@ Test refs: None
 
 Status: Partial
 Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`
-Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`)
+Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/api/test_gradebook.py`
 
 ### Schema and Controller Snapshot
 
@@ -109,13 +109,14 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_delivery/te
 - `on_submit()` is the canonical place for:
   - criteria snapshot creation
   - bulk `Task Outcome` creation for eligible students
+- `materialize_roster()` is the idempotent parent-controller helper used by submit flows and the gradebook repair endpoint.
 - `on_cancel()` removes linked outcomes only when no evidence exists.
 
-### Current Drift To Preserve In Review
+### Current Constraints To Preserve In Review
 
-- The DocType schema currently lacks `is_submittable: 1`, so the submit-driven contract is not fully represented in metadata.
-- Not every creation path reaches `on_submit()`, which is the direct cause of draft deliveries with no generated outcomes.
-- Any code fix in this area must update:
+- `group_submission` remains intentionally blocked until the subgroup model exists.
+- Legacy deliveries created before the fixed launch path may still need `api/gradebook.py::repair_task_roster()` to generate their outcomes.
+- Any future change in delivery launch semantics must update:
   - this page
   - [**Task Outcome**](/docs/en/task-outcome/)
   - [**Task Rubric Version**](/docs/en/task-rubric-version/)

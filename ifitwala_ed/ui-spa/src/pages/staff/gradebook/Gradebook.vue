@@ -70,11 +70,15 @@
 
 				<div class="w-48 shrink-0">
 					<FormControl
-						type="text"
+						type="select"
 						size="md"
-						placeholder="Search group..."
-						:model-value="groupSearch"
-						@update:modelValue="value => (groupSearch = value)"
+						:options="groupPickerOptions"
+						option-label="label"
+						option-value="value"
+						:model-value="selectedGroup?.name || null"
+						:disabled="!groupPickerOptions.length"
+						placeholder="Select group"
+						@update:modelValue="onGroupSelectedFromToolbar"
 					/>
 				</div>
 
@@ -365,6 +369,9 @@
 					>
 						<p class="text-lg font-medium text-ink">No Students Assigned</p>
 						<p class="max-w-xs text-sm">This task has no students in the roster.</p>
+						<Button size="md" appearance="primary" :loading="rosterSyncing" @click="syncRoster">
+							Sync roster
+						</Button>
 					</div>
 
 					<div v-else class="space-y-6">
@@ -748,8 +755,6 @@ const filters = reactive({
 const defaultSchool = ref<string | null>(null);
 const schools = ref<FetchSchoolFilterContextResponse['schools']>([]);
 const schoolsLoading = ref(false);
-const groupSearch = ref('');
-let groupSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const groups = ref<GroupSummary[]>([]);
 const groupsLoading = ref(false);
@@ -759,6 +764,7 @@ const taskSummaries = ref<TaskSummary[]>([]);
 const tasksLoading = ref(false);
 const selectedTask = ref<TaskSummary | null>(null);
 const gradebookLoading = ref(false);
+const rosterSyncing = ref(false);
 
 const gradebook = reactive<{
 	task: TaskPayload | null;
@@ -787,7 +793,7 @@ const criteriaSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> =
 
 /* SERVICES ----------------------------------------------------- */
 
-function showDangerToast(title: string) {
+function showToast(title: string, appearance: 'danger' | 'success' | 'warning' = 'danger') {
 	const toastApi = toast as unknown as
 		| ((payload: { title: string; appearance?: string }) => void)
 		| {
@@ -795,16 +801,24 @@ function showDangerToast(title: string) {
 				create?: (payload: { title: string; appearance?: string }) => void;
 		  };
 	if (typeof toastApi === 'function') {
-		toastApi({ title, appearance: 'danger' });
+		toastApi({ title, appearance });
 		return;
 	}
-	if (toastApi && typeof toastApi.error === 'function') {
+	if (appearance === 'danger' && toastApi && typeof toastApi.error === 'function') {
 		toastApi.error(title);
 		return;
 	}
 	if (toastApi && typeof toastApi.create === 'function') {
-		toastApi.create({ title, appearance: 'danger' });
+		toastApi.create({ title, appearance });
 	}
+}
+
+function showDangerToast(title: string) {
+	showToast(title, 'danger');
+}
+
+function showSuccessToast(title: string) {
+	showToast(title, 'success');
 }
 
 function onSchoolsLoaded(data: FetchSchoolFilterContextResponse) {
@@ -834,27 +848,12 @@ async function loadSchoolContext() {
 }
 
 // 2. Groups Loader
-async function loadGroups(search?: string) {
+async function loadGroups() {
 	groupsLoading.value = true;
 	try {
-		// Note: We are fetching ALL relevant groups for the user/search, then filtering client-side.
-		// Use the existing API call without 'school' param because API clamps scope anyway?
-		// WAIT: We updated the backend to return 'school' field so we can filter client-side.
-		// Backend 'fetch_groups' returns groups safe for the user roles.
-		const payload: { search?: string; limit?: number } = {};
-		// We are NOT passing school filters to backend fetch_groups because existing method
-		// is primarily for the instructor portal list. We'll reuse it and filter client side
-		// to avoid rewriting backend search logic.
-		// However, passing search param is good.
-		if (search && search.trim()) {
-			payload.search = search.trim();
-		} else {
-			// If no search, maybe increase limit? or just rely on default.
-			// Let's pass a higer limit to get enough groups for filtering.
-			payload.limit = 100;
-		}
-
-		const rows = await gradebookService.fetchGroups(payload);
+		const rows = await gradebookService.fetchGroups({
+			school: filters.school,
+		});
 
 		// If currently selected group is not in list, add it (edge case)
 		if (
@@ -876,7 +875,7 @@ async function loadGroups(search?: string) {
 }
 
 function reloadGroups() {
-	void loadGroups(groupSearch.value);
+	void loadGroups();
 }
 
 // 3. Tasks Loader
@@ -916,6 +915,27 @@ async function loadGradebook(taskName: string) {
 	}
 }
 
+async function syncRoster() {
+	if (!selectedTask.value?.name) {
+		showToast('Select a task first.', 'warning');
+		return;
+	}
+
+	rosterSyncing.value = true;
+	try {
+		const payload = await gradebookService.repairTaskRoster({
+			task: selectedTask.value.name,
+		});
+		showSuccessToast(payload.message || 'Roster synced.');
+		await loadGradebook(selectedTask.value.name);
+	} catch (error) {
+		console.error('Failed to sync task roster', error);
+		showDangerToast('Could not sync the task roster');
+	} finally {
+		rosterSyncing.value = false;
+	}
+}
+
 /* COMPUTED - FILTER OPTIONS & DERIVED DATA ---------------------- */
 
 const schoolOptions = computed(() => {
@@ -948,15 +968,15 @@ const derivedGroups = computed(() => {
 	if (f.course) {
 		list = list.filter(g => g.course === f.course);
 	}
-	// 5. Search Filter (Client-side refinement on top of server search)
-	if (groupSearch.value.trim()) {
-		const q = groupSearch.value.toLowerCase().trim();
-		list = list.filter(
-			g => g.label?.toLowerCase().includes(q) || g.name?.toLowerCase().includes(q)
-		);
-	}
 	return list;
 });
+
+const groupPickerOptions = computed(() =>
+	derivedGroups.value.map(group => ({
+		label: group.label,
+		value: group.name,
+	}))
+);
 
 // Options derived from CURRENT visible groups (after school filter applied)
 // This ensures cascading logic: selecting a school reduces available years/programs.
@@ -1004,13 +1024,7 @@ const courseOptions = computed(() => {
 });
 
 const hasActiveFilters = computed(() => {
-	return !!(
-		filters.school ||
-		filters.academic_year ||
-		filters.program ||
-		filters.course ||
-		groupSearch.value
-	);
+	return !!(filters.school || filters.academic_year || filters.program || filters.course);
 });
 
 /* TASK FILTERING ------------------------------------------------ */
@@ -1054,6 +1068,7 @@ function onSchoolSelected(val: string | null) {
 	filters.academic_year = null;
 	filters.program = null;
 	filters.course = null;
+	void loadGroups();
 }
 
 function onYearSelected(val: string | null) {
@@ -1071,12 +1086,27 @@ function onCourseSelected(val: string | null) {
 	filters.course = val;
 }
 
+function onGroupSelectedFromToolbar(groupName: string | null) {
+	if (!groupName) {
+		selectGroup(null);
+		return;
+	}
+
+	const match = derivedGroups.value.find(group => group.name === groupName);
+	if (!match) {
+		showDangerToast('Selected group is no longer available.');
+		return;
+	}
+
+	selectGroup(match);
+}
+
 function resetFilters() {
 	filters.school = defaultSchool.value;
 	filters.academic_year = null;
 	filters.program = null;
 	filters.course = null;
-	groupSearch.value = '';
+	void loadGroups();
 }
 
 // Downstream Clearing Logic
@@ -1293,19 +1323,6 @@ function scheduleCriteriaSave(taskStudent: string) {
 }
 
 watch(
-	() => groupSearch.value,
-	value => {
-		if (groupSearchTimer) {
-			clearTimeout(groupSearchTimer);
-		}
-		groupSearchTimer = setTimeout(() => {
-			groupSearchTimer = null;
-			void loadGroups(value);
-		}, 400);
-	}
-);
-
-watch(
 	() => route.query.student_group,
 	() => {
 		pendingRouteGroup.value = currentRouteStudentGroup();
@@ -1352,10 +1369,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	clearAllAutosaveTimers();
-	if (groupSearchTimer) {
-		clearTimeout(groupSearchTimer);
-		groupSearchTimer = null;
-	}
 });
 
 function initializeStudentStates() {

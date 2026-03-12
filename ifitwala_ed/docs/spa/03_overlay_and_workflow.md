@@ -337,6 +337,10 @@ Must:
 * close immediately on Meeting/School Event semantic success
 * delegate API orchestration to a calendar UI service
 * rely on service-driven `calendar:invalidate` and a calendar refresh owner subscription
+* support explicit meeting entry modes:
+  * `meetingMode='ad_hoc'` for attendee-first scheduling from generic quick actions
+  * `meetingMode='team'` for team-owned entry points where the team attendee set is locked by context
+* treat attendee search, common-time ranking, and room suggestions as server-owned workflows backed by named endpoints rather than client-side fan-out calls
 
 **StudentLogFollowUpOverlay (must align)**
 Must:

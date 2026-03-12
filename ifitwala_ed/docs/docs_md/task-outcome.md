@@ -3,7 +3,7 @@ title: "Task Outcome: The Official Student-Level Assessment Record"
 slug: task-outcome
 category: Assessment
 doc_order: 7
-version: "1.1.0"
+version: "1.2.0"
 last_change_date: "2026-03-12"
 summary: "Maintain one authoritative outcome per student per delivery, with official scores, criterion truth, statuses, and publication controls."
 seo_title: "Task Outcome: The Official Student-Level Assessment Record"
@@ -18,7 +18,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
 
 `Task Outcome` is the institutional truth row for a student on a specific delivery. Submissions and contributions can evolve over time, but official grading and publication state live here.
 
-Current workspace note: the outcome model itself is implemented, but generation is only as reliable as the delivery path that actually reaches delivery submission semantics.
+Current workspace note: the outcome model itself is implemented, and the delivery launch path now submits and materializes outcomes consistently. Legacy deliveries created before that fix can be repaired from gradebook.
 
 ## Before You Start (Prerequisites)
 
@@ -48,18 +48,18 @@ Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
 
 Status: Partial
 Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_delivery_service.py`, `ifitwala_ed/assessment/task_outcome_service.py`, `ifitwala_ed/api/gradebook.py`
-Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`, `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/api/test_gradebook.py`
 
 1. Generate outcomes from a launched delivery, one row per `Task Delivery x Student`.
 2. Accept submissions and contributions over time while preserving auditability.
 3. Recompute official truth from contribution services, not from client-side gradebook math.
 4. Publish and unpublish outcomes as a controlled visibility action.
 
-Current workspace drift:
+Current workspace constraints:
 
-- Outcomes are supposed to appear when the parent delivery is launched.
-- The current overlay creation path can leave draft deliveries with no generated outcomes.
-- When that happens, gradebook shows an empty roster because it correctly reads `Task Outcome` rows only.
+- Outcomes are created from delivery launch semantics, not from client-side gradebook synthesis.
+- Gradebook still reads `Task Outcome` rows only; when older deliveries are missing rows, `api/gradebook.py::repair_task_roster()` is the canonical repair action.
+- `bulk_create_outcomes()` remains idempotent, so launch and repair paths can safely backfill only missing students.
 
 ## Related Docs
 
@@ -104,8 +104,8 @@ Test refs: `ifitwala_ed/assessment/doctype/task_outcome/test_task_outcome.py`
 - `task_outcome_service.py` is the canonical official-truth recompute layer.
 - `api/gradebook.py` and reporting readers consume outcome truth and outcome criterion truth rather than computing totals client-side.
 
-### Current Drift To Preserve In Review
+### Current Constraints To Preserve In Review
 
-- The outcome table is canonical, but delivery launch drift can prevent rows from being created.
-- That generation gap must be fixed at the delivery layer, not by teaching gradebook to invent roster rows client-side.
+- The outcome table remains canonical; gradebook must not invent roster rows client-side.
+- Legacy deliveries without outcomes must be fixed at the delivery layer through the named repair endpoint, not by relaxing the fact-table rule.
 - Any implementation change here must keep the outcome fact-table rule intact: correctness belongs on the server.

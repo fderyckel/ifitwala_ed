@@ -3,6 +3,10 @@
 export type Request = {
 	search?: string | null
 	limit?: number | null
+	school?: string | null
+	academic_year?: string | null
+	program?: string | null
+	course?: string | null
 }
 
 export type GroupSummary = {
