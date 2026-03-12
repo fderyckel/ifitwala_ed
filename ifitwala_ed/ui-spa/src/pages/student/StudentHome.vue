@@ -11,20 +11,42 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<RouterLink :to="{ name: 'student-activities' }" class="if-action"
-						>Book Activities</RouterLink
-					>
-					<button
-						type="button"
-						class="if-action"
-						:disabled="loadingCourses"
-						@click="courseResource.reload()"
-					>
+					<RouterLink :to="{ name: 'student-activities' }" class="if-action">
+						Book Activities
+					</RouterLink>
+					<button type="button" class="if-action" :disabled="loadingHome" @click="loadHome">
 						Refresh
 					</button>
 				</div>
 			</div>
 		</header>
+
+		<section class="card-surface p-5">
+			<div class="mb-3 flex items-center justify-between">
+				<h2 class="type-h3 text-ink">Next Learning Step</h2>
+				<RouterLink :to="{ name: 'student-courses' }" class="if-action">My Courses</RouterLink>
+			</div>
+
+			<div v-if="loadingHome" class="type-body text-ink/70">Loading next step...</div>
+			<div v-else-if="homeError" class="rounded-lg border border-line-soft bg-surface-soft p-3">
+				<p class="type-body-strong text-flame">Could not load your Hub.</p>
+				<p class="type-caption text-ink/70">{{ homeError }}</p>
+			</div>
+			<RouterLink
+				v-else-if="nextLearningStep"
+				:to="nextLearningStep.href"
+				class="block rounded-xl border border-line-soft bg-surface-soft p-4 transition hover:shadow-soft"
+			>
+				<p class="type-overline text-ink/60">
+					{{ nextLearningStep.kind === 'scheduled_class' ? 'Scheduled Class' : 'Course' }}
+				</p>
+				<p class="mt-1 type-body-strong text-ink">{{ nextLearningStep.title }}</p>
+				<p class="mt-1 type-caption text-ink/70">{{ nextLearningStep.subtitle }}</p>
+			</RouterLink>
+			<div v-else class="rounded-lg border border-line-soft bg-surface-soft p-3">
+				<p class="type-body text-ink/70">No learning step is available yet.</p>
+			</div>
+		</section>
 
 		<section class="card-surface p-5">
 			<div class="mb-3 flex items-center justify-between">
@@ -34,10 +56,10 @@
 
 			<p v-if="daySummary" class="mb-3 type-caption text-ink/70">{{ daySummary }}</p>
 
-			<div v-if="loadingCourses" class="type-body text-ink/70">Loading today’s classes...</div>
-			<div v-else-if="courseError" class="rounded-lg border border-line-soft bg-surface-soft p-3">
+			<div v-if="loadingHome" class="type-body text-ink/70">Loading today’s classes...</div>
+			<div v-else-if="homeError" class="rounded-lg border border-line-soft bg-surface-soft p-3">
 				<p class="type-body-strong text-flame">Could not load classes.</p>
-				<p class="type-caption text-ink/70">{{ courseErrorMessage }}</p>
+				<p class="type-caption text-ink/70">{{ homeError }}</p>
 			</div>
 			<div
 				v-else-if="!todayCourses.length"
@@ -115,76 +137,69 @@
 	</div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { FeatherIcon, createResource } from 'frappe-ui';
+import { FeatherIcon } from 'frappe-ui';
 
 import StudentCalendar from '@/components/calendar/StudentCalendar.vue';
-import { getStudentPortalIdentity } from '@/lib/services/student/studentHomeService';
+import { getStudentHubHome } from '@/lib/services/student/studentLearningHubService';
+import type {
+	NextLearningStep,
+	Response as StudentHubHomeResponse,
+	TodayClass,
+} from '@/types/contracts/student_hub/get_student_hub_home';
 
 const sessionUser = computed(() => window.frappe?.session?.user_info || { fullname: 'Student' });
-const studentIdentity = ref(null);
+
+const homePayload = ref<StudentHubHomeResponse | null>(null);
+const loadingHome = ref(false);
+const homeError = ref('');
 
 const greetingName = computed(() => {
-	const fromStudent = (studentIdentity.value?.display_name || '').trim();
-	if (fromStudent) return fromStudent;
+	const fromHub = (homePayload.value?.identity?.display_name || '').trim();
+	if (fromHub) return fromHub;
 
-	const fallbackFull = (sessionUser.value?.fullname || '').trim();
+	const fallbackFull = String(sessionUser.value?.fullname || '').trim();
 	if (fallbackFull) return fallbackFull.split(' ')[0] || 'Student';
 
 	return 'Student';
 });
 
-async function loadStudentIdentity() {
+const todayCourses = computed<TodayClass[]>(
+	() => homePayload.value?.learning?.today_classes ?? []
+);
+const nextLearningStep = computed<NextLearningStep | null>(
+	() => homePayload.value?.learning?.next_learning_step ?? null
+);
+const daySummary = computed(() => {
+	const date = homePayload.value?.meta?.date ?? null;
+	const weekday = homePayload.value?.meta?.weekday ?? null;
+	if (date && weekday) return `${weekday}, ${date}`;
+	return weekday || date || '';
+});
+
+async function loadHome() {
+	loadingHome.value = true;
+	homeError.value = '';
 	try {
-		studentIdentity.value = await getStudentPortalIdentity();
-	} catch {
-		studentIdentity.value = null;
+		homePayload.value = await getStudentHubHome();
+	} catch (error: unknown) {
+		homePayload.value = null;
+		if (error instanceof Error && error.message) {
+			homeError.value = error.message;
+		} else if (typeof error === 'string' && error) {
+			homeError.value = error;
+		} else {
+			homeError.value = 'Unable to load your learning Hub.';
+		}
+	} finally {
+		loadingHome.value = false;
 	}
 }
 
 onMounted(() => {
-	loadStudentIdentity();
-});
-
-const courseResource = createResource({
-	url: 'ifitwala_ed.api.course_schedule.get_today_courses',
-	method: 'POST',
-	auto: true,
-	transform: data => {
-		const payload = data && typeof data === 'object' && 'message' in data ? data.message : data;
-		return {
-			courses: Array.isArray(payload?.courses) ? payload.courses : [],
-			date: payload?.date ?? null,
-			weekday: payload?.weekday ?? null,
-		};
-	},
-});
-
-const loadingCourses = computed(() => courseResource.loading);
-const courseError = computed(() => courseResource.error);
-const courseErrorMessage = computed(() => {
-	const err = courseError.value;
-	if (!err) return '';
-	if (typeof err === 'string') return err;
-	if (err instanceof Error) return err.message || "Unable to load today's courses.";
-	if (err && typeof err === 'object' && 'message' in err) {
-		const message = typeof err.message === 'string' ? err.message : '';
-		return message || "Unable to load today's courses.";
-	}
-	return "Unable to load today's courses.";
-});
-
-const todayCourses = computed(() => courseResource.data?.courses ?? []);
-const scheduleMeta = computed(() => ({
-	date: courseResource.data?.date ?? null,
-	weekday: courseResource.data?.weekday ?? null,
-}));
-const daySummary = computed(() => {
-	const { date, weekday } = scheduleMeta.value;
-	if (date && weekday) return `${weekday}, ${date}`;
-	return weekday || date || '';
+	loadHome();
 });
 
 const quickLinks = [
@@ -208,7 +223,7 @@ const quickLinks = [
 	},
 	{
 		title: 'Student Log',
-		description: 'Review socio-emotional notes.',
+		description: 'View notes shared with you.',
 		icon: 'file-text',
 		to: { name: 'student-logs' },
 	},

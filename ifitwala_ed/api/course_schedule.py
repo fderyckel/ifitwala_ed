@@ -320,34 +320,34 @@ def get_today_courses() -> dict:
         first_slot = slots[0]
         sort_minutes = _time_to_minutes(first_slot.from_time) or 24 * 60
 
-    courses_payload.append(
-        {
-            "course": row.course,
-            "course_name": row.course_name or row.student_group_name or row.course,
-            "student_group": name,
-            "student_group_name": row.student_group_name,
-            "rotation_day": int(row.rotation_day),
-            "instructors": unique_instructors,
-            "time_slots": [
-                {
-                    "block_number": slot.block_number,
-                    "from_time": slot.from_time,
-                    "to_time": slot.to_time,
-                    "time_range": slot.time_range,
-                    "location": slot.location,
-                    "instructor": slot.instructor,
-                }
-                for slot in slots
-            ],
-            "course_group": row.course_group,
-            "course_image": _safe_image(row.course_image),
-            "href": {
-                "name": "student-course-detail",
-                "params": {"course_id": row.course},
-            },
-            "_sort_minutes": sort_minutes,
-        }
-    )
+        courses_payload.append(
+            {
+                "course": row.course,
+                "course_name": row.course_name or row.student_group_name or row.course,
+                "student_group": name,
+                "student_group_name": row.student_group_name,
+                "rotation_day": int(row.rotation_day),
+                "instructors": unique_instructors,
+                "time_slots": [
+                    {
+                        "block_number": slot.block_number,
+                        "from_time": slot.from_time,
+                        "to_time": slot.to_time,
+                        "time_range": slot.time_range,
+                        "location": slot.location,
+                        "instructor": slot.instructor,
+                    }
+                    for slot in slots
+                ],
+                "course_group": row.course_group,
+                "course_image": _safe_image(row.course_image),
+                "href": {
+                    "name": "student-course-detail",
+                    "params": {"course_id": row.course},
+                },
+                "_sort_minutes": sort_minutes,
+            }
+        )
 
     courses_payload.sort(
         key=lambda item: (

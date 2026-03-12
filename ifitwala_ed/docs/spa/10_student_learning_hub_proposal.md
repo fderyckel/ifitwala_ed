@@ -8,6 +8,8 @@ This proposal defines how the Student Hub at `/hub/student` should surface `Lear
 
 It is intentionally a proposal, not a locked contract. No canonical runtime behavior is changed by this document.
 
+Implementation sequencing for this proposal lives in `ifitwala_ed/docs/spa/11_student_learning_hub_implementation_plan.md`.
+
 ## Goal and Product Thesis
 
 Status: Proposed
@@ -20,7 +22,7 @@ The current Student Hub already has the right shell shape:
 - `/student/courses` for course discovery
 - `/student/courses/:course_id` for course detail
 
-What is missing is the actual learning surface.
+What is still missing is the full interactive learning surface.
 
 The proposal is to make `/hub/student` a dual-surface product:
 
@@ -183,7 +185,7 @@ The course-space language should stay `My Courses`, not `My Learning`.
 
 ### 5. Course Detail becomes the real LMS surface
 
-The current `CourseDetail.vue` stub should become the main learning space for a course.
+The current Phase 1 `CourseDetail.vue` outline should evolve into the main learning space for a course.
 
 The page should have four vertically ordered bands:
 
@@ -462,14 +464,14 @@ Test refs: None
 
 Status: Proposed
 Code refs: `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/Courses.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/api/course_schedule.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`
-Test refs: None
+Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`
 
 | Concern | Current state | Proposed direction | Gap to close |
 |---|---|---|---|
-| SPA routes | `/student`, `/student/courses`, `/student/courses/:course_id` already exist | Keep routes stable and upgrade meaning of existing pages | Course detail is still a stub |
-| Home payload | Student home currently shows schedule, calendar, quick links | Upgrade to a `Today` cockpit with a top orientation strip, a compact `My Work Board`, and a dated learning timeline | Needs one aggregated student-learning home payload |
+| SPA routes | `/student`, `/student/courses`, `/student/courses/:course_id` exist and course detail now accepts optional deep-link query anchors for `learning_unit`, `lesson`, and `lesson_instance` | Keep routes stable and upgrade meaning of existing pages | Need more producers of deep-link context from learning entry points |
+| Home payload | Student home now uses one aggregated Hub payload for identity, today's classes, and a next-learning-step card | Upgrade to a `Today` cockpit with a top orientation strip, a compact `My Work Board`, and a dated learning timeline | Needs board and dated learning timeline layers |
 | Planning board | No student planning board exists | Add a compact kanban-style planning layer with student-managed `Now` and system-curated `Soon/Later/Done` support | Needs a student-side planning state model that does not overwrite canonical task status |
-| Course payload | Courses list exists and course detail is placeholder | Upgrade course detail into the LMS learning surface | Needs aggregated unit/lesson/activity/task payload per course |
+| Course payload | Course detail now has one aggregated payload with course metadata, curriculum outline, linked tasks, and deep-link resolution | Upgrade course detail into the LMS learning surface | Needs richer lesson rendering, progress state, and execution affordances |
 | Curriculum model | `Learning Unit`, `Lesson`, `Lesson Activity` exist; task stack exists | Surface native curriculum model to students | Needs visibility/progress contract |
 | Task model | `Task` and `Task Delivery` exist with dated delivery context | Embed tasks in board, timeline, and lesson context; deep-link `Now` into pedagogical context | Needs student-facing join logic without duplicating workflow |
 | Portfolio / reflection | Portfolio and reflection surfaces already exist, but mostly as a separate destination | Pull reflection and portfolio prompts into the learning loop | Needs in-flow integration without pretending the current lesson schema already contains a reflection block type |
@@ -478,7 +480,7 @@ Test refs: None
 | Retrieval checkpoints | Lessons can propose reading checks or quizzes, but Task Delivery is heavy | Use lightweight checkpoint state for micro-retrieval | Needs a separate checkpoint contract outside formal gradebook truth |
 | Lesson runtime context | `Lesson Instance` exists but is lightly used | Use when available to show "what happened in class" context | Must remain optional |
 | Interoperability | No student-facing cmi5/SCORM layer is present | Build cmi5-first external content compatibility | Needs separate integration architecture and launch/runtime tracking |
-| Tests | No student-learning Hub test contract exists for this proposal | Add contract tests before implementation | Needs endpoint and route tests once approved |
+| Tests | Backend contract tests now exist for Home and course-detail payload logic, and SPA service tests exist for canonical method usage | Add contract tests before implementation | Needs component-level route/render tests once node tooling is available in the workspace |
 
 ## Technical Notes (IT)
 
