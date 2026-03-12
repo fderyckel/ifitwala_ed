@@ -14,6 +14,7 @@ concurrency:
 env:
   PYTHON_VERSION: "3.14"
   NODE_VERSION: "24.x"
+  NODE_OPTIONS: "--disable-warning=DEP0169"
 
 jobs:
   backend-full:

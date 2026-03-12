@@ -14,7 +14,7 @@
   "scripts": {
     "build": "yarn build:desk && yarn build:spa",
     "build:desk": "NODE_ENV=production rollup -c",
-    "build:spa": "yarn --cwd ifitwala_ed/ui-spa install --frozen-lockfile --check-files && yarn --cwd ifitwala_ed/ui-spa build",
+    "build:spa": "NODE_OPTIONS=--disable-warning=DEP0169 yarn --cwd ifitwala_ed/ui-spa install --frozen-lockfile --check-files && NODE_OPTIONS=--disable-warning=DEP0169 yarn --cwd ifitwala_ed/ui-spa build",
     "type-check:spa": "yarn --cwd ifitwala_ed/ui-spa type-check",
     "bench-build": "bench build",
     "hierarchy": "rollup -c --watch --configPlugin rollup-plugin-postcss --environment WATCH_HIERARCHY"
