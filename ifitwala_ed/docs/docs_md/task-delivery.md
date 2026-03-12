@@ -3,7 +3,7 @@ title: "Task Delivery: Turning a Task into a Real Teaching Event"
 slug: task-delivery
 category: Assessment
 doc_order: 5
-version: "1.2.0"
+version: "1.3.0"
 last_change_date: "2026-03-12"
 summary: "Assign a task to a specific student group with dates, grading mode, and evidence rules, then generate student outcomes at scale."
 seo_title: "Task Delivery: Turning a Task into a Real Teaching Event"
@@ -59,6 +59,7 @@ Current workspace constraints:
 - `task_delivery.py` keeps outcome generation and rubric snapshotting behind delivery launch semantics.
 - `task_creation_service.py::create_task_and_delivery()` and `task_delivery_service.py::create_delivery()` both submit the delivery and then enforce roster materialization idempotently.
 - `api/gradebook.py::repair_task_roster()` exists to backfill outcomes for deliveries created before the launch contract was restored, and to catch up later roster additions safely.
+- The current schema exposes `lesson_instance` only. It does not expose `lesson` or `lesson_activity` fields on `Task Delivery`.
 
 ## Related Docs
 
@@ -67,6 +68,7 @@ Code refs: None (documentation cross-reference section)
 Test refs: None
 
 - [**Task**](/docs/en/task/)
+- [**Lesson Instance**](/docs/en/lesson-instance/)
 - [**Task Outcome**](/docs/en/task-outcome/)
 - [**Task Submission**](/docs/en/task-submission/)
 - [**Task Contribution**](/docs/en/task-contribution/)
@@ -104,19 +106,22 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 
 ### Current Contract
 
-- `before_validate()` stamps denormalized context from `Student Group`, checks task/course alignment, and optionally resolves lesson instance context.
+- `before_validate()` stamps denormalized context from `Student Group`, checks task/course alignment, and preserves or accepts optional `lesson_instance` context.
 - `validate()` enforces delivery-mode coherence, date rules, criteria requirements, and the current hard block on `group_submission`.
 - `on_submit()` is the canonical place for:
   - criteria snapshot creation
   - bulk `Task Outcome` creation for eligible students
 - `materialize_roster()` is the idempotent parent-controller helper used by submit flows and the gradebook repair endpoint.
 - `on_cancel()` removes linked outcomes only when no evidence exists.
+- `assessment/task_delivery_service.py::resolve_or_create_lesson_instance()` can create or reuse lesson instances when explicit lesson/activity context exists, but the current `Task Delivery` schema and delivery APIs expose only `lesson_instance`.
 
 ### Current Constraints To Preserve In Review
 
 - `group_submission` remains intentionally blocked until the subgroup model exists.
 - Legacy deliveries created before the fixed launch path may still need `api/gradebook.py::repair_task_roster()` to generate their outcomes.
+- Current delivery payloads link to taught curriculum through `lesson_instance` only.
 - Any future change in delivery launch semantics must update:
   - this page
+  - [**Lesson Instance**](/docs/en/lesson-instance/)
   - [**Task Outcome**](/docs/en/task-outcome/)
   - [**Task Rubric Version**](/docs/en/task-rubric-version/)

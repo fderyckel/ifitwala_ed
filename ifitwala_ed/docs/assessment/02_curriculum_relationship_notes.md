@@ -1,7 +1,10 @@
-Curriculum ↔ Tasks (for humans + coding agents)
+Curriculum ↔ Tasks (historical note)
 
-This is the “truth document” of the system. Read this as doctrine.
-Last updated: 2026-01-07
+Status: Deprecated on 2026-03-12
+Replacement: `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`
+Last updated: 2026-03-12
+
+This note is retained for historical context only. The canonical current-workspace contract now lives in the replacement document above.
 
 Curriculum in Ifitwala_ed: first principles
 
