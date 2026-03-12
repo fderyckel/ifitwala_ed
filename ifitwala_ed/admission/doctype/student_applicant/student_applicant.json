@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "APPL-.YYYY.-.MM.-###",
+ "autoname": "APPL-.YYYY.-.MM.-.###",
  "creation": "2024-12-06 15:44:29.050774",
  "default_view": "List",
  "description": "Track each applicant document type, review status, and promotion relevance with strict immutability and governed file handling.",
@@ -366,7 +366,7 @@
  "image_field": "applicant_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-10 20:33:31.053409",
+ "modified": "2026-03-11 20:48:08.492567",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",
