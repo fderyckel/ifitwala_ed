@@ -660,6 +660,18 @@ For any feature expected to serve staff, students, or guardians at scale, agents
   * `ifitwala_ed/docs/high_concurrency_03.md`
   and agents MUST follow the most concurrency-safe option that fits the current contract.
 
+### 18.12 Import-Path Contract Safety For Bootstrap Modules (Non-Negotiable)
+
+For modules loaded by hooks, login/bootstrap flows, website routing, or other early request entrypoints:
+
+* Exported names and import paths are part of the runtime contract, not private cleanup details.
+* When moving a shared constant, helper, or predicate to a new module, agents MUST do one of the following in the same change:
+  * update every downstream import in the repository, or
+  * preserve the old import path with an explicit compatibility re-export until all callers are migrated.
+* A compatibility re-export used to preserve an existing import contract is allowed here and is NOT treated as a forbidden legacy workflow shim under §2.2.
+* Refactors touching these modules MUST include a regression check that exercises the affected hook-loaded or bootstrap-loaded import path so import-time failures are caught before runtime.
+* Lint cleanup MUST NOT remove deliberate compatibility re-exports; make them explicit and document why they exist.
+
 ---
 
 ## 19. Contract Matrix & Drift Prevention (Non-Negotiable)

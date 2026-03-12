@@ -6,8 +6,14 @@ from urllib.parse import quote
 
 import frappe
 
-from ifitwala_ed.admission.access import ADMISSIONS_PORTAL_ROLES, has_open_admissions_portal_access
+from ifitwala_ed.admission.access import ADMISSIONS_APPLICANT_ROLE as _ADMISSIONS_APPLICANT_ROLE
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_PORTAL_ROLES,
+    has_open_admissions_portal_access,
+)
 
+# Backwards-compatible export for existing routing/auth imports.
+ADMISSIONS_APPLICANT_ROLE = _ADMISSIONS_APPLICANT_ROLE
 CANONICAL_PORTAL_PREFIX = "/hub"
 
 PORTAL_SECTION_PRIORITY = ("staff", "student", "guardian")
