@@ -21,7 +21,8 @@ Rules:
 2. The canonical Desk roles with read/write/create access on `Contact` are `Academic Admin`, `Academic Assistant`, `Assistant Admin`, `Accounts User`, `Accounts Manager`, `Admission Officer`, and `Admission Manager`.
 3. Manager-level roles keep delete access on `Contact`: `Academic Admin`, `Academic Assistant`, `Assistant Admin`, `Accounts Manager`, and `Admission Manager`.
 4. Non-manager editor roles keep no delete access on `Contact`: `Accounts User` and `Admission Officer`.
-5. App-level Contact permission hooks must not narrow list visibility beyond the seeded DocPerm contract.
+5. The permission seed must create any missing canonical roles before inserting `Custom DocPerm` rows, so migrate/setup never fails on a missing role record.
+6. App-level Contact permission hooks must not narrow list visibility beyond the seeded DocPerm contract.
 
 ## 2. Runtime Enforcement
 
@@ -40,8 +41,9 @@ Rules:
 
 1. Fresh installs seed the canonical `Contact` permissions through `grant_core_crm_permissions()` during `after_install`.
 2. Existing sites are brought to the same contract by the post-model-sync patch `p04_refresh_core_crm_permissions`.
-3. Contact document-level permission checks defer to Frappe core once the seeded DocPerm rows exist.
-4. Contact list visibility is not further constrained by app-specific query conditions.
+3. `grant_core_crm_permissions()` first ensures canonical roles exist, then seeds the `Custom DocPerm` rows.
+4. Contact document-level permission checks defer to Frappe core once the seeded DocPerm rows exist.
+5. Contact list visibility is not further constrained by app-specific query conditions.
 
 ## 3. Contract Matrix
 

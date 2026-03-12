@@ -427,6 +427,18 @@ def grant_core_crm_permissions():
         },
     }
 
+    required_roles = sorted(
+        {
+            role
+            for role_permissions in doctype_role_permissions.values()
+            for role in role_permissions
+            if (role or "").strip()
+        }
+    )
+    for role_name in required_roles:
+        if not frappe.db.exists("Role", role_name):
+            frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+
     for doctype, role_permissions in doctype_role_permissions.items():
         for role, perms in role_permissions.items():
             existing = frappe.get_all("Custom DocPerm", filters={"parent": doctype, "role": role, "permlevel": 0})
