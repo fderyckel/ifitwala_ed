@@ -3,7 +3,7 @@
  "allow_rename": 1,
  "autoname": "INTERVIEW-.YY.-.MM.-.###",
  "creation": "2026-02-01 00:00:00",
- "description": "Record interview evidence, participants, and outcomes with audit trail comments pushed to the Student Applicant timeline.",
+ "description": "Record interview event context, participants, and operational notes with audit trail comments pushed to the Student Applicant timeline.",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -16,7 +16,6 @@
   "confidentiality_level",
   "interviewers",
   "column_break_y3fd",
-  "outcome_impression",
   "notes",
   "school_event"
  ],
@@ -79,17 +78,10 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "outcome_impression",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Outcome Impression",
-   "options": "Positive\nNeutral\nConcern\nStrong Fit\nStrong Family Alignment\nLegacy Priority\nWaitlist Candidate\nConditional Fit\nCulture Match Only\nRecommend for Secondary Interview"
-  },
-  {
+   "description": "Operational/preparation context only. Do not use for interviewer feedback.",
    "fieldname": "notes",
    "fieldtype": "Text Editor",
-   "label": "Notes"
+   "label": "Operational Notes"
   },
   {
    "fieldname": "school_event",
@@ -102,7 +94,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-12 07:52:53.484880",
+ "modified": "2026-03-12 08:38:19.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Interview",
@@ -163,32 +155,23 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Employee",
-   "write": 1
+   "role": "Employee"
   },
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Curriculum Coordinator",
-   "share": 1,
-   "write": 1
+   "role": "Curriculum Coordinator"
   },
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Counsellor",
-   "share": 1,
-   "write": 1
+   "role": "Counsellor"
   }
  ],
  "row_format": "Dynamic",

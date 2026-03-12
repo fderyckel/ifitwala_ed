@@ -81,10 +81,11 @@
 			<div class="mt-2 space-y-2 type-meta text-muted">
 				<div v-if="assignment.target_type === 'Applicant Document Item'">
 					<div>
-						Document: {{ assignment.preview.document_label || assignment.preview.document_type }}
+						Requirement:
+						{{ assignment.preview.document_label || assignment.preview.document_type }}
 					</div>
 					<div v-if="assignment.preview.item_label">
-						Item: {{ assignment.preview.item_label || assignment.preview.item_key }}
+						Submission: {{ assignment.preview.item_label || assignment.preview.item_key }}
 					</div>
 					<div>Current status: {{ assignment.preview.review_status || 'Pending' }}</div>
 					<div v-if="assignment.preview.file_url">

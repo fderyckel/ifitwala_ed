@@ -169,7 +169,7 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
         return
     frappe.throw(
         _(
-            "Admissions files must be attached to Applicant Document (only applicant_image is allowed on Student Applicant)."
+            "Admissions files must use the governed evidence upload so they attach to the submitted-file record (only applicant_image is allowed on Student Applicant)."
         )
     )
 

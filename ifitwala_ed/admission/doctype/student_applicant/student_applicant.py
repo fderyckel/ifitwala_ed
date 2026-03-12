@@ -19,16 +19,14 @@ from ifitwala_ed.admission.admission_utils import (
     ensure_contact_dynamic_link,
     ensure_contact_for_email,
     get_applicant_document_slot_spec,
-    get_applicant_scope_ancestors,
     get_contact_primary_email,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
-    is_applicant_document_type_in_scope,
     normalize_email_value,
     sync_student_applicant_contact_binding,
 )
+from ifitwala_ed.admission.applicant_document_readiness import build_document_review_payload_for_applicant
 from ifitwala_ed.admission.applicant_review_workflow import apply_review_decision
-from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
@@ -420,7 +418,7 @@ class StudentApplicant(Document):
         if invalid:
             frappe.throw(
                 _(
-                    "Only applicant_image can be attached directly to Student Applicant. Use Applicant Document for all other files."
+                    "Only applicant_image can be attached directly to Student Applicant. Use the governed admissions evidence upload so files attach to the submitted-file record."
                 )
             )
 
@@ -1742,339 +1740,11 @@ class StudentApplicant(Document):
         return {"ok": not missing, "missing": missing, "required": required, "rows": policy_rows}
 
     def has_required_documents(self):
-        if not self.organization:
-            return {
-                "ok": False,
-                "missing": [],
-                "unapproved": [],
-                "required": [],
-                "required_rows": [],
-                "uploaded_rows": [],
-            }
-
-        type_rows = frappe.get_all(
-            "Applicant Document Type",
-            filters={"is_active": 1},
-            fields=[
-                "name",
-                "code",
-                "document_type_name",
-                "is_required",
-                "is_repeatable",
-                "min_items_required",
-                "organization",
-                "school",
-            ],
-        )
-        applicant_org_ancestors, applicant_school_ancestors = get_applicant_scope_ancestors(
+        return build_document_review_payload_for_applicant(
+            student_applicant=self.name,
             organization=self.organization,
             school=self.school,
         )
-        applicant_org_ancestors = set(applicant_org_ancestors)
-        applicant_school_ancestors = set(applicant_school_ancestors)
-        in_scope_types = [
-            row
-            for row in type_rows
-            if is_applicant_document_type_in_scope(
-                document_type_organization=row.get("organization"),
-                document_type_school=row.get("school"),
-                applicant_org_ancestors=applicant_org_ancestors,
-                applicant_school_ancestors=applicant_school_ancestors,
-            )
-        ]
-        required_types = [row for row in in_scope_types if row.get("is_required")]
-        type_map = {row.get("name"): row for row in in_scope_types if row.get("name")}
-
-        required_names = {
-            row["name"]: (row["code"] or row["document_type_name"] or row["name"]) for row in required_types
-        }
-        required_counts = {}
-        for row in required_types:
-            min_items_required = cint(row.get("min_items_required") or 1)
-            if not cint(row.get("is_repeatable")):
-                min_items_required = 1
-            required_counts[row["name"]] = max(1, min_items_required)
-
-        def _build_file_open_url(file_row: dict | None) -> str | None:
-            if not file_row:
-                return None
-            return resolve_admissions_file_open_url(
-                file_name=file_row.get("name"),
-                file_url=file_row.get("file_url"),
-                context_doctype="Student Applicant",
-                context_name=self.name,
-            )
-
-        document_rows = frappe.get_all(
-            "Applicant Document",
-            filters={"student_applicant": self.name},
-            fields=[
-                "name",
-                "document_type",
-                "document_label",
-                "review_status",
-                "reviewed_by",
-                "reviewed_on",
-                "requirement_override",
-                "override_reason",
-                "override_by",
-                "override_on",
-                "modified",
-            ],
-            order_by="modified desc",
-        )
-        document_names = [row.get("name") for row in document_rows if row.get("name")]
-        item_rows = []
-        if document_names:
-            item_rows = frappe.get_all(
-                "Applicant Document Item",
-                filters={"applicant_document": ["in", document_names]},
-                fields=[
-                    "name",
-                    "applicant_document",
-                    "item_key",
-                    "item_label",
-                    "review_status",
-                    "reviewed_by",
-                    "reviewed_on",
-                    "modified",
-                ],
-                order_by="modified desc",
-            )
-
-        item_names = [row.get("name") for row in item_rows if row.get("name")]
-        latest_file_by_item = {}
-        if item_names:
-            file_rows = frappe.get_all(
-                "File",
-                filters={
-                    "attached_to_doctype": "Applicant Document Item",
-                    "attached_to_name": ["in", item_names],
-                },
-                fields=["name", "attached_to_name", "file_url", "file_name", "creation", "owner"],
-                order_by="creation desc",
-            )
-            for row_file in file_rows:
-                parent_name = row_file.get("attached_to_name")
-                if not parent_name or parent_name in latest_file_by_item:
-                    continue
-                latest_file_by_item[parent_name] = row_file
-
-        recommendation_submission_by_item = {}
-        if item_names and frappe.db.table_exists("Recommendation Submission"):
-            recommendation_rows = frappe.get_all(
-                "Recommendation Submission",
-                filters={"applicant_document_item": ["in", item_names]},
-                fields=[
-                    "name",
-                    "applicant_document_item",
-                    "recommender_name",
-                    "recommender_email",
-                    "submitted_on",
-                ],
-                order_by="submitted_on desc, modified desc",
-            )
-            for row_submission in recommendation_rows:
-                item_name = row_submission.get("applicant_document_item")
-                if not item_name or item_name in recommendation_submission_by_item:
-                    continue
-                recommendation_submission_by_item[item_name] = row_submission
-
-        documents_by_type = {row.get("document_type"): row for row in document_rows if row.get("document_type")}
-        items_by_document = {}
-        for row_item in item_rows:
-            parent = row_item.get("applicant_document")
-            if not parent:
-                continue
-            latest_file = latest_file_by_item.get(row_item.get("name"), {})
-            recommendation_submission = recommendation_submission_by_item.get(row_item.get("name"), {})
-            uploaded_by = (
-                recommendation_submission.get("recommender_name")
-                or recommendation_submission.get("recommender_email")
-                or latest_file.get("owner")
-            )
-            uploaded_at = recommendation_submission.get("submitted_on") or latest_file.get("creation")
-            items_by_document.setdefault(parent, []).append(
-                {
-                    "name": row_item.get("name"),
-                    "item_key": row_item.get("item_key"),
-                    "item_label": row_item.get("item_label"),
-                    "review_status": row_item.get("review_status") or "Pending",
-                    "reviewed_by": row_item.get("reviewed_by"),
-                    "reviewed_on": row_item.get("reviewed_on"),
-                    "uploaded_by": uploaded_by,
-                    "uploaded_at": uploaded_at,
-                    "file_url": _build_file_open_url(latest_file),
-                    "file_name": latest_file.get("file_name"),
-                    "has_uploaded_artifact": bool(latest_file.get("name") or recommendation_submission.get("name")),
-                    "modified": row_item.get("modified"),
-                }
-            )
-
-        missing = []
-        unapproved = []
-        required_rows = []
-        for doc_type, label in required_names.items():
-            document_row = documents_by_type.get(doc_type)
-            required_count = required_counts.get(doc_type, 1)
-            if not document_row:
-                missing.append(label)
-                required_rows.append(
-                    {
-                        "applicant_document": None,
-                        "document_type": doc_type,
-                        "label": label,
-                        "is_required": True,
-                        "required_count": required_count,
-                        "uploaded_count": 0,
-                        "approved_count": 0,
-                        "review_status": "Missing",
-                        "reviewed_by": None,
-                        "reviewed_on": None,
-                        "requirement_override": None,
-                        "override_reason": None,
-                        "override_by": None,
-                        "override_on": None,
-                        "uploaded_by": None,
-                        "uploaded_at": None,
-                        "file_url": None,
-                        "file_name": None,
-                        "modified": None,
-                        "items": [],
-                    }
-                )
-                continue
-
-            item_group = list(items_by_document.get(document_row.get("name"), []))
-            uploaded_items = [row for row in item_group if row.get("has_uploaded_artifact")]
-            approved_items = [row for row in uploaded_items if row.get("review_status") == "Approved"]
-            rejected_items = [row for row in uploaded_items if row.get("review_status") == "Rejected"]
-            uploaded_count = len(uploaded_items)
-            approved_count = len(approved_items)
-            requirement_override = (document_row.get("requirement_override") or "").strip() or None
-            override_satisfies_requirement = requirement_override in {"Waived", "Exception Approved"}
-
-            if override_satisfies_requirement:
-                review_status = requirement_override
-            elif uploaded_count < required_count:
-                missing.append(label)
-                review_status = "Missing"
-            elif approved_count >= required_count:
-                review_status = "Approved"
-            else:
-                unapproved.append(label)
-                review_status = "Rejected" if rejected_items else "Pending"
-
-            if override_satisfies_requirement:
-                reviewed_by = document_row.get("override_by")
-                reviewed_on = document_row.get("override_on")
-            else:
-                reviewed_by = document_row.get("reviewed_by")
-                reviewed_on = document_row.get("reviewed_on")
-
-            latest_uploaded_item = {}
-            if uploaded_items:
-                latest_uploaded_item = sorted(
-                    uploaded_items,
-                    key=lambda row_item: row_item.get("uploaded_at") or "",
-                    reverse=True,
-                )[0]
-            required_rows.append(
-                {
-                    "applicant_document": document_row.get("name"),
-                    "document_type": doc_type,
-                    "label": label,
-                    "is_required": True,
-                    "required_count": required_count,
-                    "uploaded_count": uploaded_count,
-                    "approved_count": approved_count,
-                    "review_status": review_status,
-                    "reviewed_by": reviewed_by,
-                    "reviewed_on": reviewed_on,
-                    "requirement_override": requirement_override,
-                    "override_reason": document_row.get("override_reason"),
-                    "override_by": document_row.get("override_by"),
-                    "override_on": document_row.get("override_on"),
-                    "uploaded_by": latest_uploaded_item.get("uploaded_by"),
-                    "uploaded_at": latest_uploaded_item.get("uploaded_at"),
-                    "file_url": latest_uploaded_item.get("file_url"),
-                    "file_name": latest_uploaded_item.get("file_name"),
-                    "modified": document_row.get("modified"),
-                    "items": item_group,
-                }
-            )
-
-        uploaded_rows = []
-        for document_row in document_rows:
-            document_type = document_row.get("document_type")
-            meta = type_map.get(document_type) or {}
-            document_label = (
-                document_row.get("document_label")
-                or meta.get("code")
-                or meta.get("document_type_name")
-                or document_type
-                or document_row.get("name")
-            )
-            required_count = 1
-            if cint(meta.get("is_repeatable")):
-                required_count = max(1, cint(meta.get("min_items_required") or 1))
-
-            item_group = list(items_by_document.get(document_row.get("name"), []))
-            uploaded_items = [row for row in item_group if row.get("has_uploaded_artifact")]
-            approved_items = [row for row in uploaded_items if row.get("review_status") == "Approved"]
-            for uploaded_item in uploaded_items:
-                item_label = (
-                    (uploaded_item.get("item_label") or "").strip()
-                    or (uploaded_item.get("item_key") or "").strip()
-                    or (uploaded_item.get("name") or "").strip()
-                )
-                row_label = document_label
-                if item_label and item_label.lower() != str(document_label or "").strip().lower():
-                    row_label = _("{0} — {1}").format(document_label, item_label)
-
-                uploaded_rows.append(
-                    {
-                        "applicant_document": document_row.get("name"),
-                        "applicant_document_item": uploaded_item.get("name"),
-                        "document_type": document_type,
-                        "label": row_label,
-                        "document_label": document_label,
-                        "item_key": uploaded_item.get("item_key"),
-                        "item_label": uploaded_item.get("item_label"),
-                        "is_required": bool(meta.get("is_required")),
-                        "required_count": required_count if cint(meta.get("is_required")) else 0,
-                        "uploaded_count": len(uploaded_items),
-                        "approved_count": len(approved_items),
-                        "is_repeatable": bool(meta.get("is_repeatable")),
-                        "requirement_override": document_row.get("requirement_override"),
-                        "override_reason": document_row.get("override_reason"),
-                        "review_status": uploaded_item.get("review_status") or "Pending",
-                        "reviewed_by": uploaded_item.get("reviewed_by"),
-                        "reviewed_on": uploaded_item.get("reviewed_on"),
-                        "uploaded_by": uploaded_item.get("uploaded_by"),
-                        "uploaded_at": uploaded_item.get("uploaded_at"),
-                        "file_url": uploaded_item.get("file_url"),
-                        "file_name": uploaded_item.get("file_name"),
-                        "modified": uploaded_item.get("modified") or document_row.get("modified"),
-                    }
-                )
-
-        uploaded_rows.sort(
-            key=lambda row: (
-                row.get("uploaded_at") or "",
-                row.get("modified") or "",
-            ),
-            reverse=True,
-        )
-
-        return {
-            "ok": not missing and not unapproved,
-            "missing": missing,
-            "unapproved": unapproved,
-            "required": list(required_names.values()),
-            "required_rows": required_rows,
-            "uploaded_rows": uploaded_rows,
-        }
 
     def has_required_profile_information(self):
         required_labels: list[str] = []
@@ -2158,7 +1828,6 @@ class StudentApplicant(Document):
                 "interview_start",
                 "interview_end",
                 "interview_type",
-                "outcome_impression",
             ],
             order_by="modified desc",
             limit_page_length=20,
@@ -2188,6 +1857,18 @@ class StudentApplicant(Document):
                 },
                 fields=["parent", "interviewer", "idx"],
                 order_by="parent asc, idx asc",
+            )
+
+        feedback_rows = []
+        if interview_names and frappe.db.table_exists("Applicant Interview Feedback"):
+            feedback_rows = frappe.get_all(
+                "Applicant Interview Feedback",
+                filters={
+                    "applicant_interview": ["in", interview_names],
+                    "feedback_status": "Submitted",
+                },
+                fields=["applicant_interview", "interviewer_user"],
+                limit_page_length=max(20, len(interview_names) * 4),
             )
 
         interviewer_ids = sorted(
@@ -2225,13 +1906,33 @@ class StudentApplicant(Document):
                 }
             )
 
+        submitted_users_by_interview: dict[str, set[str]] = {}
+        for feedback_row in feedback_rows:
+            interview_name = (feedback_row.get("applicant_interview") or "").strip()
+            interviewer_user = (feedback_row.get("interviewer_user") or "").strip()
+            if not interview_name or not interviewer_user:
+                continue
+            submitted_users_by_interview.setdefault(interview_name, set()).add(interviewer_user)
+
         items = []
         for row in recent_rows:
             interview_name = (row.get("name") or "").strip()
             interviewers = list(interviewers_by_interview.get(interview_name, []))
+            assigned_users = {entry.get("user") for entry in interviewers if entry.get("user")}
+            submitted_users = submitted_users_by_interview.get(interview_name, set())
+            submitted_count = len(assigned_users & submitted_users)
+            expected_count = len(assigned_users)
             item = dict(row)
             item["interviewers"] = interviewers
             item["interviewer_labels"] = [entry.get("label") for entry in interviewers if entry.get("label")]
+            item["feedback_submitted_count"] = submitted_count
+            item["feedback_expected_count"] = expected_count
+            item["feedback_complete"] = bool(expected_count and submitted_count >= expected_count)
+            item["feedback_status_label"] = (
+                _("{0}/{1} submitted").format(submitted_count, expected_count)
+                if expected_count
+                else _("No interviewers assigned")
+            )
             items.append(item)
 
         return {"ok": count >= 1, "count": count, "items": items}

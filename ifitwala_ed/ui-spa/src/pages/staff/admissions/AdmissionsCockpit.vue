@@ -167,6 +167,12 @@
 									<span :class="pillClass(item.readiness.policies_ok)">Policies</span>
 									<span :class="pillClass(item.readiness.health_ok)">Health</span>
 									<span
+										v-if="(item.interviews?.count || 0) > 0"
+										class="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-token"
+									>
+										Interviews · {{ item.interviews?.count || 0 }}
+									</span>
+									<span
 										v-if="(item.comms?.unread_count || 0) > 0"
 										class="rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700"
 									>
@@ -203,6 +209,49 @@
 								</div>
 
 								<div
+									v-if="item.interviews?.latest"
+									class="mb-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0">
+											<p class="text-xs font-semibold text-slate-900">Latest Interview</p>
+											<p class="text-xs text-slate-token/80">
+												{{ item.interviews.latest.interview_type || 'Interview' }}
+												<span v-if="item.interviews.latest.mode">
+													· {{ item.interviews.latest.mode }}
+												</span>
+											</p>
+											<p class="text-xs text-slate-token/80">
+												{{ formatInterviewSchedule(item.interviews.latest) }}
+											</p>
+											<p
+												v-if="item.interviews.latest.interviewer_labels?.length"
+												class="text-xs text-slate-token/80"
+											>
+												{{ item.interviews.latest.interviewer_labels.join(', ') }}
+											</p>
+											<p
+												class="text-xs font-semibold"
+												:class="
+													item.interviews.latest.feedback_complete
+														? 'text-emerald-700'
+														: 'text-amber-800'
+												"
+											>
+												Feedback · {{ item.interviews.latest.feedback_status_label }}
+											</p>
+										</div>
+										<button
+											type="button"
+											class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											@click="openInterviewWorkspace(item.interviews.latest.name)"
+										>
+											Open Interview
+										</button>
+									</div>
+								</div>
+
+								<div
 									v-if="item.comms?.last_message_preview"
 									class="mb-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1"
 								>
@@ -213,16 +262,28 @@
 
 								<div v-if="item.top_blockers.length" class="space-y-1">
 									<p class="type-caption text-slate-token/80">Missing / Blocked</p>
-									<a
+									<template
 										v-for="issue in item.top_blockers"
 										:key="`${item.name}-${issue.kind}-${issue.label}`"
-										:href="issue.target_url || item.open_url"
-										target="_blank"
-										rel="noopener noreferrer"
-										class="block text-xs text-red-700 hover:underline"
 									>
-										{{ issue.label }}
-									</a>
+										<button
+											v-if="shouldOpenBlockerInWorkspace(issue)"
+											type="button"
+											class="block text-left text-xs text-red-700 hover:underline"
+											@click="openBlockerTarget(item, issue)"
+										>
+											{{ issue.label }}
+										</button>
+										<a
+											v-else
+											:href="issue.target_url || item.open_url"
+											target="_blank"
+											rel="noopener noreferrer"
+											class="block text-xs text-red-700 hover:underline"
+										>
+											{{ issue.label }}
+										</a>
+									</template>
 								</div>
 							</article>
 
@@ -362,6 +423,40 @@ type CockpitBlocker = {
 	count: number;
 };
 
+type CockpitInterviewLatest = {
+	name: string;
+	open_url: string;
+	interview_type?: string | null;
+	interview_date?: string | null;
+	interview_start?: string | null;
+	interview_end?: string | null;
+	mode?: string | null;
+	interviewer_labels: string[];
+	feedback_submitted_count: number;
+	feedback_expected_count: number;
+	feedback_complete: boolean;
+	feedback_status_label: string;
+};
+
+type CockpitInterviewSummary = {
+	count: number;
+	latest?: CockpitInterviewLatest | null;
+};
+
+type CockpitCardTarget = {
+	kind: string;
+	label?: string;
+	target_doctype?: string;
+	target_name?: string;
+	target_url?: string;
+	target_label?: string;
+	workspace_mode?: string;
+	workspace_student_applicant?: string;
+	workspace_document_type?: string | null;
+	workspace_applicant_document?: string | null;
+	workspace_document_item?: string | null;
+};
+
 type CockpitCard = {
 	name: string;
 	display_name: string;
@@ -369,12 +464,8 @@ type CockpitCard = {
 	ready: boolean;
 	school: string;
 	program_offering?: string;
-	top_blockers: {
-		kind: string;
-		label: string;
-		target_url?: string;
-		target_label?: string;
-	}[];
+	interviews?: CockpitInterviewSummary;
+	top_blockers: CockpitCardTarget[];
 	readiness: {
 		profile_ok: boolean;
 		documents_ok: boolean;
@@ -398,11 +489,7 @@ type CockpitCard = {
 		} | null;
 	};
 	open_url: string;
-	blockers: {
-		kind: string;
-		target_url?: string;
-		target_label?: string;
-	}[];
+	blockers: CockpitCardTarget[];
 	comms?: {
 		thread_name?: string | null;
 		unread_count: number;
@@ -569,7 +656,30 @@ function formatDate(value?: string | null) {
 	return date.toLocaleString();
 }
 
-function openApplicantWorkspace(card: CockpitCard) {
+function formatInterviewSchedule(interview?: CockpitInterviewLatest | null) {
+	if (!interview) {
+		return '—';
+	}
+	if (interview.interview_start && interview.interview_end) {
+		return `${formatDate(interview.interview_start)} → ${formatDate(interview.interview_end)}`;
+	}
+	if (interview.interview_start) {
+		return formatDate(interview.interview_start);
+	}
+	if (interview.interview_date) {
+		return interview.interview_date;
+	}
+	return '—';
+}
+
+function openApplicantWorkspace(
+	card: CockpitCard,
+	anchor: {
+		documentType?: string | null;
+		applicantDocument?: string | null;
+		documentItem?: string | null;
+	} = {}
+) {
 	const applicantName = String(card?.name || '').trim();
 	if (!applicantName) {
 		error.value = 'Applicant reference is missing for workspace open.';
@@ -579,6 +689,22 @@ function openApplicantWorkspace(card: CockpitCard) {
 	overlay.open('admissions-workspace', {
 		mode: 'applicant',
 		studentApplicant: applicantName,
+		documentType: String(anchor.documentType || '').trim() || null,
+		applicantDocument: String(anchor.applicantDocument || '').trim() || null,
+		documentItem: String(anchor.documentItem || '').trim() || null,
+	});
+}
+
+function openInterviewWorkspace(interviewName?: string | null) {
+	const resolvedInterview = String(interviewName || '').trim();
+	if (!resolvedInterview) {
+		error.value = 'Interview reference is missing for workspace open.';
+		return;
+	}
+
+	overlay.open('admissions-workspace', {
+		mode: 'interview',
+		interview: resolvedInterview,
 	});
 }
 
@@ -602,6 +728,31 @@ function openRecommendationReview(card: CockpitCard) {
 		recommendationSubmission: null,
 		applicantDocumentItem: null,
 	});
+}
+
+function shouldOpenBlockerInWorkspace(issue: CockpitCardTarget) {
+	return (
+		String(issue?.workspace_mode || '').trim() === 'applicant' &&
+		Boolean(String(issue?.workspace_student_applicant || '').trim())
+	);
+}
+
+function openBlockerTarget(card: CockpitCard, issue: CockpitCardTarget) {
+	if (shouldOpenBlockerInWorkspace(issue)) {
+		openApplicantWorkspace(card, {
+			documentType: issue.workspace_document_type || null,
+			applicantDocument: issue.workspace_applicant_document || null,
+			documentItem: issue.workspace_document_item || null,
+		});
+		return;
+	}
+
+	const targetUrl = String(issue?.target_url || card?.open_url || '').trim();
+	if (!targetUrl) {
+		error.value = 'Action target is missing for this blocker.';
+		return;
+	}
+	window.open(targetUrl, '_blank', 'noopener,noreferrer');
 }
 
 function deskSlug(value: string) {

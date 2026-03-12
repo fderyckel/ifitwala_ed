@@ -7,7 +7,10 @@ from urllib.parse import urlparse
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import get_applicant_workspace
+from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import (
+    get_applicant_workspace,
+    save_my_interview_feedback,
+)
 from ifitwala_ed.api.admission_cockpit import get_admissions_cockpit_data
 from ifitwala_ed.api.admissions_review import review_applicant_document_submission
 from ifitwala_ed.api.recommendation_intake import (
@@ -233,6 +236,42 @@ class TestRecommendationIntake(FrappeTestCase):
             submitted["applicant_document_item"],
         )
 
+    def test_cockpit_payload_includes_latest_interview_feedback_summary(self):
+        if not frappe.db.table_exists("Applicant Interview Feedback"):
+            self.skipTest("Applicant Interview Feedback DocType is not migrated on this site.")
+
+        self._ensure_role("Employee")
+        panel_user = self._create_user("panel", ["Employee"])
+        interview = self._create_interview([self.staff_user.name, panel_user.name])
+        self._submit_interview_feedback(interview.name, self.staff_user.name)
+
+        frappe.set_user(self.staff_user.name)
+        payload = get_admissions_cockpit_data(filters={"assigned_to_me": 0, "limit": 20})
+        columns = payload.get("columns") or []
+        cards = [
+            card
+            for column in columns
+            for card in (column.get("items") or [])
+            if card.get("name") == self.applicant.name
+        ]
+
+        self.assertEqual(len(cards), 1)
+        interviews = (cards[0] or {}).get("interviews") or {}
+        latest = interviews.get("latest") or {}
+
+        self.assertEqual(int(interviews.get("count") or 0), 1)
+        self.assertEqual(latest.get("name"), interview.name)
+        self.assertEqual(latest.get("interview_type"), "Family")
+        self.assertEqual(latest.get("mode"), "In Person")
+        self.assertEqual(int(latest.get("feedback_submitted_count") or 0), 1)
+        self.assertEqual(int(latest.get("feedback_expected_count") or 0), 2)
+        self.assertEqual(latest.get("feedback_status_label"), "1/2 submitted")
+        self.assertEqual(
+            set(latest.get("interviewer_labels") or []),
+            {"Recommendation Staff", "Recommendation Panel"},
+        )
+        self.assertEqual(latest.get("open_url"), f"/desk/applicant-interview/{interview.name}")
+
     def test_applicant_workspace_includes_recommendation_review_rows(self):
         submitted = self._create_submitted_recommendation()
 
@@ -397,6 +436,35 @@ class TestRecommendationIntake(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Type", document_type.name))
         return document_type.name
+
+    def _create_interview(self, interviewer_users: list[str]):
+        frappe.set_user(self.staff_user.name)
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_type": "Family",
+                "interview_date": "2026-03-12",
+                "interview_start": "2026-03-12 09:00:00",
+                "interview_end": "2026-03-12 09:30:00",
+                "mode": "In Person",
+                "interviewers": [{"interviewer": user} for user in interviewer_users],
+            }
+        ).insert()
+        self._created.append(("Applicant Interview", interview.name))
+        return interview
+
+    def _submit_interview_feedback(self, interview_name: str, user: str):
+        frappe.set_user(user)
+        payload = save_my_interview_feedback(
+            interview=interview_name,
+            strengths="Strong applicant communication.",
+            feedback_status="Submitted",
+        )
+        feedback_name = payload.get("feedback_name")
+        if feedback_name:
+            self._created.append(("Applicant Interview Feedback", feedback_name))
+        return payload
 
     def _create_template(
         self,

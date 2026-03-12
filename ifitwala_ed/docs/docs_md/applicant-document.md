@@ -3,8 +3,8 @@ title: "Applicant Document: Authoritative Owner of Admissions Files"
 slug: applicant-document
 category: Admission
 doc_order: 6
-version: "1.6.1"
-last_change_date: "2026-03-09"
+version: "1.7.0"
+last_change_date: "2026-03-12"
 summary: "Define Applicant Document as the applicant/type bucket and Applicant Document Item as per-file slot rows for review, readiness, and promotion."
 seo_title: "Applicant Document: Authoritative Owner of Admissions Files"
 seo_description: "Define Applicant Document parent buckets and Applicant Document Item per-file slots for admissions upload, review, readiness, and promotion."
@@ -133,11 +133,15 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 - materializes `Applicant Review Assignment` rows for matching `Applicant Review Rule` scope/reviewers
 
 Staff review surface rule:
-- admissions roles review evidence from Desk `Student Applicant.documents_summary` or the admissions cockpit applicant workspace
+- admissions roles use dual entry points over one workflow contract:
+  - Desk `Student Applicant.documents_summary` quick actions remain available
+  - Admissions Cockpit document blockers open the applicant workspace with requirement or submitted-file anchors
+  - both surfaces read the same server-built requirement/submission readiness payload
 - non-admissions reviewers handle `Applicant Document Item` Focus assignments
 
 4. Student Applicant readiness (`has_required_documents`)
 - required doc types must exist and be approved
+- admissions cockpit consumes the same shared requirement/submission readiness payload instead of re-implementing separate document rules
 - approval readiness fails for missing/incomplete required slots unless the requirement has an explicit waiver/exception
 
 5. Applicant document edit timeline (`Applicant Document.on_update`)
@@ -187,7 +191,7 @@ Staff review surface rule:
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-09)
+### Latest Technical Snapshot (2026-03-12)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.py`
@@ -214,6 +218,8 @@ Staff review surface rule:
   - governed endpoint: `ifitwala_ed/admission/admissions_portal.py::upload_applicant_document`
   - portal list endpoints: `ifitwala_ed/api/admissions_portal.py::list_applicant_documents`, `list_applicant_document_types`
   - portal upload wrapper: `ifitwala_ed/api/admissions_portal.py::upload_applicant_document`
+  - shared readiness helper: `ifitwala_ed/admission/applicant_document_readiness.py`
+  - admissions cockpit read endpoint: `ifitwala_ed/api/admission_cockpit.py::get_admissions_cockpit_data`
   - admissions workspace read endpoint: `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.py::get_applicant_workspace`
   - admissions workspace action endpoints: `ifitwala_ed/api/admissions_review.py::review_applicant_document_submission`, `set_document_requirement_override`
   - focus review action endpoint: `ifitwala_ed/api/focus.py::submit_applicant_review_assignment`
@@ -227,6 +233,7 @@ Staff review surface rule:
   - aggregate review-field mutation is blocked because it is server-derived
 - **Readiness and promotion integration**:
   - required-document readiness check in `Student Applicant.has_required_documents()`
+  - admissions cockpit document blockers reuse the same readiness payload and open workspace anchors for requirement/submission review
   - explicit requirement overrides satisfy readiness in `Student Applicant.has_required_documents()`
   - promotion copy flow uses approved `Applicant Document Item` submissions in `Student Applicant._copy_promotable_documents_to_student()`
   - `promotion_target` is the active exclusion control for Student copy

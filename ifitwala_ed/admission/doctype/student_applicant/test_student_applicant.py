@@ -190,7 +190,6 @@ class TestStudentApplicant(FrappeTestCase):
                 "interview_start": "2026-03-01 09:00:00",
                 "interview_end": "2026-03-01 09:30:00",
                 "interview_type": "Family",
-                "outcome_impression": "Neutral",
                 "interviewers": [
                     {"interviewer": self.staff_user.name},
                 ],
@@ -205,7 +204,6 @@ class TestStudentApplicant(FrappeTestCase):
                 "interview_start": "2026-03-02 10:00:00",
                 "interview_end": "2026-03-02 10:45:00",
                 "interview_type": "Student",
-                "outcome_impression": "Positive",
                 "interviewers": [
                     {"interviewer": self.staff_user.name},
                     {"interviewer": interviewer_user.name},
@@ -213,6 +211,17 @@ class TestStudentApplicant(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Interview", recent_interview.name))
+        recent_feedback = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview Feedback",
+                "applicant_interview": recent_interview.name,
+                "student_applicant": applicant.name,
+                "interviewer_user": interviewer_user.name,
+                "feedback_status": "Submitted",
+                "strengths": "Clear communication",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview Feedback", recent_feedback.name))
 
         payload = applicant.has_required_interviews()
         self.assertEqual(payload.get("count"), 2)
@@ -221,8 +230,8 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertEqual(len(items), 2)
         self.assertEqual(items[0].get("name"), recent_interview.name)
         self.assertEqual(items[1].get("name"), older_interview.name)
-        self.assertEqual(items[0].get("outcome_impression"), "Positive")
-        self.assertEqual(items[1].get("outcome_impression"), "Neutral")
+        self.assertEqual(items[0].get("feedback_status_label"), "1/2 submitted")
+        self.assertEqual(items[1].get("feedback_status_label"), "0/1 submitted")
 
         recent_interviewers = items[0].get("interviewers") or []
         self.assertEqual(

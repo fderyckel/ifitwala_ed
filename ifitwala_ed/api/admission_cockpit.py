@@ -9,13 +9,12 @@ from urllib.parse import quote
 
 import frappe
 from frappe import _
-from frappe.utils import cint
+from frappe.utils import cint, get_datetime
 
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
-    get_applicant_scope_ancestors,
-    is_applicant_document_type_in_scope,
 )
+from ifitwala_ed.admission.applicant_document_readiness import build_document_review_payload_batch
 from ifitwala_ed.admission.doctype.student_applicant.student_applicant import STUDENT_PROFILE_REQUIRED_FIELD_LABELS
 from ifitwala_ed.api.admissions_communication import get_admissions_thread_summaries_for_applicants
 from ifitwala_ed.api.recommendation_intake import get_recommendation_status_batch_for_applicants
@@ -42,8 +41,8 @@ KANBAN_COLUMNS = [
 
 BLOCKER_LABELS = {
     "missing_policies": "Missing Policies",
-    "missing_documents": "Missing Documents",
-    "documents_unapproved": "Documents Pending Review",
+    "missing_documents": "Requirements Awaiting Submission",
+    "documents_unapproved": "Requirements Needing Attention",
     "health_not_cleared": "Health Not Cleared",
     "profile_incomplete": "Profile Incomplete",
     "no_reviewer_assigned": "No Reviewer Assigned",
@@ -203,6 +202,31 @@ def _target(
     }
 
 
+def _applicant_workspace_target(
+    *,
+    applicant_name: str,
+    target_label: str,
+    document_type: str | None = None,
+    applicant_document: str | None = None,
+    document_item: str | None = None,
+) -> dict:
+    target = _target(
+        doctype="Student Applicant",
+        name=applicant_name,
+        target_label=target_label,
+    )
+    target.update(
+        {
+            "workspace_mode": "applicant",
+            "workspace_student_applicant": applicant_name,
+            "workspace_document_type": _to_text(document_type) or None,
+            "workspace_applicant_document": _to_text(applicant_document) or None,
+            "workspace_document_item": _to_text(document_item) or None,
+        }
+    )
+    return target
+
+
 def _empty_readiness_snapshot() -> dict:
     return {
         "ready": False,
@@ -337,165 +361,193 @@ def _build_health_state(applicant_names: list[str]) -> dict[str, dict]:
     return health_state_by_applicant
 
 
-def _build_documents_state(applicant_rows: list[dict], applicant_names: list[str]) -> dict[str, dict]:
-    out: dict[str, dict] = {}
+def _interview_sort_key(row: dict) -> tuple:
+    interview_start = row.get("interview_start")
+    if interview_start:
+        try:
+            return (get_datetime(interview_start), get_datetime(row.get("modified") or interview_start))
+        except Exception:
+            pass
 
-    type_rows = frappe.get_all(
-        "Applicant Document Type",
-        filters={"is_active": 1},
-        fields=[
-            "name",
-            "code",
-            "document_type_name",
-            "is_required",
-            "organization",
-            "school",
-        ],
-        limit_page_length=10000,
-    )
+    interview_date = _to_text(row.get("interview_date"))
+    if interview_date:
+        date_value = f"{interview_date} 00:00:00"
+        try:
+            return (get_datetime(date_value), get_datetime(row.get("modified") or date_value))
+        except Exception:
+            pass
 
-    scope_cache: dict[tuple[str, str], tuple[set[str], set[str]]] = {}
-    required_by_applicant: dict[str, list[dict]] = {}
+    modified_value = row.get("modified")
+    if modified_value:
+        try:
+            modified_dt = get_datetime(modified_value)
+            return (modified_dt, modified_dt)
+        except Exception:
+            pass
 
-    for applicant_row in applicant_rows:
-        applicant_name = _to_text(applicant_row.get("name"))
-        organization = _to_text(applicant_row.get("organization"))
-        school = _to_text(applicant_row.get("school"))
+    fallback = get_datetime("1900-01-01 00:00:00")
+    return (fallback, fallback)
 
-        if not applicant_name:
-            continue
 
-        if not organization:
-            out[applicant_name] = {
-                "ok": False,
-                "missing": [],
-                "unapproved": [],
-                "required": [],
-                "missing_rows": [],
-                "unapproved_rows": [],
-            }
-            required_by_applicant[applicant_name] = []
-            continue
+def _interview_feedback_status_label(submitted_count: int, expected_count: int) -> str:
+    if expected_count <= 0:
+        return _("No interviewers assigned")
+    return _("{0}/{1} submitted").format(submitted_count, expected_count)
 
-        scope_key = (organization, school)
-        if scope_key not in scope_cache:
-            org_ancestors, school_ancestors = get_applicant_scope_ancestors(
-                organization=organization,
-                school=school,
-            )
-            scope_cache[scope_key] = (set(org_ancestors), set(school_ancestors))
 
-        applicant_org_ancestors, applicant_school_ancestors = scope_cache[scope_key]
+def _build_interview_state(applicant_names: list[str]) -> dict[str, dict]:
+    normalized_applicants = list(dict.fromkeys(name for name in applicant_names if _to_text(name)))
+    interview_state_by_applicant = {
+        applicant_name: {"count": 0, "latest": None} for applicant_name in normalized_applicants
+    }
 
-        required_rows: list[dict] = []
-        for row_type in type_rows:
-            if not is_applicant_document_type_in_scope(
-                document_type_organization=row_type.get("organization"),
-                document_type_school=row_type.get("school"),
-                applicant_org_ancestors=applicant_org_ancestors,
-                applicant_school_ancestors=applicant_school_ancestors,
-            ):
-                continue
-            if not cint(row_type.get("is_required")):
-                continue
+    if not normalized_applicants or not frappe.db.table_exists("Applicant Interview"):
+        return interview_state_by_applicant
 
-            doc_type = _to_text(row_type.get("name"))
-            if not doc_type:
-                continue
-
-            label = _to_text(row_type.get("code")) or _to_text(row_type.get("document_type_name")) or doc_type
-            required_rows.append(
-                {
-                    "document_type": doc_type,
-                    "label": label,
-                }
-            )
-
-        required_by_applicant[applicant_name] = required_rows
-
-    if not applicant_names:
-        return out
-
-    document_rows = frappe.get_all(
-        "Applicant Document",
-        filters={"student_applicant": ["in", applicant_names]},
+    interview_rows = frappe.get_all(
+        "Applicant Interview",
+        filters={"student_applicant": ["in", normalized_applicants]},
         fields=[
             "name",
             "student_applicant",
-            "document_type",
-            "document_label",
-            "review_status",
-            "reviewed_by",
-            "reviewed_on",
+            "interview_type",
+            "interview_date",
+            "interview_start",
+            "interview_end",
+            "mode",
             "modified",
         ],
         order_by="modified desc",
-        limit_page_length=10000,
     )
 
-    latest_by_applicant_type: dict[str, dict[str, dict]] = defaultdict(dict)
-    for row_doc in document_rows:
-        applicant_name = _to_text(row_doc.get("student_applicant"))
-        document_type = _to_text(row_doc.get("document_type"))
-        if not applicant_name or not document_type:
-            continue
-        if document_type in latest_by_applicant_type[applicant_name]:
-            continue
-        latest_by_applicant_type[applicant_name][document_type] = row_doc
+    counts_by_applicant: dict[str, int] = defaultdict(int)
+    latest_by_applicant: dict[str, dict] = {}
 
-    for applicant_name in applicant_names:
-        if applicant_name in out:
+    for row in interview_rows:
+        applicant_name = _to_text(row.get("student_applicant"))
+        if not applicant_name:
             continue
 
-        required_rows = required_by_applicant.get(applicant_name, [])
-        latest_docs = latest_by_applicant_type.get(applicant_name, {})
+        counts_by_applicant[applicant_name] += 1
+        current_latest = latest_by_applicant.get(applicant_name)
+        if current_latest is None or _interview_sort_key(row) > _interview_sort_key(current_latest):
+            latest_by_applicant[applicant_name] = row
 
-        missing_labels: list[str] = []
-        unapproved_labels: list[str] = []
-        missing_rows: list[dict] = []
-        unapproved_rows: list[dict] = []
+    latest_interview_names = [row.get("name") for row in latest_by_applicant.values() if _to_text(row.get("name"))]
 
-        for required_row in required_rows:
-            doc_type = _to_text(required_row.get("document_type"))
-            label = _to_text(required_row.get("label")) or doc_type
-            document_row = latest_docs.get(doc_type)
+    interviewer_rows: list[dict] = []
+    if latest_interview_names and frappe.db.table_exists("Applicant Interviewer"):
+        interviewer_rows = frappe.get_all(
+            "Applicant Interviewer",
+            filters={
+                "parent": ["in", latest_interview_names],
+                "parenttype": "Applicant Interview",
+                "parentfield": "interviewers",
+            },
+            fields=["parent", "interviewer", "idx"],
+            order_by="parent asc, idx asc",
+        )
 
-            if not document_row:
-                missing_labels.append(label)
-                missing_rows.append(
-                    {
-                        "document_type": doc_type,
-                        "label": label,
-                        "applicant_document": None,
-                    }
-                )
+    interviewer_ids = sorted(
+        {_to_text(row.get("interviewer")) for row in interviewer_rows if _to_text(row.get("interviewer"))}
+    )
+    interviewer_label_by_user: dict[str, str] = {}
+    if interviewer_ids:
+        user_rows = frappe.get_all(
+            "User",
+            filters={"name": ["in", interviewer_ids]},
+            fields=["name", "full_name"],
+        )
+        for user_row in user_rows:
+            user_id = _to_text(user_row.get("name"))
+            if not user_id:
                 continue
+            interviewer_label_by_user[user_id] = _to_text(user_row.get("full_name")) or user_id
 
-            review_status = _to_text(document_row.get("review_status")) or "Pending"
-            if review_status != "Approved":
-                unapproved_labels.append(label)
-                unapproved_rows.append(
-                    {
-                        "document_type": doc_type,
-                        "label": label,
-                        "applicant_document": _to_text(document_row.get("name")) or None,
-                        "review_status": review_status,
-                    }
-                )
+    interviewers_by_interview: dict[str, list[dict[str, str]]] = {}
+    for interviewer_row in interviewer_rows:
+        interview_name = _to_text(interviewer_row.get("parent"))
+        interviewer_user = _to_text(interviewer_row.get("interviewer"))
+        if not interview_name or not interviewer_user:
+            continue
+        interviewers_by_interview.setdefault(interview_name, []).append(
+            {
+                "user": interviewer_user,
+                "label": interviewer_label_by_user.get(interviewer_user) or interviewer_user,
+            }
+        )
 
-        out[applicant_name] = {
-            "ok": not missing_labels and not unapproved_labels,
-            "missing": missing_labels,
-            "unapproved": unapproved_labels,
-            "required": [
-                _to_text(required_row.get("label")) or _to_text(required_row.get("document_type"))
-                for required_row in required_rows
-            ],
-            "missing_rows": missing_rows,
-            "unapproved_rows": unapproved_rows,
+    feedback_rows: list[dict] = []
+    if latest_interview_names and frappe.db.table_exists("Applicant Interview Feedback"):
+        feedback_rows = frappe.get_all(
+            "Applicant Interview Feedback",
+            filters={
+                "applicant_interview": ["in", latest_interview_names],
+                "feedback_status": "Submitted",
+            },
+            fields=["applicant_interview", "interviewer_user"],
+        )
+
+    submitted_users_by_interview: dict[str, set[str]] = {}
+    for feedback_row in feedback_rows:
+        interview_name = _to_text(feedback_row.get("applicant_interview"))
+        interviewer_user = _to_text(feedback_row.get("interviewer_user"))
+        if not interview_name or not interviewer_user:
+            continue
+        submitted_users_by_interview.setdefault(interview_name, set()).add(interviewer_user)
+
+    for applicant_name in normalized_applicants:
+        count = counts_by_applicant.get(applicant_name, 0)
+        latest_row = latest_by_applicant.get(applicant_name)
+        latest_payload = None
+
+        if latest_row:
+            interview_name = _to_text(latest_row.get("name"))
+            interviewers = list(interviewers_by_interview.get(interview_name, []))
+            assigned_users = {row.get("user") for row in interviewers if row.get("user")}
+            submitted_users = submitted_users_by_interview.get(interview_name, set())
+            submitted_count = len(assigned_users & submitted_users)
+            expected_count = len(assigned_users)
+
+            latest_payload = {
+                "name": interview_name,
+                "open_url": _doc_url("Applicant Interview", interview_name),
+                "interview_type": latest_row.get("interview_type"),
+                "interview_date": latest_row.get("interview_date"),
+                "interview_start": latest_row.get("interview_start"),
+                "interview_end": latest_row.get("interview_end"),
+                "mode": latest_row.get("mode"),
+                "interviewer_labels": [row.get("label") for row in interviewers if row.get("label")],
+                "feedback_submitted_count": submitted_count,
+                "feedback_expected_count": expected_count,
+                "feedback_complete": bool(expected_count and submitted_count >= expected_count),
+                "feedback_status_label": _interview_feedback_status_label(submitted_count, expected_count),
+            }
+
+        interview_state_by_applicant[applicant_name] = {
+            "count": count,
+            "latest": latest_payload,
         }
 
-    return out
+    return interview_state_by_applicant
+
+
+def _build_documents_state(applicant_rows: list[dict], applicant_names: list[str]) -> dict[str, dict]:
+    payload_by_applicant = build_document_review_payload_batch(applicant_rows)
+    return {
+        applicant_name: payload_by_applicant.get(applicant_name)
+        or {
+            "ok": False,
+            "missing": [],
+            "unapproved": [],
+            "required": [],
+            "required_rows": [],
+            "uploaded_rows": [],
+            "missing_rows": [],
+            "unapproved_rows": [],
+        }
+        for applicant_name in applicant_names
+    }
 
 
 def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) -> dict[str, dict]:
@@ -935,14 +987,10 @@ def _build_blockers(
             missing_type = _to_text(first_missing.get("document_type"))
 
             target = (
-                _target(
-                    doctype="Applicant Document",
-                    is_new=True,
-                    params={
-                        "student_applicant": applicant_name,
-                        "document_type": missing_type,
-                    },
-                    target_label=_("Create missing document record"),
+                _applicant_workspace_target(
+                    applicant_name=applicant_name,
+                    document_type=missing_type,
+                    target_label=_("Open requirement"),
                 )
                 if missing_type
                 else applicant_target
@@ -951,7 +999,7 @@ def _build_blockers(
             blockers.append(
                 {
                     "kind": "missing_documents",
-                    "label": _("Missing required documents: {0}").format(len(missing)),
+                    "label": _("Requirements awaiting submission: {0}").format(len(missing)),
                     "items": [str(item) for item in missing],
                     **target,
                 }
@@ -960,21 +1008,33 @@ def _build_blockers(
         if unapproved:
             first_unapproved = unapproved_rows[0] if unapproved_rows else {}
             applicant_document = _to_text(first_unapproved.get("applicant_document"))
+            document_type = _to_text(first_unapproved.get("document_type"))
+            document_item = _to_text(first_unapproved.get("applicant_document_item"))
+            review_status = _to_text(first_unapproved.get("review_status"))
+
+            if review_status == "Rejected":
+                label = _("Requirements awaiting resubmission: {0}").format(len(unapproved))
+                target_label = _("Open requirement")
+            else:
+                label = _("Submitted files awaiting review: {0}").format(len(unapproved))
+                target_label = _("Open submission review")
 
             target = (
-                _target(
-                    doctype="Applicant Document",
-                    name=applicant_document,
-                    target_label=_("Open document review"),
+                _applicant_workspace_target(
+                    applicant_name=applicant_name,
+                    document_type=document_type,
+                    applicant_document=applicant_document,
+                    document_item=document_item,
+                    target_label=target_label,
                 )
-                if applicant_document
+                if applicant_document or document_type
                 else applicant_target
             )
 
             blockers.append(
                 {
                     "kind": "documents_unapproved",
-                    "label": _("Required documents pending review: {0}").format(len(unapproved)),
+                    "label": label,
                     "items": [str(item) for item in unapproved],
                     **target,
                 }
@@ -1260,6 +1320,15 @@ def get_admissions_cockpit_data(filters=None):
         )
         comms_summary_by_applicant = {}
 
+    interview_summary_by_applicant: dict[str, dict]
+    try:
+        interview_summary_by_applicant = _build_interview_state(
+            [_to_text(row.get("name")) for row in applicant_rows if _to_text(row.get("name"))]
+        )
+    except Exception:
+        frappe.logger("admissions_cockpit", allow_site=True).exception("Admissions cockpit interview summary failed.")
+        interview_summary_by_applicant = {}
+
     columns = {col_id: {"id": col_id, "title": title, "items": []} for col_id, title in KANBAN_COLUMNS}
     blocker_counts = {key: 0 for key in BLOCKER_LABELS}
     counts = {
@@ -1344,8 +1413,15 @@ def get_admissions_cockpit_data(filters=None):
                 {
                     "kind": row_blocker.get("kind"),
                     "label": row_blocker.get("label"),
+                    "target_doctype": row_blocker.get("target_doctype"),
+                    "target_name": row_blocker.get("target_name"),
                     "target_url": row_blocker.get("target_url"),
                     "target_label": row_blocker.get("target_label"),
+                    "workspace_mode": row_blocker.get("workspace_mode"),
+                    "workspace_student_applicant": row_blocker.get("workspace_student_applicant"),
+                    "workspace_document_type": row_blocker.get("workspace_document_type"),
+                    "workspace_applicant_document": row_blocker.get("workspace_applicant_document"),
+                    "workspace_document_item": row_blocker.get("workspace_document_item"),
                 }
                 for row_blocker in blockers[:2]
                 if row_blocker.get("label")
@@ -1353,6 +1429,11 @@ def get_admissions_cockpit_data(filters=None):
             "blockers": blockers,
             "issues": [str(item) for item in (snapshot.get("issues") or [])],
             "open_url": _doc_url("Student Applicant", applicant_name),
+            "interviews": interview_summary_by_applicant.get(applicant_name)
+            or {
+                "count": 0,
+                "latest": None,
+            },
             "comms": {
                 "thread_name": _to_text(comms_summary.get("thread_name")) or None,
                 "unread_count": cint(comms_summary.get("unread_count") or 0),

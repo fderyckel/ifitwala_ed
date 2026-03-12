@@ -19,8 +19,11 @@ export interface InterviewWorkspaceInterview {
 	interview_start_label?: string | null
 	interview_end_label?: string | null
 	school_event?: string | null
-	notes?: string | null
-	outcome_impression?: string | null
+	operational_notes?: string | null
+	feedback_submitted_count?: number
+	feedback_expected_count?: number
+	feedback_complete?: boolean
+	feedback_status_label?: string | null
 	interviewers: InterviewWorkspaceInterviewer[]
 }
 

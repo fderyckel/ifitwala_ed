@@ -192,7 +192,7 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertGreaterEqual(len(payload.get("suggestions") or []), 1)
         self.assertEqual(before_count, after_count)
 
-    def test_assigned_interviewer_without_admissions_role_can_access_and_update(self):
+    def test_assigned_interviewer_without_admissions_role_can_access_but_not_edit_parent(self):
         interviewer = self._create_user("interviewer_access")
         self._create_employee(interviewer, first_name="Case", last_name="Interviewer")
 
@@ -219,7 +219,7 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertTrue(
             frappe.has_permission("Applicant Interview", ptype="read", doc=interview.name, user=interviewer.name)
         )
-        self.assertTrue(
+        self.assertFalse(
             frappe.has_permission("Applicant Interview", ptype="write", doc=interview.name, user=interviewer.name)
         )
         self.assertFalse(frappe.has_permission("Applicant Interview", ptype="create", user=interviewer.name))
@@ -229,13 +229,9 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertEqual(rows[0].get("name"), interview.name)
 
         loaded = frappe.get_doc("Applicant Interview", interview.name)
-        loaded.notes = "Interviewer note update"
-        loaded.outcome_impression = "Positive"
-        loaded.save()
-
-        refreshed = frappe.get_doc("Applicant Interview", interview.name)
-        self.assertEqual(refreshed.notes, "Interviewer note update")
-        self.assertEqual(refreshed.outcome_impression, "Positive")
+        loaded.notes = "Operational context update"
+        with self.assertRaises(frappe.PermissionError):
+            loaded.save()
 
         loaded = frappe.get_doc("Applicant Interview", interview.name)
         loaded.mode = "Online"
@@ -572,6 +568,51 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertIn("required_rows", payload.get("document_review") or {})
         self.assertTrue(payload.get("document_review", {}).get("can_review_submissions"))
         self.assertTrue(payload.get("document_review", {}).get("can_manage_overrides"))
+
+    def test_applicant_workspace_interview_rows_include_feedback_completion(self):
+        manager = self._create_user("workspace_feedback_manager", roles=["Admission Manager"])
+        self._create_employee(manager, first_name="Feedback", last_name="Manager")
+
+        interviewer_one = self._create_user("workspace_feedback_one")
+        interviewer_two = self._create_user("workspace_feedback_two")
+        self._create_employee(interviewer_one, first_name="Panel", last_name="One")
+        self._create_employee(interviewer_two, first_name="Panel", last_name="Two")
+
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": "2030-06-12",
+                "interview_start": "2030-06-12 09:00:00",
+                "interview_end": "2030-06-12 09:30:00",
+                "interview_type": "Joint",
+                "interviewers": [
+                    {"interviewer": interviewer_one.name},
+                    {"interviewer": interviewer_two.name},
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        frappe.set_user(interviewer_one.name)
+        feedback_payload = save_my_interview_feedback(
+            interview=interview.name,
+            strengths="Clear and thoughtful answers.",
+            feedback_status="Submitted",
+        )
+        if feedback_payload.get("feedback_name"):
+            self._created.append(("Applicant Interview Feedback", feedback_payload.get("feedback_name")))
+
+        frappe.set_user(manager.name)
+        payload = get_applicant_workspace(student_applicant=self.applicant.name)
+        interviews = payload.get("interviews") or []
+
+        self.assertEqual(len(interviews), 1)
+        self.assertEqual((interviews[0] or {}).get("name"), interview.name)
+        self.assertEqual(int((interviews[0] or {}).get("feedback_submitted_count") or 0), 1)
+        self.assertEqual(int((interviews[0] or {}).get("feedback_expected_count") or 0), 2)
+        self.assertFalse(bool((interviews[0] or {}).get("feedback_complete")))
+        self.assertEqual((interviews[0] or {}).get("feedback_status_label"), "1/2 submitted")
 
     def test_transfer_school_non_privileged_staff_cannot_read_applicant_workspace(self):
         staff_user = self._create_user("transfer_file_staff", roles=["Academic Assistant"])

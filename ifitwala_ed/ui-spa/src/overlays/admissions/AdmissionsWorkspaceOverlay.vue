@@ -63,7 +63,10 @@
 							</div>
 						</header>
 
-						<section class="if-overlay__body interview-workspace__body px-6 pb-6">
+						<section
+							ref="bodyScrollRef"
+							class="if-overlay__body interview-workspace__body px-6 pb-6"
+						>
 							<div v-if="loading" class="space-y-3 py-10">
 								<div class="if-skel h-6 w-2/3" />
 								<div class="if-skel h-20 w-full rounded-xl" />
@@ -300,6 +303,17 @@
 														>
 															{{ item.interviewers.map(row => row.name || row.user).join(', ') }}
 														</p>
+														<p
+															v-if="interviewFeedbackStatusLabel(item)"
+															class="type-caption mt-1 font-medium"
+															:class="
+																interviewFeedbackComplete(item)
+																	? 'text-emerald-700'
+																	: 'text-amber-800'
+															"
+														>
+															{{ interviewFeedbackStatusLabel(item) }}
+														</p>
 													</div>
 													<button
 														type="button"
@@ -315,6 +329,48 @@
 									</article>
 
 									<template v-if="isInterviewMode && workspace">
+										<article class="interview-card">
+											<h3 class="type-h3 text-ink">Interview Context</h3>
+											<div class="mt-3 grid gap-3 sm:grid-cols-2">
+												<div>
+													<p class="type-caption text-ink/65">Interview Type</p>
+													<p class="type-body text-ink">
+														{{ workspace.interview.interview_type || '—' }}
+													</p>
+												</div>
+												<div>
+													<p class="type-caption text-ink/65">Mode</p>
+													<p class="type-body text-ink">
+														{{ workspace.interview.mode || '—' }}
+													</p>
+												</div>
+												<div>
+													<p class="type-caption text-ink/65">Confidentiality</p>
+													<p class="type-body text-ink">
+														{{ workspace.interview.confidentiality_level || '—' }}
+													</p>
+												</div>
+												<div>
+													<p class="type-caption text-ink/65">Scheduled</p>
+													<p class="type-body text-ink">
+														{{ formatInterviewStart(workspace.interview) }}
+														<span v-if="formatInterviewEnd(workspace.interview)">
+															→ {{ formatInterviewEnd(workspace.interview) }}
+														</span>
+													</p>
+												</div>
+											</div>
+											<div
+												v-if="workspace.interview.operational_notes"
+												class="mt-3 rounded-xl border border-border/60 bg-slate-50 px-3 py-3"
+											>
+												<p class="type-caption text-ink/65">Operational Notes</p>
+												<p class="type-body text-ink whitespace-pre-line mt-1">
+													{{ workspace.interview.operational_notes }}
+												</p>
+											</div>
+										</article>
+
 										<article class="interview-card">
 											<h3 class="type-h3 text-ink">Interview Team</h3>
 											<ul class="mt-3 space-y-2">
@@ -486,14 +542,14 @@
 															@click="
 																openWorkspaceFile(
 																	item.file_url,
-																	item.item_label || item.file_name || 'document file'
+																	item.item_label || item.file_name || 'submitted file'
 																)
 															"
 														>
 															{{ item.item_label || item.file_name || 'View file' }}
 														</button>
 														<span v-else>{{
-															item.item_label || item.item_key || 'Document item'
+															item.item_label || item.item_key || 'Submitted file'
 														}}</span>
 													</li>
 												</ul>
@@ -556,7 +612,13 @@
 											<section
 												v-for="row in applicantRequirementRows"
 												:key="row.applicant_document || row.document_type || row.label"
-												class="rounded-2xl border border-border/70 bg-white p-4"
+												:id="requirementAnchorId(row) || undefined"
+												class="rounded-2xl border border-border/70 bg-white p-4 transition"
+												:class="
+													isFocusedRequirement(row)
+														? 'border-canopy/50 ring-2 ring-canopy/20 shadow-sm'
+														: ''
+												"
 											>
 												<div
 													class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
@@ -667,7 +729,13 @@
 													<div
 														v-for="item in row.items"
 														:key="item.name || item.item_key || item.item_label"
-														class="rounded-xl border border-border/60 bg-slate-50/60 p-3"
+														:id="submissionAnchorId(item.name) || undefined"
+														class="rounded-xl border border-border/60 bg-slate-50/60 p-3 transition"
+														:class="
+															isFocusedSubmission(item.name)
+																? 'border-canopy/50 ring-2 ring-canopy/20 bg-white shadow-sm'
+																: ''
+														"
 													>
 														<div
 															class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
@@ -784,7 +852,13 @@
 												<div
 													v-for="row in applicantSupplementalUploads"
 													:key="row.applicant_document_item || row.label"
-													class="rounded-xl border border-border/60 bg-slate-50/60 p-3"
+													:id="submissionAnchorId(row.applicant_document_item) || undefined"
+													class="rounded-xl border border-border/60 bg-slate-50/60 p-3 transition"
+													:class="
+														isFocusedSubmission(row.applicant_document_item)
+															? 'border-canopy/50 ring-2 ring-canopy/20 bg-white shadow-sm'
+															: ''
+													"
 												>
 													<div
 														class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
@@ -1333,7 +1407,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import {
 	Dialog,
 	DialogPanel,
@@ -1376,6 +1450,9 @@ const props = defineProps<{
 	studentApplicant?: string | null;
 	guardian?: InterviewWorkspaceGuardian | null;
 	applicantDisplayName?: string | null;
+	documentType?: string | null;
+	applicantDocument?: string | null;
+	documentItem?: string | null;
 	recommendationRequest?: string | null;
 	recommendationSubmission?: string | null;
 	applicantDocumentItem?: string | null;
@@ -1407,6 +1484,7 @@ const emit = defineEmits<{
 const overlay = useOverlayStack();
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 70 }));
 const closeBtnRef = ref<HTMLButtonElement | null>(null);
+const bodyScrollRef = ref<HTMLElement | null>(null);
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -1422,6 +1500,8 @@ const currentMode = ref<WorkspaceMode>('interview');
 const activeInterviewName = ref('');
 const recommendationReview = ref<RecommendationReviewPayload | null>(null);
 const selectedRecommendationRequest = ref('');
+const focusedRequirementAnchor = ref('');
+const focusedSubmissionAnchor = ref('');
 
 const formStrengths = ref('');
 const formConcerns = ref('');
@@ -1727,6 +1807,122 @@ function clearRecommendationReviewState() {
 	selectedRecommendationRequest.value = '';
 }
 
+function resolveRequestedDocumentRequirementAnchor() {
+	const applicantDocument = String(props.applicantDocument || '').trim();
+	const documentType = String(props.documentType || '').trim();
+	if (!applicantDocument && !documentType) {
+		return null;
+	}
+	return {
+		applicant_document: applicantDocument || null,
+		document_type: documentType || null,
+	};
+}
+
+function resolveRequestedDocumentItemAnchor() {
+	const applicantDocumentItem = String(props.documentItem || '').trim();
+	if (!applicantDocumentItem) {
+		return null;
+	}
+	return { applicant_document_item: applicantDocumentItem };
+}
+
+function requirementAnchorId(row: ApplicantWorkspaceRequirementRow) {
+	const applicantDocument = String(row?.applicant_document || '').trim();
+	if (applicantDocument) {
+		return `admissions-requirement-${applicantDocument}`;
+	}
+	const documentType = String(row?.document_type || '').trim();
+	if (documentType) {
+		return `admissions-requirement-type-${documentType}`;
+	}
+	return '';
+}
+
+function submissionAnchorId(itemName: string | null | undefined) {
+	const normalizedItem = String(itemName || '').trim();
+	return normalizedItem ? `admissions-submission-${normalizedItem}` : '';
+}
+
+function isFocusedRequirement(row: ApplicantWorkspaceRequirementRow) {
+	const anchorId = requirementAnchorId(row);
+	return Boolean(anchorId && anchorId === focusedRequirementAnchor.value);
+}
+
+function isFocusedSubmission(itemName: string | null | undefined) {
+	const anchorId = submissionAnchorId(itemName);
+	return Boolean(anchorId && anchorId === focusedSubmissionAnchor.value);
+}
+
+async function scrollAnchorIntoView(anchorId: string) {
+	const normalizedAnchor = String(anchorId || '').trim();
+	if (!normalizedAnchor) {
+		return;
+	}
+
+	await nextTick();
+	const anchor = document.getElementById(normalizedAnchor);
+	if (!anchor || (bodyScrollRef.value && !bodyScrollRef.value.contains(anchor))) {
+		return;
+	}
+
+	anchor.scrollIntoView({
+		behavior: 'smooth',
+		block: 'center',
+		inline: 'nearest',
+	});
+}
+
+async function syncRequestedDocumentAnchor() {
+	if (currentMode.value !== 'applicant' || !applicantWorkspace.value) {
+		focusedRequirementAnchor.value = '';
+		focusedSubmissionAnchor.value = '';
+		return;
+	}
+
+	const requestedItem = resolveRequestedDocumentItemAnchor();
+	if (requestedItem) {
+		const itemName = requestedItem.applicant_document_item;
+		const submissionAnchor = submissionAnchorId(itemName);
+		const parentRequirement =
+			applicantRequirementRows.value.find(row =>
+				(row.items || []).some(item => String(item?.name || '').trim() === itemName)
+			) || null;
+
+		focusedSubmissionAnchor.value = submissionAnchor;
+		focusedRequirementAnchor.value = parentRequirement
+			? requirementAnchorId(parentRequirement)
+			: '';
+		await scrollAnchorIntoView(submissionAnchor || focusedRequirementAnchor.value);
+		return;
+	}
+
+	const requestedRequirement = resolveRequestedDocumentRequirementAnchor();
+	if (!requestedRequirement) {
+		focusedRequirementAnchor.value = '';
+		focusedSubmissionAnchor.value = '';
+		return;
+	}
+
+	const matchedRequirement =
+		applicantRequirementRows.value.find(row => {
+			const applicantDocument = String(row?.applicant_document || '').trim();
+			const documentType = String(row?.document_type || '').trim();
+			return (
+				(Boolean(requestedRequirement.applicant_document) &&
+					applicantDocument === requestedRequirement.applicant_document) ||
+				(Boolean(requestedRequirement.document_type) &&
+					documentType === requestedRequirement.document_type)
+			);
+		}) || null;
+
+	focusedSubmissionAnchor.value = '';
+	focusedRequirementAnchor.value = matchedRequirement
+		? requirementAnchorId(matchedRequirement)
+		: '';
+	await scrollAnchorIntoView(focusedRequirementAnchor.value);
+}
+
 function applyApplicantDocumentReview(documentReview: ApplicantWorkspaceDocumentReview) {
 	if (!applicantWorkspace.value) {
 		return;
@@ -1852,6 +2048,7 @@ async function refreshApplicantWorkspaceContext(
 
 	try {
 		applicantWorkspace.value = await getApplicantWorkspace(studentApplicant);
+		await syncRequestedDocumentAnchor();
 		if (options.syncRecommendationReview && recommendationReview.value?.recommendation) {
 			await openRecommendationReview({
 				recommendation_request:
@@ -1895,6 +2092,7 @@ async function loadInterviewWorkspace(
 		currentMode.value = 'interview';
 		activeInterviewName.value = workspace.value.interview.name;
 		resetFormFromWorkspace();
+		await syncRequestedDocumentAnchor();
 		await syncRequestedRecommendationReview();
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Failed to load interview workspace.';
@@ -1929,6 +2127,7 @@ async function loadApplicantWorkspace(studentApplicantName: string) {
 		currentMode.value = 'applicant';
 		activeInterviewName.value = '';
 		resetFormFromWorkspace();
+		await syncRequestedDocumentAnchor();
 		await syncRequestedRecommendationReview();
 	} catch (err) {
 		applicantWorkspace.value = null;
@@ -2016,6 +2215,7 @@ function returnToApplicantMode() {
 	clearRuntimeMessages();
 	resetApplicantActionState();
 	resetFormFromWorkspace();
+	void syncRequestedDocumentAnchor();
 }
 
 function isActiveInterview(interviewName: string | null | undefined) {
@@ -2473,6 +2673,49 @@ function formatInterviewEnd(item: InterviewWorkspaceInterview) {
 	return formatHumanDateTime(item.interview_end, { fallback: '' });
 }
 
+function interviewFeedbackStatusLabel(item: InterviewWorkspaceInterview) {
+	const explicit = String(item?.feedback_status_label || '').trim();
+	if (explicit) {
+		return explicit;
+	}
+
+	const interviewName = String(item?.name || '').trim();
+	const activeInterview = String(workspace.value?.interview?.name || '').trim();
+	if (!interviewName || interviewName !== activeInterview) {
+		return '';
+	}
+
+	const panel = workspace.value?.feedback?.panel || [];
+	if (!panel.length) {
+		return '';
+	}
+
+	const expectedCount = panel.length;
+	const submittedCount = panel.filter(member => member?.feedback_status === 'Submitted').length;
+	return expectedCount > 0
+		? `${submittedCount}/${expectedCount} submitted`
+		: 'No interviewers assigned';
+}
+
+function interviewFeedbackComplete(item: InterviewWorkspaceInterview) {
+	if (typeof item?.feedback_complete === 'boolean') {
+		return item.feedback_complete;
+	}
+
+	const interviewName = String(item?.name || '').trim();
+	const activeInterview = String(workspace.value?.interview?.name || '').trim();
+	if (!interviewName || interviewName !== activeInterview) {
+		return false;
+	}
+
+	const panel = workspace.value?.feedback?.panel || [];
+	if (!panel.length) {
+		return false;
+	}
+
+	return panel.every(member => member?.feedback_status === 'Submitted');
+}
+
 function requirementStatusClass(status?: string | null) {
 	const normalized = String(status || '').trim();
 	if (['Approved', 'Waived', 'Exception Approved'].includes(normalized)) {
@@ -2545,6 +2788,9 @@ watch(
 			props.studentApplicant,
 			props.guardian,
 			props.applicantDisplayName,
+			props.documentType,
+			props.applicantDocument,
+			props.documentItem,
 			props.recommendationRequest,
 			props.recommendationSubmission,
 			props.applicantDocumentItem,

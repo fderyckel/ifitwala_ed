@@ -328,7 +328,8 @@ function open_schedule_interview_dialog(frm) {
 			{
 				fieldname: "notes",
 				fieldtype: "Small Text",
-				label: __("Notes"),
+				label: __("Operational Notes"),
+				description: __("Operational context only. Do not use for interviewer feedback."),
 			},
 			{
 				fieldname: "suggestions_html",
@@ -1127,12 +1128,30 @@ function render_interviews(interviews) {
 	}
 	const count = Number(interviews.count || 0);
 	const items = Array.isArray(interviews.items) ? interviews.items : [];
+	const helperNote = `
+		<div class="text-muted" style="margin-bottom: 8px;">
+			Feedback status counts submitted Applicant Interview Feedback rows only. Parent interview notes stay operational.
+		</div>
+	`;
 	if (!items.length) {
 		return [
+			helperNote,
 			render_line("Interview count", escape_html(String(count))),
 			`<div class="text-muted" style="margin-top: 6px;">No interviews yet.</div>`,
 		].join("");
 	}
+
+	const latestRow = items[0] || null;
+	const latestInterviewName = String(latestRow?.name || "").trim();
+	const latestSchedule = escape_html(format_interview_schedule(latestRow));
+	const latestLink = latestInterviewName
+		? render_text_link(
+			`/desk/applicant-interview/${encodeURIComponent(latestInterviewName)}`,
+			"Open latest interview"
+		)
+		: escape_html("—");
+	const latestInterviewerLabels = render_interviewer_labels(latestRow);
+	const latestFeedbackStatus = escape_html(String(latestRow?.feedback_status_label || "—"));
 
 	const rows = items.map((row) => {
 		const name = String(row?.name || "").trim();
@@ -1141,25 +1160,31 @@ function render_interviews(interviews) {
 			? `<a href="/desk/applicant-interview/${encodeURIComponent(name)}">${scheduleLabel}</a>`
 			: scheduleLabel;
 		const interviewerLabels = render_interviewer_labels(row);
-		const impression = escape_html(String(row?.outcome_impression || "—"));
+		const feedbackStatus = escape_html(String(row?.feedback_status_label || "—"));
 		return `
 			<tr>
 				<td>${scheduleCell}</td>
 				<td>${interviewerLabels}</td>
-				<td>${impression}</td>
+				<td>${feedbackStatus}</td>
 			</tr>
 		`;
 	}).join("");
 
 	return `
-		<div style="margin-bottom: 6px;">${render_line("Interview count", escape_html(String(count)))}</div>
+		${helperNote}
+		<div style="margin-bottom: 10px;">
+			${render_line("Interview count", escape_html(String(count)))}
+			${render_line("Latest interview", `${latestLink} · ${latestSchedule}`)}
+			${render_line("Latest panel", latestInterviewerLabels)}
+			${render_line("Latest feedback", latestFeedbackStatus)}
+		</div>
 		<div class="table-responsive">
 			<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 				<thead>
 					<tr>
 						<th>Date / Time</th>
 						<th>Interviewer</th>
-						<th>Outcome Impression</th>
+						<th>Feedback Status</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -1435,7 +1460,7 @@ function render_documents(documents, recommendations) {
 			: escape_html("—");
 		return `
 			<tr>
-				<td>${escape_html(String(row?.label || row?.document_type || "Document"))}</td>
+				<td>${escape_html(String(row?.label || row?.document_type || "Requirement"))}</td>
 				<td>${render_document_status_pill(row?.review_status)}${overrideMeta}</td>
 				<td>${render_approved_required_pill(row)}</td>
 				<td>${render_user_link(row?.uploaded_by)}<div class="text-muted">${escape_html(format_datetime(row?.uploaded_at))}</div></td>
@@ -1448,7 +1473,7 @@ function render_documents(documents, recommendations) {
 
 	const uploadedBody = uploadedRows.map((row) => `
 		<tr>
-			<td>${escape_html(String(row?.document_label || row?.document_type || "Document"))}</td>
+			<td>${escape_html(String(row?.document_label || row?.document_type || "Requirement"))}</td>
 			<td>${escape_html(String(row?.item_label || row?.item_key || row?.applicant_document_item || "Submission"))}</td>
 			<td>${render_document_status_pill(row?.review_status)}</td>
 			<td>${render_user_link(row?.uploaded_by)}<div class="text-muted">${escape_html(format_datetime(row?.uploaded_at))}</div></td>
@@ -1460,19 +1485,19 @@ function render_documents(documents, recommendations) {
 
 	return `
 		<div style="margin-bottom: 10px;">
-			${render_pill(documents.ok ? "✓ All required document requirements complete" : "Action required", documents.ok ? "green" : "amber")}
+			${render_pill(documents.ok ? "✓ All required requirements complete" : "Action required", documents.ok ? "green" : "amber")}
 			${missing.length ? `<span style="margin-left: 6px;">${render_pill(`Missing: ${missing.length}`, "red")}</span>` : ""}
-			${pendingUploadedReviews ? `<span style="margin-left: 6px;">${render_pill(`Pending item reviews: ${pendingUploadedReviews}`, "amber")}</span>` : ""}
+			${pendingUploadedReviews ? `<span style="margin-left: 6px;">${render_pill(`Pending submitted-file reviews: ${pendingUploadedReviews}`, "amber")}</span>` : ""}
 		</div>
 		${render_recommendation_review_section(recommendations)}
 		${requiredRows.length ? `
 			<div style="margin-bottom: 12px;">
-				<div style="font-weight: 600; margin-bottom: 6px;">Document Requirements</div>
+				<div style="font-weight: 600; margin-bottom: 6px;">Requirements</div>
 				<div class="table-responsive">
 					<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 						<thead>
 							<tr>
-								<th>Document</th>
+								<th>Requirement</th>
 								<th>Status</th>
 								<th>Approved / Required</th>
 								<th>Latest Upload</th>

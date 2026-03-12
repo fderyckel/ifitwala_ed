@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.15.0"
-last_change_date: "2026-03-10"
+version: "1.15.2"
+last_change_date: "2026-03-12"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
@@ -47,6 +47,8 @@ Use the applicant readiness outputs, not guesswork:
    - `Review Snapshot` includes readiness issues from `get_readiness_snapshot`.
 2. Admissions Cockpit applicant workspace:
    - applicant-centered workspace shows the same requirement/submission model as Desk
+   - cockpit cards show interview count plus the latest interview summary/open action
+   - latest interview feedback status is derived only from submitted `Applicant Interview Feedback` rows
    - admissions roles review evidence there without leaving applicant context
 3. Approval action:
    - `Approve` is blocked by server guard (`approve_application` -> `_validate_ready_for_approval`) until readiness requirements are met (policies/documents/profile/recommendations and health only when required by school policy).
@@ -255,6 +257,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - morning brief admissions pulse (`tabStudent Applicant` weekly status counts)
   - staff admissions cockpit route `/staff/admission-cockpit` (`ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`)
   - admissions cockpit API `ifitwala_ed.api.admission_cockpit.get_admissions_cockpit_data` (applicant-stage Kanban + blocker strip)
+  - cockpit applicant cards show interview count, latest interview context, and direct open action using feedback completion from `Applicant Interview Feedback`
 - **Reviewer workflow**:
   - submission trigger creates Overall Application review assignments (`application_status` transition to `Submitted`)
   - admissions roles review evidence in applicant context only:
@@ -408,7 +411,8 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - `health_review_complete()` -> blocking only when `School.require_health_profile_for_approval = 1`
   - `has_required_interviews()` -> tracked; not currently part of blocking `ready` boolean
   - repeatable required document types are satisfied when approved submission count meets the required count, or when the parent requirement has an explicit admissions override
-  - interview summary shows a compact latest-5 table with Date/Time (linked to interview), Interviewer, and Outcome Impression
+  - interview summary shows a latest interview link/panel snapshot plus a compact latest-5 table with Date/Time (linked to interview), Interviewer, and feedback completion status
+  - interview feedback completion is derived only from submitted `Applicant Interview Feedback` rows; parent interview notes remain operational context only
   - `review_assignments_summary` is assignment-focused (Health + Overall Application); document reviewer metadata is surfaced in `documents_summary`
 - **Promotion side-effects (`promote_to_student`)**:
   - preconditions: applicant status must be `Approved` and `student_joining_date` is required

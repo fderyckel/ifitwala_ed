@@ -29,7 +29,6 @@ DEFAULT_SUGGESTION_WINDOW_END = "17:00:00"
 DEFAULT_SUGGESTION_LIMIT = 8
 DEFAULT_SUGGESTION_STEP_MINUTES = 15
 INTERVIEW_EVENT_REFERENCE_TYPE = "Applicant Interview"
-INTERVIEWER_SELF_EDITABLE_FIELDS = frozenset({"notes", "outcome_impression"})
 INTERVIEW_FEEDBACK_FIELDS = (
     "strengths",
     "concerns",
@@ -50,7 +49,6 @@ class ApplicantInterview(Document):
         self._validate_applicant_state()
         self._validate_time_window()
         self._sync_interview_date_from_start()
-        self._validate_interviewer_edit_scope()
 
     def after_insert(self):
         self._add_audit_comment("Interview recorded")
@@ -65,50 +63,9 @@ class ApplicantInterview(Document):
 
     def _validate_permissions(self):
         _assert_manage_interview_permission(
-            allow_interviewer_write=not self.is_new(),
             interview_name=self.name if not self.is_new() else None,
             student_applicant=self.student_applicant,
         )
-
-    def _validate_interviewer_edit_scope(self):
-        user = frappe.session.user
-        if self.is_new() or _is_interview_privileged_user(user):
-            return
-
-        if not _is_interviewer_on_interview(user=user, interview_name=self.name):
-            return
-
-        before = self.get_doc_before_save()
-        if not before:
-            return
-
-        protected_fieldnames = (
-            "student_applicant",
-            "interview_type",
-            "interview_date",
-            "interview_start",
-            "interview_end",
-            "mode",
-            "confidentiality_level",
-            "school_event",
-        )
-
-        for fieldname in protected_fieldnames:
-            if _coerce_compare_value(getattr(before, fieldname, None)) != _coerce_compare_value(
-                getattr(self, fieldname, None)
-            ):
-                frappe.throw(
-                    _("Interviewers can only edit: {0}.").format(", ".join(sorted(INTERVIEWER_SELF_EDITABLE_FIELDS))),
-                    frappe.PermissionError,
-                )
-
-        before_interviewers = _normalized_interviewer_rows(before.get("interviewers") or [])
-        current_interviewers = _normalized_interviewer_rows(self.get("interviewers") or [])
-        if before_interviewers != current_interviewers:
-            frappe.throw(
-                _("Interviewers can only edit: {0}.").format(", ".join(sorted(INTERVIEWER_SELF_EDITABLE_FIELDS))),
-                frappe.PermissionError,
-            )
 
     def _validate_applicant_state(self):
         if not self.student_applicant:
@@ -277,6 +234,8 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
         return _is_interview_privileged_user(user)
     if op in {"delete", "submit"}:
         return False
+    if op == "write" and not _is_interview_privileged_user(user):
+        return False
     if op not in READ_LIKE_PERMISSION_TYPES and op != "write":
         return False
 
@@ -323,7 +282,6 @@ def schedule_applicant_interview(
     mode: str | None = None,
     confidentiality_level: str | None = None,
     notes: str | None = None,
-    outcome_impression: str | None = None,
     primary_interviewer: str | None = None,
     interviewer_users: Sequence[str] | str | None = None,
     suggestion_window_start_time=None,
@@ -424,7 +382,6 @@ def schedule_applicant_interview(
         interview_doc.interview_date = getdate(start_dt)
         interview_doc.mode = mode
         interview_doc.confidentiality_level = confidentiality_level
-        interview_doc.outcome_impression = outcome_impression
         interview_doc.notes = notes
 
         for user in selected_users:
@@ -578,7 +535,6 @@ def save_my_interview_feedback(
 
 def _assert_manage_interview_permission(
     *,
-    allow_interviewer_write: bool = False,
     interview_name: str | None = None,
     student_applicant: str | None = None,
     user: str | None = None,
@@ -599,10 +555,6 @@ def _assert_manage_interview_permission(
         ):
             frappe.throw(_("You do not have permission to manage Applicant Interviews."), frappe.PermissionError)
         return
-
-    if allow_interviewer_write and interview_name:
-        if _is_interviewer_on_interview(user=current_user, interview_name=interview_name):
-            return
 
     frappe.throw(_("You do not have permission to manage Applicant Interviews."), frappe.PermissionError)
 
@@ -676,17 +628,6 @@ def _normalized_interviewer_rows(rows: Sequence[frappe._dict] | Sequence[dict] |
         if user:
             users.append(user)
     return sorted(set(users))
-
-
-def _coerce_compare_value(value):
-    if value is None:
-        return ""
-    if hasattr(value, "isoformat"):
-        try:
-            return value.isoformat()
-        except Exception:
-            pass
-    return str(value).strip()
 
 
 def _assert_interview_workspace_permission(
@@ -832,8 +773,7 @@ def _serialize_interview_for_workspace(interview_doc: ApplicantInterview) -> dic
         else None,
         "interview_end_label": format_datetime(interview_doc.interview_end) if interview_doc.interview_end else None,
         "school_event": interview_doc.school_event,
-        "outcome_impression": interview_doc.outcome_impression,
-        "notes": interview_doc.notes or "",
+        "operational_notes": interview_doc.notes or "",
         "interviewers": [
             {
                 "user": user,
@@ -1203,12 +1143,34 @@ def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[
             continue
         users_by_interview.setdefault(interview_name, []).append(interviewer_user)
 
+    submitted_users_by_interview: dict[str, set[str]] = {}
+    if frappe.db.table_exists(INTERVIEW_FEEDBACK_DOCTYPE):
+        feedback_rows = frappe.get_all(
+            INTERVIEW_FEEDBACK_DOCTYPE,
+            filters={
+                "applicant_interview": ["in", interview_names],
+                "feedback_status": "Submitted",
+            },
+            fields=["applicant_interview", "interviewer_user"],
+            limit_page_length=max(50, INTERVIEW_WORKSPACE_INTERVIEW_LIMIT * 4),
+            ignore_permissions=True,
+        )
+        for row in feedback_rows:
+            interview_name = (row.get("applicant_interview") or "").strip()
+            interviewer_user = (row.get("interviewer_user") or "").strip()
+            if not interview_name or not interviewer_user:
+                continue
+            submitted_users_by_interview.setdefault(interview_name, set()).add(interviewer_user)
+
     payload: list[dict] = []
     for row in rows:
         interview_name = (row.get("name") or "").strip()
         if not interview_name:
             continue
         interviewer_users = users_by_interview.get(interview_name, [])
+        assigned_users = {user for user in interviewer_users if user}
+        submitted_count = len(assigned_users & submitted_users_by_interview.get(interview_name, set()))
+        expected_count = len(assigned_users)
         payload.append(
             {
                 "name": interview_name,
@@ -1224,6 +1186,14 @@ def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[
                 else None,
                 "interview_end_label": format_datetime(row.get("interview_end")) if row.get("interview_end") else None,
                 "school_event": row.get("school_event"),
+                "feedback_submitted_count": submitted_count,
+                "feedback_expected_count": expected_count,
+                "feedback_complete": bool(expected_count and submitted_count >= expected_count),
+                "feedback_status_label": (
+                    _("{0}/{1} submitted").format(submitted_count, expected_count)
+                    if expected_count
+                    else _("No interviewers assigned")
+                ),
                 "interviewers": [
                     {
                         "user": interviewer_user,
