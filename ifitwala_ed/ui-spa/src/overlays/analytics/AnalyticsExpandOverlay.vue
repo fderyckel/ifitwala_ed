@@ -24,7 +24,10 @@
 					leave-from="if-overlay__panel-to"
 					leave-to="if-overlay__panel-from"
 				>
-					<DialogPanel class="if-overlay__panel">
+					<DialogPanel
+						class="if-overlay__panel analytics-expand__panel"
+						:class="{ 'analytics-expand__panel--table': kind === 'table' }"
+					>
 						<button
 							ref="initialFocus"
 							type="button"
@@ -72,7 +75,23 @@
 
 								<div v-else class="overflow-auto rounded-xl border border-slate-200">
 									<!-- Expanded/zoom view: body text should NOT be caption-sized -->
-									<table class="min-w-full border-collapse text-ink/90">
+									<table
+										class="border-collapse text-ink/90"
+										:class="
+											isRecentRows
+												? 'w-full min-w-[1100px] table-fixed analytics-expand__table--recent'
+												: 'min-w-full'
+										"
+									>
+										<colgroup v-if="isRecentRows">
+											<col style="width: 10%" />
+											<col style="width: 14%" />
+											<col style="width: 13%" />
+											<col style="width: 13%" />
+											<col style="width: 36%" />
+											<col style="width: 10%" />
+											<col style="width: 4%" />
+										</colgroup>
 										<thead class="bg-slate-50">
 											<tr v-if="isRecentRows" class="border-b border-slate-200">
 												<th class="px-3 py-2 text-left type-label text-slate-token/70">Date</th>
@@ -101,20 +120,36 @@
 													<td class="px-3 py-3 align-top whitespace-nowrap">
 														{{ formatDate(row.date) }}
 													</td>
-													<td class="px-3 py-3 align-top whitespace-nowrap font-medium">
-														{{ row.student_full_name || row.student }}
+													<td class="px-3 py-3 align-top font-medium">
+														<div
+															class="analytics-expand__cell-truncate"
+															:title="row.student_full_name || row.student"
+														>
+															{{ row.student_full_name || row.student }}
+														</div>
 													</td>
-													<td class="px-3 py-3 align-top whitespace-nowrap">
-														{{ row.program || '-' }}
+													<td class="px-3 py-3 align-top">
+														<div
+															class="analytics-expand__cell-truncate"
+															:title="row.program || '-'"
+														>
+															{{ row.program || '-' }}
+														</div>
 													</td>
-													<td class="px-3 py-3 align-top whitespace-nowrap">
-														{{ row.log_type }}
+													<td class="px-3 py-3 align-top">
+														<div class="analytics-expand__cell-truncate" :title="row.log_type">
+															{{ row.log_type }}
+														</div>
 													</td>
 													<td class="px-3 py-3 align-top" :title="stripHtml(row.content || '')">
-														{{ truncate(stripHtml(row.content || ''), 180) }}
+														<div class="analytics-expand__log-snippet">
+															{{ truncate(stripHtml(row.content || ''), 220) }}
+														</div>
 													</td>
-													<td class="px-3 py-3 align-top whitespace-nowrap font-medium">
-														{{ row.author }}
+													<td class="px-3 py-3 align-top font-medium">
+														<div class="analytics-expand__cell-truncate" :title="row.author">
+															{{ row.author }}
+														</div>
 													</td>
 													<td class="px-3 py-3 align-top text-center">
 														<span
@@ -243,3 +278,20 @@ function truncate(text: string, max = 140) {
 	return text.length > max ? `${text.slice(0, max)}...` : text;
 }
 </script>
+
+<style scoped>
+.analytics-expand__panel--table {
+	max-width: min(96rem, calc(100vw - 3rem));
+}
+
+.analytics-expand__cell-truncate {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.analytics-expand__log-snippet {
+	word-break: break-word;
+	line-height: 1.7rem;
+}
+</style>

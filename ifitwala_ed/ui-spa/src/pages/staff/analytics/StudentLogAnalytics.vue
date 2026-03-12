@@ -339,24 +339,20 @@ function truncate(text: string, max = 140) {
 			>
 				<template #body>
 					<div class="max-h-[320px] overflow-auto">
-						<table class="min-w-[720px] w-full table-fixed border-collapse text-ink/80">
+						<table class="min-w-[680px] w-full table-fixed border-collapse text-ink/80">
 							<colgroup>
-								<col style="width: 9%" />
-								<col style="width: 14%" />
-								<col style="width: 12%" />
-								<col style="width: 11%" />
-								<col style="width: 36%" />
-								<col style="width: 12%" />
+								<col style="width: 16%" />
+								<col style="width: 22%" />
+								<col style="width: 18%" />
+								<col style="width: 38%" />
 								<col style="width: 6%" />
 							</colgroup>
 							<thead>
 								<tr class="border-b border-slate-200 bg-slate-50">
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Date</th>
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Student</th>
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Program</th>
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Type</th>
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Log</th>
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Author</th>
 									<th class="px-2 py-2 text-center type-label text-slate-token/70">FU</th>
 								</tr>
 							</thead>
@@ -371,23 +367,23 @@ function truncate(text: string, max = 140) {
 									<td class="px-2 py-2 align-top whitespace-nowrap">
 										{{ formatDate(row.date) }}
 									</td>
-									<td class="px-2 py-2 align-top whitespace-nowrap">
-										{{ row.student_full_name || row.student }}
+									<td class="px-2 py-2 align-top">
+										<div
+											class="analytics-table__cell-truncate"
+											:title="row.student_full_name || row.student"
+										>
+											{{ row.student_full_name || row.student }}
+										</div>
 									</td>
-									<td class="px-2 py-2 align-top whitespace-nowrap">
-										{{ row.program || '-' }}
+									<td class="px-2 py-2 align-top">
+										<div class="analytics-table__cell-truncate" :title="row.log_type">
+											{{ row.log_type }}
+										</div>
 									</td>
-									<td class="px-2 py-2 align-top whitespace-nowrap">
-										{{ row.log_type }}
-									</td>
-									<td
-										class="px-2 py-2 align-top break-words leading-6"
-										:title="stripHtml(row.content || '')"
-									>
-										{{ truncate(stripHtml(row.content || '')) }}
-									</td>
-									<td class="px-2 py-2 align-top whitespace-nowrap">
-										{{ row.author }}
+									<td class="px-2 py-2 align-top" :title="stripHtml(row.content || '')">
+										<div class="analytics-recent-log__snippet">
+											{{ truncate(stripHtml(row.content || '')) }}
+										</div>
 									</td>
 									<td class="px-2 py-2 align-top text-center">
 										<span
@@ -400,7 +396,7 @@ function truncate(text: string, max = 140) {
 								</tr>
 
 								<tr v-if="!recentRows.length">
-									<td colspan="7" class="px-2 py-3 text-center type-empty">
+									<td colspan="5" class="px-2 py-3 text-center type-empty">
 										No logs in this period.
 									</td>
 								</tr>
@@ -490,3 +486,20 @@ function truncate(text: string, max = 140) {
 		</section>
 	</div>
 </template>
+
+<style scoped>
+.analytics-table__cell-truncate {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.analytics-recent-log__snippet {
+	display: -webkit-box;
+	overflow: hidden;
+	word-break: break-word;
+	line-height: 1.5rem;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 4;
+}
+</style>
