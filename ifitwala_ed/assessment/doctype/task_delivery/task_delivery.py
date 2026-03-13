@@ -368,13 +368,12 @@ class TaskDelivery(Document):
                     frappe.throw(_("Cannot change grading configuration after outcomes exist."))
 
     def _has_evidence(self):
-        outcome_rows = frappe.db.get_values(
+        outcome_names = frappe.get_all(
             "Task Outcome",
-            {"task_delivery": self.name},
-            "name",
-            as_list=True,
+            filters={"task_delivery": self.name},
+            pluck="name",
+            limit_page_length=0,
         )
-        outcome_names = [row[0] for row in outcome_rows if row and row[0]]
         if not outcome_names:
             return False
 

@@ -35,30 +35,29 @@ def get_eligible_students(student_group):
     if not student_group:
         return []
 
-    rows = frappe.db.get_values(
+    return frappe.get_all(
         "Student Group Student",
-        {
+        filters={
             "parent": student_group,
             "parenttype": "Student Group",
             "active": 1,
         },
-        "student",
-        as_list=True,
+        pluck="student",
+        limit_page_length=0,
     )
-    return [row[0] for row in rows if row and row[0]]
 
 
 def bulk_create_outcomes(delivery, students, context=None):
     if not students:
         return 0
 
-    existing = frappe.db.get_values(
+    existing = frappe.get_all(
         "Task Outcome",
-        {"task_delivery": delivery.name},
-        "student",
-        as_list=True,
+        filters={"task_delivery": delivery.name},
+        pluck="student",
+        limit_page_length=0,
     )
-    existing_students = {row[0] for row in existing if row and row[0]}
+    existing_students = {student for student in existing if student}
     new_students = [student for student in students if student not in existing_students]
     if not new_students:
         return 0
