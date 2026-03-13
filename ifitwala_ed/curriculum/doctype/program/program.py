@@ -133,7 +133,7 @@ class Program(NestedSet):
                     r.color_override = default_color
 
     def _validate_program_assessment_categories(self):
-        rows = self.get("assessment_categories") or []
+        rows = _get_effective_assessment_category_rows(self)
 
         points_on = cint(self.points) == 1
         # criteria_on  = cint(self.criteria) == 1  # allowed concurrently
@@ -193,6 +193,67 @@ class Program(NestedSet):
             # Example (not enabled here):
             # if cint(self.is_published) and abs(active_total - 100.0) > 0.0001:
             #     frappe.throw(_("Published Programs using Points must total exactly 100 (current total: {0:.2f}).").format(active_total))
+
+
+def _as_category_row(row) -> frappe._dict:
+    return frappe._dict(
+        {
+            "assessment_category": getattr(row, "assessment_category", None),
+            "default_weight": getattr(row, "default_weight", None),
+            "color_override": getattr(row, "color_override", None),
+            "active": getattr(row, "active", 0),
+            "idx": getattr(row, "idx", None),
+        }
+    )
+
+
+def _resolve_effective_assessment_category_source(doc: Program) -> tuple[str | None, list[frappe._dict]]:
+    """
+    Return the nearest Program whose assessment_categories should apply.
+
+    Local rows always win. If the local child table is empty, walk the parent_program
+    chain until the nearest ancestor with rows is found.
+    """
+    current = doc
+    visited = set()
+
+    while current:
+        current_key = current.name or f"__unsaved__:{id(current)}"
+        if current_key in visited:
+            break
+        visited.add(current_key)
+
+        rows = [
+            _as_category_row(row) for row in (current.get("assessment_categories") or []) if row.assessment_category
+        ]
+        if rows:
+            return current.name, rows
+
+        parent_name = (current.parent_program or "").strip()
+        if not parent_name:
+            break
+        current = frappe.get_doc("Program", parent_name)
+
+    return None, []
+
+
+def _get_effective_assessment_category_rows(doc: Program) -> list[frappe._dict]:
+    _source_program, rows = _resolve_effective_assessment_category_source(doc)
+    return rows
+
+
+@frappe.whitelist()
+def get_effective_assessment_categories(program: str):
+    if not program:
+        frappe.throw(_("Program is required."))
+
+    doc = frappe.get_doc("Program", program)
+    source_program, rows = _resolve_effective_assessment_category_source(doc)
+    return {
+        "source_program": source_program,
+        "rows": rows,
+        "inherited": bool(source_program and source_program != doc.name),
+    }
 
 
 @frappe.whitelist()

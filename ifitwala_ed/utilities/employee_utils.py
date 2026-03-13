@@ -1,9 +1,11 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# ifitwala_ed/utilities/employee_utils.py
+# /Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/utilities/employee_utils.py
 
 import frappe
+
+from ifitwala_ed.utilities.tree_utils import get_ancestors_inclusive, get_descendants_inclusive
 
 CACHE_TTL = 300  # seconds
 
@@ -34,52 +36,12 @@ def get_user_base_school(user: str | None = None) -> str | None:
     return row.school if row and row.school else None
 
 
-# -------------------------
-# Organization tree helpers
-# -------------------------
-
-
-def _org_cache_key(kind: str, org: str) -> str:
-    return f"org:{kind}:{org}"
-
-
 def get_descendant_organizations(org: str) -> list[str]:
-    if not org:
-        return []
-    cache = frappe.cache()
-    key = _org_cache_key("desc", org)
-    cached = cache.get_value(key)
-    if cached is not None:
-        return cached
-
-    # self + descendants using lft/rgt
-    org_doc = frappe.get_doc("Organization", org)
-    rows = frappe.get_all(
-        "Organization",
-        filters={"lft": (">=", org_doc.lft), "rgt": ("<=", org_doc.rgt)},
-        pluck="name",
-    )
-    cache.set_value(key, rows, expires_in_sec=CACHE_TTL)
-    return rows
+    return get_descendants_inclusive("Organization", org, cache_ttl=CACHE_TTL)
 
 
 def get_ancestor_organizations(org: str) -> list[str]:
-    if not org:
-        return []
-    cache = frappe.cache()
-    key = _org_cache_key("anc", org)
-    cached = cache.get_value(key)
-    if cached is not None:
-        return cached
-
-    org_doc = frappe.get_doc("Organization", org)
-    rows = frappe.get_all(
-        "Organization",
-        filters={"lft": ("<=", org_doc.lft), "rgt": (">=", org_doc.rgt)},
-        pluck="name",
-    )
-    cache.set_value(key, rows, expires_in_sec=CACHE_TTL)
-    return rows
+    return get_ancestors_inclusive("Organization", org, cache_ttl=CACHE_TTL)
 
 
 def is_leaf_organization(org: str) -> bool:

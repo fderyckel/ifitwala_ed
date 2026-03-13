@@ -3,8 +3,8 @@ title: "Course: Catalog Unit for Program and Enrollment Design"
 slug: course
 category: Curriculum
 doc_order: 2
-version: "1.1.0"
-last_change_date: "2026-03-11"
+version: "1.1.1"
+last_change_date: "2026-03-13"
 summary: "Define a reusable catalog course with grade-scale context, assessment categories/criteria, and status used by Program and Program Offering enrollment flows."
 seo_title: "Course: Catalog Unit for Program and Enrollment Design"
 seo_description: "Define a reusable catalog course with grade-scale context, assessment categories/criteria, and status used by Program and Program Offering enrollment flows."
@@ -46,6 +46,7 @@ If `assessment_criteria` rows are used, their `criteria_weighting` total must be
 ## Lifecycle and Linked Documents
 
 1. Create course identity and school/context links.
+   On a new Desk form, `school` now prefills from the current user's default school when available; staff can still change or clear it before save.
 2. Configure grade-scale fields (`default_grade_scale`, optional `grade_scale` override).
 3. Configure `assessment_categories` and `assessment_criteria` rows.
 4. Set lifecycle flags (`status`, `term_long`, publish flags).

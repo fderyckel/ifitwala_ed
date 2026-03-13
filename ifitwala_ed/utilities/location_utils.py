@@ -19,6 +19,8 @@ import frappe
 from frappe.utils import get_datetime
 from frappe.utils.caching import redis_cache
 
+from ifitwala_ed.utilities.tree_utils import get_descendants_inclusive
+
 # ─────────────────────────────────────────────────────────────
 # Core time & tree helpers
 # ─────────────────────────────────────────────────────────────
@@ -54,19 +56,8 @@ def _get_descendant_locations(location: str) -> List[str]:
     if not location:
         return []
 
-    loc_doc = frappe.get_doc("Location", location)
-
-    # children are strictly inside (lft, rgt)
-    children = frappe.db.get_all(
-        "Location",
-        filters={
-            "lft": [">", loc_doc.lft],
-            "rgt": ["<", loc_doc.rgt],
-        },
-        pluck="name",
-    )
-
-    return children or []
+    descendants = get_descendants_inclusive("Location", location, cache_ttl=LOCATION_SCOPE_CACHE_TTL) or [location]
+    return [name for name in descendants if name != location]
 
 
 def _get_location_scope_cached(location: str, include_children: bool) -> List[str]:

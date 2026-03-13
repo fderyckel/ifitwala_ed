@@ -3,8 +3,8 @@ title: "Program: Curriculum Container and Enrollment Policy Anchor"
 slug: program
 category: Curriculum
 doc_order: 1
-version: "1.1.1"
-last_change_date: "2026-03-11"
+version: "1.2.0"
+last_change_date: "2026-03-13"
 summary: "Define the academic program tree, its catalog courses, basket-group memberships, assessment model, and prerequisite policy foundation used by offerings and enrollment validation."
 seo_title: "Program: Curriculum Container and Enrollment Policy Anchor"
 seo_description: "Define the academic program tree, its catalog courses, basket-group memberships, assessment model, and prerequisite policy foundation used by offerings and enrollment validation."
@@ -50,11 +50,13 @@ In enrollment architecture, Program is intent/structure. Enrollment truth is com
    In the form, this table is labeled `Enrollment Basket Memberships`.
 4. Add prerequisite rows ([**Program Course Prerequisite**](/docs/en/program-course-prerequisite/)).
 5. Configure assessment settings and `assessment_categories` rows.
+   If a child program leaves `assessment_categories` empty, the server now resolves the nearest ancestor program's categories at runtime until the child adds its own local rows.
 6. Publish only when website fields are valid (`program_slug`, not archived).
 
 <DoDont doTitle="Do" dontTitle="Don't">
   <Do>Keep only `Course.status = Active` rows in the program catalog.</Do>
   <Do>Use basket-group membership rows when a course can satisfy one or more requirement families.</Do>
+  <Do>Leave a child program's assessment categories empty only when you intentionally want it to inherit the nearest ancestor's categories at runtime.</Do>
   <Dont>Add duplicate course rows in `courses`.</Dont>
   <Dont>Publish archived programs or publish without `program_slug`.</Dont>
 </DoDont>
@@ -99,6 +101,7 @@ Result: the catalog keeps one course row for ESS while the basket-group table re
 - **Lifecycle hooks in controller**: `validate`
 - **Operational/public methods**:
   - `inherit_assessment_categories(program, overwrite=1)` (whitelisted)
+  - `get_effective_assessment_categories(program)` (whitelisted)
 
 - **DocType**: `Program` (`ifitwala_ed/curriculum/doctype/program/`)
 - **Autoname**: `field:program_name`
@@ -118,6 +121,7 @@ Result: the catalog keeps one course row for ESS while the basket-group table re
   - duplicate `(course, basket_group)` mappings are blocked
   - publish guard (`archive` + `program_slug`) enforced only when published
   - assessment-category duplicate and weight guards
+  - empty child programs resolve assessment categories from the nearest ancestor program at runtime
   - when `points = 1`, active category weights must exist and total must be `<= 100`
 
 ### Permission Matrix

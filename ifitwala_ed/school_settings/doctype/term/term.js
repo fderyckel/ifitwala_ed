@@ -14,6 +14,10 @@ frappe.ui.form.on("Term", {
 		});
 	},
 
+	onload(frm) {
+		prefill_term_default_school(frm);
+	},
+
 	refresh(frm) {},
 
 	academic_year(frm) {
@@ -47,3 +51,17 @@ frappe.ui.form.on("Term", {
 		}
 	},
 });
+
+function prefill_term_default_school(frm) {
+	if (!frm.is_new() || frm.doc.school) return;
+
+	frappe.call({
+		method: "ifitwala_ed.utilities.school_tree.get_user_default_school",
+		callback: function (r) {
+			const school = r && r.message;
+			if (school && !frm.doc.school) {
+				frm.set_value("school", school);
+			}
+		}
+	});
+}

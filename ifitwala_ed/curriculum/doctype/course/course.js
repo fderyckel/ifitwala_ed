@@ -36,7 +36,9 @@ frappe.ui.form.on("Course", {
 	},
 
 
-  onload: function (frm) {},
+  onload: function (frm) {
+		prefill_course_default_school(frm);
+	},
 
   refresh: function (frm) {
 		if (frm.is_new() || !frm.doc.name) return;
@@ -118,6 +120,20 @@ frappe.ui.form.on("Course", {
     });
   },
 });
+
+function prefill_course_default_school(frm) {
+	if (!frm.is_new() || frm.doc.school) return;
+
+	frappe.call({
+		method: "ifitwala_ed.utilities.school_tree.get_user_default_school",
+		callback: function (r) {
+			const school = r && r.message;
+			if (school && !frm.doc.school) {
+				frm.set_value("school", school);
+			}
+		}
+	});
+}
 
 
 

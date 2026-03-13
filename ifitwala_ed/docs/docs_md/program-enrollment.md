@@ -3,8 +3,8 @@ title: "Program Enrollment: Committed Academic Enrollment Truth"
 slug: program-enrollment
 category: Enrollment
 doc_order: 5
-version: "1.2.0"
-last_change_date: "2026-03-12"
+version: "1.2.1"
+last_change_date: "2026-03-13"
 summary: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions including required and credited basket-group snapshots."
 seo_title: "Program Enrollment: Committed Academic Enrollment Truth"
 seo_description: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions."
@@ -35,6 +35,7 @@ seo_description: "Store one committed enrollment per student/offering/year with 
 ## Lifecycle and Linked Documents
 
 1. Create enrollment via approved request materialization (recommended) or explicit admin or migration path.
+   On a new Desk form without a selected offering, `school` now prefills from the current user's default school and is later overridden by the chosen Program Offering spine when applicable.
 2. System syncs spine from offering (`program`, `school`, optional `cohort`, AY membership).
 3. Required offering courses can be seeded when creating a new enrollment.
 4. Course rows sync `required` from the offering and keep `credited_basket_group` when applicable.

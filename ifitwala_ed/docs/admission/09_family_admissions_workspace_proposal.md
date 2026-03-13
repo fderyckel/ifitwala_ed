@@ -32,7 +32,7 @@ The product goal is simple:
 ## 2. Why The Current Model Should Change
 
 Status: Planned
-Code refs: `ifitwala_ed/docs/admission/05_admission_portal.md`, `ifitwala_ed/docs/spa/guardian_portal/01_guardian_product.md`, `ifitwala_ed/docs/spa/guardian_portal/z2_guardian_contract.md`
+Code refs: `ifitwala_ed/docs/admission/05_admission_portal.md`, `ifitwala_ed/docs/spa/guardian_portal/01_guardian_product.md`, `ifitwala_ed/docs/spa/guardian_portal/03_visibility_contract.md`
 Test refs: `None`
 
 Current runtime assumptions create unnecessary friction for families with multiple children:
