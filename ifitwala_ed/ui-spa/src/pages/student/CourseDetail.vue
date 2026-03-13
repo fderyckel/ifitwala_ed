@@ -175,6 +175,16 @@
 										<p class="mt-2 type-caption text-ink/70">
 											{{ deliverySummary(delivery) }}
 										</p>
+										<p v-if="delivery.quiz" class="mt-2 type-caption text-ink/70">
+											{{ quizSummary(delivery) }}
+										</p>
+										<RouterLink
+											v-if="delivery.quiz"
+											:to="quizRoute(delivery)"
+											class="if-action mt-3 inline-flex"
+										>
+											{{ quizActionLabel(delivery) }}
+										</RouterLink>
 									</div>
 								</div>
 							</article>
@@ -340,6 +350,16 @@
 										class="rounded-xl border border-line-soft bg-white p-3"
 									>
 										<p class="type-caption text-ink/70">{{ deliverySummary(delivery) }}</p>
+										<p v-if="delivery.quiz" class="mt-2 type-caption text-ink/70">
+											{{ quizSummary(delivery) }}
+										</p>
+										<RouterLink
+											v-if="delivery.quiz"
+											:to="quizRoute(delivery)"
+											class="if-action mt-3 inline-flex"
+										>
+											{{ quizActionLabel(delivery) }}
+										</RouterLink>
 									</div>
 								</div>
 							</article>
@@ -368,6 +388,16 @@
 										class="rounded-xl border border-line-soft bg-white p-3"
 									>
 										<p class="type-caption text-ink/70">{{ deliverySummary(delivery) }}</p>
+										<p v-if="delivery.quiz" class="mt-2 type-caption text-ink/70">
+											{{ quizSummary(delivery) }}
+										</p>
+										<RouterLink
+											v-if="delivery.quiz"
+											:to="quizRoute(delivery)"
+											class="if-action mt-3 inline-flex"
+										>
+											{{ quizActionLabel(delivery) }}
+										</RouterLink>
 									</div>
 								</div>
 							</article>
@@ -620,6 +650,36 @@ function deliverySummary(delivery: TaskDeliveryRef): string {
 	}
 
 	return parts.join(' · ') || 'No dated delivery window is available yet.';
+}
+
+function quizSummary(delivery: TaskDeliveryRef): string {
+	if (!delivery.quiz) return '';
+	const parts = [delivery.quiz.status_label];
+	if (delivery.quiz.is_practice && delivery.quiz.percentage != null) {
+		parts.push(`${delivery.quiz.percentage}%`);
+	}
+	if (delivery.quiz.pass_percentage != null) {
+		parts.push(`pass at ${delivery.quiz.pass_percentage}%`);
+	}
+	return parts.join(' · ');
+}
+
+function quizActionLabel(delivery: TaskDeliveryRef): string {
+	if (!delivery.quiz) return 'Open Quiz';
+	if (delivery.quiz.can_continue) return 'Continue Quiz';
+	if (delivery.quiz.can_retry) return 'Retry Quiz';
+	return 'Open Quiz';
+}
+
+function quizRoute(delivery: TaskDeliveryRef) {
+	return {
+		name: 'student-quiz',
+		params: {
+			course_id: props.course_id,
+			task_delivery: delivery.task_delivery,
+		},
+		query: buildCourseQuery(activeUnit.value?.name, activeLesson.value?.name),
+	};
 }
 
 function isActiveUnit(unitName: string): boolean {

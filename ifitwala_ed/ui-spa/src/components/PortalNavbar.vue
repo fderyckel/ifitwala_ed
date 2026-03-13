@@ -135,22 +135,9 @@ watch(
 );
 
 // Get user info from Frappe's session object
-type BrowserSessionUser = {
-	fullname?: string | null;
-	email?: string | null;
-};
-
-function getSessionUserInfo(): BrowserSessionUser {
-	const browserWindow = window as Window & {
-		frappe?: {
-			session?: {
-				user_info?: BrowserSessionUser | null;
-			} | null;
-		};
-	};
-
+function getSessionUserInfo() {
 	return (
-		browserWindow.frappe?.session?.user_info || {
+		window?.frappe?.session?.user_info || {
 			fullname: 'Guest',
 			email: 'guest@example.com',
 		}

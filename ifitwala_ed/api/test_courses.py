@@ -154,6 +154,28 @@ class TestCoursesApi(TestCase):
         self.assertEqual(len(curriculum["units"][0]["linked_tasks"]), 1)
         self.assertEqual(len(curriculum["units"][0]["lessons"][0]["linked_tasks"]), 1)
 
+    def test_build_curriculum_payload_carries_quiz_state_on_delivery_refs(self):
+        curriculum, _maps = courses_api._build_curriculum_payload(
+            units=[],
+            lessons=[],
+            activities=[],
+            tasks=[{"name": "TASK-QUIZ", "title": "Quiz", "task_type": "Quiz"}],
+            deliveries=[{"name": "TD-QUIZ", "task": "TASK-QUIZ", "student_group": "GROUP-1"}],
+            quiz_state_map={
+                "TD-QUIZ": {
+                    "status_label": "In Progress",
+                    "can_continue": 1,
+                    "attempts_used": 1,
+                    "passed": 0,
+                    "is_practice": 1,
+                }
+            },
+        )
+
+        delivery_ref = curriculum["course_tasks"][0]["deliveries"][0]
+        self.assertEqual(delivery_ref["quiz"]["status_label"], "In Progress")
+        self.assertEqual(delivery_ref["quiz"]["can_continue"], 1)
+
     def test_get_student_course_detail_rejects_out_of_scope_course(self):
         with (
             patch("ifitwala_ed.api.courses._require_student_name_for_session_user", return_value="STU-001"),

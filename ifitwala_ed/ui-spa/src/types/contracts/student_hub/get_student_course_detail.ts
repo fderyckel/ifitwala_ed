@@ -119,4 +119,21 @@ export type TaskDeliveryRef = {
 	lock_date?: string | null
 	lesson_instance?: string | null
 	delivery_mode?: string | null
+	quiz?: QuizDeliveryState | null
+}
+
+export type QuizDeliveryState = {
+	is_practice: number
+	attempts_used: number
+	max_attempts?: number | null
+	can_start: number
+	can_continue: number
+	can_retry: number
+	latest_attempt?: string | null
+	status_label: string
+	score?: number | null
+	percentage?: number | null
+	passed: number
+	pass_percentage?: number | null
+	time_limit_minutes?: number | null
 }

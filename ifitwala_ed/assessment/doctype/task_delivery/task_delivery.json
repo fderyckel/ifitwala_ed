@@ -25,6 +25,14 @@
   "grade_scale",
   "rubric_scoring_strategy",
   "rubric_version",
+  "quiz_section",
+  "quiz_question_bank",
+  "quiz_question_count",
+  "quiz_time_limit_minutes",
+  "quiz_max_attempts",
+  "quiz_pass_percentage",
+  "quiz_shuffle_questions",
+  "quiz_shuffle_choices",
   "section_break_rwq9",
   "course",
   "academic_year",
@@ -150,6 +158,54 @@
    "read_only": 1
   },
   {
+   "fieldname": "quiz_section",
+   "fieldtype": "Section Break",
+   "label": "Quiz Snapshot"
+  },
+  {
+   "fieldname": "quiz_question_bank",
+   "fieldtype": "Link",
+   "label": "Quiz Question Bank",
+   "options": "Quiz Question Bank",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quiz_question_count",
+   "fieldtype": "Int",
+   "label": "Questions Per Attempt",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quiz_time_limit_minutes",
+   "fieldtype": "Int",
+   "label": "Time Limit (minutes)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quiz_max_attempts",
+   "fieldtype": "Int",
+   "label": "Maximum Attempts",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quiz_pass_percentage",
+   "fieldtype": "Float",
+   "label": "Pass Percentage",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quiz_shuffle_questions",
+   "fieldtype": "Check",
+   "label": "Shuffle Questions",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quiz_shuffle_choices",
+   "fieldtype": "Check",
+   "label": "Shuffle Choices",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_rwq9",
    "fieldtype": "Section Break"
   },
@@ -188,7 +244,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-12 17:45:04",
+ "modified": "2026-03-13 11:30:42.000000",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Delivery",

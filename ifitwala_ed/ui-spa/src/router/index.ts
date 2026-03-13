@@ -64,6 +64,19 @@ const routes: RouteRecordRaw[] = [
     }),
     meta: { layout: 'student' },
   },
+  {
+    path: '/student/courses/:course_id/quizzes/:task_delivery',
+    name: 'student-quiz',
+    component: () => import('@/pages/student/StudentQuiz.vue'),
+    props: route => ({
+      course_id: String(route.params.course_id || ''),
+      task_delivery: String(route.params.task_delivery || ''),
+      learning_unit:
+        typeof route.query.learning_unit === 'string' ? route.query.learning_unit : '',
+      lesson: typeof route.query.lesson === 'string' ? route.query.lesson : '',
+    }),
+    meta: { layout: 'student' },
+  },
 
   // Guardian
   { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue'), meta: { layout: 'student' } },

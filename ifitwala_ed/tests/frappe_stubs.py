@@ -66,6 +66,7 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
     frappe_utils.get_datetime = lambda value: value
     frappe_utils.now = lambda: "2026-03-12 17:45:04"
     frappe_utils.now_datetime = lambda: "2026-03-12 17:45:04"
+    frappe_utils.sanitize_html = lambda value, **kwargs: value
 
     modules = {
         "frappe": frappe,

@@ -81,3 +81,33 @@ class TestTaskDelivery(TestCase):
 
         with self.assertRaises(StubValidationError):
             delivery._validate_group_submission()
+
+    def test_apply_delivery_mode_defaults_for_assessed_quiz_forces_points_without_submission(self):
+        task_delivery_service = types.ModuleType("ifitwala_ed.assessment.task_delivery_service")
+        task_delivery_service.get_delivery_context = lambda student_group: {}
+        task_delivery_service.get_eligible_students = Mock(return_value=[])
+        task_delivery_service.bulk_create_outcomes = Mock(return_value=0)
+        task_delivery_service.resolve_or_create_lesson_instance = Mock(return_value=None)
+
+        with stubbed_frappe(extra_modules={"ifitwala_ed.assessment.task_delivery_service": task_delivery_service}):
+            module = import_fresh("ifitwala_ed.assessment.doctype.task_delivery.task_delivery")
+
+        delivery = module.TaskDelivery()
+        delivery.delivery_mode = "Assess"
+        delivery.require_grading = 0
+        delivery.requires_submission = 1
+        delivery.grading_mode = None
+        delivery.rubric_version = "RUBRIC-1"
+        delivery.rubric_scoring_strategy = "Separate Criteria"
+        delivery._is_quiz_task = Mock(return_value=True)
+        delivery._resolve_quiz_max_points = Mock(return_value=12)
+        delivery._has_field = Mock(return_value=True)
+
+        delivery._apply_delivery_mode_defaults()
+
+        self.assertEqual(delivery.require_grading, 1)
+        self.assertEqual(delivery.requires_submission, 0)
+        self.assertEqual(delivery.grading_mode, "Points")
+        self.assertEqual(delivery.max_points, 12)
+        self.assertIsNone(delivery.rubric_version)
+        self.assertIsNone(delivery.rubric_scoring_strategy)

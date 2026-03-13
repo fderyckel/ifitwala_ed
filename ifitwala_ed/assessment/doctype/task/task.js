@@ -7,11 +7,13 @@ frappe.ui.form.on("Task", {
 	setup(frm) {
 		set_learning_unit_query(frm);
 		set_lesson_query(frm);
+		set_quiz_question_bank_query(frm);
 	},
 
 	refresh(frm) {
 		set_learning_unit_query(frm);
 		set_lesson_query(frm);
+		set_quiz_question_bank_query(frm);
 	},
 
 	course(frm) {
@@ -20,6 +22,10 @@ frappe.ui.form.on("Task", {
 
 	default_course(frm) {
 		reset_curriculum_fields(frm);
+	},
+
+	quiz_question_bank(frm) {
+		enforce_quiz_defaults(frm);
 	},
 
 	learning_unit(frm) {
@@ -60,6 +66,16 @@ function set_lesson_query(frm) {
 	});
 }
 
+function set_quiz_question_bank_query(frm) {
+	frm.set_query("quiz_question_bank", () => {
+		const course = get_course_value(frm);
+		if (!course) {
+			return {};
+		}
+		return { filters: { course, is_published: 1 } };
+	});
+}
+
 function reset_curriculum_fields(frm) {
 	if (frm.doc.learning_unit) {
 		frm.set_value("learning_unit", null);
@@ -85,6 +101,7 @@ function enforce_delivery_mode_defaults(frm) {
 		}
 		clear_grading_defaults(frm);
 	}
+	enforce_quiz_defaults(frm);
 }
 
 function clear_grading_defaults(frm) {
@@ -94,4 +111,23 @@ function clear_grading_defaults(frm) {
 			frm.set_value(field, null);
 		}
 	}
+}
+
+function enforce_quiz_defaults(frm) {
+	if (frm.doc.task_type !== "Quiz") {
+		return;
+	}
+	if (frm.doc.default_delivery_mode === "Assess") {
+		if (frm.doc.default_grading_mode !== "Points") {
+			frm.set_value("default_grading_mode", "Points");
+		}
+		if (!frm.doc.default_max_points && frm.doc.quiz_question_count) {
+			frm.set_value("default_max_points", frm.doc.quiz_question_count);
+		}
+		return;
+	}
+	if (frm.doc.default_grading_mode !== "None") {
+		frm.set_value("default_grading_mode", "None");
+	}
+	clear_grading_defaults(frm);
 }

@@ -165,6 +165,13 @@ def resolve_grade_symbol(grade_scale, grade_symbol):
     return grade_map[grade_symbol]
 
 
+def resolve_grade_for_score(grade_scale, numeric_score):
+    grade_symbol = _grade_symbol_from_score(grade_scale, numeric_score)
+    if not grade_symbol:
+        return None, None
+    return grade_symbol, resolve_grade_symbol(grade_scale, grade_symbol)
+
+
 def set_procedural_status(outcome_id, status, note=None):
     """
     Apply a procedural override safely and record an audit note.

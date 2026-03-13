@@ -20,6 +20,14 @@
   "section_break_haua",
   "instructions",
   "attachments",
+  "quiz_section",
+  "quiz_question_bank",
+  "quiz_question_count",
+  "quiz_time_limit_minutes",
+  "quiz_max_attempts",
+  "quiz_pass_percentage",
+  "quiz_shuffle_questions",
+  "quiz_shuffle_choices",
   "grading_section",
   "default_grading_mode",
   "default_rubric_scoring_strategy",
@@ -98,6 +106,57 @@
    "fieldtype": "Table",
    "label": "Attachments",
    "options": "Attached Document"
+  },
+  {
+   "depends_on": "eval:doc.task_type=='Quiz'",
+   "fieldname": "quiz_section",
+   "fieldtype": "Section Break",
+   "label": "Quiz"
+  },
+  {
+   "depends_on": "eval:doc.task_type=='Quiz'",
+   "fieldname": "quiz_question_bank",
+   "fieldtype": "Link",
+   "label": "Quiz Question Bank",
+   "options": "Quiz Question Bank"
+  },
+  {
+   "depends_on": "eval:doc.task_type=='Quiz'",
+   "fieldname": "quiz_question_count",
+   "fieldtype": "Int",
+   "label": "Questions Per Attempt"
+  },
+  {
+   "depends_on": "eval:doc.task_type=='Quiz'",
+   "fieldname": "quiz_time_limit_minutes",
+   "fieldtype": "Int",
+   "label": "Time Limit (minutes)"
+  },
+  {
+   "depends_on": "eval:doc.task_type=='Quiz'",
+   "fieldname": "quiz_max_attempts",
+   "fieldtype": "Int",
+   "label": "Maximum Attempts"
+  },
+  {
+   "depends_on": "eval:doc.task_type=='Quiz'",
+   "fieldname": "quiz_pass_percentage",
+   "fieldtype": "Float",
+   "label": "Pass Percentage"
+  },
+  {
+   "default": "1",
+   "depends_on": "eval:doc.task_type=='Quiz'",
+   "fieldname": "quiz_shuffle_questions",
+   "fieldtype": "Check",
+   "label": "Shuffle Questions"
+  },
+  {
+   "default": "1",
+   "depends_on": "eval:doc.task_type=='Quiz'",
+   "fieldname": "quiz_shuffle_choices",
+   "fieldtype": "Check",
+   "label": "Shuffle Choices"
   },
   {
    "default": "0",
@@ -179,7 +238,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 21:13:55",
+ "modified": "2026-03-13 11:30:42.000000",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",

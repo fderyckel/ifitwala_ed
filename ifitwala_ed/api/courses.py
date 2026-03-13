@@ -15,6 +15,7 @@ from frappe.utils import get_datetime, now_datetime
 
 from ifitwala_ed.api import course_schedule as course_schedule_api
 from ifitwala_ed.api import portal as portal_api
+from ifitwala_ed.assessment import quiz_service
 
 COURSE_PLACEHOLDER = "/assets/ifitwala_ed/images/course_placeholder.jpg"
 MAX_SORT_INT = 2_147_483_647
@@ -230,8 +231,8 @@ def _get_courses_for_year(student_name: str, academic_year: str) -> list[dict]:
     return courses
 
 
-def _serialize_delivery(row: dict[str, Any]) -> dict[str, Any]:
-    return {
+def _serialize_delivery(row: dict[str, Any], quiz_state: dict[str, Any] | None = None) -> dict[str, Any]:
+    payload = {
         "task_delivery": row.get("name"),
         "student_group": row.get("student_group"),
         "available_from": _serialize_scalar(row.get("available_from")),
@@ -240,16 +241,24 @@ def _serialize_delivery(row: dict[str, Any]) -> dict[str, Any]:
         "lesson_instance": row.get("lesson_instance"),
         "delivery_mode": row.get("delivery_mode"),
     }
+    if quiz_state:
+        payload["quiz"] = quiz_state
+    return payload
 
 
-def _serialize_task(row: dict[str, Any], deliveries: list[dict[str, Any]]) -> dict[str, Any]:
+def _serialize_task(
+    row: dict[str, Any], deliveries: list[dict[str, Any]], quiz_state_map: dict[str, dict[str, Any]] | None = None
+) -> dict[str, Any]:
     return {
         "task": row.get("name"),
         "title": row.get("title") or row.get("name"),
         "task_type": row.get("task_type"),
         "learning_unit": row.get("learning_unit"),
         "lesson": row.get("lesson"),
-        "deliveries": [_serialize_delivery(delivery) for delivery in deliveries],
+        "deliveries": [
+            _serialize_delivery(delivery, quiz_state=(quiz_state_map or {}).get(delivery.get("name")))
+            for delivery in deliveries
+        ],
     }
 
 
@@ -599,6 +608,7 @@ def _build_curriculum_payload(
     activities: list[dict[str, Any]],
     tasks: list[dict[str, Any]],
     deliveries: list[dict[str, Any]],
+    quiz_state_map: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     deliveries_by_task: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for delivery in deliveries:
@@ -677,7 +687,7 @@ def _build_curriculum_payload(
     for task in tasks:
         task_name = task.get("name")
         deliveries_for_task = deliveries_by_task.get(task_name, [])
-        serialized = _serialize_task(task, deliveries_for_task)
+        serialized = _serialize_task(task, deliveries_for_task, quiz_state_map=quiz_state_map)
 
         lesson_name = task.get("lesson")
         unit_name = task.get("learning_unit")
@@ -915,6 +925,13 @@ def _fetch_task_deliveries_for_course(
             "lock_date",
             "lesson_instance",
             "delivery_mode",
+            "quiz_question_bank",
+            "quiz_question_count",
+            "quiz_time_limit_minutes",
+            "quiz_max_attempts",
+            "quiz_pass_percentage",
+            "quiz_shuffle_questions",
+            "quiz_shuffle_choices",
         ],
         order_by="due_date asc, available_from asc, name asc",
     )
@@ -1090,6 +1107,12 @@ def get_student_course_detail(
     tasks = _fetch_course_tasks(course_id)
     task_names = [row.get("name") for row in tasks if row.get("name")]
     deliveries = _fetch_task_deliveries_for_course(course_id, task_names, student_groups)
+    tasks_by_name = {row["name"]: row for row in tasks if row.get("name")}
+    quiz_state_map = quiz_service.get_student_delivery_state_map(
+        student=student_name,
+        deliveries=deliveries,
+        tasks_by_name=tasks_by_name,
+    )
     lesson_instances = _fetch_lesson_instances_for_course(course_id, student_groups, lesson_instance)
 
     curriculum, maps = _build_curriculum_payload(
@@ -1098,6 +1121,7 @@ def get_student_course_detail(
         activities=activities,
         tasks=tasks,
         deliveries=deliveries,
+        quiz_state_map=quiz_state_map,
     )
 
     lesson_instances_by_name = {row["name"]: row for row in lesson_instances if row.get("name")}
