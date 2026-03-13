@@ -1,4 +1,4 @@
-# Guardian Portal Actions Contract (v0.2)
+# Guardian Portal Actions Contract (v0.3)
 
 Status: Active
 Audience: Humans, coding agents
@@ -30,16 +30,23 @@ Rules:
 
 ## 2. Implemented Actions
 
-Status: Partial
+Status: Implemented
 
 Code refs:
 - `ifitwala_ed/api/activity_booking.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianActivities.vue`
+- `ifitwala_ed/api/guardian_policy.py`
+- `ifitwala_ed/api/guardian_finance.py`
+- `ifitwala_ed/api/guardian_monitoring.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianFinance.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`
 - `ifitwala_ed/ui-spa/src/types/contracts/activity_booking/get_activity_portal_board.ts`
 - `ifitwala_ed/docs/enrollment/activity_booking_architecture.md`
 
 Test refs:
 - `ifitwala_ed/api/test_activity_booking.py`
+- `ifitwala_ed/api/test_guardian_phase2.py`
 
 Implemented guardian actions:
 
@@ -47,10 +54,13 @@ Implemented guardian actions:
 2. Drill from the family view into a linked student's read-only detail surface.
 3. Open the guardian portfolio surface.
 4. Use `/guardian/activities` to submit bookings, confirm offered places, cancel permitted bookings, and review booking logistics through the activity booking workflow APIs.
+5. Use `/guardian/policies` to acknowledge missing guardian policy versions through a named acknowledgement endpoint.
+6. Use `/guardian/finance` to review authorized invoices and payment history for the family.
+7. Use `/guardian/monitoring` to review family-wide guardian-visible logs and published results with optional child filtering.
 
 ## 3. Planned But Not Wired On `/hub/guardian`
 
-Status: Planned
+Status: Partial
 
 Code refs:
 - `ifitwala_ed/docs/spa/guardian_portal/01_guardian_product.md`
@@ -62,8 +72,8 @@ Test refs:
 
 Rules:
 
-1. Monitoring mode is not implemented on the current guardian portal.
-2. Policy acknowledgement, document upload, payments, and direct guardian messaging are not implemented on the current guardian portal routes.
+1. Document upload and direct guardian messaging are not implemented on the current guardian portal routes.
+2. Guardian finance remains read-only in Phase 2; submitting payments or creating payment requests from the portal is not yet wired.
 3. These actions must not be treated as canonical until they have a wired route, a named server workflow, and tests.
 4. When one of these actions is added, this document and the product contract must be updated in the same change.
 
@@ -84,31 +94,39 @@ Rules:
 
 1. Guardians must not edit grades, unpublished outcomes, staff notes, health records, or guardian-student relationships.
 2. Guardians must not bypass booking capacity checks, overlap checks, publication gates, or audience scoping.
-3. Guardians must not compare siblings academically through any portal action.
-4. Requests for staff-owned changes must route to staff workflows, not mutate records directly.
+3. Guardians must not compare siblings academically through any portal action or ranking surface.
+4. Guardians must not create financial visibility over account holders that fail the Phase-2 authority rule.
+5. Requests for staff-owned changes must route to staff workflows, not mutate records directly.
 
 ## 5. Contract Matrix
 
-Status: Partial
+Status: Implemented
 
 Code refs:
 - `ifitwala_ed/api/activity_booking.py`
 - `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/api/guardian_policy.py`
+- `ifitwala_ed/api/guardian_finance.py`
+- `ifitwala_ed/api/guardian_monitoring.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianActivities.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianFinance.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPortfolioFeed.vue`
 
 Test refs:
 - `ifitwala_ed/api/test_activity_booking.py`
 - `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/api/test_guardian_phase2.py`
 
 | Concern | Canonical owner | Code refs | Test refs |
 | --- | --- | --- | --- |
-| Schema / DocType | Guardian links plus activity booking lifecycle records | `students/doctype/guardian/*`, `students/doctype/student_guardian/*`, `students/doctype/guardian_student/*`, activity booking doctypes reached via `api/activity_booking.py` | `api/test_activity_booking.py` |
-| Controller / workflow logic | Activity booking workflows and guardian snapshot reads | `api/activity_booking.py`, `api/guardian_home.py` | `api/test_activity_booking.py`, `api/test_guardian_home.py` |
-| API endpoints | Activity booking workflow endpoints and `get_guardian_home_snapshot` | `api/activity_booking.py`, `api/guardian_home.py` | `api/test_activity_booking.py`, `api/test_guardian_home.py` |
-| SPA / UI surfaces | Guardian Home, student drill-down, activities, portfolio | `ui-spa/src/pages/guardian/*` | None |
-| Reports / dashboards / briefings | Guardian Home summary cards and activity board summaries | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianActivities.vue` | `api/test_activity_booking.py` |
+| Schema / DocType | Guardian links, activity booking lifecycle records, policy acknowledgements, account holders, invoices, and payments | `students/doctype/guardian/*`, `students/doctype/student_guardian/*`, `students/doctype/guardian_student/*`, `governance/doctype/policy_acknowledgement/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, activity booking doctypes reached via `api/activity_booking.py` | `api/test_activity_booking.py`, `api/test_guardian_phase2.py` |
+| Controller / workflow logic | Activity booking workflows, guardian snapshot reads, guardian policy acknowledgement, guardian finance visibility, guardian monitoring reads | `api/activity_booking.py`, `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py` | `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py` |
+| API endpoints | Activity booking workflow endpoints plus guardian snapshot, policy, finance, and monitoring endpoints | `api/activity_booking.py`, `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py` | `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py` |
+| SPA / UI surfaces | Guardian Home, student drill-down, activities, policies, finance, monitoring, portfolio | `ui-spa/src/pages/guardian/*` | `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
+| Reports / dashboards / briefings | Guardian Home summary cards, activity board summaries, finance summary cards, monitoring summary cards | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianActivities.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue` | `api/test_activity_booking.py`, `api/test_guardian_phase2.py` |
 | Scheduler / background jobs | None documented for guardian actions in this contract | None | None |
-| Tests | Activity booking backend coverage and guardian snapshot backend coverage | `api/test_activity_booking.py`, `api/test_guardian_home.py` | Implemented |
+| Tests | Activity booking backend coverage, guardian snapshot backend coverage, and guardian Phase-2 regression coverage | `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py` | Implemented |
