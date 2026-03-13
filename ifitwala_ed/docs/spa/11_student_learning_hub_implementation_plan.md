@@ -114,9 +114,9 @@ Exit criteria:
 
 ## Phase 3: Today cockpit and server-curated work board
 
-Status: Proposed
-Code refs: `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/api/course_schedule.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/docs/docs_md/task-delivery.md`
-Test refs: None
+Status: Implemented
+Code refs: `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/types/contracts/student_hub/get_student_hub_home.ts`, `ifitwala_ed/api/course_schedule.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/docs/docs_md/task-delivery.md`, `ifitwala_ed/docs/docs_md/task-outcome.md`
+Test refs: `ifitwala_ed/api/test_courses.py`
 
 Goal: turn Home into a calm daily routing surface without requiring strong self-management up front.
 
@@ -130,10 +130,11 @@ Scope:
 
 Execution notes:
 
-- First shipping cut should favor system curation over manual orchestration.
-- If a durable planning-state contract is not yet approved, do not block this phase on personal subtasks or persistent custom lane moves.
-- Student agency should initially be light: continue work, accept a recommended `Now`, or choose from a small set of eligible items.
-- The board must remain a planning layer, not a second grading system.
+- Student Home now uses one aggregated payload for top orientation, board lanes, and timeline days.
+- The first shipping cut favors system curation over manual orchestration.
+- `Now / Soon / Later / Done` are currently server-curated from `Task Delivery` and `Task Outcome` truth, with no persistent student lane-move state yet.
+- Student agency is intentionally light in this phase: continue work from the top strip, choose from `Now`, or open the dated timeline into course context.
+- The board remains a planning layer, not a second grading system.
 
 Exit criteria:
 

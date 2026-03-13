@@ -229,7 +229,7 @@ class TestUserRedirect(FrappeTestCase):
             {
                 "doctype": "School",
                 "school_name": f"Redirect Applicant School {frappe.generate_hash(length=6)}",
-                "abbr": f"RA{frappe.generate_hash(length=4)}",
+                "abbr": f"RA{frappe.generate_hash(length=3)}",
                 "organization": _ensure_test_organization(),
             }
         ).insert(ignore_permissions=True)
@@ -435,7 +435,7 @@ class TestUserRedirect(FrappeTestCase):
             {
                 "doctype": "School",
                 "school_name": f"Redirect Family School {frappe.generate_hash(length=6)}",
-                "abbr": f"RF{frappe.generate_hash(length=4)}",
+                "abbr": f"RF{frappe.generate_hash(length=3)}",
                 "organization": _ensure_test_organization(),
             }
         ).insert(ignore_permissions=True)

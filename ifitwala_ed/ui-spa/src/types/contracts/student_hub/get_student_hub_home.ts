@@ -24,10 +24,21 @@ export type Response = {
 		image_url?: string | null
 	}
 	learning: {
-		today_classes: TodayClass[]
+		 today_classes: TodayClass[]
 		next_learning_step?: NextLearningStep | null
 		accessible_courses_count: number
 		selected_year?: string | null
+		orientation: {
+			current_class?: TodayClass | null
+			next_class?: TodayClass | null
+		}
+		work_board: {
+			now: WorkItem[]
+			soon: WorkItem[]
+			later: WorkItem[]
+			done: WorkItem[]
+		}
+		timeline: TimelineDay[]
 	}
 }
 
@@ -58,4 +69,52 @@ export type NextLearningStep = {
 	title: string
 	subtitle: string
 	href: RouteTarget
+}
+
+export type WorkItem = {
+	task_delivery: string
+	task: string
+	task_outcome?: string | null
+	title: string
+	task_type?: string | null
+	course?: string | null
+	course_name?: string | null
+	student_group?: string | null
+	delivery_mode?: string | null
+	requires_submission: number
+	require_grading: number
+	learning_unit?: string | null
+	lesson?: string | null
+	lesson_instance?: string | null
+	available_from?: string | null
+	due_date?: string | null
+	lock_date?: string | null
+	href?: RouteTarget | null
+	lane: 'now' | 'soon' | 'later' | 'done'
+	lane_reason: string
+	status_label: string
+	outcome: {
+		submission_status?: string | null
+		grading_status?: string | null
+		has_submission: number
+		has_new_submission: number
+		is_complete: number
+		completed_on?: string | null
+	}
+}
+
+export type TimelineDay = {
+	date: string
+	items: TimelineItem[]
+}
+
+export type TimelineItem = {
+	kind: 'scheduled_class' | 'task_due' | 'task_available'
+	date: string
+	date_time: string
+	title: string
+	subtitle: string
+	time_label?: string | null
+	status_label: string
+	href?: RouteTarget | null
 }

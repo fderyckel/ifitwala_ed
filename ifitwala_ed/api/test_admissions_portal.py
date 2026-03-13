@@ -1509,7 +1509,7 @@ class TestSubmitApplication(FrappeTestCase):
         policy_payload = {
             "doctype": "Institutional Policy",
             "policy_key": f"applicant_policy_{frappe.generate_hash(length=8)}",
-            "policy_title": "Applicant Portal Policy",
+            "policy_title": f"Applicant Portal Policy {frappe.generate_hash(length=6)}",
             "policy_category": "Admissions",
             "applies_to": "Applicant",
             "organization": organization,
