@@ -1,390 +1,95 @@
-Below is the **Codex handoff pack** you need. It is written so agents can execute without inventing schemas, and it assumes **Phase-1 includes Org Communication** and that **Task Delivery is the per-student-group assignment unit** (with `available_from`, `due_date`, `lock_date`).
+# Guardian Portal Backlog From The Authoritative Contracts
 
----
+Status: Working note
+Authority: Non-authoritative
+Scope: PR-sized backlog for `/hub/guardian`
+Last updated: 2026-03-13
 
-# docs/portal/guardian/codex_pr0_brief_phase1.md
+This note translates the authoritative guardian portal contracts into a short backlog. It does not replace the contracts.
 
-## Title
+## 1. What Already Matches
 
-Guardian Portal Phase-1 — Guardian Home “Snapshot” (single-call) + SPA wiring
+Status: Completed
 
-## Goal
+Authoritative docs:
+- `ifitwala_ed/docs/spa/guardian_portal/01_guardian_product.md`
+- `ifitwala_ed/docs/spa/guardian_portal/02_information_contract.md`
+- `ifitwala_ed/docs/spa/guardian_portal/03_visibility_contract.md`
+- `ifitwala_ed/docs/spa/guardian_portal/04_guardian_actions.md`
 
-Ship a Guardian Home that answers in <30 seconds:
+Code refs:
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/guardianHomeService.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianActivities.vue`
 
-* What’s happening with my kids today and over the next **7 school days**?
-* Is anything needing my attention?
-* What should I prepare for (bags, assessments, deadlines)?
+Test refs:
+- `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/api/test_activity_booking.py`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
 
-## Scope (Phase-1)
+Current matches:
 
-### Must ship
+1. The canonical guardian home snapshot endpoint exists.
+2. The SPA has a guardian-specific service and route wiring.
+3. The four guardian home zones are rendered on the landing page.
+4. The student drill-down and guardian activities routes already exist.
 
-1. **One backend endpoint** returning a **single bundled payload**: `GuardianHomeSnapshot`
-2. Guardian Home SPA page renders 4 zones:
+## 2. Gaps Still Worth Closing
 
-   * Family Timeline (next 7 school days)
-   * Attention Needed
-   * Preparation & Support
-   * Recent Activity
-3. Include **Org Communication** (unread + recent)
-4. Include **Student Logs** that are guardian-visible
-5. Include **Task due/assessment indicators** using **Task Delivery** (due date, availability) and **published Task Outcomes** for results
+Status: In progress
 
-### Nice-to-have (if already trivial)
+Authoritative docs:
+- `ifitwala_ed/docs/spa/guardian_portal/02_information_contract.md`
+- `ifitwala_ed/docs/spa/guardian_portal/03_visibility_contract.md`
+- `ifitwala_ed/docs/spa/guardian_portal/04_guardian_actions.md`
 
-* Mark “read” interactions (only if the current interaction model supports it cleanly)
+Code refs:
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
 
-## Non-goals (explicitly forbidden in Phase-1)
+Test refs:
+- `ifitwala_ed/api/test_guardian_home.py`
+- Guardian page tests: None
 
-* Payments, uploads, messaging replies/threads
-* Monitoring alerts (“performance drop alerts”, push thresholds). No alerting in Phase-1.
-* Showing rotation day or block numbers anywhere in UI.
-* Any sibling comparison.
+Open gaps:
 
-## Architecture constraints (must obey)
+1. Guardian Home and Guardian Student Shell do not yet have page-level regression tests.
+2. The snapshot tests are narrow and do not yet prove all visibility categories together in one end-to-end fixture.
+3. The current home payload does not expose direct action metadata for each attention item, so actionability remains limited to what the UI already hardcodes.
+4. Planned guardian actions remain intentionally unwired and need explicit approval before implementation.
 
-* **Server-side permissions** only. No UI-only gating.
-* **One-call Home load**: 1 request preferred, max 2.
-* No N+1 queries. Batch with `IN`.
-* Use **Redis** only for stable templates (schedule structure), not for mutable per-student events.
-* SPA transport boundary remains **only** in `ui-spa/src/resources/frappe.ts`.
-* Services return domain payload only (no toasts, no signals unless mutation; Phase-1 is read-mostly).
+## 3. Suggested PR Breakdown
 
-## Backend deliverable
+Status: Planned
 
-### New whitelisted method
+Code refs:
+- `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
+- `ifitwala_ed/api/activity_booking.py`
+- `ifitwala_ed/api/test_activity_booking.py`
 
-`ifitwala_ed.api.guardian_home.get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0)`
+Test refs:
+- Existing tests above plus new UI tests: Planned
 
-**Inputs**
+PRs:
 
-* `anchor_date`: `YYYY-MM-DD` (optional, default today in site TZ)
-* `school_days`: int (default 7)
-* `debug`: int (default 0)
+1. `PR-G1`: expand guardian snapshot backend tests to cover linked students, guardian-visible student logs, published outcomes, unread communications, and forbidden key regression.
+2. `PR-G2`: add page tests for Guardian Home and Guardian Student Shell covering load, empty state, blocked state, and zone order.
+3. `PR-G3`: add direct-action metadata for attention items only if the team wants blocker/action buttons on home and the contract is updated first.
+4. `PR-G4`: evaluate one deferred guardian action at a time, starting with the highest-value workflow, and add route, API, tests, and doc updates together.
 
-**Output**
+## 4. Follow-Up Needed Before New Scope
 
-* Must match `GuardianHomeSnapshot` TS contract exactly.
+Status: Planned
 
-## Data sources (confirmed in repo uploads)
+Rules:
 
-* Guardian ↔ students: `Guardian` child table (Guardian Student), plus Student links
-* Student Log (guardian-visible only)
-* Org Communication + Org Communication Audience
-* Communication Interaction Entry (interaction ledger)
-* Portal Read Receipt (read/unread state)
-* Task Delivery (assignment unit), Task (metadata), Task Outcome (published results only)
-* School Calendar + Holidays, School Event (audience-scoped if applicable), School Schedule templates
-
-## Acceptance tests (“done means”)
-
-1. Guardian with 2–4 kids sees a coherent family timeline for next 7 school days.
-2. No “rotation day” or “block number” is visible in UI or API payload.
-3. Unread communications count matches interactions.
-4. Student logs shown only when guardian-visible.
-5. Results shown only when `Task Outcome.is_published = 1` (and include published date).
-6. Page loads with a single request, stable response shape, no console errors.
-
----
-
-# docs/portal/guardian/codex_task_breakdown_phase1.md
-
-## PR-G1 — Endpoint skeleton + strict guardian scope
-
-**Backend**
-
-* Create `ifitwala_ed/api/guardian_home.py`
-* Implement `get_guardian_home_snapshot(...)` returning correct empty structure (meta + zones + counts)
-* Implement guardian → linked student list resolution (server-side enforcement)
-
-**Acceptance**
-
-* Endpoint exists, returns stable JSON keys, empty arrays, counts = 0.
-
----
-
-## PR-G2 — Schedule horizon + calendar-aware “next 7 school days”
-
-**Backend**
-
-* Compute next N school days using School Calendar + Holidays (no hardcoded weekends only).
-* For each student: resolve school schedule blocks into plain-language blocks:
-
-  * `start_time`, `end_time`, `title`/`subtitle`, `kind`
-* Cache schedule templates per school in Redis (TTL 6–24h).
-
-**Acceptance**
-
-* Timeline returns exactly N school days (or less if end-of-year edge case).
-* No rotation/block leakage.
-
----
-
-## PR-G3 — Task Delivery due/assessment chips
-
-**Backend**
-
-* Pull Task Deliveries relevant to the guardian’s children via student group membership.
-* Use `Task Delivery.available_from`, `due_date`, `lock_date`, `delivery_mode`, `student_group`, `task`.
-* Return “due today” and “upcoming assessments” chips (signal-only).
-
-**Acceptance**
-
-* Due chips appear, ordered by due date.
-* No task noise flood (cap per child/day, provide “View all” in UI later).
-
----
-
-## PR-G4 — Published Task Outcomes in Recent Activity
-
-**Backend**
-
-* Pull Task Outcomes for guardian’s children (only those linked to deliveries/tasks) where:
-
-  * `is_published = 1`
-  * include `published_on`, `published_by`
-* Return Recent Activity items.
-
-**Acceptance**
-
-* No unpublished outcomes appear, ever.
-
----
-
-## PR-G5 — Org Communication + unread logic
-
-**Backend**
-
-* Pull `Org Communication` scoped to guardian using `Org Communication Audience`.
-* Determine `is_unread` using `Portal Read Receipt`, and treat the guardian’s own `Communication Interaction Entry` rows as seen for summary logic.
-* Include:
-
-  * `unread_communications` count
-  * Recent Activity communication items
-  * Attention Needed communication items if unread / requires_ack.
-
-**Acceptance**
-
-* Unread count matches interaction rows.
-* Only audience-targeted comms are visible.
-
----
-
-## PR-G6 — Student Logs + attendance exceptions
-
-**Backend**
-
-* Student Log: include only guardian-visible logs.
-* Attendance: include only exceptions (avoid dumping all rows).
-
-**Acceptance**
-
-* Guardian sees only what is allowed for their child(ren).
-
----
-
-## PR-G7 — SPA contracts + service + GuardianHome wiring
-
-**Frontend**
-
-* Add TS contracts file (below).
-* Add service `ui-spa/src/lib/service/guardianHome/guardianHomeService.ts` following your existing pattern.
-* Wire `GuardianHome.vue` to one-call snapshot load, render zones.
-
-**Acceptance**
-
-* One request loads Home.
-* No toasts in service; page owns loading/error.
-
----
-
-# ifitwala_ed/ui-spa/src/contracts/guardian/guardianHomeContracts.ts
-
-```ts
-export type GuardianHomeSnapshot = {
-  meta: {
-    generated_at: string
-    anchor_date: string
-    school_days: number
-    guardian: { name: string }
-  }
-  family: {
-    children: ChildRef[]
-  }
-  zones: {
-    family_timeline: FamilyTimelineDay[]
-    attention_needed: AttentionItem[]
-    preparation_and_support: PrepItem[]
-    recent_activity: RecentActivityItem[]
-  }
-  counts: {
-    unread_communications: number
-    unread_visible_student_logs: number
-    upcoming_due_tasks: number
-    upcoming_assessments: number
-  }
-  debug?: { warnings: string[] }
-}
-
-export type ChildRef = {
-  student: string
-  full_name: string
-  school: string
-  student_image_url?: string
-}
-
-export type FamilyTimelineDay = {
-  date: string
-  label: string
-  is_school_day: boolean
-  children: ChildTimeline[]
-}
-
-export type ChildTimeline = {
-  student: string
-  day_summary: { start_time: string; end_time: string; note?: string }
-  blocks: TimelineBlock[]
-  tasks_due: DueTaskChip[]
-  assessments_upcoming: DueTaskChip[]
-}
-
-export type TimelineBlock = {
-  start_time: string
-  end_time: string
-  title: string
-  subtitle?: string
-  kind: "course" | "activity" | "recess" | "assembly" | "other"
-}
-
-export type DueTaskChip = {
-  task_delivery: string
-  title: string
-  due_date: string
-  kind: "assessment" | "homework" | "classwork" | "other"
-  status: "assigned" | "submitted" | "missing" | "completed"
-}
-
-export type AttentionItem = AttendanceAttention | StudentLogAttention | CommunicationAttention
-
-export type AttendanceAttention = {
-  type: "attendance"
-  student: string
-  date: string
-  time?: string
-  summary: string
-}
-
-export type StudentLogAttention = {
-  type: "student_log"
-  student: string
-  student_log: string
-  date: string
-  time?: string
-  summary: string
-  follow_up_status?: "Open" | "In Progress" | "Completed" | "Closed"
-}
-
-export type CommunicationAttention = {
-  type: "communication"
-  communication: string
-  date: string
-  title: string
-  requires_ack?: boolean
-  is_unread: boolean
-}
-
-export type PrepItem = {
-  student: string
-  date: string
-  label: string
-  source: "schedule" | "task" | "communication"
-  related?: {
-    task_delivery?: string
-    communication?: string
-    schedule_hint?: { start_time: string; end_time: string }
-  }
-}
-
-export type RecentActivityItem = PublishedResultItem | StudentLogItem | CommunicationItem
-
-export type PublishedResultItem = {
-  type: "task_result"
-  student: string
-  task_outcome: string
-  title: string
-  published_on: string
-  published_by?: string
-  score?: { value: number | string; max?: number; label?: string }
-  narrative?: string
-}
-
-export type StudentLogItem = {
-  type: "student_log"
-  student: string
-  student_log: string
-  date: string
-  summary: string
-}
-
-export type CommunicationItem = {
-  type: "communication"
-  communication: string
-  date: string
-  title: string
-  is_unread: boolean
-}
-```
-
----
-
-# ifitwala_ed/api/guardian_home.py (backend skeleton)
-
-```python
-import frappe
-from frappe import _
-from frappe.utils import now_datetime, getdate
-
-@frappe.whitelist()
-def get_guardian_home_snapshot(anchor_date=None, school_days=7, debug=0):
-	"""
-	Phase-1 Guardian Home snapshot.
-	Returns a single bundled payload for Guardian Home.
-	Server-side permissions enforced. No rotation_day or block_number may leak.
-	"""
-	anchor = getdate(anchor_date) if anchor_date else getdate()
-	try:
-		school_days = int(school_days or 7)
-	except Exception:
-		frappe.throw(_("Invalid school_days"))
-
-	payload = {
-		"meta": {
-			"generated_at": now_datetime().isoformat(),
-			"anchor_date": str(anchor),
-			"school_days": school_days,
-			"guardian": {"name": None},
-		},
-		"family": {"children": []},
-		"zones": {
-			"family_timeline": [],
-			"attention_needed": [],
-			"preparation_and_support": [],
-			"recent_activity": [],
-		},
-		"counts": {
-			"unread_communications": 0,
-			"unread_visible_student_logs": 0,
-			"upcoming_due_tasks": 0,
-			"upcoming_assessments": 0,
-		},
-	}
-
-	if int(debug or 0):
-		payload["debug"] = {"warnings": []}
-
-	# NOTE: Implementation added in PR-G1..G6 in small steps.
-	return payload
-```
-
----
+1. Policy acknowledgement on `/hub/guardian` needs an explicit route and named workflow endpoint before coding starts.
+2. Direct messaging on `/hub/guardian` must reuse the org communication contract instead of inventing a new channel.
+3. Monitoring mode requires a separate approval because it changes guardian notification behavior.
+4. Payments and uploads need their own canonical contracts before they can be treated as guardian portal scope.

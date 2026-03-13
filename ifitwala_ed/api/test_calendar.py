@@ -125,7 +125,12 @@ class TestCalendarApi(TestCase):
             patch("ifitwala_ed.api.calendar_quick_create.frappe.get_all", side_effect=_fake_get_all),
             patch(
                 "ifitwala_ed.api.calendar_quick_create._get_quick_create_scope",
-                return_value={"base_school": "SCHOOL-1"},
+                return_value={
+                    "base_school": "SCHOOL-1",
+                    "school_scope": ["SCHOOL-1"],
+                    "student_scope": ["SCHOOL-1"],
+                    "is_admin_like": False,
+                },
             ),
         ):
             first = create_meeting_quick(

@@ -1,323 +1,134 @@
-# Guardian Home — Information Contract (v0.1)
+# Guardian Home Information Contract (v0.2)
 
-**Ifitwala_Ed — Authoritative**
-Status: Draft (Phase-0)
+Status: Active
 Audience: Humans, coding agents
-Scope: Guardian Home (default landing surface)
-Last updated: 2026-02-02
+Scope: `/hub/guardian` landing surface
+Last updated: 2026-03-13
 
----
+This document defines the canonical information contract for Guardian Home and its child drill-down surface.
 
-## 1. Purpose of Guardian Home
+## 1. Snapshot Payload Owner
 
-**Guardian Home** is the default entry surface for Guardians.
+Status: Implemented
 
-Its sole purpose is to provide a **calm, accurate, family-level briefing** answering:
+Code refs:
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/guardianHomeService.ts`
 
-1. What is happening with my family at school?
-2. What does the next school days look like?
-3. Is anything requiring my attention?
-4. How can I support my children?
-
-Guardian Home is **not a navigation hub**.
-It is a **briefing surface**.
-
----
-
-## 2. Time Horizon (Locked)
-
-Guardian Home operates on a **time-bounded window**.
-
-### Primary horizon
-
-* **Today**
-* **Next school days**
-* Default window: **next 7 school days**
-
-### Secondary horizon
-
-* **Recent past** (context and continuity only)
-
-### Rules
-
-* Non-school days (weekends, holidays) are **explicitly shown and labeled**
-* School calendars are respected **per child**
-* No internal time structures (rotation days, blocks) may appear
-
----
-
-## 3. Perspective & Aggregation Rules
-
-### 3.1 Parent-Centric by Default (Locked)
-
-* Guardian Home aggregates information at the **family level**
-* Guardians are **not required** to select a child
-* Child context is shown **inline**, only where relevant
-
-### 3.2 Child Focus Is Contextual
-
-Child-centric views are entered only when:
-
-* an item explicitly concerns a single child
-* the Guardian chooses to drill down
-
-Child switching is **occasional**, not primary.
-
----
-
-## 4. Section Ordering (Authoritative)
-
-Guardian Home content is ordered by **cognitive priority**, not by system module.
-
-### 4.1 Family Timeline (Primary Backbone)
-
-**Purpose**
-Provide a scannable, day-by-day view of what matters for the family.
-
-**Characteristics**
-
-* Grouped by **day**
-* Aggregated across **all children**
-* Plain language only
-
-Each item answers:
-
-* Which child
-* What is happening
-* When (human phrasing)
-* Whether preparation is required
-
-**Eligible sources**
-
-* School schedule (translated)
-* Tasks with due dates
-* Assessments (as tasks)
-* School events
-* Calendar exceptions
-
-**Explicit exclusions**
-
-* Block numbers
-* Rotation days
-* Internal scheduling metadata
-
----
-
-### 4.2 Attention Needed (Exceptions)
-
-**Purpose**
-Surface anything that may require Guardian awareness or action.
-
-**Examples**
-
-* Attendance issues
-* Health visits
-* Behaviour / student logs (guardian-visible only)
-* Unread communications
-* Pending acknowledgements or forms
-
-**Rules**
-
-* No severity labels
-* No interpretation
-* No moral framing
-* Parents decide what is serious
-
----
-
-### 4.3 Preparation & Support (Forward-Looking)
-
-**Purpose**
-Help Guardians support their children proactively.
-
-**Examples**
-
-* Upcoming assessments
-* Projects due soon
-* Patterns requiring encouragement
-
-**Rules**
-
-* Suggestive, not directive
-* Informational, not evaluative
-
----
-
-### 4.4 Recent Activity (Continuity)
-
-**Purpose**
-Provide reassurance and narrative continuity.
-
-**Examples**
-
-* Recently published task results
-* Teacher communications
-* Behaviour notes
-* Health office visits
-
-This section is **secondary** and visually quieter.
-
----
-
-### 4.5 Default Presentation Rules (Clarification)
-
-Guardian Home follows **progressive disclosure**.
-
-**Default view**
-
-* Narrative and contextual
-* Plain language
-* Low numeric density
-
-**Expanded view**
-
-* Numbers
-* Dates
-* Detailed task instructions
-* Published results
-
-**Invariant**
-
-> Guardians should understand meaning **before** seeing metrics.
-
-Numbers are available, but **never forced**.
-
----
-
-### 4.6 Relationship to Weekly Summary
-
-Guardian Home and Weekly Summary serve **different cognitive moments**:
-
-* **Guardian Home**
-
-  * situational
-  * immediate
-  * day-to-day
-
-* **Weekly Summary**
-
-  * reflective
-  * periodic
-  * stabilizing
-
-They must:
-
-* share the same visibility rules
-* never contradict each other
-* never expose different academic truths
-
----
-
-
-
-
-## 5. Academic Information Rules (Guardian View)
-
-### 5.1 Tasks
-
-Internally, all academic work is modeled as **Tasks**.
-
-Guardian Home:
-
-* shows only **signal**
-* suppresses internal distinctions unless meaningful
-
-Default visibility:
-
-* task title
-* due date
-* high-level status
-* preparation cue (if any)
-
-Hidden by default:
-
-* instructions
-* evidence
-* grading mechanics
-
-### 5.2 Results Visibility (Locked)
-
-* Guardians see results **only if explicitly published (`Task Outcome.is_published = 1`)**
-* Live gradebook data is never shown
-* Term results appear only after Reporting Cycle publication
-
----
-
-## 6. Behaviour, Health, and Wellbeing
-
-* Only logs explicitly marked **visible to guardians** may appear
-* No internal categories or severity scores are exposed
-* No aggregation or interpretation is performed
-* Guardian Home does not diagnose or summarize behaviour
-
----
-
-## 7. Communications
-
-Guardian Home surfaces communications that:
-
-* are audience-scoped to the Guardian or their children
-* are event-based (not threaded by default)
+Test refs:
+- `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
 
 Rules:
 
-* Communications appear as discrete items
-* Inline expansion allowed
-* Reply / reaction capabilities may be phased later
-* No assumption of email or external messaging parity
+1. Guardian Home consumes one canonical payload: `get_guardian_home_snapshot`.
+2. The request contract is `anchor_date?`, `school_days?`, and `debug?`.
+3. The response contract is the `Response` type in `ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`.
+4. The SPA service calls the endpoint with a flat JSON body and returns the domain payload directly.
 
----
+## 2. Header, Counts, And Quick Links
 
-## 8. Inline Expansion vs Navigation (Locked)
+Status: Implemented
 
-### Default behavior
+Code refs:
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/components/PortalSidebar.vue`
+- `ifitwala_ed/ui-spa/src/router/index.ts`
 
-* **Inline expansion** is preferred for understanding context
+Test refs:
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
+- Page-level tests: None
 
-### Dedicated pages are reserved for:
+Rules:
 
-* full task history
-* reports / term results
-* document upload
-* payments
-* communication archives
+1. Guardian Home shows the portal heading, the configured school-day window, and a refresh action.
+2. The summary cards show `unread_communications`, `unread_visible_student_logs`, `upcoming_due_tasks`, and `upcoming_assessments`.
+3. Quick links route guardians to activities, the family snapshot, the guardian portfolio, and the update-focused home view.
+4. The landing page remains a briefing surface; navigation is secondary.
 
-**Invariant**
+## 3. Home Zone Order And Content
 
-> A Guardian must be able to understand their week **without leaving Guardian Home**.
+Status: Implemented
 
----
+Code refs:
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
 
-## 9. Explicit Exclusions (Non-Negotiable)
+Test refs:
+- `ifitwala_ed/api/test_guardian_home.py`
+- Page-level tests: None
 
-Guardian Home must never show:
+Rules:
 
-* sibling comparisons
-* internal academic structures
-* live gradebook views
-* staff-only notes
-* draft or provisional data
-* configuration or preferences
+1. Guardian Home renders four zones in this order: `family_timeline`, `attention_needed`, `preparation_and_support`, `recent_activity`.
+2. `family_timeline` is grouped by day and contains one child row per linked student present in that day window.
+3. `attention_needed` is exception-oriented and mixes attendance, guardian-visible student logs, and guardian-visible communications.
+4. `preparation_and_support` is forward-looking and remains low-noise.
+5. `recent_activity` is a calm feed of published task results, guardian-visible student logs, and communications.
 
----
+## 4. Student Drill-Down
 
-## 10. Stability & Trust Guarantees
+Status: Implemented
 
-Guardian Home guarantees:
+Code refs:
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
+- `ifitwala_ed/ui-spa/src/router/index.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
 
-* data consistency across reloads
-* no silent recalculation of published data
-* no mixing of mutable and immutable academic truth
-* no retroactive visibility changes
+Test refs:
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
+- Page-level tests: None
 
----
+Rules:
 
-## 11. Phase-0 Lock Statement
+1. `/guardian/students/:student_id` reuses the same guardian snapshot instead of creating a second student-only backend contract.
+2. The drill-down surface filters timeline, attention, preparation, and recent activity to one linked student.
+3. If the student is outside guardian scope, the page must render an explicit blocked state.
+4. Child drill-down is subordinate to Guardian Home and must not redefine data visibility rules.
 
-> This document defines **what Guardian Home is responsible for**.
->
-> UI design, IA, backend queries, caching, and permissions must conform to this contract.
->
-> Any new section or deviation requires an explicit revision of this document.
+## 5. Explicit Exclusions
 
----
+Status: Implemented
+
+Code refs:
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+
+Test refs:
+- `ifitwala_ed/api/test_guardian_home.py`
+
+Rules:
+
+1. Guardian Home must not expose `rotation_day` or `block_number` anywhere in the payload or UI.
+2. Guardian Home must not expose live gradebook rows, staff-only notes, or sibling comparison data.
+3. Guardian Home must not depend on more than the snapshot contract plus router navigation.
+4. Any new information block on `/hub/guardian` must be added to this document before it is treated as canonical.
+
+## 6. Contract Matrix
+
+Status: Implemented
+
+Code refs:
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/guardianHomeService.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
+
+Test refs:
+- `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
+- Page-level tests: None
+
+| Concern | Canonical owner | Code refs | Test refs |
+| --- | --- | --- | --- |
+| Schema / DocType | Guardian snapshot reads guardian links, student logs, attendance, outcomes, communications, and read receipts | `api/guardian_home.py`, `students/doctype/student_log/*`, `students/doctype/portal_read_receipt/*` | `api/test_guardian_home.py` |
+| Controller / workflow logic | Snapshot builder and drill-down filtering | `api/guardian_home.py`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue` | `api/test_guardian_home.py` |
+| API endpoints | `get_guardian_home_snapshot` | `api/guardian_home.py` | `api/test_guardian_home.py` |
+| SPA / UI surfaces | Guardian Home and Guardian Student Shell | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue` | `ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts` |
+| Reports / dashboards / briefings | Home summary cards and four-zone layout | `ui-spa/src/pages/guardian/GuardianHome.vue` | None |
+| Scheduler / background jobs | None | None | None |
+| Tests | Endpoint unit coverage and service transport coverage | `api/test_guardian_home.py`, `ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts` | Implemented |

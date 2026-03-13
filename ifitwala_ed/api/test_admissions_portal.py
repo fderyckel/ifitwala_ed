@@ -55,36 +55,45 @@ class TestAdmissionsPortalAuthGuards(FrappeTestCase):
         def fake_get_all(doctype, **kwargs):
             self.assertEqual(doctype, "Student Applicant")
             filters = kwargs.get("filters") or {}
-            if filters == {"applicant_user": "applicant@example.com"}:
+            if filters == {"name": ["in", ["APP-CANONICAL"]]}:
                 return [{"name": "APP-CANONICAL"}]
             return []
 
-        with patch("ifitwala_ed.api.admissions_portal.frappe.get_all", side_effect=fake_get_all):
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_admissions_portal_applicant_names_for_user",
+                return_value=["APP-CANONICAL"],
+            ) as mocked_names,
+            patch("ifitwala_ed.api.admissions_portal.frappe.get_all", side_effect=fake_get_all),
+        ):
             row = admissions_portal_api._get_applicant_for_user(
                 "applicant@example.com",
                 fields=["name"],
             )
 
+        mocked_names.assert_called_once_with(user="applicant@example.com", include_promoted=False)
         self.assertEqual(row.get("name"), "APP-CANONICAL")
 
     def test_get_applicant_for_user_rejects_email_only_matches(self):
-        def fake_get_all(doctype, **kwargs):
-            self.assertEqual(doctype, "Student Applicant")
-            filters = kwargs.get("filters") or {}
-            if filters == {"applicant_user": "applicant@example.com"}:
-                return []
-            if filters == {"portal_account_email": "applicant@example.com"}:
-                raise AssertionError("undocumented portal_account_email fallback should not be queried")
-            if filters == {"applicant_email": "applicant@example.com"}:
-                raise AssertionError("undocumented applicant_email fallback should not be queried")
-            return []
-
-        with patch("ifitwala_ed.api.admissions_portal.frappe.get_all", side_effect=fake_get_all):
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_admissions_portal_applicant_names_for_user",
+                return_value=[],
+            ) as mocked_names,
+            patch(
+                "ifitwala_ed.api.admissions_portal.frappe.get_all",
+                side_effect=AssertionError(
+                    "no applicant row lookup should run when canonical access resolution is empty"
+                ),
+            ),
+        ):
             with self.assertRaises(frappe.PermissionError):
                 admissions_portal_api._get_applicant_for_user(
                     "applicant@example.com",
                     fields=["name"],
                 )
+
+        mocked_names.assert_called_once_with(user="applicant@example.com", include_promoted=False)
 
 
 class TestAdmissionsPortalContracts(FrappeTestCase):

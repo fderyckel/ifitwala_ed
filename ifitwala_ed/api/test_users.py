@@ -215,7 +215,7 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("User", user.email, force=True)
 
     def test_admissions_applicant_redirects_to_admissions(self):
-        """Admissions Applicants should be redirected to /admissions."""
+        """Admissions Applicants with a linked applicant should be redirected to /admissions."""
         # Create test user with Admissions Applicant role
         user = frappe.new_doc("User")
         user.email = "test_admissions_applicant@example.com"
@@ -225,20 +225,44 @@ class TestUserRedirect(FrappeTestCase):
         _append_role(user, "Admissions Applicant")
         user.insert(ignore_permissions=True)
 
-        # Simulate login
-        frappe.set_user(user.email)
-        frappe.local.response = {}
+        school = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": f"Redirect Applicant School {frappe.generate_hash(length=6)}",
+                "abbr": f"RA{frappe.generate_hash(length=4)}",
+                "organization": _ensure_test_organization(),
+            }
+        ).insert(ignore_permissions=True)
 
-        # Call redirect function
-        redirect_user_to_entry_portal()
+        applicant = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                "first_name": "Test",
+                "last_name": "Admissions Applicant",
+                "organization": school.organization,
+                "school": school.name,
+                "application_status": "Invited",
+                "applicant_user": user.email,
+            }
+        ).insert(ignore_permissions=True)
 
-        # Assert redirect to /admissions (separate admissions portal)
-        self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
-        self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
+        try:
+            # Simulate login
+            frappe.set_user(user.email)
+            frappe.local.response = {}
 
-        # Cleanup
-        frappe.set_user("Administrator")
-        frappe.delete_doc("User", user.email, force=True)
+            # Call redirect function
+            redirect_user_to_entry_portal()
+
+            # Assert redirect to /admissions (separate admissions portal)
+            self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
+            self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
+        finally:
+            # Cleanup
+            frappe.set_user("Administrator")
+            frappe.delete_doc("Student Applicant", applicant.name, force=True)
+            frappe.delete_doc("School", school.name, force=True)
+            frappe.delete_doc("User", user.email, force=True)
 
     def test_staff_and_admissions_roles_redirect_to_staff(self):
         """Mixed staff+admissions roles must prefer staff routing."""
@@ -821,6 +845,21 @@ class TestUserRedirect(FrappeTestCase):
 
 class TestUserQueries(FrappeTestCase):
     def test_get_users_with_role_returns_only_enabled_matching_users(self):
+        frappe.set_user("Administrator")
+
+        def ensure_has_role(user_email: str, role_name: str) -> None:
+            if frappe.db.exists("Has Role", {"parent": user_email, "role": role_name, "parenttype": "User"}):
+                return
+            frappe.get_doc(
+                {
+                    "doctype": "Has Role",
+                    "parent": user_email,
+                    "parenttype": "User",
+                    "parentfield": "roles",
+                    "role": role_name,
+                }
+            ).insert(ignore_permissions=True)
+
         employee_user = frappe.new_doc("User")
         employee_user.email = f"test_employee_query_match_{frappe.generate_hash(length=6)}@example.com"
         employee_user.first_name = "Interview"
@@ -844,9 +883,12 @@ class TestUserQueries(FrappeTestCase):
         non_employee_user.enabled = 1
         _append_role(non_employee_user, "Teacher")
         non_employee_user.insert(ignore_permissions=True)
+        ensure_has_role(employee_user.email, "Employee")
+        ensure_has_role(disabled_employee.email, "Employee")
+        ensure_has_role(non_employee_user.email, "Teacher")
 
         try:
-            rows = get_users_with_role("User", "", "name", 0, 20, {"role": "Employee"})
+            rows = get_users_with_role("User", employee_user.email, "name", 0, 20, {"role": "Employee"})
             names = {row[0] for row in rows}
 
             self.assertIn(employee_user.email, names)

@@ -1,11 +1,12 @@
 # Copyright (c) 2024, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# ifitwala_ed/school_settings/school_settings_utils.py
+# /Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_settings/school_settings_utils.py
 
 import frappe
 from frappe.utils import getdate
-from frappe.utils.nestedset import get_descendants_of
+
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 
 def get_allowed_schools(user=None, selected_school=None):
@@ -21,10 +22,12 @@ def get_allowed_schools(user=None, selected_school=None):
     if not root_school:
         return []
 
-    visible = [root_school] + get_descendants_of("School", root_school)
+    visible = list(dict.fromkeys(get_descendant_schools(root_school) or [root_school]))
 
     if selected_school:
-        return [selected_school] if selected_school in visible else []
+        requested_scope = list(dict.fromkeys(get_descendant_schools(selected_school) or [selected_school]))
+        visible_set = set(visible)
+        return [school for school in requested_scope if school in visible_set]
 
     return visible
 
@@ -36,7 +39,7 @@ def get_user_allowed_schools():
     if not root_school:
         return []
 
-    return [root_school] + get_descendants_of("School", root_school)
+    return list(dict.fromkeys(get_descendant_schools(root_school) or [root_school]))
 
 
 # ---------------------------------------------------------------------

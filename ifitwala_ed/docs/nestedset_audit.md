@@ -37,12 +37,10 @@ The most critical issues lie in the reporting and dashboard layer. The frontend 
 - `Student Overview Dashboard` (`student_overview_dashboard.py`) and `Enrollment Analytics` (`enrollment_analytics.py`) correctly resolve the scope using `get_descendant_schools(selected_school)` and use SQL `IN %(schools)s` clauses.
 
 ### Where It Fails (Red Flags)
-- **Standard Desk Reports (`attendance_report.py`, `enrollment_trend_report.py`)**: They use an **exact match filter** instead of descending down the tree.
-  - Example in `attendance_report`: `add("sa.school = %(school)s", "school")`. This breaks the structural inheritance—selecting "IIS" hides all attendances logged under "IPS".
-- **Utility Failure (`school_settings_utils.py -> get_allowed_schools`)**:
-  - The function explicitly breaks inheritance by returning a strict `[selected_school]` array rather than resolving the descendants of the selected school if the user has permission to see them. If a System Manager picks the parent group, it only filters for the parent node itself.
+- **Standard Desk Reports (`attendance_report.py`, `enrollment_trend_report.py`)**: Fixed in the current workspace. Both reports now expand the selected `School` filter through `get_descendant_schools(...)` and apply the hierarchy in SQL with `IN %(school_list)s`.
+- **Enrollment Report visibility helper (`school_settings_utils.py -> get_allowed_schools`)**: Fixed in the current workspace. A selected parent school now resolves to the selected node plus descendants, intersected with the user’s visible school subtree, so `Enrollment Report` keeps sibling isolation while honoring NestedSet inheritance.
 
-**Recommendation**: Standardize a `get_filter_descendants(doctype, node)` strategy for all `execute()` methods within `ifitwala_ed/report/` and API endpoints.
+**Recommendation**: Standardize a `get_filter_descendants(doctype, node)` strategy for all remaining `execute()` methods within `ifitwala_ed/report/` and API endpoints so the fixed report behavior becomes the default everywhere.
 
 ---
 
@@ -85,7 +83,7 @@ Throughout the Vue SPA and standard Frappe Desk filters, users pick from flat dr
 
 ## 6. Architectural Recommendations & Next Steps
 
-1. **Refactor Standard Reports**: Audit all `.py` files inside the `ifitwala_ed/report/` directories. Replace `sa.school = %s` exact matches with SQL `IN (...)` conditions mapped to `get_descendant_schools(school_filter)`.
-2. **Fix `get_allowed_schools`**: Modify `school_settings_utils.py` so that when a `selected_school` is provided, it returns `[selected_school] + get_descendants_of("School", selected_school)` intersected with the user's total permitted scope.
+1. **Refactor Remaining Standard Reports**: Audit all `.py` files inside the `ifitwala_ed/report/` directories. Replace any remaining `school = %s` exact matches with SQL `IN (...)` conditions mapped to `get_descendant_schools(school_filter)`.
+2. **Preserve helper parity**: Keep shared visibility helpers descendant-aware when a parent school is selected, and always intersect requested scope with the user's visible subtree to preserve sibling isolation.
 3. **DRY Tree Traversals**: Refactor codebase to abandon Doctype-specific functions (`get_descendant_schools`, `get_descendant_organizations`) in favor of parameterized utilities wrapping Frappe's native `nestedset`.
 4. **Automated Testing on Filters**: Write Frappe unit tests specifically asserting that API endpoints and Report `execute` functions return child-node data when a parent-node filter is applied.
