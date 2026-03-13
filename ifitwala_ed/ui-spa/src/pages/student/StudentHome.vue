@@ -274,7 +274,24 @@ import type {
 	TodayClass,
 } from '@/types/contracts/student_hub/get_student_hub_home';
 
-const sessionUser = computed(() => window.frappe?.session?.user_info || { fullname: 'Student' });
+type BrowserSessionUser = {
+	fullname?: string | null;
+	email?: string | null;
+};
+
+function getSessionUserInfo(): BrowserSessionUser {
+	const browserWindow = window as Window & {
+		frappe?: {
+			session?: {
+				user_info?: BrowserSessionUser | null;
+			} | null;
+		};
+	};
+
+	return browserWindow.frappe?.session?.user_info || { fullname: 'Student' };
+}
+
+const sessionUser = computed(() => getSessionUserInfo());
 
 const homePayload = ref<StudentHubHomeResponse | null>(null);
 const loadingHome = ref(false);

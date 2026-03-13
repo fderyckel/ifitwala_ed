@@ -135,11 +135,30 @@ watch(
 );
 
 // Get user info from Frappe's session object
-const user = computed(() => {
-	const userInfo = window.frappe?.session?.user_info || {
-		fullname: 'Guest',
-		email: 'guest@example.com',
+type BrowserSessionUser = {
+	fullname?: string | null;
+	email?: string | null;
+};
+
+function getSessionUserInfo(): BrowserSessionUser {
+	const browserWindow = window as Window & {
+		frappe?: {
+			session?: {
+				user_info?: BrowserSessionUser | null;
+			} | null;
+		};
 	};
+
+	return (
+		browserWindow.frappe?.session?.user_info || {
+			fullname: 'Guest',
+			email: 'guest@example.com',
+		}
+	);
+}
+
+const user = computed(() => {
+	const userInfo = getSessionUserInfo();
 	const resolvedFullName = (
 		(isStudentPortal.value && studentIdentity.value?.display_name) ||
 		userInfo.fullname ||
@@ -153,7 +172,7 @@ const user = computed(() => {
 
 	return {
 		fullname: resolvedFullName,
-		email: userInfo.email,
+		email: userInfo.email || 'guest@example.com',
 		initials: initials.toUpperCase(),
 		avatarImage: isStudentPortal.value ? studentIdentity.value?.image_url || null : null,
 	};

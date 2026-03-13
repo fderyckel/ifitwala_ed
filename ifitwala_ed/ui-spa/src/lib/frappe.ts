@@ -10,15 +10,18 @@ const AUTH_ERROR_PATTERNS = [
 ]
 
 async function resolveCsrfToken(): Promise<string> {
-	if (typeof window !== 'undefined' && window.csrf_token) {
-		return window.csrf_token
+	if (typeof window !== 'undefined') {
+		const browserWindow = window as Window & { csrf_token?: string }
+		if (browserWindow.csrf_token) {
+			return browserWindow.csrf_token
+		}
 	}
 
 	if (typeof document !== 'undefined') {
 		const meta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null
 		if (meta?.content) {
 			if (typeof window !== 'undefined') {
-				window.csrf_token = meta.content
+				;(window as Window & { csrf_token?: string }).csrf_token = meta.content
 			}
 			return meta.content
 		}
