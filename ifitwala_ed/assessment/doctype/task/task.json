@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "TASK-.YY.-.MM.-.###",
  "creation": "2025-09-23 21:31:26.785096",
  "default_view": "List",
  "doctype": "DocType",
@@ -36,7 +37,7 @@
   "column_break_gi2s",
   "default_grade_scale",
   "task_criteria"
-],
+ ],
  "fields": [
   {
    "fieldname": "section_break_xmdr",
@@ -234,14 +235,15 @@
    "label": "Task Criteria",
    "options": "Task Template Criterion"
   }
-],
+ ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-13 11:30:42.000000",
+ "modified": "2026-03-13 13:28:58.333663",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
