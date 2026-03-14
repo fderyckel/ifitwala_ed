@@ -760,6 +760,11 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				to: { name: 'staff-policy-signature-analytics' },
 				capability: 'analytics_policy_signatures',
 			},
+			{
+				label: 'Staff Policies',
+				to: { name: 'staff-policies' },
+				capability: 'staff_policy_library',
+			},
 		],
 	},
 ];

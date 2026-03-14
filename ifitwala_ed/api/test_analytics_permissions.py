@@ -74,6 +74,10 @@ class TestAnalyticsPermissions(FrappeTestCase):
         self.assertTrue(caps.get("analytics_policy_signatures"))
         self.assertTrue(caps.get("manage_policy_signatures"))
 
+    def test_staff_home_policy_library_capability_for_employee(self):
+        caps = _build_staff_home_capabilities({"Employee"})
+        self.assertTrue(caps.get("staff_policy_library"))
+
     def test_staff_home_quick_actions_for_instructor(self):
         caps = _build_staff_home_capabilities({"Instructor"})
         self.assertTrue(caps.get("quick_action_create_task"))
