@@ -16,11 +16,15 @@
 			/>
 
 			<div class="flex min-w-0 flex-1 flex-col">
-				<main
-					class="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-[var(--footer-h)] bg-surface-soft/75 backdrop-blur-sm shadow-strong sm:m-4 sm:rounded-3xl sm:border sm:border-sand"
-				>
-					<slot />
-				</main>
+				<div class="flex min-w-0 flex-1 xl:items-start">
+					<main
+						class="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-[var(--footer-h)] bg-surface-soft/75 backdrop-blur-sm shadow-strong sm:m-4 sm:rounded-3xl sm:border sm:border-sand"
+					>
+						<slot />
+					</main>
+
+					<StudentContextSidebar v-if="showStudentContextSidebar" />
+				</div>
 
 				<PortalFooter />
 			</div>
@@ -33,6 +37,7 @@ import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import PortalNavbar from '@/components/PortalNavbar.vue';
 import PortalSidebar from '@/components/PortalSidebar.vue';
+import StudentContextSidebar from '@/components/StudentContextSidebar.vue';
 import PortalFooter from '@/components/PortalFooter.vue';
 
 type PortalSection = 'student' | 'guardian';
@@ -49,6 +54,14 @@ const isDesktopRailExpanded = ref(false);
 const activeSection = computed<PortalSection>(() => {
 	if (String(route.path || '').startsWith('/guardian')) return 'guardian';
 	return 'student';
+});
+
+const showStudentContextSidebar = computed(() => {
+	if (activeSection.value !== 'student') return false;
+	const routeName = String(route.name || '').trim();
+	if (!routeName.startsWith('student-')) return false;
+	if (routeName === 'student-course-detail' || routeName === 'student-quiz') return false;
+	return true;
 });
 
 function readRailPreference(section: PortalSection) {

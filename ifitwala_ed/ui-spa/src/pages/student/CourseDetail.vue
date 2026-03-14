@@ -54,8 +54,8 @@
 				</div>
 			</header>
 
-			<section class="grid gap-6 xl:grid-cols-[320px,minmax(0,1fr)]">
-				<aside class="space-y-6 xl:sticky xl:top-6 xl:self-start">
+			<section class="grid gap-6 lg:grid-cols-[320px,minmax(0,1fr)]">
+				<aside class="space-y-6 lg:sticky lg:top-6 lg:self-start">
 					<section class="card-surface p-5">
 						<div class="mb-3 flex items-center justify-between">
 							<h2 class="type-h3 text-ink">Entry Context</h2>
@@ -80,9 +80,19 @@
 					</section>
 
 					<section class="card-surface p-5">
-						<div class="mb-4 flex items-center justify-between">
-							<h2 class="type-h3 text-ink">Course Map</h2>
-							<span class="chip">{{ lessonSequence.length }} lessons</span>
+						<div class="mb-4 flex items-center justify-between gap-3">
+							<div class="flex items-center gap-2">
+								<h2 class="type-h3 text-ink">Course Map</h2>
+								<span class="chip">{{ lessonSequence.length }} lessons</span>
+							</div>
+							<button
+								type="button"
+								class="if-action lg:hidden"
+								:aria-expanded="isCourseMapOpen ? 'true' : 'false'"
+								@click="isCourseMapOpen = !isCourseMapOpen"
+							>
+								{{ isCourseMapOpen ? 'Hide Outline' : 'Show Outline' }}
+							</button>
 						</div>
 
 						<div
@@ -92,7 +102,7 @@
 							No learning units are available for this course yet.
 						</div>
 
-						<div v-else class="space-y-4">
+						<div v-else :class="['space-y-4', isCourseMapOpen ? 'block' : 'hidden lg:block']">
 							<div v-for="unit in units" :key="unit.name" class="space-y-2">
 								<button
 									type="button"
@@ -102,17 +112,34 @@
 											? 'border-jacaranda bg-jacaranda/10 shadow-soft'
 											: 'border-line-soft bg-surface-soft hover:border-jacaranda/30'
 									"
-									@click="openUnit(unit)"
+									:aria-expanded="isUnitExpanded(unit.name) ? 'true' : 'false'"
+									@click="toggleUnit(unit)"
 								>
-									<p class="type-overline text-ink/60">Unit {{ unit.unit_order ?? '—' }}</p>
-									<p class="mt-1 type-body-strong text-ink">{{ unit.unit_name }}</p>
-									<p class="mt-1 type-caption text-ink/70">
-										{{ unit.lessons.length }} lessons
-										<span v-if="unit.estimated_duration">· {{ unit.estimated_duration }}</span>
-									</p>
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0">
+											<p class="type-overline text-ink/60">Unit {{ unit.unit_order ?? '—' }}</p>
+											<p class="mt-1 type-body-strong text-ink">{{ unit.unit_name }}</p>
+											<p class="mt-1 type-caption text-ink/70">
+												{{ unit.lessons.length }} lessons
+												<span v-if="unit.estimated_duration">· {{ unit.estimated_duration }}</span>
+											</p>
+										</div>
+										<span
+											class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line-soft bg-white"
+										>
+											<FeatherIcon
+												name="chevron-down"
+												class="h-4 w-4 text-ink/60 transition"
+												:class="{ 'rotate-180': isUnitExpanded(unit.name) }"
+											/>
+										</span>
+									</div>
 								</button>
 
-								<div v-if="unit.lessons.length" class="space-y-2 border-l border-line-soft pl-3">
+								<div
+									v-if="unit.lessons.length && isUnitExpanded(unit.name)"
+									class="space-y-2 border-l border-line-soft pl-3"
+								>
 									<button
 										v-for="lesson in unit.lessons"
 										:key="lesson.name"
@@ -514,6 +541,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
+import { FeatherIcon } from 'frappe-ui';
 
 import { formatLocalizedDate, formatLocalizedDateTime } from '@/lib/datetime';
 import {
@@ -544,6 +572,8 @@ const router = useRouter();
 const courseDetail = ref<StudentCourseDetailResponse | null>(null);
 const loading = ref(false);
 const errorMessage = ref('');
+const isCourseMapOpen = ref(false);
+const expandedUnitName = ref<string | null>(null);
 
 const units = computed(() => courseDetail.value?.curriculum.units || []);
 const lessonSequence = computed(() => buildLessonSequence(units.value));
@@ -690,6 +720,10 @@ function isActiveLesson(lessonName: string): boolean {
 	return activeLesson.value?.name === lessonName;
 }
 
+function isUnitExpanded(unitName: string): boolean {
+	return expandedUnitName.value === unitName;
+}
+
 function buildCourseQuery(learningUnit?: string, lesson?: string): Record<string, string> {
 	const query: Record<string, string> = {};
 	if (learningUnit) query.learning_unit = learningUnit;
@@ -698,6 +732,7 @@ function buildCourseQuery(learningUnit?: string, lesson?: string): Record<string
 }
 
 function openUnit(unit: LearningUnit) {
+	expandedUnitName.value = unit.name;
 	const firstLesson = unit.lessons[0];
 	void router.replace({
 		name: 'student-course-detail',
@@ -707,6 +742,7 @@ function openUnit(unit: LearningUnit) {
 }
 
 function openLesson(unitName: string, lessonName: string) {
+	expandedUnitName.value = unitName;
 	void router.replace({
 		name: 'student-course-detail',
 		params: { course_id: props.course_id },
@@ -717,6 +753,19 @@ function openLesson(unitName: string, lessonName: string) {
 function goToAdjacent(target: CourseLessonRef | null) {
 	if (!target) return;
 	openLesson(target.unit.name, target.lesson.name);
+}
+
+function toggleUnit(unit: LearningUnit) {
+	const expanded = isUnitExpanded(unit.name);
+	if (expanded && isActiveUnit(unit.name)) return;
+	if (expanded) {
+		expandedUnitName.value = null;
+		return;
+	}
+	expandedUnitName.value = unit.name;
+	if (!isActiveUnit(unit.name)) {
+		openUnit(unit);
+	}
 }
 
 watch(
@@ -733,5 +782,24 @@ watch(
 		if (!nextLessonInstance || nextLessonInstance === previousLessonInstance) return;
 		loadCourseDetail();
 	}
+);
+
+watch(
+	[units, () => activeUnit.value?.name],
+	([nextUnits, nextActiveUnit]) => {
+		if (!nextUnits.length) {
+			expandedUnitName.value = null;
+			return;
+		}
+		if (nextActiveUnit) {
+			expandedUnitName.value = nextActiveUnit;
+			return;
+		}
+		if (expandedUnitName.value && nextUnits.some(unit => unit.name === expandedUnitName.value)) {
+			return;
+		}
+		expandedUnitName.value = nextUnits[0].name;
+	},
+	{ immediate: true }
 );
 </script>

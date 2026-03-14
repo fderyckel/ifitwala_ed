@@ -301,6 +301,7 @@ For Student/Guardian SPA shell navigation:
 
 * `PortalLayout.vue` remains the single shell authority for Student + Guardian routes.
 * `PortalSidebar.vue` remains the single navigation component for this shell.
+* `StudentContextSidebar.vue` is the secondary student-only contextual rail for route-scoped shortcuts and must remain read-only navigation (no workflow mutations).
 * Desktop uses a persistent rail pattern (collapsed/expanded), never full hide.
 * Mobile uses an overlay drawer pattern (hamburger + backdrop), never desktop rail behavior.
 * Canonical portal URLs are namespaced under `/hub/*` while internal SPA route paths stay base-less (`/student/*`, `/guardian/*`, `/staff/*`), and router history base is `/hub`.
@@ -310,8 +311,9 @@ State ownership:
 
 1. `PortalLayout` owns `isMobileSidebarOpen`.
 2. `PortalLayout` owns `isDesktopRailExpanded`.
-3. Desktop rail preference persists per section (`student` / `guardian`) via explicit local storage keys.
-4. Route changes must close only the mobile drawer.
+3. `PortalLayout` owns contextual-sidebar visibility (`showStudentContextSidebar`) based on route name and active portal section.
+4. Desktop rail preference persists per section (`student` / `guardian`) via explicit local storage keys.
+5. Route changes must close only the mobile drawer.
 
 Accessibility and UX invariants:
 

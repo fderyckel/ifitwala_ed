@@ -102,6 +102,8 @@ Execution notes:
 
 - `CourseDetail.vue` now uses one active-unit and active-lesson view instead of a flat curriculum dump.
 - The student can navigate through a route-driven course map of units and lessons without creating new workflow state.
+- Course map navigation now docks as a side rail from `lg` breakpoints onward, and mobile starts collapsed behind an explicit `Show Outline` action to reduce vertical scroll debt.
+- Unit navigation now uses a single-expanded accordion pattern (active unit expanded by default) so students are not forced through a full unit+lesson dump before reaching lesson content.
 - Linked work is now rendered inline at course, unit, and lesson level using the existing `Task` and `Task Delivery` contract.
 - Teacher framing is limited to live schema fields already present today: unit overview, essential understanding, misconceptions, lesson type, lesson date, duration, and due-work context.
 - This phase remains read-only; progress state, resume state, and execution overlays stay in later phases.
@@ -135,6 +137,7 @@ Execution notes:
 - `Now / Soon / Later / Done` are currently server-curated from `Task Delivery` and `Task Outcome` truth, with no persistent student lane-move state yet.
 - Student agency is intentionally light in this phase: continue work from the top strip, choose from `Now`, or open the dated timeline into course context.
 - The board remains a planning layer, not a second grading system.
+- Student shell now includes a route-aware secondary context sidebar for non-course student routes, so each main student area exposes local shortcuts without adding extra top-level navigation churn.
 
 Exit criteria:
 

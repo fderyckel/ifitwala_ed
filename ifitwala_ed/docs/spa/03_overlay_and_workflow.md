@@ -38,6 +38,7 @@ Overlay closure must be:
 
 **Overlay**
 A top-layer UI surface rendered by `OverlayHost.vue` (HeadlessUI `Dialog + TransitionRoot`). Overlays can stack; only the top layer is active; lower layers are inert.
+Lower layers must also be visually suppressed to avoid readable-content overlap while stacked.
 
 **Workflow**
 A domain action that triggers server side-effects (ToDo open/close, notifications, Focus item changes). Workflows are owned by **UI Services + server controllers**, not by pages or Focus.

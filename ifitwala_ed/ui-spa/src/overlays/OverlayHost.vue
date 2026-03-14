@@ -308,7 +308,13 @@ function finalizeClose(id: string) {
 </script>
 
 <style scoped>
+.if-overlay-host__layer {
+	position: absolute;
+	inset: 0;
+}
+
 .if-overlay-host__layer--inactive {
 	pointer-events: none;
+	visibility: hidden;
 }
 </style>
