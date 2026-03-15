@@ -3,8 +3,8 @@ title: "Institutional Policy: Policy Identity and Scope Anchor"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "1.1.0"
-last_change_date: "2026-03-12"
+version: "1.2.0"
+last_change_date: "2026-03-15"
 summary: "Define policy identity, organization/school scope, target audience, and admissions acknowledgement mode so active policy versions can be resolved and acknowledged correctly."
 seo_title: "Institutional Policy: Policy Identity and Scope Anchor"
 seo_description: "Define policy identity, organization/school scope, and target audience so active policy versions can be resolved and acknowledged correctly."
@@ -54,6 +54,12 @@ There is no separate "policy key catalog" DocType in the current model. Existing
 - `school` is optional; blank means organization-wide scope.
 - `school` can be set one time if initially blank, then becomes immutable.
 - `policy_category` must be one of the locked categories in governance utilities.
+- `applies_to` is a required multi-audience field and must include one or more of:
+  - `Applicant`
+  - `Student`
+  - `Guardian`
+  - `Staff`
+- `applies_to` is normalized server-side before save. Runtime checks use audience inclusion, not exact string equality.
 - `admissions_acknowledgement_mode` controls how admissions portal acknowledgement is written:
   - `Child Acknowledgement`
   - `Family Acknowledgement`
@@ -63,6 +69,17 @@ There is no separate "policy key catalog" DocType in the current model. Existing
 - Runtime visibility is scope-enforced server-side:
   - `organization` must be in user organization lineage (`self + parents`)
   - if policy is school-scoped, `school` must be in user school lineage (`self + parents`)
+
+## Audience Scope vs Signer Authority
+
+- `applies_to` answers which audiences a policy targets.
+- `applies_to` does not grant a guardian authority to sign for a child.
+- Guardian signer authority is owned by relationship rows:
+  - admissions-stage: `Student Applicant Guardian.can_consent`
+  - enrolled-student stage: `Student Guardian.can_consent`
+- Current guardian portal policy visibility uses both rules together:
+  - the policy audience must include `Guardian`
+  - the guardian must have signer authority for at least one linked child in scope
 
 ## School Scope Resolution
 
@@ -133,8 +150,8 @@ Treat this record as long-lived identity. Version the legal text in [**Policy Ve
   - `description` (Small Text)
   - `is_active` (Check, required, default `1`)
 - **Controller guards**:
-  - `before_insert`: admin permission, category validation, unique policy key by organization, school scope validation
-  - `before_save`: admin permission, school scope validation, immutability enforcement (`school` one-time set if previously blank)
+  - `before_insert`: admin permission, category validation, applies-to normalization/validation, unique policy key by organization, school scope validation
+  - `before_save`: admin permission, applies-to normalization/validation, school scope validation, immutability enforcement (`school` one-time set if previously blank)
   - `before_delete`: hard block
 - **Scope helper**:
   - `is_school_within_policy_organization_scope` validates school organization ancestry under the policy organization.

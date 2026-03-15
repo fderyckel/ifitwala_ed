@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: `/hub/guardian` portal namespace
-Last updated: 2026-03-13
+Last updated: 2026-03-15
 
 This document is the canonical product contract for the guardian portal rooted at `/hub/guardian`.
 
@@ -110,6 +110,7 @@ Rules:
 3. Guardian finance visibility is limited to linked students' account holders that pass the portal finance authority rule; account-holder ownership is not inferred from display alone.
 4. Uploads and direct guardian messaging remain outside the current `/hub/guardian` implementation.
 5. Any new guardian-facing action must use a named workflow endpoint and server-owned permissions.
+6. Family signatures, permission slips, and mutable consents are planned work and are governed by `ifitwala_ed/docs/files_and_policies/policy_04_family_signature_and_consent_contract.md` until implementation lands.
 
 ## 5. Contract Matrix
 

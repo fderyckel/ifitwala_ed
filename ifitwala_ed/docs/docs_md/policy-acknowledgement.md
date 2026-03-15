@@ -3,8 +3,8 @@ title: "Policy Acknowledgement: Append-Only Consent Evidence"
 slug: policy-acknowledgement
 category: Governance
 doc_order: 3
-version: "1.6.0"
-last_change_date: "2026-03-12"
+version: "1.7.0"
+last_change_date: "2026-03-15"
 summary: "Record immutable who/what/when acknowledgement evidence with strict context, role, organization-scope validation, admissions family-signature rules, and staff policy-signature workflows that present amendment diffs first."
 seo_title: "Policy Acknowledgement: Append-Only Consent Evidence"
 seo_description: "Record immutable who/what/when acknowledgement evidence with strict context, role, and organization-scope validation."
@@ -45,7 +45,7 @@ seo_description: "Record immutable who/what/when acknowledgement evidence with s
 - Applicant acknowledgements require role `Admissions Applicant` or `Admissions Family` and matching applicant linkage to the selected `Student Applicant`.
 - Student acknowledgements allow:
   - users with `Student` role
-  - guardian role only when guardian is linked to that student.
+  - guardian role only when guardian is linked to that student through `Student Guardian` and that relationship row is signer-authorized (`can_consent = 1` when the column exists).
 - Guardian acknowledgements require guardian self-context.
   - admissions family acknowledgements are allowed only for the actor's own linked `Guardian` record.
 - Staff acknowledgements require staff role (`Academic Staff` or `Employee`).
@@ -193,7 +193,7 @@ Acknowledgements are immutable records. Corrections should be handled by new pol
 | `Admissions Applicant` | Yes | No | Yes | No | Must match applicant context linkage |
 | `Admissions Family` | Yes | No | Yes | No | Applicant or guardian context must be explicitly linked to that user |
 
-Runtime visibility is enforced server-side via `permission_query_conditions` + `has_permission` hooks by role and context (organization/school scope, applicant linkage, guardian linkage, student self, staff self).
+Runtime visibility is enforced server-side via `permission_query_conditions` + `has_permission` hooks by role and context (organization/school scope, applicant linkage, guardian linkage, student self, staff self). Guardian access to student-context acknowledgement rows also requires signer authority on the `Student Guardian` relationship when that field is present.
 
 ## Related Docs
 

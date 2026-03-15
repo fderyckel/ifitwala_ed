@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.18.0"
-last_change_date: "2026-03-12"
+version: "1.19.0"
+last_change_date: "2026-03-15"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
@@ -164,6 +164,7 @@ Behavior in code:
 - `Student Applicant.applicant_user` is set to that user identity
 - `Student Applicant.portal_account_email` is set to the chosen invite email
 - if applicant is already linked to a different email/user, invite is blocked
+- family collaborator eligibility is limited to guardian rows where `can_consent = 1` and a guardian personal email exists
 
 ### Family Workspace Login and Collaboration
 
@@ -171,6 +172,7 @@ When `Admission Settings.admissions_access_mode = Family Workspace`, `/admission
 
 - family collaborators use role `Admissions Family`
 - access is resolved from explicit `Student Applicant Guardian` rows with `can_consent = 1`
+- `can_consent` is the canonical admissions-stage signer-authority flag and may be enabled for more than one guardian
 - one adult user can be linked to multiple active applicants and switch between them inside `/admissions`
 - collaboration is multi-user, not shared-login:
   - each adult has their own `User`
@@ -228,11 +230,12 @@ If email delivery fails, portal linkage still succeeds (`User` + role + applican
 - `contact` -> `Contact` (tracked guardian contact used for carry-over)
 - `relationship` (Mother/Father/etc.)
 - `is_primary`
-- `can_consent`
+- `can_consent` (canonical signer-authority flag; shown in the admissions workspace as `Authorized signer for school documents and consents`)
 - guardian identity/profile fields mirrored from `Guardian` (`salutation`, names, email, mobile, work fields, guardian flags)
 - `use_applicant_contact` to explicitly reuse `Student Applicant.applicant_contact` for a guardian row
 - applicant portal save validation enforces required guardian fields per row: first name, last name, personal email, mobile phone, and photo
 - guardian personal/work emails are validated as email format; guardian mobile/work phones are validated as phone format
+- non-signing emergency or temporary-care guardians may remain linked with `can_consent = 0`
 
 No standalone child-doc page is required; behavior is owned by the parent lifecycle.
 
@@ -452,6 +455,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - provisions guardians only from explicit applicant guardian rows; there is no applicant-contact fallback guardian creation
   - applicant user is reserved for the student identity and cannot be reused as a guardian user
   - links guardians to Student in canonical Student guardian rows when guardian rows exist
+  - carries `Student Applicant Guardian.can_consent` into `Student Guardian.can_consent` so signer authority survives promotion and later guardian policy workflows
   - syncs `Student.siblings` from shared explicit guardians carried forward from admissions
   - links tracked guardian Contact rows to `Student Applicant`, `Guardian`, and promoted `Student`
   - is idempotent (re-run does not duplicate users or guardian links)
@@ -484,6 +488,37 @@ For a brand-new site or a newly onboarded school, this is what must exist before
   - overlay component: `ui-spa/src/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue`
   - acknowledgement submit: `admissionsService.acknowledgePolicy` -> `ifitwala_ed.api.admissions_portal.acknowledge_policy`
   - acknowledgement requires `typed_signature_name` + `attestation_confirmed` and server-validates typed name against expected applicant signer identity before insert
+
+## Contract Matrix
+
+Status: Implemented
+Code refs:
+- `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
+- `ifitwala_ed/admission/doctype/student_applicant_guardian/student_applicant_guardian.json`
+- `ifitwala_ed/students/doctype/student_guardian/student_guardian.json`
+- `ifitwala_ed/admission/access.py`
+- `ifitwala_ed/api/admissions_portal.py`
+- `ifitwala_ed/api/guardian_policy.py`
+- `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.py`
+- `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`
+- `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantProfile.vue`
+- `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`
+
+Test refs:
+- `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
+- `ifitwala_ed/api/test_admissions_portal.py`
+- `ifitwala_ed/api/test_guardian_phase2.py`
+- `ifitwala_ed/governance/doctype/institutional_policy/test_institutional_policy.py`
+
+| Concern | Canonical owner | Code refs | Test refs |
+|---|---|---|---|
+| Schema / DocType | Applicant-stage and student-stage guardian relationship rows carry canonical signer authority; policy audience remains on Institutional Policy | `admission/doctype/student_applicant_guardian/student_applicant_guardian.json`, `students/doctype/student_guardian/student_guardian.json`, `governance/doctype/institutional_policy/institutional_policy.json` | `admission/doctype/student_applicant/test_student_applicant.py`, `governance/doctype/institutional_policy/test_institutional_policy.py` |
+| Controller / workflow logic | Promotion carries signer authority forward; policy audience is normalized; guardian/student acknowledgement visibility respects signer authority | `admission/doctype/student_applicant/student_applicant.py`, `governance/doctype/institutional_policy/institutional_policy.py`, `governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `api/guardian_policy.py` | `admission/doctype/student_applicant/test_student_applicant.py`, `api/test_guardian_phase2.py`, `governance/doctype/institutional_policy/test_institutional_policy.py` |
+| API endpoints | Admissions family invite eligibility and guardian policy visibility use the signer-authority contract; admissions policy acknowledgement remains a named workflow | `api/admissions_portal.py`, `api/guardian_policy.py` | `api/test_admissions_portal.py`, `api/test_guardian_phase2.py` |
+| SPA / UI surfaces | Admissions family guardian rows present signer authority explicitly; guardian portal policy page consumes the filtered policy overview | `ui-spa/src/pages/admissions/ApplicantProfile.vue`, `ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue` | `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts` |
+| Reports / dashboards / briefings | Staff policy communication defaults and guardian policy status views follow the normalized audience contract | `api/policy_communication.py`, `api/policy_signature.py`, `ui-spa/src/pages/guardian/GuardianPolicies.vue` | `api/test_guardian_phase2.py` |
+| Scheduler / background jobs | None in this signer-authority workflow | None | None |
+| Tests | Coverage exists for policy audience normalization, guardian policy filtering, and promotion carry-forward of signer authority | `governance/doctype/institutional_policy/test_institutional_policy.py`, `api/test_guardian_phase2.py`, `admission/doctype/student_applicant/test_student_applicant.py`, `api/test_admissions_portal.py` | Implemented |
 
 ### Troubleshooting: `Policy schema mismatch` (`missing_column: applies_to`)
 
