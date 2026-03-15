@@ -81,6 +81,7 @@ const routes: RouteRecordRaw[] = [
   // Guardian
   { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue'), meta: { layout: 'student' } },
   { path: '/guardian/activities', name: 'guardian-activities', component: () => import('@/pages/guardian/GuardianActivities.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/attendance', name: 'guardian-attendance', component: () => import('@/pages/guardian/GuardianAttendance.vue'), meta: { layout: 'student' } },
   { path: '/guardian/policies', name: 'guardian-policies', component: () => import('@/pages/guardian/GuardianPolicies.vue'), meta: { layout: 'student' } },
   { path: '/guardian/finance', name: 'guardian-finance', component: () => import('@/pages/guardian/GuardianFinance.vue'), meta: { layout: 'student' } },
   { path: '/guardian/monitoring', name: 'guardian-monitoring', component: () => import('@/pages/guardian/GuardianMonitoring.vue'), meta: { layout: 'student' } },

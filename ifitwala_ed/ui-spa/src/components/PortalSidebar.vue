@@ -190,6 +190,7 @@ const studentMenu: MenuItem[] = [
 const guardianMenu: MenuItem[] = [
 	{ label: 'Family Snapshot', icon: 'home', to: { name: 'guardian-home' } },
 	{ label: 'Activities', icon: 'star', to: { name: 'guardian-activities' } },
+	{ label: 'Attendance', icon: 'calendar', to: { name: 'guardian-attendance' } },
 	{ label: 'Policies', icon: 'shield', to: { name: 'guardian-policies' } },
 	{ label: 'Finance', icon: 'credit-card', to: { name: 'guardian-finance' } },
 	{ label: 'Monitoring', icon: 'file-text', to: { name: 'guardian-monitoring' } },

@@ -280,6 +280,12 @@ const quickLinks = [
 		to: { name: 'guardian-activities' },
 	},
 	{
+		title: 'Attendance',
+		description: 'Review daily attendance across all children.',
+		icon: 'calendar',
+		to: { name: 'guardian-attendance' },
+	},
+	{
 		title: 'Family Timeline',
 		description: 'Review upcoming classes and day summaries.',
 		icon: 'calendar',

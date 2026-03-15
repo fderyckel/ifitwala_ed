@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: Guardian-initiated actions inside `/hub/guardian`
-Last updated: 2026-03-13
+Last updated: 2026-03-15
 
 This document defines what guardians can currently do through the guardian portal and what remains planned.
 
@@ -36,9 +36,11 @@ Code refs:
 - `ifitwala_ed/api/activity_booking.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianActivities.vue`
 - `ifitwala_ed/api/guardian_policy.py`
+- `ifitwala_ed/api/guardian_attendance.py`
 - `ifitwala_ed/api/guardian_finance.py`
 - `ifitwala_ed/api/guardian_monitoring.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianAttendance.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianFinance.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`
 - `ifitwala_ed/ui-spa/src/types/contracts/activity_booking/get_activity_portal_board.ts`
@@ -55,8 +57,9 @@ Implemented guardian actions:
 3. Open the guardian portfolio surface.
 4. Use `/guardian/activities` to submit bookings, confirm offered places, cancel permitted bookings, and review booking logistics through the activity booking workflow APIs.
 5. Use `/guardian/policies` to acknowledge missing guardian policy versions through a named acknowledgement endpoint.
-6. Use `/guardian/finance` to review authorized invoices and payment history for the family.
-7. Use `/guardian/monitoring` to review family-wide guardian-visible logs and published results with optional child filtering.
+6. Use `/guardian/attendance` to review family-wide attendance by day and open plain-language day details for a selected child/date.
+7. Use `/guardian/finance` to review authorized invoices and payment history for the family.
+8. Use `/guardian/monitoring` to review family-wide guardian-visible logs and published results with optional child filtering, then mark visible logs as seen.
 
 ## 3. Planned But Not Wired On `/hub/guardian`
 
@@ -106,12 +109,14 @@ Code refs:
 - `ifitwala_ed/api/activity_booking.py`
 - `ifitwala_ed/api/guardian_home.py`
 - `ifitwala_ed/api/guardian_policy.py`
+- `ifitwala_ed/api/guardian_attendance.py`
 - `ifitwala_ed/api/guardian_finance.py`
 - `ifitwala_ed/api/guardian_monitoring.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianActivities.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianAttendance.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianFinance.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPortfolioFeed.vue`
@@ -124,9 +129,9 @@ Test refs:
 | Concern | Canonical owner | Code refs | Test refs |
 | --- | --- | --- | --- |
 | Schema / DocType | Guardian links, activity booking lifecycle records, policy acknowledgements, account holders, invoices, and payments | `students/doctype/guardian/*`, `students/doctype/student_guardian/*`, `students/doctype/guardian_student/*`, `governance/doctype/policy_acknowledgement/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, activity booking doctypes reached via `api/activity_booking.py` | `api/test_activity_booking.py`, `api/test_guardian_phase2.py` |
-| Controller / workflow logic | Activity booking workflows, guardian snapshot reads, guardian policy acknowledgement, guardian finance visibility, guardian monitoring reads | `api/activity_booking.py`, `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py` | `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py` |
-| API endpoints | Activity booking workflow endpoints plus guardian snapshot, policy, finance, and monitoring endpoints | `api/activity_booking.py`, `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py` | `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py` |
-| SPA / UI surfaces | Guardian Home, student drill-down, activities, policies, finance, monitoring, portfolio | `ui-spa/src/pages/guardian/*` | `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
-| Reports / dashboards / briefings | Guardian Home summary cards, activity board summaries, finance summary cards, monitoring summary cards | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianActivities.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue` | `api/test_activity_booking.py`, `api/test_guardian_phase2.py` |
+| Controller / workflow logic | Activity booking workflows, guardian snapshot reads, guardian policy acknowledgement, guardian attendance visibility, guardian finance visibility, guardian monitoring reads and mark-read actions | `api/activity_booking.py`, `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py` | `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py` |
+| API endpoints | Activity booking workflow endpoints plus guardian snapshot, policy, attendance, finance, and monitoring endpoints | `api/activity_booking.py`, `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py` | `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py` |
+| SPA / UI surfaces | Guardian Home, student drill-down, activities, attendance, policies, finance, monitoring, portfolio | `ui-spa/src/pages/guardian/*` | `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
+| Reports / dashboards / briefings | Guardian Home summary cards, activity board summaries, attendance summary cards, finance summary cards, monitoring summary cards | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianActivities.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue` | `api/test_activity_booking.py`, `api/test_guardian_phase2.py` |
 | Scheduler / background jobs | None documented for guardian actions in this contract | None | None |
 | Tests | Activity booking backend coverage, guardian snapshot backend coverage, and guardian Phase-2 regression coverage | `api/test_activity_booking.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py` | Implemented |

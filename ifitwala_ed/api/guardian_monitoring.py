@@ -6,7 +6,7 @@ from typing import Any
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, now_datetime
+from frappe.utils import add_days, cint, now_datetime
 
 from ifitwala_ed.api.guardian_home import (
     _coerce_time,
@@ -14,6 +14,7 @@ from ifitwala_ed.api.guardian_home import (
     _plain_summary,
     _resolve_guardian_scope,
 )
+from ifitwala_ed.api.student_log import _upsert_student_log_read_receipt
 
 
 @frappe.whitelist()
@@ -163,3 +164,29 @@ def _get_monitoring_results(*, student_names: list[str], days: int) -> list[dict
             }
         )
     return out
+
+
+@frappe.whitelist()
+def mark_guardian_student_log_read(log_name: str) -> dict[str, Any]:
+    student_log_name = (log_name or "").strip()
+    if not student_log_name:
+        frappe.throw(_("log_name is required."))
+
+    user = frappe.session.user
+    guardian_name, children = _resolve_guardian_scope(user)
+    allowed_students = {child.get("student") for child in children if child.get("student")}
+    log_row = frappe.db.get_value(
+        "Student Log",
+        student_log_name,
+        ["name", "student", "visible_to_guardians"],
+        as_dict=True,
+    )
+    if not log_row:
+        frappe.throw(_("Log not found."), frappe.DoesNotExistError)
+
+    if log_row.get("student") not in allowed_students or cint(log_row.get("visible_to_guardians") or 0) != 1:
+        frappe.throw(_("You do not have permission to update this log."), frappe.PermissionError)
+
+    read_at = now_datetime()
+    _upsert_student_log_read_receipt(user=user, log_name=student_log_name, read_at=read_at)
+    return {"ok": True, "student_log": student_log_name, "read_at": read_at}

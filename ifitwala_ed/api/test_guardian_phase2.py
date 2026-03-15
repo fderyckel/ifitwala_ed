@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.api.guardian_attendance import get_guardian_attendance_snapshot
 from ifitwala_ed.api.guardian_finance import _resolve_finance_scope, get_guardian_finance_snapshot
 from ifitwala_ed.api.guardian_monitoring import (
     get_guardian_monitoring_snapshot,
@@ -341,3 +342,109 @@ class TestGuardianMonitoringPhase2(FrappeTestCase):
         ):
             with self.assertRaises(frappe.PermissionError):
                 mark_guardian_student_log_read("LOG-404")
+
+
+class TestGuardianAttendancePhase2(FrappeTestCase):
+    def test_attendance_rejects_out_of_scope_student_filter(self):
+        with (
+            patch("ifitwala_ed.api.guardian_attendance.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch(
+                "ifitwala_ed.api.guardian_attendance._resolve_guardian_scope",
+                return_value=("GRD-0001", [{"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"}]),
+            ),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                get_guardian_attendance_snapshot(student="STU-404", days=60)
+
+    def test_attendance_snapshot_returns_familywide_rows_and_counts(self):
+        children = [
+            {"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"},
+            {"student": "STU-2", "full_name": "Noah Example", "school": "SCHOOL-1"},
+        ]
+        attendance_rows = [
+            {
+                "student": "STU-1",
+                "student_name": "Amina Example",
+                "summary": {
+                    "tracked_days": 2,
+                    "present_days": 1,
+                    "late_days": 1,
+                    "absence_days": 0,
+                },
+                "days": [
+                    {
+                        "date": "2026-03-12",
+                        "state": "late",
+                        "details": [
+                            {
+                                "attendance": "ATT-1",
+                                "time": "08:15",
+                                "attendance_code": "L",
+                                "attendance_code_name": "Late",
+                                "whole_day": False,
+                                "course": "Math",
+                                "location": None,
+                                "remark": "Late bus",
+                            }
+                        ],
+                    }
+                ],
+            },
+            {
+                "student": "STU-2",
+                "student_name": "Noah Example",
+                "summary": {
+                    "tracked_days": 1,
+                    "present_days": 0,
+                    "late_days": 0,
+                    "absence_days": 1,
+                },
+                "days": [
+                    {
+                        "date": "2026-03-11",
+                        "state": "absence",
+                        "details": [
+                            {
+                                "attendance": "ATT-2",
+                                "time": None,
+                                "attendance_code": "A",
+                                "attendance_code_name": "Absent",
+                                "whole_day": True,
+                                "course": None,
+                                "location": "Nurse",
+                                "remark": "Sent to nurse",
+                            }
+                        ],
+                    }
+                ],
+            },
+        ]
+        counts = {
+            "tracked_days": 3,
+            "present_days": 1,
+            "late_days": 1,
+            "absence_days": 1,
+        }
+
+        with (
+            patch("ifitwala_ed.api.guardian_attendance.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch(
+                "ifitwala_ed.api.guardian_attendance.now_datetime",
+                return_value=frappe.utils.get_datetime("2026-03-13 09:00:00"),
+            ),
+            patch(
+                "ifitwala_ed.api.guardian_attendance._resolve_guardian_scope",
+                return_value=("GRD-0001", children),
+            ),
+            patch(
+                "ifitwala_ed.api.guardian_attendance._build_attendance_students",
+                return_value=(attendance_rows, counts),
+            ),
+        ):
+            payload = get_guardian_attendance_snapshot(days=60)
+
+        self.assertEqual(payload["meta"]["guardian"]["name"], "GRD-0001")
+        self.assertEqual(payload["family"]["children"], children)
+        self.assertEqual(payload["counts"], counts)
+        self.assertEqual(payload["students"], attendance_rows)
+        self.assertEqual(payload["meta"]["filters"]["days"], 60)

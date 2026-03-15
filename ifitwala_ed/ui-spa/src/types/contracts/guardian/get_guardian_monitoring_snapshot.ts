@@ -7,6 +7,16 @@ export type Request = {
 	days?: number
 }
 
+export type MarkGuardianStudentLogReadRequest = {
+	log_name: string
+}
+
+export type MarkGuardianStudentLogReadResponse = {
+	ok: boolean
+	student_log: string
+	read_at: string
+}
+
 export type Response = {
 	meta: {
 		generated_at: string

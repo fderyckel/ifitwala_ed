@@ -51,6 +51,7 @@ Rules:
 2. Student log rows appear only when `Student Log.visible_to_guardians = 1`.
 3. Recent task-result rows appear only when `Task Outcome.is_published = 1`.
 4. Attendance rows on Guardian Home are exception-focused and limited to linked students.
+5. The family attendance surface may read only linked-student rows from `Student Attendance`, `Student Attendance Code`, and `Course`.
 
 ## 3. Policy Visibility
 
@@ -141,9 +142,32 @@ Rules:
 2. The optional child filter may only target a linked student; any out-of-scope filter must fail with a permission error.
 3. Monitoring uses the same guardian scope resolution as the rest of `/hub/guardian`.
 4. Guardian-visible student logs derive unread/seen state from `Portal Read Receipt`, scoped to the logged-in guardian user.
-5. Monitoring must not expose unpublished task outcomes, staff-only logs, or non-linked children.
+5. `mark_guardian_student_log_read` may only write a read receipt for a linked student's guardian-visible log and for the current guardian user.
+6. Monitoring must not expose unpublished task outcomes, staff-only logs, or non-linked children.
 
-## 7. Explicit Prohibitions
+## 7. Attendance Visibility
+
+Status: Implemented
+
+Code refs:
+
+- `ifitwala_ed/api/guardian_attendance.py`
+- `ifitwala_ed/students/doctype/student_attendance/student_attendance.json`
+- `ifitwala_ed/school_settings/doctype/student_attendance_code/student_attendance_code.json`
+
+Test refs:
+
+- `ifitwala_ed/api/test_guardian_phase2.py`
+
+Rules:
+
+1. Attendance rows are limited to linked students only, and the optional child filter may only target a linked student.
+2. Day-state color and labels are derived from `Student Attendance Code.count_as_present` plus the code label, not from ad-hoc client logic.
+3. Attendance detail may expose time, attendance code, course, location, and remark for linked students only.
+4. Attendance detail must not expose `rotation_day`, `block_number`, unpublished academic outcomes, or non-linked student data.
+5. Days with no attendance rows must remain unfilled; the server must not invent inferred attendance for missing dates.
+
+## 8. Explicit Prohibitions
 
 Status: Implemented
 
@@ -165,7 +189,7 @@ Rules:
 4. Finance rows must not expose account holders outside the authority rule, even if the guardian can see the student.
 5. Any new guardian-visible data class must add an explicit server gate and be documented here before release.
 
-## 8. Contract Matrix
+## 9. Contract Matrix
 
 Status: Implemented
 
@@ -173,10 +197,13 @@ Code refs:
 
 - `ifitwala_ed/api/guardian_home.py`
 - `ifitwala_ed/api/guardian_policy.py`
+- `ifitwala_ed/api/guardian_attendance.py`
 - `ifitwala_ed/api/guardian_finance.py`
 - `ifitwala_ed/api/guardian_monitoring.py`
 - `ifitwala_ed/api/org_communication_interactions.py`
 - `ifitwala_ed/students/doctype/student_log/student_log.json`
+- `ifitwala_ed/students/doctype/student_attendance/student_attendance.json`
+- `ifitwala_ed/school_settings/doctype/student_attendance_code/student_attendance_code.json`
 - `ifitwala_ed/students/doctype/portal_read_receipt/portal_read_receipt.py`
 - `ifitwala_ed/students/doctype/portal_read_receipt/portal_read_receipt.json`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
@@ -190,10 +217,10 @@ Test refs:
 
 | Concern                          | Canonical owner                                                                                                                                          | Code refs                                                                                                                                                                                                                                                                                                                                                                                      | Test refs                                                                                                                                                                                       |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Schema / DocType                 | Guardian links, policy acknowledgements, guardian-visible student logs, published outcomes, account holders, invoices, payments, portal read receipts    | `students/doctype/guardian/*`, `students/doctype/student_guardian/*`, `students/doctype/guardian_student/*`, `governance/doctype/policy_acknowledgement/*`, `students/doctype/student_log/*`, `assessment/doctype/task_outcome/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, `students/doctype/portal_read_receipt/*` | `api/test_users.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                 |
-| Controller / workflow logic      | Guardian scope resolution, snapshot filtering, policy scope filtering, finance authority filtering, monitoring filtering, communication seen-state rules | `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `api/org_communication_interactions.py`                                                                                                                                                                                                                                             | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `api/test_org_communication_interactions.py`                                                                                        |
-| API endpoints                    | Guardian snapshot, guardian policy, guardian finance, guardian monitoring, and org communication interaction workflows                                  | `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `api/org_communication_interactions.py`                                                                                                                                                                                                                                             | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `api/test_org_communication_interactions.py`                                                                                        |
-| SPA / UI surfaces                | Guardian Home, child drill-down, policies, finance, and monitoring consume filtered payload only                                                         | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`                                                                                                                                      | `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
-| Reports / dashboards / briefings | Guardian Home, family finance cards, and monitoring counts                                                                                               | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`, `api/guardian_home.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`                                                                                                                                                             | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                      |
+| Schema / DocType                 | Guardian links, policy acknowledgements, guardian-visible student logs, attendance, published outcomes, account holders, invoices, payments, portal read receipts | `students/doctype/guardian/*`, `students/doctype/student_guardian/*`, `students/doctype/guardian_student/*`, `governance/doctype/policy_acknowledgement/*`, `students/doctype/student_log/*`, `students/doctype/student_attendance/*`, `school_settings/doctype/student_attendance_code/*`, `assessment/doctype/task_outcome/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, `students/doctype/portal_read_receipt/*` | `api/test_users.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                 |
+| Controller / workflow logic      | Guardian scope resolution, snapshot filtering, policy scope filtering, attendance visibility filtering, finance authority filtering, monitoring filtering, communication seen-state rules | `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `api/org_communication_interactions.py`                                                                                                                                                                                                                | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `api/test_org_communication_interactions.py`                                                                                        |
+| API endpoints                    | Guardian snapshot, guardian policy, guardian attendance, guardian finance, guardian monitoring, and org communication interaction workflows             | `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `api/org_communication_interactions.py`                                                                                                                                                                                                                | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `api/test_org_communication_interactions.py`                                                                                        |
+| SPA / UI surfaces                | Guardian Home, child drill-down, policies, attendance, finance, and monitoring consume filtered payload only                                            | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`                                                                                                                                                         | `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
+| Reports / dashboards / briefings | Guardian Home, family attendance cards, family finance cards, and monitoring counts                                                                      | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`, `api/guardian_home.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`                                                                                                                                                 | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                      |
 | Scheduler / background jobs      | None in the guardian portal visibility contract                                                                                                          | None                                                                                                                                                                                                                                                                                                                                                                                           | None                                                                                                                                                                                            |
 | Tests                            | Redirect, guardian snapshot visibility, guardian Phase-2 visibility, communication seen-state                                                            | `api/test_users.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `api/test_org_communication_interactions.py`                                                                                                                                                                                                                                                                  | Implemented                                                                                                                                                                                     |

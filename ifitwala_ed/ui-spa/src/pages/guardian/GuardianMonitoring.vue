@@ -7,8 +7,8 @@
 					<p class="type-overline text-ink/60">Guardian Portal</p>
 					<h1 class="type-h1 text-ink">Family Monitoring</h1>
 					<p class="type-body text-ink/70">
-						One family-wide view of guardian-visible student logs and published results, with
-						optional child filters.
+						View your child's or children's logs and published results in one place, then filter by
+						child when needed.
 					</p>
 				</div>
 				<div class="grid gap-3 sm:grid-cols-3">
@@ -94,12 +94,23 @@
 									<span v-if="row.follow_up_status"> · {{ row.follow_up_status }}</span>
 								</p>
 							</div>
-							<p
-								class="rounded-full px-3 py-1 type-caption"
-								:class="row.is_unread ? 'bg-coral/15 text-flame' : 'bg-mint/15 text-forest'"
-							>
-								{{ row.is_unread ? 'Unread' : 'Seen' }}
-							</p>
+							<div class="flex flex-col items-start gap-2 sm:items-end">
+								<p
+									class="rounded-full px-3 py-1 type-caption"
+									:class="row.is_unread ? 'bg-coral/15 text-flame' : 'bg-mint/15 text-forest'"
+								>
+									{{ row.is_unread ? 'Unread' : 'Seen' }}
+								</p>
+								<button
+									v-if="row.is_unread"
+									type="button"
+									class="type-caption font-semibold text-jacaranda hover:underline disabled:text-ink/40"
+									:disabled="markingLogName === row.student_log"
+									@click="markAsSeen(row.student_log)"
+								>
+									{{ markingLogName === row.student_log ? 'Saving...' : 'Mark as seen' }}
+								</button>
+							</div>
 						</div>
 						<p class="mt-2 type-body text-ink/80">{{ row.summary }}</p>
 					</article>
@@ -137,8 +148,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { toast } from 'frappe-ui';
 
-import { getGuardianMonitoringSnapshot } from '@/lib/services/guardianMonitoring/guardianMonitoringService';
+import {
+	getGuardianMonitoringSnapshot,
+	markGuardianStudentLogRead,
+} from '@/lib/services/guardianMonitoring/guardianMonitoringService';
 
 import type {
 	MonitoringPublishedResult,
@@ -151,6 +166,7 @@ const errorMessage = ref('');
 const snapshot = ref<GuardianMonitoringSnapshot | null>(null);
 const selectedStudent = ref('');
 const selectedDays = ref(30);
+const markingLogName = ref('');
 
 const children = computed(() => snapshot.value?.family.children ?? []);
 const counts = computed(
@@ -165,6 +181,27 @@ const studentLogs = computed<MonitoringStudentLog[]>(() => snapshot.value?.stude
 const publishedResults = computed<MonitoringPublishedResult[]>(
 	() => snapshot.value?.published_results ?? []
 );
+
+async function markAsSeen(studentLog: string) {
+	if (!studentLog || markingLogName.value === studentLog) return;
+
+	markingLogName.value = studentLog;
+	try {
+		await markGuardianStudentLogRead({ log_name: studentLog });
+		const row = snapshot.value?.student_logs.find(item => item.student_log === studentLog);
+		if (row?.is_unread) {
+			row.is_unread = false;
+			if ((snapshot.value?.counts.unread_visible_student_logs || 0) > 0 && snapshot.value) {
+				snapshot.value.counts.unread_visible_student_logs -= 1;
+			}
+		}
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error || '');
+		toast.error(message || 'Could not update read status.');
+	} finally {
+		markingLogName.value = '';
+	}
+}
 
 async function loadSnapshot() {
 	loading.value = true;
