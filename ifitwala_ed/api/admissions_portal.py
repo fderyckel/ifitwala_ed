@@ -3012,7 +3012,7 @@ def get_family_invite_options(*, student_applicant: str | None = None) -> dict:
         eligible = bool(email and cint(row.get("can_consent")))
         reason = ""
         if not cint(row.get("can_consent")):
-            reason = _("Enable Can Consent on this guardian row before inviting portal access.")
+            reason = _("Mark this guardian as an authorized signer before inviting portal access.")
         elif not email:
             reason = _("Add a guardian personal email before inviting portal access.")
         guardian_payload.append(
@@ -3048,7 +3048,7 @@ def invite_family_collaborator(
     applicant = frappe.get_doc("Student Applicant", student_applicant)
     target_row = _get_applicant_guardian_row(applicant, guardian_row or "")
     if not cint(target_row.get("can_consent")):
-        frappe.throw(_("Only guardian rows marked Can Consent may be invited to the family workspace."))
+        frappe.throw(_("Only guardian rows marked as authorized signers may be invited to the family workspace."))
 
     invite_email = normalize_email_value(email or target_row.get("guardian_email"))
     if not invite_email:

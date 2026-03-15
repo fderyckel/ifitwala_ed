@@ -12,6 +12,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     is_policy_organization_applicable_to_context,
     select_nearest_policy_rows_by_key,
 )
+from ifitwala_ed.governance.policy_utils import policy_applies_to
 from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -37,11 +38,7 @@ STAFF_POLICY_STATUS_INFO = "informational"
 
 
 def _policy_applies_to_staff(applies_to: str | None) -> bool:
-    text = (applies_to or "").strip()
-    if not text:
-        return False
-    tokens = {token.strip() for raw in text.split("\n") for token in raw.split(",") if token and token.strip()}
-    return "Staff" in tokens or text == "Staff"
+    return policy_applies_to(applies_to, "Staff")
 
 
 def _require_roles(allowed_roles: set[str] | frozenset[str]) -> tuple[str, set[str]]:

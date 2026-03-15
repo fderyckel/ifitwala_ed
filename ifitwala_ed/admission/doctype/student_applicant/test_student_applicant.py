@@ -1088,6 +1088,10 @@ class TestStudentApplicant(FrappeTestCase):
         student = frappe.get_doc("Student", student_name)
         guardian_links = [row.guardian for row in (student.get("guardians") or []) if row.guardian == guardian.name]
         self.assertEqual(len(guardian_links), 1)
+        consent_values = [
+            int(row.can_consent or 0) for row in (student.get("guardians") or []) if row.guardian == guardian.name
+        ]
+        self.assertEqual(consent_values, [1])
 
         user = frappe.get_doc("User", applicant_user.name)
         self.assertEqual(int(user.enabled or 0), 1)
@@ -1207,6 +1211,10 @@ class TestStudentApplicant(FrappeTestCase):
         student = frappe.get_doc("Student", student_name)
         linked_guardians = [row.guardian for row in (student.get("guardians") or [])]
         self.assertIn(guardian_name, linked_guardians)
+        consent_values = [
+            int(row.can_consent or 0) for row in (student.get("guardians") or []) if row.guardian == guardian_name
+        ]
+        self.assertEqual(consent_values, [1])
 
         contact_name = frappe.db.get_value("Contact Email", {"email_id": guardian_email}, "parent")
         self.assertTrue(bool(contact_name))
@@ -1224,6 +1232,35 @@ class TestStudentApplicant(FrappeTestCase):
                 )
             )
         )
+
+    def test_promote_to_student_carries_non_signing_guardian_authority(self):
+        guardian = self._create_guardian(
+            first_name="Emergency",
+            last_name="Guardian",
+            email=f"emergency-{frappe.generate_hash(length=8)}@example.com",
+            mobile="+14155550156",
+        )
+        applicant = self._create_student_applicant(student_joining_date=frappe.utils.nowdate())
+        self._create_applicant_health_profile(applicant.name)
+        applicant.append(
+            "guardians",
+            {
+                "guardian": guardian.name,
+                "relationship": "Aunt",
+                "can_consent": 0,
+            },
+        )
+        applicant.save(ignore_permissions=True)
+        self._advance_applicant_to_approved(applicant)
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+
+        student = frappe.get_doc("Student", student_name)
+        consent_values = [
+            int(row.can_consent or 0) for row in (student.get("guardians") or []) if row.guardian == guardian.name
+        ]
+        self.assertEqual(consent_values, [0])
 
     def test_promote_to_student_links_siblings_from_shared_guardian(self):
         shared_guardian = self._create_guardian(

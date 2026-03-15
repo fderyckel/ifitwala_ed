@@ -44,7 +44,7 @@
   },
   {
    "fieldname": "applies_to",
-   "fieldtype": "Select",
+   "fieldtype": "MultiSelect",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Applies To",
@@ -90,7 +90,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-12 11:43:41.000000",
+ "modified": "2026-03-15 11:29:04.000000",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Institutional Policy",

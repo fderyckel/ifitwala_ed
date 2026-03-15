@@ -14,13 +14,14 @@ from ifitwala_ed.governance.policy_scope_utils import (
     get_school_ancestors_including_self,
     select_nearest_policy_rows_by_key,
 )
-from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
+from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column, policy_applies_to
 
 
 @frappe.whitelist()
 def get_guardian_policy_overview() -> dict[str, Any]:
     user = frappe.session.user
     guardian_name, children = _resolve_guardian_scope(user)
+    children = _children_with_signer_authority(guardian_name=guardian_name, children=children)
     rows = _get_guardian_policy_rows(guardian_name=guardian_name, children=children)
 
     acknowledged = sum(1 for row in rows if row.get("is_acknowledged"))
@@ -169,6 +170,38 @@ def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, An
     return out
 
 
+def _children_with_signer_authority(*, guardian_name: str, children: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not guardian_name or not children:
+        return []
+
+    if not frappe.db.has_column("Student Guardian", "can_consent"):
+        return children
+
+    student_names = sorted(
+        {(child.get("student") or "").strip() for child in children if (child.get("student") or "").strip()}
+    )
+    if not student_names:
+        return []
+
+    allowed_rows = frappe.get_all(
+        "Student Guardian",
+        filters={
+            "guardian": guardian_name,
+            "parent": ["in", tuple(student_names)],
+            "parenttype": "Student",
+            "parentfield": "guardians",
+            "can_consent": 1,
+        },
+        fields=["parent"],
+        limit_page_length=0,
+    )
+    allowed_students = {(row.get("parent") or "").strip() for row in allowed_rows if (row.get("parent") or "").strip()}
+    if not allowed_students:
+        return []
+
+    return [child for child in children if (child.get("student") or "").strip() in allowed_students]
+
+
 def _resolve_policy_contexts(children: list[dict[str, Any]]) -> list[dict[str, str]]:
     school_names = sorted(
         {(child.get("school") or "").strip() for child in children if (child.get("school") or "").strip()}
@@ -220,6 +253,7 @@ def _query_policy_candidates_for_context(*, organization: str, school: str) -> l
                ip.policy_key AS policy_key,
                ip.policy_title AS policy_title,
                ip.policy_category AS policy_category,
+               ip.applies_to AS applies_to,
                ip.description AS description,
                ip.organization AS policy_organization,
                ip.school AS policy_school,
@@ -235,14 +269,13 @@ def _query_policy_candidates_for_context(*, organization: str, school: str) -> l
          WHERE ip.is_active = 1
            AND pv.is_active = 1
            AND ip.organization IN ({org_placeholders})
-           AND ip.applies_to = %s
            {school_scope_sql}
         """,
-        (*params, "Guardian", *school_params),
+        (*params, *school_params),
         as_dict=True,
     )
 
-    return select_nearest_policy_rows_by_key(
+    selected = select_nearest_policy_rows_by_key(
         rows=rows,
         context_organization=organization,
         context_school=school,
@@ -250,3 +283,4 @@ def _query_policy_candidates_for_context(*, organization: str, school: str) -> l
         policy_organization_field="policy_organization",
         policy_school_field="policy_school",
     )
+    return [row for row in selected if policy_applies_to(row.get("applies_to"), "Guardian")]

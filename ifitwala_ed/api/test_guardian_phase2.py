@@ -6,8 +6,13 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.guardian_finance import _resolve_finance_scope, get_guardian_finance_snapshot
-from ifitwala_ed.api.guardian_monitoring import get_guardian_monitoring_snapshot
+from ifitwala_ed.api.guardian_monitoring import (
+    get_guardian_monitoring_snapshot,
+    mark_guardian_student_log_read,
+)
 from ifitwala_ed.api.guardian_policy import (
+    _children_with_signer_authority,
+    _query_policy_candidates_for_context,
     acknowledge_guardian_policy,
     get_guardian_policy_overview,
 )
@@ -30,6 +35,10 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
             patch(
                 "ifitwala_ed.api.guardian_policy._resolve_guardian_scope",
                 return_value=("GRD-0001", children),
+            ),
+            patch(
+                "ifitwala_ed.api.guardian_policy._children_with_signer_authority",
+                return_value=children,
             ),
             patch("ifitwala_ed.api.guardian_policy._get_guardian_policy_rows", return_value=rows),
         ):
@@ -86,6 +95,78 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
         payload = get_doc_mock.call_args.args[0]
         self.assertEqual(payload["acknowledged_for"], "Guardian")
         self.assertEqual(payload["context_name"], "GRD-0001")
+
+    def test_children_with_signer_authority_filters_to_consent_enabled_links(self):
+        children = [
+            {"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"},
+            {"student": "STU-2", "full_name": "Noah Example", "school": "SCHOOL-1"},
+        ]
+
+        with (
+            patch("ifitwala_ed.api.guardian_policy.frappe.db.has_column", return_value=True),
+            patch(
+                "ifitwala_ed.api.guardian_policy.frappe.get_all",
+                return_value=[{"parent": "STU-1"}],
+            ),
+        ):
+            filtered = _children_with_signer_authority(guardian_name="GRD-0001", children=children)
+
+        self.assertEqual(filtered, [children[0]])
+
+    def test_query_policy_candidates_accepts_multi_audience_guardian_rows(self):
+        candidate_rows = [
+            {
+                "policy_name": "POL-1",
+                "policy_key": "family_handbook",
+                "policy_title": "Family Handbook",
+                "policy_category": "Handbooks",
+                "applies_to": "Guardian\nStudent",
+                "description": "",
+                "policy_organization": "ORG-1",
+                "policy_school": "SCHOOL-1",
+                "policy_version": "VER-1",
+                "version_label": "v1",
+                "policy_text": "<p>Policy</p>",
+                "effective_from": None,
+                "effective_to": None,
+                "approved_on": None,
+            },
+            {
+                "policy_name": "POL-2",
+                "policy_key": "student_only",
+                "policy_title": "Student Only",
+                "policy_category": "Academic",
+                "applies_to": "Student",
+                "description": "",
+                "policy_organization": "ORG-1",
+                "policy_school": "SCHOOL-1",
+                "policy_version": "VER-2",
+                "version_label": "v1",
+                "policy_text": "<p>Policy</p>",
+                "effective_from": None,
+                "effective_to": None,
+                "approved_on": None,
+            },
+        ]
+
+        with (
+            patch(
+                "ifitwala_ed.api.guardian_policy.get_organization_ancestors_including_self",
+                return_value=["ORG-1"],
+            ),
+            patch(
+                "ifitwala_ed.api.guardian_policy.get_school_ancestors_including_self",
+                return_value=["SCHOOL-1"],
+            ),
+            patch("ifitwala_ed.api.guardian_policy.frappe.db.sql", return_value=candidate_rows),
+            patch(
+                "ifitwala_ed.api.guardian_policy.select_nearest_policy_rows_by_key",
+                side_effect=lambda **kwargs: kwargs["rows"],
+            ),
+        ):
+            rows = _query_policy_candidates_for_context(organization="ORG-1", school="SCHOOL-1")
+
+        self.assertEqual([row["policy_name"] for row in rows], ["POL-1"])
 
 
 class TestGuardianFinancePhase2(FrappeTestCase):
@@ -221,3 +302,42 @@ class TestGuardianMonitoringPhase2(FrappeTestCase):
         self.assertEqual(payload["counts"]["unread_visible_student_logs"], 1)
         self.assertEqual(payload["counts"]["published_results"], 1)
         self.assertEqual(payload["family"]["children"], children)
+
+    def test_mark_guardian_student_log_read_persists_seen_state_for_linked_child(self):
+        children = [{"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"}]
+        log_row = frappe._dict({"name": "LOG-1", "student": "STU-1", "visible_to_guardians": 1})
+        read_at = frappe.utils.get_datetime("2026-03-15 11:45:00")
+
+        with (
+            patch("ifitwala_ed.api.guardian_monitoring.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch(
+                "ifitwala_ed.api.guardian_monitoring._resolve_guardian_scope",
+                return_value=("GRD-0001", children),
+            ),
+            patch("ifitwala_ed.api.guardian_monitoring.now_datetime", return_value=read_at),
+            patch("ifitwala_ed.api.guardian_monitoring.frappe.db.get_value", return_value=log_row),
+            patch("ifitwala_ed.api.guardian_monitoring._upsert_student_log_read_receipt") as mark_read_mock,
+        ):
+            result = mark_guardian_student_log_read("LOG-1")
+
+        self.assertEqual(result, {"ok": True, "student_log": "LOG-1", "read_at": read_at})
+        mark_read_mock.assert_called_once_with(
+            user="guardian@example.com",
+            log_name="LOG-1",
+            read_at=read_at,
+        )
+
+    def test_mark_guardian_student_log_read_rejects_out_of_scope_log(self):
+        children = [{"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"}]
+        log_row = frappe._dict({"name": "LOG-404", "student": "STU-404", "visible_to_guardians": 1})
+
+        with (
+            patch("ifitwala_ed.api.guardian_monitoring.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch(
+                "ifitwala_ed.api.guardian_monitoring._resolve_guardian_scope",
+                return_value=("GRD-0001", children),
+            ),
+            patch("ifitwala_ed.api.guardian_monitoring.frappe.db.get_value", return_value=log_row),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                mark_guardian_student_log_read("LOG-404")

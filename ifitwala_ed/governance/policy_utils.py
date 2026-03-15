@@ -40,6 +40,7 @@ POLICY_CATEGORIES = (
     "Handbooks",
     "Employment",
 )
+POLICY_APPLIES_TO_OPTIONS = ("Applicant", "Student", "Guardian", "Staff")
 POLICY_ADMIN_ROLES = frozenset(
     {
         SYSTEM_MANAGER_ROLE,
@@ -120,6 +121,34 @@ def ensure_policy_applies_to_column(*, throw: bool = False, caller: str | None =
     if throw:
         frappe.throw(message)
     return {"ok": False, "message": message}
+
+
+def get_policy_applies_to_tokens(raw_value) -> tuple[str, ...]:
+    if raw_value is None:
+        return ()
+
+    if isinstance(raw_value, (list, tuple, set)):
+        source_values = raw_value
+    else:
+        source_values = str(raw_value).replace(",", "\n").splitlines()
+
+    tokens: list[str] = []
+    seen: set[str] = set()
+    for value in source_values:
+        token = (value or "").strip()
+        if not token or token in seen:
+            continue
+        seen.add(token)
+        tokens.append(token)
+    return tuple(tokens)
+
+
+def normalize_policy_applies_to(raw_value) -> str:
+    return "\n".join(get_policy_applies_to_tokens(raw_value))
+
+
+def policy_applies_to(raw_value, audience: str) -> bool:
+    return (audience or "").strip() in set(get_policy_applies_to_tokens(raw_value))
 
 
 def _has_policy_admissions_mode_column() -> bool:

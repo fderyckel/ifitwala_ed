@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: `/hub/guardian` family information surfaces
-Last updated: 2026-03-13
+Last updated: 2026-03-15
 
 This document defines the canonical information contract for Guardian Home plus the Phase-2 guardian policy, finance, and monitoring surfaces.
 
@@ -12,11 +12,13 @@ This document defines the canonical information contract for Guardian Home plus 
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/api/guardian_home.py`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
 - `ifitwala_ed/ui-spa/src/lib/services/guardianHome/guardianHomeService.ts`
 
 Test refs:
+
 - `ifitwala_ed/api/test_guardian_home.py`
 - `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
 
@@ -32,11 +34,13 @@ Rules:
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
 - `ifitwala_ed/ui-spa/src/components/PortalSidebar.vue`
 - `ifitwala_ed/ui-spa/src/router/index.ts`
 
 Test refs:
+
 - `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`
 
@@ -52,11 +56,13 @@ Rules:
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/api/guardian_home.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
 
 Test refs:
+
 - `ifitwala_ed/api/test_guardian_home.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`
 
@@ -73,11 +79,13 @@ Rules:
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
 - `ifitwala_ed/ui-spa/src/router/index.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
 
 Test refs:
+
 - `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
 
@@ -93,12 +101,14 @@ Rules:
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/api/guardian_policy.py`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_policy_overview.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/acknowledge_guardian_policy.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`
 
 Test refs:
+
 - `ifitwala_ed/api/test_guardian_phase2.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`
 
@@ -114,11 +124,13 @@ Rules:
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/api/guardian_finance.py`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_finance_snapshot.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianFinance.vue`
 
 Test refs:
+
 - `ifitwala_ed/api/test_guardian_phase2.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`
 
@@ -134,11 +146,14 @@ Rules:
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/api/guardian_monitoring.py`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_monitoring_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/mark_guardian_student_log_read.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`
 
 Test refs:
+
 - `ifitwala_ed/api/test_guardian_phase2.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts`
 
@@ -147,18 +162,21 @@ Rules:
 1. `/guardian/monitoring` is a family-wide monitoring surface, not one portal view per child.
 2. The page shows guardian-visible student logs and published task results for all linked children by default.
 3. Child filtering is optional and does not change server visibility; it only narrows the already-authorized payload.
-4. Monitoring mode must not introduce sibling ranking, gradebook editing, or unpublished results.
+4. Guardian-visible student log rows expose per-user unread/seen state and an explicit `Mark as seen` action for unread rows.
+5. Monitoring mode must not introduce sibling ranking, gradebook editing, or unpublished results.
 
 ## 8. Explicit Exclusions
 
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/api/guardian_home.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
 
 Test refs:
+
 - `ifitwala_ed/api/test_guardian_home.py`
 
 Rules:
@@ -173,6 +191,7 @@ Rules:
 Status: Implemented
 
 Code refs:
+
 - `ifitwala_ed/api/guardian_home.py`
 - `ifitwala_ed/api/guardian_policy.py`
 - `ifitwala_ed/api/guardian_finance.py`
@@ -185,11 +204,13 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/acknowledge_guardian_policy.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_finance_snapshot.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_monitoring_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/mark_guardian_student_log_read.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianFinance.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`
 
 Test refs:
+
 - `ifitwala_ed/api/test_guardian_home.py`
 - `ifitwala_ed/api/test_guardian_phase2.py`
 - `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
@@ -199,12 +220,12 @@ Test refs:
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts`
 
-| Concern | Canonical owner | Code refs | Test refs |
-| --- | --- | --- | --- |
-| Schema / DocType | Guardian surfaces read guardian links, student logs, outcomes, communications, policy acknowledgements, account holders, invoices, payments, and portal read receipts | `api/guardian_home.py`, `governance/doctype/policy_acknowledgement/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, `students/doctype/student_log/*`, `students/doctype/portal_read_receipt/*`, `assessment/doctype/task_outcome/*` | `api/test_guardian_home.py`, `api/test_guardian_phase2.py` |
-| Controller / workflow logic | Snapshot builder, drill-down filtering, policy acknowledgement flow, finance visibility assembly, monitoring aggregation | `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue` | `api/test_guardian_home.py`, `api/test_guardian_phase2.py` |
-| API endpoints | `get_guardian_home_snapshot`, `get_guardian_policy_overview`, `acknowledge_guardian_policy`, `get_guardian_finance_snapshot`, `get_guardian_monitoring_snapshot` | `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py` | `api/test_guardian_home.py`, `api/test_guardian_phase2.py` |
-| SPA / UI surfaces | Guardian Home, Guardian Student Shell, Guardian Policies, Guardian Finance, Guardian Monitoring | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue` | `ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
-| Reports / dashboards / briefings | Home summary cards, finance summary cards, and monitoring summary cards | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue` | `api/test_guardian_home.py`, `api/test_guardian_phase2.py` |
-| Scheduler / background jobs | None | None | None |
-| Tests | Endpoint unit coverage, service transport coverage, and guardian Phase-2 page regression coverage | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` | Implemented |
+| Concern                          | Canonical owner                                                                                                                                                                                    | Code refs                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Test refs                                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Schema / DocType                 | Guardian surfaces read guardian links, student logs, outcomes, communications, policy acknowledgements, account holders, invoices, payments, and portal read receipts                              | `api/guardian_home.py`, `governance/doctype/policy_acknowledgement/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, `students/doctype/student_log/*`, `students/doctype/portal_read_receipt/*`, `assessment/doctype/task_outcome/*`                                                                                                                                                                 | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                                                    |
+| Controller / workflow logic      | Snapshot builder, drill-down filtering, policy acknowledgement flow, finance visibility assembly, monitoring aggregation                                                                           | `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`                                                                                                                                                                                                                                                                                                           | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                                                    |
+| API endpoints                    | `get_guardian_home_snapshot`, `get_guardian_policy_overview`, `acknowledge_guardian_policy`, `get_guardian_finance_snapshot`, `get_guardian_monitoring_snapshot`, `mark_guardian_student_log_read` | `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`                                                                                                                                                                                                                                                                                                                                                                 | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                                                    |
+| SPA / UI surfaces                | Guardian Home, Guardian Student Shell, Guardian Policies, Guardian Finance, Guardian Monitoring                                                                                                    | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`                                                                                                                                                                                                                 | `ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
+| Reports / dashboards / briefings | Home summary cards, finance summary cards, and monitoring summary cards                                                                                                                            | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`                                                                                                                                                                                                                                                                                                                         | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                                                    |
+| Scheduler / background jobs      | None                                                                                                                                                                                               | None                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | None                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Tests                            | Endpoint unit coverage, service transport coverage, and guardian Phase-2 page regression coverage                                                                                                  | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` | Implemented                                                                                                                                                                                                                                                                                                                                                                                                   |

@@ -234,17 +234,15 @@ class PolicyAcknowledgement(Document):
         return names[0] if names else None
 
     def _guardian_linked_to_student(self, guardian_name: str, student_name: str) -> bool:
-        return bool(
-            frappe.db.exists(
-                "Student Guardian",
-                {
-                    "parent": student_name,
-                    "parenttype": "Student",
-                    "parentfield": "guardians",
-                    "guardian": guardian_name,
-                },
-            )
-        )
+        filters = {
+            "parent": student_name,
+            "parenttype": "Student",
+            "parentfield": "guardians",
+            "guardian": guardian_name,
+        }
+        if frappe.db.has_column("Student Guardian", "can_consent"):
+            filters["can_consent"] = 1
+        return bool(frappe.db.exists("Student Guardian", filters))
 
     def _is_applicant_user_for_context(self) -> bool:
         if self.context_doctype != "Student Applicant":
@@ -351,6 +349,12 @@ def _student_applicant_names_for_user(user: str) -> list[str]:
     return get_admissions_portal_applicant_names_for_user(user=user, include_promoted=False)
 
 
+def _student_guardian_signer_sql(alias: str = "sg") -> str:
+    if frappe.db.has_column("Student Guardian", "can_consent"):
+        return f" and ifnull({alias}.can_consent, 0) = 1"
+    return ""
+
+
 def get_permission_query_conditions(user: str | None = None) -> str | None:
     user = user or frappe.session.user
     if user == "Administrator" or is_system_manager(user):
@@ -421,6 +425,7 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
             "and sg.parenttype = 'Student' "
             "and sg.parentfield = 'guardians' "
             f"and sg.guardian = {escaped_guardian}"
+            f"{_student_guardian_signer_sql('sg')}"
             "))"
         )
 
@@ -515,15 +520,15 @@ def has_permission(doc: "PolicyAcknowledgement", user: str | None = None, ptype:
         if context_doctype == "Guardian" and context_name == guardian_name:
             return True
         if context_doctype == "Student":
-            linked = frappe.db.exists(
-                "Student Guardian",
-                {
-                    "parent": context_name,
-                    "parenttype": "Student",
-                    "parentfield": "guardians",
-                    "guardian": guardian_name,
-                },
-            )
+            filters = {
+                "parent": context_name,
+                "parenttype": "Student",
+                "parentfield": "guardians",
+                "guardian": guardian_name,
+            }
+            if frappe.db.has_column("Student Guardian", "can_consent"):
+                filters["can_consent"] = 1
+            linked = frappe.db.exists("Student Guardian", filters)
             if linked:
                 return True
 

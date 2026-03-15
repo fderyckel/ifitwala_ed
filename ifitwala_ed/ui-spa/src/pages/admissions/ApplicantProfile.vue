@@ -653,7 +653,9 @@
 									class="h-4 w-4 rounded border-border/70"
 									:disabled="isReadOnly || saving"
 								/>
-								<span class="type-caption text-ink/70">{{ __('Can consent') }}</span>
+								<span class="type-caption text-ink/70">{{
+									__('Authorized signer for school documents and consents')
+								}}</span>
 							</label>
 
 							<label class="flex items-center gap-2">

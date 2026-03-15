@@ -1660,7 +1660,7 @@ const guardianContactFields = computed<GuardianDetailField[]>(() => {
 		{ label: 'Work Phone', value: displayValue(guardian.work_phone) },
 		{ label: 'Contact Record', value: displayValue(guardian.contact) },
 		{ label: 'Use Applicant Contact', value: booleanValue(guardian.use_applicant_contact) },
-		{ label: 'Can Consent', value: booleanValue(guardian.can_consent) },
+		{ label: 'Authorized Signer', value: booleanValue(guardian.can_consent) },
 		{ label: 'Is Primary', value: booleanValue(guardian.is_primary) },
 	];
 });

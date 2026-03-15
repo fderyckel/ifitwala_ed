@@ -816,7 +816,14 @@ class StudentApplicant(Document):
                 student=student,
                 contact_name=contact_name,
             )
-            linked_guardians.append({"guardian": guardian, "relationship": relationship, "contact": contact_name})
+            linked_guardians.append(
+                {
+                    "guardian": guardian,
+                    "relationship": relationship,
+                    "contact": contact_name,
+                    "can_consent": cint(spec.get("can_consent") or 0),
+                }
+            )
 
         added_guardians = self._ensure_student_guardian_links(student, linked_guardians)
         added_siblings = self._sync_student_siblings_from_shared_guardians(student)
@@ -942,6 +949,7 @@ class StudentApplicant(Document):
                         "guardian": guardian_doc,
                         "relationship": relationship,
                         "contact": contact_name,
+                        "can_consent": cint(row.get("can_consent") or 0),
                     }
                 )
                 continue
@@ -955,6 +963,7 @@ class StudentApplicant(Document):
                 continue
             seen.add(key)
             row_spec["relationship"] = relationship
+            row_spec["can_consent"] = cint(row.get("can_consent") or 0)
             if contact_name and not row_spec.get("contact"):
                 row_spec["contact"] = contact_name
             resolved.append(row_spec)
@@ -1126,22 +1135,33 @@ class StudentApplicant(Document):
         return guardian.user
 
     def _ensure_student_guardian_links(self, student, guardian_specs: list[dict]) -> int:
-        existing = {row.get("guardian") for row in (student.get("guardians") or []) if row.get("guardian")}
+        existing_rows = {
+            (row.get("guardian") or "").strip(): row
+            for row in (student.get("guardians") or [])
+            if (row.get("guardian") or "").strip()
+        }
         added = 0
+        changed = 0
         for spec in guardian_specs:
             guardian_name = spec["guardian"].name
-            if guardian_name in existing:
+            can_consent = cint(spec.get("can_consent") or 0)
+            existing_row = existing_rows.get(guardian_name)
+            if existing_row:
+                if cint(existing_row.get("can_consent") or 0) != can_consent:
+                    existing_row.can_consent = can_consent
+                    changed += 1
                 continue
             student.append(
                 "guardians",
                 {
                     "guardian": guardian_name,
                     "relation": spec["relationship"] or "Other",
+                    "can_consent": can_consent,
                 },
             )
-            existing.add(guardian_name)
+            existing_rows[guardian_name] = student.get("guardians")[-1]
             added += 1
-        if added:
+        if added or changed:
             student.save(ignore_permissions=True)
         return added
 
@@ -1162,7 +1182,14 @@ class StudentApplicant(Document):
                 student=student,
                 contact_name=contact_name,
             )
-            linked_guardians.append({"guardian": guardian, "relationship": relationship, "contact": contact_name})
+            linked_guardians.append(
+                {
+                    "guardian": guardian,
+                    "relationship": relationship,
+                    "contact": contact_name,
+                    "can_consent": cint(spec.get("can_consent") or 0),
+                }
+            )
 
         added_guardians = self._ensure_student_guardian_links(student, linked_guardians)
         added_siblings = self._sync_student_siblings_from_shared_guardians(student)
