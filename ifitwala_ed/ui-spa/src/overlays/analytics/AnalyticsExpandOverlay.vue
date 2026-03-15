@@ -79,18 +79,18 @@
 										class="border-collapse text-ink/90"
 										:class="
 											isRecentRows
-												? 'w-full min-w-[1100px] table-fixed analytics-expand__table--recent'
+												? 'w-full min-w-[1260px] table-fixed analytics-expand__table--recent'
 												: 'min-w-full'
 										"
 									>
 										<colgroup v-if="isRecentRows">
 											<col style="width: 10%" />
 											<col style="width: 14%" />
-											<col style="width: 13%" />
-											<col style="width: 13%" />
-											<col style="width: 36%" />
+											<col style="width: 11%" />
+											<col style="width: 11%" />
+											<col style="width: 22%" />
 											<col style="width: 10%" />
-											<col style="width: 4%" />
+											<col style="width: 22%" />
 										</colgroup>
 										<thead class="bg-slate-50">
 											<tr v-if="isRecentRows" class="border-b border-slate-200">
@@ -100,13 +100,18 @@
 												<th class="px-3 py-2 text-left type-label text-slate-token/70">Type</th>
 												<th class="px-3 py-2 text-left type-label text-slate-token/70">Log</th>
 												<th class="px-3 py-2 text-left type-label text-slate-token/70">Author</th>
-												<th class="px-3 py-2 text-center type-label text-slate-token/70">FU</th>
+												<th class="px-3 py-2 text-left type-label text-slate-token/70">
+													Follow-ups
+												</th>
 											</tr>
 											<tr v-else class="border-b border-slate-200">
 												<th class="px-3 py-2 text-left type-label text-slate-token/70">Date</th>
 												<th class="px-3 py-2 text-left type-label text-slate-token/70">Type</th>
 												<th class="px-3 py-2 text-left type-label text-slate-token/70">Log</th>
 												<th class="px-3 py-2 text-left type-label text-slate-token/70">Author</th>
+												<th class="px-3 py-2 text-left type-label text-slate-token/70">
+													Follow-ups
+												</th>
 											</tr>
 										</thead>
 
@@ -151,13 +156,43 @@
 															{{ row.author }}
 														</div>
 													</td>
-													<td class="px-3 py-3 align-top text-center">
-														<span
-															v-if="row.requires_follow_up"
-															class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 type-badge-label text-amber-700"
-														>
-															Y
-														</span>
+													<td class="px-3 py-3 align-top">
+														<div v-if="row.follow_ups.length" class="analytics-expand__followups">
+															<div
+																v-for="followUp in row.follow_ups"
+																:key="followUp.name"
+																class="analytics-expand__followup-card"
+															>
+																<div class="analytics-expand__followup-meta">
+																	<span class="analytics-expand__followup-chip">
+																		{{ followUp.doctype }}
+																	</span>
+																	<span v-if="followUp.next_step">
+																		Next step: {{ followUp.next_step }}
+																	</span>
+																	<span v-if="responseMetric(followUp)">
+																		{{ responseMetric(followUp) }}
+																	</span>
+																</div>
+																<div class="analytics-expand__followup-submeta">
+																	<span v-if="followUp.follow_up_author">
+																		{{ followUp.follow_up_author }}
+																	</span>
+																	<span v-if="formatRespondedAt(followUp.responded_at)">
+																		{{ formatRespondedAt(followUp.responded_at) }}
+																	</span>
+																</div>
+																<p
+																	v-if="followUp.comment_text"
+																	class="analytics-expand__followup-comment"
+																>
+																	{{ truncate(followUp.comment_text, 180) }}
+																</p>
+															</div>
+														</div>
+														<div v-else class="analytics-expand__followup-empty">
+															{{ followUpEmptyLabel(row) }}
+														</div>
 													</td>
 												</template>
 
@@ -173,6 +208,44 @@
 													</td>
 													<td class="px-3 py-3 align-top whitespace-nowrap font-medium">
 														{{ row.author }}
+													</td>
+													<td class="px-3 py-3 align-top">
+														<div v-if="row.follow_ups.length" class="analytics-expand__followups">
+															<div
+																v-for="followUp in row.follow_ups"
+																:key="followUp.name"
+																class="analytics-expand__followup-card"
+															>
+																<div class="analytics-expand__followup-meta">
+																	<span class="analytics-expand__followup-chip">
+																		{{ followUp.doctype }}
+																	</span>
+																	<span v-if="followUp.next_step">
+																		Next step: {{ followUp.next_step }}
+																	</span>
+																	<span v-if="responseMetric(followUp)">
+																		{{ responseMetric(followUp) }}
+																	</span>
+																</div>
+																<div class="analytics-expand__followup-submeta">
+																	<span v-if="followUp.follow_up_author">
+																		{{ followUp.follow_up_author }}
+																	</span>
+																	<span v-if="formatRespondedAt(followUp.responded_at)">
+																		{{ formatRespondedAt(followUp.responded_at) }}
+																	</span>
+																</div>
+																<p
+																	v-if="followUp.comment_text"
+																	class="analytics-expand__followup-comment"
+																>
+																	{{ truncate(followUp.comment_text, 220) }}
+																</p>
+															</div>
+														</div>
+														<div v-else class="analytics-expand__followup-empty">
+															{{ followUpEmptyLabel(row) }}
+														</div>
 													</td>
 												</template>
 											</tr>
@@ -200,7 +273,12 @@ import {
 import { FeatherIcon } from 'frappe-ui';
 
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
-import type { StudentLogRecentRow, StudentLogStudentRow } from '@/types/studentLogDashboard';
+import { formatLocalizedDateTime } from '@/lib/datetime';
+import type {
+	StudentLogFollowUpSummary,
+	StudentLogRecentRow,
+	StudentLogStudentRow,
+} from '@/types/studentLogDashboard';
 
 type ChartOption = Record<string, unknown>;
 type TableRow = StudentLogRecentRow | StudentLogStudentRow;
@@ -255,10 +333,7 @@ function isRecentRow(row: TableRow): row is StudentLogRecentRow {
 }
 
 function rowKey(row: TableRow) {
-	if (isRecentRow(row)) {
-		return `${row.date}-${row.student}-${row.log_type}-${row.author}`;
-	}
-	return `${row.date}-${row.log_type}-${row.author}`;
+	return row.name;
 }
 
 function formatDate(value: string | null | undefined) {
@@ -277,6 +352,18 @@ function truncate(text: string, max = 140) {
 	if (!text) return '';
 	return text.length > max ? `${text.slice(0, max)}...` : text;
 }
+
+function followUpEmptyLabel(row: TableRow) {
+	return row.requires_follow_up ? 'Awaiting submitted follow-up' : 'No follow-up recorded';
+}
+
+function formatRespondedAt(value: string | null | undefined) {
+	return value ? formatLocalizedDateTime(value, { includeWeekday: false, month: 'short' }) : '';
+}
+
+function responseMetric(followUp: StudentLogFollowUpSummary) {
+	return followUp.responded_in_label ? `Responded in ${followUp.responded_in_label}` : '';
+}
 </script>
 
 <style scoped>
@@ -293,5 +380,62 @@ function truncate(text: string, max = 140) {
 .analytics-expand__log-snippet {
 	word-break: break-word;
 	line-height: 1.7rem;
+}
+
+.analytics-expand__followups {
+	display: flex;
+	flex-direction: column;
+	gap: 0.65rem;
+}
+
+.analytics-expand__followup-card {
+	border: 1px solid rgba(148, 163, 184, 0.22);
+	border-radius: 1rem;
+	padding: 0.7rem 0.8rem;
+	background: linear-gradient(135deg, rgba(255, 251, 235, 0.82), rgba(255, 255, 255, 0.98)), #fff;
+}
+
+.analytics-expand__followup-meta,
+.analytics-expand__followup-submeta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem 0.6rem;
+	align-items: center;
+}
+
+.analytics-expand__followup-meta {
+	font-size: 0.78rem;
+	line-height: 1.1rem;
+	font-weight: 600;
+	color: rgb(146 64 14);
+}
+
+.analytics-expand__followup-submeta {
+	margin-top: 0.28rem;
+	font-size: 0.76rem;
+	line-height: 1.05rem;
+	color: rgb(71 85 105);
+}
+
+.analytics-expand__followup-chip {
+	display: inline-flex;
+	align-items: center;
+	border-radius: 9999px;
+	padding: 0.1rem 0.52rem;
+	background: rgba(251, 191, 36, 0.18);
+	color: rgb(120 53 15);
+}
+
+.analytics-expand__followup-comment {
+	margin-top: 0.5rem;
+	font-size: 0.84rem;
+	line-height: 1.35rem;
+	color: rgb(30 41 59);
+}
+
+.analytics-expand__followup-empty {
+	font-size: 0.78rem;
+	line-height: 1.1rem;
+	color: rgb(100 116 139);
 }
 </style>

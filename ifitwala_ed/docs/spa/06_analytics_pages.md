@@ -597,6 +597,37 @@ This section closes that gap.
 
 ---
 
+## 10.5 Student Log Analytics Table Contract
+
+`StudentLogAnalytics.vue` has two detail tables at the end of the page:
+
+* `Recent Student Logs`
+* `Selected Student Logs`
+
+For these two tables, the contract is:
+
+* one row per `Student Log`
+* follow-up rows are **not** exploded into one-row-per-follow-up
+* follow-up detail is rendered inside a dedicated `Follow-ups` cell as a compact stack/timeline
+* the same row contract must be usable in the expanded analytics overlay
+
+For each submitted `Student Log Follow Up` rendered inside that cell, the UI may show:
+
+* doctype label (`Student Log Follow Up`)
+* parent `Student Log.next_step`
+* response-latency label derived from parent-log creation time to follow-up creation time
+* responder name
+* follow-up comment preview
+
+Rules:
+
+* only submitted follow-ups (`docstatus = 1`) count as analytics follow-up activity
+* follow-up visibility must inherit from the visible parent `Student Log`; analytics must not create a separate child-level permission path
+* multiple follow-ups must collapse gracefully inline and expand cleanly in the shared analytics overlay
+* “no follow-up yet” states must be explicit; silent empty cells are a defect
+
+---
+
 ## Final Anchor Statement (Keep This)
 
 > **Analytics pages are first-class SPA citizens.**

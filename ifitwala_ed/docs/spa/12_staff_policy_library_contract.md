@@ -24,7 +24,10 @@ Test refs: `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffPolicies.test.ts`
 
 1. Filters are canonical POST payload fields: `organization`, `school`, `employee_group`.
 2. Filters are populated by server options and normalized by returned effective filters.
-3. No client-side scope expansion is allowed.
+3. `school` is always normalized to a concrete value when scoped schools exist:
+   - prefer active `Employee.school`,
+   - fallback to first available school option in selected organization scope.
+4. No client-side scope expansion is allowed.
 
 ## Signature Status Contract
 Status: Implemented

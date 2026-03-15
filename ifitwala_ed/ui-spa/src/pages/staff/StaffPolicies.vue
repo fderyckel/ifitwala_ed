@@ -30,9 +30,8 @@
 				<select
 					v-model="filters.school"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
-					:disabled="loading || !filters.organization"
+					:disabled="loading || !filters.organization || !options.schools.length"
 				>
-					<option value="">All schools</option>
 					<option v-for="school in options.schools" :key="school" :value="school">
 						{{ school }}
 					</option>

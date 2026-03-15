@@ -91,7 +91,8 @@ class TestPolicySignature(FrappeTestCase):
             return
         frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
-    def _make_employee(self, user: str):
+    def _make_employee(self, user: str, school: str | None = None):
+        school_name = (school or self.school.name).strip()
         employee = frappe.get_doc(
             {
                 "doctype": "Employee",
@@ -102,7 +103,7 @@ class TestPolicySignature(FrappeTestCase):
                 "date_of_joining": nowdate(),
                 "employment_status": "Active",
                 "organization": self.organization.name,
-                "school": self.school.name,
+                "school": school_name,
                 "employee_group": self.employee_group.name,
                 "user_id": user,
             }
@@ -219,3 +220,57 @@ class TestPolicySignature(FrappeTestCase):
         self.assertTrue(new_version_row.get("signature_required"))
         self.assertEqual(new_version_row.get("policy_version"), amendment.name)
         self.assertEqual(new_version_row.get("acknowledgement_status"), "new_version")
+
+    def test_staff_policy_library_defaults_to_employee_school_and_inherits_parent_school_policy(self):
+        parent_school = make_school(self.organization.name, prefix="PS Parent School")
+        self.created.append(("School", parent_school.name))
+
+        child_school = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": f"PS Child School {frappe.generate_hash(length=6)}",
+                "abbr": f"PSC{frappe.generate_hash(length=4)}",
+                "organization": self.organization.name,
+                "parent_school": parent_school.name,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("School", child_school.name))
+
+        child_user = make_user(roles=["Employee"])
+        self.created.append(("User", child_user.name))
+        self._make_employee(child_user.name, school=child_school.name)
+
+        parent_school_policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"staff_parent_scope_{frappe.generate_hash(length=8)}",
+                "policy_title": "Parent School Staff Policy",
+                "policy_category": "Employment",
+                "applies_to": "Staff",
+                "organization": self.organization.name,
+                "school": parent_school.name,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Institutional Policy", parent_school_policy.name))
+
+        parent_school_version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": parent_school_policy.name,
+                "version_label": "v1",
+                "policy_text": "<p>Parent school policy text.</p>",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Version", parent_school_version.name))
+
+        frappe.set_user(child_user.name)
+        payload = get_staff_policy_library(organization=self.organization.name, school="")
+
+        self.assertEqual((payload.get("filters") or {}).get("school"), child_school.name)
+        rows = payload.get("rows") or []
+        by_policy = {row.get("institutional_policy"): row for row in rows}
+        inherited_row = by_policy.get(parent_school_policy.name) or {}
+        self.assertEqual(inherited_row.get("policy_version"), parent_school_version.name)
+        self.assertEqual(inherited_row.get("policy_school"), parent_school.name)

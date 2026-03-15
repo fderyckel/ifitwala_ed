@@ -36,7 +36,7 @@ import AnalyticsExpandOverlay from '@/overlays/analytics/AnalyticsExpandOverlay.
 
 const cleanupFns: Array<() => void> = [];
 
-function mountOverlay() {
+function mountOverlay(rows: Record<string, unknown>[] = []) {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
 
@@ -49,7 +49,7 @@ function mountOverlay() {
 					title: 'Expanded analytics',
 					chartOption: {},
 					kind: 'table',
-					rows: [],
+					rows,
 					onClose,
 				});
 			},
@@ -98,5 +98,48 @@ describe('AnalyticsExpandOverlay', () => {
 		panel?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 		expect(onClose).not.toHaveBeenCalled();
+	});
+
+	it('renders stacked follow-up detail for student log rows', async () => {
+		mountOverlay([
+			{
+				name: 'SLOG-0001',
+				date: '2026-03-10',
+				log_type: 'Wellbeing',
+				content: 'Needs counselor follow-up.',
+				author: 'Teacher One',
+				requires_follow_up: 1,
+				follow_up_count: 2,
+				follow_ups: [
+					{
+						name: 'SLFU-0001',
+						doctype: 'Student Log Follow Up',
+						next_step: 'Refer to Counselor',
+						responded_in_label: '3h 30m',
+						responded_at: '2026-03-10 11:30:00',
+						follow_up_author: 'Counsellor Jane',
+						comment_text: 'Met student and guardian.',
+					},
+					{
+						name: 'SLFU-0002',
+						doctype: 'Student Log Follow Up',
+						next_step: 'Refer to Counselor',
+						responded_in_label: '1d 2h',
+						responded_at: '2026-03-11 10:00:00',
+						follow_up_author: 'Pastoral Lead',
+						comment_text: 'Confirmed next support action.',
+					},
+				],
+			},
+		]);
+
+		await nextTick();
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Student Log Follow Up');
+		expect(text).toContain('Refer to Counselor');
+		expect(text).toContain('Responded in 3h 30m');
+		expect(text).toContain('Met student and guardian.');
+		expect(text).toContain('Confirmed next support action.');
 	});
 });

@@ -1269,10 +1269,16 @@ def get_staff_policy_library(
     organization_scope = get_descendant_organizations(selected_organization)
     school_options = _school_options_for_scope(organization_scope)
 
-    selected_school = (school or "").strip() or (employee_row or {}).get("school") or ""
+    employee_school = ((employee_row or {}).get("school") or "").strip()
+    selected_school = (school or "").strip() or employee_school
     selected_school = (selected_school or "").strip()
-    if selected_school and selected_school not in set(school_options):
+    school_option_set = set(school_options)
+
+    if selected_school and selected_school not in school_option_set:
         selected_school = ""
+
+    if not selected_school and school_options:
+        selected_school = employee_school if employee_school in school_option_set else school_options[0]
 
     if selected_school:
         _ensure_school_in_scope(school=selected_school, organization_scope=organization_scope)

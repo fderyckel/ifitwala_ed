@@ -141,6 +141,7 @@ describe('StaffPolicies', () => {
 		expect(text).toContain('Informational');
 		expect(text).toContain('Staff Data Handling');
 		expect(text).toContain('Signature pending');
+		expect(text).not.toContain('All schools');
 	});
 
 	it('opens the policy inform overlay when a row action is clicked', async () => {

@@ -51,6 +51,7 @@ Data that sits in a database is useless. We surface it immediately to the right 
 2.  **Student Log Analytics Dashboard:**
     *   **Trends:** See incidents over time, logs by cohort, or breakdown by log type.
     *   **Filtering:** Slice by program, academic year, or author.
+    *   **Follow-Up Context in Tables:** The two detail tables keep one row per Student Log and summarize submitted follow-ups inline with doctype, next step, response latency, and comment preview.
     *   **Zero Drift:** The dashboard respects the exact same permission rules as the rest of the system. You only see what you are allowed to see.
 
 ### Layer 3: Follow-Up (Closing the Loop)
