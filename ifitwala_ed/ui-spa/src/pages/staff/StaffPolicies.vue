@@ -121,9 +121,19 @@
 						<span v-else>Effective date not set</span>
 						<span v-if="row.effective_to"> → {{ formatLocalizedDate(row.effective_to) }}</span>
 					</p>
-					<button type="button" class="btn btn-quiet" @click="openPolicy(row.policy_version)">
-						Open policy
-					</button>
+					<div class="flex items-center gap-2">
+						<button type="button" class="btn btn-quiet" @click="openPolicy(row.policy_version)">
+							Open policy
+						</button>
+						<button
+							v-if="row.signature_required && canViewPolicySignatureAnalytics"
+							type="button"
+							class="btn btn-quiet"
+							@click="openPolicySignatureAnalytics(row)"
+						>
+							Open signature tracking
+						</button>
+					</div>
 				</div>
 			</article>
 		</section>
@@ -132,12 +142,14 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { formatLocalizedDate, formatLocalizedDateTime } from '@/lib/datetime';
 import { createPolicySignatureService } from '@/lib/services/policySignature/policySignatureService';
+import { getStaffHomeHeader } from '@/lib/services/staff/staffHomeService';
 
 import type {
 	Response as StaffPolicyLibraryResponse,
@@ -145,12 +157,14 @@ import type {
 } from '@/types/contracts/policy_signature/get_staff_policy_library';
 
 const overlay = useOverlayStack();
+const router = useRouter();
 const service = createPolicySignatureService();
 
 const loading = ref(false);
 const errorMessage = ref('');
 const payload = ref<StaffPolicyLibraryResponse | null>(null);
 const syncingFromServer = ref(false);
+const canViewPolicySignatureAnalytics = ref(false);
 
 const options = reactive({
 	organizations: [] as string[],
@@ -203,6 +217,36 @@ function openPolicy(policyVersion: string) {
 	overlay.open('staff-policy-inform', { policyVersion: value });
 }
 
+function openPolicySignatureAnalytics(row: StaffPolicyLibraryRow) {
+	if (!canViewPolicySignatureAnalytics.value) return;
+	const policyVersion = String(row.policy_version || '').trim();
+	if (!policyVersion) return;
+
+	const organization = String(filters.organization || '').trim();
+	const school = String(filters.school || '').trim();
+	const employeeGroup = String(filters.employee_group || '').trim();
+	const query: Record<string, string> = { policy_version: policyVersion };
+	if (organization) query.organization = organization;
+	if (school) query.school = school;
+	if (employeeGroup) query.employee_group = employeeGroup;
+
+	router.push({
+		name: 'staff-policy-signature-analytics',
+		query,
+	});
+}
+
+async function loadCapabilities() {
+	try {
+		const header = await getStaffHomeHeader();
+		canViewPolicySignatureAnalytics.value = Boolean(
+			header?.capabilities?.analytics_policy_signatures
+		);
+	} catch {
+		canViewPolicySignatureAnalytics.value = false;
+	}
+}
+
 function normalizeFiltersFromPayload(next: StaffPolicyLibraryResponse) {
 	syncingFromServer.value = true;
 	options.organizations = [...(next.options?.organizations || [])];
@@ -250,8 +294,8 @@ watch(
 	}
 );
 
-onMounted(() => {
-	refreshPolicyLibrary();
+onMounted(async () => {
+	await Promise.all([loadCapabilities(), refreshPolicyLibrary()]);
 });
 
 onBeforeUnmount(() => {

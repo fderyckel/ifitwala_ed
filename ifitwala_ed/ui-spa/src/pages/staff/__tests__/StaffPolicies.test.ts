@@ -3,10 +3,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, type App } from 'vue';
 
-const { getPolicyLibraryMock, overlayOpenMock } = vi.hoisted(() => ({
-	getPolicyLibraryMock: vi.fn(),
-	overlayOpenMock: vi.fn(),
-}));
+const { getPolicyLibraryMock, overlayOpenMock, getStaffHomeHeaderMock, routerPushMock } =
+	vi.hoisted(() => ({
+		getPolicyLibraryMock: vi.fn(),
+		overlayOpenMock: vi.fn(),
+		getStaffHomeHeaderMock: vi.fn(),
+		routerPushMock: vi.fn(),
+	}));
 
 vi.mock('@/lib/services/policySignature/policySignatureService', () => ({
 	createPolicySignatureService: () => ({
@@ -18,6 +21,16 @@ vi.mock('@/composables/useOverlayStack', () => ({
 	useOverlayStack: () => ({
 		open: overlayOpenMock,
 	}),
+}));
+
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		push: routerPushMock,
+	}),
+}));
+
+vi.mock('@/lib/services/staff/staffHomeService', () => ({
+	getStaffHomeHeader: getStaffHomeHeaderMock,
 }));
 
 vi.mock('@/components/filters/FiltersBar.vue', () => ({
@@ -79,6 +92,8 @@ function mountStaffPolicies() {
 afterEach(() => {
 	getPolicyLibraryMock.mockReset();
 	overlayOpenMock.mockReset();
+	getStaffHomeHeaderMock.mockReset();
+	routerPushMock.mockReset();
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.();
 	}
@@ -87,6 +102,10 @@ afterEach(() => {
 
 describe('StaffPolicies', () => {
 	it('renders informational and signature-required status labels', async () => {
+		getStaffHomeHeaderMock.mockResolvedValue({
+			user: 'staff@example.com',
+			capabilities: { analytics_policy_signatures: false },
+		});
 		getPolicyLibraryMock.mockResolvedValue({
 			meta: { generated_at: '2026-03-14T10:00:00', user: 'staff@example.com', employee: null },
 			filters: { organization: 'ORG-1', school: 'SCH-1', employee_group: 'GROUP-1' },
@@ -141,10 +160,15 @@ describe('StaffPolicies', () => {
 		expect(text).toContain('Informational');
 		expect(text).toContain('Staff Data Handling');
 		expect(text).toContain('Signature pending');
+		expect(text).not.toContain('Open signature tracking');
 		expect(text).not.toContain('All schools');
 	});
 
 	it('opens the policy inform overlay when a row action is clicked', async () => {
+		getStaffHomeHeaderMock.mockResolvedValue({
+			user: 'staff@example.com',
+			capabilities: { analytics_policy_signatures: false },
+		});
 		getPolicyLibraryMock.mockResolvedValue({
 			meta: { generated_at: '2026-03-14T10:00:00', user: 'staff@example.com', employee: null },
 			filters: { organization: 'ORG-1', school: '', employee_group: '' },
@@ -184,5 +208,62 @@ describe('StaffPolicies', () => {
 		await flushUi();
 
 		expect(overlayOpenMock).toHaveBeenCalledWith('staff-policy-inform', { policyVersion: 'VER-INFO' });
+	});
+
+	it('opens policy signature analytics with policy prefilled when capability is present', async () => {
+		getStaffHomeHeaderMock.mockResolvedValue({
+			user: 'staff@example.com',
+			capabilities: { analytics_policy_signatures: true },
+		});
+		getPolicyLibraryMock.mockResolvedValue({
+			meta: { generated_at: '2026-03-14T10:00:00', user: 'staff@example.com', employee: null },
+			filters: { organization: 'ORG-1', school: 'SCH-1', employee_group: 'GROUP-1' },
+			options: {
+				organizations: ['ORG-1'],
+				schools: ['SCH-1'],
+				employee_groups: ['GROUP-1'],
+			},
+			counts: {
+				total_policies: 1,
+				signature_required: 1,
+				informational: 0,
+				signed: 0,
+				pending: 1,
+				new_version: 0,
+			},
+			rows: [
+				{
+					institutional_policy: 'POL-SIGN',
+					policy_version: 'VER-SIGN',
+					policy_title: 'Staff Data Handling',
+					policy_category: 'Employment',
+					version_label: 'v3',
+					description: 'Signature policy',
+					policy_organization: 'ORG-1',
+					policy_school: 'SCH-1',
+					signature_required: true,
+					acknowledgement_status: 'pending',
+				},
+			],
+		});
+
+		mountStaffPolicies();
+		await flushUi();
+
+		const signatureTrackingButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Open signature tracking')
+		);
+		signatureTrackingButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(routerPushMock).toHaveBeenCalledWith({
+			name: 'staff-policy-signature-analytics',
+			query: {
+				policy_version: 'VER-SIGN',
+				organization: 'ORG-1',
+				school: 'SCH-1',
+				employee_group: 'GROUP-1',
+			},
+		});
 	});
 });

@@ -57,6 +57,15 @@ Test refs: `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffPolicies.test.ts`
    - derived signature state.
 3. No second modal system is introduced.
 
+## Signature Analytics Link Contract
+Status: Implemented
+Code refs: `ifitwala_ed/ui-spa/src/pages/staff/StaffPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`, `ifitwala_ed/ui-spa/src/lib/services/staff/staffHomeService.ts`
+Test refs: `ifitwala_ed/ui-spa/src/pages/staff/__tests__/StaffPolicies.test.ts`
+
+1. Signature-required policy cards expose an action to open policy signature analytics only for users with capability `analytics_policy_signatures`.
+2. The action navigates by named route to `staff-policy-signature-analytics`.
+3. Navigation query must prefill analytics filters with `policy_version` and current scope filters (`organization`, `school`, `employee_group`) when present.
+
 ## Contract Matrix
 Status: Implemented
 Code refs: `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/api/policy_communication.py`, `ifitwala_ed/ui-spa/src/pages/staff/StaffPolicies.vue`, `ifitwala_ed/ui-spa/src/router/index.ts`
