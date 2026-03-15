@@ -1,9 +1,11 @@
-# AGENTS.md — Ifitwala Ed AI Agent Constitution
+File: AGENTS.md
 
-This repository is a **production-grade, multi-tenant Education ERP**.
+# AGENTS.md — Ifitwala_Ed Repository Constitution
 
-AI agents **MUST** follow the rules below exactly.
-If a rule is unclear or context is missing: **STOP. ASK. WAIT.**
+This repository is a production-grade, multi-tenant Education ERP built on **Frappe Framework v16** with a **Vue 3 + Tailwind + frappe-ui SPA**.
+
+This file is the **root constitution** for all agents working in this repository.
+Nested `AGENTS.md` files may add local rules, but they must never weaken this contract.
 
 ---
 
@@ -11,28 +13,63 @@ If a rule is unclear or context is missing: **STOP. ASK. WAIT.**
 
 > **Do not invent. Do not assume. Do not drift.**
 
-* Never invent fieldnames, DocTypes, schemas, permissions, or defaults
-* Never rely on memory of “earlier versions”
-* Always work from files currently present in the workspace
-* If required files or schemas are missing → **STOP and ask**
+- Never invent field names, DocTypes, schemas, routes, payloads, permissions, defaults, or workflow rules.
+- Never rely on memory of older repo versions.
+- Always work from files currently present in the workspace.
+- If required files, contracts, or schemas are missing: **STOP. ASK. WAIT.**
 
 ---
 
-## 0.1 Product Manager Mandate (Non-Negotiable)
+## 0.1 Execution Priority Order (Non-Negotiable)
 
-Agents must operate with a **product manager mindset** and prioritize friction reduction for real users.
+When evaluating any change, think in this order:
 
-* Prefer in-product workflows (buttons, actions, guided UI) over CLI/manual operator steps.
-* If a recurring operational task requires CLI, treat it as a product gap and propose/implement a UI path.
-* Eliminate avoidable navigation and context-switching (surface links/actions where users already work).
-* Silent UI dead-ends are defects; users must always have a clear next action.
+1. Product UX
+2. Security and permissions
+3. Data integrity and workflow invariants
+4. Multi-tenant isolation
+5. High concurrency and scalability
+6. Framework correctness
+7. Code style and cleanup
+
+If a change improves code elegance but weakens product UX, security, data integrity, or concurrency safety, reject it.
 
 ---
 
-## 0.2 Framework Baseline (Non-Negotiable)
+## 0.2 Product Mandate (Non-Negotiable)
 
-* Runtime baseline is **Frappe Framework v16**.
-* Any workflow, script, or setup instruction that pins framework branch/version must target **`version-16`**.
+Agents must operate with a product manager mindset and reduce friction for real users:
+
+- teachers
+- admissions staff
+- academic staff
+- guardians
+- students
+- administrators
+
+Rules:
+
+- Prefer in-product workflows over CLI/manual operator steps.
+- Eliminate avoidable navigation and context switching.
+- Surface actions where users already work.
+- Silent UI dead ends are defects.
+- Blocked actions must explain:
+  - why the action is blocked
+  - what the user should do next
+
+Before implementing workflow/UI changes, ask:
+
+- Is this the lowest-friction path?
+- Is the next action obvious?
+- Does the UI preserve user context?
+- Is failure actionable instead of silent?
+
+---
+
+## 0.3 Framework Baseline (Non-Negotiable)
+
+- Runtime baseline is **Frappe Framework v16**.
+- Any workflow, setup, patch, or instruction that pins framework version must target **`version-16`**.
 
 ---
 
@@ -40,105 +77,117 @@ Agents must operate with a **product manager mindset** and prioritize friction r
 
 ### 1.1 Mandatory Workflow
 
-Agents MUST follow:
+For non-trivial tasks, agents MUST:
 
-1. **Plan**
+1. Restate the task precisely.
+2. Identify exact files to inspect and likely files to change.
+3. Summarize relevant doc/code/contract constraints.
+4. List key risks:
+   - UX regressions
+   - permission leaks
+   - data integrity/workflow regressions
+   - concurrency/performance regressions
+5. Stop for explicit approval before:
+   - structural refactors
+   - schema changes
+   - cross-module behavior changes
+6. Execute only approved work.
 
-   * Restate the task precisely
-   * List exact files to be touched
-   * Identify risks (data integrity, permissions, UX regressions)
-
-2. **Green-Light**
-
-   * Wait for explicit approval before:
-
-     * Structural refactors
-     * Schema changes
-     * Cross-module logic changes
-
-3. **Execute**
-
-   * Perform **only** approved work
-   * No opportunistic cleanup
-   * No scope creep
+No opportunistic cleanup. No scope creep.
 
 ---
 
 ## 2. Architectural Authority & Drift Control
 
-* Architecture is **explicitly locked**
-* Markdown files under:
-
-* ifitwala_ed/docs/ are **authoritative**
-* Code and documentation **must never diverge**
-* If behavior changes (when explicitly requested):
-
-  * Update the relevant markdown files
-  * No exceptions
+- Architecture is explicitly locked.
+- Markdown under `ifitwala_ed/docs/` is authoritative.
+- Code and documentation must never silently diverge.
+- If requested behavior changes:
+  - identify the canonical doc
+  - update docs together with code when approved
 
 Drift is a bug.
 
-### 2.1 Documentation Authority Protocol (Non-Negotiable)
+### 2.1 Documentation Authority Protocol
 
-* Documentation is the source of truth for behavior and architecture.
-* If documentation is ambiguous, improve/clarify documentation first; then align code to the clarified contract.
-* Agents MUST NOT change code in ways that alter documented behavior without an explicit change rationale and approval.
-* Required rationale format before such code changes:
-  * Pros
-  * Cons
-  * Blind spots
-  * Risks
-* Without that rationale and explicit approval, the agent must stop and wait.
+- Documentation is the source of truth for behavior and architecture.
+- If documentation is ambiguous, clarify documentation first, then align code.
+- Agents MUST NOT change code in ways that alter documented behavior without:
+  - pros
+  - cons
+  - blind spots
+  - risks
+  - explicit approval
 
-### 2.2 Legacy Code Policy (Development)
+### 2.2 Legacy Code Policy
 
-* During development, do NOT introduce compatibility shims, duplicate flows, or fallback routes for legacy behavior unless explicitly approved for a production cutover.
-* Remove non-working, obsolete, or superseded code paths as changes are made.
-* Keep one canonical implementation path per workflow to keep the codebase clean and reviewable.
+During development:
+
+- Do not introduce compatibility shims, duplicate flows, or fallback routes unless explicitly approved for runtime contract preservation.
+- Remove obsolete or broken paths when approved.
+- Keep one canonical workflow path per feature.
 
 ---
 
-## 3. Doctype & Data Model Invariants (Hard Rules)
+## 3. Doctype & Data Model Invariants
 
 ### 3.1 No Business Logic in Child Tables
 
-* Child table controllers:
+- Child table controllers must be empty or UI-only.
+- Validation, computation, side effects, and workflow logic belong in the parent DocType.
 
-  * Must be empty or UI-only
-* ALL validation, computation, and side-effects belong in the **parent DocType**
-* Logic in a child controller = **bug**
+Logic in child controllers is a bug.
 
-### 3.2 Never Assume Schemas
+### 3.2 Schema Discipline
 
-Agents MUST NOT invent fieldnames.
+Agents MUST NOT invent field names.
 
-Mapping contract (hard rule):
-
-* Never map or copy a field unless that field exists in the source DocType schema.
-* Forbidden pattern in business flows: reading non-existent fields via defensive access (e.g., `doc.get("missing_field")`) just to avoid runtime errors.
-* If a target requires data that the source DocType does not have, STOP and require an explicit architecture/schema decision.
+- Never map/copy/read a field unless its existence is verified from authoritative schema.
+- Never defensively read missing fields merely to avoid runtime errors.
+- If a target requires data the source schema does not provide, stop and require an explicit architecture/schema decision.
 
 Allowed sources:
 
-* JSON schema files explicitly provided
-* `frappe.get_meta()` **only when instructed**
+- provided JSON schema files
+- `frappe.get_meta()` only when appropriate and justified
 
-If schema is incomplete or ambiguous → ASK.
+If schema is incomplete or ambiguous: ask.
 
-### 3.2.1 JSON Metadata Timestamp Discipline (Non-Negotiable)
+### 3.2.1 JSON Metadata Timestamp Discipline
 
-For Frappe metadata `.json` files (DocType, child table, workspace, report, etc.):
+When a Frappe metadata `.json` file is touched:
 
-* As soon as a `.json` file is touched, agents MUST update its `modified` value to the actual change date/time.
-* Leaving a stale `modified` timestamp after editing metadata JSON is a bug.
+- update its `modified` timestamp to the real change date/time
+
+A stale `modified` timestamp is a bug.
 
 ### 3.3 NestedSet Is Sacred
 
 Any DocType using `NestedSet` (`lft`, `rgt`):
 
-* Must preserve hierarchy integrity
-* Must use framework helpers only
-* Manual SQL touching `lft` / `rgt` is forbidden
+- must preserve hierarchy integrity
+- must use framework helpers only
+- must never be modified via manual SQL
+
+---
+
+## 4. Multi-Tenant Safety (Non-Negotiable)
+
+This is a multi-tenant SaaS for schools. Assume sibling isolation is mandatory.
+
+Every query and workflow must be explicitly evaluated for scope:
+
+- organization
+- school
+- descendants / hierarchy
+- program / academic year / term when relevant
+- user role and relationship to the target record
+
+Rules:
+
+- Never write broad or implicit queries where tenant scope is merely assumed.
+- Reuse canonical permission/scope helpers where they exist.
+- Do not reimplement scope math ad hoc in each endpoint or UI surface.
 
 ---
 
@@ -146,615 +195,288 @@ Any DocType using `NestedSet` (`lft`, `rgt`):
 
 ### 5.1 Controllers & Hooks
 
-* Prefer **Document controllers**:
-
-  * `before_insert`
-  * `before_save`
-  * `after_insert`
-  * `on_update`
-  * `on_submit`
-* Avoid hooks unless unavoidable
-* Child table controllers remain empty
+- Prefer Document controllers:
+  - `before_insert`
+  - `before_save`
+  - `after_insert`
+  - `on_update`
+  - `on_submit`
+- Avoid hooks unless unavoidable.
+- Child table controllers remain empty.
 
 ### 5.2 Database Discipline
 
-* Reduce DB round-trips
-* Prefer:
-
-  * `frappe.db.get_value`
-  * `frappe.db.get_values`
-  * `frappe.get_all`
-* Use Query Builder or parameterized SQL
-* Never interpolate SQL strings manually
+- Reduce DB round-trips.
+- Prefer:
+  - `frappe.db.get_value`
+  - `frappe.db.get_values`
+  - `frappe.get_all`
+  - Query Builder
+  - parameterized SQL
+- Never interpolate SQL strings manually.
+- Never use broad queries when indexed scoped queries are available.
 
 ### 5.3 Caching Rules
 
-* Shared or stable data MUST use Redis:
+Shared or stable data should use Redis-backed caching where safe:
 
-  * `frappe.cache()`
-  * `@redis_cache(ttl=…)`
-* Never rely on in-process dict caching
-* Never cache:
+- `frappe.cache()`
+- `frappe.get_cached_value`
+- `frappe.get_cached_doc`
+- approved Redis-backed cache helpers
 
-  * Permission-sensitive queries
-  * User-specific state (unless approved)
+Never cache:
 
-Assume multi-worker Gunicorn + scheduler.
+- permission-sensitive queries without scoped keys
+- user-specific state unless explicitly designed for it
+
+Cache keys must include relevant scope:
+
+- user
+- school
+- organization
+- filters
+
+Stale cache without an invalidation strategy is a bug.
 
 ---
 
-## 6. Time, Calendar & Scheduling Rules (CRITICAL)
+## 6. High-Concurrency Mandate (Non-Negotiable)
 
-* Always use **Frappe site timezone**
-* Never use server OS timezone
-* Never hardcode country timezones
+Assume peak load by default.
 
-Helpers handling time MUST support:
+Design for staff, students, and guardians using the system concurrently.
 
-* `datetime.timedelta` (Frappe `Time` fields)
-* `datetime.time`
-* `datetime.datetime`
-* `str`
+### 6.1 Request Path Rules
+
+Request handlers must stay short.
+
+Heavy or repeated work must leave the request path via Frappe-native primitives.
+
+Prefer:
+
+- `frappe.enqueue(...)` with explicit queue selection
+- short/default/long queue separation
+- bounded batch processing
+- realtime completion with `frappe.publish_realtime(...)` where useful
+- aggregated page-init endpoints instead of request waterfalls
+- explicit invalidation rules for cached payloads
+
+Avoid:
+
+- synchronous loops over many records in request handlers
+- N+1 queries
+- repeated `get_doc(...)` in loops for dashboards or list payloads
+- per-row email/network side effects in requests
+- unbounded scheduler sweeps
+- oversized transactions
+
+### 6.2 Scheduler & Job Rules
+
+Background jobs and scheduled jobs must be:
+
+- idempotent
+- chunked
+- observable
+- safe under overlap/retry
+
+Schedulers should dispatch work, not do giant processing inline.
+
+### 6.3 Hot Path Rule
+
+When touching:
+
+- analytics
+- dashboards
+- attendance
+- enrollment
+- reporting
+- scheduler work
+- staff cockpits
+
+assume it is or will become a hot path.
+
+Optimize:
+
+- query count
+- payload size
+- cacheability
+- batching
+- idempotency
+
+---
+
+## 7. Time, Calendar & Scheduling Rules
+
+- Always use the Frappe site timezone.
+- Never use server OS timezone.
+- Never hardcode country timezones.
+
+Helpers dealing with time must support:
+
+- `datetime.timedelta`
+- `datetime.time`
+- `datetime.datetime`
+- `str`
 
 Rules:
 
-* Centralize coercion (e.g. `_coerce_time`)
-* No ad-hoc parsing
-* Silent failures are forbidden
-* Missing resolution must emit structured debug info
+- centralize coercion/parsing
+- no ad-hoc parsing
+- no silent failures
+- missing resolution must emit structured debug information
 
 ---
 
-## 7. Frontend Architecture (LOCKED)
+## 8. Frontend Architecture (Locked)
 
-### 7.1 Direction of Travel
+### 8.1 Canonical Frontend Direction
 
-* Canonical stack:
+- Vue 3
+- Tailwind CSS v4
+- frappe-ui
 
-  * **Vue 3**
-  * **Tailwind CSS v4**
-  * **frappe-ui**
-* Build pipeline is unified: root `yarn build` (and `bench build`) must compile Desk Rollup and `ui-spa` Vite together in one run.
-* Asset governance for production: keep bundles minified/fingerprinted where supported and keep source maps off by default (opt-in only for incident debugging).
-* Bootstrap is deprecated and treated as removed legacy (including `bootstrap-select` and Bootstrap class conventions like `btn-*`/`badge`).
-* Do not introduce or preserve Bootstrap assets/classes in new or touched code; refactor touched legacy UI to Tailwind v4 patterns or project-scoped semantic classes.
-* Legacy UI may exist:
+Build pipeline expectations:
 
-  * It is tolerated
-  * It must NOT be extended
+- root `yarn build`
+- `bench build`
+- unified Desk Rollup + `ui-spa` Vite compilation
 
-### 7.2 Surfaces
+Bootstrap is deprecated legacy and must not be extended in touched code.
 
-**Portal / SPA (students, guardians, staff)**
+### 8.2 SPA Interaction & API Contract Invariants
 
-* Vue 3 + Tailwind
-* Built with Vite
-* Output:
-
-  * `public/ui`
-  * `public/desk_vue`
-
-**Desk**
-
-* Transitional legacy surface
-* No new Tailwind leakage
-* New work prefers Vue where feasible
+- No silent user-action failures.
+- Blocked actions must show inline error and/or toast.
+- POST payload shape must match server contract exactly.
+- Do not wrap payloads incorrectly.
+- Avoid setup-order / immediate-watch TDZ bugs.
+- Multi-entry overlays must explicitly support:
+  - prefilled/locked mode
+  - selection-required mode
+- Use named routes or base-less internal paths only.
+- Do not hardcode SPA base prefixes.
 
 ---
 
-### 7.3 Frontend Interaction & API Contract Invariants (CRITICAL)
+## 9. API / Workflow Design
 
-These rules exist to prevent silent UI failures, runtime-only bugs, and client/server contract drift.
-They are **non-negotiable**.
+Prefer domain-specific endpoints over generic CRUD assembly.
 
----
+If an action has business meaning, it deserves:
 
-#### 7.3.1 No Silent User-Action Failures
+- a named endpoint
+- a single transactional path where possible
+- server-side idempotency / uniqueness invariants
+- explicit permission enforcement
+- predictable response contracts
 
-* Any user-triggered action (Create, Save, Submit, Confirm, etc.) MUST NOT fail silently.
-
-* Code patterns like:
-
-  if (!canSubmit.value) return
-
-  without user feedback are considered **bugs**.
-
-* If an action is blocked by validation, the UI MUST provide:
-
-  * an inline error message near the action area, and/or
-  * a toast explaining what is missing.
-
-Users must always understand **why nothing happened**.
+Page initialization should prefer one aggregated endpoint for tightly related data.
+Use `Promise.all()` only for truly independent domains.
 
 ---
 
-#### 7.3.2 Canonical POST Payload Shape (Hard Invariant)
+## 10. Permissions, Visibility & Hierarchy
 
-* All POST calls via the SPA client MUST follow this rule:
+- Schools belong to Organizations (NestedSet).
+- Selecting a parent includes all descendants.
+- Sibling isolation is mandatory.
 
-  api(method, payload)
+Visibility rules must be enforced server-side.
 
-* The second argument is sent as the **JSON body directly**.
+Examples of locked rules:
 
-* Payloads MUST NOT be wrapped as:
+- instructors see only students they teach
+- logs visible only to author / assigned follow-up / explicitly privileged roles
+- students and guardians never use Desk
 
-  api(method, { payload })   // forbidden
-
-  unless the server method explicitly requires a named argument.
-
-* For frappe-ui resources:
-
-  * POST endpoints MUST be called with:
-
-    resource.submit(payload)
-
-  * auto: true MUST NOT be used for POST resources.
-
-Client/server payload shape drift is considered a **contract violation**.
+Never swallow framework exceptions in permission or visibility logic.
 
 ---
 
-#### 7.3.3 Watchers, Setup Order & TDZ Safety
+## 11. Files & Media Handling
 
-* In <script setup>, any ref() or computed() referenced by a watcher MUST be declared **before** the watcher.
-* watch(..., { immediate: true }) executes during setup and can trigger **Temporal Dead Zone (TDZ)** runtime crashes if it references later-declared constants.
-* Prefer watching **props directly** rather than derived computed values when possible.
+- Always use rename/move patterns safely.
+- Avoid orphaned files.
+- Respect:
+  - `attached_to_doctype`
+  - `attached_to_name`
+  - folder case-sensitivity
+- Sync linked User/Contact images when required.
 
-Minified runtime errors such as:
+### 11.1 File Governance
 
-Cannot access 'w' before initialization
-
-are usually TDZ issues, not naming or scoping issues.
-
----
-
-#### 7.3.4 Modal Entry-Point Modes Must Be Explicit
-
-Any modal that can be opened from multiple entry points MUST explicitly support two modes:
-
-1. Prefilled / Locked Context Mode
-
-   * Required context (e.g. student_group) is provided
-   * Related fields are read-only or hidden
-   * Unnecessary data fetches MUST be skipped
-
-2. Unscoped / Selection Required Mode
-
-   * No context is provided (e.g. quick links)
-   * Modal MUST load selectable options
-   * Required selections MUST be enforced before submission
-
-If a modal works from one entry point but fails from another, this is a **design bug**, not a usage error.
+- Dispatcher-only creation via governed file APIs
+- Classification required
+- Atomic routing only
+- No URL guessing in the UI
+- Deterministic derivative slots
+- Docs under `ifitwala_ed/docs/files_and_policies/` are authoritative
 
 ---
 
-#### 7.3.5 Debugging Minified Runtime Errors
+## 12. Analytics & Reporting Rules
 
-* Do NOT infer meaning from minified variable names (w, t, e, etc.).
-* When encountering runtime-only errors:
-
-  * Check immediate watchers
-  * Check setup-time evaluation
-  * Check destructuring of watched values
-
-Assume evaluation order issues before assuming logic or typing errors.
-
-* Focus overlay rule: when adding a new Focus workflow, keep `FocusRouterOverlay` routing-only and preserve `ifitwala_ed.api.focus.*` endpoint paths by implementing server logic in split `ifitwala_ed/api/focus_*` modules behind `ifitwala_ed/api/focus.py`.
+- Guard permissions early
+- Build WHERE clauses centrally
+- Prefer one indexed query over many
+- Strip HTML in summaries, not print views
+- Display time as `hh:mm`
+- Sort by real datetime, not formatted strings
 
 ---
 
-## 8. Tailwind, Styling & Typography
+## 13. Error Handling & Debug Protocol
 
-### 8.1 Styling Discipline
+- Silent failures are forbidden.
+- If core context exists but resolution fails:
+  - emit structured debug payload
+  - log relevant Python types when useful
+- Never return `None` without explanation
 
-* Tailwind must be scoped to Vue roots
-* No global resets
-* No cross-surface leakage
-* Design tokens are the single source of truth
-
-### 8.2 Typography (Locked)
-
-* Use semantic helpers only: `.type-*`
-* No component-level `font-family`
-* Layout owns typography, not pages
+Client guards are UX only.
+Server invariants own correctness.
 
 ---
 
-## 9. Overlay & Modal System (Non-Negotiable)
+## 14. Documentation Synchronization
 
-* ONE modal system only:
+When architecture or behavior changes are approved, update corresponding docs.
 
-  * HeadlessUI `Dialog` + `Transition`
-* Rendered exclusively via **OverlayHost**
-* Frappe-UI dialogs MUST NOT coexist
-* Never mix modal systems
+For markdown under `ifitwala_ed/docs/docs_md/`:
 
-If an overlay opens empty:
-
-* Assume overlay stack or focus-trap issue
-* Not styling
-* Debug before touching UI
+- every doc must include YAML:
+  - `version`
+  - `last_change_date`
+- any doc change must update both fields
+- `## Technical Notes (IT)` must remain the final top-level section
+- preserve figure tags exactly
 
 ---
 
-## 10. SPA Navigation Rules
+## 15. Testing & Validation Checklist
 
-Inside the SPA:
+Before considering work done, verify:
 
-❌ Forbidden
+- documented behavior is preserved or intentionally updated
+- server invariants are enforced
+- permissions are enforced server-side
+- tenant scope is respected
+- UI does not fail silently
+- change is safe under concurrency
+- caches/jobs/idempotency are used where needed
+- related tests are added or updated when required
 
-* Hardcoded `/hub/...`
-* `window.location = '/hub/…'`
-
-✅ Required
-
-* Named routes
-* Base-less paths (`/staff/...`, `/student/...`)
-
-Router base already includes `/hub`.
-
----
-
-## 11. Permissions, Visibility & Hierarchy
-
-* Schools belong to Organizations (NestedSet)
-* Selecting a parent includes all descendants
-* Sibling isolation is mandatory
-
-Visibility rules:
-
-* Instructors see only students they teach
-* Logs visible only to:
-
-  * author
-  * assigned follow-up
-  * explicitly privileged roles
-* Students and guardians NEVER use Desk
-
-Permissions must be enforced **server-side**.
+If a critical assumption cannot be verified from the workspace, stop and say exactly what is missing.
 
 ---
 
-## 13. Files & Media Handling
-
-* Always use rename / move pattern
-* Avoid orphaned files
-* Respect:
-
-  * `attached_to_doctype`
-  * `attached_to_name`
-  * folder case-sensitivity
-* Sync images with linked User / Contact when required
-
-### 13.1 File Governance (Non-Negotiable)
-
-* **Dispatcher-only**: create files via `create_and_classify_file(...)` (or a governed API); no direct `File.insert()` in business flows.
-* **Classification required**: a `File` without `File Classification` is a bug; derivatives must also be classified with `source_file`.
-* **Atomic routing**: only update `file_url` after verifying the file exists at the destination.
-* **No URL guessing in UI**: use canonical URLs returned by server/classification, then fallback safely.
-* **Slots are semantics**: use explicit slots for derivatives (e.g., `profile_image_thumb`) and keep them deterministic.
-* **Docs are authority**: follow `ifitwala_ed/docs/files_and_policies/*.md` for governance rules and allowed purposes/data classes.
-
----
-
-## 14. Analytics & Reporting Rules
-
-* Guard permissions early
-* Build WHERE clauses centrally
-* Prefer one indexed query over many
-* Strip HTML in summaries (not print views)
-* Display time as `hh:mm`
-* Sort by real datetime, not formatted strings
-
----
-
-## 15. Error Handling & Debug Protocol
-
-* Silent failures are forbidden
-* If core context exists but resolution fails:
-
-  * Emit structured debug payload
-  * Log Python types when relevant
-* Never return `None` without explanation
-
----
-
-## 16. Documentation Synchronization (Mandatory)
-
-When architecture changes are made (if approved), agents MUST update corresponding docs, including but not limited to:
-
-Docs must reflect **reality**, not aspiration.
-
-Front matter rule for markdown docs under `ifitwala_ed/docs/docs_md/`:
-
-* Every doc MUST include YAML fields:
-  * `version`
-  * `last_change_date`
-* Any time a doc is changed, agent MUST:
-  * increment/update `version`
-  * set `last_change_date` to the actual change date (`YYYY-MM-DD`)
-* Section-order rule:
-  * `## Technical Notes (IT)` MUST be the final top-level section in the document.
-  * No top-level sections may appear after `## Technical Notes (IT)`.
-* Figure-anchor preservation rule:
-  * Preserve documentation figure tags exactly as written (for example `[[fig:1 size=auto]]`).
-  * Agents MUST NOT remove, rename, or reformat these tags because they map to screenshots/photos in the docs pipeline.
-
----
-
-## 17. Final Safety Rule
+## 16. Final Safety Rule
 
 If unsure:
 
-* Pause
-* Ask
-* Wait
-
-> **A correct pause beats a confident regression.**
-
-
-### Never swallow framework exceptions in permission or visibility logic.
-Framework APIs must be called with documented signatures only.
-Any silent failure in permission checks is a bug.
-
-
-### Lesson: UI must be treated as “best effort”; invariants belong on the server
-
-What happened is the classic trap:
-
-You assumed “the modal closes → user can’t click again → no duplicates”.
-
-But UI is not a security boundary, and not an invariant boundary.
-
-Any glitch (slow network, component not unmounting, rerender, user rage-clicking) can spam your API.
-
-So the rule is:
-
-Client-side guard = good UX.
-Server-side idempotency/uniqueness = real correctness.
-
-You’ve implemented the UX guard. Now you must add the server invariant.
-
-### Never let the client assemble a workflow out of generic CRUD calls.
-
-If an action has meaning (submit, follow up, decide, close), it deserves:
-
-a named endpoint
-
-a single transaction
-
-server-owned idempotency
-
-You just moved this feature from “it works” to production-grade.
-
----
-
-## 18. Incident-Derived Operational Guardrails
-
-### 18.1 Pre-Model Patch Safety (Non-Negotiable)
-
-For patches that run before model sync:
-
-* NEVER query or update newly introduced columns without guards.
-* MUST gate field access with:
-  * `frappe.db.table_exists(...)`
-  * `frappe.db.has_column(...)`
-* If a required column is missing, patch must degrade safely (no-op or fallback) and must NOT crash `bench migrate`.
-
-### 18.2 Desk Route Canonicalization (Non-Negotiable)
-
-For server-generated Desk links:
-
-* MUST use canonical Desk route slugs (hyphenated), not underscore slugs.
-* NEVER emit `/app/student_applicant/...`; MUST emit `/app/student-applicant/...`.
-* Any new URL builder for Desk routes must include an explicit canonicalization helper and regression check.
-
-### 18.3 Operational Dashboard Performance (Non-Negotiable)
-
-For staff dashboards/cockpits:
-
-* MUST NOT run per-record `get_doc(...)` + readiness methods in loops for list payloads.
-* MUST batch by concern (policies, documents, health, assignments) and assemble in memory.
-* If caching aggregate payloads, cache keys MUST include user + filter scope and use short TTL.
-
-### 18.4 Actionability Contract for Blockers (Non-Negotiable)
-
-When returning “missing/blocker” items from APIs:
-
-* Every blocker MUST include actionable target metadata:
-  * `target_doctype`
-  * `target_name` (when applicable)
-  * `target_url`
-  * `target_label`
-* UI MUST render blockers as direct actions (links/buttons), not static text-only warnings.
-
-### 18.5 Scheduler Observability & Isolation (Non-Negotiable)
-
-For scheduled jobs that mutate operational state:
-
-* MUST emit a run summary with processed/skipped/failed counts to logs and/or a stable cache key.
-* MUST isolate failures per doctype/work unit so one failure does not abort the full sweep.
-* MUST include overlap protection for frequent jobs (lock/guard) when race risk exists.
-
-### 18.6 Test Fixture Contract Fidelity (Non-Negotiable)
-
-For backend and API tests:
-
-* Fixtures MUST respect controller invariants; do not create setup rows in impossible states and then call `.save()` through guarded validation paths.
-* For invite-only identity fields on `Student Applicant` (`applicant_user`, `portal_account_email`, `applicant_email`, `applicant_contact`), tests MUST use lifecycle APIs or explicit controlled setup writes (`db_set(..., update_modified=False)`), not ad-hoc mutable saves.
-* File fixtures MUST match content type by extension; never upload non-PDF bytes with `.pdf` names or invalid image bytes with `.png` names.
-* When asserting defaults derived from mappings (for example classification mapping by code), tests MUST assert invariant outcomes (mapping resolves/completeness) and avoid brittle assumptions that can be overridden by site-level defaults.
-
-### 18.7 Mixed-Role Permission Precedence (Non-Negotiable)
-
-For role-gated business edits:
-
-* If a user has staff/admissions roles and family/applicant roles at the same time, staff precedence MUST apply for staff workflows.
-* Permission evaluators MUST define explicit precedence order; do not rely on incidental branch ordering.
-* Tests for permission logic MUST include at least one multi-role principal to prevent regressions.
-
-### 18.8 Translation Alias Safety (Non-Negotiable)
-
-For Python modules using `from frappe import _`:
-
-* `_` MUST NOT be reused as a local variable, tuple sink, or throwaway placeholder.
-* Shadowing `_` in whitelisted methods or validation code is a blocker because it can turn translatable error calls into runtime `TypeError`s.
-* When discarding unpacked values in these modules, use a descriptive unused name such as `unused_counts` or `_unused_counts`, never bare `_`.
-* Before finalizing a Python edit, agents MUST scan new locals and tuple unpacking for Ruff-class issues such as `F823` (translation alias shadowing) and `F841` (assigned but unused local variables).
-* Before attempting a commit, agents MUST run Ruff autofix and Ruff format on every touched Python file when those tools are available in the workspace.
-* If a change touches Vue / JS / TS / JSON-adjacent frontend assets that are governed by Prettier, agents MUST run Prettier on the touched files before attempting a commit.
-* Agents MUST ensure touched text files end with a newline and contain no trailing whitespace so pre-commit hook churn does not appear at commit time.
-* If a pre-commit or lint hook runs against staged content, agents MUST restage the corrected files before retrying so the index matches the fix.
-* If a pre-commit hook auto-fixes files during a commit attempt, agents MUST inspect which files changed, restage the intended files, and rerun the hook or commit until the tree is stable.
-
-### 18.9 Query-Filter Schema Contract Safety (Non-Negotiable)
-
-For any `frappe.get_all`, `frappe.get_list`, `frappe.db.get_value`, Query Builder, or SQL WHERE clause:
-
-* Every filtered column MUST exist on the queried DocType/table schema in the current workspace.
-* Agents MUST verify filter fieldnames against authoritative schema files before coding; guesses are forbidden.
-* Child table queries MUST NOT reuse parent/peer flags by assumption (for example adding `active` to a child table filter without schema proof).
-* If active/inactive semantics live on a parent DocType, enforce them on the parent DocType explicitly; do not invent child-level flags.
-
-### 18.10 Calendar/Permission Regression Gate (Non-Negotiable)
-
-For changes touching calendar feeds, calendar details, or permission resolution paths:
-
-* PRs MUST include at least one regression test that exercises the affected whitelisted endpoint path end-to-end.
-* CI for pull requests MUST run the calendar regression test module (for example `ifitwala_ed.api.test_calendar`) as a blocking check.
-* Any refactor that splits/moves helpers across modules MUST include before/after contract parity checks for query filters and payload shape.
-
-### 18.11 High-Concurrency Frappe Patterns (Non-Negotiable)
-
-For any feature expected to serve staff, students, or guardians at scale, agents MUST design for high concurrency by default and use Frappe-native primitives before inventing custom patterns.
-
-* Request handlers MUST stay short. Heavy computation, fan-out work, report generation, rebuilds, bulk mutations, and slow network boundaries MUST leave the request via `frappe.enqueue(...)` onto explicit queues (`short`, `default`, `long`).
-* Background jobs MUST be idempotent, chunked, and observable:
-  * use job keys / duplicate guards for repeat clicks
-  * process large sets in bounded batches
-  * emit processed/skipped/failed summaries
-  * never rely on request-local state inside workers
-* Scheduler jobs MUST act as dispatchers, not giant processors:
-  * cron fetches IDs only
-  * cron enqueues chunks
-  * heavy per-record work happens in workers
-  * backpressure and queue depth must be considered before enqueuing unbounded workloads
-* Read paths MUST prefer cacheable, aggregated, scope-safe payloads:
-  * use `frappe.cache()`, `frappe.get_cached_value`, `frappe.get_cached_doc`, or documented Redis-backed caching where safe
-  * cache keys MUST include permission/user/filter scope
-  * invalidation rules MUST be explicit; stale cache without an invalidation plan is a bug
-* SPA initialization MUST avoid request waterfalls:
-  * prefer one aggregated context endpoint for tightly related page-init data
-  * reserve `Promise.all()` for independent domains only
-  * no view should require more than 5 API calls for foundational load without explicit justification
-* Realtime completion SHOULD use `frappe.publish_realtime(...)` for queued work, with a safe polling fallback when websockets are unavailable.
-* Batch writes MUST use the safest Frappe-native mechanism available for the workload:
-  * batched document saves when controller invariants are required
-  * `frappe.db.bulk_insert` / chunked SQL only when lifecycle bypass is explicitly safe
-  * lock scope, transaction size, and commit cadence must be minimized deliberately
-* Network-bound side effects such as email and notifications MUST be asynchronous and retryable; do not block requests on SMTP or third-party latency when Frappe queueing can handle the boundary.
-* High-traffic payload endpoints SHOULD support cache stamps / HTTP validation (`ETag`, `If-None-Match`, `304`) or an equivalent documented contract when payloads are expensive and frequently revisited.
-* Any proposal or implementation for dashboards, analytics, attendance, enrollment processing, reporting, or scheduler work MUST be reviewed against:
-  * `ifitwala_ed/docs/concurrency_01_proposal.md`
-  * `ifitwala_ed/docs/concurrency_02_proposal.md`
-  * `ifitwala_ed/docs/high_concurrency_03.md`
-  and agents MUST follow the most concurrency-safe option that fits the current contract.
-
-### 18.12 Import-Path Contract Safety For Bootstrap Modules (Non-Negotiable)
-
-For modules loaded by hooks, login/bootstrap flows, website routing, or other early request entrypoints:
-
-* Exported names and import paths are part of the runtime contract, not private cleanup details.
-* When moving a shared constant, helper, or predicate to a new module, agents MUST do one of the following in the same change:
-  * update every downstream import in the repository, or
-  * preserve the old import path with an explicit compatibility re-export until all callers are migrated.
-* A compatibility re-export used to preserve an existing import contract is allowed here and is NOT treated as a forbidden legacy workflow shim under §2.2.
-* Refactors touching these modules MUST include a regression check that exercises the affected hook-loaded or bootstrap-loaded import path so import-time failures are caught before runtime.
-* Lint cleanup MUST NOT remove deliberate compatibility re-exports; make them explicit and document why they exist.
-
----
-
-## 19. Contract Matrix & Drift Prevention (Non-Negotiable)
-
-### 19.1 One Canonical Spec Per Feature
-
-* Each feature MUST have exactly one canonical contract document.
-* Draft notes, brainstorm text, and “drop-in sections” MUST live in separate non-authoritative files.
-* Canonical docs MUST NOT mix locked contract text with exploratory content.
-
-### 19.2 Section Status Markers Are Mandatory
-
-* Every top-level section in a canonical feature doc MUST include:
-  * `Status`: `Implemented` | `Partial` | `Planned`
-  * `Code refs`: concrete file paths
-  * `Test refs`: concrete tests (or explicit `None`)
-* Sections without status markers are incomplete documentation.
-
-### 19.3 Contract Matrix Required Before Merge
-
-* Any feature or workflow change MUST include a doc-to-code contract matrix covering at least:
-  * Schema / DocType
-  * Controller / Workflow logic
-  * API endpoints
-  * SPA/UI surfaces
-  * Reports / Dashboards / Briefings
-  * Scheduler / background jobs
-  * Tests
-* Any `Unknown` row in the matrix is a merge blocker.
-
-### 19.4 No Custom Permission Logic Outside Canonical Predicate
-
-* If a doctype provides canonical permission/visibility helpers, all read surfaces MUST reuse them.
-* Hand-rolled visibility clauses in dashboards, reports, and side APIs are defects unless explicitly documented as narrower portal-only exceptions.
-
-### 19.5 No Custom Scope Math Outside Canonical Scope Helper
-
-* School/program visibility scope MUST be computed by shared server helpers.
-* Re-implementing scope logic per endpoint (ancestor-only in one place, descendant-only in another) is drift and a blocker.
-* SPA clients MUST NOT implement scope logic beyond server-provided contracts.
-
-### 19.6 Server Invariants Own Correctness
-
-* Client-side guards are UX only; they are not correctness guarantees.
-* Idempotency, uniqueness, legal status transitions, and immutability rules MUST be enforced server-side.
-* Any meaningful action (submit, follow up, decide, close, reopen, reassign) MUST use a named workflow endpoint, not assembled client CRUD calls.
-
-### 19.7 Defaults Parity Rule
-
-* DocType defaults and SPA defaults MUST match.
-* Intentional divergence is allowed only when documented in the canonical contract with rationale and explicit date.
-
-### 19.8 Entry-Point Mode Contract Rule
-
-* Any overlay/workflow with multiple entry points MUST define explicit mode contracts (payload + locking behavior + required selections).
-* Every declared mode MUST be wired from a real entry point and covered by tests.
-* A documented mode that is not wired is a design defect.
-
-### 19.9 Analytics/Report Permission Parity Rule
-
-* Dashboards, reports, and briefing widgets MUST NOT expose rows/content that the same user cannot read in canonical list permissions.
-* Aggregate-only roles MUST NEVER receive log-level/detail payloads.
-* Filter metadata MUST be visibility-scoped and must not leak out-of-scope entities.
-
-### 19.10 Stale Spec Retirement Rule
-
-* If implementation changes behavior, the same PR MUST either:
-  * update the canonical doc, or
-  * mark the old doc section `Deprecated` with replacement reference.
-* Deleting a feature note is allowed only when a newer canonical source fully supersedes it.
-
-### 19.11 Codex Agent Execution Protocol (Repository-Specific)
-
-* Start feature work by producing a contract matrix before coding.
-* If matrix/doc/code mismatch is found, STOP and get explicit direction:
-  * align code to docs, or
-  * update docs to reality (with rationale and approval per §2.1).
-* Do not claim completion while critical invariants lack tests.
-* Final delivery must include a short drift scan:
-  * what now matches,
-  * what remains mismatched,
-  * what follow-up is required.
-
----
-
-THE FILE PATH name and path is always on top of the file before the imports.
+- pause
+- ask
+- wait
+
+> A correct pause beats a confident regression.

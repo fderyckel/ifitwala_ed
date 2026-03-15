@@ -105,3 +105,59 @@ class TestStudentLogApi(TestCase):
                 student_log_api.submit_student_log(**payload)
 
         new_doc.assert_not_called()
+
+    def test_get_student_log_detail_remains_read_only(self):
+        log_row = frappe._dict(
+            {
+                "name": "LOG-0001",
+                "student": "STU-0001",
+                "visible_to_student": 1,
+                "date": "2026-03-15",
+                "time": "09:00:00",
+                "log_type": "Academic",
+                "author_name": "Teacher Example",
+                "log": "<p>Detail body</p>",
+            }
+        )
+
+        with (
+            patch(
+                "ifitwala_ed.api.student_log._resolve_current_student",
+                return_value="STU-0001",
+            ),
+            patch("ifitwala_ed.api.student_log.frappe.db.get_value", return_value=log_row),
+            patch("ifitwala_ed.api.student_log._upsert_student_log_read_receipt") as mark_read_mock,
+        ):
+            result = student_log_api.get_student_log_detail("LOG-0001")
+
+        self.assertEqual(result, log_row)
+        mark_read_mock.assert_not_called()
+
+    def test_mark_student_log_read_marks_log_read_with_timestamp(self):
+        log_row = frappe._dict(
+            {
+                "name": "LOG-0001",
+                "student": "STU-0001",
+                "visible_to_student": 1,
+            }
+        )
+        read_at = frappe.utils.get_datetime("2026-03-15 11:30:00")
+
+        with (
+            patch(
+                "ifitwala_ed.api.student_log._resolve_current_student",
+                return_value="STU-0001",
+            ),
+            patch("ifitwala_ed.api.student_log.now_datetime", return_value=read_at),
+            patch("ifitwala_ed.api.student_log.frappe.session", SimpleNamespace(user="student@example.com")),
+            patch("ifitwala_ed.api.student_log.frappe.db.get_value", return_value=log_row),
+            patch("ifitwala_ed.api.student_log._upsert_student_log_read_receipt") as mark_read_mock,
+        ):
+            result = student_log_api.mark_student_log_read("LOG-0001")
+
+        self.assertEqual(result, {"ok": True, "student_log": "LOG-0001", "read_at": read_at})
+        mark_read_mock.assert_called_once_with(
+            user="student@example.com",
+            log_name="LOG-0001",
+            read_at=read_at,
+        )

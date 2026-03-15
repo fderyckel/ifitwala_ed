@@ -7,7 +7,7 @@ import os
 
 import frappe
 from frappe import _
-from frappe.utils import cint, nowdate, nowtime, strip_html
+from frappe.utils import cint, now_datetime, nowdate, nowtime, strip_html
 from frappe.utils.nestedset import get_descendants_of
 
 LOG_DOCTYPE = "Student Log"
@@ -27,6 +27,39 @@ def _resolve_current_student():
         frappe.throw(_("No Student record found for your account."), frappe.PermissionError)
 
     return student_name
+
+
+def _upsert_student_log_read_receipt(*, user: str, log_name: str, read_at=None) -> None:
+    """Persist per-user Student Log read state atomically."""
+    receipt_user = (user or "").strip()
+    receipt_log_name = (log_name or "").strip()
+    if not receipt_user or receipt_user == "Guest":
+        frappe.throw(_("You must be signed in to update read state."), frappe.PermissionError)
+    if not receipt_log_name:
+        frappe.throw(_("log_name is required."))
+
+    receipt_read_at = read_at or now_datetime()
+    frappe.db.sql(
+        """
+        INSERT INTO `tabPortal Read Receipt`
+            (`name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `idx`,
+             `user`, `reference_doctype`, `reference_name`, `read_at`)
+        VALUES
+            (%(name)s, %(read_at)s, %(read_at)s, %(user)s, %(user)s, 0, 0,
+             %(user)s, %(reference_doctype)s, %(reference_name)s, %(read_at)s)
+        ON DUPLICATE KEY UPDATE
+            `read_at` = VALUES(`read_at`),
+            `modified` = VALUES(`modified`),
+            `modified_by` = VALUES(`modified_by`)
+        """,
+        {
+            "name": frappe.generate_hash(length=10),
+            "read_at": receipt_read_at,
+            "user": receipt_user,
+            "reference_doctype": LOG_DOCTYPE,
+            "reference_name": receipt_log_name,
+        },
+    )
 
 
 @frappe.whitelist()
@@ -82,7 +115,7 @@ def get_student_logs(start: int = 0, page_length: int = PAGE_LENGTH_DEFAULT):
 
 @frappe.whitelist()
 def get_student_log_detail(log_name: str):
-    """Fetch a single student log (minimal fields) and mark it as read."""
+    """Fetch a single student log (minimal fields) for the current student."""
     # Resolve the current student (raises if not a logged-in student)
     student_name = _resolve_current_student()
 
@@ -105,21 +138,36 @@ def get_student_log_detail(log_name: str):
     if log.student != student_name or not log.visible_to_student:
         frappe.throw(_("You do not have permission to view this log."), frappe.PermissionError)
 
-    # Mark as read with a lightweight existence check
-    rr_filters = {
-        "user": frappe.session.user,
-        "reference_doctype": "Student Log",
-        "reference_name": log_name,
-    }
-    if not frappe.db.exists("Portal Read Receipt", rr_filters):
-        try:
-            frappe.get_doc({"doctype": "Portal Read Receipt", **rr_filters}).insert(ignore_permissions=True)
-            # No manual commit: Frappe handles request transactions
-        except Exception as e:
-            # Harmless if a parallel request inserted first; log and continue
-            frappe.log_error(f"Read receipt create failed for {log_name}: {e}", "Student Log API")
-
     return log
+
+
+@frappe.whitelist()
+def mark_student_log_read(log_name: str):
+    """Persist Student Log read state for the current student."""
+    student_log_name = (log_name or "").strip()
+    if not student_log_name:
+        frappe.throw(_("log_name is required."))
+
+    student_name = _resolve_current_student()
+    log = frappe.db.get_value(
+        "Student Log",
+        student_log_name,
+        ["name", "student", "visible_to_student"],
+        as_dict=True,
+    )
+    if not log:
+        frappe.throw(_("Log not found."), frappe.DoesNotExistError)
+
+    if log.student != student_name or not log.visible_to_student:
+        frappe.throw(_("You do not have permission to update this log."), frappe.PermissionError)
+
+    read_at = now_datetime()
+    _upsert_student_log_read_receipt(
+        user=frappe.session.user,
+        log_name=student_log_name,
+        read_at=read_at,
+    )
+    return {"ok": True, "student_log": student_log_name, "read_at": read_at}
 
 
 ALLOWED_OPTIONS_KEYS = {"student"}

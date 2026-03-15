@@ -19,6 +19,7 @@ Rules:
    - `/hub/guardian` for guardian-stage work
    - `/hub/student` when student action is explicitly required
 4. Staff workflows must remain named workflows with server-owned state transitions, not client-assembled CRUD.
+5. Phase 2A delivery order is defined in `ifitwala_ed/docs/files_and_policies/policy_05_phase2a_guardian_first_implementation_plan.md`.
 
 ## Reuse Model
 Status: Planned
@@ -147,18 +148,89 @@ Rules:
 6. Co-sign flows must track guardian completion and student completion separately.
 7. A guardian linked by email only is not a signer unless a relationship row grants authority.
 
-## Approval Gates Before Implementation
-Status: Planned
+## Approved Architecture Decisions
+Status: Partial
 Code refs: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.json`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.json`, `ifitwala_ed/admission/doctype/student_applicant_guardian/student_applicant_guardian.json`, `ifitwala_ed/students/doctype/student_guardian/student_guardian.json`
 Test refs: None
 
-Required decisions:
+Approved decisions:
 
-1. The exact new DocType names and field names for the request/decision layer.
-2. Whether Phase 2 ships guardian-only first or includes student co-sign from day one.
-3. Whether family-scope completion means one authorized signer or all required signers by default.
-4. Whether mutable consents need an explicit effective window and renewal pattern.
-5. Whether offline paper capture lives on the same workflow artifact or on a separate governed admin action.
+1. The new request/decision layer will use these DocTypes:
+   - `Family Consent Request`
+   - `Family Consent Target`
+   - `Family Consent Decision`
+2. Phase 2A ships guardian-first on enrolled-student guardian workflows in `/hub/guardian`.
+3. Student co-sign is deferred to a later phase and must not block guardian-first release.
+4. Default completion rule is `Any Authorized Guardian`; requests may opt into `All Authorized Guardians`.
+5. Mutable consents must carry explicit effective-window fields and use renewal by new request, not silent rollover.
+6. Offline paper capture lives on the same workflow artifact as a staff-recorded `Family Consent Decision`, with governed file evidence attached to that decision.
+
+Approved field set for the new request/decision layer:
+
+1. `Family Consent Request`
+   - `request_title`
+   - `request_key`
+   - `request_type`
+   - `policy_version`
+   - `organization`
+   - `school`
+   - `request_text`
+   - `source_file`
+   - `subject_scope`
+   - `audience_mode`
+   - `signer_rule`
+   - `decision_mode`
+   - `requires_typed_signature`
+   - `requires_attestation`
+   - `effective_from`
+   - `effective_to`
+   - `due_on`
+   - `status`
+   - child table `targets`
+2. `Family Consent Target`
+   - `student`
+3. `Family Consent Decision`
+   - `family_consent_request`
+   - `student`
+   - `decision_by`
+   - `decision_status`
+   - `decision_at`
+   - `typed_signature_name`
+   - `attestation_confirmed`
+   - `source_channel`
+   - `source_file`
+   - `supersedes_decision`
+
+## Decision Rationale
+Status: Partial
+Code refs: `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`
+Test refs: None
+
+Pros:
+
+1. Keeps immutable `Policy Acknowledgement` semantics intact instead of overloading them with mutable states.
+2. Delivers the highest-value family workflow first: guardian-facing permission requests and consents in `/hub/guardian`.
+3. Preserves the signer-authority model already established by `can_consent`.
+4. Supports later student co-sign without forcing student-specific complexity into Phase 2A.
+5. Makes reminders, expiry, and withdrawal explicit instead of encoding them as absence of acknowledgement.
+
+Cons:
+
+1. Introduces a second governance workflow family beside versioned policy acknowledgements.
+2. Requires new staff publishing and analytics surfaces rather than only extending the current policy page.
+3. Guardian-first release means applicant-stage and student co-sign use cases remain out of scope initially.
+
+Blind spots:
+
+1. The exact staff authoring UX for target selection still needs implementation design.
+2. Renewal cadence defaults for annual consents are not yet wired and will depend on school operations.
+3. Later admissions-stage reuse may require extending targets beyond enrolled students.
+
+Risks:
+
+1. If request types and decision modes are blurred in UI, families may not understand whether they are acknowledging, approving, or granting consent.
+2. If signer authority is not enforced uniformly server-side, emergency-only guardians could be exposed to actions they must not take.
+3. If staff dashboards reuse custom scope math instead of canonical helpers, permission drift will reappear.
 
 ## Contract Matrix
 Status: Planned

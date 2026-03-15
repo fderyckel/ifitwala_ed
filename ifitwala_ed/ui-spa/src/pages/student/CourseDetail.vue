@@ -26,16 +26,22 @@
 
 		<template v-else-if="courseDetail">
 			<header class="card-surface overflow-hidden">
-				<div class="grid gap-6 lg:grid-cols-[220px,1fr]">
-					<div class="bg-surface-soft">
-						<img
-							:src="courseDetail.course.course_image || PLACEHOLDER"
-							:alt="courseDetail.course.course_name"
-							class="h-full w-full object-cover"
-							loading="lazy"
-						/>
+				<div
+					class="grid gap-5 p-5 sm:gap-6 sm:p-6 xl:grid-cols-[minmax(0,9rem),minmax(0,1fr)] xl:items-start"
+				>
+					<div class="flex justify-center xl:justify-start">
+						<div
+							class="w-full max-w-[7.5rem] overflow-hidden rounded-2xl border border-line-soft bg-surface-soft shadow-sm sm:max-w-[8.5rem] xl:max-w-[9rem]"
+						>
+							<img
+								:src="courseDetail.course.course_image || PLACEHOLDER"
+								:alt="courseDetail.course.course_name"
+								class="aspect-square h-full w-full object-cover"
+								loading="lazy"
+							/>
+						</div>
 					</div>
-					<div class="p-6">
+					<div class="min-w-0">
 						<p class="type-overline text-ink/60">My Course</p>
 						<h1 class="mt-2 type-h1 text-ink">{{ courseDetail.course.course_name }}</h1>
 						<p v-if="courseDetail.course.course_group" class="mt-2 type-caption text-ink/70">
@@ -54,8 +60,10 @@
 				</div>
 			</header>
 
-			<section class="grid gap-6 lg:grid-cols-[320px,minmax(0,1fr)]">
-				<aside class="space-y-6 lg:sticky lg:top-6 lg:self-start">
+			<section
+				class="grid gap-6 xl:grid-cols-[minmax(0,18rem),minmax(0,1fr)] 2xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]"
+			>
+				<aside class="space-y-6 xl:self-start">
 					<section class="card-surface p-5">
 						<div class="mb-3 flex items-center justify-between">
 							<h2 class="type-h3 text-ink">Entry Context</h2>
@@ -87,7 +95,7 @@
 							</div>
 							<button
 								type="button"
-								class="if-action lg:hidden"
+								class="if-action xl:hidden"
 								:aria-expanded="isCourseMapOpen ? 'true' : 'false'"
 								@click="isCourseMapOpen = !isCourseMapOpen"
 							>
@@ -102,7 +110,7 @@
 							No learning units are available for this course yet.
 						</div>
 
-						<div v-else :class="['space-y-4', isCourseMapOpen ? 'block' : 'hidden lg:block']">
+						<div v-else :class="['space-y-4', isCourseMapOpen ? 'block' : 'hidden xl:block']">
 							<div v-for="unit in units" :key="unit.name" class="space-y-2">
 								<button
 									type="button"
