@@ -105,8 +105,40 @@ def has_staff_role(user: str | None = None) -> bool:
     )
 
 
+def institutional_policy_db_has_column(column_name: str) -> bool:
+    column = (column_name or "").strip()
+    if not column:
+        return False
+
+    cache_key = f"institutional_policy_db_column::{column}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return bool(cached)
+
+    exists = False
+    try:
+        exists = bool(
+            frappe.db.sql(
+                """
+                SELECT 1
+                  FROM information_schema.columns
+                 WHERE table_schema = DATABASE()
+                   AND table_name = 'tabInstitutional Policy'
+                   AND column_name = %s
+                 LIMIT 1
+                """,
+                (column,),
+            )
+        )
+    except Exception:
+        exists = False
+
+    frappe.cache().set_value(cache_key, 1 if exists else 0, expires_in_sec=300)
+    return exists
+
+
 def ensure_policy_applies_to_column(*, throw: bool = False, caller: str | None = None) -> dict:
-    if frappe.db.has_column("Institutional Policy", "applies_to"):
+    if institutional_policy_db_has_column("applies_to"):
         return {"ok": True}
 
     meta = frappe.get_meta("Institutional Policy")
@@ -116,6 +148,7 @@ def ensure_policy_applies_to_column(*, throw: bool = False, caller: str | None =
         "caller": caller,
         "site": getattr(frappe.local, "site", None),
         "meta_has_field": bool(meta and meta.has_field("applies_to")),
+        "db_has_column": False,
     }
     frappe.log_error(message=frappe.as_json(debug_payload), title="Policy schema mismatch")
 
@@ -154,7 +187,7 @@ def policy_applies_to(raw_value, audience: str) -> bool:
 
 
 def _has_policy_admissions_mode_column() -> bool:
-    return frappe.db.has_column("Institutional Policy", "admissions_acknowledgement_mode")
+    return institutional_policy_db_has_column("admissions_acknowledgement_mode")
 
 
 def get_policy_admissions_acknowledgement_mode(

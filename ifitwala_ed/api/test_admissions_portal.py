@@ -33,6 +33,10 @@ from ifitwala_ed.api.admissions_portal import (
     upload_applicant_guardian_image,
     upload_applicant_profile_image,
 )
+from ifitwala_ed.governance.policy_utils import (
+    ensure_policy_applies_to_column,
+    institutional_policy_db_has_column,
+)
 from ifitwala_ed.utilities import file_dispatcher
 
 
@@ -43,7 +47,7 @@ def _admission_settings_has_field(fieldname: str) -> bool:
 
 
 def _policy_schema_available() -> bool:
-    return frappe.db.has_column("Institutional Policy", "applies_to")
+    return bool(ensure_policy_applies_to_column(caller="test_admissions_portal").get("ok"))
 
 
 class TestAdmissionsPortalAuthGuards(FrappeTestCase):
@@ -913,7 +917,7 @@ class TestSubmitApplication(FrappeTestCase):
             self.skipTest("Institutional Policy.applies_to column is required for family acknowledgement tests.")
         if not _admission_settings_has_field("admissions_access_mode"):
             self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
-        if not frappe.db.has_column("Institutional Policy", "admissions_acknowledgement_mode"):
+        if not institutional_policy_db_has_column("admissions_acknowledgement_mode"):
             self.skipTest(
                 "Institutional Policy.admissions_acknowledgement_mode is required for family acknowledgement tests."
             )
@@ -1540,8 +1544,8 @@ class TestSubmitApplication(FrappeTestCase):
             "school": school,
             "is_active": 1,
         }
-        if admissions_acknowledgement_mode is not None and frappe.db.has_column(
-            "Institutional Policy", "admissions_acknowledgement_mode"
+        if admissions_acknowledgement_mode is not None and institutional_policy_db_has_column(
+            "admissions_acknowledgement_mode"
         ):
             policy_payload["admissions_acknowledgement_mode"] = admissions_acknowledgement_mode
 

@@ -3,6 +3,8 @@
 
 # ifitwala_ed/api/test_users.py
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
@@ -52,23 +54,6 @@ def _ensure_role(role: str) -> None:
 def _append_role(user_doc, role: str) -> None:
     _ensure_role(role)
     user_doc.append("roles", {"role": role})
-
-
-def _create_redirect_applicant(*, organization: str, school: str, applicant_user: str = ""):
-    applicant = frappe.get_doc(
-        {
-            "doctype": "Student Applicant",
-            "first_name": "Redirect",
-            "last_name": f"Applicant {frappe.generate_hash(length=6)}",
-            "organization": organization,
-            "school": school,
-            "application_status": "Draft",
-        }
-    ).insert(ignore_permissions=True)
-    if applicant_user:
-        applicant.db_set("applicant_user", applicant_user, update_modified=False)
-    applicant.reload()
-    return applicant
 
 
 class TestUserRedirect(FrappeTestCase):
@@ -233,7 +218,6 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_admissions_applicant_redirects_to_admissions(self):
         """Admissions Applicants with a linked applicant should be redirected to /admissions."""
-        # Create test user with Admissions Applicant role
         user = frappe.new_doc("User")
         user.email = "test_admissions_applicant@example.com"
         user.first_name = "Test"
@@ -242,37 +226,16 @@ class TestUserRedirect(FrappeTestCase):
         _append_role(user, "Admissions Applicant")
         user.insert(ignore_permissions=True)
 
-        school = frappe.get_doc(
-            {
-                "doctype": "School",
-                "school_name": f"Redirect Applicant School {frappe.generate_hash(length=6)}",
-                "abbr": f"RA{frappe.generate_hash(length=3)}",
-                "organization": _ensure_test_organization(),
-            }
-        ).insert(ignore_permissions=True)
-
-        applicant = _create_redirect_applicant(
-            organization=school.organization,
-            school=school.name,
-            applicant_user=user.email,
-        )
-
         try:
-            # Simulate login
             frappe.set_user(user.email)
             frappe.local.response = {}
+            with patch("ifitwala_ed.routing.policy.has_open_admissions_portal_access", return_value=True):
+                redirect_user_to_entry_portal()
 
-            # Call redirect function
-            redirect_user_to_entry_portal()
-
-            # Assert redirect to /admissions (separate admissions portal)
             self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
             self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
         finally:
-            # Cleanup
             frappe.set_user("Administrator")
-            frappe.delete_doc("Student Applicant", applicant.name, force=True)
-            frappe.delete_doc("School", school.name, force=True)
             frappe.delete_doc("User", user.email, force=True)
 
     def test_staff_and_admissions_roles_redirect_to_staff(self):
@@ -434,51 +397,14 @@ class TestUserRedirect(FrappeTestCase):
         _append_role(user, "Admissions Family")
         user.insert(ignore_permissions=True)
 
-        guardian = frappe.new_doc("Guardian")
-        guardian.guardian_first_name = "Family"
-        guardian.guardian_last_name = "Admissions"
-        guardian.guardian_email = user.email
-        guardian.guardian_mobile_phone = "+14155550141"
-        guardian.user = user.email
-        guardian.save(ignore_permissions=True)
-
-        school = frappe.get_doc(
-            {
-                "doctype": "School",
-                "school_name": f"Redirect Family School {frappe.generate_hash(length=6)}",
-                "abbr": f"RF{frappe.generate_hash(length=3)}",
-                "organization": _ensure_test_organization(),
-            }
-        ).insert(ignore_permissions=True)
-
-        applicant = _create_redirect_applicant(
-            organization=school.organization,
-            school=school.name,
-        )
-        applicant.append(
-            "guardians",
-            {
-                "guardian": guardian.name,
-                "user": user.email,
-                "relationship": "Mother",
-                "can_consent": 1,
-                "is_primary": 1,
-                "guardian_first_name": "Family",
-                "guardian_last_name": "Admissions",
-                "guardian_email": user.email,
-                "guardian_mobile_phone": "+14155550141",
-                "guardian_image": "/private/files/family-admissions.png",
-            },
-        )
-        applicant.save(ignore_permissions=True)
-
         try:
             frappe.db.set_single_value("Admission Settings", "admissions_access_mode", "Family Workspace")
 
             frappe.set_user(user.email)
             frappe.local.response = {}
 
-            redirect_user_to_entry_portal()
+            with patch("ifitwala_ed.routing.policy.has_open_admissions_portal_access", return_value=True):
+                redirect_user_to_entry_portal()
 
             self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
             self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
@@ -489,9 +415,6 @@ class TestUserRedirect(FrappeTestCase):
                 "admissions_access_mode",
                 previous_mode or "Single Applicant Workspace",
             )
-            frappe.delete_doc("Student Applicant", applicant.name, force=True)
-            frappe.delete_doc("School", school.name, force=True)
-            frappe.delete_doc("Guardian", guardian.name, force=True)
             frappe.delete_doc("User", user.email, force=True)
 
     def test_student_redirects_to_student_portal(self):

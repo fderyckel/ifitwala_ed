@@ -62,7 +62,7 @@ class TestInstitutionalPolicy(FrappeTestCase):
 
     def test_schema_check_rejects_missing_db_column_even_when_meta_has_field(self):
         with (
-            patch("ifitwala_ed.governance.policy_utils.frappe.db.has_column", return_value=False),
+            patch("ifitwala_ed.governance.policy_utils.institutional_policy_db_has_column", return_value=False),
             patch(
                 "ifitwala_ed.governance.policy_utils.frappe.get_meta",
                 return_value=type("Meta", (), {"has_field": lambda self, fieldname: fieldname == "applies_to"})(),
