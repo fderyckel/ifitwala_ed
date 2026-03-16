@@ -32,7 +32,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-11 20:49:35.617511",
+ "modified": "2026-03-16 11:48:24.882957",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Cohort",
@@ -136,5 +136,6 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "cohort_name"
 }

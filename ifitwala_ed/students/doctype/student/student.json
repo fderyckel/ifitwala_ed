@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "format:STU-{YYYY}-{#####}",
+ "autoname": "STU-.YY,-.#####",
  "creation": "2024-12-06 14:26:44.955491",
  "default_view": "List",
  "doctype": "DocType",
@@ -320,11 +320,11 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-10 20:32:54.409740",
+ "modified": "2026-03-16 11:47:41.276548",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
