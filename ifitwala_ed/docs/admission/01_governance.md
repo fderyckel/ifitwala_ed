@@ -28,6 +28,28 @@ A Student **cannot** exist except through Applicant promotion, unless one of the
 * Migration / patch execution context
 * Explicit `allow_direct_creation = 1` administrative creation
 
+### 1.1 Student import procedure for existing-school onboarding
+
+The current runtime contract for `Student` import is intentionally strict:
+
+* `Student.allow_import = 1` in DocType metadata, so the DocType is import-enabled.
+* `Student.allow_direct_creation` is the explicit bypass flag for non-applicant creation.
+* During Data Import (`frappe.flags.in_import`), each inserted row must include `allow_direct_creation = 1`.
+* If that column is missing or set to `0`, `Student.before_insert()` blocks the row with a validation error.
+
+Operational implication:
+
+* bulk onboarding of an existing school is supported through Frappe Data Import
+* the import file must carry school-scoped anchors explicitly, especially `anchor_school`
+* the import path is an exception flow; it does not replace the canonical admissions path
+
+Current permission nuance in repo metadata:
+
+* `Student` import permission is granted to `Academic Admin` and `Academic Assistant`
+* `System Manager` currently does **not** have the DocType-level `import` permission row in `student.json`
+
+If a non-Administrator sysadmin must run Student imports through Desk, grant `Import` on `Student` for the intended admin role in Frappe Role Permissions Manager before using the Data Import tool.
+
 
 ---
 
