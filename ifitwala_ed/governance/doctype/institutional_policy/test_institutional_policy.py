@@ -1,9 +1,12 @@
 # Copyright (c) 2026, François de Ryckel and Contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
 from ifitwala_ed.tests.factories.organization import make_organization
 
 
@@ -56,3 +59,15 @@ class TestInstitutionalPolicy(FrappeTestCase):
 
         with self.assertRaises(frappe.ValidationError):
             policy.insert(ignore_permissions=True)
+
+    def test_schema_check_accepts_meta_field_when_has_column_is_false(self):
+        with (
+            patch("ifitwala_ed.governance.policy_utils.frappe.db.has_column", return_value=False),
+            patch(
+                "ifitwala_ed.governance.policy_utils.frappe.get_meta",
+                return_value=type("Meta", (), {"has_field": lambda self, fieldname: fieldname == "applies_to"})(),
+            ),
+        ):
+            result = ensure_policy_applies_to_column(caller="test")
+
+        self.assertTrue(result.get("ok"))
