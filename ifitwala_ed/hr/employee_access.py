@@ -4,6 +4,7 @@
 # ifitwala_ed/hr/employee_access.py
 
 import frappe
+from frappe import _
 from frappe.utils import getdate, nowdate
 from frappe.utils.caching import redis_cache
 
@@ -72,15 +73,37 @@ def _resolve_row_access(h) -> dict:
     return {"roles": d.get("roles", set()), "workspace": d.get("workspace"), "priority": int(d.get("priority") or 0)}
 
 
+def _row_is_current(h) -> bool:
+    """
+    Derive current-ness from the row date window first.
+
+    Employee.sync_employee_history() mutates rows during save, after validate() has already
+    recomputed `is_current`. Access sync runs in that same save cycle, so the date window is
+    the reliable source when the flag is momentarily stale.
+    """
+    try:
+        today = getdate(nowdate())
+        start = getdate(h.get("from_date")) if h.get("from_date") else None
+        end = getdate(h.get("to_date")) if h.get("to_date") else None
+    except Exception:
+        return bool(h.get("is_current"))
+
+    if start and start > today:
+        return False
+    if end and end < today:
+        return False
+    if start or end:
+        return True
+    return bool(h.get("is_current"))
+
+
 def _active_history_rows(emp) -> list[dict]:
-    # You already compute is_current server-side; we trust that.
     rows = []
     for h in emp.employee_history or []:
         if not h.get("designation"):
             continue
-        if not h.get("is_current"):
+        if not _row_is_current(h):
             continue
-        # Optionally enforce strict date window here if you prefer
         rows.append(h)
     return rows
 
@@ -123,11 +146,12 @@ def _diff_user_roles(user_doc, target_roles: set[str]):
     return to_add, to_remove
 
 
-def sync_user_access_from_employee(emp):
+def sync_user_access_from_employee(emp, *, notify_role_additions: bool = False):
     """
     Called from Employee.after_save.
     - Adds/removes only managed roles.
     - Updates default workspace if effective workspace changed.
+    - Optionally notifies the current operator about newly added managed roles.
     """
     if not emp.user_id:
         return
@@ -145,6 +169,7 @@ def sync_user_access_from_employee(emp):
     target_roles, target_ws = compute_effective_access_from_employee(emp)
 
     to_add, to_remove = _diff_user_roles(user, target_roles)
+    added_roles = sorted(to_add)
     for role in to_add:
         user.append("roles", {"role": role, MANAGED_FLAG: 1})
     for ch in to_remove:
@@ -172,6 +197,16 @@ def sync_user_access_from_employee(emp):
                 send_workspace_notification(user.name, target_ws)
             except Exception:
                 pass
+
+    if notify_role_additions and added_roles:
+        frappe.msgprint(
+            _("Added default role(s) to {0}: {1}.").format(
+                frappe.bold(emp.user_id),
+                ", ".join(frappe.bold(role) for role in added_roles),
+            ),
+            title=_("Employee Access Updated"),
+            indicator="green",
+        )
 
 
 def effective_workspace_for_user(user: str) -> str | None:

@@ -16,8 +16,6 @@
   "students",
   "new_enrollment_details_section",
   "new_program_offering",
-  "new_student_cohort",
-  "mark_status_as_checked",
   "enroll_students",
   "column_break_ekje",
   "new_target_academic_year",
@@ -33,7 +31,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Get Students From",
-   "options": "Program Enrollment\nStudent Applicant\nCohort\nOthers",
+   "options": "Program Enrollment\nCohort",
    "reqd": 1
   },
   {
@@ -68,59 +66,46 @@
    "label": "New Enrollment Details"
   },
   {
-   "description": "Only if this has not been set already.",
-   "fieldname": "new_student_cohort",
-   "fieldtype": "Link",
-   "label": "New Student Cohort",
-   "options": "Student Cohort"
-  },
-  {
    "fieldname": "enroll_students",
    "fieldtype": "Button",
-   "label": "Enroll Students",
-   "options": "enroll_students"
+   "label": "Prepare Requests",
+   "options": "prepare_requests"
   },
   {
    "fieldname": "column_break_ekje",
    "fieldtype": "Column Break"
   },
   {
-   "description": "Indicate the date of the first day for this new enrollment. If left blank, by default, it will be the first day of the indicated academic year or academic term if indicated. ",
+   "description": "Used when materializing destination enrollments. If left blank, the destination Academic Year's first day is used.",
    "fieldname": "new_enrollment_date",
    "fieldtype": "Date",
-   "label": "New enrollment Date"
-  },
-  {
-   "default": "1",
-   "fieldname": "mark_status_as_checked",
-   "fieldtype": "Check",
-   "label": "Mark new enrollments as Active"
+   "label": "Destination Enrollment Date"
   },
   {
    "fieldname": "program_offering",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Program Offering",
+   "label": "Source Program Offering",
    "mandatory_depends_on": "eval: doc.get_students_from == \"Program Enrollment\"",
    "options": "Program Offering"
   },
   {
    "fieldname": "new_target_academic_year",
    "fieldtype": "Link",
-   "label": "New Target Academic Year",
+   "label": "Destination Academic Year",
    "options": "Academic Year"
   },
   {
    "fieldname": "target_academic_year",
    "fieldtype": "Link",
-   "label": "Target Academic Year",
+   "label": "Source Academic Year",
    "options": "Academic Year",
    "reqd": 1
   },
   {
    "fieldname": "new_program_offering",
    "fieldtype": "Link",
-   "label": "New Program Offering",
+   "label": "Destination Program Offering",
    "options": "Program Offering"
   }
  ],
@@ -129,7 +114,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-10-03 17:05:53.912045",
+ "modified": "2026-03-11 12:27:19",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Tool",

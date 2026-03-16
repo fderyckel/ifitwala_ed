@@ -3,8 +3,8 @@ title: "Applicant Document: Authoritative Owner of Admissions Files"
 slug: applicant-document
 category: Admission
 doc_order: 6
-version: "1.5.0"
-last_change_date: "2026-03-05"
+version: "1.7.0"
+last_change_date: "2026-03-12"
 summary: "Define Applicant Document as the applicant/type bucket and Applicant Document Item as per-file slot rows for review, readiness, and promotion."
 seo_title: "Applicant Document: Authoritative Owner of Admissions Files"
 seo_description: "Define Applicant Document parent buckets and Applicant Document Item per-file slots for admissions upload, review, readiness, and promotion."
@@ -36,8 +36,8 @@ All admissions evidence files must attach to `Applicant Document Item` (scoped u
 | Layer | Doctype | Record cardinality | Responsibility |
 |---|---|---|---|
 | Catalog | `Applicant Document Type` | many global scoped rows | Defines required/repeatable evidence semantics |
-| Applicant bucket | `Applicant Document` | max one per (`student_applicant`, `document_type`) | Parent contract, promotion flags, aggregate review timeline |
-| File slot | `Applicant Document Item` | many per `Applicant Document` | Per-file slot (`item_key`, `item_label`, item review status) |
+| Applicant bucket | `Applicant Document` | max one per (`student_applicant`, `document_type`) | Requirement card, explicit override policy, promotion routing, aggregate review timeline |
+| File slot | `Applicant Document Item` | many per `Applicant Document` | One submitted file (`item_key`, `item_label`, item review status) |
 
 `Applicant Document Item` is a **normal DocType**, not a child table, with independent permissions and lifecycle hooks.
 
@@ -47,10 +47,10 @@ All admissions evidence files must attach to `Applicant Document Item` (scoped u
 2. `student_applicant` and `document_type` are immutable after insert.
 3. Every uploaded evidence file is represented by one `Applicant Document Item` row; `item_key` is required and unique within the parent document.
 4. Parent `Applicant Document.review_status` is synchronized from item review states:
-   - any item `Rejected` -> parent `Rejected`
-   - all items `Approved` -> parent `Approved`
+   - approved submission count meeting the requirement count -> parent `Approved`
+   - any active item `Rejected` before requirement completion -> parent `Rejected`
    - otherwise -> parent `Pending`
-5. `is_promotable` is valid only when `review_status = Approved`.
+5. Requirement waivers and exceptions are explicit parent-level policy overrides (`Waived`, `Exception Approved`) and are restricted to `Admission Manager`, `Academic Admin`, and `System Manager`.
 6. Applicant-side evidence is retained as admissions history; promotion creates student-side copies.
 7. Portal users can upload/view only; they cannot review, retype, or delete records.
 
@@ -59,14 +59,15 @@ All admissions evidence files must attach to `Applicant Document Item` (scoped u
 | Actor | Allowed | Forbidden |
 |---|---|---|
 | `Admissions Applicant` (portal) | list types, list documents, upload document file | approve/reject, edit review fields, change `document_type`, delete rows |
-| `Admission Officer` / `Admission Manager` | create/manage rows, review decisions, promotion flags | bypassing immutable field rules |
-| `Academic Admin` / `System Manager` | reviewer decisions and promotion flags | bypassing immutable field rules |
+| `Admission Officer` | create/manage rows, review submitted files from applicant context, promotion routing | set requirement waivers/exceptions, bypass immutable field rules |
+| `Admission Manager` | create/manage rows, review submitted files from applicant context, promotion routing, requirement waivers/exceptions | bypassing immutable field rules |
+| `Academic Admin` / `System Manager` | review submitted files from applicant context, promotion routing, requirement waivers/exceptions | bypassing immutable field rules |
 
 ## Operational Guardrails
 
 <DoDont doTitle="Do" dontTitle="Don't">
   <Do>Use one canonical row per (`student_applicant`, `document_type`) and treat new uploads as newer evidence for that slot.</Do>
-  <Do>Use reviewer roles (`Admission Officer`, `Admission Manager`, `Academic Admin`, or `System Manager`) for `review_status` and `is_promotable` decisions.</Do>
+  <Do>Use explicit requirement overrides (`Waived`, `Exception Approved`) when schools allow documented waivers/exceptions.</Do>
   <Dont>Attach admissions evidence directly to `Student Applicant` or `Student`.</Dont>
   <Dont>Re-link applicant-side `File` rows to student records during promotion.</Dont>
 </DoDont>
@@ -83,8 +84,11 @@ All admissions evidence files must attach to `Applicant Document Item` (scoped u
   <Step title="Review">
     Reviewer roles set item-level review fields; parent review state is synchronized from item outcomes.
   </Step>
+  <Step title="Apply Policy Overrides When Needed">
+    If the school allows a waiver or exception, `Admission Manager`, `Academic Admin`, or `System Manager` records it on the parent requirement with a mandatory reason.
+  </Step>
   <Step title="Set Promotion Semantics">
-    Mark `is_promotable` only after approval and set `promotion_target` where applicable.
+    Set `promotion_target` where applicable so promotion knows whether approved evidence should copy to `Student`.
   </Step>
   <Step title="Promote Applicant">
     Promotion copies approved applicant evidence into new `Student` files with lineage; applicant-side files remain unchanged.
@@ -97,8 +101,8 @@ Promotion must keep admissions and student ownership separated:
 
 - source files remain attached to `Applicant Document Item` rows
 - student receives new file records (copy), never re-linked applicant records
-- only approved applicant documents are considered
-- non-promotable or rejected evidence stays applicant-side only
+- only approved submission-backed applicant requirements are considered
+- current runtime excludes rows when `promotion_target` is explicitly not `Student`
 
 This preserves auditability, GDPR-local erasure semantics, and operational traceability.
 
@@ -109,11 +113,12 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 - applicant terminal-state lock (`Rejected`, `Promoted`)
 - immutable anchor guard (`student_applicant`, `document_type`)
 - uniqueness guard on (`student_applicant`, `document_type`)
-- review metadata stamping when status changes
-- promotion flag guard (`is_promotable` requires approved + reviewer role)
+- aggregate review fields are server-derived and cannot be edited directly
+- requirement override guard (`Waived` / `Exception Approved` require manager/admin role + reason)
+- promotion routing guard (`promotion_target`, `promotion_notes`) is reviewer-managed
 
 2. `Applicant Document.before_delete`
-- blocks deletion when legacy files are directly attached to `Applicant Document`
+- blocks deletion when invalid direct files are attached to `Applicant Document`
 - linked `Applicant Document Item` rows keep the parent in-use through link integrity checks
 - allows override only for `System Manager`
 
@@ -127,12 +132,20 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 - writes timeline comments on `Student Applicant` for each upload/replace event (who, when, source, file link)
 - materializes `Applicant Review Assignment` rows for matching `Applicant Review Rule` scope/reviewers
 
+Staff review surface rule:
+- admissions roles use dual entry points over one workflow contract:
+  - Desk `Student Applicant.documents_summary` quick actions remain available
+  - Admissions Cockpit document blockers open the applicant workspace with requirement or submitted-file anchors
+  - both surfaces read the same server-built requirement/submission readiness payload
+- non-admissions reviewers handle `Applicant Document Item` Focus assignments
+
 4. Student Applicant readiness (`has_required_documents`)
 - required doc types must exist and be approved
-- approval readiness fails for missing/unapproved required slots
+- admissions cockpit consumes the same shared requirement/submission readiness payload instead of re-implementing separate document rules
+- approval readiness fails for missing/incomplete required slots unless the requirement has an explicit waiver/exception
 
 5. Applicant document edit timeline (`Applicant Document.on_update`)
-- review/edit changes (status, notes, promotable flags, promotion target) are comment-audited on `Student Applicant`
+- override and promotion-routing changes are comment-audited on `Student Applicant`
 
 ## Worked Examples
 
@@ -160,11 +173,10 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 - Missing `item_key` on upload:
   - System generates a deterministic sanitized key and still creates a valid `Applicant Document Item`.
 - Mixed review outcomes across items:
-  - One rejected item makes the parent `Applicant Document` rejected.
-  - Mixed pending/approved (without rejection) keeps parent pending.
-- Legacy records created before itemized model:
-  - Readiness includes fallback handling for legacy files attached directly to `Applicant Document`.
-  - New uploads must use `Applicant Document Item`.
+  - A rejected active item keeps the parent requirement rejected until approvals satisfy the required count.
+  - Mixed pending/approved (without enough approved submissions) keeps parent pending.
+- Waivers and exceptions:
+  - `Waived` and `Exception Approved` satisfy readiness without requiring item approval count.
 
 ## Reporting
 
@@ -179,7 +191,7 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-05)
+### Latest Technical Snapshot (2026-03-12)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.py`
@@ -195,7 +207,7 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 - **Core field contract**:
   - `document_label` optional override label
   - `review_status` options: `Pending`, `Approved`, `Rejected`, `Superseded` (default `Pending`)
-  - `is_promotable` default `0`
+  - `requirement_override` options: blank, `Waived`, `Exception Approved`
   - `promotion_target` options: `Student`, `Administrative Record`
 - **Routing context contract (`get_file_routing_context`)**:
   - `root_folder = Home/Admissions`
@@ -206,18 +218,26 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
   - governed endpoint: `ifitwala_ed/admission/admissions_portal.py::upload_applicant_document`
   - portal list endpoints: `ifitwala_ed/api/admissions_portal.py::list_applicant_documents`, `list_applicant_document_types`
   - portal upload wrapper: `ifitwala_ed/api/admissions_portal.py::upload_applicant_document`
+  - shared readiness helper: `ifitwala_ed/admission/applicant_document_readiness.py`
+  - admissions cockpit read endpoint: `ifitwala_ed/api/admission_cockpit.py::get_admissions_cockpit_data`
+  - admissions workspace read endpoint: `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.py::get_applicant_workspace`
+  - admissions workspace action endpoints: `ifitwala_ed/api/admissions_review.py::review_applicant_document_submission`, `set_document_requirement_override`
   - focus review action endpoint: `ifitwala_ed/api/focus.py::submit_applicant_review_assignment`
   - SPA page: `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
 - **Runtime role guards (controller)**:
   - upload/manage roles: admissions roles + `Academic Admin` + `System Manager` + `Admissions Applicant`
   - reviewer roles: `Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`
+  - override roles: `Admission Manager`, `Academic Admin`, `System Manager`
   - staff operations are applicant-scope gated (organization/school visibility with transfer-aware student-school matching)
   - `Admissions Applicant` can operate only on own linked applicant rows
-  - review-field mutation is blocked for non-reviewer roles
+  - aggregate review-field mutation is blocked because it is server-derived
 - **Readiness and promotion integration**:
   - required-document readiness check in `Student Applicant.has_required_documents()`
-  - promotion copy flow uses approved applicant docs in `Student Applicant._copy_promotable_documents_to_student()`
-  - per-item readiness counting by `Applicant Document Item` upload + item review status
+  - admissions cockpit document blockers reuse the same readiness payload and open workspace anchors for requirement/submission review
+  - explicit requirement overrides satisfy readiness in `Student Applicant.has_required_documents()`
+  - promotion copy flow uses approved `Applicant Document Item` submissions in `Student Applicant._copy_promotable_documents_to_student()`
+  - `promotion_target` is the active exclusion control for Student copy
+  - per-item readiness counting is driven by uploaded submission rows + item review status
 
 ### Permission Matrix (Effective Runtime)
 

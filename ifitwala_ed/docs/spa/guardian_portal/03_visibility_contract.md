@@ -1,327 +1,226 @@
-# Guardian Visibility Rules — Contract (v0.1)
+# Guardian Portal Visibility Contract (v0.3)
 
-**Ifitwala_Ed — Authoritative**
-Status: Draft (Phase-0)
+Status: Active
 Audience: Humans, coding agents
-Scope: Guardian / Parent Portal visibility only
-Last updated: 2026-02-02
+Scope: Data visible through `/hub/guardian`
+Last updated: 2026-03-15
 
----
+This document defines the current server-enforced visibility rules for the guardian portal.
 
-## 1. Purpose
+## 1. Guardian Scope Resolution
 
-This document defines **what data a Guardian may see**, **when it becomes visible**, and **under which conditions**.
+Status: Implemented
 
-It exists to:
+Code refs:
 
-* prevent accidental data leakage
-* align UX with legal and academic governance
-* make visibility rules explicit and auditable
-* eliminate “UI-driven permissions”
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/students/doctype/guardian/guardian.json`
+- `ifitwala_ed/students/doctype/student_guardian/student_guardian.json`
+- `ifitwala_ed/students/doctype/guardian_student/guardian_student.json`
 
-**Visibility is a policy decision, not a frontend choice.**
+Test refs:
 
----
-
-## 2. Core Principles (Locked)
-
-### 2.1 Visibility Is Explicit, Never Implied
-
-A Guardian may see data **only if an explicit visibility gate exists**.
-
-The system must never infer visibility from:
-
-* submission existence
-* record creation
-* staff intent
-* timing alone
-
----
-
-### 2.2 Publication ≠ Existence
-
-Many records exist **before** they are visible.
-
-Visibility depends on:
-
-* explicit flags (e.g. `is_published`)
-* reporting cycle state
-* policy acknowledgement state
-* audience scoping
-
----
-
-### 2.3 Guardian Scope Is Strict
-
-Guardians may see:
-
-* their own Guardian record
-* their linked Students
-* data explicitly scoped to those Students
-
-Guardians may **never** see:
-
-* other students
-* sibling comparisons
-* school-wide aggregates
-* staff-only notes
-
----
-
-### 2.4 Cadence & Visibility Stability
-
-Guardian-visible data must respect **cadence stability**.
+- `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/api/test_users.py`
 
 Rules:
 
-* Visibility does not imply immediacy
-* Published data may surface:
+1. The current user must resolve to a `Guardian` record through `Guardian.user`.
+2. Student scope is derived from `Student Guardian.parent` and `Guardian Student.student`.
+3. The snapshot includes only linked students that are currently `Student.enabled = 1`.
+4. If no guardian record exists, the endpoint must fail with a permission error instead of returning guessed data.
 
-  * immediately (Guardian Home)
-  * or in periodic summaries (Weekly Summary)
-* No “partial exposure” between states
+## 2. Visible Data Classes
 
-**Invariant**
+Status: Implemented
 
-> A Guardian never sees *half-published* academic truth.
+Code refs:
 
----
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/docs/docs_md/task-delivery.md`
+- `ifitwala_ed/docs/docs_md/task-outcome.md`
+- `ifitwala_ed/students/doctype/student_log/student_log.json`
 
+Test refs:
 
+- `ifitwala_ed/api/test_guardian_home.py`
 
-## 3. Student Identity & Relationship
+Rules:
 
-### 3.1 Relationship Gate (Hard)
+1. Timeline and preparation rows are limited to linked students and their current schedule or delivery context.
+2. Student log rows appear only when `Student Log.visible_to_guardians = 1`.
+3. Recent task-result rows appear only when `Task Outcome.is_published = 1`.
+4. Attendance rows on Guardian Home are exception-focused and limited to linked students.
+5. The family attendance surface may read only linked-student rows from `Student Attendance`, `Student Attendance Code`, and `Course`.
 
-A Guardian may see Student-scoped data **only if**:
+## 3. Policy Visibility
 
-* a valid Guardian ↔ Student relationship exists
-* the relationship is active
-* the Guardian is authorized for that Student
+Status: Implemented
 
-No implicit authority.
-No fallback rules.
+Code refs:
 
----
+- `ifitwala_ed/api/guardian_policy.py`
+- `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py`
+- `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.json`
 
-## 4. Academic Visibility Rules
+Test refs:
 
-### 4.1 Tasks (Assignments, Assessments, Classwork)
+- `ifitwala_ed/api/test_guardian_phase2.py`
 
-**Internal truth**
-All academic work is modeled as `Task`.
+Rules:
 
-**Guardian visibility**
+1. Guardian policy rows are resolved from active `Institutional Policy` and active `Policy Version` records where `applies_to` includes `Guardian`.
+2. Policy scope is derived from the organizations and schools of the guardian's signer-authorized linked students.
+3. Guardian acknowledgement state is limited to `Policy Acknowledgement` rows for `acknowledged_for = Guardian`, `context_doctype = Guardian`, and `context_name = Guardian.name`.
+4. Guardians must not see policy rows for children where the guardian lacks signer authority, or rows whose audience is staff-only, student-only, or applicant-only.
 
-A Task appears to Guardians **only if**:
+## 4. Finance Visibility
 
-* it is delivered to the Student (via Task Delivery)
-* it falls within the Guardian Home time horizon **or**
-* it has published results
+Status: Implemented
 
-**Default Guardian fields**
+Code refs:
 
-* task title
-* due date
-* high-level status (not grading mechanics)
-* preparation cues (if any)
+- `ifitwala_ed/api/guardian_finance.py`
+- `ifitwala_ed/students/doctype/guardian/guardian.json`
+- `ifitwala_ed/students/doctype/student/student.json`
+- `ifitwala_ed/accounting/doctype/account_holder/account_holder.json`
+- `ifitwala_ed/accounting/doctype/sales_invoice/sales_invoice.json`
+- `ifitwala_ed/accounting/doctype/payment_entry/payment_entry.json`
 
-**Hidden from Guardians**
+Test refs:
 
-* delivery strategy
-* grading mode
-* rubric internals
-* submission versions (unless explicitly expanded)
+- `ifitwala_ed/api/test_guardian_phase2.py`
 
----
+Rules:
 
-### 4.2 Task Results (Critical)
+1. Finance scope starts from linked students and their `Student.account_holder` values; the portal never guesses unrelated account holders.
+2. A guardian may see a linked student's account holder only when either `Guardian.is_financial_guardian = 1` or `Account Holder.primary_email` matches `Guardian.guardian_email` or the logged-in user.
+3. Finance payloads include only submitted invoices and submitted payment entries for authorized account holders.
+4. If no linked account holder passes the authority rule, the finance payload returns an explicit access-limited empty state instead of cross-family data.
 
-**Visibility gate (Locked)**
+## 5. Communication And Read-State
 
-A Guardian may see Task results **only if**:
+Status: Implemented
 
-* the Task Outcome is marked `is_published = 1`
+Code refs:
 
-Before publication:
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/api/org_communication_interactions.py`
+- `ifitwala_ed/docs/spa/07_org_communication_messaging_contract.md`
+- `ifitwala_ed/students/doctype/portal_read_receipt/portal_read_receipt.py`
 
-* results must not appear
-* partial data must not leak
-* draft grading must remain invisible
+Test refs:
 
-**Implication**
+- `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/api/test_org_communication_interactions.py`
 
-* Guardian Portal never queries live gradebook views
-* Guardian Portal reads **published Outcome truth only**
+Rules:
 
----
+1. Guardian-visible communications are audience-scoped on the server before they reach the snapshot payload.
+2. Unread state is derived from `Portal Read Receipt`.
+3. A guardian's own communication interaction rows also count as seen for summary logic.
+4. Hidden communications must not contribute to unread counts, attention rows, or recent activity.
 
-### 4.3 Term / Report Results
+## 6. Monitoring Visibility
 
-**Visibility gate**
+Status: Implemented
 
-Term results are visible to Guardians **only if**:
+Code refs:
 
-* Reporting Cycle state = `Published`
-* Course Term Result exists
-* visibility is explicitly enabled for Guardians
+- `ifitwala_ed/api/guardian_monitoring.py`
+- `ifitwala_ed/students/doctype/student_log/student_log.json`
+- `ifitwala_ed/students/doctype/portal_read_receipt/portal_read_receipt.json`
+- `ifitwala_ed/assessment/doctype/task_outcome/task_outcome.json`
 
-**Rules**
+Test refs:
 
-* Term Reports are immutable snapshots
-* No recalculation
-* No partial release
-* No preview states for Guardians
+- `ifitwala_ed/api/test_guardian_phase2.py`
 
----
+Rules:
 
-## 5. Behaviour, Health, and Wellbeing
+1. Monitoring rows are limited to guardian-visible student logs and published task outcomes for linked students only.
+2. The optional child filter may only target a linked student; any out-of-scope filter must fail with a permission error.
+3. Monitoring uses the same guardian scope resolution as the rest of `/hub/guardian`.
+4. Guardian-visible student logs derive unread/seen state from `Portal Read Receipt`, scoped to the logged-in guardian user.
+5. `mark_guardian_student_log_read` may only write a read receipt for a linked student's guardian-visible log and for the current guardian user.
+6. Monitoring must not expose unpublished task outcomes, staff-only logs, or non-linked children.
 
-### 5.1 Student Logs
+## 7. Attendance Visibility
 
-A Student Log may appear to Guardians **only if**:
+Status: Implemented
 
-* `visible_to_guardians = 1`
+Code refs:
 
-**Rules**
+- `ifitwala_ed/api/guardian_attendance.py`
+- `ifitwala_ed/students/doctype/student_attendance/student_attendance.json`
+- `ifitwala_ed/school_settings/doctype/student_attendance_code/student_attendance_code.json`
 
-* No severity scoring
-* No internal categorization exposed
-* No aggregation or interpretation
+Test refs:
 
-Guardian Portal:
+- `ifitwala_ed/api/test_guardian_phase2.py`
 
-* presents the fact
-* does not assess meaning
+Rules:
 
----
+1. Attendance rows are limited to linked students only, and the optional child filter may only target a linked student.
+2. Day-state color and labels are derived from `Student Attendance Code.count_as_present` plus the code label, not from ad-hoc client logic.
+3. Attendance detail may expose time, attendance code, course, location, and remark for linked students only.
+4. Attendance detail must not expose `rotation_day`, `block_number`, unpublished academic outcomes, or non-linked student data.
+5. Days with no attendance rows must remain unfilled; the server must not invent inferred attendance for missing dates.
 
-### 5.2 Health-Related Records
+## 8. Explicit Prohibitions
 
-Health events (e.g. nurse visits) are visible **only if**:
+Status: Implemented
 
-* explicitly marked guardian-visible
-* scoped to the Student
+Code refs:
 
-Sensitive medical detail:
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
 
-* must be minimized
-* must never expose staff-only context
+Test refs:
 
----
+- `ifitwala_ed/api/test_guardian_home.py`
 
-## 6. Communications
+Rules:
 
-### 6.1 Canonical Communication Stream
+1. The guardian portal must not expose `rotation_day`, `block_number`, or other internal schedule keys.
+2. The guardian portal must not expose draft grading, unpublished outcomes, staff-only student logs, or cross-family data.
+3. Frontend hiding is not a visibility control; all filtering happens before the payload reaches the SPA.
+4. Finance rows must not expose account holders outside the authority rule, even if the guardian can see the student.
+5. Any new guardian-visible data class must add an explicit server gate and be documented here before release.
 
-Guardians see Communications **only if**:
+## 9. Contract Matrix
 
-* they are explicitly included in the audience
-* the communication targets their Student(s) or Guardian role
+Status: Implemented
 
-**Characteristics**
+Code refs:
 
-* event-based (not threaded by default)
-* immutable content once sent
-* reactions or follow-ups may be allowed later
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/api/guardian_policy.py`
+- `ifitwala_ed/api/guardian_attendance.py`
+- `ifitwala_ed/api/guardian_finance.py`
+- `ifitwala_ed/api/guardian_monitoring.py`
+- `ifitwala_ed/api/org_communication_interactions.py`
+- `ifitwala_ed/students/doctype/student_log/student_log.json`
+- `ifitwala_ed/students/doctype/student_attendance/student_attendance.json`
+- `ifitwala_ed/school_settings/doctype/student_attendance_code/student_attendance_code.json`
+- `ifitwala_ed/students/doctype/portal_read_receipt/portal_read_receipt.py`
+- `ifitwala_ed/students/doctype/portal_read_receipt/portal_read_receipt.json`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
 
-**Hidden**
+Test refs:
 
-* internal staff discussions
-* draft communications
-* staff-only annotations
+- `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/api/test_guardian_phase2.py`
+- `ifitwala_ed/api/test_org_communication_interactions.py`
+- `ifitwala_ed/api/test_users.py`
 
----
-
-## 7. Policies, Forms, and Acknowledgements
-
-### 7.1 Policy Visibility
-
-A Policy Version is visible to Guardians **only if**:
-
-* it applies to `Guardian` or `Student`
-* it is active
-* it requires Guardian acknowledgement
-
----
-
-### 7.2 Acknowledgement Visibility
-
-Guardians may see:
-
-* their own acknowledgements
-* acknowledgements made **for their linked Students**
-
-Guardians may **never**:
-
-* acknowledge on behalf of another adult
-* modify or revoke acknowledgements
-* see acknowledgements of other families
-
-**Invariant**
-Acknowledgements are append-only legal evidence.
-
----
-
-## 8. Calendar & Scheduling
-
-### 8.1 School Calendar
-
-Guardians may see:
-
-* school days
-* holidays
-* non-instructional days
-* events relevant to their Students
-
-**Never visible**
-
-* internal scheduling logic
-* rotation days
-* block numbers
-
-All scheduling must be translated into **plain language**.
-
----
-
-## 9. Explicit Prohibitions (Non-Negotiable)
-
-The Guardian Portal must **never** expose:
-
-* live gradebook data
-* unpublished Task Outcomes
-* draft teacher comments
-* staff-only Student Logs
-* internal moderation or overrides
-* comparison between siblings
-* internal system identifiers
-
-Violations are **governance defects**, not UX bugs.
-
----
-
-## 10. Enforcement Rules (Server-Side)
-
-All visibility rules must be enforced:
-
-* server-side
-* before data reaches the client
-* independent of UI state
-
-Frontend hiding is **never sufficient**.
-
----
-
-## 11. Phase-0 Lock Statement
-
-> This document defines **guardian-visible truth**.
->
-> Any UI, API, report, or export exposing guardian data must conform to these rules.
->
-> Changes require:
->
-> * explicit contract revision
-> * governance review
-> * legal consideration
-
----
+| Concern                          | Canonical owner                                                                                                                                          | Code refs                                                                                                                                                                                                                                                                                                                                                                                      | Test refs                                                                                                                                                                                       |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Schema / DocType                 | Guardian links, policy acknowledgements, guardian-visible student logs, attendance, published outcomes, account holders, invoices, payments, portal read receipts | `students/doctype/guardian/*`, `students/doctype/student_guardian/*`, `students/doctype/guardian_student/*`, `governance/doctype/policy_acknowledgement/*`, `students/doctype/student_log/*`, `students/doctype/student_attendance/*`, `school_settings/doctype/student_attendance_code/*`, `assessment/doctype/task_outcome/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, `students/doctype/portal_read_receipt/*` | `api/test_users.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                 |
+| Controller / workflow logic      | Guardian scope resolution, snapshot filtering, policy scope filtering, attendance visibility filtering, finance authority filtering, monitoring filtering, communication seen-state rules | `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `api/org_communication_interactions.py`                                                                                                                                                                                                                | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `api/test_org_communication_interactions.py`                                                                                        |
+| API endpoints                    | Guardian snapshot, guardian policy, guardian attendance, guardian finance, guardian monitoring, and org communication interaction workflows             | `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `api/org_communication_interactions.py`                                                                                                                                                                                                                | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `api/test_org_communication_interactions.py`                                                                                        |
+| SPA / UI surfaces                | Guardian Home, child drill-down, policies, attendance, finance, and monitoring consume filtered payload only                                            | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`                                                                                                                                                         | `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
+| Reports / dashboards / briefings | Guardian Home, family attendance cards, family finance cards, and monitoring counts                                                                      | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`, `api/guardian_home.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`                                                                                                                                                 | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                      |
+| Scheduler / background jobs      | None in the guardian portal visibility contract                                                                                                          | None                                                                                                                                                                                                                                                                                                                                                                                           | None                                                                                                                                                                                            |
+| Tests                            | Redirect, guardian snapshot visibility, guardian Phase-2 visibility, communication seen-state                                                            | `api/test_users.py`, `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `api/test_org_communication_interactions.py`                                                                                                                                                                                                                                                                  | Implemented                                                                                                                                                                                     |

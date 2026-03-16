@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:TCO-{YYYY}-{#####}",
+ "autoname": "TCO-.YY.-.MM.-.####",
  "creation": "2026-01-06 15:23:55.389142",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -48,8 +48,7 @@
    "fieldname": "task_submission",
    "fieldtype": "Link",
    "label": "Task Submission",
-   "options": "Task Submission",
-   "reqd": 0
+   "options": "Task Submission"
   },
   {
    "fieldname": "contributor",
@@ -186,7 +185,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 20:47:56",
+ "modified": "2026-03-13 13:28:18.988501",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Contribution",
@@ -228,11 +227,21 @@
    "role": "Instructor",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "task_outcome"
 }

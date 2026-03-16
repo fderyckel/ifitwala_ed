@@ -5,6 +5,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, now_datetime
 
+from ifitwala_ed.admission.access import get_guardian_names_for_user, user_can_access_student_applicant
 from ifitwala_ed.governance.policy_scope_utils import (
     get_user_policy_scope,
     is_policy_organization_applicable_to_context,
@@ -14,6 +15,7 @@ from ifitwala_ed.governance.policy_utils import (
     POLICY_ADMIN_ROLES,
     SCHOOL_ADMIN_ROLE,
     has_admissions_applicant_role,
+    has_admissions_family_role,
     has_guardian_role,
     has_staff_role,
     has_student_role,
@@ -228,31 +230,29 @@ class PolicyAcknowledgement(Document):
             frappe.throw(_("This acknowledgement already exists for the same context."))
 
     def _guardian_name_for_user(self) -> str | None:
-        return frappe.db.get_value("Guardian", {"user": frappe.session.user}, "name")
+        names = get_guardian_names_for_user(user=frappe.session.user)
+        return names[0] if names else None
 
     def _guardian_linked_to_student(self, guardian_name: str, student_name: str) -> bool:
-        return bool(
-            frappe.db.exists(
-                "Student Guardian",
-                {
-                    "parent": student_name,
-                    "parenttype": "Student",
-                    "parentfield": "guardians",
-                    "guardian": guardian_name,
-                },
-            )
-        )
+        filters = {
+            "parent": student_name,
+            "parenttype": "Student",
+            "parentfield": "guardians",
+            "guardian": guardian_name,
+        }
+        if frappe.db.has_column("Student Guardian", "can_consent"):
+            filters["can_consent"] = 1
+        return bool(frappe.db.exists("Student Guardian", filters))
 
     def _is_applicant_user_for_context(self) -> bool:
         if self.context_doctype != "Student Applicant":
             return False
-        applicant_user = frappe.db.get_value("Student Applicant", self.context_name, "applicant_user")
-        return bool(applicant_user and applicant_user == frappe.session.user)
+        return user_can_access_student_applicant(user=frappe.session.user, student_applicant=self.context_name)
 
     def _role_validation_error(self) -> str | None:
         if self.acknowledged_for == "Applicant":
-            if not has_admissions_applicant_role():
-                return _("Only Admissions Applicants can acknowledge Applicant policies.")
+            if not has_admissions_applicant_role() and not has_admissions_family_role():
+                return _("Only admissions portal users can acknowledge Applicant policies.")
             if not self._is_applicant_user_for_context():
                 return _("You do not have permission to acknowledge policies for this Applicant.")
             return None
@@ -268,12 +268,12 @@ class PolicyAcknowledgement(Document):
                 return None
             return _("You do not have permission to acknowledge student policies.")
         if self.acknowledged_for == "Guardian":
-            if not has_guardian_role():
-                return _("Only Guardians can acknowledge Guardian policies.")
-            guardian_name = self._guardian_name_for_user()
-            if not guardian_name:
-                return _("Guardian account is not linked to a Guardian record.")
-            if self.context_name != guardian_name:
+            if not has_guardian_role() and not has_admissions_family_role():
+                return _("Only guardian-linked users can acknowledge Guardian policies.")
+            guardian_names = get_guardian_names_for_user(user=frappe.session.user)
+            if not guardian_names:
+                return _("Guardian-linked account is not connected to a Guardian record.")
+            if self.context_name not in guardian_names:
                 return _("Guardians may only acknowledge policies for themselves.")
             return None
         if self.acknowledged_for == "Staff":
@@ -344,12 +344,15 @@ def _employee_names_for_user(user: str) -> list[str]:
 
 
 def _student_applicant_names_for_user(user: str) -> list[str]:
-    rows = frappe.get_all(
-        "Student Applicant",
-        filters={"applicant_user": user},
-        pluck="name",
-    )
-    return sorted({(row or "").strip() for row in rows if (row or "").strip()})
+    from ifitwala_ed.admission.access import get_admissions_portal_applicant_names_for_user
+
+    return get_admissions_portal_applicant_names_for_user(user=user, include_promoted=False)
+
+
+def _student_guardian_signer_sql(alias: str = "sg") -> str:
+    if frappe.db.has_column("Student Guardian", "can_consent"):
+        return f" and ifnull({alias}.can_consent, 0) = 1"
+    return ""
 
 
 def get_permission_query_conditions(user: str | None = None) -> str | None:
@@ -422,6 +425,7 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
             "and sg.parenttype = 'Student' "
             "and sg.parentfield = 'guardians' "
             f"and sg.guardian = {escaped_guardian}"
+            f"{_student_guardian_signer_sql('sg')}"
             "))"
         )
 
@@ -433,7 +437,7 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
             f"and `tabPolicy Acknowledgement`.`context_name` = {escaped_student})"
         )
 
-    if has_admissions_applicant_role(user):
+    if has_admissions_applicant_role(user) or has_admissions_family_role(user):
         applicant_names = _student_applicant_names_for_user(user)
         applicants_sql = _escaped_in(applicant_names)
         if applicants_sql:
@@ -516,15 +520,15 @@ def has_permission(doc: "PolicyAcknowledgement", user: str | None = None, ptype:
         if context_doctype == "Guardian" and context_name == guardian_name:
             return True
         if context_doctype == "Student":
-            linked = frappe.db.exists(
-                "Student Guardian",
-                {
-                    "parent": context_name,
-                    "parenttype": "Student",
-                    "parentfield": "guardians",
-                    "guardian": guardian_name,
-                },
-            )
+            filters = {
+                "parent": context_name,
+                "parenttype": "Student",
+                "parentfield": "guardians",
+                "guardian": guardian_name,
+            }
+            if frappe.db.has_column("Student Guardian", "can_consent"):
+                filters["can_consent"] = 1
+            linked = frappe.db.exists("Student Guardian", filters)
             if linked:
                 return True
 
@@ -532,9 +536,10 @@ def has_permission(doc: "PolicyAcknowledgement", user: str | None = None, ptype:
     if student_name and context_doctype == "Student" and context_name == student_name:
         return True
 
-    if has_admissions_applicant_role(user) and context_doctype == "Student Applicant":
-        applicant_user = frappe.db.get_value("Student Applicant", context_name, "applicant_user")
-        if (applicant_user or "").strip() == user:
+    if (
+        has_admissions_applicant_role(user) or has_admissions_family_role(user)
+    ) and context_doctype == "Student Applicant":
+        if user_can_access_student_applicant(user=user, student_applicant=context_name):
             return True
 
     if has_staff_role(user) and context_doctype == "Employee":

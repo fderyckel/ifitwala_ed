@@ -5,17 +5,21 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_APPLICANT_ROLE,
+    ADMISSIONS_FAMILY_ROLE,
+    build_admissions_portal_access_exists_sql,
+    user_can_access_student_applicant,
+)
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     READ_LIKE_PERMISSION_TYPES,
     build_admissions_file_scope_exists_sql,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
-    normalize_email_value,
 )
 
-FAMILY_ROLES = {"Guardian"}
-ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
+FAMILY_ROLES = {ADMISSIONS_FAMILY_ROLE}
 STAFF_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager", "Nurse"}
 
 
@@ -128,32 +132,12 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
         if staff_condition != "1=0":
             conditions.append(f"({staff_condition})")
 
-    escaped_user = frappe.db.escape(resolved_user)
-    if ADMISSIONS_APPLICANT_ROLE in roles:
-        conditions.append(
-            "("
-            "EXISTS ("
-            "SELECT 1 FROM `tabStudent Applicant` sa "
-            "WHERE sa.name = `tabApplicant Health Profile`.`student_applicant` "
-            f"AND (sa.applicant_user = {escaped_user} "
-            f"OR sa.portal_account_email = {escaped_user} "
-            f"OR sa.applicant_email = {escaped_user})"
-            ")"
-            ")"
-        )
-
-    if FAMILY_ROLES & roles:
-        conditions.append(
-            "("
-            "EXISTS ("
-            "SELECT 1 FROM `tabStudent Applicant Guardian` sag "
-            "WHERE sag.parent = `tabApplicant Health Profile`.`student_applicant` "
-            "AND sag.parenttype = 'Student Applicant' "
-            "AND sag.parentfield = 'guardians' "
-            f"AND sag.user = {escaped_user}"
-            ")"
-            ")"
-        )
+    portal_condition = build_admissions_portal_access_exists_sql(
+        user=resolved_user,
+        student_applicant_expr_sql="`tabApplicant Health Profile`.`student_applicant`",
+    )
+    if portal_condition != "1=0":
+        conditions.append(f"({portal_condition})")
 
     return " OR ".join(conditions) if conditions else "1=0"
 
@@ -233,34 +217,8 @@ def _is_family_linked_to_student_applicant(student_applicant: str | None, user: 
 
 
 def _is_applicant_self_user(student_applicant: str, user: str) -> bool:
-    applicant_row = frappe.db.get_value(
-        "Student Applicant",
-        student_applicant,
-        ["applicant_user", "portal_account_email", "applicant_email"],
-        as_dict=True,
-    )
-    if not applicant_row:
-        return False
-
-    if (applicant_row.get("applicant_user") or "").strip() == user:
-        return True
-
-    normalized_user = normalize_email_value(user)
-    return normalized_user in {
-        normalize_email_value(applicant_row.get("portal_account_email")),
-        normalize_email_value(applicant_row.get("applicant_email")),
-    }
+    return user_can_access_student_applicant(user=user, student_applicant=student_applicant)
 
 
 def _is_guardian_linked_user(student_applicant: str, user: str) -> bool:
-    return bool(
-        frappe.db.exists(
-            "Student Applicant Guardian",
-            {
-                "parent": student_applicant,
-                "parenttype": "Student Applicant",
-                "parentfield": "guardians",
-                "user": user,
-            },
-        )
-    )
+    return user_can_access_student_applicant(user=user, student_applicant=student_applicant)

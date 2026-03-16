@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:TOU-{YYYY}-{MM}-{#####}",
+ "autoname": "TOU-.YY.-.MM.-.DD.-.####",
  "creation": "2026-01-06 14:41:20.396522",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -246,7 +246,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 20:35:21",
+ "modified": "2026-03-13 13:24:47.956102",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Outcome",
@@ -288,6 +288,15 @@
    "role": "Instructor",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

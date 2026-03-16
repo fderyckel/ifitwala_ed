@@ -13,6 +13,28 @@ function blurActiveModalFocus() {
 	}
 }
 
+const EMPLOYEE_USER_QUERY = "ifitwala_ed.api.users.get_users_with_role";
+
+function get_employee_user_query() {
+	return {
+		query: EMPLOYEE_USER_QUERY,
+		filters: { role: "Employee" },
+	};
+}
+
+function get_employee_user_options(txt) {
+	return frappe.call({
+		type: "GET",
+		method: "frappe.desk.search.search_link",
+		args: {
+			doctype: "User",
+			txt: txt || "",
+			query: EMPLOYEE_USER_QUERY,
+			filters: { role: "Employee" },
+		},
+	}).then((res) => res?.message || []);
+}
+
 frappe.ui.form.on("Student Applicant", {
 
 	refresh(frm) {
@@ -41,6 +63,8 @@ frappe.ui.form.on("Student Applicant", {
 		render_review_sections(frm);
 		add_decision_actions(frm);
 		add_portal_invite_action(frm);
+		add_family_portal_invite_action(frm);
+		add_enrollment_plan_action(frm);
 		add_recommendation_actions(frm);
 		add_create_interview_action(frm);
 		add_schedule_interview_action(frm);
@@ -128,6 +152,36 @@ frappe.ui.form.on("Student Applicant", {
 
 const TERMINAL_PORTAL_INVITE_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
 const TERMINAL_INTERVIEW_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
+
+function add_enrollment_plan_action(frm) {
+	frm.remove_custom_button(__("Manage Enrollment Plan"), __("Actions"));
+	frm.remove_custom_button(__("Manage Enrollment Plan"));
+
+	if (!frm.doc || frm.is_new()) {
+		return;
+	}
+
+	const status = String(frm.doc.application_status || "").trim();
+	if (status === "Rejected" || status === "Withdrawn") {
+		return;
+	}
+
+	frm.add_custom_button(__("Manage Enrollment Plan"), () => {
+		frappe.call({
+			method: "ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan.get_or_create_applicant_enrollment_plan",
+			args: { student_applicant: frm.doc.name },
+			freeze: true,
+			freeze_message: __("Opening enrollment plan..."),
+		}).then((res) => {
+			const name = res?.message?.name;
+			if (name) {
+				frappe.set_route("Form", "Applicant Enrollment Plan", name);
+			}
+		}).catch((err) => {
+			frappe.msgprint(err?.message || __("Unable to open the enrollment plan."));
+		});
+	}, __("Actions"));
+}
 
 function add_create_interview_action(frm) {
 	frm.remove_custom_button(__("Create Interview"), __("Actions"));
@@ -239,14 +293,14 @@ function open_schedule_interview_dialog(frm) {
 				label: __("Primary Interviewer"),
 				reqd: 1,
 				default: frappe.session.user,
-				get_query: () => ({ filters: { enabled: 1 } }),
+				get_query: () => get_employee_user_query(),
 			},
 			{
 				fieldname: "additional_interviewers",
 				fieldtype: "MultiSelectPills",
 				label: __("Additional Interviewers"),
 				description: __("Optional. Add more employee interviewers."),
-				get_data: (txt) => frappe.db.get_link_options("User", txt, { enabled: 1 }),
+				get_data: (txt) => get_employee_user_options(txt),
 			},
 			{
 				fieldname: "column_break_people",
@@ -275,7 +329,8 @@ function open_schedule_interview_dialog(frm) {
 			{
 				fieldname: "notes",
 				fieldtype: "Small Text",
-				label: __("Notes"),
+				label: __("Operational Notes"),
+				description: __("Operational context only. Do not use for interviewer feedback."),
 			},
 			{
 				fieldname: "suggestions_html",
@@ -536,6 +591,22 @@ function add_portal_invite_action(frm) {
 	frm.add_custom_button(label, () => prompt_portal_invite(frm), __("Actions"));
 }
 
+function add_family_portal_invite_action(frm) {
+	frm.remove_custom_button(__("Invite Family Collaborator"), __("Actions"));
+	frm.remove_custom_button(__("Invite Family Collaborator"));
+
+	if (!frm.doc || frm.is_new()) {
+		return;
+	}
+
+	const status = String(frm.doc.application_status || "").trim();
+	if (TERMINAL_PORTAL_INVITE_STATUSES.has(status)) {
+		return;
+	}
+
+	frm.add_custom_button(__("Invite Family Collaborator"), () => prompt_family_portal_invite(frm), __("Actions"));
+}
+
 function prompt_portal_invite(frm) {
 	const linkedEmail = String(frm.doc.applicant_user || "").trim().toLowerCase();
 	const hasLinkedUser = Boolean(linkedEmail);
@@ -625,6 +696,112 @@ function prompt_portal_invite(frm) {
 		});
 }
 
+function prompt_family_portal_invite(frm) {
+	frappe.call({
+		method: "ifitwala_ed.api.admissions_portal.get_family_invite_options",
+		args: {
+			student_applicant: frm.doc.name,
+		},
+	})
+		.then((res) => {
+			const payload = res?.message || {};
+			const guardians = Array.isArray(payload.guardians) ? payload.guardians : [];
+			if (!guardians.length) {
+				frappe.msgprint(__("Add at least one guardian row before inviting family workspace access."));
+				return;
+			}
+
+			const eligible = guardians.filter(row => Boolean(row?.eligible));
+			if (!eligible.length) {
+				const reasons = guardians
+					.map(row => String(row?.reason || "").trim())
+					.filter(Boolean);
+				frappe.msgprint(
+					reasons.length
+						? reasons.join("<br>")
+						: __("No guardian row is currently eligible for family workspace access.")
+				);
+				return;
+			}
+
+			const optionMap = new Map();
+			const options = eligible.map((row) => {
+				const label = `${String(row.label || __("Guardian")).trim()} (${String(row.relationship || __("Guardian")).trim()})${row.email ? ` - ${String(row.email).trim()}` : ""}`;
+				optionMap.set(label, row);
+				return label;
+			});
+			const defaultRow = eligible[0] || {};
+
+			frappe.prompt(
+				[
+					{
+						label: __("Guardian"),
+						fieldname: "guardian_option",
+						fieldtype: "Select",
+						reqd: 1,
+						options: options.join("\n"),
+						default: options[0],
+					},
+					{
+						label: __("Email"),
+						fieldname: "new_email",
+						fieldtype: "Data",
+						options: "Email",
+						reqd: !defaultRow.email,
+						default: defaultRow.email || "",
+						description: __("Use the guardian personal email for this collaborator."),
+					},
+				],
+				(values) => {
+					const selected = optionMap.get(String(values.guardian_option || "").trim());
+					if (!selected?.name) {
+						frappe.msgprint(__("Select a guardian row to invite."));
+						return;
+					}
+					const email = String(values.new_email || selected.email || "").trim().toLowerCase();
+					if (!email) {
+						frappe.msgprint(__("Enter a guardian email before sending the invite."));
+						return;
+					}
+
+					frappe.call({
+						method: "ifitwala_ed.api.admissions_portal.invite_family_collaborator",
+						args: {
+							student_applicant: frm.doc.name,
+							guardian_row: selected.name,
+							email,
+						},
+						freeze: true,
+						freeze_message: __("Inviting family collaborator..."),
+					})
+						.then((inviteRes) => {
+							const message = inviteRes?.message || {};
+							const resent = Boolean(message.resent);
+							const emailSent = message.email_sent !== false;
+							frappe.show_alert({
+								message: emailSent
+									? (resent ? __("Family invite email re-sent.") : __("Family invite email sent."))
+									: __("Family access linked, but invite email could not be sent."),
+								indicator: "green",
+							});
+							if (!emailSent) {
+								frappe.msgprint(__("Family collaborator access was linked, but email sending failed. Ask them to use Forgot Password on /login or resend the invite later."));
+							}
+							frm.reload_doc();
+						})
+						.catch((err) => {
+							frappe.msgprint(err?.message || __("Unable to send family collaborator invite."));
+						});
+				},
+				__("Invite Family Collaborator"),
+				__("Invite")
+			);
+		})
+		.catch((err) => {
+			frappe.msgprint(err?.message || __("Unable to load family invite options."));
+		});
+}
+
 const TERMINAL_RECOMMENDATION_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
 
 function add_recommendation_actions(frm) {
@@ -706,7 +883,7 @@ function prompt_create_recommendation_request(frm) {
 						label: __("Item Label"),
 						fieldname: "item_label",
 						fieldtype: "Data",
-						description: __("Optional label shown in Applicant Document item slot."),
+						description: __("Optional label to help staff distinguish this recommendation submission."),
 					},
 					{
 						label: __("Expires In (days)"),
@@ -980,7 +1157,8 @@ function render_review_sections(frm) {
 			set_html(frm, "interviews_summary", render_interviews(data.interviews));
 			set_html(frm, "health_summary", render_health(data.health));
 			set_html(frm, "policies_summary", render_policies(data.policies));
-			set_html(frm, "documents_summary", render_documents(data.documents));
+			set_html(frm, "documents_summary", render_documents(data.documents, data.recommendations));
+			bind_document_summary_actions(frm);
 		})
 		.catch(() => {
 			set_html(frm, "review_snapshot", render_empty("Unable to load review snapshot."));
@@ -1073,12 +1251,30 @@ function render_interviews(interviews) {
 	}
 	const count = Number(interviews.count || 0);
 	const items = Array.isArray(interviews.items) ? interviews.items : [];
+	const helperNote = `
+		<div class="text-muted" style="margin-bottom: 8px;">
+			Feedback status counts submitted Applicant Interview Feedback rows only. Parent interview notes stay operational.
+		</div>
+	`;
 	if (!items.length) {
 		return [
+			helperNote,
 			render_line("Interview count", escape_html(String(count))),
 			`<div class="text-muted" style="margin-top: 6px;">No interviews yet.</div>`,
 		].join("");
 	}
+
+	const latestRow = items[0] || null;
+	const latestInterviewName = String(latestRow?.name || "").trim();
+	const latestSchedule = escape_html(format_interview_schedule(latestRow));
+	const latestLink = latestInterviewName
+		? render_text_link(
+			`/desk/applicant-interview/${encodeURIComponent(latestInterviewName)}`,
+			"Open latest interview"
+		)
+		: escape_html("—");
+	const latestInterviewerLabels = render_interviewer_labels(latestRow);
+	const latestFeedbackStatus = escape_html(String(latestRow?.feedback_status_label || "—"));
 
 	const rows = items.map((row) => {
 		const name = String(row?.name || "").trim();
@@ -1087,25 +1283,31 @@ function render_interviews(interviews) {
 			? `<a href="/desk/applicant-interview/${encodeURIComponent(name)}">${scheduleLabel}</a>`
 			: scheduleLabel;
 		const interviewerLabels = render_interviewer_labels(row);
-		const impression = escape_html(String(row?.outcome_impression || "—"));
+		const feedbackStatus = escape_html(String(row?.feedback_status_label || "—"));
 		return `
 			<tr>
 				<td>${scheduleCell}</td>
 				<td>${interviewerLabels}</td>
-				<td>${impression}</td>
+				<td>${feedbackStatus}</td>
 			</tr>
 		`;
 	}).join("");
 
 	return `
-		<div style="margin-bottom: 6px;">${render_line("Interview count", escape_html(String(count)))}</div>
+		${helperNote}
+		<div style="margin-bottom: 10px;">
+			${render_line("Interview count", escape_html(String(count)))}
+			${render_line("Latest interview", `${latestLink} · ${latestSchedule}`)}
+			${render_line("Latest panel", latestInterviewerLabels)}
+			${render_line("Latest feedback", latestFeedbackStatus)}
+		</div>
 		<div class="table-responsive">
 			<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 				<thead>
 					<tr>
 						<th>Date / Time</th>
 						<th>Interviewer</th>
-						<th>Outcome Impression</th>
+						<th>Feedback Status</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -1249,7 +1451,103 @@ function render_policies(policies) {
 	`;
 }
 
-function render_documents(documents) {
+function render_recommendation_review_section(recommendations) {
+	const summary = recommendations || {};
+	const rows = Array.isArray(summary?.review_rows) ? summary.review_rows : [];
+	const pendingReviewCount = Number(summary?.pending_review_count || 0);
+
+	const metrics = `
+		<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px;">
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#f8fbff;">
+				<div class="text-muted" style="font-size:12px;">Required</div>
+				<div style="font-weight:600;font-size:16px;">${escape_html(String(summary?.required_total || 0))}</div>
+			</div>
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#f8fbff;">
+				<div class="text-muted" style="font-size:12px;">Received</div>
+				<div style="font-weight:600;font-size:16px;">${escape_html(String(summary?.received_total || 0))}</div>
+			</div>
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#f8fbff;">
+				<div class="text-muted" style="font-size:12px;">Requested</div>
+				<div style="font-weight:600;font-size:16px;">${escape_html(String(summary?.requested_total || 0))}</div>
+			</div>
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#f8fbff;">
+				<div class="text-muted" style="font-size:12px;">Pending Review</div>
+				<div style="font-weight:600;font-size:16px;">${escape_html(String(pendingReviewCount))}</div>
+			</div>
+		</div>
+	`;
+
+	if (!rows.length) {
+		return `
+			<div style="margin-bottom: 16px;">
+				<div style="font-weight: 600; margin-bottom: 8px;">Recommendation Review</div>
+				${metrics}
+				<div class="text-muted">No submitted recommendations are available yet.</div>
+			</div>
+		`;
+	}
+
+	const body = rows.map((row) => {
+		const recommendationRequest = String(row?.recommendation_request || "").trim();
+		const recommendationSubmission = String(row?.recommendation_submission || "").trim();
+		const applicantDocumentItem = String(row?.applicant_document_item || "").trim();
+		const fileUrl = String(row?.file_url || "").trim();
+		const actionButton = (
+			recommendationRequest || recommendationSubmission || applicantDocumentItem
+		)
+			? `<button type="button" class="recommendation-review-action-btn" data-recommendation-request="${escape_html(recommendationRequest)}" data-recommendation-submission="${escape_html(recommendationSubmission)}" data-applicant-document-item="${escape_html(applicantDocumentItem)}" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;">${escape_html("Review Recommendation")}</button>`
+			: escape_html("—");
+		const uploadedAt = format_human_moment(row?.submitted_on || row?.consumed_on);
+		return `
+			<tr>
+				<td>
+					<div style="font-weight: 600;">${escape_html(String(row?.recommender_name || row?.recommender_email || "Referee"))}</div>
+					<div class="text-muted">${escape_html(String(row?.recommender_relationship || "—"))}</div>
+				</td>
+				<td>${escape_html(String(row?.template_name || row?.recommendation_template || "Recommendation"))}</td>
+				<td>
+					<div>${escape_html(format_human_moment(row?.sent_on))}</div>
+					<div class="text-muted">${escape_html(format_human_moment(row?.opened_on))}</div>
+				</td>
+				<td>${escape_html(uploadedAt)}</td>
+				<td>
+					${render_document_status_pill(row?.review_status)}
+					${row?.reviewed_by ? `<div class="text-muted" style="margin-top:4px;">${escape_html(String(row.reviewed_by))}</div>` : ""}
+				</td>
+				<td>
+					${actionButton}
+					${fileUrl ? `<div style="margin-top:6px;">${render_text_link(fileUrl, "Open attachment", true)}</div>` : ""}
+				</td>
+			</tr>
+		`;
+	}).join("");
+
+	return `
+		<div style="margin-bottom: 16px;">
+			<div style="font-weight: 600; margin-bottom: 8px;">Recommendation Review</div>
+			${metrics}
+			<div class="table-responsive">
+				<table class="table table-bordered table-sm" style="margin-bottom: 0;">
+					<thead>
+						<tr>
+							<th>Referee</th>
+							<th>Template</th>
+							<th>Shared / Opened</th>
+							<th>Submitted</th>
+							<th>Review Status</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						${body}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	`;
+}
+
+function render_documents(documents, recommendations) {
 	if (!documents) {
 		return render_empty("No document data.");
 	}
@@ -1264,60 +1562,71 @@ function render_documents(documents) {
 	if (!requiredRows.length && !uploadedRows.length) {
 		return render_empty("No document requirements are in scope.");
 	}
+	const canManageOverrides = can_manage_document_overrides();
+	const canReviewSubmissions = can_review_document_submissions();
 
 	const requiredBody = requiredRows.map((row) => {
 		const docName = String(row?.applicant_document || "").trim();
-		const docLink = docName
-			? render_text_link(`/desk/applicant-document/${encodeURIComponent(docName)}`, docName)
+		const fileLink = row?.file_url ? render_text_link(String(row.file_url), "Open latest file", true) : escape_html("—");
+		const requirementOverride = String(row?.requirement_override || "").trim();
+		const overrideReason = String(row?.override_reason || "").trim();
+		const overrideMeta = requirementOverride
+			? `<div class="text-muted" style="margin-top: 4px;">${escape_html(overrideReason || "Override recorded.")}</div>`
+			: "";
+		const actionButtons = canManageOverrides
+			? requirementOverride
+				? `<button type="button" class="document-requirement-action-btn" data-action="clear_override" data-applicant-document="${escape_html(docName)}" data-document-type="${escape_html(String(row?.document_type || ""))}" style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Clear Override")}</button>`
+				: [
+					`<button type="button" class="document-requirement-action-btn" data-action="set_override" data-override="Waived" data-applicant-document="${escape_html(docName)}" data-document-type="${escape_html(String(row?.document_type || ""))}" data-label="${escape_html(String(row?.label || row?.document_type || "Requirement"))}" style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Waive")}</button>`,
+					`<button type="button" class="document-requirement-action-btn" data-action="set_override" data-override="Exception Approved" data-applicant-document="${escape_html(docName)}" data-document-type="${escape_html(String(row?.document_type || ""))}" data-label="${escape_html(String(row?.label || row?.document_type || "Requirement"))}" style="border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Exception")}</button>`,
+				].join("")
 			: escape_html("—");
-		const fileLink = row?.file_url ? render_text_link(String(row.file_url), "File", true) : escape_html("—");
 		return `
 			<tr>
-				<td>${escape_html(String(row?.label || row?.document_type || "Document"))}</td>
-				<td>${render_document_status_pill(row?.review_status)}</td>
+				<td>${escape_html(String(row?.label || row?.document_type || "Requirement"))}</td>
+				<td>${render_document_status_pill(row?.review_status)}${overrideMeta}</td>
 				<td>${render_approved_required_pill(row)}</td>
-				<td>${render_user_link(row?.uploaded_by)}</td>
-				<td>${escape_html(format_datetime(row?.uploaded_at))}</td>
-				<td>${render_user_link(row?.reviewed_by)}</td>
-				<td>${escape_html(format_datetime(row?.reviewed_on))}</td>
-				<td>${docLink} · ${fileLink}</td>
+				<td>${render_user_link(row?.uploaded_by)}<div class="text-muted">${escape_html(format_datetime(row?.uploaded_at))}</div></td>
+				<td>${render_user_link(row?.reviewed_by)}<div class="text-muted">${escape_html(format_datetime(row?.reviewed_on))}</div></td>
+				<td>${fileLink}</td>
+				<td>${actionButtons}</td>
 			</tr>
 		`;
 	}).join("");
 
 	const uploadedBody = uploadedRows.map((row) => `
 		<tr>
-			<td>${escape_html(String(row?.label || row?.document_type || "Document"))}</td>
+			<td>${escape_html(String(row?.document_label || row?.document_type || "Requirement"))}</td>
+			<td>${escape_html(String(row?.item_label || row?.item_key || row?.applicant_document_item || "Submission"))}</td>
 			<td>${render_document_status_pill(row?.review_status)}</td>
-			<td>${render_user_link(row?.reviewed_by)}</td>
-			<td>${escape_html(format_datetime(row?.reviewed_on))}</td>
-			<td>${render_user_link(row?.uploaded_by)}</td>
-			<td>${escape_html(format_datetime(row?.uploaded_at))}</td>
-			<td>${row?.file_url ? render_text_link(String(row.file_url), "File", true) : escape_html("—")}</td>
+			<td>${render_user_link(row?.uploaded_by)}<div class="text-muted">${escape_html(format_datetime(row?.uploaded_at))}</div></td>
+			<td>${render_user_link(row?.reviewed_by)}<div class="text-muted">${escape_html(format_datetime(row?.reviewed_on))}</div></td>
+			<td>${row?.file_url ? render_text_link(String(row.file_url), "Open file", true) : escape_html("—")}</td>
+			<td>${canReviewSubmissions ? render_submission_action_buttons(row) : escape_html("—")}</td>
 		</tr>
 	`).join("");
 
 	return `
 		<div style="margin-bottom: 10px;">
-			${render_pill(documents.ok ? "✓ All required documents approved" : "Action required", documents.ok ? "green" : "amber")}
+			${render_pill(documents.ok ? "✓ All required requirements complete" : "Action required", documents.ok ? "green" : "amber")}
 			${missing.length ? `<span style="margin-left: 6px;">${render_pill(`Missing: ${missing.length}`, "red")}</span>` : ""}
-			${pendingUploadedReviews ? `<span style="margin-left: 6px;">${render_pill(`Pending item reviews: ${pendingUploadedReviews}`, "amber")}</span>` : ""}
+			${pendingUploadedReviews ? `<span style="margin-left: 6px;">${render_pill(`Pending submitted-file reviews: ${pendingUploadedReviews}`, "amber")}</span>` : ""}
 		</div>
+		${render_recommendation_review_section(recommendations)}
 		${requiredRows.length ? `
 			<div style="margin-bottom: 12px;">
-				<div style="font-weight: 600; margin-bottom: 6px;">Required Documents</div>
+				<div style="font-weight: 600; margin-bottom: 6px;">Requirements</div>
 				<div class="table-responsive">
 					<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 						<thead>
 							<tr>
-								<th>Document</th>
+								<th>Requirement</th>
 								<th>Status</th>
 								<th>Approved / Required</th>
-								<th>Uploaded By</th>
-								<th>Uploaded On</th>
-								<th>Reviewed By</th>
-								<th>Reviewed On</th>
-								<th>Links</th>
+								<th>Latest Upload</th>
+								<th>Latest Review</th>
+								<th>File</th>
+								<th>Actions</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -1329,18 +1638,18 @@ function render_documents(documents) {
 		` : ""}
 		${uploadedRows.length ? `
 			<div>
-				<div style="font-weight: 600; margin-bottom: 6px;">Uploaded Document Items</div>
+				<div style="font-weight: 600; margin-bottom: 6px;">Submitted Files</div>
 				<div class="table-responsive">
 					<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 						<thead>
 							<tr>
-								<th>Document</th>
+								<th>Requirement</th>
+								<th>Submission</th>
 								<th>Review Status</th>
-								<th>Reviewed By</th>
-								<th>Reviewed On</th>
-								<th>Uploaded By</th>
-								<th>Uploaded On</th>
+								<th>Uploaded</th>
+								<th>Reviewed</th>
 								<th>File</th>
+								<th>Actions</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -1351,6 +1660,380 @@ function render_documents(documents) {
 			</div>
 		` : ""}
 	`;
+}
+
+function can_manage_document_overrides() {
+	return ["Admission Manager", "Academic Admin", "System Manager"].some((role) => frappe.user.has_role(role));
+}
+
+function can_review_document_submissions() {
+	return ["Admission Officer", "Admission Manager", "Academic Admin", "System Manager"].some((role) => frappe.user.has_role(role));
+}
+
+function new_admissions_review_request_id(prefix = "admissions_review") {
+	return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 12)}`;
+}
+
+function render_submission_action_buttons(row) {
+	const itemName = String(row?.applicant_document_item || "").trim();
+	if (!itemName) {
+		return escape_html("—");
+	}
+	const attrs = `data-applicant-document-item="${escape_html(itemName)}" data-label="${escape_html(String(row?.label || row?.item_label || row?.item_key || "Submission"))}"`;
+	return [
+		`<button type="button" class="document-submission-action-btn" data-action="approve_submission" ${attrs} style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Approve")}</button>`,
+		`<button type="button" class="document-submission-action-btn" data-action="needs_follow_up_submission" ${attrs} style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Request Changes")}</button>`,
+		`<button type="button" class="document-submission-action-btn" data-action="reject_submission" ${attrs} style="border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Reject")}</button>`,
+	].join("");
+}
+
+function bind_document_summary_actions(frm) {
+	const wrapper = frm.fields_dict.documents_summary?.$wrapper;
+	if (!wrapper) {
+		return;
+	}
+
+	wrapper.off("click", ".document-requirement-action-btn");
+	wrapper.on("click", ".document-requirement-action-btn", (event) => {
+		const target = event.currentTarget;
+		if (!(target instanceof HTMLElement)) {
+			return;
+		}
+		const action = String(target.getAttribute("data-action") || "").trim();
+		const applicantDocument = String(target.getAttribute("data-applicant-document") || "").trim();
+		const documentType = String(target.getAttribute("data-document-type") || "").trim();
+		const overrideValue = String(target.getAttribute("data-override") || "").trim();
+		const label = String(target.getAttribute("data-label") || documentType || applicantDocument || "Requirement").trim();
+
+		if (action === "clear_override") {
+			frappe.confirm(__("Clear the requirement override for {0}?").replace("{0}", label), () => {
+				apply_document_requirement_override(frm, {
+					applicant_document: applicantDocument || null,
+					document_type: documentType || null,
+					requirement_override: "",
+					override_reason: "",
+				});
+			});
+			return;
+		}
+
+		if (action !== "set_override" || !overrideValue) {
+			return;
+		}
+
+		frappe.prompt(
+			[
+				{
+					label: __("Reason"),
+					fieldname: "override_reason",
+					fieldtype: "Small Text",
+					reqd: 1,
+				},
+			],
+			(values) => {
+				apply_document_requirement_override(frm, {
+					applicant_document: applicantDocument || null,
+					document_type: documentType || null,
+					requirement_override: overrideValue,
+					override_reason: String(values.override_reason || "").trim(),
+				});
+			},
+			__(overrideValue),
+			__("Apply")
+		);
+	});
+
+	wrapper.off("click", ".document-submission-action-btn");
+	wrapper.on("click", ".document-submission-action-btn", (event) => {
+		const target = event.currentTarget;
+		if (!(target instanceof HTMLElement)) {
+			return;
+		}
+		const action = String(target.getAttribute("data-action") || "").trim();
+		const applicantDocumentItem = String(target.getAttribute("data-applicant-document-item") || "").trim();
+		const label = String(target.getAttribute("data-label") || applicantDocumentItem || "Submission").trim();
+		if (!action || !applicantDocumentItem) {
+			return;
+		}
+
+		if (action === "approve_submission") {
+			frappe.confirm(__("Approve the submitted file for {0}?").replace("{0}", label), () => {
+				review_document_submission(frm, {
+					applicant_document_item: applicantDocumentItem,
+					decision: "Approved",
+					notes: "",
+				});
+			});
+			return;
+		}
+
+		const decision = action === "needs_follow_up_submission" ? "Needs Follow-Up" : action === "reject_submission" ? "Rejected" : "";
+		if (!decision) {
+			return;
+		}
+
+		frappe.prompt(
+			[
+				{
+					label: __("Review Note"),
+					fieldname: "notes",
+					fieldtype: "Small Text",
+					reqd: 1,
+				},
+			],
+			(values) => {
+				review_document_submission(frm, {
+					applicant_document_item: applicantDocumentItem,
+					decision,
+					notes: String(values.notes || "").trim(),
+				});
+			},
+			decision === "Needs Follow-Up" ? __("Request Changes") : __("Reject Submission"),
+			__("Save")
+		);
+	});
+
+	wrapper.off("click", ".recommendation-review-action-btn");
+	wrapper.on("click", ".recommendation-review-action-btn", (event) => {
+		const target = event.currentTarget;
+		if (!(target instanceof HTMLElement)) {
+			return;
+		}
+		open_recommendation_review_dialog(frm, {
+			recommendation_request: String(target.getAttribute("data-recommendation-request") || "").trim(),
+			recommendation_submission: String(target.getAttribute("data-recommendation-submission") || "").trim(),
+			applicant_document_item: String(target.getAttribute("data-applicant-document-item") || "").trim(),
+		});
+	});
+}
+
+function render_recommendation_review_dialog(payload) {
+	const recommendation = payload?.recommendation || {};
+	const answers = Array.isArray(recommendation.answers) ? recommendation.answers : [];
+	const canReviewSubmissions = can_review_document_submissions();
+	const canReview = Boolean(
+		recommendation.can_review &&
+		recommendation.applicant_document_item &&
+		canReviewSubmissions
+	);
+	const reviewStatus = String(recommendation.review_status || "Pending").trim() || "Pending";
+
+	const timelineRows = [
+		{ label: "Shared", value: recommendation.sent_on },
+		{ label: "Opened", value: recommendation.opened_on },
+		{ label: "Submitted", value: recommendation.submitted_on },
+		{ label: "Reviewed", value: recommendation.reviewed_on },
+	];
+
+	const timelineBody = timelineRows.map((row) => `
+		<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#fff;">
+			<div class="text-muted" style="font-size:12px;">${escape_html(row.label)}</div>
+			<div style="font-weight:600;">${escape_html(format_human_moment(row.value))}</div>
+		</div>
+	`).join("");
+
+	const answerBody = answers.length
+		? answers.map((answer) => `
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:12px;background:#fff;margin-bottom:8px;">
+				<div class="text-muted" style="font-size:12px;margin-bottom:4px;">${escape_html(String(answer?.label || answer?.field_key || "Answer"))}</div>
+				<div style="white-space:pre-wrap;">${escape_html(String(answer?.display_value || (answer?.has_value ? answer?.value || "" : "No response")))}</div>
+			</div>
+		`).join("")
+		: `<div class="text-muted">No structured answers were captured for this recommendation.</div>`;
+
+	const reviewActions = canReview
+		? `
+			<div style="margin-top:16px;border-top:1px solid #e5e7eb;padding-top:12px;">
+				<label style="display:block;margin-bottom:8px;">
+					<div class="text-muted" style="font-size:12px;margin-bottom:4px;">Review Note</div>
+					<textarea class="recommendation-review-note" rows="3" placeholder="Required for Request Changes or Reject" style="width:100%;border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;resize:vertical;"></textarea>
+				</label>
+				<div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;">
+					<button type="button" class="recommendation-review-decision-btn" data-decision="Approved" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">${escape_html("Approve")}</button>
+					<button type="button" class="recommendation-review-decision-btn" data-decision="Needs Follow-Up" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">${escape_html("Request Changes")}</button>
+					<button type="button" class="recommendation-review-decision-btn" data-decision="Rejected" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">${escape_html("Reject")}</button>
+				</div>
+			</div>
+		`
+		: `<div class="text-muted" style="margin-top: 12px;">${
+			canReviewSubmissions
+				? escape_html(__("This recommendation has already been reviewed."))
+				: escape_html(__("You can view this recommendation here, but only admissions reviewers can record a decision."))
+		}</div>`;
+
+	return `
+		<div style="display:grid;gap:16px;">
+			<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start;">
+				<div>
+					<div class="text-muted" style="font-size:12px;">Recommendation Review</div>
+					<div style="font-size:20px;font-weight:700;color:#17313b;">${escape_html(String(recommendation.recommender_name || recommendation.recommender_email || "Referee"))}</div>
+					<div class="text-muted" style="margin-top:4px;">${escape_html(String(recommendation.template_name || recommendation.recommendation_template || "Recommendation"))}${recommendation.recommender_relationship ? ` · ${escape_html(String(recommendation.recommender_relationship))}` : ""}</div>
+				</div>
+				<div>${render_document_status_pill(reviewStatus)}</div>
+			</div>
+			<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">
+				${timelineBody}
+			</div>
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:12px;background:#f8fbff;">
+				<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+					${recommendation.attestation_confirmed ? `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#e8f7ee;border:1px solid #9ad5b0;color:#1f7a3e;">${escape_html("Attestation confirmed")}</span>` : ""}
+					${recommendation.item_label ? `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#f4f5f7;border:1px solid #d7dce2;color:#3f4b57;">${escape_html(String(recommendation.item_label))}</span>` : ""}
+					${recommendation.file_url ? render_text_link(String(recommendation.file_url), recommendation.file_name || "Open attached file", true) : ""}
+				</div>
+				${recommendation.recommender_email ? `<div class="text-muted" style="margin-top:8px;">${escape_html(String(recommendation.recommender_email))}</div>` : ""}
+			</div>
+			<div>
+				<div style="font-weight:600;margin-bottom:8px;">Submission Answers</div>
+				${answerBody}
+			</div>
+			${reviewActions}
+		</div>
+	`;
+}
+
+function normalize_recommendation_review_anchor(anchor) {
+	const recommendationRequest = String(anchor?.recommendation_request || "").trim();
+	if (recommendationRequest) {
+		return { recommendation_request: recommendationRequest };
+	}
+	const recommendationSubmission = String(anchor?.recommendation_submission || "").trim();
+	if (recommendationSubmission) {
+		return { recommendation_submission: recommendationSubmission };
+	}
+	const applicantDocumentItem = String(anchor?.applicant_document_item || "").trim();
+	if (applicantDocumentItem) {
+		return { applicant_document_item: applicantDocumentItem };
+	}
+	return null;
+}
+
+function open_recommendation_review_dialog(frm, anchor) {
+	const dialog = new frappe.ui.Dialog({
+		title: __("Recommendation Review"),
+		fields: [
+			{
+				fieldtype: "HTML",
+				fieldname: "body",
+			},
+		],
+		primary_action_label: __("Close"),
+		primary_action() {
+			dialog.hide();
+		},
+	});
+
+	let currentPayload = null;
+	let currentAnchor = normalize_recommendation_review_anchor(anchor);
+
+	const renderLoading = () => {
+		dialog.fields_dict.body.$wrapper.html(`<div class="text-muted">${escape_html("Loading recommendation review...")}</div>`);
+	};
+
+	const loadPayload = () => {
+		if (!currentAnchor) {
+			dialog.fields_dict.body.$wrapper.html(
+				`<div class="text-danger">${escape_html(__("Recommendation reference is missing."))}</div>`
+			);
+			return Promise.resolve();
+		}
+		renderLoading();
+		return frappe.call({
+			method: "ifitwala_ed.api.recommendation_intake.get_recommendation_review_payload",
+			args: {
+				student_applicant: frm.doc.name,
+				recommendation_request: currentAnchor.recommendation_request || null,
+				recommendation_submission: currentAnchor.recommendation_submission || null,
+				applicant_document_item: currentAnchor.applicant_document_item || null,
+			},
+		}).then((res) => {
+			currentPayload = res?.message || {};
+			dialog.fields_dict.body.$wrapper.html(render_recommendation_review_dialog(currentPayload));
+		}).catch((error) => {
+			dialog.fields_dict.body.$wrapper.html(
+				`<div class="text-danger">${escape_html(get_error_message(error, __("Unable to load recommendation review.")))}</div>`
+			);
+		});
+	};
+
+	dialog.$wrapper.off("click", ".recommendation-review-decision-btn");
+	dialog.$wrapper.on("click", ".recommendation-review-decision-btn", (event) => {
+		const target = event.currentTarget;
+		if (!(target instanceof HTMLElement)) {
+			return;
+		}
+		const decision = String(target.getAttribute("data-decision") || "").trim();
+		const applicantDocumentItem = String(currentPayload?.recommendation?.applicant_document_item || "").trim();
+		const notes = String(dialog.$wrapper.find(".recommendation-review-note").val() || "").trim();
+		if (!decision || !applicantDocumentItem) {
+			frappe.msgprint(__("Recommendation review target is missing."));
+			return;
+		}
+		if ((decision === "Needs Follow-Up" || decision === "Rejected") && !notes) {
+			frappe.msgprint(__("A review note is required for this decision."));
+			return;
+		}
+		review_document_submission(
+			frm,
+			{
+				applicant_document_item: applicantDocumentItem,
+				decision,
+				notes,
+			},
+			{
+				show_alert: false,
+				success_message: __("Recommendation review updated."),
+				on_success: () => loadPayload(),
+			}
+		);
+	});
+
+	dialog.show();
+	loadPayload();
+}
+
+function apply_document_requirement_override(frm, payload) {
+	frappe.call({
+		method: "ifitwala_ed.api.admissions_review.set_document_requirement_override",
+		args: {
+			student_applicant: frm.doc.name,
+			...payload,
+			client_request_id: new_admissions_review_request_id("document_requirement_override"),
+		},
+		freeze: true,
+		freeze_message: __("Updating requirement override..."),
+	})
+		.then(() => {
+			frappe.show_alert({ message: __("Requirement override updated."), indicator: "green" });
+			render_review_sections(frm);
+		})
+		.catch((error) => {
+			frappe.msgprint(get_error_message(error, __("Unable to update requirement override.")));
+		});
+}
+
+function review_document_submission(frm, payload, options = {}) {
+	frappe.call({
+		method: "ifitwala_ed.api.admissions_review.review_applicant_document_submission",
+		args: {
+			student_applicant: frm.doc.name,
+			...payload,
+			client_request_id: new_admissions_review_request_id("document_submission_review"),
+		},
+		freeze: true,
+		freeze_message: __("Saving evidence review..."),
+	})
+		.then(() => {
+			if (options.show_alert !== false) {
+				frappe.show_alert({ message: options.success_message || __("Submitted file review updated."), indicator: "green" });
+			}
+			render_review_sections(frm);
+			if (typeof options.on_success === "function") {
+				options.on_success();
+			}
+		})
+		.catch((error) => {
+			frappe.msgprint(get_error_message(error, __("Unable to update submitted file review.")));
+		});
 }
 
 function render_ok_label(section) {
@@ -1429,13 +2112,70 @@ function format_datetime(value) {
 	}
 }
 
+function parse_datetime_value(value) {
+	const text = String(value || "").trim();
+	if (!text) {
+		return null;
+	}
+	const normalized = text.replace(" ", "T").replace(/\.(\d{3})\d+/, ".$1");
+	const parsed = new Date(normalized);
+	if (!Number.isNaN(parsed.getTime())) {
+		return parsed;
+	}
+	const fallback = new Date(text);
+	return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function format_relative_time(value) {
+	const parsed = parse_datetime_value(value);
+	if (!parsed || typeof Intl === "undefined" || typeof Intl.RelativeTimeFormat !== "function") {
+		return "";
+	}
+	const diffSeconds = Math.round((parsed.getTime() - Date.now()) / 1000);
+	const absoluteSeconds = Math.abs(diffSeconds);
+	const formatter = new Intl.RelativeTimeFormat((frappe.boot && frappe.boot.lang) || undefined, {
+		numeric: "auto",
+	});
+	if (absoluteSeconds < 60) {
+		return formatter.format(diffSeconds, "second");
+	}
+	if (absoluteSeconds < 3600) {
+		return formatter.format(Math.round(diffSeconds / 60), "minute");
+	}
+	if (absoluteSeconds < 86400) {
+		return formatter.format(Math.round(diffSeconds / 3600), "hour");
+	}
+	if (absoluteSeconds < 604800) {
+		return formatter.format(Math.round(diffSeconds / 86400), "day");
+	}
+	if (absoluteSeconds < 2629800) {
+		return formatter.format(Math.round(diffSeconds / 604800), "week");
+	}
+	return formatter.format(Math.round(diffSeconds / 2629800), "month");
+}
+
+function format_human_moment(value) {
+	const absolute = format_datetime(value);
+	if (absolute === "—") {
+		return absolute;
+	}
+	const relative = format_relative_time(value);
+	return relative ? `${absolute} (${relative})` : absolute;
+}
+
 function render_document_status_pill(status) {
 	const normalized = String(status || "Pending").trim();
-	if (normalized === "Approved") {
-		return render_pill("Approved", "green");
+	if (normalized === "Approved" || normalized === "Waived" || normalized === "Exception Approved") {
+		return render_pill(normalized, "green");
 	}
-	if (normalized === "Rejected" || normalized === "Superseded") {
-		return render_pill(normalized, "red");
+	if (normalized === "Rejected") {
+		return render_pill("Rejected", "red");
+	}
+	if (normalized === "Superseded") {
+		return render_pill("Superseded", "slate");
+	}
+	if (normalized === "Needs Follow-Up") {
+		return render_pill("Needs Follow-Up", "amber");
 	}
 	if (normalized === "Missing") {
 		return render_pill("Missing", "red");
@@ -1444,6 +2184,10 @@ function render_document_status_pill(status) {
 }
 
 function render_approved_required_pill(row) {
+	const requirementOverride = String(row?.requirement_override || "").trim();
+	if (requirementOverride) {
+		return render_pill(requirementOverride, "green");
+	}
 	const requiredCount = Number(row?.required_count || 0);
 	if (!requiredCount) {
 		return escape_html("—");

@@ -24,6 +24,7 @@
   "allow_self_enroll",
   "courses_section",
   "offering_courses",
+  "offering_course_basket_groups",
   "enrollment_rules_section",
   "enrollment_rules",
   "activity_booking_section",
@@ -298,12 +299,19 @@
    "fieldtype": "Table",
    "label": "Offering Courses",
    "options": "Program Offering Course"
+  },
+  {
+   "fieldname": "offering_course_basket_groups",
+   "fieldtype": "Table",
+   "description": "Map each offering course to the enrollment baskets it can satisfy.",
+   "label": "Enrollment Basket Memberships",
+   "options": "Program Offering Course Basket Group"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-12 09:44:35.348261",
+ "modified": "2026-03-11 12:23:16",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering",

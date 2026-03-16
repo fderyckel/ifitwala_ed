@@ -67,8 +67,11 @@ from ifitwala_ed.api.calendar_prefs import (
     get_portal_calendar_prefs as _get_portal_calendar_prefs,
 )
 from ifitwala_ed.api.calendar_quick_create import (
+    ATTENDEE_SEARCH_CACHE_TTL_SECONDS,
     META_SELECT_OPTIONS_CACHE_TTL_SECONDS,
     QUICK_CREATE_IDEMPOTENCY_TTL_SECONDS,
+    ROOM_SUGGESTION_CACHE_TTL_SECONDS,
+    SLOT_SUGGESTION_CACHE_TTL_SECONDS,
     _cached_select_options,
     _desk_route_slug,
     _doc_url,
@@ -91,6 +94,18 @@ from ifitwala_ed.api.calendar_quick_create import (
 )
 from ifitwala_ed.api.calendar_quick_create import (
     get_event_quick_create_options as _get_event_quick_create_options,
+)
+from ifitwala_ed.api.calendar_quick_create import (
+    get_meeting_team_attendees as _get_meeting_team_attendees,
+)
+from ifitwala_ed.api.calendar_quick_create import (
+    search_meeting_attendees as _search_meeting_attendees,
+)
+from ifitwala_ed.api.calendar_quick_create import (
+    suggest_meeting_rooms as _suggest_meeting_rooms,
+)
+from ifitwala_ed.api.calendar_quick_create import (
+    suggest_meeting_slots as _suggest_meeting_slots,
 )
 from ifitwala_ed.api.calendar_staff_feed import (
     _collect_meeting_events,
@@ -152,6 +167,7 @@ def create_meeting_quick(
     start_time: str | None = None,
     end_time: str | None = None,
     team: str | None = None,
+    school: str | None = None,
     location: str | None = None,
     meeting_category: str | None = None,
     virtual_meeting_link: str | None = None,
@@ -166,6 +182,7 @@ def create_meeting_quick(
         start_time=start_time,
         end_time=end_time,
         team=team,
+        school=school,
         location=location,
         meeting_category=meeting_category,
         virtual_meeting_link=virtual_meeting_link,
@@ -173,6 +190,65 @@ def create_meeting_quick(
         visibility_scope=visibility_scope,
         participants=participants,
         client_request_id=client_request_id,
+    )
+
+
+@frappe.whitelist()
+def search_meeting_attendees(
+    *,
+    query: str | None = None,
+    attendee_kinds=None,
+    limit: int | None = None,
+):
+    return _search_meeting_attendees(
+        query=query,
+        attendee_kinds=attendee_kinds,
+        limit=limit,
+    )
+
+
+@frappe.whitelist()
+def get_meeting_team_attendees(*, team: str | None = None):
+    return _get_meeting_team_attendees(team=team)
+
+
+@frappe.whitelist()
+def suggest_meeting_slots(
+    *,
+    attendees=None,
+    duration_minutes: int | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    day_start_time: str | None = None,
+    day_end_time: str | None = None,
+):
+    return _suggest_meeting_slots(
+        attendees=attendees,
+        duration_minutes=duration_minutes,
+        date_from=date_from,
+        date_to=date_to,
+        day_start_time=day_start_time,
+        day_end_time=day_end_time,
+    )
+
+
+@frappe.whitelist()
+def suggest_meeting_rooms(
+    *,
+    school: str | None = None,
+    date: str | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
+    capacity_needed: int | None = None,
+    limit: int | None = None,
+):
+    return _suggest_meeting_rooms(
+        school=school,
+        date=date,
+        start_time=start_time,
+        end_time=end_time,
+        capacity_needed=capacity_needed,
+        limit=limit,
     )
 
 
@@ -236,12 +312,19 @@ __all__ = [
     "CAL_MIN_DURATION",
     "QUICK_CREATE_IDEMPOTENCY_TTL_SECONDS",
     "META_SELECT_OPTIONS_CACHE_TTL_SECONDS",
+    "ATTENDEE_SEARCH_CACHE_TTL_SECONDS",
+    "SLOT_SUGGESTION_CACHE_TTL_SECONDS",
+    "ROOM_SUGGESTION_CACHE_TTL_SECONDS",
     "CalendarEvent",
     "get_staff_calendar",
     "get_meeting_details",
     "get_school_event_details",
     "get_student_group_event_details",
     "get_event_quick_create_options",
+    "search_meeting_attendees",
+    "get_meeting_team_attendees",
+    "suggest_meeting_slots",
+    "suggest_meeting_rooms",
     "create_meeting_quick",
     "create_school_event_quick",
     "debug_staff_calendar_window",

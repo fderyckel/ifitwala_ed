@@ -79,6 +79,52 @@
 		return { primary, nullable };
 	}
 
+	function getSchemaTypes(schema) {
+		const raw = schema && schema.type ? schema.type : null;
+		if (!raw) return [];
+		return Array.isArray(raw) ? raw : [raw];
+	}
+
+	function joinSchemaPath(base, segment) {
+		if (typeof segment === 'number') {
+			return `${base}[${segment}]`;
+		}
+		return base ? `${base}.${segment}` : segment;
+	}
+
+	function formatSchemaPath(path) {
+		return path || 'root';
+	}
+
+	function schemaTypeLabel(types) {
+		return (types || []).filter(Boolean).join(' or ');
+	}
+
+	function valueMatchesSchemaType(value, expectedType) {
+		if (expectedType === 'object') {
+			return value !== null && typeof value === 'object' && !Array.isArray(value);
+		}
+		if (expectedType === 'array') {
+			return Array.isArray(value);
+		}
+		if (expectedType === 'string') {
+			return typeof value === 'string';
+		}
+		if (expectedType === 'integer') {
+			return Number.isInteger(value);
+		}
+		if (expectedType === 'number') {
+			return typeof value === 'number' && !Number.isNaN(value);
+		}
+		if (expectedType === 'boolean') {
+			return typeof value === 'boolean';
+		}
+		if (expectedType === 'null') {
+			return value === null;
+		}
+		return true;
+	}
+
 	function isMultiline(fieldname) {
 		const lower = (fieldname || '').toLowerCase();
 		return (
@@ -88,6 +134,108 @@
 			lower.includes('bio') ||
 			lower.includes('text')
 		);
+	}
+
+	function isImageField(fieldname, schema) {
+		const lower = (fieldname || '').toLowerCase();
+		const { primary } = normalizeSchemaType(schema || {});
+		if (primary !== 'string') return false;
+		if (Array.isArray(schema?.enum) && schema.enum.length) return false;
+		return (
+			lower === 'image' || lower.endsWith('_image') || lower.endsWith('_logo') || lower === 'logo'
+		);
+	}
+
+	function buildControlId(fieldname) {
+		const safeFieldname = String(fieldname || 'field').replace(/[^a-z0-9_]/gi, '_');
+		return `iw_builder_${safeFieldname}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+	}
+
+	function ensureBuilderStyles() {
+		if (document.getElementById('iw-props-builder-styles')) {
+			return;
+		}
+
+		const style = document.createElement('style');
+		style.id = 'iw-props-builder-styles';
+		style.textContent = `
+			.iw-props-builder .iw-checkbox-field {
+				margin-bottom: 1rem;
+			}
+			.iw-props-builder .iw-checkbox-label {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.625rem;
+				font-weight: 500;
+				cursor: pointer;
+			}
+			.iw-props-builder .iw-checkbox-label input[type="checkbox"] {
+				margin: 0;
+				position: static;
+				flex: 0 0 auto;
+			}
+			.iw-props-builder .iw-attach-field .control-input-wrapper,
+			.iw-props-builder .iw-attach-field .control-value {
+				min-height: auto;
+			}
+			.iw-props-builder .iw-field-help {
+				margin-top: 0.375rem;
+				font-size: 0.75rem;
+				color: var(--text-muted, #6b7280);
+			}
+			.iw-props-builder .iw-media-input {
+				display: grid;
+				gap: 0.75rem;
+			}
+			.iw-props-builder .iw-media-preview {
+				display: none;
+				width: 100%;
+				max-width: 260px;
+				aspect-ratio: 16 / 10;
+				border-radius: 14px;
+				overflow: hidden;
+				background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+				border: 1px solid var(--border-color, #d1d5db);
+			}
+			.iw-props-builder .iw-media-preview.is-visible {
+				display: block;
+			}
+			.iw-props-builder .iw-media-preview img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+			}
+			.iw-props-builder .iw-media-actions {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+			}
+		`;
+		document.head.appendChild(style);
+	}
+
+	let organizationMediaPromise = null;
+
+	function getOrganizationMediaApi() {
+		const existing = window.ifitwalaEd && window.ifitwalaEd.organizationMedia;
+		if (existing) {
+			return Promise.resolve(existing);
+		}
+		if (organizationMediaPromise) {
+			return organizationMediaPromise;
+		}
+
+		organizationMediaPromise = new Promise(resolve => {
+			frappe.require('/assets/ifitwala_ed/js/organization_media_dialog.js', () => {
+				resolve((window.ifitwalaEd && window.ifitwalaEd.organizationMedia) || null);
+			});
+		});
+		return organizationMediaPromise;
+	}
+
+	function resolveSchoolContext(frm) {
+		const school = String(frm?.doc?.school || '').trim();
+		return school || null;
 	}
 
 	function applyDefaults(schema, values, blockType) {
@@ -168,78 +316,122 @@
 		return output;
 	}
 
-	function validateAgainstSchema(schema, data) {
+	function validateValueAgainstSchema(schema, value, path = '') {
 		const errors = [];
-		if (!schema || schema.type !== 'object') {
+		if (!schema) {
 			return errors;
 		}
 
-		const props = schema.properties || {};
-		const required = new Set(schema.required || []);
-		const allowExtra = schema.additionalProperties !== false;
+		const expectedTypes = getSchemaTypes(schema);
+		if (
+			value !== undefined &&
+			expectedTypes.length &&
+			!expectedTypes.some(expectedType => valueMatchesSchemaType(value, expectedType))
+		) {
+			errors.push(`Field ${formatSchemaPath(path)} must be ${schemaTypeLabel(expectedTypes)}.`);
+			return errors;
+		}
 
-		Object.keys(data || {}).forEach(key => {
-			if (!props[key] && !allowExtra) {
-				errors.push(`Unexpected property: ${key}`);
-			}
-		});
+		if (value === undefined) {
+			return errors;
+		}
 
-		Object.keys(props).forEach(key => {
-			const propSchema = props[key] || {};
-			const value = data ? data[key] : undefined;
-			const { primary } = normalizeSchemaType(propSchema);
+		if (Array.isArray(schema.enum) && !schema.enum.includes(value)) {
+			errors.push(`Field ${formatSchemaPath(path)} must be one of: ${schema.enum.join(', ')}.`);
+		}
 
-			if (required.has(key) && (value === undefined || value === null || value === '')) {
-				errors.push(`Missing required field: ${key}`);
-				return;
+		if (typeof value === 'number' && !Number.isNaN(value)) {
+			if (schema.minimum !== undefined && value < schema.minimum) {
+				errors.push(
+					`Field ${formatSchemaPath(path)} must be greater than or equal to ${schema.minimum}.`
+				);
 			}
-			if (value === undefined || value === null || value === '') {
-				return;
+			if (schema.maximum !== undefined && value > schema.maximum) {
+				errors.push(
+					`Field ${formatSchemaPath(path)} must be less than or equal to ${schema.maximum}.`
+				);
 			}
-			if (primary === 'integer' && Number.isNaN(Number(value))) {
-				errors.push(`Field ${key} must be a number.`);
+		}
+
+		if (Array.isArray(value)) {
+			if (schema.minItems !== undefined && value.length < schema.minItems) {
+				errors.push(
+					`Field ${formatSchemaPath(path)} must have at least ${schema.minItems} items.`
+				);
 			}
-			if (Array.isArray(propSchema.enum) && !propSchema.enum.includes(value)) {
-				errors.push(`Field ${key} must be one of: ${propSchema.enum.join(', ')}`);
+			const itemSchema = schema.items;
+			if (itemSchema) {
+				value.forEach((itemValue, index) => {
+					errors.push(
+						...validateValueAgainstSchema(itemSchema, itemValue, joinSchemaPath(path, index))
+					);
+				});
 			}
-			if (primary === 'array' && Array.isArray(value)) {
-				if (propSchema.minItems && value.length < propSchema.minItems) {
-					errors.push(`Field ${key} must have at least ${propSchema.minItems} items.`);
+		}
+
+		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+			const properties = schema.properties || {};
+			const required = new Set(schema.required || []);
+			const allowExtra = schema.additionalProperties !== false;
+
+			Object.keys(value).forEach(key => {
+				if (!properties[key] && !allowExtra) {
+					errors.push(`Field ${formatSchemaPath(joinSchemaPath(path, key))} is not allowed.`);
 				}
-				if (propSchema.items && propSchema.items.type === 'object') {
-					const itemProps = propSchema.items.properties || {};
-					const itemRequired = new Set(propSchema.items.required || []);
-					const itemAllowExtra = propSchema.items.additionalProperties !== false;
-					value.forEach((item, idx) => {
-						Object.keys(item || {}).forEach(itemKey => {
-							if (!itemProps[itemKey] && !itemAllowExtra) {
-								errors.push(`Field ${key}[${idx}] has unexpected property: ${itemKey}`);
-							}
-						});
-						itemRequired.forEach(itemKey => {
-							const itemValue = item ? item[itemKey] : undefined;
-							if (itemValue === undefined || itemValue === null || itemValue === '') {
-								errors.push(`Field ${key}[${idx}] missing required: ${itemKey}`);
-							}
-						});
-					});
+			});
+
+			required.forEach(key => {
+				const childValue = value[key];
+				if (childValue === undefined || childValue === null || childValue === '') {
+					errors.push(`Missing required field: ${formatSchemaPath(joinSchemaPath(path, key))}.`);
 				}
-			}
-		});
+			});
+
+			Object.keys(properties).forEach(key => {
+				if (value[key] === undefined) {
+					return;
+				}
+				errors.push(
+					...validateValueAgainstSchema(properties[key], value[key], joinSchemaPath(path, key))
+				);
+			});
+		}
 
 		return errors;
+	}
+
+	function validateAgainstSchema(schema, data) {
+		if (!schema || schema.type !== 'object') {
+			return [];
+		}
+		return validateValueAgainstSchema(schema, data);
 	}
 
 	function createInput({ label, value, type, options, required, nullable }) {
 		const wrapper = document.createElement('div');
 		wrapper.className = 'form-group';
 
-		const labelEl = document.createElement('label');
-		labelEl.className = 'control-label';
-		labelEl.textContent = label + (required ? ' *' : '');
-		wrapper.appendChild(labelEl);
-
 		let input;
+		if (type === 'checkbox') {
+			wrapper.className = 'form-group iw-checkbox-field';
+			const checkboxLabel = document.createElement('label');
+			checkboxLabel.className = 'iw-checkbox-label';
+			input = document.createElement('input');
+			input.type = 'checkbox';
+			input.className = 'form-check-input';
+			input.checked = Boolean(value);
+			const text = document.createElement('span');
+			text.textContent = label + (required ? ' *' : '');
+			checkboxLabel.appendChild(input);
+			checkboxLabel.appendChild(text);
+			wrapper.appendChild(checkboxLabel);
+		} else {
+			const labelEl = document.createElement('label');
+			labelEl.className = 'control-label';
+			labelEl.textContent = label + (required ? ' *' : '');
+			wrapper.appendChild(labelEl);
+		}
+
 		if (type === 'select') {
 			input = document.createElement('select');
 			input.className = 'form-control';
@@ -258,19 +450,12 @@
 			if (value !== undefined && value !== null) {
 				input.value = value;
 			}
-		} else if (type === 'checkbox') {
-			input = document.createElement('input');
-			input.type = 'checkbox';
-			input.className = 'form-check-input';
-			input.checked = Boolean(value);
-			labelEl.className = 'form-check-label';
-			wrapper.className = 'form-group form-check';
 		} else if (type === 'textarea') {
 			input = document.createElement('textarea');
 			input.className = 'form-control';
 			input.rows = 4;
 			input.value = value || '';
-		} else {
+		} else if (type !== 'checkbox') {
 			input = document.createElement('input');
 			input.type = type === 'number' ? 'number' : 'text';
 			input.className = 'form-control';
@@ -279,8 +464,169 @@
 			}
 		}
 
-		wrapper.appendChild(input);
+		if (input && type !== 'checkbox') {
+			wrapper.appendChild(input);
+		}
 		return { wrapper, input };
+	}
+
+	function createAttachImageInput({ label, value, required, fieldname }) {
+		const wrapper = document.createElement('div');
+		wrapper.className = 'form-group iw-attach-field';
+
+		const labelEl = document.createElement('label');
+		labelEl.className = 'control-label';
+		labelEl.textContent = label + (required ? ' *' : '');
+		wrapper.appendChild(labelEl);
+
+		const controlHost = document.createElement('div');
+		wrapper.appendChild(controlHost);
+
+		const help = document.createElement('div');
+		help.className = 'iw-field-help';
+		help.textContent = __('Upload or choose an image. The stored value is the file URL.');
+		wrapper.appendChild(help);
+
+		let onChange = null;
+		const control = frappe.ui.form.make_control({
+			df: {
+				fieldname: buildControlId(fieldname),
+				fieldtype: 'Attach Image',
+				label,
+				change() {
+					if (typeof onChange === 'function') {
+						onChange(control.get_value() || '');
+					}
+				},
+			},
+			parent: controlHost,
+			render_input: true,
+		});
+		control.refresh();
+		control.set_value(value || '');
+
+		return {
+			wrapper,
+			control,
+			onChange(handler) {
+				onChange = handler;
+			},
+			getValue() {
+				return control.get_value() || '';
+			},
+			setValue(nextValue) {
+				control.set_value(nextValue || '');
+			},
+		};
+	}
+
+	function createOrganizationMediaInput({ label, value, required, fieldname, school }) {
+		const wrapper = document.createElement('div');
+		wrapper.className = 'form-group iw-attach-field';
+
+		const labelEl = document.createElement('label');
+		labelEl.className = 'control-label';
+		labelEl.textContent = label + (required ? ' *' : '');
+		wrapper.appendChild(labelEl);
+
+		const controlHost = document.createElement('div');
+		controlHost.className = 'iw-media-input';
+		wrapper.appendChild(controlHost);
+
+		const preview = document.createElement('div');
+		preview.className = 'iw-media-preview';
+		const previewImage = document.createElement('img');
+		preview.appendChild(previewImage);
+		controlHost.appendChild(preview);
+
+		const valueInput = document.createElement('input');
+		valueInput.type = 'text';
+		valueInput.className = 'form-control';
+		valueInput.readOnly = true;
+		controlHost.appendChild(valueInput);
+
+		const actions = document.createElement('div');
+		actions.className = 'iw-media-actions';
+		controlHost.appendChild(actions);
+
+		const chooseButton = document.createElement('button');
+		chooseButton.type = 'button';
+		chooseButton.className = 'btn btn-default';
+		chooseButton.textContent = __('Choose from Organization Media');
+		actions.appendChild(chooseButton);
+
+		const clearButton = document.createElement('button');
+		clearButton.type = 'button';
+		clearButton.className = 'btn btn-default';
+		clearButton.textContent = __('Clear');
+		actions.appendChild(clearButton);
+
+		const help = document.createElement('div');
+		help.className = 'iw-field-help';
+		help.textContent = __(
+			'Choose or upload a governed organization media image. The stored value is the canonical file URL.'
+		);
+		wrapper.appendChild(help);
+
+		let currentValue = value || '';
+		let onChange = null;
+
+		const refresh = () => {
+			valueInput.value = currentValue;
+			clearButton.disabled = !currentValue;
+			if (currentValue) {
+				previewImage.src = currentValue;
+				previewImage.alt = label;
+				preview.classList.add('is-visible');
+				return;
+			}
+			previewImage.removeAttribute('src');
+			preview.classList.remove('is-visible');
+		};
+
+		chooseButton.addEventListener('click', async () => {
+			const mediaApi = await getOrganizationMediaApi();
+			if (!mediaApi || typeof mediaApi.openPicker !== 'function') {
+				frappe.msgprint(__('Organization Media is not available. Please refresh the page.'));
+				return;
+			}
+
+			mediaApi.openPicker({
+				school,
+				currentValue,
+				title: __('Choose {0}', [label]),
+				onSelect(item) {
+					currentValue = item.file_url || '';
+					refresh();
+					if (typeof onChange === 'function') {
+						onChange(currentValue);
+					}
+				},
+			});
+		});
+
+		clearButton.addEventListener('click', () => {
+			currentValue = '';
+			refresh();
+			if (typeof onChange === 'function') {
+				onChange(currentValue);
+			}
+		});
+
+		refresh();
+		return {
+			wrapper,
+			onChange(handler) {
+				onChange = handler;
+			},
+			getValue() {
+				return currentValue;
+			},
+			setValue(nextValue) {
+				currentValue = nextValue || '';
+				refresh();
+			},
+		};
 	}
 
 	const BLOCK_REGISTRY_METHOD_GET_ONE =
@@ -333,7 +679,10 @@
 				);
 				if (extraKeys.length && schema.additionalProperties === false) {
 					frappe.msgprint(
-						__('Some props are not supported and will be ignored: {0}', [extraKeys.join(', ')])
+						__(
+							'Some props are not part of the current block contract and will be removed if you save through the builder: {0}',
+							[extraKeys.join(', ')]
+						)
 					);
 				}
 				const initial = applyDefaults(schema, parsedProps.value || {}, blockType);
@@ -343,14 +692,32 @@
 					schema,
 					initial,
 					rawText: row.props || '',
+					frm,
 				});
 
 				if (parsedProps.error) {
 					dialog.set_value('use_raw', 1);
 					dialog.get_field('raw_json').set_value(row.props || '');
+					dialog.get_field('raw_json').$wrapper.show();
+					dialog.__builder.setDisabled(true);
 					frappe.msgprint(
 						__('Existing props are invalid JSON. Fix them in the JSON editor, then save.')
 					);
+				} else {
+					const existingErrors = validateAgainstSchema(schema, parsedProps.value || {});
+					if (existingErrors.length) {
+						dialog.set_value('use_raw', 1);
+						dialog.get_field('raw_json').set_value(row.props || '');
+						dialog.get_field('raw_json').$wrapper.show();
+						dialog.__builder.setDisabled(true);
+						frappe.msgprint({
+							message: __(
+								'Existing props do not match the current block contract. Fix them in the JSON editor before saving.<br>{0}',
+								[existingErrors.join('<br>')]
+							),
+							indicator: 'orange',
+						});
+					}
 				}
 
 				dialog.set_primary_action(__('Save Props'), () => {
@@ -548,6 +915,7 @@
 						container: builderWrapper.get(0),
 						schema: currentSchema,
 						initial,
+						frm,
 					});
 					currentBuilder.onChange(value => {
 						if (!dialog.get_value('use_raw')) {
@@ -574,6 +942,15 @@
 					const parsed = parseJson(rawField.get_value());
 					if (parsed.error) {
 						frappe.msgprint(__('Invalid JSON. Please fix it before switching back.'));
+						dialog.set_value('use_raw', 1);
+						return;
+					}
+					const errors = validateAgainstSchema(currentSchema, parsed.value || {});
+					if (errors.length) {
+						frappe.msgprint({
+							message: __('Props validation failed:<br>{0}', [errors.join('<br>')]),
+							indicator: 'red',
+						});
 						dialog.set_value('use_raw', 1);
 						return;
 					}
@@ -640,7 +1017,7 @@
 			});
 	}
 
-	function buildDialog({ blockType, blockLabel, schema, initial, rawText }) {
+	function buildDialog({ blockType, blockLabel, schema, initial, rawText, frm }) {
 		const dialog = new frappe.ui.Dialog({
 			title: __('Props Builder: {0}', [blockLabel || blockType]),
 			fields: [
@@ -668,6 +1045,7 @@
 			container: dialog.get_field('builder').$wrapper.get(0),
 			schema,
 			initial,
+			frm,
 		});
 		dialog.__builder = builder;
 
@@ -681,6 +1059,15 @@
 				const parsed = parseJson(rawField.get_value());
 				if (parsed.error) {
 					frappe.msgprint(__('Invalid JSON. Please fix it before switching back.'));
+					dialog.set_value('use_raw', 1);
+					return;
+				}
+				const errors = validateAgainstSchema(schema, parsed.value || {});
+				if (errors.length) {
+					frappe.msgprint({
+						message: __('Props validation failed:<br>{0}', [errors.join('<br>')]),
+						indicator: 'red',
+					});
 					dialog.set_value('use_raw', 1);
 					return;
 				}
@@ -700,7 +1087,8 @@
 		return dialog;
 	}
 
-	function createBuilder({ container, schema, initial }) {
+	function createBuilder({ container, schema, initial, frm }) {
+		ensureBuilderStyles();
 		const wrapper = document.createElement('div');
 		wrapper.className = 'iw-props-builder';
 		container.innerHTML = '';
@@ -711,6 +1099,7 @@
 		const required = new Set(schema.required || []);
 		const changeHandlers = [];
 		let isDisabled = false;
+		const schoolContext = resolveSchoolContext(frm);
 
 		const notify = () => {
 			changeHandlers.forEach(handler => handler(deepClone(state)));
@@ -736,6 +1125,7 @@
 			const label = toLabel(propName);
 			const isRequired = required.has(propName);
 			const value = state[propName];
+			const useImageControl = isImageField(propName, propSchema);
 			let fieldType = 'text';
 			let options = null;
 
@@ -748,6 +1138,30 @@
 				fieldType = 'checkbox';
 			} else if (primary === 'string' && isMultiline(propName)) {
 				fieldType = 'textarea';
+			}
+
+			if (useImageControl) {
+				const imageField = schoolContext
+					? createOrganizationMediaInput({
+							label,
+							value,
+							required: isRequired,
+							fieldname: propName,
+							school: schoolContext,
+						})
+					: createAttachImageInput({
+							label,
+							value,
+							required: isRequired,
+							fieldname: propName,
+						});
+				imageField.onChange(nextValue => {
+					if (isDisabled) return;
+					state[propName] = nextValue;
+					notify();
+				});
+				wrapper.appendChild(imageField.wrapper);
+				return;
 			}
 
 			const { wrapper: fieldWrap, input } = createInput({
@@ -842,6 +1256,7 @@
 							const fieldType = typeInfo.primary;
 							const fieldNullable = typeInfo.nullable;
 							const fieldEnum = Array.isArray(fieldSchema.enum) ? fieldSchema.enum : null;
+							const useImageControl = isImageField(itemKey, fieldSchema);
 							let inputType = 'text';
 							let options = null;
 							if (fieldEnum) {
@@ -853,6 +1268,31 @@
 								inputType = 'checkbox';
 							} else if (fieldType === 'string' && isMultiline(itemKey)) {
 								inputType = 'textarea';
+							}
+
+							if (useImageControl) {
+								const imageField = schoolContext
+									? createOrganizationMediaInput({
+											label: fieldLabel,
+											value: item[itemKey],
+											required: itemRequired.has(itemKey),
+											fieldname: `${propName}_${itemKey}`,
+											school: schoolContext,
+										})
+									: createAttachImageInput({
+											label: fieldLabel,
+											value: item[itemKey],
+											required: itemRequired.has(itemKey),
+											fieldname: `${propName}_${itemKey}`,
+										});
+								imageField.onChange(nextValue => {
+									if (isDisabled) return;
+									item[itemKey] = nextValue;
+									state[propName][index] = item;
+									notify();
+								});
+								itemBox.appendChild(imageField.wrapper);
+								return;
 							}
 
 							const { wrapper: fieldWrap, input } = createInput({

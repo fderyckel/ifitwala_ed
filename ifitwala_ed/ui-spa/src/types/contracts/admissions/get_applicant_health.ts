@@ -43,4 +43,5 @@ export type Response = {
   applicant_health_declared_by: string
   applicant_health_declared_on: string
   applicant_display_name: string
+  record_modified?: string
 }

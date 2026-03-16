@@ -3,8 +3,8 @@ title: "Applicant Document Type: Authoritative Admissions Evidence Catalog"
 slug: applicant-document-type
 category: Admission
 doc_order: 5
-version: "1.3.3"
-last_change_date: "2026-02-23"
+version: "1.3.4"
+last_change_date: "2026-03-09"
 summary: "Define canonical admissions document types and codes that drive portal options, readiness checks, and deterministic file-classification slots."
 seo_title: "Applicant Document Type: Authoritative Admissions Evidence Catalog"
 seo_description: "Define canonical admissions document types and codes that drive portal options, readiness checks, and deterministic file-classification slots."
@@ -75,7 +75,7 @@ Changing `code`, scope anchors, or classification fields is not cosmetic. It aff
     Portal document type listing returns only active and applicant-scoped types.
   </Step>
   <Step title="Drive Readiness">
-    Student Applicant readiness treats required types as satisfied only when a corresponding Applicant Document is approved.
+    Student Applicant readiness treats required types as satisfied only when a corresponding Applicant Document requirement is completed by approved submissions or an explicit admissions override.
   </Step>
   <Step title="Evolve Safely">
     Retire obsolete types with `is_active = 0` and introduce new codes instead of mutating historical contract semantics.
@@ -95,7 +95,7 @@ Changing `code`, scope anchors, or classification fields is not cosmetic. It aff
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-02-23)
+### Latest Technical Snapshot (2026-03-09)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_document_type/applicant_document_type.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/applicant_document_type/applicant_document_type.py`

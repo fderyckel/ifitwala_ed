@@ -20,6 +20,7 @@
   "parent_organization",
   "address__html",
   "organization_logo",
+  "organization_logo_file",
   "get_inquiry",
   "default_website_school",
   "archived",
@@ -80,6 +81,14 @@
    "fieldname": "organization_logo",
    "fieldtype": "Attach Image",
    "label": "Organization Logo"
+  },
+  {
+   "fieldname": "organization_logo_file",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Organization Logo File",
+   "options": "File",
+   "read_only": 1
   },
   {
    "fieldname": "organization_name",
@@ -152,7 +161,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-01-19 18:17:07.830673",
+ "modified": "2026-03-11 18:10:00.000000",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Organization",

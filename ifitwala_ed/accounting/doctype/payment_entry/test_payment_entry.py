@@ -65,6 +65,33 @@ class TestPaymentEntry(FrappeTestCase):
         settings.save()
         return settings
 
+    def make_fiscal_year(self, organization, year="2026"):
+        existing = frappe.get_all(
+            "Fiscal Year Organization",
+            filters={"organization": organization},
+            fields=["parent"],
+            limit_page_length=100,
+        )
+        for row in existing:
+            fiscal_year = frappe.get_doc("Fiscal Year", row.parent)
+            if (
+                str(fiscal_year.year_start_date) == f"{year}-01-01"
+                and str(fiscal_year.year_end_date) == f"{year}-12-31"
+            ):
+                return fiscal_year
+
+        fiscal_year = frappe.get_doc(
+            {
+                "doctype": "Fiscal Year",
+                "year": f"{organization}-{year}-{frappe.generate_hash(length=4)}",
+                "year_start_date": f"{year}-01-01",
+                "year_end_date": f"{year}-12-31",
+                "organizations": [{"organization": organization}],
+            }
+        )
+        fiscal_year.insert()
+        return fiscal_year
+
     def make_account_holder(self, organization, holder_type="Individual", prefix="Account Holder"):
         account_holder = frappe.get_doc(
             {
@@ -117,6 +144,7 @@ class TestPaymentEntry(FrappeTestCase):
 
     def _base_context(self):
         org = self.make_organization("PE")
+        self.make_fiscal_year(org.name)
         receivable = self.make_account(
             organization=org.name,
             root_type="Asset",
@@ -298,3 +326,65 @@ class TestPaymentEntry(FrappeTestCase):
                     ],
                 }
             ).insert()
+
+    def test_payment_entry_updates_invoice_status_and_payment_schedule(self):
+        ctx = self._base_context()
+        terms = frappe.get_doc(
+            {
+                "doctype": "Payment Terms Template",
+                "title": f"Terms {frappe.generate_hash(length=6)}",
+                "organization": ctx["org"].name,
+                "terms": [
+                    {"term_name": "Deposit", "invoice_portion": 50, "due_days": 0},
+                    {"term_name": "Final", "invoice_portion": 50, "due_days": 30},
+                ],
+            }
+        )
+        terms.insert()
+
+        invoice = self.make_sales_invoice(
+            organization=ctx["org"].name,
+            account_holder=ctx["account_holder"].name,
+            posting_date="2026-01-10",
+            items=[
+                {
+                    "billable_offering": ctx["invoice"].items[0].billable_offering,
+                    "charge_source": "Extra",
+                    "qty": 1,
+                    "rate": 100,
+                    "income_account": ctx["income"].name,
+                }
+            ],
+        )
+        invoice.payment_terms_template = terms.name
+        invoice.save()
+        invoice.submit()
+
+        pe = frappe.get_doc(
+            {
+                "doctype": "Payment Entry",
+                "payment_type": "Receive",
+                "party_type": "Account Holder",
+                "party": ctx["account_holder"].name,
+                "organization": ctx["org"].name,
+                "posting_date": nowdate(),
+                "paid_to": ctx["bank"].name,
+                "paid_amount": 50,
+                "references": [
+                    {
+                        "reference_doctype": "Sales Invoice",
+                        "reference_name": invoice.name,
+                        "allocated_amount": 50,
+                    }
+                ],
+            }
+        )
+        pe.insert()
+        pe.submit()
+
+        invoice.reload()
+        self.assertEqual(invoice.status, "Partly Paid")
+        self.assertEqual(flt(invoice.paid_amount), 50)
+        self.assertEqual(flt(invoice.outstanding_amount), 50)
+        self.assertEqual(invoice.payment_schedule[0].status, "Paid")
+        self.assertEqual(invoice.payment_schedule[1].status, "Pending")

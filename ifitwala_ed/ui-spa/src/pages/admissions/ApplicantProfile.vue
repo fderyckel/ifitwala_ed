@@ -72,12 +72,15 @@
 						<p class="mt-1 type-caption text-ink/60">
 							{{ __('Upload a clear photo of the student for identity and profile use.') }}
 						</p>
+						<p class="mt-2 type-caption text-ink/55">
+							{{ acceptedImageHelpText }}
+						</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
 						<input
 							ref="imageInput"
 							type="file"
-							accept="image/*"
+							:accept="acceptedImageInput"
 							class="hidden"
 							:disabled="isReadOnly || uploadingImage"
 							@change="onImageSelected"
@@ -562,11 +565,14 @@
 
 							<div class="block md:col-span-2">
 								<p class="type-caption text-ink/60">{{ __('Photo *') }}</p>
+								<p class="mt-1 type-caption text-ink/55">
+									{{ acceptedImageHelpText }}
+								</p>
 								<div class="mt-2 flex flex-wrap items-center gap-2">
 									<input
 										:ref="element => setGuardianImageInputRef(idx, element)"
 										type="file"
-										accept="image/*"
+										:accept="acceptedImageInput"
 										class="hidden"
 										:disabled="isReadOnly || saving || uploadingGuardianImageIndex === idx"
 										@change="event => onGuardianImageSelected(idx, event)"
@@ -647,7 +653,9 @@
 									class="h-4 w-4 rounded border-border/70"
 									:disabled="isReadOnly || saving"
 								/>
-								<span class="type-caption text-ink/70">{{ __('Can consent') }}</span>
+								<span class="type-caption text-ink/70">{{
+									__('Authorized signer for school documents and consents')
+								}}</span>
 							</label>
 
 							<label class="flex items-center gap-2">
@@ -699,7 +707,18 @@ import type {
 } from '@/types/contracts/admissions/types';
 
 const service = createAdmissionsService();
-const { session } = useAdmissionsSession();
+const { session, currentApplicantName } = useAdmissionsSession();
+const acceptedImageInput = '.jpg,.jpeg,.png,image/jpeg,image/png';
+const acceptedImageHelpText = __(
+	'Accepted formats: JPG or PNG, up to 10 MB. Convert iPhone HEIC or HEIF photos to JPG before uploading.'
+);
+const acceptedImageExtensions = new Set(['jpg', 'jpeg', 'png']);
+const acceptedImageMimeTypes = new Set(['image/jpeg', 'image/png']);
+const maxAcceptedImageBytes = 10 * 1024 * 1024;
+const invalidImageFormatMessage = __(
+	'Please choose a JPG or PNG image. Convert HEIC or HEIF photos to JPG before uploading.'
+);
+const imageTooLargeMessage = __('Image is too large. Max file size is 10 MB.');
 
 const loading = ref(false);
 const saving = ref(false);
@@ -707,6 +726,7 @@ const uploadingImage = ref(false);
 const error = ref<string | null>(null);
 const actionError = ref('');
 const applicantImage = ref('');
+const recordModified = ref('');
 const selectedImageFile = ref<File | null>(null);
 const imageInput = ref<HTMLInputElement | null>(null);
 const selectedGuardianImageFiles = ref<Record<number, File | null>>({});
@@ -812,6 +832,33 @@ function selectedGuardianImageFileName(index: number): string {
 	return selectedGuardianImageFiles.value[index]?.name || '';
 }
 
+function imageExtension(fileName: string): string {
+	const normalizedName = String(fileName || '')
+		.trim()
+		.toLowerCase();
+	const dotIndex = normalizedName.lastIndexOf('.');
+	return dotIndex >= 0 ? normalizedName.slice(dotIndex + 1) : '';
+}
+
+function validateSelectedImageFile(file: File): string | null {
+	if (!acceptedImageExtensions.has(imageExtension(file.name))) {
+		return invalidImageFormatMessage;
+	}
+
+	const mimeType = String(file.type || '')
+		.trim()
+		.toLowerCase();
+	if (mimeType && !acceptedImageMimeTypes.has(mimeType)) {
+		return invalidImageFormatMessage;
+	}
+
+	if (file.size > maxAcceptedImageBytes) {
+		return imageTooLargeMessage;
+	}
+
+	return null;
+}
+
 function openGuardianImagePicker(index: number) {
 	if (isReadOnly.value) {
 		actionError.value = __('This application is read-only.');
@@ -827,8 +874,9 @@ function onGuardianImageSelected(index: number, event: Event) {
 		delete selectedGuardianImageFiles.value[index];
 		return;
 	}
-	if (!file.type || !file.type.startsWith('image/')) {
-		actionError.value = __('Please choose a valid image file.');
+	const validationError = validateSelectedImageFile(file);
+	if (validationError) {
+		actionError.value = validationError;
 		delete selectedGuardianImageFiles.value[index];
 		if (target) target.value = '';
 		return;
@@ -840,6 +888,10 @@ function onGuardianImageSelected(index: number, event: Event) {
 async function uploadGuardianImage(index: number) {
 	if (isReadOnly.value) {
 		actionError.value = __('This application is read-only.');
+		return;
+	}
+	if (!currentApplicantName.value) {
+		actionError.value = __('Applicant context is unavailable.');
 		return;
 	}
 	if (error.value) {
@@ -861,6 +913,7 @@ async function uploadGuardianImage(index: number) {
 	try {
 		const content = await readAsBase64(file);
 		const payload = await service.uploadApplicantGuardianImage({
+			student_applicant: currentApplicantName.value,
 			file_name: file.name,
 			content,
 		});
@@ -895,6 +948,7 @@ function applyPayload(payload: ApplicantProfileResponse) {
 	guardians.value = ((payload.guardians || []) as ApplicantGuardianProfile[]).map(row =>
 		normalizeGuardianRow(row)
 	);
+	recordModified.value = String(payload.record_modified || '').trim();
 	savedGuardians.value = guardianRowsForSubmit(guardians.value);
 	clearGuardianImageUploadState();
 	applicantImage.value = (payload.applicant_image || '').trim();
@@ -903,11 +957,23 @@ function applyPayload(payload: ApplicantProfileResponse) {
 }
 
 async function loadProfile() {
+	if (!currentApplicantName.value) {
+		profile.value = createEmptyProfile();
+		guardians.value = [];
+		savedGuardians.value = [];
+		options.value = createEmptyOptions();
+		completeness.value = createEmptyCompleteness();
+		applicationContext.value = createEmptyApplicationContext();
+		applicantImage.value = '';
+		recordModified.value = '';
+		error.value = null;
+		return;
+	}
 	loading.value = true;
 	error.value = null;
 	actionError.value = '';
 	try {
-		const payload = await service.getProfile();
+		const payload = await service.getProfile({ student_applicant: currentApplicantName.value });
 		applyPayload(payload);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : __('Unable to load profile information.');
@@ -922,6 +988,10 @@ async function saveProfile() {
 		actionError.value = __('This application is read-only.');
 		return;
 	}
+	if (!currentApplicantName.value) {
+		actionError.value = __('Applicant context is unavailable.');
+		return;
+	}
 	if (error.value) {
 		actionError.value = __('Please reload profile information before saving.');
 		return;
@@ -931,6 +1001,8 @@ async function saveProfile() {
 	actionError.value = '';
 	try {
 		const updatePayload: UpdateApplicantProfileRequest = {
+			student_applicant: currentApplicantName.value,
+			expected_modified: recordModified.value,
 			student_preferred_name: profile.value.student_preferred_name || '',
 			student_date_of_birth: profile.value.student_date_of_birth || '',
 			student_gender: profile.value.student_gender || '',
@@ -973,8 +1045,9 @@ function onImageSelected(event: Event) {
 		selectedImageFile.value = null;
 		return;
 	}
-	if (!file.type || !file.type.startsWith('image/')) {
-		actionError.value = __('Please choose a valid image file.');
+	const validationError = validateSelectedImageFile(file);
+	if (validationError) {
+		actionError.value = validationError;
 		selectedImageFile.value = null;
 		if (target) target.value = '';
 		return;
@@ -1001,6 +1074,10 @@ async function uploadSelectedImage() {
 		actionError.value = __('This application is read-only.');
 		return;
 	}
+	if (!currentApplicantName.value) {
+		actionError.value = __('Applicant context is unavailable.');
+		return;
+	}
 	if (error.value) {
 		actionError.value = __('Please reload profile information before uploading.');
 		return;
@@ -1015,6 +1092,7 @@ async function uploadSelectedImage() {
 	try {
 		const content = await readAsBase64(selectedImageFile.value);
 		const payload = await service.uploadApplicantProfileImage({
+			student_applicant: currentApplicantName.value,
 			file_name: selectedImageFile.value.name,
 			content,
 		});

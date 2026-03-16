@@ -194,6 +194,7 @@
 						:code-colors="codeColors"
 						@change-code="onChangeCode"
 						@open-remark="openRemark"
+						@open-log="openStudentLog"
 					/>
 				</div>
 			</div>
@@ -245,6 +246,7 @@ const submitting = ref(false);
 const justSaved = ref(false);
 
 let saveTimer: number | null = null;
+let hydratingFilterContext = false;
 
 const filters = reactive({
 	school: null as string | null,
@@ -409,14 +411,6 @@ function resolveErrorMessage(error: unknown): string {
 	return __('Unexpected error');
 }
 
-function pickInitialStudentGroupFromRoute(groups: Array<{ value: string }>) {
-	const v = route.query.student_group;
-	const id = typeof v === 'string' && v ? v : null;
-	if (!id) return;
-	const exists = groups.some(g => g.value === id);
-	if (exists) filters.student_group = id;
-}
-
 function consumeStudentGroupQueryParam() {
 	if (!route.query.student_group) return;
 	const q = { ...route.query };
@@ -453,35 +447,43 @@ async function bootstrap() {
 	errorBanner.value = null;
 
 	try {
-		const [ctx, programs, codes] = await Promise.all([
-			service.fetchSchoolContext(),
-			service.fetchPrograms(),
-			service.listAttendanceCodes(),
-		]);
+		const requestedStudentGroup =
+			typeof route.query.student_group === 'string' && route.query.student_group
+				? route.query.student_group
+				: filters.student_group;
+		const context = await service.fetchAttendanceToolBootstrap({
+			school: filters.school,
+			program: filters.program,
+			student_group: requestedStudentGroup,
+		});
 
-		defaultSchool.value = ctx.default_school;
-		schoolOptions.value = ctx.schools.map(s => ({
+		defaultSchool.value = context.default_school;
+		schoolOptions.value = context.schools.map(s => ({
 			label: s.school_name || s.name,
 			value: s.name,
 		}));
-
-		// Default school selection
-		filters.school = ctx.default_school || ctx.schools[0]?.name || null;
-
-		programOptions.value = (programs || []).map(p => ({
+		programOptions.value = (context.programs || []).map(p => ({
 			label: p.program_name || p.name,
 			value: p.name,
 		}));
-
-		attendanceCodes.value = (codes || [])
+		groupOptions.value = (context.student_groups || []).map(g => ({
+			label: g.student_group_name || g.name,
+			value: g.name,
+		}));
+		attendanceCodes.value = (context.attendance_codes || [])
 			.slice()
 			.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-		filters.default_code = attendanceCodes.value[0]?.name || null;
-
-		await reloadGroups();
+		hydratingFilterContext = true;
+		filters.school = context.default_school || null;
+		filters.program = context.default_program || null;
+		filters.student_group = context.default_student_group || null;
+		filters.default_code = context.default_code || null;
+		await Promise.resolve();
+		hydratingFilterContext = false;
 	} catch (err: any) {
 		console.error('Attendance tool bootstrap failed', err);
 		safeSetError(resolveErrorMessage(err));
+		hydratingFilterContext = false;
 	} finally {
 		bootLoading.value = false;
 	}
@@ -508,25 +510,25 @@ async function reloadGroups() {
 	groupInfo.value = {};
 
 	try {
-		const rows = await service.fetchStudentGroups({
+		const context = await service.fetchAttendanceToolBootstrap({
 			school: filters.school || defaultSchool.value,
 			program: filters.program,
+			student_group: null,
 		});
-
-		groupOptions.value = (rows || []).map(g => ({
+		groupOptions.value = (context.student_groups || []).map(g => ({
 			label: g.student_group_name || g.name,
 			value: g.name,
 		}));
-
-		pickInitialStudentGroupFromRoute(groupOptions.value);
-
-		// Auto-pick if only one
-		if (!filters.student_group && groupOptions.value.length === 1) {
-			filters.student_group = groupOptions.value[0].value;
-		}
+		hydratingFilterContext = true;
+		filters.school = context.default_school || filters.school || defaultSchool.value || null;
+		filters.program = context.default_program || null;
+		filters.student_group = context.default_student_group || null;
+		await Promise.resolve();
+		hydratingFilterContext = false;
 	} catch (err: any) {
 		console.error('Failed to load student groups', err);
 		safeSetError(resolveErrorMessage(err));
+		hydratingFilterContext = false;
 	} finally {
 		groupsLoading.value = false;
 	}
@@ -553,18 +555,18 @@ async function loadCalendarContext() {
 	selectedDate.value = null;
 
 	try {
-		const group = filters.student_group;
-		const [weekend, meetings, recorded] = await Promise.all([
-			service.getWeekendDays({ student_group: group }),
-			service.getMeetingDates({ student_group: group }),
-			service.getRecordedDates({ student_group: group }),
-		]);
+		const context = await service.fetchAttendanceToolGroupContext({
+			student_group: filters.student_group,
+		});
 
-		weekendDays.value = Array.isArray(weekend) && weekend.length ? weekend : [6, 0];
-		meetingDates.value = Array.isArray(meetings) ? meetings : [];
-		recordedDates.value = Array.isArray(recorded) ? recorded : [];
+		weekendDays.value =
+			Array.isArray(context.weekend_days) && context.weekend_days.length
+				? context.weekend_days
+				: [6, 0];
+		meetingDates.value = Array.isArray(context.meeting_dates) ? context.meeting_dates : [];
+		recordedDates.value = Array.isArray(context.recorded_dates) ? context.recorded_dates : [];
 
-		selectedDate.value = pickDefaultDate(meetingDates.value);
+		selectedDate.value = context.default_selected_date || pickDefaultDate(meetingDates.value);
 		if (selectedDate.value) {
 			calendarMonth.value = new Date(`${selectedDate.value}T00:00:00`);
 		}
@@ -588,10 +590,10 @@ async function loadRoster() {
 	try {
 		const {
 			roster,
-			prevMap,
-			existingMap,
+			prev_map: prevMap,
+			existing_map: existingMap,
 			blocks: blockKeys,
-		} = await service.fetchRosterContext({
+		} = await service.fetchAttendanceToolRosterContext({
 			student_group: filters.student_group,
 			attendance_date: selectedDate.value,
 		});
@@ -694,6 +696,39 @@ function openRemark(payload: { student: StudentRosterEntry; block: BlockKey }) {
 	});
 }
 
+function openStudentLog(payload: { student: StudentRosterEntry }) {
+	const student = payload?.student;
+	if (!student?.student) {
+		safeSetError(__('Select a student before creating a log.'));
+		return;
+	}
+	if (!filters.student_group) {
+		safeSetError(__('Select a student group before creating a log.'));
+		return;
+	}
+
+	const studentLabel = student.preferred_name || student.student_name || student.student;
+	const studentMeta = student.preferred_name ? student.student_name : null;
+	const groupId = filters.student_group;
+	const groupLabelValue = groupLabel.value || groupId;
+
+	overlay.open('student-log-create', {
+		mode: 'attendance',
+		sourceLabel: 'Attendance',
+		context_school: filters.school || defaultSchool.value || null,
+		student: {
+			id: student.student,
+			label: studentLabel,
+			image: student.student_image || null,
+			meta: studentMeta,
+		},
+		student_group: {
+			id: groupId,
+			label: groupLabelValue,
+		},
+	});
+}
+
 function applyRemarkValue(studentId: string, block: BlockKey, value: string) {
 	const s = students.value.find(x => x.student === studentId);
 	if (!s) return;
@@ -788,7 +823,7 @@ let groupReloadTimer: number | null = null;
 watch(
 	() => ({ school: filters.school, program: filters.program }),
 	() => {
-		if (bootLoading.value) return;
+		if (bootLoading.value || hydratingFilterContext) return;
 		if (groupReloadTimer) window.clearTimeout(groupReloadTimer);
 		groupReloadTimer = window.setTimeout(() => {
 			void reloadGroups();
@@ -800,7 +835,7 @@ watch(
 watch(
 	() => filters.student_group,
 	async () => {
-		if (bootLoading.value) return;
+		if (bootLoading.value || hydratingFilterContext) return;
 
 		await syncSelectedGroupContext();
 	}

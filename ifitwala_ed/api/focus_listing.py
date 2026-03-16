@@ -6,6 +6,8 @@
 import frappe
 from frappe import _
 
+from ifitwala_ed.admission.admission_utils import is_admissions_workspace_user
+from ifitwala_ed.admission.applicant_review_workflow import TARGET_DOCUMENT_ITEM
 from ifitwala_ed.api.focus_shared import (
     ACTION_APPLICANT_REVIEW_SUBMIT,
     ACTION_INQUIRY_FIRST_CONTACT,
@@ -360,6 +362,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
     # D) Admissions applicant review assignments
     # ------------------------------------------------------------
     user_roles = _normalize_roles(frappe.get_roles(user))
+    admissions_workspace_user = is_admissions_workspace_user(user)
     assignment_rows = frappe.db.sql(
         """
         select
@@ -375,8 +378,8 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
             sa.last_name,
             sa.school,
             sa.program_offering,
-            ifnull(ad_item.document_type, ad.document_type) as document_type,
-            ifnull(ad_item.document_label, ad.document_label) as document_label,
+            ad_item.document_type,
+            ad_item.document_label,
             adt.document_type_name,
             adt.code as document_type_code,
             adi.item_key,
@@ -384,16 +387,13 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
         from `tabApplicant Review Assignment` a
         join `tabStudent Applicant` sa
           on sa.name = a.student_applicant
-        left join `tabApplicant Document` ad
-          on a.target_type = 'Applicant Document'
-         and ad.name = a.target_name
         left join `tabApplicant Document Item` adi
           on a.target_type = 'Applicant Document Item'
          and adi.name = a.target_name
         left join `tabApplicant Document` ad_item
           on ad_item.name = adi.applicant_document
         left join `tabApplicant Document Type` adt
-          on adt.name = ifnull(ad_item.document_type, ad.document_type)
+          on adt.name = ad_item.document_type
         where (%(open_only)s = 0 or a.status = 'Open')
           and (
                 a.assigned_to_user = %(user)s
@@ -416,6 +416,8 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
     )
 
     for row in assignment_rows:
+        if admissions_workspace_user and (row.get("target_type") or "").strip() == TARGET_DOCUMENT_ITEM:
+            continue
         items.append(
             {
                 "id": build_focus_item_id(

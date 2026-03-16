@@ -2,6 +2,7 @@
 
 export type Request = {
   student_applicant?: string
+  expected_modified?: string | null
   blood_group: string
   allergies: boolean
   food_allergies: string
@@ -43,4 +44,5 @@ export type Request = {
 export type Response = {
   ok: boolean
   applicant_health_declared_complete?: boolean
+  record_modified?: string
 }

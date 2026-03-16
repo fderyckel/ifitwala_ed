@@ -11,6 +11,7 @@ from frappe.model.document import Document
 from frappe.utils import cint, flt, get_datetime, get_link_to_form, getdate, now_datetime
 
 from ifitwala_ed.accounting.account_holder_utils import get_school_organization
+from ifitwala_ed.schedule.basket_group_utils import get_program_course_basket_group_map
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
 from ifitwala_ed.schedule.student_group_employee_booking import rebuild_employee_bookings_for_student_group
 from ifitwala_ed.utilities.employee_booking import find_employee_conflicts
@@ -69,6 +70,8 @@ class ProgramOffering(Document):
 
         # 3) Validate course rows
         self._validate_offering_courses(ay_rows, allowed)
+        self._validate_offering_course_basket_groups()
+        self._validate_enrollment_rules()
 
         # 4) Status sanity
         if self.status not in ("Planned", "Active", "Archived"):
@@ -362,6 +365,52 @@ class ProgramOffering(Document):
                             idx, frappe.utils.get_link_to_form("Course", course)
                         )
                     )
+
+    def _validate_offering_course_basket_groups(self):
+        if not getattr(self, "offering_course_basket_groups", None):
+            return
+
+        valid_courses = {
+            (row.course or "").strip() for row in (self.offering_courses or []) if (row.course or "").strip()
+        }
+        seen = set()
+
+        for idx, row in enumerate(self.offering_course_basket_groups or [], start=1):
+            course = (row.course or "").strip()
+            basket_group = (row.basket_group or "").strip()
+            _assert(course, _("Enrollment basket membership row {0}: Course is required.").format(idx))
+            _assert(
+                course in valid_courses,
+                _("Enrollment basket membership row {0}: Course {1} is not present in Offering Courses.").format(
+                    idx, course
+                ),
+            )
+            _assert(
+                basket_group,
+                _("Enrollment basket membership row {0}: Basket Group (Enrollment) is required.").format(idx),
+            )
+
+            key = (course, basket_group)
+            _assert(
+                key not in seen,
+                _("Enrollment basket membership row {0}: duplicate mapping for {1} -> {2}.").format(
+                    idx, course, basket_group
+                ),
+            )
+            seen.add(key)
+
+    def _validate_enrollment_rules(self):
+        if not getattr(self, "enrollment_rules", None):
+            return
+
+        for idx, row in enumerate(self.enrollment_rules or [], start=1):
+            rule_type = (row.rule_type or "").strip()
+            if rule_type == "REQUIRE_GROUP_COVERAGE" and not (row.basket_group or "").strip():
+                frappe.throw(
+                    _(
+                        "Enrollment Rule row {0}: Basket Group (Enrollment) is required for REQUIRE_GROUP_COVERAGE."
+                    ).format(idx)
+                )
 
     def _get_ay_envelope(self) -> tuple[str | None, str | None]:
         """Return (start_ay, end_ay) from the ordered Table MultiSelect rows."""
@@ -872,7 +921,7 @@ def program_course_options(
     """
     Return catalog rows for a Program (Program Course child table),
     excluding any already-present course names and matching an optional search term.
-    Each row -> { "course", "course_name", "required" }
+    Each row -> { "course", "course_name", "required", "basket_groups" }
     """
 
     # Coerce exclude_courses to a python list[str]
@@ -903,8 +952,8 @@ def program_course_options(
         order_by="idx asc",
         limit=2000,
     )
+    basket_group_map = get_program_course_basket_group_map(program)
 
-    # normalize booleans/ints to 0/1 for the client
     out = []
     for r in pc_rows:
         out.append(
@@ -912,17 +961,61 @@ def program_course_options(
                 "course": r.get("course"),
                 "course_name": r.get("course_name") or r.get("course"),
                 "required": 1 if r.get("required") else 0,
+                "basket_groups": list(basket_group_map.get(r.get("course")) or []),
             }
         )
 
     return out
 
 
+@frappe.validate_and_sanitize_search_inputs
+def program_course_link_query(doctype, txt, searchfield, start, page_len, filters):
+    filters = filters or {}
+    program = filters.get("program")
+    if not program:
+        return []
+
+    exclude_courses = filters.get("exclude_courses") or []
+    if isinstance(exclude_courses, str):
+        try:
+            exclude_courses = frappe.parse_json(exclude_courses) or []
+        except Exception:
+            exclude_courses = []
+    elif exclude_courses:
+        exclude_courses = list(exclude_courses)
+    else:
+        exclude_courses = []
+
+    db_filters = {"parent": program}
+    if exclude_courses:
+        db_filters["course"] = ["not in", exclude_courses]
+
+    search_txt = (txt or "").strip()
+    or_filters = None
+    if search_txt:
+        like_txt = f"%{search_txt}%"
+        or_filters = [
+            ["Program Course", "course", "like", like_txt],
+            ["Program Course", "course_name", "like", like_txt],
+        ]
+
+    rows = frappe.get_list(
+        "Program Course",
+        fields=["course", "course_name"],
+        filters=db_filters,
+        or_filters=or_filters,
+        order_by="idx asc",
+        start=int(start or 0),
+        page_length=int(page_len or 20),
+    )
+    return [[row.get("course"), (row.get("course_name") or row.get("course"))] for row in rows if row.get("course")]
+
+
 @frappe.whitelist()
 def hydrate_catalog_rows(program: str, course_names: str) -> list:
     """
     Given a JSON list of Course names, return ready Program Offering Course rows,
-    mapping Program Course defaults (supports 'required' or 'is_required').
+    mapping Program Course defaults + basket-group memberships.
     """
     try:
         names = frappe.parse_json(course_names) or []
@@ -940,38 +1033,28 @@ def hydrate_catalog_rows(program: str, course_names: str) -> list:
     }
 
     pc_map = {}
+    basket_group_map = get_program_course_basket_group_map(program)
     if frappe.db.table_exists("Program Course"):
-        meta = frappe.get_meta("Program Course")
-        fields = ["course"]
-        req_field = (
-            "required" if meta.has_field("required") else ("is_required" if meta.has_field("is_required") else None)
-        )
-        if req_field:
-            fields.append(req_field)
-        has_group = meta.has_field("subject_group")
-        if has_group:
-            fields.append("subject_group")
-
         for r in frappe.get_all(
             "Program Course",
             filters={"parent": program, "course": ["in", names]},
-            fields=fields,
+            fields=["course", "required"],
             limit=len(names),
         ):
             pc_map[r["course"]] = {
-                "required": 1 if (r.get(req_field) or 0) else 0 if req_field else 0,
-                "elective_group": (r.get("subject_group") or "") if has_group else "",
+                "required": 1 if (r.get("required") or 0) else 0,
+                "basket_groups": list(basket_group_map.get(r.get("course")) or []),
             }
 
     rows = []
     for nm in names:
-        base = pc_map.get(nm, {"required": 0, "elective_group": ""})
+        base = pc_map.get(nm, {"required": 0, "basket_groups": []})
         rows.append(
             {
                 "course": nm,
                 "course_name": course_info.get(nm) or nm,
                 "required": base["required"],
-                "elective_group": base["elective_group"],
+                "basket_groups": list(base["basket_groups"]),
                 "non_catalog": 0,
                 "catalog_ref": f"{program}::{nm}",
             }
@@ -1003,7 +1086,7 @@ def hydrate_non_catalog_rows(course_names: str, exception_reason: str = "") -> l
             "course": nm,
             "course_name": course_info.get(nm) or nm,
             "required": 0,
-            "elective_group": "",
+            "basket_groups": [],
             "non_catalog": 1,
             "exception_reason": exception_reason or "",
             "catalog_ref": "",

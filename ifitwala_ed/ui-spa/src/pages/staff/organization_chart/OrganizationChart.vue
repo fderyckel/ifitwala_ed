@@ -8,18 +8,6 @@
 					Explore reporting lines across your organization in a focused, calm view.
 				</p>
 			</div>
-
-			<div class="flex flex-wrap items-center gap-2">
-				<Button
-					appearance="secondary"
-					class="org-chart-action type-button-label"
-					:disabled="!canExport"
-					@click="exportChart"
-				>
-					<FeatherIcon name="download" class="h-4 w-4" />
-					<span>{{ exporting ? 'Exporting...' : 'Export PNG' }}</span>
-				</Button>
-			</div>
 		</header>
 
 		<section class="org-chart-panel card-surface">
@@ -193,7 +181,6 @@ const loadingRoots = ref(false);
 const loadingChildrenId = ref<string | null>(null);
 const actionMessage = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
-const exporting = ref(false);
 
 const levels = ref<OrgChartNode[][]>([]);
 const selectedNodeId = ref<string | null>(null);
@@ -303,11 +290,7 @@ const edges = computed<Edge[]>(() => {
 });
 
 const canExpandAll = computed(() => {
-	return !expandedView.value && !loadingRoots.value && hasNodes.value && !exporting.value;
-});
-
-const canExport = computed(() => {
-	return hasNodes.value && !loadingRoots.value && !exporting.value;
+	return !expandedView.value && !loadingRoots.value && hasNodes.value;
 });
 
 let connectorFrame: number | null = null;
@@ -586,38 +569,6 @@ function collapseAll() {
 	}
 
 	scheduleConnectors();
-}
-
-async function exportChart() {
-	if (!chartSurfaceRef.value) {
-		actionMessage.value = 'Nothing to export yet.';
-		return;
-	}
-
-	exporting.value = true;
-	actionMessage.value = null;
-
-	try {
-		const html2canvas = (await import('html2canvas')).default;
-		const surface = chartSurfaceRef.value;
-
-		const canvas = await html2canvas(surface, {
-			backgroundColor: '#f9f8f4',
-			scale: 2,
-			width: surface.scrollWidth,
-			height: surface.scrollHeight,
-		});
-
-		const dataUrl = canvas.toDataURL('image/png');
-		const link = document.createElement('a');
-		link.href = dataUrl;
-		link.download = 'organization_chart.png';
-		link.click();
-	} catch (error) {
-		actionMessage.value = 'Export failed. Please try again.';
-	} finally {
-		exporting.value = false;
-	}
 }
 
 function updateLayout() {

@@ -95,8 +95,41 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         self.assertFalse(bool((payload.get("summary") or {}).get("valid")))
         self.assertTrue(_has_rule_result(payload, "BASKET", "basket_valid", "fail"))
 
+    def test_submitted_request_requires_explicit_basket_group_for_multi_group_course(self):
+        humanities_group = _make_basket_group("Group 3 Humanities")
+        sciences_group = _make_basket_group("Group 4 Sciences")
+        context = _setup_enrollment_context(
+            score=95,
+            target_basket_groups=[humanities_group.name, sciences_group.name],
+            offering_basket_groups=[humanities_group.name, sciences_group.name],
+        )
+        request = _make_enrollment_request(
+            context,
+            student=context["student"],
+            course=context["target_course"],
+        )
+
+        request.status = "Submitted"
+        with self.assertRaises(frappe.ValidationError):
+            request.save()
+
+        request.reload()
+        request.status = "Submitted"
+        request.courses[0].applied_basket_group = humanities_group.name
+        request.save()
+        request.reload()
+
+        self.assertEqual(request.validation_status, "Valid")
+        self.assertEqual(request.courses[0].applied_basket_group, humanities_group.name)
+
     def test_materialize_request_updates_enrollment(self):
-        context = _setup_enrollment_context(score=95, create_existing_enrollment=False)
+        basket_group = _make_basket_group("Sciences")
+        context = _setup_enrollment_context(
+            score=95,
+            create_existing_enrollment=False,
+            target_basket_groups=[basket_group.name],
+            offering_basket_groups=[basket_group.name],
+        )
         request = _make_enrollment_request(
             context,
             student=context["student"],
@@ -118,9 +151,11 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         self.assertEqual(count, 1)
 
         enrollment = frappe.get_doc("Program Enrollment", enrollment_name)
-        courses = {row.course: row.status for row in enrollment.courses}
+        courses = {row.course: row for row in enrollment.courses}
         self.assertIn(context["target_course"].name, courses)
-        self.assertEqual(courses[context["target_course"].name], "Enrolled")
+        self.assertEqual(courses[context["target_course"].name].status, "Enrolled")
+        self.assertEqual(courses[context["target_course"].name].credited_basket_group, basket_group.name)
+        self.assertEqual(int(courses[context["target_course"].name].required or 0), 0)
 
 
 def _has_prereq_result(payload, required_course, result):
@@ -165,7 +200,8 @@ def _setup_enrollment_context(
     seat_policy=None,
     enrollment_rules=None,
     program_course_level=None,
-    program_course_category=None,
+    target_basket_groups=None,
+    offering_basket_groups=None,
     create_existing_enrollment=True,
 ):
     grade_scale = _make_grade_scale()
@@ -181,17 +217,21 @@ def _setup_enrollment_context(
         {
             "doctype": "Program",
             "program_name": f"Program {frappe.generate_hash(length=6)}",
+            "program_slug": f"program-{frappe.generate_hash(length=8)}",
             "grade_scale": grade_scale.name,
             "courses": [
                 {
                     "course": target_course.name,
                     "level": program_course_level or "None",
-                    "category": program_course_category,
                 },
                 {
                     "course": required_course.name,
                     "level": "None",
                 },
+            ],
+            "course_basket_groups": [
+                {"course": target_course.name, "basket_group": basket_group}
+                for basket_group in (target_basket_groups or [])
             ],
             "prerequisites": [
                 {
@@ -228,6 +268,10 @@ def _setup_enrollment_context(
                 "start_academic_year": academic_year.name,
                 "end_academic_year": academic_year.name,
             },
+        ],
+        "offering_course_basket_groups": [
+            {"course": target_course.name, "basket_group": basket_group}
+            for basket_group in (offering_basket_groups or target_basket_groups or [])
         ],
     }
     if seat_policy:
@@ -278,7 +322,7 @@ def _setup_enrollment_context(
     }
 
 
-def _make_enrollment_request(context, student, course, status="Draft"):
+def _make_enrollment_request(context, student, course, status="Draft", applied_basket_group=None):
     request = frappe.get_doc(
         {
             "doctype": "Program Enrollment Request",
@@ -289,6 +333,7 @@ def _make_enrollment_request(context, student, course, status="Draft"):
             "courses": [
                 {
                     "course": course.name,
+                    "applied_basket_group": applied_basket_group,
                     "apply_to_level": "None",
                 }
             ],
@@ -401,6 +446,17 @@ def _make_course(label):
     )
     course.insert()
     return course
+
+
+def _make_basket_group(label):
+    basket_group = frappe.get_doc(
+        {
+            "doctype": "Basket Group",
+            "basket_group_name": f"{label} {frappe.generate_hash(length=6)}",
+        }
+    )
+    basket_group.insert()
+    return basket_group
 
 
 def _make_course_term_result(student, course, program, academic_year, term, grade_scale, score):

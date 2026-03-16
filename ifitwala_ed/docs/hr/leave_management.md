@@ -135,15 +135,15 @@ Attendance updates are keyed by employee/date and linked back to the leave appli
 - Leave allocations create positive entries
 - Leave applications and encashment create consumption entries
 - Cancellation removes/reverses ledger impact through controller routines
-- Expiry processing runs through scheduled `process_expired_allocation` and respects HR settings feature flags
+- Expiry processing keeps `process_expired_allocation` for direct/manual execution, while the scheduler now dispatches chunked background work and respects HR settings feature flags
 
 ## Scheduler Contract
 
 Configured daily jobs:
 
-1. `ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry.process_expired_allocation`
-2. `ifitwala_ed.hr.utils.allocate_earned_leaves`
-3. `ifitwala_ed.hr.utils.generate_leave_encashment`
+1. `ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry.dispatch_process_expired_allocation`
+2. `ifitwala_ed.hr.utils.dispatch_allocate_earned_leaves`
+3. `ifitwala_ed.hr.utils.dispatch_generate_leave_encashment`
 
 Runtime gating:
 
@@ -152,6 +152,13 @@ Runtime gating:
 - Encashment generation requires both:
   - `HR Settings.enable_leave_encashment = 1`
   - `HR Settings.auto_leave_encashment = 1`
+
+Execution model:
+
+- Daily hooks are dispatcher-only and enqueue chunk workers onto the `long` queue
+- Chunk workers re-check live allocation state before mutating ledger data
+- Scheduler summaries are written to logs and cache keys for observability
+- Direct/manual execution paths remain available for controlled operator actions
 
 Current implementation policy keeps encashment disabled by default pending payroll/account mapping.
 

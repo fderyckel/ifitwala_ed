@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2026-01-01 00:00:00.000000",
+ "creation": "2026-01-01 00:00:00",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -9,12 +9,13 @@
   "rule_type",
   "int_value_1",
   "int_value_2",
-  "course_group",
+  "basket_group",
   "level",
   "notes"
  ],
  "fields": [
   {
+   "columns": 4,
    "fieldname": "rule_type",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -32,14 +33,19 @@
    "label": "Value 2"
   },
   {
-   "fieldname": "course_group",
+   "columns": 3,
+   "description": "Enrollment requirement/choice group targeted by this rule.",
+   "fieldname": "basket_group",
    "fieldtype": "Link",
-   "label": "Course Group",
-   "options": "Course Group"
+   "in_list_view": 1,
+   "label": "Basket Group (Enrollment)",
+   "options": "Basket Group"
   },
   {
+   "columns": 3,
    "fieldname": "level",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Level",
    "options": "Standard Level\nHigher Level\nExtended\nAdvanced\nStandard\nNone"
   },
@@ -53,7 +59,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-01-02 00:00:00.000000",
+ "modified": "2026-03-11 19:34:24.251852",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering Enrollment Rule",

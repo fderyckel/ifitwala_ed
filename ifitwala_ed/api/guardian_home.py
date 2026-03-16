@@ -11,6 +11,7 @@ from frappe import _
 from frappe.utils import add_days, get_datetime, getdate, now_datetime, strip_html
 from frappe.utils.caching import redis_cache
 
+from ifitwala_ed.api.org_communication_interactions import get_seen_org_communication_names
 from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -1060,12 +1061,7 @@ def _build_communication_bundle(
         return {"attention_items": [], "recent_activity_items": [], "unread_count": 0}
 
     visible_names = [row.get("name") for row in visible if row.get("name")]
-    seen_rows = frappe.get_all(
-        "Communication Interaction",
-        filters={"user": user, "org_communication": ["in", visible_names]},
-        fields=["org_communication"],
-    )
-    seen_names = {row.get("org_communication") for row in seen_rows if row.get("org_communication")}
+    seen_names = get_seen_org_communication_names(user=user, communication_names=visible_names)
     unread_names = [name for name in visible_names if name not in seen_names]
     unread_set = set(unread_names)
 

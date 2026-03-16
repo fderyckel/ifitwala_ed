@@ -180,6 +180,7 @@ type PolicyPayload = {
 	policy_version: string;
 	content_html: string;
 	expected_signer_name?: string;
+	student_applicant?: string | null;
 };
 
 const props = defineProps<{
@@ -315,6 +316,7 @@ async function submit() {
 	try {
 		await service.acknowledgePolicy({
 			policy_version: props.policy.policy_version,
+			student_applicant: props.policy.student_applicant || undefined,
 			typed_signature_name: typedSignatureName.value.trim(),
 			attestation_confirmed: attestationConfirmed.value ? 1 : 0,
 		});

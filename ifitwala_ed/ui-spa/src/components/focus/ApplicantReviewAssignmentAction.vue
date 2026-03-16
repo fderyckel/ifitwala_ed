@@ -22,7 +22,15 @@
 				</div>
 
 				<div class="shrink-0 flex items-center gap-2">
-					<button v-if="deskUrl" type="button" class="btn btn-quiet" @click="openInDesk">
+					<button
+						v-if="canOpenApplicantWorkspace"
+						type="button"
+						class="btn btn-quiet"
+						@click="openApplicantWorkspace"
+					>
+						Admissions Workspace
+					</button>
+					<button v-if="canOpenDesk" type="button" class="btn btn-quiet" @click="openInDesk">
 						Open in Desk
 					</button>
 					<button type="button" class="btn btn-quiet" @click="requestRefresh">Refresh</button>
@@ -71,17 +79,13 @@
 		<div v-if="assignment?.preview" class="card-surface p-4">
 			<div class="type-body font-medium">Preview</div>
 			<div class="mt-2 space-y-2 type-meta text-muted">
-				<div
-					v-if="
-						assignment.target_type === 'Applicant Document' ||
-						assignment.target_type === 'Applicant Document Item'
-					"
-				>
+				<div v-if="assignment.target_type === 'Applicant Document Item'">
 					<div>
-						Document: {{ assignment.preview.document_label || assignment.preview.document_type }}
+						Requirement:
+						{{ assignment.preview.document_label || assignment.preview.document_type }}
 					</div>
 					<div v-if="assignment.preview.item_label">
-						Item: {{ assignment.preview.item_label || assignment.preview.item_key }}
+						Submission: {{ assignment.preview.item_label || assignment.preview.item_key }}
 					</div>
 					<div>Current status: {{ assignment.preview.review_status || 'Pending' }}</div>
 					<div v-if="assignment.preview.file_url">
@@ -188,6 +192,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import { __ } from '@/lib/i18n';
 import { createFocusService } from '@/lib/services/focus/focusService';
 
@@ -208,6 +213,7 @@ const emit = defineEmits<{
 }>();
 
 const focusService = createFocusService();
+const overlay = useOverlayStack();
 
 const assignment = ref<GetFocusContextResponse['review_assignment'] | null>(null);
 const decision = ref('');
@@ -219,10 +225,7 @@ const reassignToUser = ref('');
 
 const targetLabel = computed(() => {
 	if (!assignment.value) return __('Applicant review');
-	if (assignment.value.target_type === 'Applicant Document')
-		return __('Applicant document review');
-	if (assignment.value.target_type === 'Applicant Document Item')
-		return __('Applicant document item review');
+	if (assignment.value.target_type === 'Applicant Document Item') return __('Evidence review');
 	if (assignment.value.target_type === 'Applicant Health Profile')
 		return __('Applicant health review');
 	return __('Overall application review');
@@ -237,12 +240,16 @@ const canReassign = computed(() =>
 	Boolean(assignment.value?.can_reassign && assignment.value?.assigned_to_role)
 );
 const roleCandidates = computed(() => assignment.value?.role_candidates || []);
+const canOpenApplicantWorkspace = computed(() => {
+	if (!assignment.value) return false;
+	return (
+		assignment.value.target_type === 'Student Applicant' &&
+		Boolean(assignment.value.student_applicant)
+	);
+});
 
 const deskUrl = computed(() => {
 	if (!assignment.value) return null;
-	if (assignment.value.target_type === 'Applicant Document') {
-		return `/desk/applicant-document/${encodeURIComponent(assignment.value.target_name)}`;
-	}
 	if (assignment.value.target_type === 'Applicant Document Item') {
 		return `/desk/applicant-document-item/${encodeURIComponent(assignment.value.target_name)}`;
 	}
@@ -251,6 +258,7 @@ const deskUrl = computed(() => {
 	}
 	return `/desk/student-applicant/${encodeURIComponent(assignment.value.student_applicant)}`;
 });
+const canOpenDesk = computed(() => Boolean(deskUrl.value) && !canOpenApplicantWorkspace.value);
 
 watch(
 	() => props.context,
@@ -277,6 +285,15 @@ function requestRefresh() {
 function openInDesk() {
 	if (!deskUrl.value) return;
 	window.open(deskUrl.value, '_blank', 'noopener');
+}
+
+function openApplicantWorkspace() {
+	const studentApplicant = String(assignment.value?.student_applicant || '').trim();
+	if (!studentApplicant) return;
+	overlay.open('admissions-workspace', {
+		mode: 'applicant',
+		studentApplicant,
+	});
 }
 
 function openPreviewFile() {

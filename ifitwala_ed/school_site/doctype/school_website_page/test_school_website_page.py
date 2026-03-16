@@ -8,10 +8,14 @@ import json
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.patches.website.p15_normalize_website_block_props_to_current_contract import (
+    _normalize_row_props,
+)
 from ifitwala_ed.school_site.doctype.school_website_page.school_website_page import (
     compute_school_page_publication_flags,
     normalize_workflow_state,
 )
+from ifitwala_ed.website.block_registry import get_block_definition_map
 from ifitwala_ed.website.seo_checks import build_seo_assistant_report
 from ifitwala_ed.website.validators import validate_page_blocks
 
@@ -92,25 +96,104 @@ class TestSchoolWebsitePage(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             validate_page_blocks(page)
 
-    def test_validate_page_blocks_normalizes_legacy_cta_props(self):
-        legacy_cta = _row(
-            block_type="cta",
-            props={"cta_label": "Apply", "cta_link": "/admissions/apply"},
-            order=2,
-        )
+    def test_validate_page_blocks_rejects_legacy_cta_props(self):
         page = frappe._dict(
             {
                 "blocks": [
                     _row(block_type="hero", props={"title": "Home"}, order=1),
-                    legacy_cta,
+                    _row(
+                        block_type="cta",
+                        props={"cta_label": "Apply", "cta_link": "/admissions/apply"},
+                        order=2,
+                    ),
                 ]
             }
         )
 
-        validate_page_blocks(page)
-        parsed = json.loads(legacy_cta.props)
-        self.assertEqual(parsed.get("button_label"), "Apply")
-        self.assertEqual(parsed.get("button_link"), "/admissions/apply")
+        with self.assertRaises(frappe.ValidationError):
+            validate_page_blocks(page)
+
+    def test_validate_page_blocks_rejects_string_boolean_for_program_list(self):
+        page = frappe._dict(
+            {
+                "doctype": "School Website Page",
+                "page_type": "Standard",
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Home"}, order=1),
+                    _row(
+                        block_type="program_list",
+                        props={"school_scope": "current", "show_intro": "false"},
+                        order=2,
+                    ),
+                ],
+            }
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            validate_page_blocks(page)
+
+    def test_validate_page_blocks_rejects_invalid_cta_link(self):
+        page = frappe._dict(
+            {
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Home"}, order=1),
+                    _row(
+                        block_type="cta",
+                        props={
+                            "title": "Apply",
+                            "text": "Start here.",
+                            "button_label": "Inquire",
+                            "button_link": "inqiury",
+                        },
+                        order=2,
+                    ),
+                ]
+            }
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            validate_page_blocks(page)
+
+    def test_patch_normalizes_legacy_cta_props_to_current_contract(self):
+        normalized, error_code = _normalize_row_props(
+            block_type="cta",
+            raw_props=json.dumps({"cta_label": "Apply", "cta_link": "/admissions/apply"}),
+            definitions=get_block_definition_map(),
+        )
+
+        self.assertIsNone(error_code)
+        self.assertEqual(
+            json.loads(normalized),
+            {
+                "button_label": "Apply",
+                "button_link": "/admissions/apply",
+            },
+        )
+
+    def test_patch_coerces_program_list_scalars_to_current_contract(self):
+        normalized, error_code = _normalize_row_props(
+            block_type="program_list",
+            raw_props=json.dumps(
+                {
+                    "school_scope": "current",
+                    "show_intro": "false",
+                    "card_style": "standard",
+                    "limit": "6",
+                }
+            ),
+            definitions=get_block_definition_map(),
+        )
+
+        self.assertIsNone(error_code)
+        self.assertEqual(
+            json.loads(normalized),
+            {
+                "school_scope": "current",
+                "show_intro": False,
+                "card_style": "standard",
+                "limit": 6,
+            },
+        )
 
     def test_validate_page_blocks_rejects_admissions_block_for_standard_school_page(self):
         page = frappe._dict(

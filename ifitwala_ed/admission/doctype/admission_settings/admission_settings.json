@@ -15,7 +15,10 @@
   "sla_enabled",
   "sla_check_interval_hours",
   "portal_section",
-  "show_guardians_in_admissions_profile"
+  "admissions_access_mode",
+  "show_guardians_in_admissions_profile",
+  "enrollment_section",
+  "auto_hydrate_enrollment_request_after_promotion"
  ],
  "fields": [
   {
@@ -64,18 +67,38 @@
    "label": "Admissions Portal"
   },
   {
+   "default": "Single Applicant Workspace",
+   "description": "Choose whether /admissions resolves a single applicant login or a multi-child family workspace.",
+   "fieldname": "admissions_access_mode",
+   "fieldtype": "Select",
+   "label": "Admissions Access Mode",
+   "options": "Single Applicant Workspace\nFamily Workspace"
+  },
+  {
    "default": "0",
    "description": "If enabled, applicant-facing profile page shows guardian intake rows.",
    "fieldname": "show_guardians_in_admissions_profile",
    "fieldtype": "Check",
    "label": "Show Guardians In Admissions Profile"
+  },
+  {
+   "fieldname": "enrollment_section",
+   "fieldtype": "Section Break",
+   "label": "Admissions Enrollment Bridge"
+  },
+  {
+   "default": "1",
+   "description": "If enabled, promotion auto-hydrates a draft Program Enrollment Request from an accepted Applicant Enrollment Plan.",
+   "fieldname": "auto_hydrate_enrollment_request_after_promotion",
+   "fieldtype": "Check",
+   "label": "Auto Hydrate Enrollment Request After Promotion"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-04 09:05:06.330468",
+ "modified": "2026-03-12 11:43:41.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission Settings",

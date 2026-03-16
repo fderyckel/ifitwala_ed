@@ -6,6 +6,7 @@
 import frappe
 from frappe.utils import add_days, getdate, strip_html_tags
 
+from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 
@@ -106,6 +107,13 @@ def _get_data(f):
         "user": f["_user"],
     }
 
+    visibility_sql, visibility_params = get_student_log_visibility_predicate(
+        user=f["_user"],
+        table_alias="sl",
+        allow_aggregate_only=False,
+    )
+    params.update(visibility_params or {})
+
     school_name = params.get("school")
     if school_name:
         try:
@@ -158,32 +166,22 @@ def _get_data(f):
 		from `tabStudent Log` sl
 		left join ({agg_sql}) agg on agg.student_log = sl.name
 		left join `tabStudent Log Follow Up` slfu on slfu.student_log = sl.name
-		where
-			sl.docstatus = 1
-			and sl.date between %(from_date)s and %(to_date)s
-			{_opt("sl.student = %(student)s", params, "student")}
-			{_opt("sl.program = %(program)s", params, "program")}
-			{_opt("sl.school in %(school_list)s", params, "school_list")}
-			{_opt("sl.academic_year = %(academic_year)s", params, "academic_year")}
-			{_opt("sl.log_type = %(log_type)s", params, "log_type")}
-			{_opt("sl.follow_up_status = %(follow_up_status)s", params, "follow_up_status")}
-			{_opt("sl.requires_follow_up = %(requires_follow_up)s", params, "requires_follow_up")}
-			{_opt("sl.owner = %(author)s", params, "author")}
-			{_opt("coalesce(slfu.follow_up_author, slfu.owner) = %(fu_author)s", params, "fu_author")}
-			and (
-				%(user)s = sl.owner
-				or %(user)s = sl.follow_up_person
-				or exists (
-					select 1
-					from `tabHas Role` hr
-					where hr.parenttype = 'User'
-					and hr.parent = %(user)s
-					and hr.role in ('Counselor','Academic Admin','System Manager')
-				)
-			)
-		order by
-			latest_activity_on desc,
-			sl.name desc,
+			where
+				sl.docstatus = 1
+				and sl.date between %(from_date)s and %(to_date)s
+				and ({visibility_sql})
+				{_opt("sl.student = %(student)s", params, "student")}
+				{_opt("sl.program = %(program)s", params, "program")}
+				{_opt("sl.school in %(school_list)s", params, "school_list")}
+				{_opt("sl.academic_year = %(academic_year)s", params, "academic_year")}
+				{_opt("sl.log_type = %(log_type)s", params, "log_type")}
+				{_opt("sl.follow_up_status = %(follow_up_status)s", params, "follow_up_status")}
+				{_opt("sl.requires_follow_up = %(requires_follow_up)s", params, "requires_follow_up")}
+				{_opt("sl.owner = %(author)s", params, "author")}
+				{_opt("coalesce(slfu.follow_up_author, slfu.owner) = %(fu_author)s", params, "fu_author")}
+			order by
+				latest_activity_on desc,
+				sl.name desc,
 			slfu.date desc,
 			slfu.name desc
 	"""

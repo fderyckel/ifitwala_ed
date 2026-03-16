@@ -3,8 +3,8 @@ title: "Task: The Reusable Learning and Assessment Blueprint"
 slug: task
 category: Assessment
 doc_order: 4
-version: "1.0.0"
-last_change_date: "2026-02-25"
+version: "1.2.0"
+last_change_date: "2026-03-12"
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
 seo_title: "Task: The Reusable Learning and Assessment Blueprint"
 seo_description: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
@@ -12,107 +12,101 @@ seo_description: "Author reusable learning tasks once, then deliver them to grou
 
 ## Task: The Reusable Learning and Assessment Blueprint
 
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/api/task.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.py`)
+
+`Task` is the reusable definition layer for learning work. It holds author intent, instructions, and default assessment behavior, but it is not itself assigned to a class.
+
+Current workspace note: the task definition model is in place, but downstream launch paths are still split between the direct delivery service and the create-task overlay transaction. That split is documented here so later implementation work does not hide the mismatch.
+
 ## Before You Start (Prerequisites)
 
-- Create the default `Course` first (`default_course` is required).
-- Prepare supporting assessment masters first (`Assessment Category`, `Grade Scale`, reusable `Assessment Criteria`).
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/doctype/task/task.js`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.py`)
+
+- Create the default `Course` first because `default_course` is required.
+- Prepare supporting assessment masters first: `Assessment Category`, `Grade Scale`, and reusable `Assessment Criteria`.
 - Stabilize task design before creating downstream `Task Delivery` records.
-
-`Task` is the design layer for learning work. It defines intent, instructions, and default assessment behavior, but it is not yet assigned to a class. That separation keeps teaching flexible and prevents accidental data duplication.
-
-<Callout type="tip" title="Teacher workflow benefit">
-Teachers can reuse a strong task design across cohorts and terms, while each delivery still keeps its own historical outcomes.
-</Callout>
 
 ## Where It Is Used Across the ERP
 
-- [**Task Delivery**](/docs/en/task-delivery/) references Task as the assignable source.
-- [**Task Rubric Version**](/docs/en/task-rubric-version/) snapshots criteria from Task at delivery time.
-- [**Task Outcome**](/docs/en/task-outcome/), [**Task Submission**](/docs/en/task-submission/), and [**Task Contribution**](/docs/en/task-contribution/) inherit context from delivery/task.
-- Staff Portal:
-  - `/staff/home` opens `create-task` overlay via global overlay stack.
-  - Overlay component: `ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`.
-  - Overlay host routing: `ui-spa/src/overlays/OverlayHost.vue` + `ui-spa/src/composables/useOverlayStack.ts`.
-- Class Hub overlays (task-adjacent quick flows):
-  - `class-hub-task-review`
-  - `class-hub-quick-evidence`
-  - `class-hub-quick-cfu`
-- Task planning API endpoints (`ifitwala_ed/api/task.py`):
-  - `search_tasks`
-  - `get_task_for_delivery`
-  - `create_task_delivery`
-- Staff analytics resurfacing:
-  - `ui-spa/src/pages/staff/analytics/StudentOverview.vue` task cards/charts
-  - `ifitwala_ed/api/student_overview_dashboard.py` (`_task_rows`) currently reads legacy `Task` + `Task Student` structures
-- Morning briefing resurfacing:
-  - `ifitwala_ed/api/morning_brief.py` `get_pending_grading_tasks` reads `Task` due/publish status
-- Desk Workspaces:
-  - `Curriculum` workspace
-  - `Admin` workspace
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/api/task.py`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/api/student_overview_dashboard.py`, `ifitwala_ed/api/morning_brief.py`
+Test refs: None
+
+- [**Task Delivery**](/docs/en/task-delivery/) references `Task` as the assignable source.
+- [**Learning Unit**](/docs/en/learning-unit/) and [**Lesson**](/docs/en/lesson/) are the deepest current curriculum anchors available on the task definition.
+- [**Task Rubric Version**](/docs/en/task-rubric-version/) snapshots `Task Template Criterion` rows at delivery launch.
+- [**Task Outcome**](/docs/en/task-outcome/), [**Task Submission**](/docs/en/task-submission/), and [**Task Contribution**](/docs/en/task-contribution/) inherit delivery/task context.
+- Staff portal planning uses the create-task overlay at `ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`.
+- `ifitwala_ed/api/task.py` exposes `search_tasks`, `get_task_for_delivery`, and `create_task_delivery`.
+- Some analytics and briefing readers still reference legacy `Task` plus `Task Student` style paths:
+  - `ifitwala_ed/api/student_overview_dashboard.py`
+  - `ifitwala_ed/api/morning_brief.py`
 
 ## Lifecycle and Linked Documents
 
-1. Author reusable task design with required curriculum anchor (`default_course`).
-2. Configure assessment defaults and optional criteria template rows.
-3. Create `Task Delivery` records per group/cohort as execution instances.
-4. Downstream outcomes, submissions, and contributions inherit delivery/task context.
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`, `ifitwala_ed/api/task.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.py`)
 
-<Callout type="info" title="Template mindset">
-Treat `Task` as reusable design policy. Delivery, evidence, and official results belong in downstream doctypes.
-</Callout>
+1. Author the reusable task definition with required curriculum anchor (`default_course`) and optional deeper planned-curriculum anchors (`learning_unit`, `lesson`).
+2. Configure default delivery and grading behavior, including optional `task_criteria` rows.
+3. Create a `Task Delivery` as the execution instance for a specific `Student Group`.
+4. Downstream outcomes, submissions, contributions, and rubric snapshots should inherit delivery/task context.
+
+Current workspace note: delivery launch semantics are not yet unified. The direct API path delegates to `assessment/task_delivery_service.py`, while the overlay path uses `assessment/task_creation_service.py`. That split is the main task-stack drift currently documented in the task feature.
+
+## Related Docs
+
+Status: Implemented
+Code refs: None (documentation cross-reference section)
+Test refs: None
+
+- [**Task Delivery**](/docs/en/task-delivery/)
+- [**Learning Unit**](/docs/en/learning-unit/)
+- [**Lesson**](/docs/en/lesson/)
+- [**Lesson Instance**](/docs/en/lesson-instance/)
+- [**Task Template Criterion**](/docs/en/task-template-criterion/)
+- [**Task Rubric Version**](/docs/en/task-rubric-version/)
+- [**Task Outcome**](/docs/en/task-outcome/)
+- [**Assessment Criteria**](/docs/en/assessment-criteria/)
+- [**Grade Scale**](/docs/en/grade-scale/)
 
 ## Technical Notes (IT)
+
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/doctype/task/task.js`, `ifitwala_ed/assessment/task_creation_service.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.py`)
 
 ### Schema and Controller Snapshot
 
 - **DocType schema file**: `ifitwala_ed/assessment/doctype/task/task.json`
 - **Controller file**: `ifitwala_ed/assessment/doctype/task/task.py`
+- **Desk client script**: `ifitwala_ed/assessment/doctype/task/task.js`
 - **Required fields (`reqd=1`)**:
   - `title` (`Data`)
   - `default_course` (`Link` -> `Course`)
-- **Lifecycle hooks in controller**: `before_validate`, `validate`, `on_trash`
-- **Operational/public methods**: none beyond standard document behavior.
-
-- **DocType**: `Task` (`ifitwala_ed/assessment/doctype/task/`)
-- **Title field**: `title`
 - **Child tables**:
   - `attachments` (`Attached Document`)
   - `task_criteria` (`Task Template Criterion`)
-- **Key links**:
-  - `learning_unit`, `lesson`, `default_course`, `default_grade_scale`
-- **Controller invariants** (`task.py`):
-  - curriculum alignment guard: lesson/unit/course must be coherent
-  - duplicate criteria guard in `task_criteria`
-  - grading default enforcement by `default_delivery_mode` / `default_grading_mode`
-  - trash guard: Task cannot be deleted once used by a Task Delivery
-- **Desk client script** (`task.js`):
-  - filtered selectors for `learning_unit` and `lesson` based on course context
-  - resets stale curriculum links when course changes
-  - delivery-mode-based clearing of grading defaults
-- **Creation surface integration**:
-  - Create Task + Delivery wizard in staff portal overlay
-  - orchestration service `assessment/task_creation_service.py` supports single-transaction creation flow
-- **Reports/analytics note**:
-  - no dedicated Query/Script report object currently references `Task` directly
-  - analytics is delivered through SPA/API surfaces instead
-- **Architecture guarantees (embedded from assessment doctrine)**:
-  - Task is a reusable definition artifact, not a grading fact table
-  - grading mode is explicit and single-mode (`None`, `Completion`, `Binary`, `Points`, `Criteria`)
-  - Task does not compute final course grades or reporting-cycle results
+- **Lifecycle hooks in controller**:
+  - `before_validate`
+  - `validate`
+  - `on_trash`
 
-### Permission Matrix
+### Current Contract
 
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
-| `Instructor` | Yes | Yes | Yes | Yes |
-| `Academic Staff` | Yes | No | No | No |
+- `Task` is the reusable definition artifact. It is not the grading fact table.
+- `task.py` enforces curriculum alignment, duplicate criterion guards, and coherent default grading configuration.
+- `task.js` filters `learning_unit` and `lesson` choices by course context and clears stale curriculum links when course changes.
+- The current task schema stops at `lesson`; it does not currently expose `lesson_activity` or `lesson_instance`.
+- `assessment/task_creation_service.py` supports the overlay path that creates both `Task` and `Task Delivery` in one transaction.
 
-## Related Docs
+### Current Drift To Preserve In Review
 
-- [**Task Delivery**](/docs/en/task-delivery/)
-- [**Task Outcome**](/docs/en/task-outcome/)
-- [**Assessment Criteria**](/docs/en/assessment-criteria/)
-- [**Grade Scale**](/docs/en/grade-scale/)
+- The definition layer is stable, but downstream launch remains split across two services.
+- Legacy analytics readers still reference older structures; those reads must not be mistaken for the canonical gradebook contract.
+- Any implementation change that alters task-launch behavior must update this page and the linked delivery/outcome docs in the same change.

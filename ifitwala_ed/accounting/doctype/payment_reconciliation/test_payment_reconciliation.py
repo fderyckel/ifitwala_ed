@@ -65,6 +65,33 @@ class TestPaymentReconciliation(FrappeTestCase):
         settings.save()
         return settings
 
+    def make_fiscal_year(self, organization, year="2026"):
+        existing = frappe.get_all(
+            "Fiscal Year Organization",
+            filters={"organization": organization},
+            fields=["parent"],
+            limit_page_length=100,
+        )
+        for row in existing:
+            fiscal_year = frappe.get_doc("Fiscal Year", row.parent)
+            if (
+                str(fiscal_year.year_start_date) == f"{year}-01-01"
+                and str(fiscal_year.year_end_date) == f"{year}-12-31"
+            ):
+                return fiscal_year
+
+        fiscal_year = frappe.get_doc(
+            {
+                "doctype": "Fiscal Year",
+                "year": f"{organization}-{year}-{frappe.generate_hash(length=4)}",
+                "year_start_date": f"{year}-01-01",
+                "year_end_date": f"{year}-12-31",
+                "organizations": [{"organization": organization}],
+            }
+        )
+        fiscal_year.insert()
+        return fiscal_year
+
     def make_account_holder(self, organization, holder_type="Individual", prefix="Account Holder"):
         account_holder = frappe.get_doc(
             {
@@ -117,6 +144,7 @@ class TestPaymentReconciliation(FrappeTestCase):
 
     def _base_context_with_advance(self):
         org = self.make_organization("PR")
+        self.make_fiscal_year(org.name)
         receivable = self.make_account(
             organization=org.name,
             root_type="Asset",
@@ -208,6 +236,7 @@ class TestPaymentReconciliation(FrappeTestCase):
                 "posting_date": nowdate(),
                 "allocations": [
                     {
+                        "payment_entry": ctx["payment"].name,
                         "sales_invoice": ctx["invoice"].name,
                         "allocated_amount": 120,
                     }
@@ -246,6 +275,7 @@ class TestPaymentReconciliation(FrappeTestCase):
                     "posting_date": nowdate(),
                     "allocations": [
                         {
+                            "payment_entry": ctx["payment"].name,
                             "sales_invoice": ctx["invoice"].name,
                             "allocated_amount": 220,
                         }
@@ -287,9 +317,37 @@ class TestPaymentReconciliation(FrappeTestCase):
                     "posting_date": nowdate(),
                     "allocations": [
                         {
+                            "payment_entry": ctx["payment"].name,
                             "sales_invoice": other_invoice.name,
                             "allocated_amount": 10,
                         }
                     ],
                 }
             ).insert()
+
+    def test_cancel_reconciliation_restores_invoice_and_payment_entry(self):
+        ctx = self._base_context_with_advance()
+
+        recon = frappe.get_doc(
+            {
+                "doctype": "Payment Reconciliation",
+                "organization": ctx["org"].name,
+                "account_holder": ctx["account_holder"].name,
+                "posting_date": nowdate(),
+                "allocations": [
+                    {
+                        "payment_entry": ctx["payment"].name,
+                        "sales_invoice": ctx["invoice"].name,
+                        "allocated_amount": 40,
+                    }
+                ],
+            }
+        )
+        recon.insert()
+        recon.submit()
+        recon.cancel()
+
+        invoice_outstanding = frappe.db.get_value("Sales Invoice", ctx["invoice"].name, "outstanding_amount")
+        payment_unallocated = frappe.db.get_value("Payment Entry", ctx["payment"].name, "unallocated_amount")
+        self.assertEqual(flt(invoice_outstanding), 150)
+        self.assertEqual(flt(payment_unallocated), 200)

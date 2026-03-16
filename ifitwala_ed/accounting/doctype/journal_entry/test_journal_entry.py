@@ -42,9 +42,23 @@ class TestJournalEntry(FrappeTestCase):
         account.insert()
         return account
 
+    def make_fiscal_year(self, organization, year="2026"):
+        fiscal_year = frappe.get_doc(
+            {
+                "doctype": "Fiscal Year",
+                "year": f"{organization}-{year}-{frappe.generate_hash(length=4)}",
+                "year_start_date": f"{year}-01-01",
+                "year_end_date": f"{year}-12-31",
+                "organizations": [{"organization": organization}],
+            }
+        )
+        fiscal_year.insert()
+        return fiscal_year
+
     def test_journal_entry_rejects_accounts_from_other_organizations(self):
         org_a = self.make_organization("JE Org A")
         org_b = self.make_organization("JE Org B")
+        self.make_fiscal_year(org_a.name)
         debit_account = self.make_account(
             organization=org_a.name,
             root_type="Asset",
@@ -73,6 +87,7 @@ class TestJournalEntry(FrappeTestCase):
 
     def test_unbalanced_journal_entry_is_rejected(self):
         org = self.make_organization("JE")
+        self.make_fiscal_year(org.name)
         debit_account = self.make_account(
             organization=org.name,
             root_type="Asset",
@@ -101,6 +116,7 @@ class TestJournalEntry(FrappeTestCase):
 
     def test_submit_creates_balanced_gl_entries(self):
         org = self.make_organization("JE GL")
+        self.make_fiscal_year(org.name)
         debit_account = self.make_account(
             organization=org.name,
             root_type="Asset",

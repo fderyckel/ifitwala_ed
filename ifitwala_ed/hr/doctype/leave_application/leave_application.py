@@ -377,8 +377,6 @@ class LeaveApplication(Document, PWANotificationsMixin):
                     "leave_application": self.name,
                     "half_day_status": half_day_status,
                     "attendance_method": "Manual",
-                    "source_transaction_type": "Leave Application",
-                    "source_transaction_name": self.name,
                 }
             )
         else:
@@ -394,8 +392,6 @@ class LeaveApplication(Document, PWANotificationsMixin):
             doc.status = status
             doc.half_day_status = "Present" if status == "Half Day" else None
             doc.attendance_method = "Manual"
-            doc.source_transaction_type = "Leave Application"
-            doc.source_transaction_name = self.name
             doc.insert(ignore_permissions=True)
             doc.submit()
 

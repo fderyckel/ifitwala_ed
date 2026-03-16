@@ -4,7 +4,9 @@
 	<div id="overlay-root"></div>
 
 	<AdmissionsLayout>
-		<RouterView />
+		<RouterView v-slot="{ Component, route }">
+			<component :is="Component" :key="route.fullPath" />
+		</RouterView>
 	</AdmissionsLayout>
 
 	<OverlayHost />

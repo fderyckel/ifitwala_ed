@@ -52,33 +52,32 @@ class TestApplicantDocument(FrappeTestCase):
                 }
             ).insert(ignore_permissions=True)
 
-    def test_admission_officer_can_review_document(self):
+    def test_admission_officer_cannot_review_parent_document_directly(self):
         doc = self._create_pending_document_as_applicant()
         frappe.set_user(self.admission_officer_user)
         doc = frappe.get_doc("Applicant Document", doc.name)
         doc.review_status = "Approved"
-        doc.review_notes = "Reviewed by admission officer."
-        doc.save(ignore_permissions=True)
-        self.assertEqual(doc.review_status, "Approved")
-        self.assertEqual(doc.reviewed_by, self.admission_officer_user)
-        self.assertIsNotNone(doc.reviewed_on)
+        with self.assertRaises(frappe.ValidationError):
+            doc.save(ignore_permissions=True)
 
-    def test_admission_manager_can_set_promotable_after_approval(self):
+    def test_admission_manager_can_set_requirement_override(self):
         doc = self._create_pending_document_as_applicant()
         frappe.set_user(self.admission_manager_user)
         doc = frappe.get_doc("Applicant Document", doc.name)
-        doc.review_status = "Approved"
-        doc.is_promotable = 1
+        doc.requirement_override = "Waived"
+        doc.override_reason = "School approved documented waiver."
         doc.save(ignore_permissions=True)
-        self.assertEqual(doc.review_status, "Approved")
-        self.assertTrue(bool(doc.is_promotable))
-        self.assertEqual(doc.reviewed_by, self.admission_manager_user)
+        self.assertEqual(doc.requirement_override, "Waived")
+        self.assertEqual(doc.override_reason, "School approved documented waiver.")
+        self.assertEqual(doc.override_by, self.admission_manager_user)
+        self.assertIsNotNone(doc.override_on)
 
-    def test_applicant_cannot_edit_review_notes(self):
+    def test_applicant_cannot_edit_requirement_override(self):
         doc = self._create_pending_document_as_applicant()
         frappe.set_user(self.applicant_user)
         doc = frappe.get_doc("Applicant Document", doc.name)
-        doc.review_notes = "Trying to self-review."
+        doc.requirement_override = "Waived"
+        doc.override_reason = "Trying to self-waive."
         with self.assertRaises(frappe.ValidationError):
             doc.save(ignore_permissions=True)
 
@@ -152,6 +151,20 @@ class TestApplicantDocument(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("User", doc.name))
+        employee = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": "Admission",
+                "employee_last_name": role.replace(" ", ""),
+                "employee_professional_email": email,
+                "organization": self.organization,
+                "school": self.school,
+                "user_id": doc.name,
+                "date_of_joining": frappe.utils.nowdate(),
+                "employment_status": "Active",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Employee", employee.name))
         frappe.clear_cache(user=doc.name)
         return doc.name
 

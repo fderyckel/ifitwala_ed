@@ -1,9 +1,8 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentDemographicAnalytics.vue -->
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { createResource } from 'frappe-ui';
 
-import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import HorizontalBarTopN from '@/components/analytics/HorizontalBarTopN.vue';
@@ -13,9 +12,11 @@ import DonutSplit from '@/components/analytics/DonutSplit.vue';
 import HistogramBuckets from '@/components/analytics/HistogramBuckets.vue';
 import TagCloudBar from '@/components/analytics/TagCloudBar.vue';
 import SideDrawerList from '@/components/analytics/SideDrawerList.vue';
-import { useAnalyticsSnapshotExport } from '@/composables/useAnalyticsSnapshotExport';
+import { useOverlayStack } from '@/composables/useOverlayStack';
+import { openAnalyticsChartOverlay } from '@/lib/analyticsOverlay';
 
 type ViewPreset = 'student' | 'admissions' | 'marketing';
+type ChartOption = Record<string, unknown>;
 
 type FilterState = {
 	school: string | null;
@@ -51,6 +52,10 @@ type DashboardResponse = {
 		male: number;
 		other: number;
 		sliceKeys?: Record<string, string>;
+	}[];
+	student_house_by_cohort: {
+		cohort: string;
+		buckets: { label: string; count: number; sliceKey?: string }[];
 	}[];
 	residency_status: { label: string; count: number; pct?: number; sliceKey?: string }[];
 	age_distribution: { bucket: string; count: number; sliceKey?: string }[];
@@ -89,7 +94,6 @@ const filters = ref<FilterState>({
 	cohort: null,
 	preset: 'student',
 });
-const snapshotRoot = ref<HTMLElement | null>(null);
 
 const filterMetaResource = createResource({
 	url: 'ifitwala_ed.api.student_demographics_dashboard.get_filter_meta',
@@ -100,19 +104,6 @@ const filterMetaResource = createResource({
 const filterMeta = computed(() => (filterMetaResource.data as any) || {});
 const schools = computed(() => filterMeta.value.schools || []);
 const cohorts = computed(() => filterMeta.value.cohorts || []);
-const exportFilters = computed(() => ({
-	School: filters.value.school || 'All',
-	Cohort: filters.value.cohort || 'All',
-	'View Preset': filters.value.preset,
-}));
-
-const snapshotExport = useAnalyticsSnapshotExport({
-	dashboardSlug: 'student-demographics',
-	dashboardTitle: 'Student Demographic Analytics',
-	getTarget: () => snapshotRoot.value,
-	getFilters: () => exportFilters.value,
-});
-
 watch(
 	filterMeta,
 	data => {
@@ -145,6 +136,7 @@ const emptyDashboard: DashboardResponse = {
 	nationality_distribution: [],
 	nationality_by_cohort: [],
 	gender_by_cohort: [],
+	student_house_by_cohort: [],
 	residency_status: [],
 	age_distribution: [],
 	home_language: [],
@@ -261,6 +253,8 @@ const siblingSeries = [
 	{ key: 'younger', label: 'Has younger siblings', color: '#fbbf24' },
 ];
 
+const nationalityHeatmapPalette = ['#fff7ed', '#f9a03f', '#e76f51', '#7f1d1d'];
+
 const genderRows = computed(() =>
 	dashboard.value.gender_by_cohort.map(row => ({
 		category: row.cohort,
@@ -284,11 +278,19 @@ const nationalityHeatmapRows = computed(() =>
 	}))
 );
 
+const studentHouseHeatmapRows = computed(() =>
+	dashboard.value.student_house_by_cohort.map(row => ({
+		row: row.cohort,
+		buckets: row.buckets,
+	}))
+);
+
 const sliceDrawerOpen = ref(false);
 const activeSliceKey = ref<string | null>(null);
 const sliceRows = ref<any[]>([]);
 const sliceStart = ref(0);
 const slicePageLength = 50;
+const overlay = useOverlayStack();
 
 const sliceResource = createResource({
 	url: 'ifitwala_ed.api.student_demographics_dashboard.get_slice_entities',
@@ -343,13 +345,22 @@ function closeSliceDrawer() {
 	sliceRows.value = [];
 }
 
+function studentDeskUrl(studentId: string | null | undefined) {
+	if (!studentId) return '#';
+	return `/desk/student/${encodeURIComponent(studentId)}`;
+}
+
+function openChartOverlay(title: string, option: ChartOption) {
+	openAnalyticsChartOverlay(overlay, title, option);
+}
+
 function setPreset(preset: ViewPreset) {
 	filters.value.preset = preset;
 }
 </script>
 
 <template>
-	<div ref="snapshotRoot" class="min-h-full px-4 py-4 md:px-6 lg:px-8">
+	<div class="min-h-full px-4 py-4 md:px-6 lg:px-8">
 		<header class="flex flex-wrap items-center justify-between gap-3">
 			<div>
 				<h1 class="text-base font-semibold tracking-tight text-slate-900">
@@ -359,14 +370,6 @@ function setPreset(preset: ViewPreset) {
 					Active-student demographics for academic admin, admissions, and marketing.
 				</p>
 			</div>
-			<AnalyticsSnapshotActions
-				:exporting-png="snapshotExport.exportingPng"
-				:exporting-pdf="snapshotExport.exportingPdf"
-				:message="snapshotExport.actionMessage"
-				:disabled="dashboardResource.loading || accessDenied"
-				@export-png="snapshotExport.exportPng"
-				@export-pdf="snapshotExport.exportPdf"
-			/>
 		</header>
 
 		<div v-if="accessDenied" class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
@@ -436,23 +439,41 @@ function setPreset(preset: ViewPreset) {
 					<HorizontalBarTopN
 						title="Nationality Distribution (Top 10 + Other)"
 						:items="dashboard.nationality_distribution"
+						expandable
 						@select="openSliceDrawer"
+						@expand="
+							option => openChartOverlay('Nationality Distribution (Top 10 + Other)', option)
+						"
 					/>
 					<HeatmapChart
 						title="Nationality by Cohort"
 						:rows="nationalityHeatmapRows"
+						:color-range="nationalityHeatmapPalette"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Nationality by Cohort', option)"
 					/>
 					<StackedBarChart
 						title="Gender Split by Cohort"
 						:series="stackedGenderSeries"
 						:rows="genderRows"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Gender Split by Cohort', option)"
+					/>
+					<HeatmapChart
+						title="Student House by Cohort"
+						:rows="studentHouseHeatmapRows"
+						expandable
+						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Student House by Cohort', option)"
 					/>
 					<DonutSplit
 						title="Residency Status"
 						:items="dashboard.residency_status"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Residency Status', option)"
 					/>
 					<HistogramBuckets
 						title="Age Distribution"
@@ -463,7 +484,9 @@ function setPreset(preset: ViewPreset) {
 								sliceKey: b.sliceKey,
 							}))
 						"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Age Distribution', option)"
 					/>
 				</div>
 
@@ -471,12 +494,16 @@ function setPreset(preset: ViewPreset) {
 					<DonutSplit
 						title="Home Language Distribution"
 						:items="dashboard.home_language"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Home Language Distribution', option)"
 					/>
 					<DonutSplit
 						title="Multilingual Profile (1 / 2 / 3+)"
 						:items="dashboard.multilingual_profile"
+						expandable
 						@select="openSliceDrawer"
+						@expand="option => openChartOverlay('Multilingual Profile (1 / 2 / 3+)', option)"
 					/>
 				</div>
 
@@ -490,7 +517,9 @@ function setPreset(preset: ViewPreset) {
 							title="Sibling Distribution"
 							:series="siblingSeries"
 							:rows="siblingRows"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Sibling Distribution', option)"
 						/>
 						<HistogramBuckets
 							title="Family Size Histogram"
@@ -501,7 +530,9 @@ function setPreset(preset: ViewPreset) {
 									sliceKey: b.sliceKey,
 								}))
 							"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Family Size Histogram', option)"
 						/>
 					</div>
 				</section>
@@ -512,33 +543,45 @@ function setPreset(preset: ViewPreset) {
 						<HorizontalBarTopN
 							title="Guardian Nationality (Top)"
 							:items="dashboard.guardian_nationality"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Guardian Nationality (Top)', option)"
 						/>
 						<DonutSplit
 							title="Preferred Communication Language"
 							:items="dashboard.guardian_comm_language"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Preferred Communication Language', option)"
 						/>
 						<HorizontalBarTopN
 							title="Guardian Residence (Country)"
 							:items="dashboard.guardian_residence_country"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Guardian Residence (Country)', option)"
 						/>
 						<TagCloudBar
 							title="Guardian Residence (City)"
 							:items="dashboard.guardian_residence_city"
 							:max="12"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Guardian Residence (City)', option)"
 						/>
 						<HorizontalBarTopN
 							title="Guardian Employment Sector"
 							:items="dashboard.guardian_sector"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Guardian Employment Sector', option)"
 						/>
 						<DonutSplit
 							title="Financial Guardian Spread"
 							:items="dashboard.financial_guardian"
+							expandable
 							@select="openSliceDrawer"
+							@expand="option => openChartOverlay('Financial Guardian Spread', option)"
 						/>
 					</div>
 				</section>
@@ -556,7 +599,16 @@ function setPreset(preset: ViewPreset) {
 		>
 			<template #row="{ row }">
 				<div class="flex flex-col">
-					<span class="font-medium text-slate-800">{{ row.name || row.title }}</span>
+					<a
+						v-if="sliceMeta?.entity === 'student' && row.id"
+						:href="studentDeskUrl(row.id)"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="font-medium text-canopy hover:underline"
+					>
+						{{ row.name || row.title }}
+					</a>
+					<span v-else class="font-medium text-slate-800">{{ row.name || row.title }}</span>
 					<span class="text-xs text-slate-500">{{ row.subtitle || row.cohort }}</span>
 				</div>
 			</template>

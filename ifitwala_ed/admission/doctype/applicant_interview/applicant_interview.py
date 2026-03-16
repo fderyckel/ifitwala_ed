@@ -11,8 +11,10 @@ from frappe.model.document import Document
 from frappe.utils import format_datetime, get_datetime, get_link_to_form, getdate, now_datetime
 
 from ifitwala_ed.admission.admission_utils import (
+    ADMISSIONS_ROLES,
     READ_LIKE_PERMISSION_TYPES,
     build_admissions_file_scope_exists_sql,
+    has_open_overall_application_review_access,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
@@ -27,7 +29,6 @@ DEFAULT_SUGGESTION_WINDOW_END = "17:00:00"
 DEFAULT_SUGGESTION_LIMIT = 8
 DEFAULT_SUGGESTION_STEP_MINUTES = 15
 INTERVIEW_EVENT_REFERENCE_TYPE = "Applicant Interview"
-INTERVIEWER_SELF_EDITABLE_FIELDS = frozenset({"notes", "outcome_impression"})
 INTERVIEW_FEEDBACK_FIELDS = (
     "strengths",
     "concerns",
@@ -48,7 +49,6 @@ class ApplicantInterview(Document):
         self._validate_applicant_state()
         self._validate_time_window()
         self._sync_interview_date_from_start()
-        self._validate_interviewer_edit_scope()
 
     def after_insert(self):
         self._add_audit_comment("Interview recorded")
@@ -63,50 +63,9 @@ class ApplicantInterview(Document):
 
     def _validate_permissions(self):
         _assert_manage_interview_permission(
-            allow_interviewer_write=not self.is_new(),
             interview_name=self.name if not self.is_new() else None,
             student_applicant=self.student_applicant,
         )
-
-    def _validate_interviewer_edit_scope(self):
-        user = frappe.session.user
-        if self.is_new() or _is_interview_privileged_user(user):
-            return
-
-        if not _is_interviewer_on_interview(user=user, interview_name=self.name):
-            return
-
-        before = self.get_doc_before_save()
-        if not before:
-            return
-
-        protected_fieldnames = (
-            "student_applicant",
-            "interview_type",
-            "interview_date",
-            "interview_start",
-            "interview_end",
-            "mode",
-            "confidentiality_level",
-            "school_event",
-        )
-
-        for fieldname in protected_fieldnames:
-            if _coerce_compare_value(getattr(before, fieldname, None)) != _coerce_compare_value(
-                getattr(self, fieldname, None)
-            ):
-                frappe.throw(
-                    _("Interviewers can only edit: {0}.").format(", ".join(sorted(INTERVIEWER_SELF_EDITABLE_FIELDS))),
-                    frappe.PermissionError,
-                )
-
-        before_interviewers = _normalized_interviewer_rows(before.get("interviewers") or [])
-        current_interviewers = _normalized_interviewer_rows(self.get("interviewers") or [])
-        if before_interviewers != current_interviewers:
-            frappe.throw(
-                _("Interviewers can only edit: {0}.").format(", ".join(sorted(INTERVIEWER_SELF_EDITABLE_FIELDS))),
-                frappe.PermissionError,
-            )
 
     def _validate_applicant_state(self):
         if not self.student_applicant:
@@ -275,6 +234,8 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
         return _is_interview_privileged_user(user)
     if op in {"delete", "submit"}:
         return False
+    if op == "write" and not _is_interview_privileged_user(user):
+        return False
     if op not in READ_LIKE_PERMISSION_TYPES and op != "write":
         return False
 
@@ -321,7 +282,6 @@ def schedule_applicant_interview(
     mode: str | None = None,
     confidentiality_level: str | None = None,
     notes: str | None = None,
-    outcome_impression: str | None = None,
     primary_interviewer: str | None = None,
     interviewer_users: Sequence[str] | str | None = None,
     suggestion_window_start_time=None,
@@ -422,7 +382,6 @@ def schedule_applicant_interview(
         interview_doc.interview_date = getdate(start_dt)
         interview_doc.mode = mode
         interview_doc.confidentiality_level = confidentiality_level
-        interview_doc.outcome_impression = outcome_impression
         interview_doc.notes = notes
 
         for user in selected_users:
@@ -495,20 +454,20 @@ def get_applicant_workspace(*, student_applicant: str):
     _assert_applicant_workspace_permission(student_applicant=applicant_name)
 
     applicant_row = _get_applicant_workspace_context(applicant_name)
+    applicant_doc = frappe.get_doc("Student Applicant", applicant_name)
     timeline_rows = _load_applicant_timeline(applicant_name)
-    document_payload = _load_applicant_documents_for_workspace(
-        applicant_name,
-        context_doctype="Student Applicant",
-        context_name=applicant_name,
-    )
     recommendation_payload = _load_recommendations_for_workspace(applicant_name)
     interview_rows = _load_interviews_for_applicant_workspace(student_applicant=applicant_name)
+    current_user = (frappe.session.user or "").strip()
+    document_review_payload = applicant_doc.has_required_documents()
+    document_review_payload["can_review_submissions"] = _can_review_document_submissions_in_workspace(current_user)
+    document_review_payload["can_manage_overrides"] = _can_manage_document_overrides_in_workspace(current_user)
 
     return {
         "ok": True,
         "applicant": applicant_row,
         "timeline": timeline_rows,
-        "documents": document_payload,
+        "document_review": document_review_payload,
         "recommendations": recommendation_payload,
         "interviews": interview_rows,
     }
@@ -576,7 +535,6 @@ def save_my_interview_feedback(
 
 def _assert_manage_interview_permission(
     *,
-    allow_interviewer_write: bool = False,
     interview_name: str | None = None,
     student_applicant: str | None = None,
     user: str | None = None,
@@ -598,10 +556,6 @@ def _assert_manage_interview_permission(
             frappe.throw(_("You do not have permission to manage Applicant Interviews."), frappe.PermissionError)
         return
 
-    if allow_interviewer_write and interview_name:
-        if _is_interviewer_on_interview(user=current_user, interview_name=interview_name):
-            return
-
     frappe.throw(_("You do not have permission to manage Applicant Interviews."), frappe.PermissionError)
 
 
@@ -609,22 +563,59 @@ def _is_interview_privileged_user(user: str) -> bool:
     return is_admissions_file_staff_user(user)
 
 
+def _can_review_document_submissions_in_workspace(user: str | None) -> bool:
+    roles = set(frappe.get_roles(user or frappe.session.user))
+    return bool(roles & (ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}))
+
+
+def _can_manage_document_overrides_in_workspace(user: str | None) -> bool:
+    roles = set(frappe.get_roles(user or frappe.session.user))
+    return bool(roles & {"Admission Manager", "Academic Admin", "System Manager"})
+
+
 def _is_interviewer_on_interview(*, user: str, interview_name: str) -> bool:
     resolved_user = (user or "").strip()
     resolved_name = (interview_name or "").strip()
     if not resolved_user or not resolved_name:
         return False
-    return bool(
-        frappe.db.exists(
-            "Applicant Interviewer",
-            {
-                "parent": resolved_name,
-                "parenttype": "Applicant Interview",
-                "parentfield": "interviewers",
-                "interviewer": resolved_user,
-            },
-        )
+    strict_match = frappe.db.exists(
+        "Applicant Interviewer",
+        {
+            "parent": resolved_name,
+            "parenttype": "Applicant Interview",
+            "parentfield": "interviewers",
+            "interviewer": resolved_user,
+        },
     )
+    if strict_match:
+        return True
+
+    # Backward-compatible fallback for rows with missing parent metadata.
+    relaxed_match = frappe.db.exists(
+        "Applicant Interviewer",
+        {
+            "parent": resolved_name,
+            "interviewer": resolved_user,
+        },
+    )
+    if relaxed_match:
+        return True
+
+    # Legacy fieldname fallback used on early interviewer schema drafts.
+    if frappe.db.table_exists("Applicant Interviewer") and frappe.db.has_column(
+        "Applicant Interviewer", "interviewer_user"
+    ):
+        return bool(
+            frappe.db.exists(
+                "Applicant Interviewer",
+                {
+                    "parent": resolved_name,
+                    "interviewer_user": resolved_user,
+                },
+            )
+        )
+
+    return False
 
 
 def _normalized_interviewer_rows(rows: Sequence[frappe._dict] | Sequence[dict] | Sequence[Document]) -> list[str]:
@@ -637,17 +628,6 @@ def _normalized_interviewer_rows(rows: Sequence[frappe._dict] | Sequence[dict] |
         if user:
             users.append(user)
     return sorted(set(users))
-
-
-def _coerce_compare_value(value):
-    if value is None:
-        return ""
-    if hasattr(value, "isoformat"):
-        try:
-            return value.isoformat()
-        except Exception:
-            pass
-    return str(value).strip()
 
 
 def _assert_interview_workspace_permission(
@@ -669,6 +649,20 @@ def _assert_interview_workspace_permission(
             student_applicant=student_applicant,
         ):
             return
+    else:
+        student_applicant = (
+            frappe.db.get_value("Applicant Interview", interview_name, "student_applicant") or ""
+        ).strip()
+
+    if (
+        student_applicant
+        and not require_write
+        and has_open_overall_application_review_access(
+            user=current_user,
+            student_applicant=student_applicant,
+        )
+    ):
+        return
 
     if _is_interviewer_on_interview(user=current_user, interview_name=interview_name):
         return
@@ -684,11 +678,15 @@ def _assert_applicant_workspace_permission(*, student_applicant: str, user: str 
     if not current_user or current_user == "Guest":
         frappe.throw(_("Please sign in to continue."), frappe.PermissionError)
 
-    if not _is_interview_privileged_user(current_user):
+    if _is_interview_privileged_user(current_user):
+        if has_scoped_staff_access_to_student_applicant(user=current_user, student_applicant=student_applicant):
+            return
         frappe.throw(_("You do not have permission to view this applicant workspace."), frappe.PermissionError)
 
-    if not has_scoped_staff_access_to_student_applicant(user=current_user, student_applicant=student_applicant):
-        frappe.throw(_("You do not have permission to view this applicant workspace."), frappe.PermissionError)
+    if has_open_overall_application_review_access(user=current_user, student_applicant=student_applicant):
+        return
+
+    frappe.throw(_("You do not have permission to view this applicant workspace."), frappe.PermissionError)
 
 
 def _normalize_feedback_status(value: str | None) -> str:
@@ -775,8 +773,7 @@ def _serialize_interview_for_workspace(interview_doc: ApplicantInterview) -> dic
         else None,
         "interview_end_label": format_datetime(interview_doc.interview_end) if interview_doc.interview_end else None,
         "school_event": interview_doc.school_event,
-        "outcome_impression": interview_doc.outcome_impression,
-        "notes": interview_doc.notes or "",
+        "operational_notes": interview_doc.notes or "",
         "interviewers": [
             {
                 "user": user,
@@ -849,19 +846,27 @@ def _load_applicant_guardians_for_workspace(student_applicant: str) -> list[dict
         },
         fields=[
             "guardian",
+            "contact",
+            "use_applicant_contact",
             "relationship",
+            "is_primary",
+            "can_consent",
+            "salutation",
             "guardian_full_name",
             "guardian_first_name",
             "guardian_last_name",
+            "guardian_gender",
             "guardian_email",
             "guardian_mobile_phone",
             "guardian_work_email",
             "guardian_work_phone",
-            "is_primary",
             "is_primary_guardian",
             "is_financial_guardian",
             "user",
             "guardian_image",
+            "employment_sector",
+            "work_place",
+            "guardian_designation",
             "idx",
         ],
         order_by="idx asc",
@@ -877,17 +882,27 @@ def _load_applicant_guardians_for_workspace(student_applicant: str) -> list[dict
         out.append(
             {
                 "guardian": row.get("guardian"),
+                "contact": row.get("contact"),
+                "use_applicant_contact": bool(row.get("use_applicant_contact")),
                 "full_name": full_name,
+                "first_name": first_name or None,
+                "last_name": last_name or None,
                 "relationship": row.get("relationship"),
+                "is_primary": bool(row.get("is_primary")),
+                "can_consent": bool(row.get("can_consent")),
+                "salutation": row.get("salutation"),
+                "gender": row.get("guardian_gender"),
                 "email": row.get("guardian_email"),
                 "mobile_phone": row.get("guardian_mobile_phone"),
                 "work_email": row.get("guardian_work_email"),
                 "work_phone": row.get("guardian_work_phone"),
-                "is_primary": bool(row.get("is_primary")),
                 "is_primary_guardian": bool(row.get("is_primary_guardian")),
                 "is_financial_guardian": bool(row.get("is_financial_guardian")),
                 "user": row.get("user"),
                 "image": row.get("guardian_image"),
+                "employment_sector": row.get("employment_sector"),
+                "work_place": row.get("work_place"),
+                "designation": row.get("guardian_designation"),
             }
         )
     return out
@@ -982,24 +997,6 @@ def _load_applicant_documents_for_workspace(
                 continue
             latest_file_by_item[attached] = row
 
-    latest_file_by_doc: dict[str, dict] = {}
-    legacy_file_rows = frappe.get_all(
-        "File",
-        filters={
-            "attached_to_doctype": "Applicant Document",
-            "attached_to_name": ["in", doc_names],
-        },
-        fields=["name", "attached_to_name", "file_name", "file_url", "creation"],
-        order_by="creation desc",
-        limit_page_length=0,
-        ignore_permissions=True,
-    )
-    for row in legacy_file_rows:
-        attached = row.get("attached_to_name")
-        if not attached or attached in latest_file_by_doc:
-            continue
-        latest_file_by_doc[attached] = row
-
     items_by_doc: dict[str, list[dict]] = {}
     for row in item_rows:
         parent = row.get("applicant_document")
@@ -1029,27 +1026,6 @@ def _load_applicant_documents_for_workspace(
     for doc_row in doc_rows:
         doc_name = doc_row.get("name")
         items = items_by_doc.get(doc_name, [])
-        if not items:
-            legacy_file = latest_file_by_doc.get(doc_name, {})
-            if legacy_file:
-                items = [
-                    {
-                        "name": None,
-                        "item_key": "legacy",
-                        "item_label": _("Existing upload"),
-                        "review_status": doc_row.get("review_status") or "Pending",
-                        "reviewed_by": doc_row.get("reviewed_by"),
-                        "reviewed_on": doc_row.get("reviewed_on"),
-                        "file_name": legacy_file.get("file_name"),
-                        "file_url": resolve_admissions_file_open_url(
-                            file_name=legacy_file.get("name"),
-                            file_url=legacy_file.get("file_url"),
-                            context_doctype=context_doctype,
-                            context_name=context_name,
-                        ),
-                        "uploaded_at": legacy_file.get("creation"),
-                    }
-                ]
 
         payload_rows.append(
             {
@@ -1071,81 +1047,50 @@ def _load_recommendations_for_workspace(student_applicant: str) -> dict:
         student_applicant=student_applicant,
         include_confidential=True,
     )
-
-    requests = []
-    if frappe.db.table_exists("Recommendation Request"):
-        request_rows = frappe.get_all(
-            "Recommendation Request",
-            filters={"student_applicant": student_applicant},
-            fields=[
-                "name",
-                "recommendation_template",
-                "request_status",
-                "recommender_name",
-                "recommender_email",
-                "recommender_relationship",
-                "sent_on",
-                "opened_on",
-                "consumed_on",
-                "expires_on",
-                "submission",
-            ],
-            order_by="modified desc",
-            limit_page_length=INTERVIEW_WORKSPACE_DOC_LIMIT,
-            ignore_permissions=True,
-        )
-        requests = [
-            {
-                "name": row.get("name"),
-                "recommendation_template": row.get("recommendation_template"),
-                "request_status": row.get("request_status"),
-                "recommender_name": row.get("recommender_name"),
-                "recommender_email": row.get("recommender_email"),
-                "recommender_relationship": row.get("recommender_relationship"),
-                "sent_on": row.get("sent_on"),
-                "opened_on": row.get("opened_on"),
-                "consumed_on": row.get("consumed_on"),
-                "expires_on": row.get("expires_on"),
-                "submission": row.get("submission"),
-            }
-            for row in request_rows
-        ]
-
-    submissions = []
-    if frappe.db.table_exists("Recommendation Submission"):
-        submission_rows = frappe.get_all(
-            "Recommendation Submission",
-            filters={"student_applicant": student_applicant},
-            fields=[
-                "name",
-                "recommendation_request",
-                "recommendation_template",
-                "recommender_name",
-                "recommender_email",
-                "submitted_on",
-                "has_file",
-            ],
-            order_by="submitted_on desc, modified desc",
-            limit_page_length=INTERVIEW_WORKSPACE_DOC_LIMIT,
-            ignore_permissions=True,
-        )
-        submissions = [
-            {
-                "name": row.get("name"),
-                "recommendation_request": row.get("recommendation_request"),
-                "recommendation_template": row.get("recommendation_template"),
-                "recommender_name": row.get("recommender_name"),
-                "recommender_email": row.get("recommender_email"),
-                "submitted_on": row.get("submitted_on"),
-                "has_file": bool(row.get("has_file")),
-            }
-            for row in submission_rows
-        ]
+    review_rows = list(summary.get("review_rows") or [])
+    requests = [
+        {
+            "name": row.get("recommendation_request"),
+            "recommendation_template": row.get("recommendation_template"),
+            "request_status": row.get("request_status"),
+            "recommender_name": row.get("recommender_name"),
+            "recommender_email": row.get("recommender_email"),
+            "recommender_relationship": row.get("recommender_relationship"),
+            "sent_on": row.get("sent_on"),
+            "opened_on": row.get("opened_on"),
+            "consumed_on": row.get("submitted_on"),
+            "expires_on": row.get("expires_on"),
+            "submission": row.get("recommendation_submission"),
+        }
+        for row in review_rows
+        if row.get("recommendation_request")
+    ][:INTERVIEW_WORKSPACE_DOC_LIMIT]
+    submissions = [
+        {
+            "name": row.get("recommendation_submission"),
+            "recommendation_request": row.get("recommendation_request"),
+            "recommendation_template": row.get("recommendation_template"),
+            "recommender_name": row.get("recommender_name"),
+            "recommender_email": row.get("recommender_email"),
+            "submitted_on": row.get("submitted_on"),
+            "has_file": bool(row.get("has_file")),
+            "applicant_document_item": row.get("applicant_document_item"),
+            "item_label": row.get("item_label"),
+            "review_status": row.get("review_status"),
+            "reviewed_by": row.get("reviewed_by"),
+            "reviewed_on": row.get("reviewed_on"),
+            "file_name": row.get("file_name"),
+            "file_url": row.get("file_url"),
+        }
+        for row in review_rows
+        if row.get("recommendation_submission")
+    ][:INTERVIEW_WORKSPACE_DOC_LIMIT]
 
     return {
         "summary": summary,
         "requests": requests,
         "submissions": submissions,
+        "review_rows": review_rows[:INTERVIEW_WORKSPACE_DOC_LIMIT],
     }
 
 
@@ -1198,12 +1143,34 @@ def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[
             continue
         users_by_interview.setdefault(interview_name, []).append(interviewer_user)
 
+    submitted_users_by_interview: dict[str, set[str]] = {}
+    if frappe.db.table_exists(INTERVIEW_FEEDBACK_DOCTYPE):
+        feedback_rows = frappe.get_all(
+            INTERVIEW_FEEDBACK_DOCTYPE,
+            filters={
+                "applicant_interview": ["in", interview_names],
+                "feedback_status": "Submitted",
+            },
+            fields=["applicant_interview", "interviewer_user"],
+            limit_page_length=max(50, INTERVIEW_WORKSPACE_INTERVIEW_LIMIT * 4),
+            ignore_permissions=True,
+        )
+        for row in feedback_rows:
+            interview_name = (row.get("applicant_interview") or "").strip()
+            interviewer_user = (row.get("interviewer_user") or "").strip()
+            if not interview_name or not interviewer_user:
+                continue
+            submitted_users_by_interview.setdefault(interview_name, set()).add(interviewer_user)
+
     payload: list[dict] = []
     for row in rows:
         interview_name = (row.get("name") or "").strip()
         if not interview_name:
             continue
         interviewer_users = users_by_interview.get(interview_name, [])
+        assigned_users = {user for user in interviewer_users if user}
+        submitted_count = len(assigned_users & submitted_users_by_interview.get(interview_name, set()))
+        expected_count = len(assigned_users)
         payload.append(
             {
                 "name": interview_name,
@@ -1219,6 +1186,14 @@ def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[
                 else None,
                 "interview_end_label": format_datetime(row.get("interview_end")) if row.get("interview_end") else None,
                 "school_event": row.get("school_event"),
+                "feedback_submitted_count": submitted_count,
+                "feedback_expected_count": expected_count,
+                "feedback_complete": bool(expected_count and submitted_count >= expected_count),
+                "feedback_status_label": (
+                    _("{0}/{1} submitted").format(submitted_count, expected_count)
+                    if expected_count
+                    else _("No interviewers assigned")
+                ),
                 "interviewers": [
                     {
                         "user": interviewer_user,

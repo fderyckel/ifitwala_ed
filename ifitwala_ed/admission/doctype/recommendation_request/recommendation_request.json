@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "ADM-REC-REQ-.YY.-.MM.-.###",
  "creation": "2026-03-01 00:00:00",
  "description": "Tracks one recommender invitation and one confidential recommendation submission request.",
  "doctype": "DocType",
@@ -71,6 +71,7 @@
   {
    "fieldname": "applicant_document_item",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Applicant Document Item",
    "options": "Applicant Document Item",
    "read_only": 1
@@ -114,6 +115,7 @@
   {
    "fieldname": "recommender_relationship",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Relationship to Applicant"
   },
   {
@@ -126,6 +128,7 @@
   {
    "fieldname": "sent_on",
    "fieldtype": "Datetime",
+   "in_list_view": 1,
    "label": "Sent On",
    "read_only": 1
   },
@@ -209,6 +212,7 @@
   {
    "fieldname": "submission",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Submission",
    "options": "Recommendation Submission",
    "read_only": 1
@@ -216,10 +220,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-01 00:00:00",
+ "modified": "2026-03-12 08:46:45.978003",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Recommendation Request",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -271,7 +276,9 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "student_applicant"
 }

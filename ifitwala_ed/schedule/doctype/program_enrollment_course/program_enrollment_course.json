@@ -9,6 +9,8 @@
   "section_break_i1gn",
   "course",
   "status",
+  "required",
+  "credited_basket_group",
   "term_start",
   "column_break_ikkd",
   "course_name",
@@ -47,6 +49,20 @@
    "in_list_view": 1,
    "label": "Status",
    "options": "Enrolled\nDropped\nCompleted"
+  },
+  {
+   "default": "0",
+   "fieldname": "required",
+   "fieldtype": "Check",
+   "label": "Required",
+   "read_only": 1
+  },
+  {
+   "fieldname": "credited_basket_group",
+   "fieldtype": "Link",
+   "description": "Resolved enrollment basket this enrolled course row satisfies.",
+   "label": "Credited Basket Group (Enrollment)",
+   "options": "Basket Group"
   },
   {
    "columns": 2,
@@ -90,7 +106,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-23 07:19:17.286396",
+ "modified": "2026-03-11 12:23:16",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Course",

@@ -5,11 +5,25 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "payment_entry",
+  "payment_entry_unallocated_amount",
   "sales_invoice",
   "outstanding_amount",
   "allocated_amount"
  ],
  "fields": [
+  {
+   "fieldname": "payment_entry",
+   "fieldtype": "Link",
+   "label": "Payment Entry",
+   "options": "Payment Entry"
+  },
+  {
+   "fieldname": "payment_entry_unallocated_amount",
+   "fieldtype": "Currency",
+   "label": "Payment Entry Unallocated",
+   "read_only": 1
+  },
   {
    "fieldname": "sales_invoice",
    "fieldtype": "Link",

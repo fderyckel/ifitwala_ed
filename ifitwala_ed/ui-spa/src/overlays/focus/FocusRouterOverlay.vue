@@ -257,7 +257,7 @@ const headerTitle = computed(() => {
 	}
 	if (referenceDoctype.value === 'Applicant Review Assignment') {
 		const targetType = ctx.value?.review_assignment?.target_type;
-		if (targetType === 'Applicant Document') return 'Document review';
+		if (targetType === 'Applicant Document Item') return 'Evidence review';
 		if (targetType === 'Applicant Health Profile') return 'Health review';
 		return 'Application review';
 	}

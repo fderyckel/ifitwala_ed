@@ -1,9 +1,12 @@
 # Copyright (c) 2024, fdR and Contributors
 # See license.txt
 
-# import frappe
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
+
+from ifitwala_ed.curriculum.doctype.program import program as program_module
 
 
 class TestProgram(FrappeTestCase):
@@ -78,6 +81,62 @@ class TestProgram(FrappeTestCase):
 
         program.insert(ignore_permissions=True)
         self.assertEqual(program.prerequisites[0].min_grade, "Z")
+
+    def test_effective_assessment_categories_fall_back_to_parent_when_child_empty(self):
+        parent = frappe._dict(
+            {
+                "name": "PROG-PARENT",
+                "parent_program": "",
+                "assessment_categories": [
+                    frappe._dict(
+                        {
+                            "assessment_category": "CAT-1",
+                            "default_weight": 40,
+                            "color_override": "#123456",
+                            "active": 1,
+                            "idx": 1,
+                        }
+                    )
+                ],
+            }
+        )
+        child = frappe._dict(
+            {
+                "name": "PROG-CHILD",
+                "parent_program": "PROG-PARENT",
+                "assessment_categories": [],
+            }
+        )
+
+        with patch.object(program_module.frappe, "get_doc", return_value=parent):
+            source_program, rows = program_module._resolve_effective_assessment_category_source(child)
+
+        self.assertEqual(source_program, "PROG-PARENT")
+        self.assertEqual(rows[0].assessment_category, "CAT-1")
+
+    def test_effective_assessment_categories_prefer_local_rows(self):
+        child = frappe._dict(
+            {
+                "name": "PROG-CHILD",
+                "parent_program": "PROG-PARENT",
+                "assessment_categories": [
+                    frappe._dict(
+                        {
+                            "assessment_category": "CAT-LOCAL",
+                            "default_weight": 50,
+                            "color_override": "#abcdef",
+                            "active": 1,
+                            "idx": 1,
+                        }
+                    )
+                ],
+            }
+        )
+
+        source_program, rows = program_module._resolve_effective_assessment_category_source(child)
+
+        self.assertEqual(source_program, "PROG-CHILD")
+        self.assertEqual(rows[0].assessment_category, "CAT-LOCAL")
 
 
 def _make_grade_scale():

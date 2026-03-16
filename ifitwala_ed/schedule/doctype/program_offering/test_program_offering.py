@@ -5,6 +5,11 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.schedule.doctype.program_offering.program_offering import (
+    hydrate_catalog_rows,
+    program_course_link_query,
+    program_course_options,
+)
 from ifitwala_ed.schedule.grade_scale_resolver_utils import resolve_grade_scale
 
 
@@ -81,6 +86,75 @@ class TestProgramOffering(FrappeTestCase):
         result = resolve_grade_scale(offering.name, course.name)
         self.assertEqual(result["grade_scale"], course_scale.name)
 
+    def test_program_course_link_query_scopes_to_program_catalog(self):
+        program_scale = _make_grade_scale("Program")
+        organization = _make_organization()
+        school = _make_school(organization)
+        academic_year = _make_academic_year(school)
+        course_one = _make_course("Course One")
+        course_two = _make_course("Course Two")
+        extra_course = _make_course("Extra Course")
+        program = _make_program(program_scale, [course_one.name, course_two.name])
+        _make_offering(
+            program,
+            school,
+            academic_year,
+            [{"course": course_one.name, "course_name": course_one.course_name}],
+        )
+
+        rows = program_course_link_query(
+            "Course",
+            "",
+            "name",
+            0,
+            20,
+            {"program": program.name, "exclude_courses": [course_one.name]},
+        )
+
+        self.assertEqual(rows, [[course_two.name, course_two.course_name]])
+        self.assertNotIn([extra_course.name, extra_course.course_name], rows)
+
+    def test_catalog_hydration_inherits_program_course_basket_groups(self):
+        program_scale = _make_grade_scale("Program")
+        organization = _make_organization()
+        school = _make_school(organization)
+        academic_year = _make_academic_year(school)
+        basket_group_humanities = _make_basket_group("Group 3 Humanities")
+        basket_group_sciences = _make_basket_group("Group 4 Sciences")
+        course = _make_course("Course")
+        program = _make_program(
+            program_scale,
+            [
+                {
+                    "course": course.name,
+                    "required": 1,
+                }
+            ],
+            course_basket_groups=[
+                {"course": course.name, "basket_group": basket_group_humanities.name},
+                {"course": course.name, "basket_group": basket_group_sciences.name},
+            ],
+        )
+        _make_offering(
+            program,
+            school,
+            academic_year,
+            [{"course": course.name, "course_name": course.course_name}],
+        )
+
+        options = program_course_options(program.name)
+        self.assertEqual(
+            options[0]["basket_groups"],
+            [basket_group_humanities.name, basket_group_sciences.name],
+        )
+
+        rows = hydrate_catalog_rows(program.name, frappe.as_json([course.name]))
+        self.assertEqual(
+            rows[0]["basket_groups"],
+            [basket_group_humanities.name, basket_group_sciences.name],
+        )
+        self.assertEqual(rows[0]["required"], 1)
+
 
 def _make_grade_scale(prefix):
     grade_scale = frappe.get_doc(
@@ -138,13 +212,22 @@ def _make_academic_year(school):
     return doc
 
 
-def _make_program(grade_scale, courses=None):
+def _make_program(grade_scale, courses=None, course_basket_groups=None):
+    normalized_courses = []
+    for row in courses or []:
+        if isinstance(row, str):
+            normalized_courses.append({"course": row})
+        else:
+            normalized_courses.append(dict(row))
+
     program = frappe.get_doc(
         {
             "doctype": "Program",
             "program_name": f"Program {frappe.generate_hash(length=6)}",
+            "program_slug": f"program-{frappe.generate_hash(length=8)}",
             "grade_scale": grade_scale.name,
-            "courses": [{"course": course_name} for course_name in (courses or [])],
+            "courses": normalized_courses,
+            "course_basket_groups": course_basket_groups or [],
         }
     )
     program.insert()
@@ -161,6 +244,17 @@ def _make_course(label):
     )
     course.insert()
     return course
+
+
+def _make_basket_group(label):
+    basket_group = frappe.get_doc(
+        {
+            "doctype": "Basket Group",
+            "basket_group_name": f"{label} {frappe.generate_hash(length=6)}",
+        }
+    )
+    basket_group.insert()
+    return basket_group
 
 
 def _make_offering(program, school, academic_year, offering_courses, grade_scale=None):

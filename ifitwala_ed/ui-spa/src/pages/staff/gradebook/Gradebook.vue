@@ -1,682 +1,700 @@
 <template>
-	<div class="gradebook-shell flex w-full flex-col gap-6">
-		<header class="flex flex-col gap-4">
-			<div class="flex flex-wrap items-center justify-between gap-3">
-				<div>
-					<h1 class="text-2xl font-semibold tracking-tight text-ink">Gradebook</h1>
-					<p class="text-base text-ink/70">
-						Pick a student group, choose a task, and record student outcomes.
-					</p>
-				</div>
-			</div>
-
-			<!-- TOP FILTER BAR -->
-			<div
-				class="surface-toolbar ifit-filters flex items-center gap-2 overflow-x-auto no-scrollbar rounded-xl border border-border bg-white px-4 py-2 shadow-sm"
-			>
-				<div class="w-48 shrink-0">
-					<FormControl
-						type="select"
-						size="md"
-						:options="schoolOptions"
-						option-label="school_name"
-						option-value="name"
-						:model-value="filters.school"
-						:disabled="schoolsLoading || !schoolOptions.length"
-						placeholder="School"
-						@update:modelValue="onSchoolSelected"
-					/>
+	<div class="gradebook-shell min-h-full px-4 pb-8 pt-6 md:px-6 lg:px-8 xl:px-10">
+		<div class="mx-auto flex w-full max-w-[1640px] flex-col gap-6 xl:gap-8">
+			<header class="flex flex-col gap-5">
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<div class="space-y-1">
+						<h1 class="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Gradebook</h1>
+						<p class="max-w-3xl text-base text-ink/70">
+							Pick a student group, choose a task, and record student outcomes.
+						</p>
+					</div>
 				</div>
 
-				<div class="w-36 shrink-0">
-					<FormControl
-						type="select"
-						size="md"
-						:options="yearOptions"
-						option-label="label"
-						option-value="value"
-						:model-value="filters.academic_year"
-						:disabled="!yearOptions.length"
-						placeholder="Year"
-						@update:modelValue="onYearSelected"
-					/>
-				</div>
-				<div class="w-40 shrink-0">
-					<FormControl
-						type="select"
-						size="md"
-						:options="programOptions"
-						option-label="label"
-						option-value="value"
-						:model-value="filters.program"
-						:disabled="!programOptions.length"
-						placeholder="Program"
-						@update:modelValue="onProgramSelected"
-					/>
-				</div>
-				<div class="w-40 shrink-0">
-					<FormControl
-						type="select"
-						size="md"
-						:options="courseOptions"
-						option-label="label"
-						option-value="value"
-						:model-value="filters.course"
-						:disabled="!courseOptions.length"
-						placeholder="Course"
-						@update:modelValue="onCourseSelected"
-					/>
-				</div>
-
-				<div class="w-48 shrink-0">
-					<FormControl
-						type="text"
-						size="md"
-						placeholder="Search group..."
-						:model-value="groupSearch"
-						@update:modelValue="value => (groupSearch = value)"
-					/>
-				</div>
-
-				<div class="ml-auto">
-					<Button
-						v-if="hasActiveFilters"
-						appearance="minimal"
-						size="md"
-						icon="x"
-						@click="resetFilters"
-					>
-						Reset
-					</Button>
-				</div>
-			</div>
-		</header>
-
-		<div class="grid gap-6 lg:grid-cols-[minmax(20rem,1fr)_minmax(0,2fr)]">
-			<div class="flex flex-col gap-6">
-				<!-- Student groups Panel -->
-				<section
-					class="flex flex-col overflow-hidden rounded-xl border border-border bg-white shadow-sm transition-all hover:shadow-md"
+				<!-- TOP FILTER BAR -->
+				<div
+					class="surface-toolbar ifit-filters flex items-center gap-2 overflow-x-auto no-scrollbar rounded-2xl border border-border/80 bg-white/90 px-4 py-3 shadow-sm backdrop-blur sm:px-5"
 				>
-					<div class="border-b border-border/50 bg-gray-50/50 px-4 py-3">
-						<div class="flex items-center justify-between gap-2">
-							<h2 class="text-sm font-semibold uppercase tracking-wide text-ink/70">
-								Student Groups
-							</h2>
-							<Button
-								size="sm"
-								appearance="minimal"
-								icon="refresh-cw"
-								:loading="groupsLoading"
-								@click="reloadGroups()"
-							/>
-						</div>
+					<div class="w-48 shrink-0">
+						<FormControl
+							type="select"
+							size="md"
+							:options="schoolOptions"
+							option-label="school_name"
+							option-value="name"
+							:model-value="filters.school"
+							:disabled="schoolsLoading || !schoolOptions.length"
+							placeholder="School"
+							@update:modelValue="onSchoolSelected"
+						/>
 					</div>
 
-					<div class="flex-1 space-y-2 overflow-y-auto p-4" style="max-height: 24rem">
-						<div v-if="groupsLoading" class="space-y-2">
-							<div
-								v-for="n in 6"
-								:key="`group-skeleton-${n}`"
-								class="h-14 animate-pulse rounded-lg bg-gray-100"
-							/>
-						</div>
-						<div
-							v-else-if="!derivedGroups.length"
-							class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-gray-50/50 p-6 text-center text-sm text-ink/60"
+					<div class="w-36 shrink-0">
+						<FormControl
+							type="select"
+							size="md"
+							:options="yearOptions"
+							option-label="label"
+							option-value="value"
+							:model-value="filters.academic_year"
+							:disabled="!yearOptions.length"
+							placeholder="Year"
+							@update:modelValue="onYearSelected"
+						/>
+					</div>
+					<div class="w-40 shrink-0">
+						<FormControl
+							type="select"
+							size="md"
+							:options="programOptions"
+							option-label="label"
+							option-value="value"
+							:model-value="filters.program"
+							:disabled="!programOptions.length"
+							placeholder="Program"
+							@update:modelValue="onProgramSelected"
+						/>
+					</div>
+					<div class="w-40 shrink-0">
+						<FormControl
+							type="select"
+							size="md"
+							:options="courseOptions"
+							option-label="label"
+							option-value="value"
+							:model-value="filters.course"
+							:disabled="!courseOptions.length"
+							placeholder="Course"
+							@update:modelValue="onCourseSelected"
+						/>
+					</div>
+
+					<div class="w-48 shrink-0">
+						<FormControl
+							type="select"
+							size="md"
+							:options="groupPickerOptions"
+							option-label="label"
+							option-value="value"
+							:model-value="selectedGroup?.name || null"
+							:disabled="!groupPickerOptions.length"
+							placeholder="Select group"
+							@update:modelValue="onGroupSelectedFromToolbar"
+						/>
+					</div>
+
+					<div class="ml-auto">
+						<Button
+							v-if="hasActiveFilters"
+							appearance="minimal"
+							size="md"
+							icon="x"
+							@click="resetFilters"
 						>
-							<FeatherIcon name="users" class="mb-2 h-8 w-8 text-ink/20" />
-							<p>No groups match filters.</p>
-						</div>
-						<ul v-else class="space-y-2">
-							<li v-for="group in derivedGroups" :key="group.name">
-								<button
-									type="button"
-									class="relative w-full rounded-lg border px-4 py-3 text-left transition-all"
-									:class="[
-										selectedGroup?.name === group.name
-											? 'border-leaf bg-sky/20 text-ink shadow-sm ring-1 ring-leaf/20'
-											: 'border-transparent bg-gray-50 hover:bg-gray-100 hover:text-ink',
-									]"
-									@click="selectGroup(group)"
-								>
-									<div class="flex items-center justify-between gap-2">
-										<p
-											class="truncate text-sm font-semibold"
-											:class="selectedGroup?.name === group.name ? 'text-ink' : 'text-ink/80'"
-										>
-											{{ group.label }}
-										</p>
-										<span
-											v-if="group.program || group.course"
-											class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider"
-											:class="
-												selectedGroup?.name === group.name
-													? 'bg-white/60 text-ink/70'
-													: 'bg-gray-200/60 text-ink/50'
-											"
-										>
-											{{ [group.program, group.course].filter(Boolean).join(' • ') }}
-										</span>
-									</div>
-									<p v-if="group.cohort" class="mt-1 truncate text-xs text-ink/50">
-										Cohort {{ group.cohort }}
-									</p>
-								</button>
-							</li>
-						</ul>
+							Reset
+						</Button>
 					</div>
-				</section>
+				</div>
+			</header>
 
-				<!-- Tasks Panel -->
-				<section
-					class="flex flex-col overflow-hidden rounded-xl border border-border bg-white shadow-sm transition-all hover:shadow-md"
-				>
-					<div class="border-b border-border/50 bg-gray-50/50 px-4 py-3">
-						<div class="flex items-center justify-between gap-2">
-							<div>
-								<h2 class="text-sm font-semibold uppercase tracking-wide text-ink/70">Tasks</h2>
-								<p class="text-xs text-ink/50" v-if="selectedGroup">
-									{{ selectedGroup.label }}
-								</p>
+			<div class="grid gap-6 xl:gap-8 lg:grid-cols-[minmax(21rem,1fr)_minmax(0,2fr)]">
+				<div class="flex flex-col gap-6 xl:gap-8">
+					<!-- Student groups Panel -->
+					<section
+						class="flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all hover:shadow-md"
+					>
+						<div class="border-b border-border/50 bg-gray-50/50 px-4 py-3">
+							<div class="flex items-center justify-between gap-2">
+								<h2 class="text-sm font-semibold uppercase tracking-wide text-ink/70">
+									Student Groups
+								</h2>
+								<Button
+									size="sm"
+									appearance="minimal"
+									icon="refresh-cw"
+									:loading="groupsLoading"
+									@click="reloadGroups()"
+								/>
 							</div>
 						</div>
-					</div>
 
-					<!-- Task Filters within Panel -->
-					<div
-						v-if="selectedGroup && (taskSummaries.length || derivedTasks.length)"
-						class="border-b border-border/50 bg-white px-4 py-2"
-					>
-						<div class="grid grid-cols-2 gap-2">
-							<FormControl
-								type="select"
-								size="sm"
-								:options="taskTypeOptions"
-								option-label="label"
-								option-value="value"
-								placeholder="All Types"
-								v-model="filters.task_type"
-								class="!mb-0"
-							/>
-							<FormControl
-								type="select"
-								size="sm"
-								:options="deliveryTypeOptions"
-								option-label="label"
-								option-value="value"
-								placeholder="All Modes"
-								v-model="filters.delivery_type"
-								class="!mb-0"
-							/>
-						</div>
-					</div>
-
-					<div class="flex-1 space-y-3 p-4">
-						<div
-							v-if="!selectedGroup"
-							class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-gray-50/50 p-8 text-center text-sm text-ink/60"
-						>
-							<FeatherIcon name="arrow-up" class="mb-2 h-8 w-8 text-ink/20" />
-							<p>Select a group above.</p>
-						</div>
-
-						<div v-else class="space-y-3 overflow-y-auto pr-1" style="max-height: 26rem">
-							<div v-if="tasksLoading" class="space-y-2">
+						<div class="flex-1 space-y-2 overflow-y-auto p-4" style="max-height: 24rem">
+							<div v-if="groupsLoading" class="space-y-2">
 								<div
-									v-for="n in 4"
-									:key="`task-skeleton-${n}`"
-									class="h-16 animate-pulse rounded-lg bg-gray-100"
+									v-for="n in 6"
+									:key="`group-skeleton-${n}`"
+									class="h-14 animate-pulse rounded-lg bg-gray-100"
 								/>
 							</div>
 							<div
-								v-else-if="!taskSummaries.length"
+								v-else-if="!derivedGroups.length"
 								class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-gray-50/50 p-6 text-center text-sm text-ink/60"
 							>
-								<p>No tasks assigned.</p>
-							</div>
-							<div
-								v-else-if="!derivedTasks.length"
-								class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-gray-50/50 p-6 text-center text-sm text-ink/60"
-							>
-								<p>No tasks match filters.</p>
+								<FeatherIcon name="users" class="mb-2 h-8 w-8 text-ink/20" />
+								<p>No groups match filters.</p>
 							</div>
 							<ul v-else class="space-y-2">
-								<li v-for="task in derivedTasks" :key="task.name">
+								<li v-for="group in derivedGroups" :key="group.name">
 									<button
 										type="button"
-										class="w-full rounded-lg border px-4 py-3 text-left transition-all"
+										class="relative w-full rounded-lg border px-4 py-3 text-left transition-all"
 										:class="[
-											selectedTask?.name === task.name
+											selectedGroup?.name === group.name
 												? 'border-leaf bg-sky/20 text-ink shadow-sm ring-1 ring-leaf/20'
 												: 'border-transparent bg-gray-50 hover:bg-gray-100 hover:text-ink',
 										]"
-										@click="selectTask(task)"
+										@click="selectGroup(group)"
 									>
-										<div class="flex flex-col gap-1">
-											<div class="flex items-start justify-between gap-2">
-												<p
-													class="text-sm font-semibold"
-													:class="selectedTask?.name === task.name ? 'text-ink' : 'text-ink/80'"
-												>
-													{{ task.title }}
-												</p>
-											</div>
-											<div class="flex flex-col gap-1.5 text-xs text-ink/60">
-												<div class="flex items-center gap-2">
-													<Badge
-														v-if="task.status"
-														:variant="task.status === 'Open' ? 'solid' : 'subtle'"
-														theme="gray"
-													>
-														{{ task.status }}
-													</Badge>
-													<span>Due {{ formatDate(task.due_date) || '—' }}</span>
-												</div>
-												<div class="flex flex-wrap gap-1 opacity-80">
-													<Badge v-if="task.points" variant="subtle">Pts</Badge>
-													<Badge v-if="task.binary" variant="subtle">Binary</Badge>
-													<Badge v-if="task.criteria" variant="subtle">Crit</Badge>
-												</div>
-											</div>
+										<div class="flex items-center justify-between gap-2">
+											<p
+												class="truncate text-sm font-semibold"
+												:class="selectedGroup?.name === group.name ? 'text-ink' : 'text-ink/80'"
+											>
+												{{ group.label }}
+											</p>
+											<span
+												v-if="group.program || group.course"
+												class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider"
+												:class="
+													selectedGroup?.name === group.name
+														? 'bg-white/60 text-ink/70'
+														: 'bg-gray-200/60 text-ink/50'
+												"
+											>
+												{{ [group.program, group.course].filter(Boolean).join(' • ') }}
+											</span>
 										</div>
+										<p v-if="group.cohort" class="mt-1 truncate text-xs text-ink/50">
+											Cohort {{ group.cohort }}
+										</p>
 									</button>
 								</li>
 							</ul>
 						</div>
-					</div>
-				</section>
-			</div>
+					</section>
 
-			<!-- Grade entry -->
-			<section
-				class="flex flex-col overflow-hidden rounded-xl border border-border bg-white shadow-sm transition-all hover:shadow-md h-fit"
-			>
-				<div class="border-b border-border/50 bg-gray-50/50 px-6 py-4">
-					<div class="flex flex-wrap items-center justify-between gap-4">
-						<div class="flex items-center gap-3">
-							<h2 class="text-lg font-semibold text-ink">Grade Entry</h2>
-							<div
-								v-if="selectedTask"
-								class="flex items-center gap-2 rounded-full bg-white px-2 py-0.5 text-xs text-ink/60 shadow-sm border border-border/50"
-							>
-								<span class="font-medium">Max Points:</span>
-								<span class="font-bold text-ink">{{ gradebook.task?.max_points || '—' }}</span>
+					<!-- Tasks Panel -->
+					<section
+						class="flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all hover:shadow-md"
+					>
+						<div class="border-b border-border/50 bg-gray-50/50 px-4 py-3">
+							<div class="flex items-center justify-between gap-2">
+								<div>
+									<h2 class="text-sm font-semibold uppercase tracking-wide text-ink/70">Tasks</h2>
+									<p class="text-xs text-ink/50" v-if="selectedGroup">
+										{{ selectedGroup.label }}
+									</p>
+								</div>
 							</div>
 						</div>
 
-						<div v-if="gradebook.students.length" class="flex flex-wrap items-center gap-2">
-							<span class="text-xs font-medium uppercase tracking-wider text-ink/50"
-								>Visible to all:</span
-							>
-							<Button
-								size="sm"
-								appearance="minimal"
-								:class="
-									allStudentsVisible
-										? 'bg-sky/30 text-ink font-semibold'
-										: 'text-ink/60 hover:text-ink'
-								"
-								@click="toggleVisibilityGroup('student')"
-							>
-								Students
-							</Button>
-							<Button
-								size="sm"
-								appearance="minimal"
-								:class="
-									allGuardiansVisible
-										? 'bg-sky/30 text-ink font-semibold'
-										: 'text-ink/60 hover:text-ink'
-								"
-								@click="toggleVisibilityGroup('guardian')"
-							>
-								Guardians
-							</Button>
+						<!-- Task Filters within Panel -->
+						<div
+							v-if="selectedGroup && (taskSummaries.length || derivedTasks.length)"
+							class="border-b border-border/50 bg-white px-4 py-2"
+						>
+							<div class="grid grid-cols-2 gap-2">
+								<FormControl
+									type="select"
+									size="sm"
+									:options="taskTypeOptions"
+									option-label="label"
+									option-value="value"
+									placeholder="All Types"
+									v-model="filters.task_type"
+									class="!mb-0"
+								/>
+								<FormControl
+									type="select"
+									size="sm"
+									:options="deliveryTypeOptions"
+									option-label="label"
+									option-value="value"
+									placeholder="All Modes"
+									v-model="filters.delivery_type"
+									class="!mb-0"
+								/>
+							</div>
 						</div>
-					</div>
+
+						<div class="flex-1 space-y-3 p-4">
+							<div
+								v-if="!selectedGroup"
+								class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-gray-50/50 p-8 text-center text-sm text-ink/60"
+							>
+								<FeatherIcon name="arrow-up" class="mb-2 h-8 w-8 text-ink/20" />
+								<p>Select a group above.</p>
+							</div>
+
+							<div v-else class="space-y-3 overflow-y-auto pr-1" style="max-height: 26rem">
+								<div v-if="tasksLoading" class="space-y-2">
+									<div
+										v-for="n in 4"
+										:key="`task-skeleton-${n}`"
+										class="h-16 animate-pulse rounded-lg bg-gray-100"
+									/>
+								</div>
+								<div
+									v-else-if="!taskSummaries.length"
+									class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-gray-50/50 p-6 text-center text-sm text-ink/60"
+								>
+									<p>No tasks assigned.</p>
+								</div>
+								<div
+									v-else-if="!derivedTasks.length"
+									class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-gray-50/50 p-6 text-center text-sm text-ink/60"
+								>
+									<p>No tasks match filters.</p>
+								</div>
+								<ul v-else class="space-y-2">
+									<li v-for="task in derivedTasks" :key="task.name">
+										<button
+											type="button"
+											class="w-full rounded-lg border px-4 py-3 text-left transition-all"
+											:class="[
+												selectedTask?.name === task.name
+													? 'border-leaf bg-sky/20 text-ink shadow-sm ring-1 ring-leaf/20'
+													: 'border-transparent bg-gray-50 hover:bg-gray-100 hover:text-ink',
+											]"
+											@click="selectTask(task)"
+										>
+											<div class="flex flex-col gap-1">
+												<div class="flex items-start justify-between gap-2">
+													<p
+														class="text-sm font-semibold"
+														:class="selectedTask?.name === task.name ? 'text-ink' : 'text-ink/80'"
+													>
+														{{ task.title }}
+													</p>
+												</div>
+												<div class="flex flex-col gap-1.5 text-xs text-ink/60">
+													<div class="flex items-center gap-2">
+														<Badge
+															v-if="task.status"
+															:variant="task.status === 'Open' ? 'solid' : 'subtle'"
+															theme="gray"
+														>
+															{{ task.status }}
+														</Badge>
+														<span>Due {{ formatDate(task.due_date) || '—' }}</span>
+													</div>
+													<div class="flex flex-wrap gap-1 opacity-80">
+														<Badge v-if="task.points" variant="subtle">Pts</Badge>
+														<Badge v-if="task.binary" variant="subtle">Binary</Badge>
+														<Badge v-if="task.criteria" variant="subtle">Crit</Badge>
+													</div>
+												</div>
+											</div>
+										</button>
+									</li>
+								</ul>
+							</div>
+						</div>
+					</section>
 				</div>
 
-				<div class="flex-1 p-6 bg-white min-h-[400px]">
-					<div
-						v-if="gradebookLoading"
-						class="flex h-full flex-col items-center justify-center gap-3 pt-20"
-					>
-						<Spinner class="h-8 w-8 text-canopy" />
-						<p class="text-sm text-ink/50">Loading gradebook...</p>
-					</div>
+				<!-- Grade entry -->
+				<section
+					class="flex h-fit flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all hover:shadow-md"
+				>
+					<div class="border-b border-border/50 bg-gray-50/50 px-6 py-4">
+						<div class="flex flex-wrap items-center justify-between gap-4">
+							<div class="flex items-center gap-3">
+								<h2 class="text-lg font-semibold text-ink">Grade Entry</h2>
+								<div
+									v-if="selectedTask"
+									class="flex items-center gap-2 rounded-full bg-white px-2 py-0.5 text-xs text-ink/60 shadow-sm border border-border/50"
+								>
+									<span class="font-medium">Max Points:</span>
+									<span class="font-bold text-ink">{{ gradebook.task?.max_points || '—' }}</span>
+								</div>
+							</div>
 
-					<div
-						v-else-if="!selectedTask"
-						class="flex h-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/60 bg-gray-50/30 p-12 text-center text-ink/60"
-					>
-						<div class="rounded-full bg-gray-100 p-4">
-							<FeatherIcon name="check-square" class="h-8 w-8 text-ink/30" />
+							<div v-if="gradebook.students.length" class="flex flex-wrap items-center gap-2">
+								<span class="text-xs font-medium uppercase tracking-wider text-ink/50"
+									>Visible to all:</span
+								>
+								<Button
+									size="sm"
+									appearance="minimal"
+									:class="
+										allStudentsVisible
+											? 'bg-sky/30 text-ink font-semibold'
+											: 'text-ink/60 hover:text-ink'
+									"
+									@click="toggleVisibilityGroup('student')"
+								>
+									Students
+								</Button>
+								<Button
+									size="sm"
+									appearance="minimal"
+									:class="
+										allGuardiansVisible
+											? 'bg-sky/30 text-ink font-semibold'
+											: 'text-ink/60 hover:text-ink'
+									"
+									@click="toggleVisibilityGroup('guardian')"
+								>
+									Guardians
+								</Button>
+							</div>
 						</div>
-						<p class="text-lg font-medium text-ink">No Task Selected</p>
-						<p class="max-w-xs text-sm">
-							Choose a task from the left panel to begin entering grades.
-						</p>
 					</div>
 
-					<div
-						v-else-if="!gradebook.students.length"
-						class="flex h-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/60 bg-gray-50/30 p-12 text-center text-ink/60"
-					>
-						<p class="text-lg font-medium text-ink">No Students Assigned</p>
-						<p class="max-w-xs text-sm">This task has no students in the roster.</p>
-					</div>
-
-					<div v-else class="space-y-6">
-						<article
-							v-for="student in gradebook.students"
-							:key="student.task_student"
-							class="group relative rounded-xl border border-border bg-gray-50/30 p-5 transition-all hover:bg-white hover:shadow-md"
+					<div class="min-h-[400px] flex-1 bg-white p-6">
+						<div
+							v-if="gradebookLoading"
+							class="flex h-full flex-col items-center justify-center gap-3 pt-20"
 						>
-							<!-- Current Student Header -->
-							<div
-								class="flex flex-wrap items-start justify-between gap-4 border-b border-border/40 pb-4 mb-4"
+							<Spinner class="h-8 w-8 text-canopy" />
+							<p class="text-sm text-ink/50">Loading gradebook...</p>
+						</div>
+
+						<div
+							v-else-if="!selectedTask"
+							class="flex h-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/60 bg-gray-50/30 p-12 text-center text-ink/60"
+						>
+							<div class="rounded-full bg-gray-100 p-4">
+								<FeatherIcon name="check-square" class="h-8 w-8 text-ink/30" />
+							</div>
+							<p class="text-lg font-medium text-ink">No Task Selected</p>
+							<p class="max-w-xs text-sm">
+								Choose a task from the left panel to begin entering grades.
+							</p>
+						</div>
+
+						<div
+							v-else-if="!gradebook.students.length"
+							class="flex h-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/60 bg-gray-50/30 p-12 text-center text-ink/60"
+						>
+							<p class="text-lg font-medium text-ink">No Students Assigned</p>
+							<p class="max-w-xs text-sm">This task has no students in the roster.</p>
+							<Button size="md" appearance="primary" :loading="rosterSyncing" @click="syncRoster">
+								Sync roster
+							</Button>
+						</div>
+
+						<div v-else class="space-y-6">
+							<article
+								v-for="student in gradebook.students"
+								:key="student.task_student"
+								class="group relative rounded-xl border border-border bg-gray-50/30 p-5 transition-all hover:bg-white hover:shadow-md"
 							>
-								<div class="flex items-center gap-4">
-									<img
-										:src="thumb(student.student_image)"
-										alt=""
-										class="h-12 w-12 rounded-full border border-white bg-white object-cover shadow-sm"
-										loading="lazy"
-										@error="onImgError"
-									/>
-									<div>
-										<p class="text-base font-bold text-ink hover:text-leaf transition-colors">
-											{{ student.student_name }}
-										</p>
-										<div class="flex items-center gap-2 text-xs text-ink/50">
-											<span v-if="student.student_id" class="font-mono">{{
-												student.student_id
-											}}</span>
-											<span>•</span>
-											<span
-												:class="{
-													'text-leaf font-medium':
-														studentStates[student.task_student]?.status === 'Finalized' ||
-														studentStates[student.task_student]?.status === 'Released',
-												}"
+								<!-- Current Student Header -->
+								<div
+									class="flex flex-wrap items-start justify-between gap-4 border-b border-border/40 pb-4 mb-4"
+								>
+									<div class="flex items-center gap-4">
+										<img
+											:src="thumb(student.student_image)"
+											alt=""
+											class="h-12 w-12 rounded-full border border-white bg-white object-cover shadow-sm"
+											loading="lazy"
+											@error="onImgError"
+										/>
+										<div>
+											<p class="text-base font-bold text-ink hover:text-leaf transition-colors">
+												{{ student.student_name }}
+											</p>
+											<div class="flex items-center gap-2 text-xs text-ink/50">
+												<span v-if="student.student_id" class="font-mono">{{
+													student.student_id
+												}}</span>
+												<span>•</span>
+												<span
+													:class="{
+														'text-leaf font-medium':
+															studentStates[student.task_student]?.status === 'Finalized' ||
+															studentStates[student.task_student]?.status === 'Released',
+													}"
+												>
+													{{ studentStates[student.task_student]?.status || '—' }}
+												</span>
+											</div>
+										</div>
+									</div>
+
+									<div class="flex flex-wrap items-center gap-2">
+										<Badge
+											v-if="studentStates[student.task_student]?.complete"
+											variant="subtle"
+											theme="green"
+											class="!bg-leaf/10 !text-leaf"
+										>
+											<FeatherIcon name="check" class="mr-1 h-3 w-3" />
+											Complete
+										</Badge>
+										<Badge v-else-if="gradebook.task?.binary" variant="outline" theme="gray">
+											Incomplete
+										</Badge>
+
+										<div
+											class="flex items-center rounded-lg bg-white px-3 py-1.5 shadow-sm border border-border/40"
+										>
+											<span class="mr-2 text-xs font-medium uppercase tracking-wider text-ink/40"
+												>Score</span
 											>
-												{{ studentStates[student.task_student]?.status || '—' }}
+											<span class="text-lg font-bold text-ink">
+												{{ formatPoints(studentStates[student.task_student]?.mark_awarded) }}
 											</span>
 										</div>
 									</div>
 								</div>
 
-								<div class="flex flex-wrap items-center gap-2">
-									<Badge
-										v-if="studentStates[student.task_student]?.complete"
-										variant="subtle"
-										theme="green"
-										class="!bg-leaf/10 !text-leaf"
-									>
-										<FeatherIcon name="check" class="mr-1 h-3 w-3" />
-										Complete
-									</Badge>
-									<Badge v-else-if="gradebook.task?.binary" variant="outline" theme="gray">
-										Incomplete
-									</Badge>
+								<!-- Grading Controls -->
+								<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+									<div class="space-y-4">
+										<FormControl
+											type="select"
+											label="Status"
+											:options="statusOptions"
+											option-label="label"
+											option-value="value"
+											placeholder="Select status"
+											:model-value="studentStates[student.task_student]?.status || ''"
+											@update:modelValue="onStatusChanged(student.task_student, $event)"
+										/>
 
-									<div
-										class="flex items-center rounded-lg bg-white px-3 py-1.5 shadow-sm border border-border/40"
-									>
-										<span class="mr-2 text-xs font-medium uppercase tracking-wider text-ink/40"
-											>Score</span
-										>
-										<span class="text-lg font-bold text-ink">
-											{{ formatPoints(studentStates[student.task_student]?.mark_awarded) }}
-										</span>
+										<div v-if="gradebook.task?.points" class="space-y-1.5">
+											<label
+												class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
+												>Points Awarded</label
+											>
+											<FormControl
+												type="number"
+												placeholder="Points"
+												:step="0.5"
+												:min="0"
+												:max="gradebook.task?.max_points || undefined"
+												:model-value="studentStates[student.task_student]?.mark_awarded"
+												@update:modelValue="onPointsChanged(student.task_student, $event)"
+											/>
+										</div>
+
+										<div v-if="gradebook.task?.binary" class="space-y-1.5">
+											<label
+												class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
+												>Completion</label
+											>
+											<button
+												type="button"
+												class="flex w-full items-center justify-center gap-2 rounded-md border border-border/60 bg-white px-4 py-2 text-sm font-medium transition-all hover:border-leaf hover:text-leaf active:scale-95"
+												:class="{
+													'!bg-leaf !text-white !border-leaf':
+														studentStates[student.task_student]?.complete,
+												}"
+												@click="toggleComplete(student.task_student)"
+											>
+												<FeatherIcon
+													:name="
+														studentStates[student.task_student]?.complete ? 'check' : 'circle'
+													"
+													class="h-4 w-4"
+												/>
+												{{
+													studentStates[student.task_student]?.complete
+														? 'Marked Complete'
+														: 'Mark Complete'
+												}}
+											</button>
+										</div>
+
+										<div class="pt-2">
+											<label
+												class="block mb-2 text-xs font-semibold uppercase tracking-wide text-ink/50"
+												>Visibility</label
+											>
+											<div class="flex flex-col gap-2">
+												<FormControl
+													type="checkbox"
+													label="Visible to Student"
+													:model-value="
+														Boolean(studentStates[student.task_student]?.visible_to_student)
+													"
+													@update:modelValue="
+														value =>
+															setVisibility(student.task_student, 'visible_to_student', value)
+													"
+												/>
+												<FormControl
+													type="checkbox"
+													label="Visible to Guardian"
+													:model-value="
+														Boolean(studentStates[student.task_student]?.visible_to_guardian)
+													"
+													@update:modelValue="
+														value =>
+															setVisibility(student.task_student, 'visible_to_guardian', value)
+													"
+												/>
+											</div>
+										</div>
 									</div>
-								</div>
-							</div>
 
-							<!-- Grading Controls -->
-							<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-								<div class="space-y-4">
-									<FormControl
-										type="select"
-										label="Status"
-										:options="statusOptions"
-										option-label="label"
-										option-value="value"
-										placeholder="Select status"
-										:model-value="studentStates[student.task_student]?.status || ''"
-										@update:modelValue="onStatusChanged(student.task_student, $event)"
-									/>
-
-									<div v-if="gradebook.task?.points" class="space-y-1.5">
+									<!-- Feedback Column -->
+									<div class="space-y-1.5 md:col-span-1 lg:col-span-2">
 										<label class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
-											>Points Awarded</label
+											>Feedback</label
 										>
 										<FormControl
-											type="number"
-											placeholder="Points"
-											:step="0.5"
-											:min="0"
-											:max="gradebook.task?.max_points || undefined"
-											:model-value="studentStates[student.task_student]?.mark_awarded"
-											@update:modelValue="onPointsChanged(student.task_student, $event)"
+											type="textarea"
+											rows="5"
+											placeholder="Positive reinforcement, areas for improvement..."
+											class="!h-full"
+											:model-value="studentStates[student.task_student]?.feedback || ''"
+											@update:modelValue="onFeedbackChanged(student.task_student, $event)"
 										/>
 									</div>
+								</div>
 
-									<div v-if="gradebook.task?.binary" class="space-y-1.5">
-										<label class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
-											>Completion</label
+								<!-- Criteria Section -->
+								<div
+									v-if="gradebook.task?.criteria && gradebook.criteria.length"
+									class="mt-6 rounded-lg border border-border/60 bg-white p-4 shadow-sm"
+								>
+									<div class="mb-4 flex items-center justify-between">
+										<h4 class="text-sm font-bold text-ink">Criteria Breakdown</h4>
+										<Badge
+											v-if="studentStates[student.task_student]?.dirtyCriteria"
+											variant="subtle"
+											theme="orange"
 										>
-										<button
-											type="button"
-											class="flex w-full items-center justify-center gap-2 rounded-md border border-border/60 bg-white px-4 py-2 text-sm font-medium transition-all hover:border-leaf hover:text-leaf active:scale-95"
-											:class="{
-												'!bg-leaf !text-white !border-leaf':
-													studentStates[student.task_student]?.complete,
-											}"
-											@click="toggleComplete(student.task_student)"
-										>
-											<FeatherIcon
-												:name="studentStates[student.task_student]?.complete ? 'check' : 'circle'"
-												class="h-4 w-4"
-											/>
-											{{
-												studentStates[student.task_student]?.complete
-													? 'Marked Complete'
-													: 'Mark Complete'
-											}}
-										</button>
+											Unsaved Changes
+										</Badge>
 									</div>
-
-									<div class="pt-2">
-										<label
-											class="block mb-2 text-xs font-semibold uppercase tracking-wide text-ink/50"
-											>Visibility</label
+									<div class="grid gap-4 md:grid-cols-2">
+										<div
+											v-for="criterion in gradebook.criteria"
+											:key="criterion.assessment_criteria"
+											class="space-y-2 rounded-md bg-gray-50/50 p-3 ring-1 ring-border/40"
 										>
-										<div class="flex flex-col gap-2">
+											<div class="flex justify-between">
+												<span class="text-sm font-medium text-ink">{{
+													criterion.criteria_name
+												}}</span>
+												<span v-if="criterion.criteria_weighting" class="text-xs text-ink/50"
+													>{{ criterion.criteria_weighting }}%</span
+												>
+											</div>
 											<FormControl
-												type="checkbox"
-												label="Visible to Student"
+												v-if="criterion.levels && criterion.levels.length"
+												type="select"
+												size="sm"
+												:options="criterion.levels"
+												option-label="level"
+												option-value="level"
+												placeholder="Level Achieved"
 												:model-value="
-													Boolean(studentStates[student.task_student]?.visible_to_student)
+													getCriterionState(student.task_student, criterion.assessment_criteria)
+														?.level ?? null
 												"
 												@update:modelValue="
-													value => setVisibility(student.task_student, 'visible_to_student', value)
+													level => onCriterionLevelChanged(student.task_student, criterion, level)
 												"
 											/>
 											<FormControl
-												type="checkbox"
-												label="Visible to Guardian"
+												v-else
+												type="text"
+												size="sm"
+												placeholder="Level"
 												:model-value="
-													Boolean(studentStates[student.task_student]?.visible_to_guardian)
+													getCriterionState(student.task_student, criterion.assessment_criteria)
+														?.level ?? ''
+												"
+												@update:modelValue="
+													level => onCriterionLevelChanged(student.task_student, criterion, level)
+												"
+											/>
+											<FormControl
+												type="number"
+												size="sm"
+												:step="0.1"
+												:min="0"
+												placeholder="Points"
+												:model-value="
+													getCriterionState(student.task_student, criterion.assessment_criteria)
+														?.level_points ?? 0
 												"
 												@update:modelValue="
 													value =>
-														setVisibility(student.task_student, 'visible_to_guardian', value)
+														onCriterionPointsChanged(
+															student.task_student,
+															criterion.assessment_criteria,
+															value
+														)
 												"
 											/>
+											<FormControl
+												type="textarea"
+												rows="2"
+												size="sm"
+												placeholder="Criterion feedback"
+												:model-value="
+													getCriterionState(student.task_student, criterion.assessment_criteria)
+														?.feedback || ''
+												"
+												@update:modelValue="
+													value =>
+														onCriterionFeedbackChanged(
+															student.task_student,
+															criterion.assessment_criteria,
+															value
+														)
+												"
+											/>
+											<div class="flex items-center justify-between text-xs">
+												<span class="text-ink/60">Score:</span>
+												<span class="font-bold text-ink">
+													{{
+														formatPoints(
+															getCriterionState(
+																student.task_student,
+																criterion.assessment_criteria
+															)?.level_points
+														)
+													}}
+												</span>
+											</div>
 										</div>
 									</div>
 								</div>
 
-								<!-- Feedback Column -->
-								<div class="space-y-1.5 md:col-span-1 lg:col-span-2">
-									<label class="block text-xs font-semibold uppercase tracking-wide text-ink/50"
-										>Feedback</label
-									>
-									<FormControl
-										type="textarea"
-										rows="5"
-										placeholder="Positive reinforcement, areas for improvement..."
-										class="!h-full"
-										:model-value="studentStates[student.task_student]?.feedback || ''"
-										@update:modelValue="onFeedbackChanged(student.task_student, $event)"
-									/>
-								</div>
-							</div>
-
-							<!-- Criteria Section -->
-							<div
-								v-if="gradebook.task?.criteria && gradebook.criteria.length"
-								class="mt-6 rounded-lg border border-border/60 bg-white p-4 shadow-sm"
-							>
-								<div class="mb-4 flex items-center justify-between">
-									<h4 class="text-sm font-bold text-ink">Criteria Breakdown</h4>
-									<Badge
-										v-if="studentStates[student.task_student]?.dirtyCriteria"
-										variant="subtle"
-										theme="orange"
-									>
-										Unsaved Changes
-									</Badge>
-								</div>
-								<div class="grid gap-4 md:grid-cols-2">
-									<div
-										v-for="criterion in gradebook.criteria"
-										:key="criterion.assessment_criteria"
-										class="space-y-2 rounded-md bg-gray-50/50 p-3 ring-1 ring-border/40"
-									>
-										<div class="flex justify-between">
-											<span class="text-sm font-medium text-ink">{{
-												criterion.criteria_name
-											}}</span>
-											<span v-if="criterion.criteria_weighting" class="text-xs text-ink/50"
-												>{{ criterion.criteria_weighting }}%</span
-											>
-										</div>
-										<FormControl
-											v-if="criterion.levels && criterion.levels.length"
-											type="select"
+								<!-- Action Footer for Student Card -->
+								<div class="mt-4 flex items-center justify-between border-t border-border/40 pt-4">
+									<p class="text-xs text-ink/40">
+										Last updated
+										{{
+											formatDateTime(studentStates[student.task_student]?.updated_on) || 'Never'
+										}}
+									</p>
+									<div class="flex gap-2">
+										<Button
+											v-if="gradebook.task?.criteria && gradebook.criteria.length"
 											size="sm"
-											:options="criterion.levels"
-											option-label="level"
-											option-value="level"
-											placeholder="Level Achieved"
-											:model-value="
-												getCriterionState(student.task_student, criterion.assessment_criteria)
-													?.level ?? null
-											"
-											@update:modelValue="
-												level => onCriterionLevelChanged(student.task_student, criterion, level)
-											"
-										/>
-										<FormControl
-											v-else
-											type="text"
+											appearance="white"
+											:loading="studentStates[student.task_student]?.savingCriteria"
+											:disabled="!studentStates[student.task_student]?.dirtyCriteria"
+											@click="saveCriteria(student.task_student)"
+										>
+											Save Criteria
+										</Button>
+										<Button
 											size="sm"
-											placeholder="Level"
-											:model-value="
-												getCriterionState(student.task_student, criterion.assessment_criteria)
-													?.level ?? ''
-											"
-											@update:modelValue="
-												level => onCriterionLevelChanged(student.task_student, criterion, level)
-											"
-										/>
-										<FormControl
-											type="number"
-											size="sm"
-											:step="0.1"
-											:min="0"
-											placeholder="Points"
-											:model-value="
-												getCriterionState(student.task_student, criterion.assessment_criteria)
-													?.level_points ?? 0
-											"
-											@update:modelValue="
-												value =>
-													onCriterionPointsChanged(
-														student.task_student,
-														criterion.assessment_criteria,
-														value
-													)
-											"
-										/>
-										<FormControl
-											type="textarea"
-											rows="2"
-											size="sm"
-											placeholder="Criterion feedback"
-											:model-value="
-												getCriterionState(student.task_student, criterion.assessment_criteria)
-													?.feedback || ''
-											"
-											@update:modelValue="
-												value =>
-													onCriterionFeedbackChanged(
-														student.task_student,
-														criterion.assessment_criteria,
-														value
-													)
-											"
-										/>
-										<div class="flex items-center justify-between text-xs">
-											<span class="text-ink/60">Score:</span>
-											<span class="font-bold text-ink">
-												{{
-													formatPoints(
-														getCriterionState(student.task_student, criterion.assessment_criteria)
-															?.level_points
-													)
-												}}
-											</span>
-										</div>
+											appearance="primary"
+											:loading="studentStates[student.task_student]?.saving"
+											:disabled="!studentStates[student.task_student]?.dirty"
+											@click="saveStudent(student.task_student)"
+										>
+											Save Grade
+										</Button>
 									</div>
 								</div>
-							</div>
-
-							<!-- Action Footer for Student Card -->
-							<div class="mt-4 flex items-center justify-between border-t border-border/40 pt-4">
-								<p class="text-xs text-ink/40">
-									Last updated
-									{{ formatDateTime(studentStates[student.task_student]?.updated_on) || 'Never' }}
-								</p>
-								<div class="flex gap-2">
-									<Button
-										v-if="gradebook.task?.criteria && gradebook.criteria.length"
-										size="sm"
-										appearance="white"
-										:loading="studentStates[student.task_student]?.savingCriteria"
-										:disabled="!studentStates[student.task_student]?.dirtyCriteria"
-										@click="saveCriteria(student.task_student)"
-									>
-										Save Criteria
-									</Button>
-									<Button
-										size="sm"
-										appearance="primary"
-										:loading="studentStates[student.task_student]?.saving"
-										:disabled="!studentStates[student.task_student]?.dirty"
-										@click="saveStudent(student.task_student)"
-									>
-										Save Grade
-									</Button>
-								</div>
-							</div>
-						</article>
+							</article>
+						</div>
 					</div>
-				</div>
-			</section>
+				</section>
+			</div>
 		</div>
 	</div>
 </template>
@@ -748,8 +766,6 @@ const filters = reactive({
 const defaultSchool = ref<string | null>(null);
 const schools = ref<FetchSchoolFilterContextResponse['schools']>([]);
 const schoolsLoading = ref(false);
-const groupSearch = ref('');
-let groupSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const groups = ref<GroupSummary[]>([]);
 const groupsLoading = ref(false);
@@ -759,6 +775,7 @@ const taskSummaries = ref<TaskSummary[]>([]);
 const tasksLoading = ref(false);
 const selectedTask = ref<TaskSummary | null>(null);
 const gradebookLoading = ref(false);
+const rosterSyncing = ref(false);
 
 const gradebook = reactive<{
 	task: TaskPayload | null;
@@ -787,7 +804,7 @@ const criteriaSaveTimers: Record<string, ReturnType<typeof setTimeout> | null> =
 
 /* SERVICES ----------------------------------------------------- */
 
-function showDangerToast(title: string) {
+function showToast(title: string, appearance: 'danger' | 'success' | 'warning' = 'danger') {
 	const toastApi = toast as unknown as
 		| ((payload: { title: string; appearance?: string }) => void)
 		| {
@@ -795,16 +812,24 @@ function showDangerToast(title: string) {
 				create?: (payload: { title: string; appearance?: string }) => void;
 		  };
 	if (typeof toastApi === 'function') {
-		toastApi({ title, appearance: 'danger' });
+		toastApi({ title, appearance });
 		return;
 	}
-	if (toastApi && typeof toastApi.error === 'function') {
+	if (appearance === 'danger' && toastApi && typeof toastApi.error === 'function') {
 		toastApi.error(title);
 		return;
 	}
 	if (toastApi && typeof toastApi.create === 'function') {
-		toastApi.create({ title, appearance: 'danger' });
+		toastApi.create({ title, appearance });
 	}
+}
+
+function showDangerToast(title: string) {
+	showToast(title, 'danger');
+}
+
+function showSuccessToast(title: string) {
+	showToast(title, 'success');
 }
 
 function onSchoolsLoaded(data: FetchSchoolFilterContextResponse) {
@@ -834,27 +859,12 @@ async function loadSchoolContext() {
 }
 
 // 2. Groups Loader
-async function loadGroups(search?: string) {
+async function loadGroups() {
 	groupsLoading.value = true;
 	try {
-		// Note: We are fetching ALL relevant groups for the user/search, then filtering client-side.
-		// Use the existing API call without 'school' param because API clamps scope anyway?
-		// WAIT: We updated the backend to return 'school' field so we can filter client-side.
-		// Backend 'fetch_groups' returns groups safe for the user roles.
-		const payload: { search?: string; limit?: number } = {};
-		// We are NOT passing school filters to backend fetch_groups because existing method
-		// is primarily for the instructor portal list. We'll reuse it and filter client side
-		// to avoid rewriting backend search logic.
-		// However, passing search param is good.
-		if (search && search.trim()) {
-			payload.search = search.trim();
-		} else {
-			// If no search, maybe increase limit? or just rely on default.
-			// Let's pass a higer limit to get enough groups for filtering.
-			payload.limit = 100;
-		}
-
-		const rows = await gradebookService.fetchGroups(payload);
+		const rows = await gradebookService.fetchGroups({
+			school: filters.school,
+		});
 
 		// If currently selected group is not in list, add it (edge case)
 		if (
@@ -876,7 +886,7 @@ async function loadGroups(search?: string) {
 }
 
 function reloadGroups() {
-	void loadGroups(groupSearch.value);
+	void loadGroups();
 }
 
 // 3. Tasks Loader
@@ -916,6 +926,27 @@ async function loadGradebook(taskName: string) {
 	}
 }
 
+async function syncRoster() {
+	if (!selectedTask.value?.name) {
+		showToast('Select a task first.', 'warning');
+		return;
+	}
+
+	rosterSyncing.value = true;
+	try {
+		const payload = await gradebookService.repairTaskRoster({
+			task: selectedTask.value.name,
+		});
+		showSuccessToast(payload.message || 'Roster synced.');
+		await loadGradebook(selectedTask.value.name);
+	} catch (error) {
+		console.error('Failed to sync task roster', error);
+		showDangerToast('Could not sync the task roster');
+	} finally {
+		rosterSyncing.value = false;
+	}
+}
+
 /* COMPUTED - FILTER OPTIONS & DERIVED DATA ---------------------- */
 
 const schoolOptions = computed(() => {
@@ -948,15 +979,15 @@ const derivedGroups = computed(() => {
 	if (f.course) {
 		list = list.filter(g => g.course === f.course);
 	}
-	// 5. Search Filter (Client-side refinement on top of server search)
-	if (groupSearch.value.trim()) {
-		const q = groupSearch.value.toLowerCase().trim();
-		list = list.filter(
-			g => g.label?.toLowerCase().includes(q) || g.name?.toLowerCase().includes(q)
-		);
-	}
 	return list;
 });
+
+const groupPickerOptions = computed(() =>
+	derivedGroups.value.map(group => ({
+		label: group.label,
+		value: group.name,
+	}))
+);
 
 // Options derived from CURRENT visible groups (after school filter applied)
 // This ensures cascading logic: selecting a school reduces available years/programs.
@@ -1004,13 +1035,7 @@ const courseOptions = computed(() => {
 });
 
 const hasActiveFilters = computed(() => {
-	return !!(
-		filters.school ||
-		filters.academic_year ||
-		filters.program ||
-		filters.course ||
-		groupSearch.value
-	);
+	return !!(filters.school || filters.academic_year || filters.program || filters.course);
 });
 
 /* TASK FILTERING ------------------------------------------------ */
@@ -1054,6 +1079,7 @@ function onSchoolSelected(val: string | null) {
 	filters.academic_year = null;
 	filters.program = null;
 	filters.course = null;
+	void loadGroups();
 }
 
 function onYearSelected(val: string | null) {
@@ -1071,12 +1097,27 @@ function onCourseSelected(val: string | null) {
 	filters.course = val;
 }
 
+function onGroupSelectedFromToolbar(groupName: string | null) {
+	if (!groupName) {
+		selectGroup(null);
+		return;
+	}
+
+	const match = derivedGroups.value.find(group => group.name === groupName);
+	if (!match) {
+		showDangerToast('Selected group is no longer available.');
+		return;
+	}
+
+	selectGroup(match);
+}
+
 function resetFilters() {
 	filters.school = defaultSchool.value;
 	filters.academic_year = null;
 	filters.program = null;
 	filters.course = null;
-	groupSearch.value = '';
+	void loadGroups();
 }
 
 // Downstream Clearing Logic
@@ -1293,19 +1334,6 @@ function scheduleCriteriaSave(taskStudent: string) {
 }
 
 watch(
-	() => groupSearch.value,
-	value => {
-		if (groupSearchTimer) {
-			clearTimeout(groupSearchTimer);
-		}
-		groupSearchTimer = setTimeout(() => {
-			groupSearchTimer = null;
-			void loadGroups(value);
-		}, 400);
-	}
-);
-
-watch(
 	() => route.query.student_group,
 	() => {
 		pendingRouteGroup.value = currentRouteStudentGroup();
@@ -1352,10 +1380,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	clearAllAutosaveTimers();
-	if (groupSearchTimer) {
-		clearTimeout(groupSearchTimer);
-		groupSearchTimer = null;
-	}
 });
 
 function initializeStudentStates() {

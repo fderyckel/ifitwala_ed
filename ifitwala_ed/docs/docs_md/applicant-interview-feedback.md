@@ -3,9 +3,9 @@ title: "Applicant Interview Feedback: Per-Interviewer Notes"
 slug: applicant-interview-feedback
 category: Admission
 doc_order: 9
-version: "1.1.0"
-last_change_date: "2026-03-05"
-summary: "Store one structured feedback record per interviewer per admissions interview to avoid concurrent edit collisions on shared interview notes."
+version: "1.2.0"
+last_change_date: "2026-03-12"
+summary: "Store the only canonical interviewer-opinion record per interviewer per admissions interview, avoiding collisions on any shared event note."
 seo_title: "Applicant Interview Feedback"
 seo_description: "Per-interviewer admissions interview feedback linked to Applicant Interview with Draft/Submitted status and row-level access control."
 ---
@@ -14,7 +14,7 @@ seo_description: "Per-interviewer admissions interview feedback linked to Applic
 
 `Applicant Interview Feedback` stores structured notes per interviewer for one `Applicant Interview`.
 
-This prevents multi-interviewer collisions on one shared text field and enables clear accountability by user and timestamp.
+This is the only canonical store for interviewer opinion. It prevents multi-interviewer collisions on one shared text field and enables clear accountability by user and timestamp.
 
 ## Core Model
 
@@ -36,10 +36,11 @@ This prevents multi-interviewer collisions on one shared text field and enables 
 - Non-privileged users can only create/edit their own row.
 - User must be listed in `Applicant Interview.interviewers` to access/edit.
 - Downgrade `Submitted -> Draft` is blocked for non-privileged users.
+- Parent `Applicant Interview` fields are not used to store panel opinion or a combined interview judgment.
 
 ## SPA Usage
 
-Used by `InterviewWorkspaceOverlay` opened from `StaffHome` calendar when the clicked `School Event` references `Applicant Interview`.
+Used by `AdmissionsWorkspaceOverlay` opened from `StaffHome` calendar when the clicked `School Event` references `Applicant Interview`.
 
 Workspace APIs:
 - `get_interview_workspace(interview=...)`
@@ -61,3 +62,4 @@ Workspace APIs:
 - **Scope contract**:
   - staff roles (`Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`) are scoped by applicant organization/school visibility
   - non-privileged interviewers can access only their own row and only when listed on the interview
+  - no cross-panel opinion merge is stored at the interview-event level

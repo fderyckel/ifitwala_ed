@@ -1,0 +1,133 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "format:SOA-.#####",
+ "creation": "2026-03-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "organization",
+  "as_of_date",
+  "from_date",
+  "account_holder",
+  "status",
+  "processed_on",
+  "items",
+  "total_account_holders",
+  "total_outstanding",
+  "note"
+ ],
+ "fields": [
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "as_of_date",
+   "fieldtype": "Date",
+   "label": "As Of Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "account_holder",
+   "fieldtype": "Link",
+   "label": "Account Holder",
+   "options": "Account Holder"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nProcessed\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "processed_on",
+   "fieldtype": "Datetime",
+   "label": "Processed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Account Holders",
+   "options": "Statement Of Accounts Run Item"
+  },
+  {
+   "fieldname": "total_account_holders",
+   "fieldtype": "Int",
+   "label": "Total Account Holders",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_outstanding",
+   "fieldtype": "Currency",
+   "label": "Total Outstanding",
+   "read_only": 1
+  },
+  {
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Accounting",
+ "name": "Statement Of Accounts Run",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

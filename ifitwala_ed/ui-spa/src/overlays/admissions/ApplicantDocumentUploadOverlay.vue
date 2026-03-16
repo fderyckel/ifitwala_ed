@@ -77,7 +77,7 @@
 
 							<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
 								<label class="type-caption text-ink/70" for="item-label-input">
-									{{ __('File description') }}
+									{{ __('File description (optional)') }}
 								</label>
 								<input
 									id="item-label-input"
@@ -88,7 +88,11 @@
 									:disabled="isReadOnly || submitting"
 								/>
 								<p class="mt-2 type-caption text-ink/55">
-									{{ __('This label helps admissions review each uploaded file separately.') }}
+									{{
+										__(
+											'Optional. Add a note only when it helps distinguish multiple files for the same requirement.'
+										)
+									}}
 								</p>
 							</div>
 
@@ -156,6 +160,7 @@ const props = defineProps<{
 	open: boolean;
 	zIndex?: number;
 	overlayId?: string;
+	studentApplicant?: string | null;
 	documentType?: string;
 	documentLabel?: string;
 	description?: string;
@@ -305,10 +310,6 @@ async function submit() {
 		return;
 	}
 	const trimmedItemLabel = itemLabelValue.value.trim();
-	if (!trimmedItemLabel) {
-		setError('', __('Please provide a short description for this file.'));
-		return;
-	}
 
 	submitting.value = true;
 	clearError();
@@ -316,6 +317,7 @@ async function submit() {
 		const content = await readAsBase64(selectedFile.value);
 		const clientRequestId = `admissions_upload_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 		await service.uploadDocument({
+			student_applicant: props.studentApplicant || undefined,
 			document_type: props.documentType,
 			applicant_document_item: props.applicantDocumentItem || null,
 			item_key: mode.value === 'replace' ? props.itemKey || null : null,

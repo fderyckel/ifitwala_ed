@@ -9,13 +9,21 @@ from ifitwala_ed.governance.policy_scope_utils import (
     is_policy_within_user_scope,
     is_school_within_policy_organization_scope,
 )
-from ifitwala_ed.governance.policy_utils import POLICY_CATEGORIES, ensure_policy_admin, is_system_manager
+from ifitwala_ed.governance.policy_utils import (
+    POLICY_APPLIES_TO_OPTIONS,
+    POLICY_CATEGORIES,
+    ensure_policy_admin,
+    get_policy_applies_to_tokens,
+    is_system_manager,
+    normalize_policy_applies_to,
+)
 
 
 class InstitutionalPolicy(Document):
     def before_insert(self):
         ensure_policy_admin()
         self._validate_policy_category()
+        self._validate_applies_to()
         if not self.organization:
             frappe.throw(_("Organization is required."))
         self._validate_unique_policy_key()
@@ -24,6 +32,7 @@ class InstitutionalPolicy(Document):
     def before_save(self):
         ensure_policy_admin()
         self._validate_policy_category()
+        self._validate_applies_to()
         self._validate_school_organization()
         if self.is_new():
             return
@@ -81,6 +90,21 @@ class InstitutionalPolicy(Document):
     def _validate_policy_category(self):
         if not self.policy_category or self.policy_category not in POLICY_CATEGORIES:
             frappe.throw(_("Policy Category must be one of: {0}.").format(", ".join(POLICY_CATEGORIES)))
+
+    def _validate_applies_to(self):
+        self.applies_to = normalize_policy_applies_to(self.applies_to)
+        tokens = get_policy_applies_to_tokens(self.applies_to)
+        if not tokens:
+            frappe.throw(_("Applies To must include at least one audience."))
+
+        invalid = [token for token in tokens if token not in POLICY_APPLIES_TO_OPTIONS]
+        if invalid:
+            frappe.throw(
+                _("Applies To must only use: {0}. Invalid values: {1}.").format(
+                    ", ".join(POLICY_APPLIES_TO_OPTIONS),
+                    ", ".join(invalid),
+                )
+            )
 
 
 def _escaped_in(values: list[str]) -> str:

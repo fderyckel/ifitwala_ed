@@ -730,7 +730,7 @@ class Employee(NestedSet):
         # Keep designation-driven roles aligned with the managed sync model.
         from ifitwala_ed.hr.employee_access import sync_user_access_from_employee
 
-        sync_user_access_from_employee(self)
+        sync_user_access_from_employee(self, notify_role_additions=True)
 
     def _apply_approver_roles(self):
         if not self._can_manage_user_roles():

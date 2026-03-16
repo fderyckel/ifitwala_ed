@@ -381,6 +381,7 @@ frappe.ui.form.on("Program Enrollment", {
 	onload(frm) {
 		set_queries(frm);
 		set_term_field_queries(frm);
+		prefill_program_enrollment_default_school(frm);
 	},
 
 	refresh(frm) {
@@ -501,6 +502,20 @@ frappe.ui.form.on("Program Enrollment", {
 		});
 	}
 });
+
+function prefill_program_enrollment_default_school(frm) {
+	if (!frm.is_new() || frm.doc.school || frm.doc.program_offering) return;
+
+	frappe.call({
+		method: "ifitwala_ed.utilities.school_tree.get_user_default_school",
+		callback: function (r) {
+			const school = r && r.message;
+			if (school && !frm.doc.school && !frm.doc.program_offering) {
+				frm.set_value("school", school);
+			}
+		}
+	});
+}
 
 // Child table event: when picking a course, set defaults for non-term-long courses
 frappe.ui.form.on("Program Enrollment Course", {

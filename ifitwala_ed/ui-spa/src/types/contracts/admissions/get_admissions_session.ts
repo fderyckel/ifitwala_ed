@@ -1,25 +1,21 @@
 // ifitwala_ed/ui-spa/src/types/contracts/admissions/get_admissions_session.ts
 
-import type { PortalApplicantStatus } from './types'
+import type { AdmissionsEnrollmentOffer, AdmissionsSessionApplicant } from './types'
 
-export type Request = {}
+export type Request = {
+  student_applicant?: string
+}
 
 export type Response = {
   user: {
     name: string
     full_name: string
-    roles: ['Admissions Applicant']
+    roles: string[]
   }
-  applicant: {
-    name: string
-    portal_status: PortalApplicantStatus
-    school: string
-    organization: string
-    academic_year?: string | null
-    term?: string | null
-    program?: string | null
-    program_offering?: string | null
-    is_read_only: boolean
-    read_only_reason: string | null
-  }
+  access_mode: 'Single Applicant Workspace' | 'Family Workspace'
+  family_workspace_enabled: boolean
+  selected_applicant: string
+  available_applicants: AdmissionsSessionApplicant[]
+  applicant: AdmissionsSessionApplicant
+  enrollment_offer?: AdmissionsEnrollmentOffer | null
 }

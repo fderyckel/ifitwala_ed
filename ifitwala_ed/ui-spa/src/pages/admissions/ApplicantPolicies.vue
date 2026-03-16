@@ -79,7 +79,7 @@ import type { ApplicantPolicy } from '@/types/contracts/admissions/types';
 
 const service = createAdmissionsService();
 const overlay = useOverlayStack();
-const { session } = useAdmissionsSession();
+const { session, currentApplicantName } = useAdmissionsSession();
 
 const policies = ref<ApplicantPolicy[]>([]);
 const loading = ref(false);
@@ -89,11 +89,15 @@ const actionError = ref('');
 const isReadOnly = computed(() => Boolean(session.value?.applicant?.is_read_only));
 
 async function loadPolicies() {
+	if (!currentApplicantName.value) {
+		policies.value = [];
+		return;
+	}
 	loading.value = true;
 	error.value = null;
 	actionError.value = '';
 	try {
-		const resp = await service.listPolicies();
+		const resp = await service.listPolicies({ student_applicant: currentApplicantName.value });
 		policies.value = resp.policies || [];
 	} catch (err) {
 		const message = err instanceof Error ? err.message : __('Unable to load policies.');
@@ -115,6 +119,7 @@ function openPolicy(policy: ApplicantPolicy) {
 			policy_version: policy.policy_version,
 			content_html: policy.content_html,
 			expected_signer_name: policy.expected_signature_name,
+			student_applicant: currentApplicantName.value,
 		},
 		readOnly: isReadOnly.value,
 	});

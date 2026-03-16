@@ -2,7 +2,7 @@
  "actions": [],
  "allow_events_in_timeline": 1,
  "allow_rename": 1,
- "autoname": "format:PAV-{YYYY}[MM}-{#####}",
+ "autoname": "PAV-.YYYY.-.MM.-.###",
  "creation": "2025-01-01 09:41:54.513356",
  "default_view": "List",
  "doctype": "DocType",
@@ -167,7 +167,7 @@
    "read_only": 1
   },
   {
-   "description": "Leave a non-confidential note to inform faculty about the reasons for the student visit to the health centre. The note will create an automatic medical log entry for the student.",
+   "description": "Leave a non-confidential note to inform faculty about the reasons for the student visit to the health centre.",
    "fieldname": "note",
    "fieldtype": "Text Editor",
    "label": "Note"
@@ -244,7 +244,7 @@
  "image_field": "photo",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-02 17:23:47.171367",
+ "modified": "2026-03-09 21:38:09.765402",
  "modified_by": "Administrator",
  "module": "Health",
  "name": "Student Patient Visit",

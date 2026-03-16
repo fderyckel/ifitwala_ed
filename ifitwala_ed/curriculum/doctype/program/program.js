@@ -19,6 +19,22 @@ frappe.ui.form.on("Program", {
 			};
 		});
 
+		frm.set_query("course", "course_basket_groups", function (doc) {
+			const validCourses = (doc.courses || [])
+				.filter(r => r.course)
+				.map(r => r.course);
+
+			if (!validCourses.length) {
+				return {
+					filters: [["Course", "name", "=", "___NONE___"]]
+				};
+			}
+
+			return {
+				filters: [["Course", "name", "in", validCourses]]
+			};
+		});
+
 		// Avoid picking the same Assessment Category twice in the grid
 		frm.set_query("assessment_category", "assessment_categories", function (doc) {
 			const chosen = (doc.assessment_categories || [])
@@ -93,6 +109,7 @@ frappe.ui.form.on("Program", {
 		// Live % helpers
 		_bind_weight_handlers(frm);
 		_update_remaining_weight_badge(frm);
+		_refresh_effective_assessment_categories_hint(frm);
 	},
 
 	refresh: frappe.utils.debounce(async (frm) => {
@@ -123,6 +140,8 @@ frappe.ui.form.on("Program", {
 		} else {
 			frm.dashboard.set_headline("");
 		}
+
+		_refresh_effective_assessment_categories_hint(frm);
 	}, 300),
 
 	before_save(frm) {
@@ -301,6 +320,49 @@ function _update_remaining_weight_badge(frm) {
 					? "if-program-weight-pill--success"
 					: "if-program-weight-pill--neutral"
 		);
+}
+
+function _render_effective_assessment_categories_hint(frm, payload) {
+	const $wrap = $(frm.fields_dict.assessment_categories?.wrapper || null);
+	if (!$wrap.length) return;
+
+	$wrap.find(".if-program-inherited-assessment-note").remove();
+
+	if (!payload || !payload.inherited || !payload.source_program) {
+		return;
+	}
+
+	const rows = Array.isArray(payload.rows) ? payload.rows : [];
+	const categories = rows
+		.map((row) => frappe.utils.escape_html(row.assessment_category || ""))
+		.filter(Boolean)
+		.join(", ");
+	const sourceProgram = frappe.utils.escape_html(payload.source_program || "");
+
+	const body = categories
+		? __("Using inherited Assessment Categories from {0}: {1}", [sourceProgram, categories])
+		: __("Using inherited Assessment Categories from {0}.", [sourceProgram]);
+
+	$wrap.prepend(
+		`<div class="if-program-inherited-assessment-note text-muted small" style="margin-bottom:8px;">
+			${body}
+		</div>`
+	);
+}
+
+function _refresh_effective_assessment_categories_hint(frm) {
+	const hasLocalRows = Array.isArray(frm.doc.assessment_categories) && frm.doc.assessment_categories.length > 0;
+	const hasParent = !!(frm.doc.parent_program || "").trim();
+	if (!frm.doc.name || !hasParent || hasLocalRows) {
+		_render_effective_assessment_categories_hint(frm, null);
+		return;
+	}
+
+	frappe.call({
+		method: "ifitwala_ed.curriculum.doctype.program.program.get_effective_assessment_categories",
+		args: { program: frm.doc.name },
+		callback: (r) => _render_effective_assessment_categories_hint(frm, r.message || null),
+	});
 }
 
 // NEW: with multi-scheme, only enforce weight rules if Points is enabled.

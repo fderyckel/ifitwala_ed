@@ -1,15 +1,19 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# /Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/schedule/report/enrollment_trend_report/enrollment_trend_report.py
+
 from collections import defaultdict
 
 import frappe
 from frappe import _
 
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
+
 
 def execute(filters=None):
     filters = filters or {}
-    school_filter = filters.get("school")
+    school_filter = (filters.get("school") or "").strip()
 
     # 🎯 CASE 1: No school selected → One line per school
     if not school_filter:
@@ -30,6 +34,7 @@ def execute(filters=None):
         group_key = "school"
     else:
         # 🎯 CASE 2: School selected → One line per program in that school
+        school_scope = tuple(get_descendant_schools(school_filter) or [school_filter])
         rows = frappe.db.sql(
             """
             SELECT
@@ -38,11 +43,11 @@ def execute(filters=None):
                 COUNT(pe.name) as enrollment_count
             FROM `tabProgram Enrollment` pe
             LEFT JOIN `tabAcademic Year` ay ON pe.academic_year = ay.name
-            WHERE pe.school = %(school)s
+            WHERE pe.school IN %(school_list)s
             GROUP BY pe.academic_year, pe.program
             ORDER BY MIN(ay.year_start_date), pe.program
         """,
-            filters,
+            {"school_list": school_scope},
             as_dict=True,
         )
 

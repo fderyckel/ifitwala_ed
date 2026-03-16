@@ -14,6 +14,7 @@
   "is_group",
   "abbr",
   "school_logo",
+  "school_logo_file",
   "address__html",
   "organization",
   "column_break_zyeu",
@@ -113,6 +114,14 @@
    "fieldname": "school_logo",
    "fieldtype": "Attach Image",
    "label": "School Logo"
+  },
+  {
+   "fieldname": "school_logo_file",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "School Logo File",
+   "options": "File",
+   "read_only": 1
   },
   {
    "fieldname": "school_name",
@@ -408,7 +417,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-02-11 10:35:24.397722",
+ "modified": "2026-03-11 19:46:46.854676",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
@@ -533,6 +542,17 @@
    "role": "Counselor",
    "select": 1,
    "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "select": 1,
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",

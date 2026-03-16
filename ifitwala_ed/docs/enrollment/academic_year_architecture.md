@@ -36,6 +36,19 @@ We already have school-tree utilities that support ancestor/descendant resolutio
 
 These must not be conflated.
 
+### 0.4 Academic Year is not Fiscal Year
+
+Academic Year is the educational time container only.
+
+It must not be re-used as:
+
+* legal accounting year
+* finance posting boundary
+* tax reporting boundary
+* accounting period lock proxy
+
+Accounting must use live `Fiscal Year` plus `Accounting Period` in its own domain. Academic Year must not be overloaded to carry accounting legality.
+
 ---
 
 ## 1) Guiding principles (locked)

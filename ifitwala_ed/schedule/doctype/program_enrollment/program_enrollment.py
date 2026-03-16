@@ -9,6 +9,7 @@ from frappe.model.document import Document
 from frappe.utils import get_fullname, get_link_to_form, getdate, nowdate
 from frappe.utils.nestedset import get_ancestors_of
 
+from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
 from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 from ifitwala_ed.utilities.school_tree import ParentRuleViolation, get_descendant_schools, get_effective_record
 
@@ -19,6 +20,15 @@ ALLOWED_SOURCES = {"Request", "Admin", "Migration"}
 
 def _user_has_any_role(roles: set[str]) -> bool:
     return bool(set(frappe.get_roles(frappe.session.user)) & roles)
+
+
+def _auto_upgrade_identity_for_active_enrollment(*, student_name: str, program_enrollment: str):
+    from ifitwala_ed.admission.doctype.student_applicant.student_applicant import auto_upgrade_identity_for_student
+
+    return auto_upgrade_identity_for_student(
+        student_name=student_name,
+        program_enrollment=program_enrollment,
+    )
 
 
 class ProgramEnrollment(Document):
@@ -77,6 +87,7 @@ class ProgramEnrollment(Document):
         self._validate_terms_membership_and_order()
         self._validate_dropped_requires_date()
         self._validate_enrollment_source()
+        self._sync_course_semantics_from_offering()
         self._validate_course_terms()
 
         # 5) Duplication guards
@@ -233,6 +244,37 @@ class ProgramEnrollment(Document):
             if not _user_has_any_role(MIGRATION_ROLES):
                 frappe.throw(_("Only System Manager can create Migration enrollments."))
 
+    def _sync_course_semantics_from_offering(self):
+        if not self.program_offering or not getattr(self, "courses", None):
+            return
+
+        offering_semantics = get_offering_course_semantics(self.program_offering)
+        for idx, row in enumerate(self.courses or [], start=1):
+            course = (row.course or "").strip()
+            if not course:
+                continue
+
+            semantics = offering_semantics.get(course) or {}
+            row.required = 1 if semantics.get("required") else 0
+            allowed_groups = list(semantics.get("basket_groups") or [])
+            credited_group = (row.credited_basket_group or "").strip()
+
+            if credited_group and credited_group not in allowed_groups:
+                frappe.throw(
+                    _("Course row {0}: Credited Basket Group (Enrollment) {1} is not allowed for course {2}.").format(
+                        idx, credited_group, course
+                    )
+                )
+
+            if not credited_group and len(allowed_groups) == 1 and not int(row.required or 0):
+                row.credited_basket_group = allowed_groups[0]
+                credited_group = allowed_groups[0]
+
+            if not int(row.required or 0) and len(allowed_groups) > 1 and not credited_group:
+                frappe.throw(
+                    _("Course row {0}: select a Credited Basket Group (Enrollment) for course {1}.").format(idx, course)
+                )
+
     def before_save(self):
         # A) Only one active enrollment per student (if not archived)
         self.validate_only_one_active_enrollment()
@@ -246,6 +288,27 @@ class ProgramEnrollment(Document):
 
     def on_update(self):
         self.update_student_joining_date()
+        self._auto_upgrade_identity_after_activation()
+
+    def _auto_upgrade_identity_after_activation(self):
+        if not self._is_first_active_enrollment_transition():
+            return
+        if not (self.student or "").strip():
+            return
+        _auto_upgrade_identity_for_active_enrollment(
+            student_name=self.student,
+            program_enrollment=self.name,
+        )
+
+    def _is_first_active_enrollment_transition(self) -> bool:
+        if int(self.archived or 0) == 1:
+            return False
+
+        previous = self.get_doc_before_save()
+        if not previous:
+            return True
+
+        return int(previous.archived or 0) == 1
 
     def on_trash(self):
         # when deleting an enrollment, recompute from remaining rows
@@ -500,6 +563,7 @@ class ProgramEnrollment(Document):
                 continue
 
             item = {"course": course, "status": "Enrolled"}
+            item["required"] = 1
 
             # Optional, same behavior you had: if course doesn’t declare long-term bounds,
             # default term_start/term_end to the school’s AY term bounds for convenience.

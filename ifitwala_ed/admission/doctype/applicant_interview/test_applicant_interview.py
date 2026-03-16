@@ -12,6 +12,11 @@ from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview impor
     schedule_applicant_interview,
 )
 from ifitwala_ed.api.file_access import download_admissions_file
+from ifitwala_ed.api.recommendation_intake import (
+    create_recommendation_request,
+    get_recommendation_review_payload,
+    submit_recommendation,
+)
 from ifitwala_ed.utilities.employee_booking import upsert_employee_booking
 
 
@@ -187,7 +192,7 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertGreaterEqual(len(payload.get("suggestions") or []), 1)
         self.assertEqual(before_count, after_count)
 
-    def test_assigned_interviewer_without_admissions_role_can_access_and_update(self):
+    def test_assigned_interviewer_without_admissions_role_can_access_but_not_edit_parent(self):
         interviewer = self._create_user("interviewer_access")
         self._create_employee(interviewer, first_name="Case", last_name="Interviewer")
 
@@ -203,6 +208,7 @@ class TestApplicantInterview(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Interview", interview.name))
+        self._ensure_interviewer_assignment(interview.name, interviewer.name)
 
         frappe.set_user(interviewer.name)
         interviewer_roles = set(frappe.get_roles(interviewer.name))
@@ -213,7 +219,7 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertTrue(
             frappe.has_permission("Applicant Interview", ptype="read", doc=interview.name, user=interviewer.name)
         )
-        self.assertTrue(
+        self.assertFalse(
             frappe.has_permission("Applicant Interview", ptype="write", doc=interview.name, user=interviewer.name)
         )
         self.assertFalse(frappe.has_permission("Applicant Interview", ptype="create", user=interviewer.name))
@@ -223,13 +229,9 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertEqual(rows[0].get("name"), interview.name)
 
         loaded = frappe.get_doc("Applicant Interview", interview.name)
-        loaded.notes = "Interviewer note update"
-        loaded.outcome_impression = "Positive"
-        loaded.save()
-
-        refreshed = frappe.get_doc("Applicant Interview", interview.name)
-        self.assertEqual(refreshed.notes, "Interviewer note update")
-        self.assertEqual(refreshed.outcome_impression, "Positive")
+        loaded.notes = "Operational context update"
+        with self.assertRaises(frappe.PermissionError):
+            loaded.save()
 
         loaded = frappe.get_doc("Applicant Interview", interview.name)
         loaded.mode = "Online"
@@ -254,6 +256,7 @@ class TestApplicantInterview(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Interview", interview.name))
+        self._ensure_interviewer_assignment(interview.name, interviewer.name)
 
         frappe.set_user(outsider.name)
         self.assertFalse(
@@ -262,8 +265,8 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertFalse(
             frappe.has_permission("Applicant Interview", ptype="write", doc=interview.name, user=outsider.name)
         )
-        rows = frappe.get_list("Applicant Interview", fields=["name"], filters={"name": interview.name})
-        self.assertEqual(rows, [])
+        with self.assertRaises(frappe.PermissionError):
+            frappe.get_list("Applicant Interview", fields=["name"], filters={"name": interview.name})
 
     def test_workspace_returns_guardians_for_assigned_interviewer(self):
         interviewer = self._create_user("workspace")
@@ -289,9 +292,17 @@ class TestApplicantInterview(FrappeTestCase):
                 "relationship": "Mother",
                 "guardian_first_name": "Ada",
                 "guardian_last_name": "Lovelace",
+                "guardian_gender": "Female",
                 "guardian_email": "ada@example.com",
                 "guardian_mobile_phone": "+33101010101",
+                "guardian_work_email": "ada.work@example.com",
+                "guardian_work_phone": "+33101010102",
+                "guardian_designation": "Mathematician",
+                "employment_sector": "Education",
+                "work_place": "Analytical Engine School",
                 "is_primary": 1,
+                "can_consent": 0,
+                "use_applicant_contact": 1,
             },
         )
         applicant_doc.save(ignore_permissions=True)
@@ -302,7 +313,16 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertTrue(payload.get("ok"))
         self.assertEqual(payload.get("interview", {}).get("name"), interview.name)
         self.assertEqual(payload.get("applicant", {}).get("name"), self.applicant.name)
-        self.assertGreaterEqual(len(payload.get("applicant", {}).get("guardians") or []), 1)
+        guardians = payload.get("applicant", {}).get("guardians") or []
+        self.assertGreaterEqual(len(guardians), 1)
+        self.assertEqual((guardians[0] or {}).get("first_name"), "Ada")
+        self.assertEqual((guardians[0] or {}).get("last_name"), "Lovelace")
+        self.assertEqual((guardians[0] or {}).get("gender"), "Female")
+        self.assertEqual((guardians[0] or {}).get("employment_sector"), "Education")
+        self.assertEqual((guardians[0] or {}).get("work_place"), "Analytical Engine School")
+        self.assertEqual((guardians[0] or {}).get("designation"), "Mathematician")
+        self.assertTrue(bool((guardians[0] or {}).get("use_applicant_contact")))
+        self.assertFalse(bool((guardians[0] or {}).get("can_consent")))
         self.assertEqual(payload.get("feedback", {}).get("my_feedback", {}).get("interviewer_user"), interviewer.name)
         self.assertTrue(bool(payload.get("feedback", {}).get("can_edit")))
 
@@ -544,6 +564,55 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertTrue(payload.get("ok"))
         self.assertEqual(payload.get("applicant", {}).get("name"), self.applicant.name)
         self.assertGreaterEqual(len(payload.get("interviews") or []), 1)
+        self.assertIn("document_review", payload)
+        self.assertIn("required_rows", payload.get("document_review") or {})
+        self.assertTrue(payload.get("document_review", {}).get("can_review_submissions"))
+        self.assertTrue(payload.get("document_review", {}).get("can_manage_overrides"))
+
+    def test_applicant_workspace_interview_rows_include_feedback_completion(self):
+        manager = self._create_user("workspace_feedback_manager", roles=["Admission Manager"])
+        self._create_employee(manager, first_name="Feedback", last_name="Manager")
+
+        interviewer_one = self._create_user("workspace_feedback_one")
+        interviewer_two = self._create_user("workspace_feedback_two")
+        self._create_employee(interviewer_one, first_name="Panel", last_name="One")
+        self._create_employee(interviewer_two, first_name="Panel", last_name="Two")
+
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": "2030-06-12",
+                "interview_start": "2030-06-12 09:00:00",
+                "interview_end": "2030-06-12 09:30:00",
+                "interview_type": "Joint",
+                "interviewers": [
+                    {"interviewer": interviewer_one.name},
+                    {"interviewer": interviewer_two.name},
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        frappe.set_user(interviewer_one.name)
+        feedback_payload = save_my_interview_feedback(
+            interview=interview.name,
+            strengths="Clear and thoughtful answers.",
+            feedback_status="Submitted",
+        )
+        if feedback_payload.get("feedback_name"):
+            self._created.append(("Applicant Interview Feedback", feedback_payload.get("feedback_name")))
+
+        frappe.set_user(manager.name)
+        payload = get_applicant_workspace(student_applicant=self.applicant.name)
+        interviews = payload.get("interviews") or []
+
+        self.assertEqual(len(interviews), 1)
+        self.assertEqual((interviews[0] or {}).get("name"), interview.name)
+        self.assertEqual(int((interviews[0] or {}).get("feedback_submitted_count") or 0), 1)
+        self.assertEqual(int((interviews[0] or {}).get("feedback_expected_count") or 0), 2)
+        self.assertFalse(bool((interviews[0] or {}).get("feedback_complete")))
+        self.assertEqual((interviews[0] or {}).get("feedback_status_label"), "1/2 submitted")
 
     def test_transfer_school_non_privileged_staff_cannot_read_applicant_workspace(self):
         staff_user = self._create_user("transfer_file_staff", roles=["Academic Assistant"])
@@ -554,6 +623,306 @@ class TestApplicantInterview(FrappeTestCase):
 
         with self.assertRaises(frappe.PermissionError):
             get_applicant_workspace(student_applicant=self.applicant.name)
+
+    def test_assigned_overall_reviewer_can_read_applicant_workspace_and_download_files(self):
+        reviewer = self._create_user("overall_review_delegate")
+
+        doc_type = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Type",
+                "code": f"overall_review_doc_{frappe.generate_hash(length=6)}",
+                "document_type_name": "Overall Review Packet",
+                "organization": self.organization,
+                "school": self.school,
+                "is_active": 1,
+                "is_required": 1,
+                "classification_slot": "admissions_workspace_doc",
+                "classification_data_class": "administrative",
+                "classification_purpose": "administrative",
+                "classification_retention_policy": "until_program_end_plus_1y",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Type", doc_type.name))
+
+        applicant_document = frappe.get_doc(
+            {
+                "doctype": "Applicant Document",
+                "student_applicant": self.applicant.name,
+                "document_type": doc_type.name,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document", applicant_document.name))
+
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_document.name,
+                "item_key": "final_packet",
+                "item_label": "Final packet",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "overall-review.txt",
+                "is_private": 1,
+                "content": b"overall-review-file",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+
+        assignment = frappe.get_doc(
+            {
+                "doctype": "Applicant Review Assignment",
+                "target_type": "Student Applicant",
+                "target_name": self.applicant.name,
+                "student_applicant": self.applicant.name,
+                "assigned_to_user": reviewer.name,
+                "status": "Open",
+                "source_event": "application_submitted",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Review Assignment", assignment.name))
+
+        frappe.set_user(reviewer.name)
+        payload = get_applicant_workspace(student_applicant=self.applicant.name)
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("applicant", {}).get("name"), self.applicant.name)
+        self.assertFalse(payload.get("document_review", {}).get("can_review_submissions"))
+
+        uploaded_rows = payload.get("document_review", {}).get("uploaded_rows") or []
+        self.assertTrue(uploaded_rows)
+        secure_url = (uploaded_rows[0].get("file_url") or "").strip()
+        self.assertTrue(secure_url)
+
+        parsed = urlparse(secure_url)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_admissions_file")
+        query = parse_qs(parsed.query)
+        self.assertEqual((query.get("file") or [None])[0], file_doc.name)
+        self.assertEqual((query.get("context_doctype") or [None])[0], "Student Applicant")
+        self.assertEqual((query.get("context_name") or [None])[0], self.applicant.name)
+
+        frappe.local.response = {}
+        download_admissions_file(
+            file=file_doc.name,
+            context_doctype="Student Applicant",
+            context_name=self.applicant.name,
+        )
+        self.assertEqual(frappe.local.response.get("type"), "download")
+        self.assertEqual(frappe.local.response.get("filename"), file_doc.file_name)
+        self.assertEqual(frappe.local.response.get("filecontent"), b"overall-review-file")
+
+    def test_assigned_overall_reviewer_can_read_interview_workspace_and_download_files(self):
+        reviewer = self._create_user("overall_review_interview_delegate")
+
+        interview = self._create_interview_for_applicant(
+            date="2030-06-11",
+            start="2030-06-11 10:00:00",
+            end="2030-06-11 10:30:00",
+            interview_type="Student",
+        )
+
+        doc_type = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Type",
+                "code": f"overall_review_interview_doc_{frappe.generate_hash(length=6)}",
+                "document_type_name": "Overall Interview Packet",
+                "organization": self.organization,
+                "school": self.school,
+                "is_active": 1,
+                "classification_slot": "admissions_workspace_doc",
+                "classification_data_class": "administrative",
+                "classification_purpose": "administrative",
+                "classification_retention_policy": "until_program_end_plus_1y",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Type", doc_type.name))
+
+        applicant_document = frappe.get_doc(
+            {
+                "doctype": "Applicant Document",
+                "student_applicant": self.applicant.name,
+                "document_type": doc_type.name,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document", applicant_document.name))
+
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_document.name,
+                "item_key": "interview_packet",
+                "item_label": "Interview packet",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "overall-interview-review.txt",
+                "is_private": 1,
+                "content": b"overall-interview-review-file",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+
+        assignment = frappe.get_doc(
+            {
+                "doctype": "Applicant Review Assignment",
+                "target_type": "Student Applicant",
+                "target_name": self.applicant.name,
+                "student_applicant": self.applicant.name,
+                "assigned_to_user": reviewer.name,
+                "status": "Open",
+                "source_event": "application_submitted",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Review Assignment", assignment.name))
+
+        frappe.set_user(reviewer.name)
+        self.assertFalse(
+            frappe.has_permission("Applicant Interview", ptype="read", doc=interview.name, user=reviewer.name)
+        )
+
+        payload = get_interview_workspace(interview=interview.name)
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("interview", {}).get("name"), interview.name)
+        self.assertEqual(payload.get("applicant", {}).get("name"), self.applicant.name)
+        self.assertFalse(bool(payload.get("feedback", {}).get("can_edit")))
+
+        rows = (payload.get("documents") or {}).get("rows") or []
+        self.assertTrue(rows)
+        items = rows[0].get("items") or []
+        self.assertTrue(items)
+        secure_url = (items[0].get("file_url") or "").strip()
+        self.assertTrue(secure_url)
+
+        parsed = urlparse(secure_url)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_admissions_file")
+        query = parse_qs(parsed.query)
+        self.assertEqual((query.get("file") or [None])[0], file_doc.name)
+        self.assertEqual((query.get("context_doctype") or [None])[0], "Applicant Interview")
+        self.assertEqual((query.get("context_name") or [None])[0], interview.name)
+
+        frappe.local.response = {}
+        download_admissions_file(
+            file=file_doc.name,
+            context_doctype="Applicant Interview",
+            context_name=interview.name,
+        )
+        self.assertEqual(frappe.local.response.get("type"), "download")
+        self.assertEqual(frappe.local.response.get("filename"), file_doc.file_name)
+        self.assertEqual(frappe.local.response.get("filecontent"), b"overall-interview-review-file")
+
+    def test_assigned_overall_reviewer_can_open_recommendation_review_payload(self):
+        if not self._recommendation_feature_tables_ready():
+            self.skipTest("Recommendation intake DocTypes are not migrated on this site.")
+
+        admissions_user = self._create_user("overall_review_staff", roles=["Admission Manager"])
+        self._create_employee(admissions_user, first_name="Overall", last_name="Staff")
+        reviewer = self._create_user("overall_review_recommendation_delegate")
+
+        document_type = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Type",
+                "code": f"overall_review_recommendation_{frappe.generate_hash(length=6)}",
+                "document_type_name": "Recommendation Letter",
+                "organization": self.organization,
+                "school": self.school,
+                "is_active": 1,
+                "is_required": 0,
+                "is_repeatable": 1,
+                "min_items_required": 1,
+                "classification_slot": "recommendation_letter",
+                "classification_data_class": "academic",
+                "classification_purpose": "academic_report",
+                "classification_retention_policy": "until_program_end_plus_1y",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Type", document_type.name))
+
+        template = frappe.get_doc(
+            {
+                "doctype": "Recommendation Template",
+                "template_name": f"Overall Review Recommendation {frappe.generate_hash(length=5)}",
+                "is_active": 1,
+                "organization": self.organization,
+                "school": self.school,
+                "target_document_type": document_type.name,
+                "minimum_required": 1,
+                "maximum_allowed": 2,
+                "allow_file_upload": 0,
+                "file_upload_required": 0,
+                "otp_enforced": 0,
+                "applicant_can_view_status": 1,
+                "template_fields": [
+                    {
+                        "field_key": "recommendation_summary",
+                        "label": "Recommendation Summary",
+                        "field_type": "Long Text",
+                        "is_required": 1,
+                    }
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Recommendation Template", template.name))
+
+        assignment = frappe.get_doc(
+            {
+                "doctype": "Applicant Review Assignment",
+                "target_type": "Student Applicant",
+                "target_name": self.applicant.name,
+                "student_applicant": self.applicant.name,
+                "assigned_to_user": reviewer.name,
+                "status": "Open",
+                "source_event": "application_submitted",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Review Assignment", assignment.name))
+
+        frappe.set_user(admissions_user.name)
+        created = create_recommendation_request(
+            student_applicant=self.applicant.name,
+            recommendation_template=template.name,
+            recommender_name="Ms Mentor",
+            recommender_email=f"mentor-{frappe.generate_hash(length=6)}@example.com",
+            recommender_relationship="Teacher",
+            send_email=0,
+            client_request_id=f"overall-review-{frappe.generate_hash(length=6)}",
+        )
+        recommendation_request = created.get("recommendation_request")
+        self.assertTrue(bool(recommendation_request))
+
+        frappe.set_user("Guest")
+        submit_recommendation(
+            token=self._token_from_intake_url(created.get("intake_url")),
+            answers={"recommendation_summary": "Strong and consistent performance."},
+            attestation_confirmed=1,
+            client_request_id=f"overall-review-submit-{frappe.generate_hash(length=6)}",
+        )
+
+        frappe.set_user(reviewer.name)
+        payload = get_recommendation_review_payload(
+            student_applicant=self.applicant.name,
+            recommendation_request=recommendation_request,
+        )
+
+        self.assertTrue(payload.get("ok"))
+        recommendation = payload.get("recommendation") or {}
+        self.assertEqual(recommendation.get("recommendation_request"), recommendation_request)
+        self.assertEqual(recommendation.get("student_applicant"), self.applicant.name)
+        self.assertEqual(recommendation.get("review_status"), "Pending")
+        answers = recommendation.get("answers") or []
+        self.assertEqual(len(answers), 1)
+        self.assertEqual((answers[0] or {}).get("display_value"), "Strong and consistent performance.")
 
     def _comments_for_interview(self, interview_name: str):
         comments = frappe.get_all(
@@ -568,6 +937,54 @@ class TestApplicantInterview(FrappeTestCase):
         )
         marker = f"/desk/applicant-interview/{interview_name}"
         return [row for row in comments if marker in (row.get("content") or "")]
+
+    def _ensure_interviewer_assignment(self, interview_name: str, interviewer_user: str):
+        interview_name = (interview_name or "").strip()
+        interviewer_user = (interviewer_user or "").strip()
+        if not interview_name or not interviewer_user:
+            return
+
+        rows = frappe.get_all(
+            "Applicant Interviewer",
+            filters={"parent": interview_name},
+            fields=["name", "interviewer"],
+            limit_page_length=20,
+        )
+        if not rows:
+            interview = frappe.get_doc("Applicant Interview", interview_name)
+            interview.append("interviewers", {"interviewer": interviewer_user})
+            interview.save(ignore_permissions=True)
+            rows = frappe.get_all(
+                "Applicant Interviewer",
+                filters={"parent": interview_name},
+                fields=["name", "interviewer"],
+                limit_page_length=20,
+            )
+
+        for row in rows:
+            row_name = (row.get("name") or "").strip()
+            if not row_name:
+                continue
+            if frappe.db.table_exists("Applicant Interviewer") and frappe.db.has_column(
+                "Applicant Interviewer", "interviewer"
+            ):
+                frappe.db.set_value(
+                    "Applicant Interviewer",
+                    row_name,
+                    "interviewer",
+                    interviewer_user,
+                    update_modified=False,
+                )
+            if frappe.db.table_exists("Applicant Interviewer") and frappe.db.has_column(
+                "Applicant Interviewer", "interviewer_user"
+            ):
+                frappe.db.set_value(
+                    "Applicant Interviewer",
+                    row_name,
+                    "interviewer_user",
+                    interviewer_user,
+                    update_modified=False,
+                )
 
     def _create_organization(self) -> str:
         doc = frappe.get_doc(
@@ -667,3 +1084,24 @@ class TestApplicantInterview(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Student Applicant", doc.name))
         return doc
+
+    def _recommendation_feature_tables_ready(self) -> bool:
+        required = (
+            "Recommendation Template",
+            "Recommendation Template Field",
+            "Recommendation Request",
+            "Recommendation Submission",
+        )
+        for doctype in required:
+            if not frappe.db.table_exists(doctype):
+                return False
+        return True
+
+    def _token_from_intake_url(self, intake_url: str | None) -> str:
+        text = str(intake_url or "").strip()
+        self.assertTrue(bool(text))
+        parsed = urlparse(text)
+        path = parsed.path.rstrip("/")
+        token = (path.split("/")[-1] or "").strip()
+        self.assertTrue(bool(token))
+        return token

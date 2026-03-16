@@ -7,6 +7,8 @@
   "naming_series",
   "organization",
   "account_holder",
+  "school",
+  "program",
   "posting_date",
   "allocations"
  ],
@@ -34,6 +36,20 @@
    "reqd": 1
   },
   {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program",
+   "read_only": 1
+  },
+  {
    "fieldname": "posting_date",
    "fieldtype": "Date",
    "label": "Posting Date",
@@ -50,7 +66,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-01 00:00:00.000000",
+ "modified": "2025-02-03 00:00:11",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Payment Reconciliation",

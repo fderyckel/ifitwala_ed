@@ -16,6 +16,10 @@ import type {
 	Response as GetTaskGradebookResponse,
 } from '@/types/contracts/gradebook/get_task_gradebook'
 import type {
+	Request as RepairTaskRosterRequest,
+	Response as RepairTaskRosterResponse,
+} from '@/types/contracts/gradebook/repair_task_roster'
+import type {
 	Request as UpdateTaskStudentRequest,
 	Response as UpdateTaskStudentResponse,
 } from '@/types/contracts/gradebook/update_task_student'
@@ -35,6 +39,12 @@ export function createGradebookService() {
 
 	const getTaskGradebookResource = createResource<GetTaskGradebookResponse>({
 		url: 'ifitwala_ed.api.gradebook.get_task_gradebook',
+		method: 'POST',
+		auto: false,
+	})
+
+	const repairTaskRosterResource = createResource<RepairTaskRosterResponse>({
+		url: 'ifitwala_ed.api.gradebook.repair_task_roster',
 		method: 'POST',
 		auto: false,
 	})
@@ -59,6 +69,12 @@ export function createGradebookService() {
 		return getTaskGradebookResource.submit(payload)
 	}
 
+	async function repairTaskRoster(
+		payload: RepairTaskRosterRequest,
+	): Promise<RepairTaskRosterResponse> {
+		return repairTaskRosterResource.submit(payload)
+	}
+
 	async function updateTaskStudent(
 		payload: UpdateTaskStudentRequest,
 	): Promise<UpdateTaskStudentResponse> {
@@ -73,6 +89,7 @@ export function createGradebookService() {
 		fetchGroups,
 		fetchGroupTasks,
 		getTaskGradebook,
+		repairTaskRoster,
 		updateTaskStudent,
 	}
 }

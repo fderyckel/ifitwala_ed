@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import frappe
 from frappe import _
-from frappe.utils import getdate
+from frappe.utils import getdate, now_datetime
 
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
     is_policy_organization_applicable_to_context,
+    select_nearest_policy_rows_by_key,
 )
+from ifitwala_ed.governance.policy_utils import policy_applies_to
 from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -25,16 +27,18 @@ POLICY_SIGNATURE_MANAGER_ROLES = frozenset(
     }
 )
 POLICY_SIGNATURE_ANALYTICS_ROLES = POLICY_SIGNATURE_MANAGER_ROLES
+POLICY_LIBRARY_STAFF_ROLES = frozenset({"Academic Staff", "Employee"})
+POLICY_LIBRARY_ROLES = frozenset(set(POLICY_SIGNATURE_ANALYTICS_ROLES) | set(POLICY_LIBRARY_STAFF_ROLES))
 POLICY_SIGNATURE_MARKER = "[policy_signature]"
 POLICY_SIGNATURE_EMPLOYEE_KEY = "employee="
+STAFF_POLICY_STATUS_SIGNED = "signed"
+STAFF_POLICY_STATUS_PENDING = "pending"
+STAFF_POLICY_STATUS_NEW_VERSION = "new_version"
+STAFF_POLICY_STATUS_INFO = "informational"
 
 
 def _policy_applies_to_staff(applies_to: str | None) -> bool:
-    text = (applies_to or "").strip()
-    if not text:
-        return False
-    tokens = {token.strip() for raw in text.split("\n") for token in raw.split(",") if token and token.strip()}
-    return "Staff" in tokens or text == "Staff"
+    return policy_applies_to(applies_to, "Staff")
 
 
 def _require_roles(allowed_roles: set[str] | frozenset[str]) -> tuple[str, set[str]]:
@@ -81,6 +85,135 @@ def _ensure_school_in_scope(*, school: str | None, organization_scope: list[str]
         frappe.throw(_("Selected School is outside the selected Organization scope."), frappe.PermissionError)
 
 
+def _policy_library_scope_organizations(*, user: str, roles: set[str], employee_row: dict | None) -> list[str]:
+    if roles & set(POLICY_SIGNATURE_ANALYTICS_ROLES):
+        return _manager_scope_organizations(user=user, roles=roles)
+
+    base_org = ((employee_row or {}).get("organization") or "").strip()
+    if not base_org:
+        frappe.throw(_("No active Employee organization is linked to your account."), frappe.PermissionError)
+    return [base_org]
+
+
+def _school_options_for_scope(organization_scope: list[str]) -> list[str]:
+    scoped_orgs = sorted({(org or "").strip() for org in organization_scope if (org or "").strip()})
+    if not scoped_orgs:
+        return []
+
+    rows = frappe.get_all(
+        "School",
+        filters={"organization": ["in", tuple(scoped_orgs)]},
+        pluck="name",
+    )
+    return sorted({(row or "").strip() for row in rows if (row or "").strip()})
+
+
+def _employee_group_options_for_scope(
+    *,
+    organization_scope: list[str],
+    school: str | None,
+) -> list[str]:
+    scoped_orgs = sorted({(org or "").strip() for org in organization_scope if (org or "").strip()})
+    if not scoped_orgs:
+        return []
+
+    where_parts = [
+        "employment_status = 'Active'",
+        "ifnull(employee_group, '') != ''",
+        "organization IN %(organizations)s",
+    ]
+    params: dict = {"organizations": tuple(scoped_orgs)}
+
+    school = (school or "").strip()
+    if school:
+        school_scope = get_descendant_schools(school) or [school]
+        if school_scope:
+            where_parts.append("school IN %(schools)s")
+            params["schools"] = tuple(school_scope)
+
+    where_sql = " AND ".join(where_parts)
+    rows = frappe.db.sql(
+        f"""
+        SELECT DISTINCT employee_group
+        FROM `tabEmployee`
+        WHERE {where_sql}
+        ORDER BY employee_group ASC
+        """,
+        params,
+        as_dict=True,
+    )
+    return sorted(
+        {(row.get("employee_group") or "").strip() for row in rows if (row.get("employee_group") or "").strip()}
+    )
+
+
+def _active_staff_policy_rows_for_context(
+    *,
+    context_organization: str,
+    context_school: str | None,
+) -> list[dict]:
+    context_organization = (context_organization or "").strip()
+    context_school = (context_school or "").strip()
+    if not context_organization:
+        return []
+
+    ancestor_orgs = get_organization_ancestors_including_self(context_organization)
+    if not ancestor_orgs:
+        return []
+
+    params: dict = {
+        "policy_organizations": tuple(ancestor_orgs),
+        "applies_to": "%Staff%",
+    }
+
+    school_scope_clause = " AND (ifnull(ip.school, '') = '')"
+    if context_school:
+        school_ancestors = get_school_ancestors_including_self(context_school)
+        if school_ancestors:
+            params["school_ancestors"] = tuple(school_ancestors)
+            school_scope_clause = " AND (ifnull(ip.school, '') = '' OR ip.school IN %(school_ancestors)s)"
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            pv.name AS policy_version,
+            pv.version_label,
+            pv.based_on_version,
+            pv.change_summary,
+            pv.effective_from,
+            pv.effective_to,
+            pv.approved_on,
+            ip.name AS institutional_policy,
+            ip.policy_key,
+            ip.policy_title,
+            ip.policy_category,
+            ip.description,
+            ip.organization AS policy_organization,
+            ip.school AS policy_school
+        FROM `tabPolicy Version` pv
+        JOIN `tabInstitutional Policy` ip
+          ON ip.name = pv.institutional_policy
+        WHERE pv.is_active = 1
+          AND ip.is_active = 1
+          AND ip.organization IN %(policy_organizations)s
+          AND ip.applies_to LIKE %(applies_to)s
+          {school_scope_clause}
+        ORDER BY ip.policy_title ASC, pv.modified DESC
+        """,
+        params,
+        as_dict=True,
+    )
+
+    return select_nearest_policy_rows_by_key(
+        rows=rows,
+        context_organization=context_organization,
+        context_school=context_school or None,
+        policy_key_field="policy_key",
+        policy_organization_field="policy_organization",
+        policy_school_field="policy_school",
+    )
+
+
 def get_active_employee_for_user(user: str | None = None) -> dict | None:
     user = user or frappe.session.user
     if not user or user == "Guest":
@@ -99,6 +232,204 @@ def get_active_employee_for_user(user: str | None = None) -> dict | None:
         ],
         as_dict=True,
     )
+
+
+def get_policy_version_history_rows(institutional_policy: str | None) -> list[dict]:
+    institutional_policy = (institutional_policy or "").strip()
+    if not institutional_policy:
+        return []
+
+    rows = frappe.get_all(
+        "Policy Version",
+        filters={"institutional_policy": institutional_policy},
+        fields=[
+            "name",
+            "version_label",
+            "based_on_version",
+            "effective_from",
+            "effective_to",
+            "approved_on",
+            "is_active",
+            "creation",
+            "modified",
+        ],
+        order_by="creation desc, modified desc",
+        limit_page_length=0,
+    )
+    out = []
+    for row in rows:
+        out.append(
+            {
+                "policy_version": (row.get("name") or "").strip(),
+                "version_label": (row.get("version_label") or "").strip() or None,
+                "based_on_version": (row.get("based_on_version") or "").strip() or None,
+                "effective_from": str(row.get("effective_from")) if row.get("effective_from") else None,
+                "effective_to": str(row.get("effective_to")) if row.get("effective_to") else None,
+                "approved_on": str(row.get("approved_on")) if row.get("approved_on") else None,
+                "is_active": bool(row.get("is_active")),
+            }
+        )
+    return out
+
+
+def _normalize_policy_names(policy_names: list[str]) -> list[str]:
+    return sorted({(name or "").strip() for name in policy_names if (name or "").strip()})
+
+
+def _signature_required_policy_names(policy_names: list[str]) -> set[str]:
+    normalized_names = _normalize_policy_names(policy_names)
+    if not normalized_names:
+        return set()
+
+    params = {"policy_names": tuple(normalized_names)}
+    required_policies: set[str] = set()
+
+    todo_rows = frappe.db.sql(
+        """
+        SELECT DISTINCT pv.institutional_policy
+        FROM `tabToDo` todo
+        JOIN `tabPolicy Version` pv
+          ON pv.name = todo.reference_name
+        WHERE todo.reference_type = 'Policy Version'
+          AND pv.institutional_policy IN %(policy_names)s
+          AND ifnull(todo.description, '') LIKE %(marker)s
+        """,
+        {**params, "marker": f"%{POLICY_SIGNATURE_MARKER}%"},
+        as_dict=True,
+    )
+    for row in todo_rows:
+        policy_name = (row.get("institutional_policy") or "").strip()
+        if policy_name:
+            required_policies.add(policy_name)
+
+    ack_rows = frappe.db.sql(
+        """
+        SELECT DISTINCT pv.institutional_policy
+        FROM `tabPolicy Acknowledgement` pa
+        JOIN `tabPolicy Version` pv
+          ON pv.name = pa.policy_version
+        WHERE pa.acknowledged_for = 'Staff'
+          AND pa.context_doctype = 'Employee'
+          AND pv.institutional_policy IN %(policy_names)s
+        """,
+        params,
+        as_dict=True,
+    )
+    for row in ack_rows:
+        policy_name = (row.get("institutional_policy") or "").strip()
+        if policy_name:
+            required_policies.add(policy_name)
+
+    return required_policies
+
+
+def _user_acknowledgement_summary_for_policies(
+    *,
+    user: str,
+    employee_name: str | None,
+    policy_names: list[str],
+) -> tuple[set[str], set[str], dict[str, str]]:
+    employee_name = (employee_name or "").strip()
+    normalized_names = _normalize_policy_names(policy_names)
+    if not employee_name or not normalized_names:
+        return set(), set(), {}
+
+    rows = frappe.db.sql(
+        """
+        SELECT
+            pa.policy_version,
+            pa.acknowledged_at,
+            pv.institutional_policy
+        FROM `tabPolicy Acknowledgement` pa
+        JOIN `tabPolicy Version` pv
+          ON pv.name = pa.policy_version
+        WHERE pa.acknowledged_by = %(user)s
+          AND pa.acknowledged_for = 'Staff'
+          AND pa.context_doctype = 'Employee'
+          AND pa.context_name = %(employee_name)s
+          AND pv.institutional_policy IN %(policy_names)s
+        ORDER BY pa.acknowledged_at DESC
+        """,
+        {
+            "user": user,
+            "employee_name": employee_name,
+            "policy_names": tuple(normalized_names),
+        },
+        as_dict=True,
+    )
+
+    signed_versions: set[str] = set()
+    acknowledged_policies: set[str] = set()
+    acknowledged_at_by_version: dict[str, str] = {}
+    for row in rows:
+        policy_version = (row.get("policy_version") or "").strip()
+        policy_name = (row.get("institutional_policy") or "").strip()
+        if policy_version:
+            signed_versions.add(policy_version)
+            if policy_version not in acknowledged_at_by_version and row.get("acknowledged_at"):
+                acknowledged_at_by_version[policy_version] = str(row.get("acknowledged_at"))
+        if policy_name:
+            acknowledged_policies.add(policy_name)
+
+    return signed_versions, acknowledged_policies, acknowledged_at_by_version
+
+
+def _policy_status_for_user(
+    *,
+    policy_name: str,
+    policy_version: str,
+    required_policies: set[str],
+    signed_versions: set[str],
+    acknowledged_policies: set[str],
+) -> str:
+    if policy_name not in required_policies:
+        return STAFF_POLICY_STATUS_INFO
+    if policy_version in signed_versions:
+        return STAFF_POLICY_STATUS_SIGNED
+    if policy_name in acknowledged_policies:
+        return STAFF_POLICY_STATUS_NEW_VERSION
+    return STAFF_POLICY_STATUS_PENDING
+
+
+def get_staff_policy_signature_state_for_user(
+    *,
+    policy_version: str,
+    institutional_policy: str | None = None,
+    user: str | None = None,
+) -> dict:
+    user = (user or frappe.session.user or "").strip()
+    policy_version = (policy_version or "").strip()
+    policy_name = (institutional_policy or "").strip()
+    if not policy_name and policy_version:
+        policy_name = (frappe.db.get_value("Policy Version", policy_version, "institutional_policy") or "").strip()
+
+    if not user or not policy_name:
+        return {
+            "signature_required": False,
+            "acknowledgement_status": STAFF_POLICY_STATUS_INFO,
+            "acknowledged_at": None,
+        }
+
+    employee = get_active_employee_for_user(user)
+    employee_name = (employee or {}).get("name")
+    required_policies = _signature_required_policy_names([policy_name])
+    signed_versions, acknowledged_policies, acknowledged_at_by_version = _user_acknowledgement_summary_for_policies(
+        user=user,
+        employee_name=employee_name,
+        policy_names=[policy_name],
+    )
+    status = _policy_status_for_user(
+        policy_name=policy_name,
+        policy_version=policy_version,
+        required_policies=required_policies,
+        signed_versions=signed_versions,
+        acknowledged_policies=acknowledged_policies,
+    )
+    return {
+        "signature_required": policy_name in required_policies,
+        "acknowledgement_status": status,
+        "acknowledged_at": acknowledged_at_by_version.get(policy_version),
+    }
 
 
 def get_policy_version_context(
@@ -883,4 +1214,152 @@ def get_staff_policy_signature_dashboard(
             "pending": pending_rows,
             "signed": signed_rows,
         },
+    }
+
+
+@frappe.whitelist()
+def get_staff_policy_library(
+    *,
+    organization: str | None = None,
+    school: str | None = None,
+    employee_group: str | None = None,
+):
+    user, roles = _require_roles(POLICY_LIBRARY_ROLES)
+    employee_row = get_active_employee_for_user(user)
+
+    scoped_orgs = _policy_library_scope_organizations(
+        user=user,
+        roles=roles,
+        employee_row=employee_row,
+    )
+    organization_options = sorted({(org or "").strip() for org in scoped_orgs if (org or "").strip()})
+    if not organization_options:
+        return {
+            "meta": {"generated_at": now_datetime().isoformat(), "user": user, "employee": employee_row},
+            "filters": {
+                "organization": None,
+                "school": None,
+                "employee_group": None,
+            },
+            "options": {
+                "organizations": [],
+                "schools": [],
+                "employee_groups": [],
+            },
+            "counts": {
+                "total_policies": 0,
+                "signature_required": 0,
+                "informational": 0,
+                "signed": 0,
+                "pending": 0,
+                "new_version": 0,
+            },
+            "rows": [],
+        }
+
+    selected_organization = (organization or "").strip() or (employee_row or {}).get("organization") or ""
+    selected_organization = (selected_organization or "").strip()
+    if not selected_organization:
+        selected_organization = organization_options[0]
+    _ensure_organization_in_scope(selected_organization, organization_options)
+
+    organization_scope = get_descendant_organizations(selected_organization)
+    school_options = _school_options_for_scope(organization_scope)
+
+    employee_school = ((employee_row or {}).get("school") or "").strip()
+    selected_school = (school or "").strip() or employee_school
+    selected_school = (selected_school or "").strip()
+    school_option_set = set(school_options)
+
+    if selected_school and selected_school not in school_option_set:
+        selected_school = ""
+
+    if not selected_school and school_options:
+        selected_school = employee_school if employee_school in school_option_set else school_options[0]
+
+    if selected_school:
+        _ensure_school_in_scope(school=selected_school, organization_scope=organization_scope)
+
+    employee_group_options = _employee_group_options_for_scope(
+        organization_scope=organization_scope,
+        school=selected_school or None,
+    )
+    selected_employee_group = (employee_group or "").strip() or (employee_row or {}).get("employee_group") or ""
+    selected_employee_group = (selected_employee_group or "").strip()
+    if selected_employee_group and selected_employee_group not in set(employee_group_options):
+        selected_employee_group = ""
+
+    policy_rows = _active_staff_policy_rows_for_context(
+        context_organization=selected_organization,
+        context_school=selected_school or None,
+    )
+    policy_names = [(row.get("institutional_policy") or "").strip() for row in policy_rows]
+
+    required_policy_names = _signature_required_policy_names(policy_names)
+    signed_versions, acknowledged_policies, acknowledged_at_by_version = _user_acknowledgement_summary_for_policies(
+        user=user,
+        employee_name=(employee_row or {}).get("name"),
+        policy_names=policy_names,
+    )
+
+    rows = []
+    for row in policy_rows:
+        policy_name = (row.get("institutional_policy") or "").strip()
+        policy_version = (row.get("policy_version") or "").strip()
+        status = _policy_status_for_user(
+            policy_name=policy_name,
+            policy_version=policy_version,
+            required_policies=required_policy_names,
+            signed_versions=signed_versions,
+            acknowledged_policies=acknowledged_policies,
+        )
+        rows.append(
+            {
+                "institutional_policy": policy_name,
+                "policy_version": policy_version,
+                "policy_key": (row.get("policy_key") or "").strip() or None,
+                "policy_title": (row.get("policy_title") or "").strip() or None,
+                "policy_category": (row.get("policy_category") or "").strip() or None,
+                "version_label": (row.get("version_label") or "").strip() or None,
+                "description": (row.get("description") or "").strip() or "",
+                "policy_organization": (row.get("policy_organization") or "").strip() or None,
+                "policy_school": (row.get("policy_school") or "").strip() or None,
+                "effective_from": str(row.get("effective_from")) if row.get("effective_from") else None,
+                "effective_to": str(row.get("effective_to")) if row.get("effective_to") else None,
+                "approved_on": str(row.get("approved_on")) if row.get("approved_on") else None,
+                "based_on_version": (row.get("based_on_version") or "").strip() or None,
+                "change_summary": (row.get("change_summary") or "").strip() or None,
+                "signature_required": policy_name in required_policy_names,
+                "acknowledgement_status": status,
+                "acknowledged_at": acknowledged_at_by_version.get(policy_version),
+            }
+        )
+
+    counts = {
+        "total_policies": len(rows),
+        "signature_required": sum(1 for row in rows if row.get("signature_required")),
+        "informational": sum(1 for row in rows if row.get("acknowledgement_status") == STAFF_POLICY_STATUS_INFO),
+        "signed": sum(1 for row in rows if row.get("acknowledgement_status") == STAFF_POLICY_STATUS_SIGNED),
+        "pending": sum(1 for row in rows if row.get("acknowledgement_status") == STAFF_POLICY_STATUS_PENDING),
+        "new_version": sum(1 for row in rows if row.get("acknowledgement_status") == STAFF_POLICY_STATUS_NEW_VERSION),
+    }
+
+    return {
+        "meta": {
+            "generated_at": now_datetime().isoformat(),
+            "user": user,
+            "employee": employee_row,
+        },
+        "filters": {
+            "organization": selected_organization or None,
+            "school": selected_school or None,
+            "employee_group": selected_employee_group or None,
+        },
+        "options": {
+            "organizations": organization_options,
+            "schools": school_options,
+            "employee_groups": employee_group_options,
+        },
+        "counts": counts,
+        "rows": rows,
     }

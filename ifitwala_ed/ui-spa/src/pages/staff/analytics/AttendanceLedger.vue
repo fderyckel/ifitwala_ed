@@ -3,8 +3,6 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import AnalyticsCard from '@/components/analytics/AnalyticsCard.vue';
-import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
-import { useAnalyticsSnapshotExport } from '@/composables/useAnalyticsSnapshotExport';
 import DateRangePills from '@/components/filters/DateRangePills.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import { createAttendanceAnalyticsService } from '@/lib/services/attendance/attendanceAnalyticsService';
@@ -34,7 +32,6 @@ const filtersReady = ref(false);
 const isLoading = ref(false);
 const pageError = ref<string | null>(null);
 const actionError = ref<string | null>(null);
-const snapshotRoot = ref<HTMLElement | null>(null);
 
 const schools = ref<FetchSchoolFilterContextResponse['schools']>([]);
 const programs = ref<FetchActiveProgramsResponse>([]);
@@ -88,29 +85,6 @@ const presetItems: Array<{ label: string; value: WindowPreset }> = [
 
 const pageLengthOptions = [50, 80, 120, 200];
 
-const exportFilters = computed(() => ({
-	School: filters.school || 'All',
-	'Academic Year': filters.academic_year || 'All',
-	Term: filters.term || 'All',
-	Program: filters.program || 'All',
-	'Student Group': filters.student_group || 'All',
-	Window: preset.value,
-	'From Date': filters.start_date || 'Term start',
-	'To Date': filters.end_date || 'Term end',
-	'Attendance Mode': filters.whole_day === 1 ? 'Whole Day' : 'By Block',
-	Student: filters.student || 'All',
-	Instructor: filters.instructor || 'All',
-	Course: filters.course || 'All',
-	'Attendance Code': filters.attendance_code || 'All',
-}));
-
-const snapshotExport = useAnalyticsSnapshotExport({
-	dashboardSlug: 'attendance-ledger',
-	dashboardTitle: 'Attendance Ledger',
-	getTarget: () => snapshotRoot.value,
-	getFilters: () => exportFilters.value,
-});
-
 const rows = computed(() => ledger.value?.rows || []);
 const columns = computed<AttendanceLedgerColumn[]>(() => ledger.value?.columns || []);
 const totalPages = computed(() => ledger.value?.pagination?.total_pages || 1);
@@ -123,6 +97,7 @@ const studentOptions = computed(() => ledger.value?.filter_options?.students || 
 
 let loadRunId = 0;
 let reloadTimer: number | null = null;
+let hydratingFilters = false;
 
 function isoDate(value: Date): string {
 	return value.toISOString().slice(0, 10);
@@ -276,87 +251,43 @@ function scheduleReload() {
 	}, 350);
 }
 
-async function loadStudentGroups() {
+function applyFilterContext(
+	context: Awaited<ReturnType<typeof attendanceService.fetchAttendanceLedgerContext>>
+) {
+	schools.value = context.schools || [];
+	programs.value = context.programs || [];
+	academicYears.value = context.academic_years || [];
+	terms.value = context.terms || [];
+	studentGroups.value = context.student_groups || [];
+
+	filters.school = context.default_school || null;
+	filters.program = context.default_program || null;
+	filters.academic_year = context.default_academic_year || null;
+	filters.term = context.default_term || null;
+	filters.student_group = context.default_student_group || null;
+}
+
+async function reloadFilterContext() {
 	try {
-		const groups = await attendanceService.fetchStudentGroups({
+		const context = await attendanceService.fetchAttendanceLedgerContext({
 			school: filters.school,
 			program: filters.program,
-		});
-		studentGroups.value = groups;
-		if (filters.student_group && !groups.some(group => group.name === filters.student_group)) {
-			filters.student_group = null;
-		}
-	} catch (error) {
-		studentGroups.value = [];
-		filters.student_group = null;
-		actionError.value = formatError(error);
-	}
-}
-
-async function loadAcademicYears() {
-	try {
-		let years = await attendanceService.fetchAcademicYears({ school: filters.school });
-		if (!years.length) {
-			const groups = studentGroups.value.length
-				? studentGroups.value
-				: await attendanceService.fetchStudentGroups({
-						school: filters.school,
-						program: filters.program,
-					});
-			if (!studentGroups.value.length && groups.length) {
-				studentGroups.value = groups;
-			}
-			const derivedYears = Array.from(
-				new Set(
-					groups
-						.map(group => group.academic_year)
-						.filter(
-							(value): value is string => typeof value === 'string' && value.trim().length > 0
-						)
-				)
-			).sort((left, right) => right.localeCompare(left));
-			years = derivedYears.map(name => ({ name }));
-		}
-		academicYears.value = years;
-		if (filters.academic_year && !years.some(year => year.name === filters.academic_year)) {
-			filters.academic_year = years[0]?.name || null;
-		}
-		if (!filters.academic_year) {
-			filters.academic_year = years[0]?.name || null;
-		}
-	} catch (error) {
-		academicYears.value = [];
-		filters.academic_year = null;
-		actionError.value = formatError(error);
-	}
-}
-
-async function loadTerms() {
-	try {
-		const values = await attendanceService.fetchTerms({
-			school: filters.school,
 			academic_year: filters.academic_year,
+			term: filters.term,
+			student_group: filters.student_group,
 		});
-		terms.value = values;
-		if (filters.term && !values.some(term => term.name === filters.term)) {
-			filters.term = null;
-		}
+		hydratingFilters = true;
+		applyFilterContext(context);
+		await Promise.resolve();
+		hydratingFilters = false;
 	} catch (error) {
-		terms.value = [];
-		filters.term = null;
+		hydratingFilters = false;
 		actionError.value = formatError(error);
 	}
 }
 
 async function initializeFilters() {
-	const schoolContext = await attendanceService.fetchSchoolContext();
-	schools.value = schoolContext.schools || [];
-	filters.school = schoolContext.default_school || schoolContext.schools?.[0]?.name || null;
-
-	programs.value = await attendanceService.fetchPrograms();
-	await loadAcademicYears();
-	await loadTerms();
-	await loadStudentGroups();
+	await reloadFilterContext();
 }
 
 async function reloadLedger() {
@@ -388,13 +319,11 @@ async function reloadLedger() {
 watch(
 	() => filters.school,
 	async () => {
-		if (!filtersReady.value) return;
+		if (!filtersReady.value || hydratingFilters) return;
 		filters.term = null;
 		filters.student_group = null;
 		page.value = 1;
-		await loadAcademicYears();
-		await loadTerms();
-		await loadStudentGroups();
+		await reloadFilterContext();
 		scheduleReload();
 	}
 );
@@ -402,10 +331,10 @@ watch(
 watch(
 	() => filters.academic_year,
 	async () => {
-		if (!filtersReady.value) return;
+		if (!filtersReady.value || hydratingFilters) return;
 		filters.term = null;
 		page.value = 1;
-		await loadTerms();
+		await reloadFilterContext();
 		scheduleReload();
 	}
 );
@@ -413,10 +342,10 @@ watch(
 watch(
 	() => filters.program,
 	async () => {
-		if (!filtersReady.value) return;
+		if (!filtersReady.value || hydratingFilters) return;
 		filters.student_group = null;
 		page.value = 1;
-		await loadStudentGroups();
+		await reloadFilterContext();
 		scheduleReload();
 	}
 );
@@ -460,7 +389,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div ref="snapshotRoot" class="analytics-shell attendance-ledger-shell">
+	<div class="analytics-shell attendance-ledger-shell">
 		<header class="flex flex-wrap items-end justify-between gap-3">
 			<div>
 				<h1 class="type-h2 text-canopy">Attendance Ledger</h1>
@@ -468,14 +397,6 @@ onMounted(async () => {
 					Row-level attendance evidence for follow-up, compliance, and code integrity.
 				</p>
 			</div>
-			<AnalyticsSnapshotActions
-				:exporting-png="snapshotExport.exportingPng"
-				:exporting-pdf="snapshotExport.exportingPdf"
-				:message="snapshotExport.actionMessage"
-				:disabled="isLoading"
-				@export-png="snapshotExport.exportPng"
-				@export-pdf="snapshotExport.exportPdf"
-			/>
 		</header>
 
 		<FiltersBar>

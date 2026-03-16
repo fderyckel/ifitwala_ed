@@ -2,6 +2,8 @@ import frappe
 from frappe import _
 from frappe.utils import flt, getdate
 
+from ifitwala_ed.accounting.fiscal_year_utils import resolve_fiscal_year
+
 
 def get_organization_currency(organization):
     return frappe.db.get_value("Organization", organization, "default_currency")
@@ -19,6 +21,8 @@ def get_account_currency(account, organization=None):
 def validate_posting_date(organization, posting_date):
     if not (organization and posting_date):
         return
+
+    resolve_fiscal_year(organization, posting_date)
 
     lock_until_date = frappe.db.get_value("Accounts Settings", organization, "lock_until_date")
     if lock_until_date and getdate(posting_date) <= getdate(lock_until_date):
@@ -45,6 +49,10 @@ def make_gl_entries(entries, voucher_type, voucher_no, cancel=False):
         gl.organization = entry["organization"]
         gl.posting_date = entry["posting_date"]
         gl.account = entry["account"]
+        gl.school = entry.get("school")
+        gl.program = entry.get("program")
+        gl.program_offering = entry.get("program_offering")
+        gl.student = entry.get("student")
         gl.party_type = entry.get("party_type")
         gl.party = entry.get("party")
         gl.against = entry.get("against")
@@ -77,6 +85,10 @@ def cancel_gl_entries(voucher_type, voucher_no):
             "account",
             "debit",
             "credit",
+            "school",
+            "program",
+            "program_offering",
+            "student",
             "party_type",
             "party",
             "against",
@@ -99,6 +111,10 @@ def cancel_gl_entries(voucher_type, voucher_no):
                     "remarks": entry.remarks,
                     "debit": entry.debit,
                     "credit": entry.credit,
+                    "school": entry.school,
+                    "program": entry.program,
+                    "program_offering": entry.program_offering,
+                    "student": entry.student,
                 }
             ],
             voucher_type,

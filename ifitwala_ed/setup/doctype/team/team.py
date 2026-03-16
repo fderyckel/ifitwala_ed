@@ -7,31 +7,55 @@ from datetime import timedelta
 
 import frappe
 from frappe import _
-from frappe.model.document import Document
 from frappe.utils import (
     add_months,
     cint,
+    cstr,
     format_date,
     get_link_to_form,
     getdate,
     nowdate,
     time_diff_in_seconds,
 )
+from frappe.utils.nestedset import NestedSet
 
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
+TEAM_TREE_ROOT = "All Teams"
 
-class Team(Document):
+
+class Team(NestedSet):
+    nsm_parent_field = "parent_team"
+
     def validate(self):
+        self.validate_parent_team()
         self.ensure_minimum_members()
         self.check_parent_team_loop()
         self.ensure_unique_members()
         # other validations as needed
 
+    def on_update(self):
+        NestedSet.on_update(self)
+
+    def on_trash(self):
+        NestedSet.validate_if_child_exists(self)
+        frappe.utils.nestedset.update_nsm(self)
+
+    def validate_parent_team(self):
+        if not self.parent_team:
+            return
+
+        parent_is_group = frappe.db.get_value("Team", self.parent_team, "is_group")
+        if not parent_is_group:
+            frappe.throw(_("Parent Team must be a group team."))
+
     def ensure_minimum_members(self):
         """
         Require at least 2 members with a valid Employee link.
         """
+        if cint(self.is_group):
+            return
+
         members = [d for d in (self.members or []) if d.employee]
         if len(members) < 2:
             frappe.throw(_("A team must have at least 2 employees configured as members."))
@@ -67,6 +91,91 @@ class Team(Document):
                     names
                 )
             )
+
+
+def _get_team_tree_filters(**kwargs):
+    filters = {}
+
+    raw_filters = kwargs.get("filters") or {}
+    if isinstance(raw_filters, dict):
+        for fieldname in ("organization", "school"):
+            value = cstr(raw_filters.get(fieldname)).strip()
+            if value:
+                filters[fieldname] = value
+
+    for fieldname in ("organization", "school"):
+        value = cstr(kwargs.get(fieldname)).strip()
+        if value:
+            filters[fieldname] = value
+
+    return filters
+
+
+@frappe.whitelist()
+def get_children(doctype, parent=None, is_root=False, **kwargs):
+    filters = _get_team_tree_filters(**kwargs)
+
+    if is_root or not parent or parent == TEAM_TREE_ROOT:
+        rows = frappe.get_all(
+            "Team",
+            fields=[
+                "name as value",
+                "team_name as title",
+                "is_group as expandable",
+                "parent_team",
+            ],
+            order_by="lft asc",
+            filters=filters,
+        )
+        visible_names = {row.get("value") for row in rows if row.get("value")}
+        root_rows = []
+        for row in rows:
+            parent_name = cstr(row.get("parent_team")).strip()
+            if not parent_name or parent_name not in visible_names:
+                row["expandable"] = 1 if row.get("expandable") else 0
+                row.pop("parent_team", None)
+                root_rows.append(row)
+        return root_rows
+
+    filters["parent_team"] = parent
+    rows = frappe.get_all(
+        "Team",
+        fields=[
+            "name as value",
+            "team_name as title",
+            "is_group as expandable",
+        ],
+        order_by="lft asc",
+        filters=filters,
+    )
+    for row in rows:
+        row["expandable"] = 1 if row.get("expandable") else 0
+    return rows
+
+
+@frappe.whitelist()
+def add_node(**kwargs):
+    from frappe.desk.treeview import make_tree_args
+
+    args = make_tree_args(**(kwargs or frappe.form_dict))
+
+    parent_team = cstr(args.get("parent_team") or args.get("parent")).strip()
+    if parent_team == TEAM_TREE_ROOT:
+        parent_team = None
+
+    doc = frappe.get_doc(
+        {
+            "doctype": "Team",
+            "team_name": cstr(args.get("team_name")).strip(),
+            "team_code": cstr(args.get("team_code")).strip() or None,
+            "is_group": cint(args.get("is_group") or 0),
+            "organization": cstr(args.get("organization")).strip() or None,
+            "school": cstr(args.get("school")).strip() or None,
+            "parent_team": parent_team,
+        }
+    )
+    doc.insert()
+    return {"name": doc.name}
 
 
 @frappe.whitelist()

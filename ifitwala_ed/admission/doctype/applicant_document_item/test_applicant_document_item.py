@@ -17,8 +17,10 @@ class TestApplicantDocumentItem(FrappeTestCase):
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
         self.applicant_user = self._create_applicant_user()
+        self.other_applicant_user = self._create_applicant_user()
         self.admission_officer_user = self._create_staff_user("Admission Officer")
         self.applicant = self._create_applicant(self.organization, self.school, self.applicant_user)
+        self.other_applicant = self._create_applicant(self.organization, self.school, self.other_applicant_user)
         self.document_type = self._create_document_type(self.organization, self.school)
         self.applicant_document = self._create_applicant_document()
 
@@ -102,6 +104,18 @@ class TestApplicantDocumentItem(FrappeTestCase):
         self.assertEqual(doc.reviewed_by, self.admission_officer_user)
         self.assertTrue(doc.reviewed_on)
 
+    def test_reviewing_item_syncs_parent_requirement_status(self):
+        doc = self._create_item("sync_parent_key")
+        frappe.set_user(self.admission_officer_user)
+        doc = frappe.get_doc("Applicant Document Item", doc.name)
+        doc.review_status = "Approved"
+        doc.save(ignore_permissions=True)
+
+        parent = frappe.get_doc("Applicant Document", self.applicant_document)
+        self.assertEqual(parent.review_status, "Approved")
+        self.assertEqual(parent.reviewed_by, self.admission_officer_user)
+        self.assertIsNotNone(parent.reviewed_on)
+
     def test_immutable_fields_cannot_be_changed(self):
         doc = self._create_item("immutable_key")
         frappe.set_user(self.admission_officer_user)
@@ -150,6 +164,14 @@ class TestApplicantDocumentItem(FrappeTestCase):
         doc.item_label = "Updated Label"
         with self.assertRaises(frappe.ValidationError):
             doc.save(ignore_permissions=True)
+
+    def test_permission_hook_allows_self_and_blocks_other_applicant(self):
+        doc = self._create_item("permission_key")
+
+        self.assertTrue(frappe.has_permission("Applicant Document Item", doc=doc.as_dict(), user=self.applicant_user))
+        self.assertFalse(
+            frappe.has_permission("Applicant Document Item", doc=doc.as_dict(), user=self.other_applicant_user)
+        )
 
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):
@@ -209,6 +231,20 @@ class TestApplicantDocumentItem(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("User", doc.name))
+        employee = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": "Admission",
+                "employee_last_name": role.replace(" ", ""),
+                "employee_professional_email": email,
+                "organization": self.organization,
+                "school": self.school,
+                "user_id": doc.name,
+                "date_of_joining": frappe.utils.nowdate(),
+                "employment_status": "Active",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Employee", employee.name))
         frappe.clear_cache(user=doc.name)
         return doc.name
 

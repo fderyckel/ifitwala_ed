@@ -2,7 +2,10 @@
 
 import { describe, expect, it, vi } from 'vitest'
 
-const apiMethodMock = vi.fn()
+const { apiMethodMock } = vi.hoisted(() => ({
+	apiMethodMock: vi.fn(),
+}))
+
 vi.mock('@/resources/frappe', () => ({
 	apiMethod: apiMethodMock,
 }))

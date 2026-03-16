@@ -1,323 +1,256 @@
-# Guardian Home — Information Contract (v0.1)
+# Guardian Home Information Contract (v0.3)
 
-**Ifitwala_Ed — Authoritative**
-Status: Draft (Phase-0)
+Status: Active
 Audience: Humans, coding agents
-Scope: Guardian Home (default landing surface)
-Last updated: 2026-02-02
+Scope: `/hub/guardian` family information surfaces
+Last updated: 2026-03-15
 
----
+This document defines the canonical information contract for Guardian Home plus the Phase-2 guardian policy, finance, and monitoring surfaces.
 
-## 1. Purpose of Guardian Home
+## 1. Snapshot Payload Owner
 
-**Guardian Home** is the default entry surface for Guardians.
+Status: Implemented
 
-Its sole purpose is to provide a **calm, accurate, family-level briefing** answering:
+Code refs:
 
-1. What is happening with my family at school?
-2. What does the next school days look like?
-3. Is anything requiring my attention?
-4. How can I support my children?
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/guardianHomeService.ts`
 
-Guardian Home is **not a navigation hub**.
-It is a **briefing surface**.
+Test refs:
 
----
-
-## 2. Time Horizon (Locked)
-
-Guardian Home operates on a **time-bounded window**.
-
-### Primary horizon
-
-* **Today**
-* **Next school days**
-* Default window: **next 7 school days**
-
-### Secondary horizon
-
-* **Recent past** (context and continuity only)
-
-### Rules
-
-* Non-school days (weekends, holidays) are **explicitly shown and labeled**
-* School calendars are respected **per child**
-* No internal time structures (rotation days, blocks) may appear
-
----
-
-## 3. Perspective & Aggregation Rules
-
-### 3.1 Parent-Centric by Default (Locked)
-
-* Guardian Home aggregates information at the **family level**
-* Guardians are **not required** to select a child
-* Child context is shown **inline**, only where relevant
-
-### 3.2 Child Focus Is Contextual
-
-Child-centric views are entered only when:
-
-* an item explicitly concerns a single child
-* the Guardian chooses to drill down
-
-Child switching is **occasional**, not primary.
-
----
-
-## 4. Section Ordering (Authoritative)
-
-Guardian Home content is ordered by **cognitive priority**, not by system module.
-
-### 4.1 Family Timeline (Primary Backbone)
-
-**Purpose**
-Provide a scannable, day-by-day view of what matters for the family.
-
-**Characteristics**
-
-* Grouped by **day**
-* Aggregated across **all children**
-* Plain language only
-
-Each item answers:
-
-* Which child
-* What is happening
-* When (human phrasing)
-* Whether preparation is required
-
-**Eligible sources**
-
-* School schedule (translated)
-* Tasks with due dates
-* Assessments (as tasks)
-* School events
-* Calendar exceptions
-
-**Explicit exclusions**
-
-* Block numbers
-* Rotation days
-* Internal scheduling metadata
-
----
-
-### 4.2 Attention Needed (Exceptions)
-
-**Purpose**
-Surface anything that may require Guardian awareness or action.
-
-**Examples**
-
-* Attendance issues
-* Health visits
-* Behaviour / student logs (guardian-visible only)
-* Unread communications
-* Pending acknowledgements or forms
-
-**Rules**
-
-* No severity labels
-* No interpretation
-* No moral framing
-* Parents decide what is serious
-
----
-
-### 4.3 Preparation & Support (Forward-Looking)
-
-**Purpose**
-Help Guardians support their children proactively.
-
-**Examples**
-
-* Upcoming assessments
-* Projects due soon
-* Patterns requiring encouragement
-
-**Rules**
-
-* Suggestive, not directive
-* Informational, not evaluative
-
----
-
-### 4.4 Recent Activity (Continuity)
-
-**Purpose**
-Provide reassurance and narrative continuity.
-
-**Examples**
-
-* Recently published task results
-* Teacher communications
-* Behaviour notes
-* Health office visits
-
-This section is **secondary** and visually quieter.
-
----
-
-### 4.5 Default Presentation Rules (Clarification)
-
-Guardian Home follows **progressive disclosure**.
-
-**Default view**
-
-* Narrative and contextual
-* Plain language
-* Low numeric density
-
-**Expanded view**
-
-* Numbers
-* Dates
-* Detailed task instructions
-* Published results
-
-**Invariant**
-
-> Guardians should understand meaning **before** seeing metrics.
-
-Numbers are available, but **never forced**.
-
----
-
-### 4.6 Relationship to Weekly Summary
-
-Guardian Home and Weekly Summary serve **different cognitive moments**:
-
-* **Guardian Home**
-
-  * situational
-  * immediate
-  * day-to-day
-
-* **Weekly Summary**
-
-  * reflective
-  * periodic
-  * stabilizing
-
-They must:
-
-* share the same visibility rules
-* never contradict each other
-* never expose different academic truths
-
----
-
-
-
-
-## 5. Academic Information Rules (Guardian View)
-
-### 5.1 Tasks
-
-Internally, all academic work is modeled as **Tasks**.
-
-Guardian Home:
-
-* shows only **signal**
-* suppresses internal distinctions unless meaningful
-
-Default visibility:
-
-* task title
-* due date
-* high-level status
-* preparation cue (if any)
-
-Hidden by default:
-
-* instructions
-* evidence
-* grading mechanics
-
-### 5.2 Results Visibility (Locked)
-
-* Guardians see results **only if explicitly published (`Task Outcome.is_published = 1`)**
-* Live gradebook data is never shown
-* Term results appear only after Reporting Cycle publication
-
----
-
-## 6. Behaviour, Health, and Wellbeing
-
-* Only logs explicitly marked **visible to guardians** may appear
-* No internal categories or severity scores are exposed
-* No aggregation or interpretation is performed
-* Guardian Home does not diagnose or summarize behaviour
-
----
-
-## 7. Communications
-
-Guardian Home surfaces communications that:
-
-* are audience-scoped to the Guardian or their children
-* are event-based (not threaded by default)
+- `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
 
 Rules:
 
-* Communications appear as discrete items
-* Inline expansion allowed
-* Reply / reaction capabilities may be phased later
-* No assumption of email or external messaging parity
+1. Guardian Home consumes one canonical payload: `get_guardian_home_snapshot`.
+2. The request contract is `anchor_date?`, `school_days?`, and `debug?`.
+3. The response contract is the `Response` type in `ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`.
+4. The SPA service calls the endpoint with a flat JSON body and returns the domain payload directly.
 
----
+## 2. Family Snapshot Surface
 
-## 8. Inline Expansion vs Navigation (Locked)
+Status: Implemented
 
-### Default behavior
+Code refs:
 
-* **Inline expansion** is preferred for understanding context
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/components/PortalSidebar.vue`
+- `ifitwala_ed/ui-spa/src/router/index.ts`
 
-### Dedicated pages are reserved for:
+Test refs:
 
-* full task history
-* reports / term results
-* document upload
-* payments
-* communication archives
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`
 
-**Invariant**
+Rules:
 
-> A Guardian must be able to understand their week **without leaving Guardian Home**.
+1. Guardian Home shows the portal heading, the configured school-day window, and a refresh action.
+2. The summary cards show `unread_communications`, `unread_visible_student_logs`, `upcoming_due_tasks`, and `upcoming_assessments`.
+3. Quick links route guardians to activities, policies, finance, monitoring, portfolio, and the family snapshot.
+4. The landing page remains a briefing surface; navigation is secondary.
 
----
+## 3. Home Zone Order And Content
 
-## 9. Explicit Exclusions (Non-Negotiable)
+Status: Implemented
 
-Guardian Home must never show:
+Code refs:
 
-* sibling comparisons
-* internal academic structures
-* live gradebook views
-* staff-only notes
-* draft or provisional data
-* configuration or preferences
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
 
----
+Test refs:
 
-## 10. Stability & Trust Guarantees
+- `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`
 
-Guardian Home guarantees:
+Rules:
 
-* data consistency across reloads
-* no silent recalculation of published data
-* no mixing of mutable and immutable academic truth
-* no retroactive visibility changes
+1. Guardian Home renders four zones in this order: `family_timeline`, `attention_needed`, `preparation_and_support`, `recent_activity`.
+2. `family_timeline` is grouped by day and contains one child row per linked student present in that day window.
+3. `attention_needed` is exception-oriented and mixes attendance, guardian-visible student logs, and guardian-visible communications.
+4. `preparation_and_support` is forward-looking and remains low-noise.
+5. `recent_activity` is a calm feed of published task results, guardian-visible student logs, and communications.
 
----
+## 4. Student Drill-Down
 
-## 11. Phase-0 Lock Statement
+Status: Implemented
 
-> This document defines **what Guardian Home is responsible for**.
->
-> UI design, IA, backend queries, caching, and permissions must conform to this contract.
->
-> Any new section or deviation requires an explicit revision of this document.
+Code refs:
 
----
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
+- `ifitwala_ed/ui-spa/src/router/index.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+
+Test refs:
+
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
+
+Rules:
+
+1. `/guardian/students/:student_id` reuses the same guardian snapshot instead of creating a second student-only backend contract.
+2. The drill-down surface filters timeline, attention, preparation, and recent activity to one linked student.
+3. If the student is outside guardian scope, the page must render an explicit blocked state.
+4. Child drill-down is subordinate to Guardian Home and must not redefine data visibility rules.
+
+## 5. Policy Surface
+
+Status: Implemented
+
+Code refs:
+
+- `ifitwala_ed/api/guardian_policy.py`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_policy_overview.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/acknowledge_guardian_policy.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`
+
+Test refs:
+
+- `ifitwala_ed/api/test_guardian_phase2.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`
+
+Rules:
+
+1. `/guardian/policies` consumes one canonical payload: `get_guardian_policy_overview`.
+2. Policy rows are scoped by the guardian's signer-authorized linked students and include current acknowledgement state for the logged-in guardian only.
+3. Guardian policy rows are eligible only when `Institutional Policy.applies_to` includes `Guardian`.
+4. Acknowledge actions call one named endpoint: `acknowledge_guardian_policy`.
+5. Repeated acknowledgement clicks must be idempotent; already-acknowledged policy versions return a stable success result instead of creating duplicates.
+
+## 6. Finance Surface
+
+Status: Implemented
+
+Code refs:
+
+- `ifitwala_ed/api/guardian_finance.py`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_finance_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianFinance.vue`
+
+Test refs:
+
+- `ifitwala_ed/api/test_guardian_phase2.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`
+
+Rules:
+
+1. `/guardian/finance` consumes one canonical payload: `get_guardian_finance_snapshot`.
+2. The finance snapshot is read-only in Phase 2 and shows authorized account holders, submitted invoices, and submitted payment history.
+3. Invoice rows may aggregate charges for multiple linked children and must expose the linked-child labels returned by the server.
+4. If the guardian does not pass the finance authority rule for any linked account holder, the page renders an explicit access-limited empty state.
+
+## 7. Monitoring Surface
+
+Status: Implemented
+
+Code refs:
+
+- `ifitwala_ed/api/guardian_monitoring.py`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_monitoring_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`
+
+Test refs:
+
+- `ifitwala_ed/api/test_guardian_phase2.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts`
+
+Rules:
+
+1. `/guardian/monitoring` is a family-wide monitoring surface, not one portal view per child.
+2. The page shows guardian-visible student logs and published task results for all linked children by default.
+3. Child filtering is optional and does not change server visibility; it only narrows the already-authorized payload.
+4. Guardian-visible student logs expose an explicit mark-read action through `mark_guardian_student_log_read`, which writes `Portal Read Receipt` for the logged-in guardian only.
+5. Monitoring mode must not introduce sibling ranking, gradebook editing, or unpublished results.
+
+## 8. Attendance Surface
+
+Status: Implemented
+
+Code refs:
+
+- `ifitwala_ed/api/guardian_attendance.py`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_attendance_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianAttendance.vue`
+
+Test refs:
+
+- `ifitwala_ed/api/test_guardian_phase2.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`
+
+Rules:
+
+1. `/guardian/attendance` consumes one canonical payload: `get_guardian_attendance_snapshot`.
+2. The page is family-first and shows all linked children by default, with an optional child filter that narrows the already-authorized payload.
+3. Attendance cells summarize each recorded day as `present`, `late`, or `absence`, and clicking a day reveals plain-language details for that day only.
+4. Attendance detail may expose time, attendance code, course, location, and remark, but it must not expose `rotation_day` or `block_number`.
+
+## 9. Explicit Exclusions
+
+Status: Implemented
+
+Code refs:
+
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+
+Test refs:
+
+- `ifitwala_ed/api/test_guardian_home.py`
+
+Rules:
+
+1. Guardian Home must not expose `rotation_day` or `block_number` anywhere in the payload or UI.
+2. Guardian surfaces must not expose live gradebook rows, staff-only notes, or sibling comparison data.
+3. Guardian finance does not create or submit payments in Phase 2; it remains a read-only visibility surface.
+4. Any new information block on `/hub/guardian` must be added to this document before it is treated as canonical.
+
+## 10. Contract Matrix
+
+Status: Implemented
+
+Code refs:
+
+- `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/api/guardian_policy.py`
+- `ifitwala_ed/api/guardian_attendance.py`
+- `ifitwala_ed/api/guardian_finance.py`
+- `ifitwala_ed/api/guardian_monitoring.py`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/guardianHomeService.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_policy_overview.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/acknowledge_guardian_policy.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_attendance_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_finance_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_monitoring_snapshot.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianAttendance.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianFinance.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`
+
+Test refs:
+
+- `ifitwala_ed/api/test_guardian_home.py`
+- `ifitwala_ed/api/test_guardian_phase2.py`
+- `ifitwala_ed/ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts`
+
+| Concern                          | Canonical owner                                                                                                                                                                                    | Code refs                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Test refs                                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Schema / DocType                 | Guardian surfaces read guardian links, student logs, attendance, outcomes, communications, policy acknowledgements, account holders, invoices, payments, and portal read receipts                    | `api/guardian_home.py`, `governance/doctype/policy_acknowledgement/*`, `accounting/doctype/account_holder/*`, `accounting/doctype/sales_invoice/*`, `accounting/doctype/payment_entry/*`, `students/doctype/student_log/*`, `students/doctype/student_attendance/*`, `school_settings/doctype/student_attendance_code/*`, `students/doctype/portal_read_receipt/*`, `assessment/doctype/task_outcome/*`                                                                 | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                                                    |
+| Controller / workflow logic      | Snapshot builder, drill-down filtering, policy acknowledgement flow, attendance visibility assembly, finance visibility assembly, monitoring aggregation and read-state                              | `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`                                                                                                                                                                                                                                                                              | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                                                    |
+| API endpoints                    | `get_guardian_home_snapshot`, `get_guardian_policy_overview`, `acknowledge_guardian_policy`, `get_guardian_attendance_snapshot`, `get_guardian_finance_snapshot`, `get_guardian_monitoring_snapshot`, `mark_guardian_student_log_read` | `api/guardian_home.py`, `api/guardian_policy.py`, `api/guardian_attendance.py`, `api/guardian_finance.py`, `api/guardian_monitoring.py`                                                                                                                                                                                                                                                                                                                                    | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                                                    |
+| SPA / UI surfaces                | Guardian Home, Guardian Student Shell, Guardian Policies, Guardian Attendance, Guardian Finance, Guardian Monitoring                                                                               | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`                                                                                                                                                            | `ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` |
+| Reports / dashboards / briefings | Home summary cards, attendance summary cards, finance summary cards, and monitoring summary cards                                                                                                  | `ui-spa/src/pages/guardian/GuardianHome.vue`, `ui-spa/src/pages/guardian/GuardianAttendance.vue`, `ui-spa/src/pages/guardian/GuardianFinance.vue`, `ui-spa/src/pages/guardian/GuardianMonitoring.vue`                                                                                                                                                                                                                                                                      | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`                                                                                                                                                                                                                                                                                                                                                    |
+| Scheduler / background jobs      | None                                                                                                                                                                                               | None                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | None                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Tests                            | Endpoint unit coverage, service transport coverage, and guardian Phase-2 page regression coverage                                                                                                  | `api/test_guardian_home.py`, `api/test_guardian_phase2.py`, `ui-spa/src/lib/services/guardianHome/__tests__/guardianHomeService.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianAttendance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianFinance.test.ts`, `ui-spa/src/pages/guardian/__tests__/GuardianMonitoring.test.ts` | Implemented                                                                                                                                                                                                                                                                                                                                                                                                   |

@@ -7,9 +7,16 @@ from urllib.parse import urlparse
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import (
+    get_applicant_workspace,
+    save_my_interview_feedback,
+)
+from ifitwala_ed.api.admission_cockpit import get_admissions_cockpit_data
+from ifitwala_ed.api.admissions_review import review_applicant_document_submission
 from ifitwala_ed.api.recommendation_intake import (
     create_recommendation_request,
     get_recommendation_intake_payload,
+    get_recommendation_review_payload,
     get_recommendation_status_for_applicant,
     list_recommendation_requests,
     submit_recommendation,
@@ -171,6 +178,151 @@ class TestRecommendationIntake(FrappeTestCase):
         self.assertNotIn("recommender_name", rows[0])
         self.assertEqual((payload.get("summary") or {}).get("state"), "pending")
 
+    def test_staff_review_payload_exposes_answers_and_review_target(self):
+        submitted = self._create_submitted_recommendation()
+
+        frappe.set_user(self.staff_user.name)
+        payload = get_recommendation_review_payload(
+            student_applicant=self.applicant.name,
+            recommendation_request=submitted["recommendation_request"],
+        )
+
+        self.assertTrue(bool(payload.get("ok")))
+        recommendation = payload.get("recommendation") or {}
+        self.assertEqual(recommendation.get("recommendation_request"), submitted["recommendation_request"])
+        self.assertEqual(recommendation.get("recommendation_submission"), submitted["recommendation_submission"])
+        self.assertEqual(recommendation.get("applicant_document_item"), submitted["applicant_document_item"])
+        self.assertEqual(recommendation.get("review_status"), "Pending")
+        self.assertTrue(bool(recommendation.get("can_review")))
+
+        answers = recommendation.get("answers") or []
+        self.assertEqual(len(answers), 1)
+        self.assertEqual((answers[0] or {}).get("label"), "Recommendation Summary")
+        self.assertEqual((answers[0] or {}).get("display_value"), "Strong and consistent performance.")
+
+    def test_applicant_cannot_access_staff_review_payload(self):
+        submitted = self._create_submitted_recommendation()
+
+        frappe.set_user(self.applicant_user.name)
+        with self.assertRaises(frappe.PermissionError):
+            get_recommendation_review_payload(
+                student_applicant=self.applicant.name,
+                recommendation_request=submitted["recommendation_request"],
+            )
+
+    def test_cockpit_payload_includes_pending_recommendation_review_target(self):
+        submitted = self._create_submitted_recommendation()
+
+        frappe.set_user(self.staff_user.name)
+        payload = get_admissions_cockpit_data(filters={"assigned_to_me": 0, "limit": 20})
+        columns = payload.get("columns") or []
+        cards = [
+            card
+            for column in columns
+            for card in (column.get("items") or [])
+            if card.get("name") == self.applicant.name
+        ]
+
+        self.assertEqual(len(cards), 1)
+        recommendations = (cards[0] or {}).get("recommendations") or {}
+        self.assertEqual(int(recommendations.get("received_total") or 0), 1)
+        self.assertEqual(int(recommendations.get("pending_review_count") or 0), 1)
+        self.assertEqual(
+            (recommendations.get("first_pending_review") or {}).get("recommendation_request"),
+            submitted["recommendation_request"],
+        )
+        self.assertEqual(
+            (recommendations.get("first_pending_review") or {}).get("applicant_document_item"),
+            submitted["applicant_document_item"],
+        )
+
+    def test_cockpit_payload_includes_latest_interview_feedback_summary(self):
+        if not frappe.db.table_exists("Applicant Interview Feedback"):
+            self.skipTest("Applicant Interview Feedback DocType is not migrated on this site.")
+
+        self._ensure_role("Employee")
+        panel_user = self._create_user("panel", ["Employee"])
+        interview = self._create_interview([self.staff_user.name, panel_user.name])
+        self._submit_interview_feedback(interview.name, self.staff_user.name)
+
+        frappe.set_user(self.staff_user.name)
+        payload = get_admissions_cockpit_data(filters={"assigned_to_me": 0, "limit": 20})
+        columns = payload.get("columns") or []
+        cards = [
+            card
+            for column in columns
+            for card in (column.get("items") or [])
+            if card.get("name") == self.applicant.name
+        ]
+
+        self.assertEqual(len(cards), 1)
+        interviews = (cards[0] or {}).get("interviews") or {}
+        latest = interviews.get("latest") or {}
+
+        self.assertEqual(int(interviews.get("count") or 0), 1)
+        self.assertEqual(latest.get("name"), interview.name)
+        self.assertEqual(latest.get("interview_type"), "Family")
+        self.assertEqual(latest.get("mode"), "In Person")
+        self.assertEqual(int(latest.get("feedback_submitted_count") or 0), 1)
+        self.assertEqual(int(latest.get("feedback_expected_count") or 0), 2)
+        self.assertEqual(latest.get("feedback_status_label"), "1/2 submitted")
+        self.assertEqual(
+            set(latest.get("interviewer_labels") or []),
+            {"Recommendation Staff", "Recommendation Panel"},
+        )
+        self.assertEqual(latest.get("open_url"), f"/desk/applicant-interview/{interview.name}")
+
+    def test_applicant_workspace_includes_recommendation_review_rows(self):
+        submitted = self._create_submitted_recommendation()
+
+        frappe.set_user(self.staff_user.name)
+        payload = get_applicant_workspace(student_applicant=self.applicant.name)
+        review_rows = (payload.get("recommendations") or {}).get("review_rows") or []
+
+        self.assertEqual(len(review_rows), 1)
+        self.assertEqual((review_rows[0] or {}).get("recommendation_request"), submitted["recommendation_request"])
+        self.assertEqual((review_rows[0] or {}).get("applicant_document_item"), submitted["applicant_document_item"])
+
+    def test_form_only_recommendations_satisfy_required_document_counts(self):
+        frappe.db.set_value(
+            "Applicant Document Type",
+            self.document_type,
+            "min_items_required",
+            2,
+            update_modified=False,
+        )
+
+        first = self._create_submitted_recommendation()
+        second = self._create_submitted_recommendation()
+
+        frappe.set_user(self.staff_user.name)
+        review_applicant_document_submission(
+            student_applicant=self.applicant.name,
+            applicant_document_item=first["applicant_document_item"],
+            decision="Approved",
+            client_request_id=f"review-{frappe.generate_hash(length=6)}",
+        )
+        review_applicant_document_submission(
+            student_applicant=self.applicant.name,
+            applicant_document_item=second["applicant_document_item"],
+            decision="Approved",
+            client_request_id=f"review-{frappe.generate_hash(length=6)}",
+        )
+
+        applicant_doc = frappe.get_doc("Student Applicant", self.applicant.name)
+        documents = applicant_doc.has_required_documents()
+        recommendation_rows = [
+            row for row in (documents.get("uploaded_rows") or []) if row.get("document_type") == self.document_type
+        ]
+
+        self.assertEqual(len(recommendation_rows), 2)
+        self.assertTrue(all(row.get("review_status") == "Approved" for row in recommendation_rows))
+        self.assertTrue(all(int(row.get("uploaded_count") or 0) == 2 for row in recommendation_rows))
+        self.assertTrue(all(int(row.get("approved_count") or 0) == 2 for row in recommendation_rows))
+        self.assertTrue(all(bool(row.get("uploaded_at")) for row in recommendation_rows))
+        self.assertFalse(documents.get("missing"))
+        self.assertFalse(documents.get("unapproved"))
+
     def _feature_tables_ready(self) -> bool:
         required = (
             "Recommendation Template",
@@ -285,6 +437,35 @@ class TestRecommendationIntake(FrappeTestCase):
         self._created.append(("Applicant Document Type", document_type.name))
         return document_type.name
 
+    def _create_interview(self, interviewer_users: list[str]):
+        frappe.set_user(self.staff_user.name)
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_type": "Family",
+                "interview_date": "2026-03-12",
+                "interview_start": "2026-03-12 09:00:00",
+                "interview_end": "2026-03-12 09:30:00",
+                "mode": "In Person",
+                "interviewers": [{"interviewer": user} for user in interviewer_users],
+            }
+        ).insert()
+        self._created.append(("Applicant Interview", interview.name))
+        return interview
+
+    def _submit_interview_feedback(self, interview_name: str, user: str):
+        frappe.set_user(user)
+        payload = save_my_interview_feedback(
+            interview=interview_name,
+            strengths="Strong applicant communication.",
+            feedback_status="Submitted",
+        )
+        feedback_name = payload.get("feedback_name")
+        if feedback_name:
+            self._created.append(("Applicant Interview Feedback", feedback_name))
+        return payload
+
     def _create_template(
         self,
         *,
@@ -332,3 +513,42 @@ class TestRecommendationIntake(FrappeTestCase):
         token = (path.split("/")[-1] or "").strip()
         self.assertTrue(bool(token))
         return token
+
+    def _create_submitted_recommendation(self) -> dict[str, str]:
+        frappe.set_user(self.staff_user.name)
+        created = create_recommendation_request(
+            student_applicant=self.applicant.name,
+            recommendation_template=self.template.name,
+            recommender_name="Ms Mentor",
+            recommender_email=f"mentor-{frappe.generate_hash(length=6)}@example.com",
+            recommender_relationship="Teacher",
+            send_email=0,
+            client_request_id=f"submitted-{frappe.generate_hash(length=6)}",
+        )
+
+        recommendation_request = created.get("recommendation_request")
+        self.assertTrue(bool(recommendation_request))
+        token = self._token_from_intake_url(created.get("intake_url"))
+
+        frappe.set_user("Guest")
+        submit_recommendation(
+            token=token,
+            answers={"recommendation_summary": "Strong and consistent performance."},
+            attestation_confirmed=1,
+            client_request_id=f"submit-{frappe.generate_hash(length=6)}",
+        )
+
+        frappe.set_user(self.staff_user.name)
+        request_row = frappe.db.get_value(
+            "Recommendation Request",
+            recommendation_request,
+            ["submission", "applicant_document_item"],
+            as_dict=True,
+        )
+        self.assertTrue(bool(request_row.get("submission")))
+        self.assertTrue(bool(request_row.get("applicant_document_item")))
+        return {
+            "recommendation_request": recommendation_request,
+            "recommendation_submission": request_row.get("submission"),
+            "applicant_document_item": request_row.get("applicant_document_item"),
+        }

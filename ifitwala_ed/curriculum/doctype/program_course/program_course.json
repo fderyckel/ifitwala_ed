@@ -11,7 +11,6 @@
   "required",
   "credit_value",
   "credit_unit",
-  "category",
   "level",
   "repeatable",
   "max_attempts"
@@ -56,12 +55,6 @@
    "options": "hrs\nunits\npoints"
   },
   {
-   "fieldname": "category",
-   "fieldtype": "Link",
-   "label": "Category",
-   "options": "Course Group"
-  },
-  {
    "fieldname": "level",
    "fieldtype": "Select",
    "label": "Level",
@@ -83,7 +76,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-22 00:15:48.486909",
+ "modified": "2026-01-23 00:15:53",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program Course",

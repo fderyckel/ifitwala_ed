@@ -5,7 +5,7 @@
 **Scope:** Builder‑lite v1 + Phase‑02 blocks
 **Goal:** Exact props, types, rules, and examples for every block
 **Canonical implementation source:** `ifitwala_ed/website/block_registry.py`
-**Status (February 25, 2026):** Synced with implemented Builder-lite blocks including `section_carousel` and hero image-fade controls
+**Status (March 11, 2026):** Synced with implemented Builder-lite blocks including organization-media-backed image pickers for school-context forms
 
 ---
 
@@ -39,8 +39,17 @@ Disallowed:
 
 * `hero.images` is optional.
 * If `hero.images` is **empty or missing**, the hero carousel uses `School.gallery_image` rows (field `school_image`).
+* `Gallery Image.school_image` is the canonical file URL mirrored from the governed `Gallery Image.governed_file` reference when available.
 
-### 0.5 Context-aware block availability
+### 0.5 Desk image picker behavior
+
+On school-bound Desk forms (`School Website Page`, `Program Website Profile`, `Website Story`):
+
+* image props in the builder use the governed `Organization Media` picker
+* the picker can reuse visible organization/school media or upload a new governed image
+* the saved JSON still stores the canonical file URL returned by the picker
+
+### 0.6 Context-aware block availability
 
 Block availability is enforced by parent DocType context (Desk picker + save-time validation).
 
@@ -53,7 +62,7 @@ Block availability is enforced by parent DocType context (Desk picker + save-tim
 
 If a block type is outside the allowed set for the current context, save is blocked with a validation error.
 
-### 0.6 Block script paths are system-owned
+### 0.7 Block script paths are system-owned
 
 * Editors do not configure block JS paths in props.
 * Optional enhancement scripts are defined in `Website Block Definition.script_path` via the canonical block registry.
@@ -62,7 +71,7 @@ If a block type is outside the allowed set for the current context, save is bloc
   * `admission_cta` -> `/assets/ifitwala_ed/website/blocks/admission_cta.js`
   * `section_carousel` -> `/assets/ifitwala_ed/website/blocks/section_carousel.js`
 
-### 0.7 Theme profile is separate from block props
+### 0.8 Theme profile is separate from block props
 
 * Brand tokens (colors, type scale, spacing density, hero style, motion toggle) come from `Website Theme Profile`.
 * Theme tokens are resolved by scope (`School -> Organization -> Global`) in renderer code.
@@ -83,9 +92,9 @@ If a block type is outside the allowed set for the current context, save is bloc
 | --- | --- | --- | --- | --- |
 | `title` | string | yes | — | Rendered as `<h1>` |
 | `subtitle` | string | no | — | Optional secondary text |
-| `background_image` | string | no | — | Single image for non‑carousel mode |
+| `background_image` | string | no | — | Single image for non‑carousel mode; selected via Organization Media picker in Desk |
 | `images` | array | no | `[]` | Carousel images; if empty, fallback to `School.gallery_image` |
-| `images[].image` | string | yes (per item) | — | File URL |
+| `images[].image` | string | yes (per item) | — | Canonical file URL returned by Organization Media picker |
 | `images[].alt` | string | no | — | Image alt text |
 | `images[].caption` | string | no | — | Caption overlay |
 | `autoplay` | boolean | no | `true` | Carousel auto‑advance |
@@ -259,7 +268,7 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 | --- | --- | --- | --- | --- |
 | `heading` | string | yes | — | Rendered as `<h1>` |
 | `content_html` | string | no | — | Sanitized HTML |
-| `hero_image` | string \| null | no | — | File URL |
+| `hero_image` | string \| null | no | — | Canonical file URL returned by Organization Media picker |
 | `cta_intent` | string \| null | no | — | `inquire`, `visit`, `apply`, or `null` |
 
 ### Example
@@ -341,7 +350,7 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 | `content_html` | string | no | — | Sanitized explanatory copy |
 | `layout` | string | no | `"content_left"` | `content_left` or `content_right` |
 | `items` | array | yes | — | Carousel image items (at least 1) |
-| `items[].image` | string | yes (per item) | — | File URL |
+| `items[].image` | string | yes (per item) | — | Canonical file URL returned by Organization Media picker |
 | `items[].alt` | string | no | — | Alt text |
 | `items[].caption` | string | no | — | Optional image caption |
 | `autoplay` | boolean | no | `true` | Carousel auto‑advance |

@@ -2,6 +2,7 @@
 
 import { createResource } from 'frappe-ui'
 
+import { api } from '@/lib/client'
 import { SIGNAL_CALENDAR_INVALIDATE, uiSignals } from '@/lib/uiSignals'
 
 import type {
@@ -16,6 +17,22 @@ import type {
 	Request as GetEventQuickCreateOptionsRequest,
 	Response as GetEventQuickCreateOptionsResponse,
 } from '@/types/contracts/calendar/get_event_quick_create_options'
+import type {
+	Request as GetMeetingTeamAttendeesRequest,
+	Response as GetMeetingTeamAttendeesResponse,
+} from '@/types/contracts/calendar/get_meeting_team_attendees'
+import type {
+	Request as SearchMeetingAttendeesRequest,
+	Response as SearchMeetingAttendeesResponse,
+} from '@/types/contracts/calendar/search_meeting_attendees'
+import type {
+	Request as SuggestMeetingRoomsRequest,
+	Response as SuggestMeetingRoomsResponse,
+} from '@/types/contracts/calendar/suggest_meeting_rooms'
+import type {
+	Request as SuggestMeetingSlotsRequest,
+	Response as SuggestMeetingSlotsResponse,
+} from '@/types/contracts/calendar/suggest_meeting_slots'
 
 const getOptionsResource = createResource<GetEventQuickCreateOptionsResponse>({
 	url: 'ifitwala_ed.api.calendar.get_event_quick_create_options',
@@ -64,4 +81,28 @@ export async function createSchoolEventQuick(
 		uiSignals.emit(SIGNAL_CALENDAR_INVALIDATE)
 	}
 	return response
+}
+
+export async function searchMeetingAttendees(
+	payload: SearchMeetingAttendeesRequest
+): Promise<SearchMeetingAttendeesResponse> {
+	return api('ifitwala_ed.api.calendar.search_meeting_attendees', payload)
+}
+
+export async function getMeetingTeamAttendees(
+	payload: GetMeetingTeamAttendeesRequest
+): Promise<GetMeetingTeamAttendeesResponse> {
+	return api('ifitwala_ed.api.calendar.get_meeting_team_attendees', payload)
+}
+
+export async function suggestMeetingSlots(
+	payload: SuggestMeetingSlotsRequest
+): Promise<SuggestMeetingSlotsResponse> {
+	return api('ifitwala_ed.api.calendar.suggest_meeting_slots', payload)
+}
+
+export async function suggestMeetingRooms(
+	payload: SuggestMeetingRoomsRequest
+): Promise<SuggestMeetingRoomsResponse> {
+	return api('ifitwala_ed.api.calendar.suggest_meeting_rooms', payload)
 }

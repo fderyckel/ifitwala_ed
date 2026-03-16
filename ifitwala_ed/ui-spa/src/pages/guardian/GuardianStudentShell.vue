@@ -213,8 +213,8 @@ const studentTimeline = computed<StudentDayTimeline[]>(() => {
 });
 
 const studentAttention = computed<AttentionItem[]>(() =>
-	(snapshot.value?.zones.attention_needed ?? []).filter(item =>
-		'student' in item ? item.student === studentId.value : item.type === 'communication'
+	(snapshot.value?.zones.attention_needed ?? []).filter(
+		item => 'student' in item && item.student === studentId.value
 	)
 );
 
@@ -225,8 +225,8 @@ const studentPrep = computed<PrepItem[]>(() =>
 );
 
 const studentRecent = computed<RecentActivityItem[]>(() =>
-	(snapshot.value?.zones.recent_activity ?? []).filter(item =>
-		'student' in item ? item.student === studentId.value : item.type === 'communication'
+	(snapshot.value?.zones.recent_activity ?? []).filter(
+		item => 'student' in item && item.student === studentId.value
 	)
 );
 

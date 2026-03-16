@@ -109,6 +109,61 @@
 											placeholder="Share directions, resources, or expectations..."
 										/>
 									</div>
+
+									<div v-if="isQuizTask" class="grid gap-4 md:grid-cols-2">
+										<div class="space-y-1">
+											<label class="type-label">Question bank</label>
+											<FormControl
+												v-model="form.quiz_question_bank"
+												type="select"
+												:options="quizBankOptions"
+												option-label="label"
+												option-value="value"
+												placeholder="Select a quiz bank"
+											/>
+										</div>
+										<div class="space-y-1">
+											<label class="type-label">Questions per attempt</label>
+											<FormControl
+												v-model="form.quiz_question_count"
+												type="number"
+												:min="1"
+												:step="1"
+												placeholder="Use all if blank"
+											/>
+										</div>
+										<div class="space-y-1">
+											<label class="type-label">Time limit (minutes)</label>
+											<FormControl
+												v-model="form.quiz_time_limit_minutes"
+												type="number"
+												:min="1"
+												:step="1"
+												placeholder="Optional"
+											/>
+										</div>
+										<div class="space-y-1">
+											<label class="type-label">Maximum attempts</label>
+											<FormControl
+												v-model="form.quiz_max_attempts"
+												type="number"
+												:min="0"
+												:step="1"
+												placeholder="Unlimited if blank"
+											/>
+										</div>
+										<div class="space-y-1">
+											<label class="type-label">Pass percentage</label>
+											<FormControl
+												v-model="form.quiz_pass_percentage"
+												type="number"
+												:min="0"
+												:max="100"
+												:step="1"
+												placeholder="Optional"
+											/>
+										</div>
+									</div>
 								</section>
 
 								<!-- Step 2 -->
@@ -172,10 +227,15 @@
 											<p class="mt-1 text-xs text-ink/60">{{ option.help }}</p>
 										</button>
 									</div>
+
+									<p v-if="isQuizTask" class="type-caption text-ink/70">
+										Quiz mode is controlled here: use `Assess` for an official graded quiz, or
+										choose another mode for practice.
+									</p>
 								</section>
 
 								<!-- Step 4 -->
-								<section class="card-panel space-y-4 p-5">
+								<section v-if="!isQuizTask" class="card-panel space-y-4 p-5">
 									<div class="flex items-center gap-3">
 										<span class="chip">Step 4</span>
 										<h3 class="type-h3 text-ink">Dates</h3>
@@ -220,14 +280,11 @@
 											/>
 											Allow late submissions
 										</label>
-										<label class="flex items-center gap-2 text-sm text-ink/80">
-											<input
-												v-model="form.group_submission"
-												type="checkbox"
-												class="rounded border-border/70 text-jacaranda"
-											/>
-											Group submission
-										</label>
+										<div
+											class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-3 py-2 text-sm text-ink/70"
+										>
+											Group submission is paused until the subgroup workflow is implemented.
+										</div>
 									</div>
 								</section>
 
@@ -358,11 +415,6 @@ const emit = defineEmits<{
 	(e: 'after-leave'): void;
 }>();
 
-console.log('[CreateTaskDeliveryOverlay] setup:start', {
-	open: props.open,
-	prefillStudentGroup: props.prefillStudentGroup,
-});
-
 const open = computed(() => props.open);
 const zIndex = computed(() => props.zIndex ?? 60);
 
@@ -433,6 +485,11 @@ type FormState = {
 	title: string;
 	instructions: string;
 	task_type: string;
+	quiz_question_bank: string;
+	quiz_question_count: string;
+	quiz_time_limit_minutes: string;
+	quiz_max_attempts: string;
+	quiz_pass_percentage: string;
 	student_group: string;
 	delivery_mode: DeliveryMode;
 	available_from: string;
@@ -448,6 +505,11 @@ const form = reactive<FormState>({
 	title: '',
 	instructions: '',
 	task_type: '',
+	quiz_question_bank: '',
+	quiz_question_count: '',
+	quiz_time_limit_minutes: '',
+	quiz_max_attempts: '',
+	quiz_pass_percentage: '',
 	student_group: '',
 	delivery_mode: 'Assign Only',
 	available_from: '',
@@ -486,9 +548,33 @@ const groupResource = createResource({
 
 const groupsLoading = computed(() => groupResource.loading);
 
+const quizBanks = ref<Array<{ name: string; bank_title?: string; course?: string }>>([]);
+
+const quizBankResource = createResource({
+	url: 'ifitwala_ed.api.quiz.list_question_banks',
+	method: 'POST',
+	auto: false,
+	transform: unwrapMessage,
+	onSuccess: (rows: any) => {
+		quizBanks.value = Array.isArray(rows) ? rows : [];
+	},
+	onError: () => {
+		quizBanks.value = [];
+	},
+});
+
 const groupOptions = computed(() =>
 	groups.value.map(row => ({
 		label: row.student_group_name || row.name,
+		value: row.name,
+	}))
+);
+
+const quizBankOptions = computed(() =>
+	quizBanks.value.map(row => ({
+		label: row.course
+			? `${row.bank_title || row.name} · ${row.course}`
+			: row.bank_title || row.name,
 		value: row.name,
 	}))
 );
@@ -499,6 +585,7 @@ const selectedGroupLabel = computed(() => {
 });
 
 const showLateSubmission = computed(() => form.delivery_mode !== 'Assign Only');
+const isQuizTask = computed(() => form.task_type === 'Quiz');
 
 watch(
 	() => form.delivery_mode,
@@ -513,6 +600,7 @@ const canSubmit = computed(() => {
 	if (!form.title.trim()) return false;
 	if (!form.student_group) return false;
 	if (!form.delivery_mode) return false;
+	if (isQuizTask.value && !form.quiz_question_bank) return false;
 	if (!gradingEnabled.value) return true;
 	if (!form.grading_mode) return false;
 	if (form.grading_mode === 'Points' && !String(form.max_points || '').trim()) return false;
@@ -522,12 +610,6 @@ const canSubmit = computed(() => {
 watch(
 	() => props.open,
 	openNow => {
-		console.log('[CreateTaskDeliveryOverlay] watch:open', {
-			openNow,
-			locked: isGroupLocked.value,
-			prefillStudentGroup: props.prefillStudentGroup,
-		});
-
 		if (!openNow) return;
 
 		initializeForm();
@@ -536,6 +618,7 @@ watch(
 		if (!isGroupLocked.value) {
 			groupResource.submit({});
 		}
+		quizBankResource.submit({});
 	},
 	{ immediate: true }
 );
@@ -557,6 +640,11 @@ function initializeForm() {
 	form.title = '';
 	form.instructions = '';
 	form.task_type = '';
+	form.quiz_question_bank = '';
+	form.quiz_question_count = '';
+	form.quiz_time_limit_minutes = '';
+	form.quiz_max_attempts = '';
+	form.quiz_pass_percentage = '';
 	form.student_group = props.prefillStudentGroup || '';
 	form.delivery_mode = 'Assign Only';
 	form.available_from = toDateTimeInput(props.prefillAvailableFrom);
@@ -577,6 +665,24 @@ function setGradingEnabled(value: boolean) {
 		form.max_points = '';
 	}
 }
+
+watch(
+	() => form.task_type,
+	taskType => {
+		if (taskType === 'Quiz') {
+			form.delivery_mode = 'Assign Only';
+			gradingEnabled.value = false;
+			form.grading_mode = '';
+			form.max_points = '';
+			return;
+		}
+		form.quiz_question_bank = '';
+		form.quiz_question_count = '';
+		form.quiz_time_limit_minutes = '';
+		form.quiz_max_attempts = '';
+		form.quiz_pass_percentage = '';
+	}
+);
 
 function toDateTimeInput(value?: string | null) {
 	if (!value) return '';
@@ -615,10 +721,7 @@ function toFrappeDatetime(value: string) {
 }
 
 /**
- * ✅ Frappe-UI canonical mutation: use createResource + submit(payload)
- * - This matches your groupResource pattern.
- * - It also guarantees the request is sent as form_dict kwargs (payload key present),
- *   which matches your current server signature: create_task_and_delivery(payload)
+ * SPA POST contract: send the payload body directly.
  */
 const createTaskResource = createResource({
 	url: 'ifitwala_ed.assessment.task_creation_service.create_task_and_delivery',
@@ -631,12 +734,11 @@ const createTaskResource = createResource({
 });
 
 async function submit() {
-	console.log('[CreateTaskDeliveryOverlay] submit:clicked');
-
 	if (!canSubmit.value) {
 		const missing: string[] = [];
 		if (!form.title.trim()) missing.push('Title');
 		if (!form.student_group) missing.push('Class');
+		if (isQuizTask.value && !form.quiz_question_bank) missing.push('Quiz question bank');
 		if (gradingEnabled.value) {
 			if (!form.grading_mode) missing.push('Grading mode');
 			if (form.grading_mode === 'Points' && !String(form.max_points || '').trim())
@@ -665,11 +767,21 @@ async function submit() {
 
 	if (form.instructions.trim()) payload.instructions = form.instructions.trim();
 	if (form.task_type) payload.task_type = form.task_type;
+	if (isQuizTask.value) {
+		payload.quiz_question_bank = form.quiz_question_bank;
+		if (form.quiz_question_count) payload.quiz_question_count = form.quiz_question_count as any;
+		if (form.quiz_time_limit_minutes)
+			payload.quiz_time_limit_minutes = form.quiz_time_limit_minutes as any;
+		if (form.quiz_max_attempts) payload.quiz_max_attempts = form.quiz_max_attempts as any;
+		if (form.quiz_pass_percentage) payload.quiz_pass_percentage = form.quiz_pass_percentage as any;
+	}
 	if (form.available_from) payload.available_from = toFrappeDatetime(form.available_from) as any;
 	if (form.due_date) payload.due_date = toFrappeDatetime(form.due_date) as any;
 	if (form.lock_date) payload.lock_date = toFrappeDatetime(form.lock_date) as any;
 
-	if (gradingEnabled.value) {
+	if (isQuizTask.value) {
+		payload.grading_mode = form.delivery_mode === 'Assess' ? ('Points' as any) : ('None' as any);
+	} else if (gradingEnabled.value) {
 		payload.grading_mode = form.grading_mode as any;
 		if (form.grading_mode === 'Points') payload.max_points = form.max_points as any;
 	} else {
@@ -677,11 +789,8 @@ async function submit() {
 	}
 
 	try {
-		// ✅ server expects `payload` argument -> submit({ payload })
 		const res = await createTaskResource.submit(payload);
 		const out = res as CreateTaskDeliveryPayload | undefined;
-
-		console.log('[CreateTaskDeliveryOverlay] submit:response', out);
 
 		if (!out?.task || !out?.task_delivery) throw new Error('Unexpected server response.');
 

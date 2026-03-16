@@ -38,6 +38,7 @@ Overlay closure must be:
 
 **Overlay**
 A top-layer UI surface rendered by `OverlayHost.vue` (HeadlessUI `Dialog + TransitionRoot`). Overlays can stack; only the top layer is active; lower layers are inert.
+Lower layers must also be visually suppressed to avoid readable-content overlap while stacked.
 
 **Workflow**
 A domain action that triggers server side-effects (ToDo open/close, notifications, Focus item changes). Workflows are owned by **UI Services + server controllers**, not by pages or Focus.
@@ -337,6 +338,10 @@ Must:
 * close immediately on Meeting/School Event semantic success
 * delegate API orchestration to a calendar UI service
 * rely on service-driven `calendar:invalidate` and a calendar refresh owner subscription
+* support explicit meeting entry modes:
+  * `meetingMode='ad_hoc'` for attendee-first scheduling from generic quick actions
+  * `meetingMode='team'` for team-owned entry points where the team attendee set is locked by context
+* treat attendee search, common-time ranking, and room suggestions as server-owned workflows backed by named endpoints rather than client-side fan-out calls
 
 **StudentLogFollowUpOverlay (must align)**
 Must:

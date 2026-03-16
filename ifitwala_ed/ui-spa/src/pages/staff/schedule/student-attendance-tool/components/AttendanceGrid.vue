@@ -71,6 +71,18 @@
 								{{ __('Birthday') }}
 							</button>
 						</div>
+
+						<div class="pt-1">
+							<Button
+								appearance="minimal"
+								icon="file-text"
+								class="!h-8 rounded-full border border-border/70 bg-white/80 px-3 !text-xs !font-semibold !text-ink/70 transition hover:!border-jacaranda/30 hover:!bg-jacaranda/5 hover:!text-jacaranda"
+								:disabled="disabled"
+								@click="$emit('open-log', { student })"
+							>
+								{{ __('Add log') }}
+							</Button>
+						</div>
 					</div>
 				</div>
 
@@ -195,6 +207,7 @@ const props = defineProps<{
 defineEmits<{
 	(event: 'change-code', payload: { studentId: string; block: BlockKey; code: string }): void;
 	(event: 'open-remark', payload: { student: StudentRosterEntry; block: BlockKey }): void;
+	(event: 'open-log', payload: { student: StudentRosterEntry }): void;
 }>();
 
 /* ------------------- Popover state & behavior ------------------- */

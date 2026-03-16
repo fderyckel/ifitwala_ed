@@ -17,6 +17,7 @@ concurrency:
 env:
   PYTHON_VERSION: "3.14"
   NODE_VERSION: "24.x"
+  NODE_OPTIONS: "--disable-warning=DEP0169"
 
 jobs:
   backend-smoke:
@@ -94,7 +95,13 @@ jobs:
             "ifitwala_ed.schedule.doctype.program_enrollment_request.test_program_enrollment_request"
             "ifitwala_ed.api.test_guardian_home"
             "ifitwala_ed.api.test_users"
+            "ifitwala_ed.api.test_calendar"
+            "ifitwala_ed.api.test_file_access"
+            "ifitwala_ed.api.test_analytics_permissions"
+            "ifitwala_ed.api.test_focus_applicant_review"
+            "ifitwala_ed.api.test_admissions_portal"
             "ifitwala_ed.hr.test_leave_permissions"
+            "ifitwala_ed.website.tests.test_portal_route"
           )
 
           for module in "${modules[@]}"; do
@@ -298,5 +305,7 @@ jobs:
       - name: Install SPA deps
         run: yarn install --frozen-lockfile
 
-      - name: Type check
-        run: yarn type-check
+      - name: Type check and run SPA unit tests
+        run: |
+          yarn type-check
+          yarn test:unit:run

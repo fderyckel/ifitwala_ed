@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "ADM-REC-SUB-.YY.-.MM.-.###",
  "creation": "2026-03-01 00:00:00",
  "description": "Immutable sealed recommendation submission payload linked to one recommendation request.",
  "doctype": "DocType",
@@ -45,6 +45,7 @@
   {
    "fieldname": "recommendation_template",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Recommendation Template",
    "options": "Recommendation Template"
@@ -52,6 +53,7 @@
   {
    "fieldname": "applicant_document",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Applicant Document",
    "options": "Applicant Document"
   },
@@ -122,10 +124,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-01 00:00:00",
+ "modified": "2026-03-12 08:57:50.316933",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Recommendation Submission",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -169,7 +172,9 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "student_applicant"
 }

@@ -171,6 +171,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { toast } from 'frappe-ui';
 import {
 	Dialog,
 	DialogPanel,
@@ -178,6 +179,7 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
+import { apiMethod } from '@/resources/frappe';
 
 const PAGE_LENGTH = 20;
 
@@ -284,11 +286,20 @@ async function openLogDetail(log) {
 		const full = unwrap(json);
 		if (full && typeof full === 'object') {
 			selectedLog.value = full;
-			const row = logs.value.find(l => l.name === log.name);
-			if (row) row.is_unread = false;
+			try {
+				await apiMethod('ifitwala_ed.api.student_log.mark_student_log_read', {
+					log_name: log.name,
+				});
+				const row = logs.value.find(l => l.name === log.name);
+				if (row) row.is_unread = false;
+			} catch (markErr) {
+				const message = markErr instanceof Error ? markErr.message : String(markErr || '');
+				toast.error(message || 'Could not update read status.');
+			}
 		}
 	} catch (err) {
 		console.error('Failed to fetch log detail:', err);
+		toast.error('Could not load this log.');
 		isModalOpen.value = false;
 	} finally {
 		modalLoading.value = false;

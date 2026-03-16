@@ -17,7 +17,6 @@ from ifitwala_ed.website.utils import (
     validate_cta_link,
     validate_props_schema,
 )
-from ifitwala_ed.website.validators import normalize_block_props
 
 ROOT_ROUTE_ALIASES = {
     "/",
@@ -180,6 +179,20 @@ def _fallback_nav_label(*, route: str, page_type: str | None) -> str:
     return segment.replace("-", " ").replace("_", " ").title()
 
 
+def _navigation_sort_key(row) -> tuple[int, int, str]:
+    raw_order = row.get("navigation_order") if isinstance(row, dict) else getattr(row, "navigation_order", None)
+    route = row.get("route") if isinstance(row, dict) else getattr(row, "route", "")
+    route_text = (route or "").strip()
+
+    if raw_order in (None, "", "Null"):
+        return (1, 9999, route_text)
+
+    try:
+        return (0, int(raw_order), route_text)
+    except (TypeError, ValueError):
+        return (1, 9999, route_text)
+
+
 def _get_navigation_items(*, school):
     rows = frappe.get_all(
         "School Website Page",
@@ -189,8 +202,9 @@ def _get_navigation_items(*, school):
             "show_in_navigation": 1,
         },
         fields=["title", "full_route", "route", "page_type", "navigation_order"],
-        order_by="ifnull(navigation_order, 9999) asc, route asc",
+        order_by="route asc",
     )
+    rows = sorted(rows, key=_navigation_sort_key)
 
     items = []
     for row in rows:
@@ -352,7 +366,6 @@ def _build_blocks(*, page, school):
                 ),
                 frappe.ValidationError,
             )
-        props = normalize_block_props(block_type=block.block_type, props=props)
         validate_props_schema(props, definition.props_schema, block_type=block.block_type)
         provider = _resolve_provider(definition.provider_path, block.block_type)
         ctx = provider(school=school, page=page, block_props=props) or {}

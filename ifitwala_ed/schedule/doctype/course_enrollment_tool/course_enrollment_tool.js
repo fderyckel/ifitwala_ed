@@ -8,7 +8,10 @@ function student_link_query(frm) {
 			program_offering: frm.doc.program_offering || "",
 			academic_year: frm.doc.academic_year || "",
 			course: frm.doc.course || "",
-			term: frm.doc.term || ""
+			term: frm.doc.term || "",
+			source_program_offering: frm.doc.source_program_offering || "",
+			source_academic_year: frm.doc.source_academic_year || "",
+			source_course: frm.doc.source_course || ""
 		}
 	};
 }
@@ -46,6 +49,24 @@ frappe.ui.form.on("Course Enrollment Tool", {
 				}
 			};
 		});
+
+		frm.set_query("source_academic_year", function () {
+			return {
+				query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.list_offering_academic_years_desc",
+				filters: { program_offering: frm.doc.source_program_offering || "" }
+			};
+		});
+
+		frm.set_query("source_course", function () {
+			if (!frm.doc.source_program_offering) return {};
+			return {
+				query: "ifitwala_ed.schedule.doctype.course_enrollment_tool.course_enrollment_tool.get_courses_for_offering",
+				filters: {
+					program_offering: frm.doc.source_program_offering,
+					academic_year: frm.doc.source_academic_year || ""
+				}
+			};
+		});
 	},
 
 	refresh(frm) {
@@ -56,7 +77,16 @@ frappe.ui.form.on("Course Enrollment Tool", {
 		frm.clear_custom_buttons();
 
 		frm.add_custom_button(__("Clear All Fields"), function () {
-			const fields_to_clear = ["program_offering", "program", "academic_year", "term", "course"];
+			const fields_to_clear = [
+				"program_offering",
+				"program",
+				"academic_year",
+				"term",
+				"course",
+				"source_program_offering",
+				"source_academic_year",
+				"source_course"
+			];
 			fields_to_clear.forEach(f => frm.set_value(f, null));
 			frm.clear_table("students");
 			frm.refresh_fields();
@@ -78,7 +108,10 @@ frappe.ui.form.on("Course Enrollment Tool", {
 							program_offering: frm.doc.program_offering,
 							academic_year: frm.doc.academic_year,
 							course: frm.doc.course,
-							term: frm.doc.term
+							term: frm.doc.term,
+							source_program_offering: frm.doc.source_program_offering,
+							source_academic_year: frm.doc.source_academic_year,
+							source_course: frm.doc.source_course
 						}
 					},
 					callback: function (r) {
@@ -182,6 +215,23 @@ frappe.ui.form.on("Course Enrollment Tool", {
 	},
 
 	academic_year(frm) {
+		bind_student_link_query(frm);
+		frm.refresh();
+	},
+
+	source_program_offering(frm) {
+		["source_academic_year", "source_course"].forEach(f => frm.set_value(f, null));
+		bind_student_link_query(frm);
+		frm.refresh();
+	},
+
+	source_academic_year(frm) {
+		frm.set_value("source_course", null);
+		bind_student_link_query(frm);
+		frm.refresh();
+	},
+
+	source_course(frm) {
 		bind_student_link_query(frm);
 		frm.refresh();
 	},

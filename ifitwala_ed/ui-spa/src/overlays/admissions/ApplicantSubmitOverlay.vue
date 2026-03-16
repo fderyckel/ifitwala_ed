@@ -130,6 +130,7 @@ const props = defineProps<{
 	open: boolean;
 	zIndex?: number;
 	overlayId?: string;
+	studentApplicant?: string | null;
 	readOnly?: boolean;
 }>();
 const emit = defineEmits(['close', 'after-leave', 'done']);
@@ -212,7 +213,9 @@ async function submit() {
 	submitting.value = true;
 	clearError();
 	try {
-		await service.submitApplication({});
+		await service.submitApplication({
+			student_applicant: props.studentApplicant || undefined,
+		});
 		emitClose('programmatic');
 		emit('done');
 	} catch (err) {

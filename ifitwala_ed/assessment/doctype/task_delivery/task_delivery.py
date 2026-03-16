@@ -6,6 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime
 
+from ifitwala_ed.assessment.check_flags import is_checked
 from ifitwala_ed.assessment.task_delivery_service import (
     bulk_create_outcomes,
     get_delivery_context,
@@ -20,6 +21,7 @@ class TaskDelivery(Document):
         context = get_delivery_context(self.student_group)
         self._stamp_context(context)
         self._validate_task_course_alignment(context)
+        self._apply_quiz_defaults()
         self._maybe_link_lesson_instance()
 
     def validate(self):
@@ -30,11 +32,18 @@ class TaskDelivery(Document):
         self._validate_group_submission()
 
     def on_submit(self):
+        self.materialize_roster()
+
+    def materialize_roster(self):
         if self.delivery_mode == "Assess" and self.grading_mode == "Criteria":
             self._ensure_rubric_snapshot()
 
         students = get_eligible_students(self.student_group)
-        bulk_create_outcomes(self, students, context=self._current_context())
+        outcomes_created = bulk_create_outcomes(self, students, context=self._current_context())
+        return {
+            "eligible_students": len(students),
+            "outcomes_created": outcomes_created,
+        }
 
     def on_cancel(self):
         if self._has_evidence():
@@ -154,6 +163,15 @@ class TaskDelivery(Document):
 
         if self.delivery_mode == "Assess":
             self.require_grading = 1
+            self._set_grade_scale_from_defaults()
+            if self._is_quiz_task():
+                self.requires_submission = 0
+                self.grading_mode = "Points"
+                self.rubric_version = None
+                if self._has_field("rubric_scoring_strategy"):
+                    self.rubric_scoring_strategy = None
+                self.max_points = self._resolve_quiz_max_points()
+                return
             self._ensure_grading_mode()
             self._set_requires_submission_from_defaults()
 
@@ -164,6 +182,7 @@ class TaskDelivery(Document):
                 self.rubric_version = None
                 if self._has_field("rubric_scoring_strategy"):
                     self.rubric_scoring_strategy = None
+                self._set_max_points_from_defaults()
 
             if self.grading_mode == "Criteria":
                 self.max_points = None
@@ -214,6 +233,9 @@ class TaskDelivery(Document):
             frappe.throw(_("Due Date must be before or on Lock Date."))
 
     def _validate_delivery_mode_coherence(self):
+        if self._is_quiz_task():
+            self._validate_quiz_configuration()
+
         if self.delivery_mode == "Assign Only":
             if self.requires_submission:
                 frappe.throw(_("Assign Only deliveries cannot require submission."))
@@ -242,8 +264,53 @@ class TaskDelivery(Document):
                 if self._has_field("rubric_scoring_strategy") and not self.rubric_scoring_strategy:
                     frappe.throw(_("Rubric Scoring Strategy is required for Criteria grading."))
 
+    def _is_quiz_task(self):
+        defaults = self._get_task_defaults()
+        return (defaults.get("task_type") or "").strip() == "Quiz" and bool(defaults.get("quiz_question_bank"))
+
+    def _apply_quiz_defaults(self):
+        defaults = self._get_task_defaults()
+        quiz_fields = (
+            "quiz_question_bank",
+            "quiz_question_count",
+            "quiz_time_limit_minutes",
+            "quiz_max_attempts",
+            "quiz_pass_percentage",
+            "quiz_shuffle_questions",
+            "quiz_shuffle_choices",
+        )
+        if not self._is_quiz_task():
+            for fieldname in quiz_fields:
+                if self._has_field(fieldname):
+                    setattr(
+                        self,
+                        fieldname,
+                        None if fieldname not in {"quiz_shuffle_questions", "quiz_shuffle_choices"} else 0,
+                    )
+            return
+
+        for fieldname in quiz_fields:
+            if self._has_field(fieldname):
+                setattr(self, fieldname, defaults.get(fieldname))
+
+    def _resolve_quiz_max_points(self):
+        question_count = int(getattr(self, "quiz_question_count", 0) or 0)
+        if question_count <= 0:
+            frappe.throw(_("Quiz deliveries require Questions Per Attempt to resolve Max Points."))
+        return question_count
+
+    def _validate_quiz_configuration(self):
+        if self.delivery_mode == "Assess" and self.grading_mode != "Points":
+            frappe.throw(_("Assessed quizzes use Points grading in phase 1."))
+        if self.requires_submission:
+            frappe.throw(_("Quiz deliveries must not require Task Submission evidence."))
+        if not getattr(self, "quiz_question_bank", None):
+            frappe.throw(_("Quiz deliveries require a Quiz Question Bank snapshot."))
+        if int(getattr(self, "quiz_question_count", 0) or 0) <= 0:
+            frappe.throw(_("Quiz deliveries require Questions Per Attempt greater than 0."))
+
     def _validate_group_submission(self):
-        if self.group_submission:
+        if is_checked(self.group_submission):
             frappe.throw(_("Group submission is paused: subgroup model not implemented."))
 
     def _get_task_criteria_rows(self):
@@ -281,6 +348,16 @@ class TaskDelivery(Document):
                 "default_requires_submission",
                 "default_grading_mode",
                 "default_rubric_scoring_strategy",
+                "default_grade_scale",
+                "default_max_points",
+                "task_type",
+                "quiz_question_bank",
+                "quiz_question_count",
+                "quiz_time_limit_minutes",
+                "quiz_max_attempts",
+                "quiz_pass_percentage",
+                "quiz_shuffle_questions",
+                "quiz_shuffle_choices",
             )
             if meta.get_field(fieldname)
         ]
@@ -290,6 +367,20 @@ class TaskDelivery(Document):
 
         self._task_defaults = frappe.db.get_value("Task", self.task, fields, as_dict=True) or {}
         return self._task_defaults
+
+    def _set_grade_scale_from_defaults(self):
+        if self.grade_scale:
+            return
+        defaults = self._get_task_defaults()
+        if defaults.get("default_grade_scale"):
+            self.grade_scale = defaults.get("default_grade_scale")
+
+    def _set_max_points_from_defaults(self):
+        if self.max_points not in (None, ""):
+            return
+        defaults = self._get_task_defaults()
+        if defaults.get("default_max_points") not in (None, ""):
+            self.max_points = defaults.get("default_max_points")
 
     def _ensure_rubric_snapshot(self):
         existing = frappe.db.get_value(
@@ -360,13 +451,12 @@ class TaskDelivery(Document):
                     frappe.throw(_("Cannot change grading configuration after outcomes exist."))
 
     def _has_evidence(self):
-        outcome_rows = frappe.db.get_values(
+        outcome_names = frappe.get_all(
             "Task Outcome",
-            {"task_delivery": self.name},
-            "name",
-            as_list=True,
+            filters={"task_delivery": self.name},
+            pluck="name",
+            limit_page_length=0,
         )
-        outcome_names = [row[0] for row in outcome_rows if row and row[0]]
         if not outcome_names:
             return False
 

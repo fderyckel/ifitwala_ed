@@ -83,6 +83,45 @@ class TestEmployee(FrappeTestCase):
         self.assertEqual(roles, set())
         self.assertIsNone(workspace)
 
+    def test_compute_effective_access_uses_date_window_when_is_current_flags_are_stale(self):
+        emp = frappe._dict(
+            designation="Principal",
+            date_of_joining=add_days(nowdate(), -30),
+            employee_history=[
+                frappe._dict(
+                    {
+                        "designation": "Teacher",
+                        "from_date": add_days(nowdate(), -30),
+                        "to_date": add_days(nowdate(), -1),
+                        "is_current": 1,
+                        "access_mode": "Follow Designation",
+                    }
+                ),
+                frappe._dict(
+                    {
+                        "designation": "Principal",
+                        "from_date": nowdate(),
+                        "to_date": None,
+                        "is_current": 0,
+                        "access_mode": "Follow Designation",
+                    }
+                ),
+            ],
+        )
+
+        def designation_defaults(designation):
+            if designation == "Teacher":
+                return {"roles": {"Academic Staff"}, "workspace": "Academics", "priority": 5}
+            if designation == "Principal":
+                return {"roles": {"Academic Admin"}, "workspace": "Admin", "priority": 10}
+            return {"roles": set(), "workspace": None, "priority": 0}
+
+        with patch("ifitwala_ed.hr.employee_access._designation_defaults", side_effect=designation_defaults):
+            roles, workspace = employee_access.compute_effective_access_from_employee(emp)
+
+        self.assertEqual(roles, {"Academic Admin"})
+        self.assertEqual(workspace, "Admin")
+
     def test_sync_user_access_disables_non_active_employee_user(self):
         emp = frappe._dict(
             user_id="nonactive.employee@example.com",
@@ -129,6 +168,54 @@ class TestEmployee(FrappeTestCase):
         compute_access.assert_called_once_with(emp)
         self.assertEqual(user_doc.enabled, 1)
         user_doc.save.assert_called_once_with(ignore_permissions=True)
+
+    def test_sync_user_access_notifies_when_managed_roles_are_added(self):
+        emp = frappe._dict(
+            user_id="active.employee@example.com",
+            employment_status="Active",
+            employee_history=[],
+        )
+        user_doc = frappe._dict(default_workspace=None, user_type="System User", enabled=1)
+        user_doc.append = Mock()
+        user_doc.save = Mock()
+
+        with (
+            patch(
+                "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
+                return_value=({"Academic Admin", "Leave Approver"}, None),
+            ),
+            patch(
+                "ifitwala_ed.hr.employee_access._diff_user_roles",
+                return_value=({"Academic Admin", "Leave Approver"}, []),
+            ),
+            patch("ifitwala_ed.hr.employee_access.frappe.get_doc", return_value=user_doc),
+            patch("ifitwala_ed.hr.employee_access.frappe.msgprint") as msgprint,
+            patch("ifitwala_ed.hr.employee_access.frappe.bold", side_effect=lambda value: f"<b>{value}</b>"),
+        ):
+            employee_access.sync_user_access_from_employee(emp, notify_role_additions=True)
+
+        msgprint.assert_called_once_with(
+            "Added default role(s) to <b>active.employee@example.com</b>: "
+            "<b>Academic Admin</b>, <b>Leave Approver</b>.",
+            title="Employee Access Updated",
+            indicator="green",
+        )
+
+    def test_apply_designation_role_requests_role_addition_notification(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.designation = "Principal"
+
+        previous = frappe._dict(user_id="staff@example.com", designation="Teacher")
+
+        with (
+            patch.object(emp, "_can_manage_user_roles", return_value=True),
+            patch.object(emp, "get_doc_before_save", return_value=previous),
+            patch("ifitwala_ed.hr.employee_access.sync_user_access_from_employee") as sync_access,
+        ):
+            emp._apply_designation_role()
+
+        sync_access.assert_called_once_with(emp, notify_role_additions=True)
 
     def test_employee_pqc_hr_user_is_org_scoped_and_includes_unassigned(self):
         with (

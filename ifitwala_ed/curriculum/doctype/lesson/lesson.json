@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "CUR-LES-.YY.-.MM.-.###",
  "creation": "2024-12-06 08:20:38.290490",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -100,10 +101,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-04 20:38:24.590983",
+ "modified": "2026-03-15 14:50:02.555839",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Lesson",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -173,5 +175,6 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "title"
 }

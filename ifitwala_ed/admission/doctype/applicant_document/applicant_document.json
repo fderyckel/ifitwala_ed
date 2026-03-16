@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "APPL-DOC-.YYYY.-.####",
+ "autoname": "ADM-APPL-DOC-.YY.-.MM.-.####",
  "creation": "2026-02-01 00:00:00",
  "description": "Track each applicant document type, review status, and promotion relevance with strict immutability and governed file handling.",
  "doctype": "DocType",
@@ -10,13 +10,15 @@
   "student_applicant",
   "document_type",
   "document_label",
-  "promotion_target",
   "review_status",
   "reviewed_by",
   "reviewed_on",
   "column_break_xq7s",
-  "review_notes",
-  "is_promotable",
+  "requirement_override",
+  "override_reason",
+  "override_by",
+  "override_on",
+  "promotion_target",
   "promotion_notes"
  ],
  "fields": [
@@ -65,17 +67,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "review_notes",
-   "fieldtype": "Text",
-   "label": "Review Notes"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_promotable",
-   "fieldtype": "Check",
-   "label": "Is Promotable"
-  },
-  {
    "fieldname": "promotion_target",
    "fieldtype": "Select",
    "label": "Promotion Target",
@@ -87,13 +78,37 @@
    "label": "Promotion Notes"
   },
   {
+   "fieldname": "requirement_override",
+   "fieldtype": "Select",
+   "label": "Requirement Override",
+   "options": "\nWaived\nException Approved"
+  },
+  {
+   "fieldname": "override_reason",
+   "fieldtype": "Small Text",
+   "label": "Override Reason"
+  },
+  {
+   "fieldname": "override_by",
+   "fieldtype": "Link",
+   "label": "Override By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "override_on",
+   "fieldtype": "Datetime",
+   "label": "Override On",
+   "read_only": 1
+  },
+  {
    "fieldname": "column_break_xq7s",
    "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-08 12:03:47.163747",
+ "modified": "2026-03-12 08:54:26.129836",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Document",
@@ -182,5 +197,6 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "student_applicant"
 }

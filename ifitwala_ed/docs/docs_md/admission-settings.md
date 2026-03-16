@@ -3,9 +3,9 @@ title: "Admission Settings: Admissions SLA and Assignment Policy"
 slug: admission-settings
 category: Admission
 doc_order: 1
-version: "1.3.0"
-last_change_date: "2026-03-04"
-summary: "Define admissions SLA windows, assignment task color defaults, and admissions-portal guardian section visibility."
+version: "1.5.0"
+last_change_date: "2026-03-12"
+summary: "Define admissions SLA windows, assignment task color defaults, admissions-portal family/access toggles, and the admissions-to-enrollment auto-hydration policy."
 seo_title: "Admission Settings: Admissions SLA and Assignment Policy"
 seo_description: "Define admissions SLA windows, assignment task color defaults, and admissions-portal guardian section visibility."
 ---
@@ -16,13 +16,13 @@ seo_description: "Define admissions SLA windows, assignment task color defaults,
 - Confirm your admissions intake flow is using [**Inquiry**](/docs/en/inquiry/), because these settings are consumed from Inquiry services.
 - Align SLA day windows and assignment color conventions with operations leadership before changing values in production.
 
-`Admission Settings` is a Single DocType that stores operational defaults for admissions SLA deadlines, assignment ToDo styling, and admissions portal profile surface toggles.
+`Admission Settings` is a Single DocType that stores operational defaults for admissions SLA deadlines, assignment ToDo styling, admissions portal surface toggles, family-workspace access mode, and the admissions-to-enrollment auto-hydration policy.
 
 ## Authoritative Contract
 
 [[fig:fig-1 size=auto]]
 
-This doctype owns six configuration fields:
+This doctype owns eight configuration fields:
 
 - `first_contact_sla_days`: days from inquiry submission to first-contact due date.
 - `followup_sla_days`: days from assignment to follow-up due date.
@@ -30,6 +30,8 @@ This doctype owns six configuration fields:
 - `sla_enabled`: boolean setting stored in the doc.
 - `sla_check_interval_hours`: integer setting stored in the doc.
 - `show_guardians_in_admissions_profile`: boolean toggle to show/hide guardian intake rows in `/admissions/profile`.
+- `admissions_access_mode`: select setting controlling whether `/admissions` runs as `Single Applicant Workspace` or `Family Workspace`.
+- `auto_hydrate_enrollment_request_after_promotion`: boolean toggle controlling whether promotion auto-creates a draft `Program Enrollment Request` from an accepted `Applicant Enrollment Plan`.
 
 ## How to Read the Two SLAs
 
@@ -59,12 +61,21 @@ This shows why `followup_sla_days` does not need to be less than `first_contact_
 3. Assignment ToDo color falls back to `"blue"` when `todo_color` is empty during assignment/reassignment calls.
 4. Current scheduler execution is hourly via hooks; `sla_enabled` and `sla_check_interval_hours` are currently stored settings and are not used to gate or reschedule that hook path.
 5. Guardian intake in admissions portal profile is controlled by `show_guardians_in_admissions_profile`; when disabled, applicant portal profile payload omits editable guardian rows.
+6. `admissions_access_mode` is the authoritative site contract for admissions login resolution:
+   - `Single Applicant Workspace`: login requires `Admissions Applicant` + exactly one `Student Applicant.applicant_user`.
+   - `Family Workspace`: login can use `Admissions Family` + explicit consenting applicant guardian linkage to one or more applicants.
+7. Enrollment-request hydration remains request-only and post-student; this setting controls timing, not contract shape.
 
 ## Where It Is Used Across the ERP
 
 - [**Inquiry**](/docs/en/inquiry/):
   - `set_inquiry_deadlines` seeds `first_contact_due_on` using `first_contact_sla_days`.
   - `assign_inquiry` / `reassign_inquiry` set `followup_due_on` from `followup_sla_days` and ToDo color from `todo_color`.
+- [**Student Applicant**](/docs/en/student-applicant/):
+  - admissions family/applicant portal access mode is resolved from `admissions_access_mode`.
+  - `promote_to_student()` reads `auto_hydrate_enrollment_request_after_promotion` to decide whether to auto-hydrate a draft request from the accepted applicant plan.
+- [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/):
+  - accepted plans can stay staff-reviewed/manual or auto-hydrate immediately after promotion based on this setting.
 - Scheduler:
   - `ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep` is registered in `hooks.py` hourly events.
   - Sweep logic in `check_sla_breaches` is column-aware, backfills missing first-contact due dates for legacy Inquiry rows, and caches run summary at `admissions:sla_sweep:last_run`.
@@ -112,7 +123,9 @@ Treat SLA value updates as policy changes. Mid-cycle edits can shift operational
   - `todo_color` (`Color`)
   - `sla_enabled` (`Check`, default `0`)
   - `sla_check_interval_hours` (`Int`)
-  - `show_guardians_in_admissions_profile` (`Check`, default `0`)
+- `show_guardians_in_admissions_profile` (`Check`, default `0`)
+- `admissions_access_mode` (`Select`, default `Single Applicant Workspace`)
+- `auto_hydrate_enrollment_request_after_promotion` (`Check`, default `1`)
 - **Runtime consumers**:
   - `ifitwala_ed/admission/admission_utils.py`
     - `_get_first_contact_sla_days_default`
@@ -123,8 +136,11 @@ Treat SLA value updates as policy changes. Mid-cycle edits can shift operational
   - `ifitwala_ed/api/inquiry.py`
     - `get_dashboard_data` reads `followup_sla_days` for upcoming horizon
   - `ifitwala_ed/api/admissions_portal.py`
+    - family/applicant access resolution and invite mode are gated by `admissions_access_mode`
     - `_guardians_feature_enabled` controls whether `/admissions/profile` payload exposes guardian intake rows
     - `update_applicant_profile` applies guardian rows only when the setting is enabled
+  - `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
+    - `_maybe_auto_hydrate_enrollment_request_after_promotion` gates draft request hydration from accepted applicant plans
   - `ifitwala_ed/hooks.py`
     - hourly scheduler entrypoint: `ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep`
 - **Operational nuance**:

@@ -51,7 +51,7 @@ import AttendanceRemarkOverlay from '@/overlays/attendance/AttendanceRemarkOverl
 import StudentLogCreateOverlay from '@/overlays/student/StudentLogCreateOverlay.vue';
 import StudentLogFollowUpOverlay from '@/overlays/student/StudentLogFollowUpOverlay.vue';
 import FocusRouterOverlay from '@/overlays/focus/FocusRouterOverlay.vue';
-import StudentLogAnalyticsExpandOverlay from '@/overlays/analytics/StudentLogAnalyticsExpandOverlay.vue';
+import AnalyticsExpandOverlay from '@/overlays/analytics/AnalyticsExpandOverlay.vue';
 import OrganizationChartPersonOverlay from '@/overlays/staff/OrganizationChartPersonOverlay.vue';
 import StaffPolicyInformOverlay from '@/overlays/staff/StaffPolicyInformOverlay.vue';
 import StaffPolicyCampaignOverlay from '@/overlays/staff/StaffPolicyCampaignOverlay.vue';
@@ -63,7 +63,7 @@ import ApplicantHealthOverlay from '@/overlays/admissions/ApplicantHealthOverlay
 import ApplicantDocumentUploadOverlay from '@/overlays/admissions/ApplicantDocumentUploadOverlay.vue';
 import ApplicantPolicyAcknowledgeOverlay from '@/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue';
 import ApplicantSubmitOverlay from '@/overlays/admissions/ApplicantSubmitOverlay.vue';
-import InterviewWorkspaceOverlay from '@/overlays/admissions/InterviewWorkspaceOverlay.vue';
+import AdmissionsWorkspaceOverlay from '@/overlays/admissions/AdmissionsWorkspaceOverlay.vue';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
@@ -187,8 +187,8 @@ function resolveComponent(type: OverlayType) {
 			return StudentLogCreateOverlay;
 		case 'student-log-follow-up':
 			return StudentLogFollowUpOverlay;
-		case 'student-log-analytics-expand':
-			return StudentLogAnalyticsExpandOverlay;
+		case 'analytics-expand':
+			return AnalyticsExpandOverlay;
 		case 'org-chart-person':
 			return OrganizationChartPersonOverlay;
 		case 'staff-policy-inform':
@@ -213,8 +213,8 @@ function resolveComponent(type: OverlayType) {
 			return ApplicantPolicyAcknowledgeOverlay;
 		case 'admissions-submit':
 			return ApplicantSubmitOverlay;
-		case 'admissions-interview-workspace':
-			return InterviewWorkspaceOverlay;
+		case 'admissions-workspace':
+			return AdmissionsWorkspaceOverlay;
 		default:
 			return CreateTaskDeliveryOverlay;
 	}
@@ -308,7 +308,13 @@ function finalizeClose(id: string) {
 </script>
 
 <style scoped>
+.if-overlay-host__layer {
+	position: absolute;
+	inset: 0;
+}
+
 .if-overlay-host__layer--inactive {
 	pointer-events: none;
+	visibility: hidden;
 }
 </style>

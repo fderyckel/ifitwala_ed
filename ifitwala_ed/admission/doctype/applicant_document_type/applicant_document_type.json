@@ -34,25 +34,28 @@
   {
    "fieldname": "document_type_name",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Document Type Name",
    "reqd": 1
   },
   {
    "fieldname": "belongs_to",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Belongs To",
    "options": "student\nguardian\nfamily"
   },
   {
    "fieldname": "organization",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Organization",
    "options": "Organization"
   },
   {
    "fieldname": "school",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "School",
    "options": "School"
   },
@@ -64,6 +67,7 @@
   {
    "fieldname": "classification_data_class",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Classification Data Class",
    "options": "academic\nassessment\nsafeguarding\nadministrative\nidentity_image\nlegal\noperational"
   },
@@ -96,6 +100,7 @@
    "description": "if more than one document required, then is repeatable has to be checked. ",
    "fieldname": "min_items_required",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Min Items Required"
   },
   {
@@ -117,7 +122,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-03 15:21:29.283338",
+ "modified": "2026-03-12 07:47:36.640146",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Document Type",

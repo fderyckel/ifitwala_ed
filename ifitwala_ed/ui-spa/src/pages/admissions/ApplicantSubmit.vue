@@ -53,7 +53,7 @@
 					<RouterLink
 						v-for="action in blockingActions"
 						:key="`${action.route_name}:${action.label}`"
-						:to="{ name: action.route_name }"
+						:to="buildRouteLocation(action.route_name)"
 						class="flex items-center justify-between rounded-xl border border-amber-200 bg-white px-3 py-2 type-caption text-amber-900"
 					>
 						<span>{{ action.label }}</span>
@@ -75,7 +75,7 @@
 					}}
 				</p>
 				<RouterLink
-					:to="{ name: 'admissions-documents' }"
+					:to="buildRouteLocation('admissions-documents')"
 					class="mt-3 inline-flex rounded-full border border-leaf/40 bg-white px-4 py-2 type-caption text-emerald-900"
 				>
 					{{ __('View document statuses') }}
@@ -93,7 +93,7 @@
 				</button>
 				<RouterLink
 					v-if="!isReady && blockingActions.length"
-					:to="{ name: firstBlockingRouteName }"
+					:to="buildRouteLocation(firstBlockingRouteName)"
 					class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70"
 				>
 					{{ __('Open first required step') }}
@@ -118,7 +118,7 @@ import type { NextAction } from '@/types/contracts/admissions/types';
 
 const service = createAdmissionsService();
 const overlay = useOverlayStack();
-const { session } = useAdmissionsSession();
+const { session, currentApplicantName, buildRouteLocation } = useAdmissionsSession();
 
 const snapshot = ref<ApplicantSnapshot | null>(null);
 const loading = ref(false);
@@ -179,11 +179,16 @@ const readinessItems = computed(() => {
 });
 
 async function loadSnapshot() {
+	if (!currentApplicantName.value) {
+		snapshot.value = null;
+		error.value = null;
+		return;
+	}
 	loading.value = true;
 	error.value = null;
 	actionError.value = '';
 	try {
-		snapshot.value = await service.getSnapshot();
+		snapshot.value = await service.getSnapshot({ student_applicant: currentApplicantName.value });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : __('Unable to load submission status.');
 		error.value = message;
@@ -203,7 +208,10 @@ function openSubmit() {
 		return;
 	}
 	actionError.value = '';
-	overlay.open('admissions-submit', { readOnly: isReadOnly.value });
+	overlay.open('admissions-submit', {
+		studentApplicant: currentApplicantName.value,
+		readOnly: isReadOnly.value,
+	});
 }
 
 let unsubscribe: (() => void) | null = null;

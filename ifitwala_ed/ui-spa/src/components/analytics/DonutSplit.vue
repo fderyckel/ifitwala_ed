@@ -9,7 +9,15 @@
   - StudentDemographicAnalytics.vue
 -->
 <template>
-	<section class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+	<section
+		class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+		:class="expandable ? 'analytics-card--interactive' : ''"
+		:role="expandable ? 'button' : undefined"
+		:tabindex="expandable ? 0 : undefined"
+		@click="handleSectionClick"
+		@keydown.enter.prevent="handleKeyboardExpand"
+		@keydown.space.prevent="handleKeyboardExpand"
+	>
 		<header class="mb-2 flex items-center justify-between">
 			<h3 class="text-sm font-semibold text-slate-700">{{ title }}</h3>
 			<slot name="actions" />
@@ -53,14 +61,23 @@ type ChartOption = ComposeOption<PieSeriesOption>;
 
 type Item = { label: string; count: number; pct?: number; color?: string; sliceKey?: string };
 
-const props = defineProps<{
-	title: string;
-	items: Item[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		title: string;
+		items: Item[];
+		expandable?: boolean;
+	}>(),
+	{
+		expandable: false,
+	}
+);
 
 const emit = defineEmits<{
 	(e: 'select', sliceKey: string): void;
+	(e: 'expand', option: Record<string, unknown>): void;
 }>();
+
+let suppressExpand = false;
 
 const tokenColorVars = [
 	'--jacaranda',
@@ -105,8 +122,10 @@ const coloredItems = computed<Item[]>(() => {
 
 const option = computed<ChartOption>(() => ({
 	color: coloredItems.value.map(i => i.color),
+	animationDurationUpdate: 0,
 	tooltip: {
 		trigger: 'item',
+		confine: true,
 		formatter: (p: any) =>
 			`${p.name}: ${p.value}${p.data?.pct != null ? ` (${p.data.pct}%)` : ''}`,
 	},
@@ -116,9 +135,12 @@ const option = computed<ChartOption>(() => ({
 			type: 'pie',
 			radius: ['40%', '70%'],
 			avoidLabelOverlap: false,
+			hoverAnimation: false,
+			selectedMode: false,
+			stillShowZeroSum: false,
 			itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 1 },
 			label: { show: false },
-			emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
+			emphasis: { scale: false, label: { show: false } },
 			data: coloredItems.value.map(i => ({
 				name: i.label,
 				value: i.count,
@@ -132,6 +154,31 @@ const option = computed<ChartOption>(() => ({
 
 function handleClick(params: any) {
 	const sliceKey = params?.data?.sliceKey;
-	if (sliceKey) emit('select', sliceKey);
+	if (sliceKey) {
+		suppressNextExpand();
+		emit('select', sliceKey);
+		return;
+	}
+	if (props.expandable) {
+		suppressNextExpand();
+		emit('expand', option.value as Record<string, unknown>);
+	}
+}
+
+function handleSectionClick() {
+	if (!props.expandable || suppressExpand) return;
+	emit('expand', option.value as Record<string, unknown>);
+}
+
+function handleKeyboardExpand() {
+	if (!props.expandable) return;
+	emit('expand', option.value as Record<string, unknown>);
+}
+
+function suppressNextExpand() {
+	suppressExpand = true;
+	window.setTimeout(() => {
+		suppressExpand = false;
+	}, 0);
 }
 </script>

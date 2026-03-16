@@ -1,0 +1,63 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-10 00:00:11",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "course",
+  "course_name",
+  "required",
+  "applied_basket_group",
+  "choice_rank"
+ ],
+ "fields": [
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Course",
+   "options": "Course"
+  },
+  {
+   "fetch_from": "course.course_name",
+   "fieldname": "course_name",
+   "fieldtype": "Data",
+   "label": "Course Name",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "required",
+   "fieldtype": "Check",
+   "label": "Required",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applied_basket_group",
+   "fieldtype": "Link",
+   "label": "Applied Basket Group",
+   "options": "Basket Group"
+  },
+  {
+   "fieldname": "choice_rank",
+   "fieldtype": "Int",
+   "label": "Choice Rank"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-03-10 00:07:03",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Applicant Enrollment Plan Course",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

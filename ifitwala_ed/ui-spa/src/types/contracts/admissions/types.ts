@@ -5,7 +5,10 @@ export type PortalApplicantStatus =
   | 'In Progress'
   | 'Action Required'
   | 'In Review'
+  | 'Offer Sent'
+  | 'Offer Expired'
   | 'Accepted'
+  | 'Declined'
   | 'Rejected'
   | 'Withdrawn'
   | 'Completed'
@@ -27,6 +30,43 @@ export type ApplicantApplicationContext = {
   term?: string | null
   program?: string | null
   program_offering?: string | null
+}
+
+export type AdmissionsEnrollmentOffer = {
+  name: string
+  status: string
+  academic_year?: string | null
+  term?: string | null
+  program?: string | null
+  program_offering?: string | null
+  offer_expires_on?: string | null
+  offer_sent_on?: string | null
+  offer_accepted_on?: string | null
+  offer_declined_on?: string | null
+  offer_message?: string | null
+  can_accept?: boolean
+  can_decline?: boolean
+  course_choices_available?: boolean
+  course_choices_can_edit?: boolean
+  course_choices_ready?: boolean
+  course_choice_blocking_reasons?: string[]
+  course_choice_optional_count?: number
+  course_choice_selected_optional_count?: number
+}
+
+export type AdmissionsSessionApplicant = {
+  name: string
+  display_name: string
+  portal_status: PortalApplicantStatus
+  application_status?: string | null
+  school: string
+  organization: string
+  academic_year?: string | null
+  term?: string | null
+  program?: string | null
+  program_offering?: string | null
+  is_read_only: boolean
+  read_only_reason: string | null
 }
 
 export type ApplicantProfile = {
@@ -77,7 +117,32 @@ export type ApplicantProfileCompleteness = {
 export type ApplicantDocument = {
   name: string
   document_type: string
+  label?: string | null
+  description?: string | null
+  is_required?: boolean
+  is_repeatable?: boolean
+  required_count?: number
+  uploaded_count?: number
+  approved_count?: number
+  rejected_count?: number
+  pending_count?: number
+  requirement_state?:
+    | 'not_started'
+    | 'waiting_review'
+    | 'changes_requested'
+    | 'complete'
+    | 'waived'
+    | 'exception_approved'
+    | 'optional'
+    | null
+  requirement_state_label?: string | null
+  requirement_override?: 'Waived' | 'Exception Approved' | null
+  override_reason?: string | null
+  override_by?: string | null
+  override_on?: string | null
   review_status: 'Pending' | 'Approved' | 'Rejected' | 'Superseded'
+  reviewed_by?: string | null
+  reviewed_on?: string | null
   uploaded_at?: string | null
   file_url?: string | null
   items?: Array<{
@@ -97,8 +162,11 @@ export type ApplicantPolicy = {
   name: string
   policy_version: string
   content_html: string
+  is_required?: boolean
+  acknowledgement_mode?: string | null
   is_acknowledged: boolean
   acknowledged_at?: string | null
+  acknowledged_by?: string | null
   expected_signature_name: string
 }
 

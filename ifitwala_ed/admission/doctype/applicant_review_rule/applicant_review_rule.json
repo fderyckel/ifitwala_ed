@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "ADM-REV-RULE-.####",
  "creation": "2026-02-23 00:00:00",
  "description": "Defines which users/roles must review admissions artifacts for a school/program scope.",
  "doctype": "DocType",
@@ -52,11 +52,11 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Target Type",
-   "options": "Applicant Document\nApplicant Document Item\nApplicant Health Profile\nStudent Applicant",
+   "options": "Applicant Document Item\nApplicant Health Profile\nStudent Applicant",
    "reqd": 1
   },
   {
-   "depends_on": "eval:doc.target_type==='Applicant Document' || doc.target_type==='Applicant Document Item'",
+   "depends_on": "eval:doc.target_type==='Applicant Document Item'",
    "description": "Optional. If set, this rule applies only to this Applicant Document Type.",
    "fieldname": "document_type",
    "fieldtype": "Link",
@@ -79,11 +79,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-01 20:16:32.698579",
+ "modified": "2026-03-12 08:29:49.882204",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Review Rule",
- "naming_rule": "Random",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

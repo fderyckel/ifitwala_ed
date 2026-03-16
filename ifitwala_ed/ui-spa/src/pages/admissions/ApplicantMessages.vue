@@ -101,7 +101,7 @@ import { createAdmissionsService } from '@/lib/services/admissions/admissionsSer
 import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals';
 import type { ApplicantMessage } from '@/types/contracts/admissions/types';
 
-const { session } = useAdmissionsSession();
+const { currentApplicantName } = useAdmissionsSession();
 const service = createAdmissionsService();
 
 const loading = ref(false);
@@ -112,7 +112,7 @@ const draftBody = ref('');
 const messages = ref<ApplicantMessage[]>([]);
 const unreadCount = ref(0);
 
-const applicantName = computed(() => session.value?.applicant?.name || '');
+const applicantName = computed(() => currentApplicantName.value || '');
 const canSend = computed(() => Boolean(applicantName.value && draftBody.value.trim().length));
 
 function messageClass(direction: ApplicantMessage['direction']) {
@@ -131,6 +131,8 @@ function formatDate(value?: string | null) {
 
 async function loadMessages() {
 	if (!applicantName.value) {
+		messages.value = [];
+		unreadCount.value = 0;
 		return;
 	}
 	loading.value = true;

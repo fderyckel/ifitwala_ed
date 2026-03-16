@@ -96,10 +96,10 @@
 						</div>
 						<div class="flex-1 min-w-0">
 							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								Create event
+								{{ eventQuickActionTitle }}
 							</p>
 							<p class="truncate type-caption text-slate-token/70">
-								Create a meeting or school event
+								{{ eventQuickActionSubtitle }}
 							</p>
 						</div>
 						<FeatherIcon
@@ -760,6 +760,11 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				to: { name: 'staff-policy-signature-analytics' },
 				capability: 'analytics_policy_signatures',
 			},
+			{
+				label: 'Staff Policies',
+				to: { name: 'staff-policies' },
+				capability: 'staff_policy_library',
+			},
 		],
 	},
 ];
@@ -788,6 +793,22 @@ const hasVisibleAnalyticsLinks = computed(
 const greeting = computed(() => {
 	const hour = new Date().getHours();
 	return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+});
+
+const eventQuickActionTitle = computed(() => {
+	const canCreateMeeting = Boolean(userCapabilities.value.quick_action_create_meeting);
+	const canCreateSchoolEvent = Boolean(userCapabilities.value.quick_action_create_school_event);
+	if (canCreateMeeting && !canCreateSchoolEvent) return 'Schedule meeting';
+	return 'Create event';
+});
+
+const eventQuickActionSubtitle = computed(() => {
+	const canCreateMeeting = Boolean(userCapabilities.value.quick_action_create_meeting);
+	const canCreateSchoolEvent = Boolean(userCapabilities.value.quick_action_create_school_event);
+	if (canCreateMeeting && !canCreateSchoolEvent) {
+		return 'Find a common time and invite colleagues, students, or guardians';
+	}
+	return 'Create a meeting or school event';
 });
 
 /* OVERLAY: Create Task ---------------------------------------- */
@@ -819,6 +840,7 @@ function openCreateEvent() {
 	overlay.open('event-quick-create', {
 		eventType: lockEventType ? eventType : null,
 		lockEventType,
+		meetingMode: 'ad_hoc',
 	});
 }
 
@@ -830,7 +852,8 @@ function openStudentLog() {
 	pendingStudentLogSavedToast.value = true;
 
 	overlay.open('student-log-create', {
-		mode: 'school',
+		mode: 'home',
+		sourceLabel: 'Staff Home',
 	});
 }
 </script>

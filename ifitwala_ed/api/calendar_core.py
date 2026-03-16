@@ -269,7 +269,7 @@ def _student_group_memberships(
 
     fields = ["parent", "user_id"]
 
-    base_filters = {"parenttype": "Student Group", "active": 1}
+    base_filters = {"parenttype": "Student Group"}
 
     _consume(
         frappe.get_all(

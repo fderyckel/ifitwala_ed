@@ -37,6 +37,13 @@
 									{{ policyTitle }}
 								</DialogTitle>
 								<p v-if="scopeLabel" class="type-caption mt-1 truncate">{{ scopeLabel }}</p>
+								<div
+									v-if="statusLabel"
+									class="mt-2 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
+									:class="statusClass"
+								>
+									{{ statusLabel }}
+								</div>
 							</div>
 							<div class="meeting-modal__header-actions">
 								<button
@@ -69,6 +76,18 @@
 											>Policy Version: {{ policy.policy_version }}</span
 										>
 										<span v-if="policy.version_label"> - Version {{ policy.version_label }}</span>
+									</div>
+									<div
+										v-if="policy.signature_required && policy.acknowledgement_status === 'signed'"
+										class="type-meta text-muted mt-1"
+									>
+										Acknowledged
+										<span v-if="policy.acknowledged_at">
+											on
+											{{
+												formatLocalizedDateTime(policy.acknowledged_at, { includeWeekday: true })
+											}}
+										</span>
 									</div>
 									<div
 										v-if="hasChangeSummary || hasChangeStats"
@@ -140,6 +159,65 @@
 										</p>
 									</div>
 								</div>
+
+								<div class="card-surface p-4">
+									<div class="type-body font-medium">Version history</div>
+									<p class="type-meta text-muted mt-1">
+										Latest and previous versions for this policy.
+									</p>
+									<div class="mt-3 overflow-auto">
+										<table class="w-full text-sm">
+											<thead>
+												<tr class="text-left text-slate-500">
+													<th class="pb-2 pr-2">Version</th>
+													<th class="pb-2 pr-2">Effective</th>
+													<th class="pb-2 pr-2">Approved</th>
+													<th class="pb-2">State</th>
+												</tr>
+											</thead>
+											<tbody>
+												<tr
+													v-for="row in policy.history || []"
+													:key="row.policy_version"
+													class="border-t border-slate-100"
+												>
+													<td class="py-2 pr-2">
+														{{ row.version_label || row.policy_version }}
+													</td>
+													<td class="py-2 pr-2">
+														<span v-if="row.effective_from">
+															{{ formatLocalizedDate(row.effective_from) }}
+														</span>
+														<span v-else>-</span>
+														<span v-if="row.effective_to">
+															→ {{ formatLocalizedDate(row.effective_to) }}
+														</span>
+													</td>
+													<td class="py-2 pr-2">
+														{{ row.approved_on ? formatLocalizedDate(row.approved_on) : '-' }}
+													</td>
+													<td class="py-2">
+														<span
+															class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+															:class="
+																row.is_active
+																	? 'bg-mint/15 text-forest'
+																	: 'bg-slate-100 text-slate-600'
+															"
+														>
+															{{ row.is_active ? 'Active' : 'Historical' }}
+														</span>
+													</td>
+												</tr>
+												<tr v-if="!(policy.history || []).length">
+													<td class="py-3 text-slate-500" colspan="4">
+														No version history available.
+													</td>
+												</tr>
+											</tbody>
+										</table>
+									</div>
+								</div>
 							</div>
 						</section>
 
@@ -167,6 +245,7 @@ import {
 import { FeatherIcon } from 'frappe-ui';
 
 import { createPolicyInformService } from '@/lib/services/policyInform/policyInformService';
+import { formatLocalizedDate, formatLocalizedDateTime } from '@/lib/datetime';
 import type { Response as PolicyInformPayload } from '@/types/contracts/policy_communication/get_policy_inform_payload';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
@@ -218,6 +297,32 @@ const hasChangeStats = computed(
 );
 const hasChangeSummary = computed(() => Boolean(changeSummary.value));
 const hasDiffHtml = computed(() => Boolean((policy.value?.diff_html || '').trim()));
+const statusLabel = computed(() => {
+	if (!policy.value?.signature_required) return 'Informational policy (no signature required)';
+	switch (policy.value?.acknowledgement_status) {
+		case 'signed':
+			return 'Signed';
+		case 'new_version':
+			return 'New version to review';
+		case 'pending':
+			return 'Signature pending';
+		default:
+			return 'Signature pending';
+	}
+});
+const statusClass = computed(() => {
+	if (!policy.value?.signature_required) return 'bg-slate-100 text-slate-700';
+	switch (policy.value?.acknowledgement_status) {
+		case 'signed':
+			return 'bg-mint/15 text-forest';
+		case 'new_version':
+			return 'bg-sky/20 text-canopy';
+		case 'pending':
+			return 'bg-warm-amber/15 text-ochre';
+		default:
+			return 'bg-warm-amber/15 text-ochre';
+	}
+});
 
 function trustedHtml(html: string): string {
 	return String(html || '');

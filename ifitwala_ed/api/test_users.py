@@ -15,11 +15,18 @@ except Exception:
 from ifitwala_ed.api.users import (
     STAFF_ROLES,
     _strip_redirect_query,
+    get_users_with_role,
     get_website_user_home_page,
     redirect_non_staff_away_from_desk,
     redirect_user_to_entry_portal,
     sanitize_login_redirect_param,
 )
+
+
+def _admission_settings_has_field(fieldname: str) -> bool:
+    if not frappe.db.exists("DocType", "Admission Settings"):
+        return False
+    return bool(frappe.get_meta("Admission Settings").has_field(fieldname))
 
 
 def _ensure_test_organization() -> str:
@@ -208,7 +215,7 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("User", user.email, force=True)
 
     def test_admissions_applicant_redirects_to_admissions(self):
-        """Admissions Applicants should be redirected to /admissions."""
+        """Admissions Applicants with a linked applicant should be redirected to /admissions."""
         # Create test user with Admissions Applicant role
         user = frappe.new_doc("User")
         user.email = "test_admissions_applicant@example.com"
@@ -218,20 +225,44 @@ class TestUserRedirect(FrappeTestCase):
         _append_role(user, "Admissions Applicant")
         user.insert(ignore_permissions=True)
 
-        # Simulate login
-        frappe.set_user(user.email)
-        frappe.local.response = {}
+        school = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": f"Redirect Applicant School {frappe.generate_hash(length=6)}",
+                "abbr": f"RA{frappe.generate_hash(length=3)}",
+                "organization": _ensure_test_organization(),
+            }
+        ).insert(ignore_permissions=True)
 
-        # Call redirect function
-        redirect_user_to_entry_portal()
+        applicant = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                "first_name": "Test",
+                "last_name": "Admissions Applicant",
+                "organization": school.organization,
+                "school": school.name,
+                "application_status": "Invited",
+                "applicant_user": user.email,
+            }
+        ).insert(ignore_permissions=True)
 
-        # Assert redirect to /admissions (separate admissions portal)
-        self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
-        self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
+        try:
+            # Simulate login
+            frappe.set_user(user.email)
+            frappe.local.response = {}
 
-        # Cleanup
-        frappe.set_user("Administrator")
-        frappe.delete_doc("User", user.email, force=True)
+            # Call redirect function
+            redirect_user_to_entry_portal()
+
+            # Assert redirect to /admissions (separate admissions portal)
+            self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
+            self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
+        finally:
+            # Cleanup
+            frappe.set_user("Administrator")
+            frappe.delete_doc("Student Applicant", applicant.name, force=True)
+            frappe.delete_doc("School", school.name, force=True)
+            frappe.delete_doc("User", user.email, force=True)
 
     def test_staff_and_admissions_roles_redirect_to_staff(self):
         """Mixed staff+admissions roles must prefer staff routing."""
@@ -378,6 +409,84 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("Guardian", guardian.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
+    def test_admissions_family_redirects_to_admissions_when_family_workspace_is_open(self):
+        if not _admission_settings_has_field("admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+
+        previous_mode = frappe.db.get_single_value("Admission Settings", "admissions_access_mode")
+
+        user = frappe.new_doc("User")
+        user.email = f"test_admissions_family_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Family"
+        user.last_name = "Admissions"
+        user.enabled = 1
+        _append_role(user, "Admissions Family")
+        user.insert(ignore_permissions=True)
+
+        guardian = frappe.new_doc("Guardian")
+        guardian.guardian_first_name = "Family"
+        guardian.guardian_last_name = "Admissions"
+        guardian.guardian_email = user.email
+        guardian.guardian_mobile_phone = "+14155550141"
+        guardian.user = user.email
+        guardian.save(ignore_permissions=True)
+
+        school = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": f"Redirect Family School {frappe.generate_hash(length=6)}",
+                "abbr": f"RF{frappe.generate_hash(length=3)}",
+                "organization": _ensure_test_organization(),
+            }
+        ).insert(ignore_permissions=True)
+
+        applicant = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                "first_name": "Family",
+                "last_name": "Applicant",
+                "organization": school.organization,
+                "school": school.name,
+                "application_status": "Invited",
+                "guardians": [
+                    {
+                        "guardian": guardian.name,
+                        "user": user.email,
+                        "relationship": "Mother",
+                        "can_consent": 1,
+                        "is_primary": 1,
+                        "guardian_first_name": "Family",
+                        "guardian_last_name": "Admissions",
+                        "guardian_email": user.email,
+                        "guardian_mobile_phone": "+14155550141",
+                        "guardian_image": "/private/files/family-admissions.png",
+                    }
+                ],
+            }
+        ).insert(ignore_permissions=True)
+
+        try:
+            frappe.db.set_single_value("Admission Settings", "admissions_access_mode", "Family Workspace")
+
+            frappe.set_user(user.email)
+            frappe.local.response = {}
+
+            redirect_user_to_entry_portal()
+
+            self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
+            self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
+        finally:
+            frappe.set_user("Administrator")
+            frappe.db.set_single_value(
+                "Admission Settings",
+                "admissions_access_mode",
+                previous_mode or "Single Applicant Workspace",
+            )
+            frappe.delete_doc("Student Applicant", applicant.name, force=True)
+            frappe.delete_doc("School", school.name, force=True)
+            frappe.delete_doc("Guardian", guardian.name, force=True)
+            frappe.delete_doc("User", user.email, force=True)
+
     def test_student_redirects_to_student_portal(self):
         """Students should be redirected to /hub/student."""
         # Create test user with Student role
@@ -395,10 +504,11 @@ class TestUserRedirect(FrappeTestCase):
         student.student_last_name = "Student"
         student.student_email = user.email
         student.student_user_id = user.email
+        student.allow_direct_creation = 1
         previous_in_import = bool(getattr(frappe.flags, "in_import", False))
         frappe.flags.in_import = True
         try:
-            student.save()
+            student.insert(ignore_permissions=True)
         finally:
             frappe.flags.in_import = previous_in_import
 
@@ -731,3 +841,60 @@ class TestUserRedirect(FrappeTestCase):
             "HR Manager",
         }
         self.assertEqual(STAFF_ROLES, expected_roles)
+
+
+class TestUserQueries(FrappeTestCase):
+    def test_get_users_with_role_returns_only_enabled_matching_users(self):
+        frappe.set_user("Administrator")
+
+        def ensure_has_role(user_email: str, role_name: str) -> None:
+            if frappe.db.exists("Has Role", {"parent": user_email, "role": role_name, "parenttype": "User"}):
+                return
+            frappe.get_doc(
+                {
+                    "doctype": "Has Role",
+                    "parent": user_email,
+                    "parenttype": "User",
+                    "parentfield": "roles",
+                    "role": role_name,
+                }
+            ).insert(ignore_permissions=True)
+
+        employee_user = frappe.new_doc("User")
+        employee_user.email = f"test_employee_query_match_{frappe.generate_hash(length=6)}@example.com"
+        employee_user.first_name = "Interview"
+        employee_user.last_name = "Match"
+        employee_user.enabled = 1
+        _append_role(employee_user, "Employee")
+        employee_user.insert(ignore_permissions=True)
+
+        disabled_employee = frappe.new_doc("User")
+        disabled_employee.email = f"test_employee_query_disabled_{frappe.generate_hash(length=6)}@example.com"
+        disabled_employee.first_name = "Interview"
+        disabled_employee.last_name = "Disabled"
+        disabled_employee.enabled = 0
+        _append_role(disabled_employee, "Employee")
+        disabled_employee.insert(ignore_permissions=True)
+
+        non_employee_user = frappe.new_doc("User")
+        non_employee_user.email = f"test_employee_query_other_{frappe.generate_hash(length=6)}@example.com"
+        non_employee_user.first_name = "Interview"
+        non_employee_user.last_name = "Teacher"
+        non_employee_user.enabled = 1
+        _append_role(non_employee_user, "Teacher")
+        non_employee_user.insert(ignore_permissions=True)
+        ensure_has_role(employee_user.email, "Employee")
+        ensure_has_role(disabled_employee.email, "Employee")
+        ensure_has_role(non_employee_user.email, "Teacher")
+
+        try:
+            rows = get_users_with_role("User", employee_user.email, "name", 0, 20, {"role": "Employee"})
+            names = {row[0] for row in rows}
+
+            self.assertIn(employee_user.email, names)
+            self.assertNotIn(disabled_employee.email, names)
+            self.assertNotIn(non_employee_user.email, names)
+        finally:
+            frappe.delete_doc("User", employee_user.email, force=True)
+            frappe.delete_doc("User", disabled_employee.email, force=True)
+            frappe.delete_doc("User", non_employee_user.email, force=True)

@@ -14,6 +14,7 @@ All PRs targeting `main` must pass:
 
 1. `backend-smoke`
 - Fast confidence suite for critical backend invariants.
+- Includes merge-gating portal routing, file-access, analytics-permission, admissions portal, and focus workflow contract tests.
 
 2. `backend-domain`
 - Runs module-level backend tests scoped to changed Python domains.
@@ -28,7 +29,7 @@ All PRs targeting `main` must pass:
 - Verifies root Desk asset build.
 
 5. `spa-typecheck-build`
-- Verifies SPA type-check and build.
+- Verifies SPA type-check and unit tests.
 
 ## 2.1 Framework baseline
 
@@ -36,7 +37,8 @@ CI benches are initialized against **Frappe `version-16`**.
 
 ## 3. Nightly policy
 
-Nightly workflow (`.github/workflows/nightly.yml`) runs on self-hosted GCE runner labels.
+Nightly workflow (`.github/workflows/nightly.yml`) is currently manual-dispatch only while the self-hosted GCE runner is not installed.
+When the runner is restored, the scheduled trigger can be re-enabled.
 
 Nightly jobs:
 1. `nightly-backend-full`

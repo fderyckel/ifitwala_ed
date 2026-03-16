@@ -1,0 +1,149 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:QAI-{YYYY}-{#####}",
+ "creation": "2026-03-13 11:30:42.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "quiz_attempt",
+  "quiz_question",
+  "position",
+  "question_type",
+  "prompt_html",
+  "option_payload",
+  "grading_payload",
+  "response_text",
+  "response_payload",
+  "awarded_score",
+  "is_correct",
+  "requires_manual_grading"
+ ],
+ "fields": [
+  {
+   "fieldname": "quiz_attempt",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Quiz Attempt",
+   "options": "Quiz Attempt",
+   "reqd": 1
+  },
+  {
+   "fieldname": "quiz_question",
+   "fieldtype": "Link",
+   "label": "Quiz Question",
+   "options": "Quiz Question",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "position",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Position",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "question_type",
+   "fieldtype": "Data",
+   "label": "Question Type",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "prompt_html",
+   "fieldtype": "Long Text",
+   "label": "Prompt HTML",
+   "read_only": 1
+  },
+  {
+   "fieldname": "option_payload",
+   "fieldtype": "Long Text",
+   "label": "Option Payload",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grading_payload",
+   "fieldtype": "Long Text",
+   "label": "Grading Payload",
+   "read_only": 1
+  },
+  {
+   "fieldname": "response_text",
+   "fieldtype": "Long Text",
+   "label": "Response Text"
+  },
+  {
+   "fieldname": "response_payload",
+   "fieldtype": "Long Text",
+   "label": "Response Payload"
+  },
+  {
+   "fieldname": "awarded_score",
+   "fieldtype": "Float",
+   "label": "Awarded Score",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_correct",
+   "fieldtype": "Check",
+   "label": "Is Correct",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "requires_manual_grading",
+   "fieldtype": "Check",
+   "label": "Requires Manual Grading",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-13 11:30:42.000000",
+ "modified_by": "Administrator",
+ "module": "Assessment",
+ "name": "Quiz Attempt Item",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

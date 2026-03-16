@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "autoname": "hash",
- "creation": "2026-01-14 00:00:00.000000",
+ "creation": "2026-01-14 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -90,10 +90,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-14 00:00:00.000000",
+ "modified": "2026-03-12 07:39:47.164193",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Inventory Ledger Entry",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {

@@ -3,7 +3,7 @@
 Status: **ARCHITECTURE LOCK — v2 (LMS‑ready)**
 Scope: Tasks, Delivery, Outcomes, Submissions, Grading, Review & Moderation
 Audience: Humans + Coding Agents
-Last updated: 2026-01-07
+Last updated: 2026-03-13
 
 This document defines the **end‑state architecture** for Tasks in Ifitwala_Ed.
 It explicitly incorporates LMS‑scale realities (high volume, low friction) and replaces earlier Task‑centric designs.
@@ -229,6 +229,15 @@ Contributions never overwrite each other.
 Invariant:
 
 > **Not assessed ≠ Missing grade.**
+
+### Quiz subtype rule
+
+Quiz is a task subtype, not a separate assessment truth model.
+
+* `Task.task_type = Quiz` means the work is delivered through the quiz runtime.
+* Whether that quiz is **practice** or **assessed** is determined by `Task Delivery.delivery_mode`, not by the task type alone.
+* Practice quizzes may track attempts, completion, and learner-facing feedback without creating an official released grade by default.
+* Assessed quizzes remain bound to the existing official outcome/reporting path.
 
 ---
 

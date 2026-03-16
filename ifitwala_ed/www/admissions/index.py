@@ -4,6 +4,7 @@ import os
 
 import frappe
 
+from ifitwala_ed.admission.access import ADMISSIONS_PORTAL_ROLES, get_admissions_portal_applicant_names_for_user
 from ifitwala_ed.routing.policy import (
     build_login_redirect,
     build_logout_then_login_redirect,
@@ -20,7 +21,6 @@ MANIFEST_PATHS = [
 ]
 PUBLIC_BASE = f"/assets/{APP}/vite/"
 
-ADMISSIONS_ROLE = "Admissions Applicant"
 ADMISSIONS_ENTRY_KEYS = [
     "src/apps/admissions/main.ts",
     "src/apps/admissions/main.js",
@@ -64,23 +64,27 @@ def get_context(context):
         _redirect_to_login(path)
 
     roles = set(frappe.get_roles(user))
-    if ADMISSIONS_ROLE not in roles:
+    if not roles & ADMISSIONS_PORTAL_ROLES:
         if has_staff_portal_access(user=user, roles=roles):
             _redirect(canonical_path_for_section("staff"))
+        if "Guardian" in roles:
+            _redirect(canonical_path_for_section("guardian"))
+        if "Student" in roles:
+            _redirect(canonical_path_for_section("student"))
         _redirect_to_login(path, clear_session=True)
 
-    applicant = frappe.db.get_value(
-        "Student Applicant",
-        {"applicant_user": user},
-        "name",
-    )
-    if not applicant:
+    accessible_applicants = get_admissions_portal_applicant_names_for_user(user=user, include_promoted=False)
+    if not accessible_applicants:
         if has_staff_portal_access(user=user, roles=roles):
             _redirect(canonical_path_for_section("staff"))
+        if "Guardian" in roles:
+            _redirect(canonical_path_for_section("guardian"))
+        if "Student" in roles:
+            _redirect(canonical_path_for_section("student"))
         _redirect_to_login(path, clear_session=True)
 
     context.title = "Admissions Portal"
-    context.applicant = applicant
+    context.applicant = accessible_applicants[0]
     context.csrf_token = frappe.sessions.get_csrf_token()
 
     js_entry, css_files, preload_files = _load_assets()

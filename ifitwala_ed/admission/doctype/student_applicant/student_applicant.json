@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:APPL-{MM}-{YYYY}-{###}",
+ "autoname": "APPL-.YYYY.-.MM.-.###",
  "creation": "2024-12-06 15:44:29.050774",
  "default_view": "List",
  "description": "Track each applicant document type, review status, and promotion relevance with strict immutability and governed file handling.",
@@ -15,6 +15,7 @@
   "last_name",
   "inquiry",
   "applicant_image",
+  "student_joining_date",
   "column_break_frwx",
   "organization",
   "school",
@@ -22,6 +23,8 @@
   "term",
   "program",
   "program_offering",
+  "cohort",
+  "student_house",
   "applicant_status_section",
   "application_status",
   "applicant_email",
@@ -37,7 +40,6 @@
   "student_date_of_birth",
   "student_gender",
   "student_mobile_number",
-  "student_joining_date",
   "column_break_profile",
   "student_first_language",
   "student_second_language",
@@ -347,16 +349,28 @@
   {
    "fieldname": "column_break_n1e1",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cohort",
+   "fieldtype": "Link",
+   "label": "Cohort",
+   "options": "Student Cohort"
+  },
+  {
+   "fieldname": "student_house",
+   "fieldtype": "Link",
+   "label": "Student House",
+   "options": "Student House"
   }
  ],
  "image_field": "applicant_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-28 14:00:57.017666",
+ "modified": "2026-03-11 20:48:08.492567",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

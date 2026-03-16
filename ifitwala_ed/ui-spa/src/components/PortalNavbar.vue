@@ -9,22 +9,22 @@
 -->
 	<nav class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-30">
 		<div class="container mx-auto px-4">
-			<div class="flex items-center justify-between h-16">
+			<div class="flex items-center justify-between h-14">
 				<div class="flex items-center space-x-4">
 					<button
 						@click="$emit('toggle-sidebar')"
 						class="p-2 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-800 lg:hidden"
 						aria-label="Toggle sidebar"
 					>
-						<FeatherIcon name="menu" class="h-6 w-6" />
+						<FeatherIcon name="menu" class="h-5 w-5" />
 					</button>
 
 					<RouterLink
 						:to="{ name: `${defaultPortal}-home` }"
 						class="flex items-center space-x-2 text-gray-800"
 					>
-						<FeatherIcon name="book-open" class="h-6 w-6 text-blue-600" />
-						<span class="font-semibold text-xl">Ifitwala</span>
+						<FeatherIcon name="book-open" class="h-5 w-5 text-blue-600" />
+						<span class="font-semibold text-lg leading-tight">Ifitwala</span>
 					</RouterLink>
 				</div>
 
@@ -135,11 +135,17 @@ watch(
 );
 
 // Get user info from Frappe's session object
+function getSessionUserInfo() {
+	return (
+		window?.frappe?.session?.user_info || {
+			fullname: 'Guest',
+			email: 'guest@example.com',
+		}
+	);
+}
+
 const user = computed(() => {
-	const userInfo = window.frappe?.session?.user_info || {
-		fullname: 'Guest',
-		email: 'guest@example.com',
-	};
+	const userInfo = getSessionUserInfo();
 	const resolvedFullName = (
 		(isStudentPortal.value && studentIdentity.value?.display_name) ||
 		userInfo.fullname ||
@@ -153,7 +159,7 @@ const user = computed(() => {
 
 	return {
 		fullname: resolvedFullName,
-		email: userInfo.email,
+		email: userInfo.email || 'guest@example.com',
 		initials: initials.toUpperCase(),
 		avatarImage: isStudentPortal.value ? studentIdentity.value?.image_url || null : null,
 	};

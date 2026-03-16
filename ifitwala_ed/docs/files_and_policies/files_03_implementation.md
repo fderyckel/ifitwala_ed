@@ -17,6 +17,29 @@ Any code that bypasses these rules is a **bug**, not a feature.
 
 ---
 
+# Organization Media Extension (Docs-First Guardrail)
+
+Before implementing reusable website / branding / gallery media uploads for organizations or schools, follow:
+
+* `ifitwala_ed/docs/files_and_policies/files_05_organization_media_governance.md`
+
+Current implementation gap:
+
+* the dispatcher exists
+* governed uploads exist for person/applicant-centered flows
+* organization-owned public media classification now exists for organization logo, school logo, school gallery, and generic organization media uploads
+* reuse-first organization media pickers now exist for school-context website block props and `Program Website Profile.hero_image`
+* a generic organization media management surface now exists from `Organization` and `School` Desk forms
+* legacy URL-only school/organization public media is no longer accepted and must be relinked or re-uploaded through governed organization media
+
+Therefore:
+
+* do **not** add new direct `Attach`-based media workflows for school/website imagery
+* do **not** introduce school-local media governance as a parallel system
+* do **not** hardcode filesystem assumptions into media pickers, renderers, or website blocks
+
+---
+
 # 🧭 EXECUTION PHASES (LOCKED ORDER)
 
 Codex must implement **in this exact order**:

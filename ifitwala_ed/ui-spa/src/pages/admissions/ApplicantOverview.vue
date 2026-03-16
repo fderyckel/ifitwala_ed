@@ -48,7 +48,7 @@
 					<div class="admissions-overview__panel-header">
 						<p class="type-body-strong text-ink">{{ __('Profile summary') }}</p>
 						<RouterLink
-							:to="{ name: 'admissions-profile' }"
+							:to="buildRouteLocation('admissions-profile')"
 							class="admissions-overview__open-button"
 						>
 							{{ __('Open profile') }}
@@ -88,7 +88,10 @@
 								{{ __('Required before submission.') }}
 							</p>
 						</div>
-						<RouterLink :to="{ name: action.route_name }" class="admissions-overview__open-button">
+						<RouterLink
+							:to="buildRouteLocation(action.route_name)"
+							class="admissions-overview__open-button"
+						>
 							{{ __('Open') }}
 						</RouterLink>
 					</div>
@@ -124,12 +127,14 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { Spinner } from 'frappe-ui';
 
+import { useAdmissionsSession } from '@/composables/useAdmissionsSession';
 import { createAdmissionsService } from '@/lib/services/admissions/admissionsService';
 import { __ } from '@/lib/i18n';
 import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals';
 import type { Response as ApplicantSnapshot } from '@/types/contracts/admissions/get_applicant_snapshot';
 
 const service = createAdmissionsService();
+const { currentApplicantName, buildRouteLocation } = useAdmissionsSession();
 
 const snapshot = ref<ApplicantSnapshot | null>(null);
 const loading = ref(false);
@@ -228,10 +233,14 @@ const profileRows = computed(() => {
 });
 
 async function loadSnapshot() {
+	if (!currentApplicantName.value) {
+		snapshot.value = null;
+		return;
+	}
 	loading.value = true;
 	error.value = null;
 	try {
-		snapshot.value = await service.getSnapshot();
+		snapshot.value = await service.getSnapshot({ student_applicant: currentApplicantName.value });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : __('Unable to load overview.');
 		error.value = message;

@@ -15,13 +15,19 @@ from ifitwala_ed.api.admissions_portal import (
     _portal_status_for,
     _read_only_for,
     _send_applicant_invite_email,
+    accept_enrollment_offer,
     acknowledge_policy,
+    decline_enrollment_offer,
+    get_applicant_enrollment_choices,
     get_applicant_policies,
     get_applicant_profile,
     get_applicant_snapshot,
+    get_family_invite_options,
     get_invite_email_options,
     invite_applicant,
+    invite_family_collaborator,
     submit_application,
+    update_applicant_enrollment_choices,
     update_applicant_health,
     update_applicant_profile,
     upload_applicant_guardian_image,
@@ -30,31 +36,64 @@ from ifitwala_ed.api.admissions_portal import (
 from ifitwala_ed.utilities import file_dispatcher
 
 
+def _admission_settings_has_field(fieldname: str) -> bool:
+    if not frappe.db.exists("DocType", "Admission Settings"):
+        return False
+    return bool(frappe.get_meta("Admission Settings").has_field(fieldname))
+
+
 class TestAdmissionsPortalAuthGuards(FrappeTestCase):
     def test_require_admissions_applicant_rejects_none_literal_as_unauthenticated(self):
         with patch("ifitwala_ed.api.admissions_portal._session_user", return_value=""):
             with self.assertRaises(frappe.PermissionError):
                 admissions_portal_api._require_admissions_applicant()
 
-    def test_get_applicant_for_user_resolves_portal_account_email_fallback(self):
+    def test_portal_session_endpoint_is_whitelisted(self):
+        self.assertIn(admissions_portal_api.get_admissions_session, frappe.whitelisted)
+
+    def test_get_applicant_for_user_uses_canonical_applicant_user_only(self):
         def fake_get_all(doctype, **kwargs):
             self.assertEqual(doctype, "Student Applicant")
             filters = kwargs.get("filters") or {}
-            if filters == {"applicant_user": "applicant@example.com"}:
-                return []
-            if filters == {"portal_account_email": "applicant@example.com"}:
-                return [{"name": "APP-PORTAL"}]
-            if filters == {"applicant_email": "applicant@example.com"}:
-                return []
+            if filters == {"name": ["in", ["APP-CANONICAL"]]}:
+                return [{"name": "APP-CANONICAL"}]
             return []
 
-        with patch("ifitwala_ed.api.admissions_portal.frappe.get_all", side_effect=fake_get_all):
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_admissions_portal_applicant_names_for_user",
+                return_value=["APP-CANONICAL"],
+            ) as mocked_names,
+            patch("ifitwala_ed.api.admissions_portal.frappe.get_all", side_effect=fake_get_all),
+        ):
             row = admissions_portal_api._get_applicant_for_user(
                 "applicant@example.com",
                 fields=["name"],
             )
 
-        self.assertEqual(row.get("name"), "APP-PORTAL")
+        mocked_names.assert_called_once_with(user="applicant@example.com", include_promoted=False)
+        self.assertEqual(row.get("name"), "APP-CANONICAL")
+
+    def test_get_applicant_for_user_rejects_email_only_matches(self):
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_admissions_portal_applicant_names_for_user",
+                return_value=[],
+            ) as mocked_names,
+            patch(
+                "ifitwala_ed.api.admissions_portal.frappe.get_all",
+                side_effect=AssertionError(
+                    "no applicant row lookup should run when canonical access resolution is empty"
+                ),
+            ),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                admissions_portal_api._get_applicant_for_user(
+                    "applicant@example.com",
+                    fields=["name"],
+                )
+
+        mocked_names.assert_called_once_with(user="applicant@example.com", include_promoted=False)
 
 
 class TestAdmissionsPortalContracts(FrappeTestCase):
@@ -116,7 +155,13 @@ class TestInviteApplicant(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
+        self._ensure_role("Admissions Family")
         self._ensure_admin_admissions_role("Admission Manager")
+        self._admissions_access_mode_before = (
+            frappe.db.get_single_value("Admission Settings", "admissions_access_mode")
+            if _admission_settings_has_field("admissions_access_mode")
+            else None
+        )
         frappe.clear_cache(user="Administrator")
         self.staff_user = self._create_admissions_staff_user()
         frappe.set_user(self.staff_user)
@@ -127,6 +172,12 @@ class TestInviteApplicant(FrappeTestCase):
 
     def tearDown(self):
         frappe.set_user("Administrator")
+        if _admission_settings_has_field("admissions_access_mode"):
+            frappe.db.set_single_value(
+                "Admission Settings",
+                "admissions_access_mode",
+                self._admissions_access_mode_before or "Single Applicant Workspace",
+            )
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
@@ -345,6 +396,63 @@ class TestInviteApplicant(FrappeTestCase):
             with self.assertRaises(frappe.ValidationError):
                 invite_applicant(student_applicant=self.applicant.name, email=other_contact_email)
 
+    def test_invite_family_collaborator_creates_guardian_user_and_links_row(self):
+        if not _admission_settings_has_field("admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+
+        self._set_admissions_access_mode("Family Workspace")
+        invite_email = f"family-{frappe.generate_hash(length=8)}@example.com"
+        self.applicant.append(
+            "guardians",
+            {
+                "relationship": "Mother",
+                "can_consent": 1,
+                "is_primary": 1,
+                "guardian_first_name": "Family",
+                "guardian_last_name": "Collaborator",
+                "guardian_email": invite_email,
+                "guardian_mobile_phone": "+14155550123",
+                "guardian_image": "/private/files/family-collaborator.png",
+            },
+        )
+        self.applicant.save(ignore_permissions=True)
+        guardian_row_name = self.applicant.get("guardians")[0].name
+
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                return_value=self.staff_user,
+            ),
+            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True),
+        ):
+            options = get_family_invite_options(student_applicant=self.applicant.name)
+            payload = invite_family_collaborator(
+                student_applicant=self.applicant.name,
+                guardian_row=guardian_row_name,
+                email=invite_email,
+            )
+
+        eligible_rows = [row for row in (options.get("guardians") or []) if row.get("eligible")]
+        self.assertEqual(len(eligible_rows), 1)
+        self.assertEqual(eligible_rows[0].get("email"), invite_email)
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("user"), invite_email)
+        self.assertTrue(payload.get("email_sent"))
+        self._created.append(("User", invite_email))
+
+        self.applicant.reload()
+        guardian_row = self.applicant.get("guardians")[0]
+        self.assertEqual((guardian_row.user or "").strip(), invite_email)
+        self.assertTrue(bool((guardian_row.guardian or "").strip()))
+        self.assertTrue(bool((guardian_row.contact or "").strip()))
+
+        guardian_doc = frappe.get_doc("Guardian", guardian_row.guardian)
+        self.assertEqual((guardian_doc.user or "").strip(), invite_email)
+        user_roles = set(frappe.get_roles(invite_email))
+        self.assertIn("Admissions Family", user_roles)
+        self.assertNotIn("Desk User", user_roles)
+
     def _create_organization(self) -> str:
         organization_name = f"Org {frappe.generate_hash(length=6)}"
         doc = frappe.get_doc(
@@ -450,15 +558,30 @@ class TestInviteApplicant(FrappeTestCase):
             ).insert(ignore_permissions=True)
         frappe.clear_cache(user="Administrator")
 
+    def _ensure_role(self, role_name: str):
+        if frappe.db.exists("Role", role_name):
+            return
+        role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+        self._created.append(("Role", role.name))
+
+    def _set_admissions_access_mode(self, value: str):
+        frappe.db.set_single_value("Admission Settings", "admissions_access_mode", value)
+
 
 class TestSubmitApplication(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._ensure_role("Admissions Applicant")
+        self._ensure_role("Admissions Family")
         self._guardians_setting_before = frappe.db.get_single_value(
             "Admission Settings",
             "show_guardians_in_admissions_profile",
+        )
+        self._admissions_access_mode_before = (
+            frappe.db.get_single_value("Admission Settings", "admissions_access_mode")
+            if _admission_settings_has_field("admissions_access_mode")
+            else None
         )
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
@@ -476,9 +599,19 @@ class TestSubmitApplication(FrappeTestCase):
             "show_guardians_in_admissions_profile",
             self._guardians_setting_before or 0,
         )
+        if _admission_settings_has_field("admissions_access_mode"):
+            frappe.db.set_single_value(
+                "Admission Settings",
+                "admissions_access_mode",
+                self._admissions_access_mode_before or "Single Applicant Workspace",
+            )
         for doctype, name in reversed(self._created):
-            if frappe.db.exists(doctype, name):
-                frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+            if not frappe.db.exists(doctype, name):
+                continue
+            if doctype == "Policy Acknowledgement":
+                frappe.db.delete("Policy Acknowledgement", {"name": name})
+                continue
+            frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
     def test_submit_application_accepts_invited_state(self):
         frappe.set_user(self.applicant_user)
@@ -511,6 +644,182 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertIn("profile", payload.get("completeness") or {})
         self.assertIn("recommendations", payload.get("completeness") or {})
         self.assertIn("recommendations_summary", payload)
+
+    def test_offer_sent_snapshot_surfaces_offer_response_action(self):
+        self._create_offer_plan(status="Offer Sent", offer_message="Review your place.")
+
+        frappe.set_user(self.applicant_user)
+        session_payload = admissions_portal_api.get_admissions_session()
+        snapshot = get_applicant_snapshot(student_applicant=self.applicant.name)
+
+        self.assertEqual((session_payload.get("applicant") or {}).get("portal_status"), "Offer Sent")
+        self.assertEqual((snapshot.get("enrollment_offer") or {}).get("status"), "Offer Sent")
+        self.assertTrue(bool((snapshot.get("enrollment_offer") or {}).get("can_accept")))
+        self.assertTrue(bool((snapshot.get("enrollment_offer") or {}).get("can_decline")))
+        self.assertEqual((snapshot.get("next_actions") or [])[0].get("route_name"), "admissions-status")
+        self.assertTrue(bool((snapshot.get("next_actions") or [])[0].get("is_blocking")))
+
+    def test_offer_sent_snapshot_surfaces_course_choice_action_when_choices_are_incomplete(self):
+        humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
+        self._create_offer_plan(
+            status="Offer Sent",
+            optional_course_basket_groups=[humanities_group],
+            enrollment_rules=[{"rule_type": "REQUIRE_GROUP_COVERAGE", "basket_group": humanities_group}],
+        )
+
+        frappe.set_user(self.applicant_user)
+        snapshot = get_applicant_snapshot(student_applicant=self.applicant.name)
+
+        actions = snapshot.get("next_actions") or []
+        self.assertEqual(actions[0].get("route_name"), "admissions-course-choices")
+        self.assertEqual(actions[1].get("route_name"), "admissions-status")
+        self.assertFalse(bool((snapshot.get("enrollment_offer") or {}).get("course_choices_ready")))
+
+    def test_get_admissions_session_family_workspace_returns_all_linked_applicants(self):
+        if not _admission_settings_has_field("admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+
+        self._set_admissions_access_mode("Family Workspace")
+        family_user = self._create_family_user()
+        guardian = self._create_guardian_record(user=family_user.name)
+        second_applicant = self._create_applicant(self.organization, self.school, self._create_applicant_user())
+
+        self._link_family_guardian(self.applicant, guardian_name=guardian.name, user=family_user.name)
+        self._link_family_guardian(second_applicant, guardian_name=guardian.name, user=family_user.name)
+
+        frappe.set_user(family_user.name)
+        payload = admissions_portal_api.get_admissions_session(student_applicant=second_applicant.name)
+
+        self.assertEqual(payload.get("access_mode"), "Family Workspace")
+        self.assertTrue(bool(payload.get("family_workspace_enabled")))
+        self.assertEqual(payload.get("selected_applicant"), second_applicant.name)
+        self.assertEqual((payload.get("applicant") or {}).get("name"), second_applicant.name)
+        self.assertEqual(set((payload.get("user") or {}).get("roles") or []), {"Admissions Family"})
+        self.assertEqual(
+            {row.get("name") for row in (payload.get("available_applicants") or [])},
+            {self.applicant.name, second_applicant.name},
+        )
+
+    def test_get_applicant_enrollment_choices_exposes_required_and_optional_offering_rows(self):
+        core_group = f"Core Basket {frappe.generate_hash(length=6)}"
+        humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
+        sciences_group = f"Group 4 Sciences {frappe.generate_hash(length=6)}"
+        context = self._create_offer_plan(
+            status="Offer Sent",
+            required_course_basket_groups=[core_group],
+            optional_course_basket_groups=[humanities_group, sciences_group],
+        )
+
+        frappe.set_user(self.applicant_user)
+        payload = get_applicant_enrollment_choices(student_applicant=self.applicant.name)
+
+        self.assertEqual((payload.get("plan") or {}).get("status"), "Offer Sent")
+        self.assertEqual((payload.get("summary") or {}).get("required_course_count"), 1)
+        self.assertEqual((payload.get("summary") or {}).get("optional_course_count"), 1)
+
+        rows_by_course = {row.get("course"): row for row in (payload.get("courses") or [])}
+        self.assertTrue(bool(rows_by_course.get(context["required_course"].name, {}).get("required")))
+        self.assertEqual(
+            rows_by_course.get(context["optional_course"].name, {}).get("basket_groups"),
+            [humanities_group, sciences_group],
+        )
+
+    def test_update_applicant_enrollment_choices_persists_selection_and_required_group_resolution(self):
+        required_group_one = f"Group 1 {frappe.generate_hash(length=6)}"
+        required_group_two = f"Group 2 {frappe.generate_hash(length=6)}"
+        humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
+        context = self._create_offer_plan(
+            status="Offer Sent",
+            required_course_basket_groups=[required_group_one, required_group_two],
+            optional_course_basket_groups=[humanities_group],
+        )
+
+        frappe.set_user(self.applicant_user)
+        payload = update_applicant_enrollment_choices(
+            student_applicant=self.applicant.name,
+            courses=[
+                {
+                    "course": context["required_course"].name,
+                    "applied_basket_group": required_group_one,
+                },
+                {
+                    "course": context["optional_course"].name,
+                    "applied_basket_group": humanities_group,
+                    "choice_rank": 1,
+                },
+            ],
+        )
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual((payload.get("summary") or {}).get("selected_optional_count"), 1)
+
+        context["plan"].reload()
+        rows_by_course = {row.course: row for row in context["plan"].get("courses") or []}
+        self.assertEqual(
+            (rows_by_course[context["required_course"].name].applied_basket_group or "").strip(),
+            required_group_one,
+        )
+        self.assertEqual(
+            (rows_by_course[context["optional_course"].name].applied_basket_group or "").strip(),
+            humanities_group,
+        )
+        self.assertEqual(rows_by_course[context["optional_course"].name].choice_rank, 1)
+
+    def test_accept_enrollment_offer_requires_complete_course_choices(self):
+        humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
+        context = self._create_offer_plan(
+            status="Offer Sent",
+            optional_course_basket_groups=[humanities_group],
+            enrollment_rules=[{"rule_type": "REQUIRE_GROUP_COVERAGE", "basket_group": humanities_group}],
+        )
+
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.ValidationError):
+            accept_enrollment_offer(student_applicant=self.applicant.name)
+
+        update_applicant_enrollment_choices(
+            student_applicant=self.applicant.name,
+            courses=[
+                {
+                    "course": context["optional_course"].name,
+                    "applied_basket_group": humanities_group,
+                }
+            ],
+        )
+
+        payload = accept_enrollment_offer(student_applicant=self.applicant.name)
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual((payload.get("result") or {}).get("status"), "Offer Accepted")
+
+    def test_accept_enrollment_offer_is_idempotent(self):
+        self._create_offer_plan(status="Offer Sent")
+
+        frappe.set_user(self.applicant_user)
+        first = accept_enrollment_offer(student_applicant=self.applicant.name)
+        second = accept_enrollment_offer(student_applicant=self.applicant.name)
+        session_payload = admissions_portal_api.get_admissions_session()
+
+        self.assertTrue(first.get("ok"))
+        self.assertTrue(second.get("ok"))
+        self.assertEqual((first.get("result") or {}).get("status"), "Offer Accepted")
+        self.assertEqual((second.get("result") or {}).get("status"), "Offer Accepted")
+        self.assertEqual((session_payload.get("applicant") or {}).get("portal_status"), "Accepted")
+
+    def test_decline_enrollment_offer_is_idempotent_and_visible_after_decline(self):
+        self._create_offer_plan(status="Offer Sent")
+
+        frappe.set_user(self.applicant_user)
+        first = decline_enrollment_offer(student_applicant=self.applicant.name)
+        second = decline_enrollment_offer(student_applicant=self.applicant.name)
+        session_payload = admissions_portal_api.get_admissions_session()
+        snapshot = get_applicant_snapshot(student_applicant=self.applicant.name)
+
+        self.assertTrue(first.get("ok"))
+        self.assertTrue(second.get("ok"))
+        self.assertEqual((first.get("result") or {}).get("status"), "Offer Declined")
+        self.assertEqual((second.get("result") or {}).get("status"), "Offer Declined")
+        self.assertEqual((session_payload.get("applicant") or {}).get("portal_status"), "Declined")
+        self.assertEqual((snapshot.get("enrollment_offer") or {}).get("status"), "Offer Declined")
 
     def test_get_applicant_policies_includes_expected_signature_name(self):
         frappe.set_user(self.applicant_user)
@@ -575,6 +884,60 @@ class TestSubmitApplication(FrappeTestCase):
         )
         self.assertTrue(bool(ack))
         self.assertEqual(ack.get("acknowledged_by"), self.applicant_user)
+        self._created.append(("Policy Acknowledgement", ack.get("name")))
+
+    def test_acknowledge_policy_family_mode_creates_guardian_context(self):
+        if not _admission_settings_has_field("admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+        if not frappe.db.has_column("Institutional Policy", "admissions_acknowledgement_mode"):
+            self.skipTest(
+                "Institutional Policy.admissions_acknowledgement_mode is required for family acknowledgement tests."
+            )
+
+        self._set_admissions_access_mode("Family Workspace")
+        family_user = self._create_family_user()
+        guardian = self._create_guardian_record(user=family_user.name)
+        self._link_family_guardian(self.applicant, guardian_name=guardian.name, user=family_user.name)
+        family_policy_version = self._create_required_applicant_policy_version(
+            organization=self.organization,
+            school=self.school,
+            admissions_acknowledgement_mode="Family Acknowledgement",
+        )
+
+        frappe.set_user(family_user.name)
+        policies = get_applicant_policies(student_applicant=self.applicant.name)
+        target = next(
+            (
+                row
+                for row in (policies.get("policies") or [])
+                if (row.get("policy_version") or "").strip() == family_policy_version
+            ),
+            None,
+        )
+        self.assertTrue(bool(target))
+
+        payload = acknowledge_policy(
+            student_applicant=self.applicant.name,
+            policy_version=family_policy_version,
+            typed_signature_name=target.get("expected_signature_name"),
+            attestation_confirmed=1,
+        )
+        self.assertTrue(payload.get("ok"))
+
+        ack = frappe.db.get_value(
+            "Policy Acknowledgement",
+            {
+                "policy_version": family_policy_version,
+                "acknowledged_for": "Guardian",
+                "context_doctype": "Guardian",
+                "context_name": guardian.name,
+            },
+            ["name", "acknowledged_by"],
+            as_dict=True,
+        )
+        self.assertTrue(bool(ack))
+        self._created.append(("Policy Acknowledgement", ack.get("name")))
+        self.assertEqual((ack.get("acknowledged_by") or "").strip(), family_user.name)
 
     def test_update_applicant_profile_persists_values(self):
         language = self._get_or_create_language_xtra()
@@ -603,6 +966,25 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(profile.get("student_preferred_name"), "Portal Preferred")
         self.assertEqual(profile.get("student_nationality"), country)
         self.assertEqual(profile.get("student_first_language"), language)
+
+    def test_update_applicant_profile_rejects_stale_expected_modified(self):
+        frappe.set_user(self.applicant_user)
+        initial = get_applicant_profile(student_applicant=self.applicant.name)
+        initial_modified = initial.get("record_modified") or ""
+
+        fresh = update_applicant_profile(
+            student_applicant=self.applicant.name,
+            expected_modified=initial_modified,
+            student_preferred_name="Fresh Save",
+        )
+        self.assertTrue(bool(fresh.get("record_modified")))
+
+        with self.assertRaises(frappe.ValidationError):
+            update_applicant_profile(
+                student_applicant=self.applicant.name,
+                expected_modified=initial_modified,
+                student_preferred_name="Stale Save",
+            )
 
     def test_update_applicant_profile_persists_guardians_when_enabled(self):
         self._set_guardians_section_setting(1)
@@ -683,6 +1065,25 @@ class TestSubmitApplication(FrappeTestCase):
                         "guardian_image": "/private/files/guardian-other.png",
                     }
                 ],
+            )
+
+    def test_update_applicant_health_rejects_stale_expected_modified(self):
+        frappe.set_user(self.applicant_user)
+        initial = admissions_portal_api.get_applicant_health(student_applicant=self.applicant.name)
+        initial_modified = initial.get("record_modified") or ""
+
+        fresh = update_applicant_health(
+            student_applicant=self.applicant.name,
+            expected_modified=initial_modified,
+            vaccinations=[],
+        )
+        self.assertTrue(bool(fresh.get("record_modified")))
+
+        with self.assertRaises(frappe.ValidationError):
+            update_applicant_health(
+                student_applicant=self.applicant.name,
+                expected_modified=initial_modified,
+                vaccinations=[],
             )
 
     def test_update_applicant_profile_rejects_invalid_guardian_email(self):
@@ -856,8 +1257,8 @@ class TestSubmitApplication(FrappeTestCase):
     def test_upload_applicant_profile_image_creates_governed_file(self):
         fake_file = SimpleNamespace(
             name=f"FILE-{frappe.generate_hash(length=8)}",
-            file_url=f"/private/files/applicant-{frappe.generate_hash(length=6)}.png",
-            file_name="student.png",
+            file_url=f"/private/files/applicant-{frappe.generate_hash(length=6)}.jpg",
+            file_name="applicant_profile_image_test.jpg",
             file_size=128,
             is_private=1,
         )
@@ -869,7 +1270,6 @@ class TestSubmitApplication(FrappeTestCase):
                 return_value=fake_file,
             ) as mocked_dispatcher,
             patch("ifitwala_ed.api.admissions_portal._ensure_file_on_disk"),
-            patch("ifitwala_ed.api.admissions_portal._validate_profile_image_content"),
         ):
             payload = upload_applicant_profile_image(
                 student_applicant=self.applicant.name,
@@ -889,6 +1289,9 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(kwargs["file_kwargs"]["attached_to_name"], self.applicant.name)
         self.assertEqual(kwargs["file_kwargs"]["attached_to_field"], "applicant_image")
         self.assertEqual(kwargs["file_kwargs"]["is_private"], 1)
+        self.assertTrue(kwargs["file_kwargs"]["file_name"].startswith("applicant_profile_image_"))
+        self.assertTrue(kwargs["file_kwargs"]["file_name"].endswith(".jpg"))
+        self.assertTrue(kwargs["file_kwargs"]["content"].startswith(b"\xff\xd8\xff"))
 
         classification = kwargs["classification"]
         self.assertEqual(classification["primary_subject_type"], "Student Applicant")
@@ -901,11 +1304,60 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(classification["school"], self.school)
         self.assertEqual(classification["upload_source"], "SPA")
 
+    def test_upload_applicant_profile_image_rejects_heic_extension(self):
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.ValidationError) as error_context:
+            upload_applicant_profile_image(
+                student_applicant=self.applicant.name,
+                file_name="IMG_1157.HEIC",
+                content=self._tiny_png_base64(),
+            )
+
+        self.assertIn("Only JPG, JPEG, PNG image files are accepted", str(error_context.exception))
+
+    def test_upload_applicant_profile_image_rejects_extension_content_mismatch(self):
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.ValidationError) as error_context:
+            upload_applicant_profile_image(
+                student_applicant=self.applicant.name,
+                file_name="student.jpg",
+                content=self._tiny_png_base64(),
+            )
+
+        self.assertIn("extension does not match", str(error_context.exception))
+
+    def test_upload_applicant_profile_image_rejects_files_larger_than_limit(self):
+        oversized_content = base64.b64encode(b"\xff\xd8\xff" + b"a" * (11 * 1024 * 1024)).decode()
+
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.ValidationError) as error_context:
+            upload_applicant_profile_image(
+                student_applicant=self.applicant.name,
+                file_name="student.jpg",
+                content=oversized_content,
+            )
+
+        self.assertIn("Max file size is 10 MB", str(error_context.exception))
+
+    def test_upload_applicant_profile_image_rejects_images_over_pixel_limit(self):
+        frappe.set_user(self.applicant_user)
+        with (
+            patch.object(admissions_portal_api, "PROFILE_IMAGE_MAX_PIXELS", 0),
+            self.assertRaises(frappe.ValidationError) as error_context,
+        ):
+            upload_applicant_profile_image(
+                student_applicant=self.applicant.name,
+                file_name="student.png",
+                content=self._tiny_png_base64(),
+            )
+
+        self.assertIn("Max image size is", str(error_context.exception))
+
     def test_upload_applicant_guardian_image_creates_governed_file(self):
         fake_file = SimpleNamespace(
             name=f"FILE-{frappe.generate_hash(length=8)}",
-            file_url=f"/private/files/guardian-{frappe.generate_hash(length=6)}.png",
-            file_name="guardian.png",
+            file_url=f"/private/files/guardian-{frappe.generate_hash(length=6)}.jpg",
+            file_name="guardian_profile_image_test.jpg",
             file_size=256,
             is_private=1,
         )
@@ -917,7 +1369,6 @@ class TestSubmitApplication(FrappeTestCase):
                 return_value=fake_file,
             ) as mocked_dispatcher,
             patch("ifitwala_ed.api.admissions_portal._ensure_file_on_disk"),
-            patch("ifitwala_ed.api.admissions_portal._validate_profile_image_content"),
         ):
             payload = upload_applicant_guardian_image(
                 student_applicant=self.applicant.name,
@@ -934,6 +1385,9 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(kwargs["file_kwargs"]["attached_to_name"], self.applicant.name)
         self.assertEqual(kwargs["file_kwargs"]["attached_to_field"], "guardians")
         self.assertEqual(kwargs["file_kwargs"]["is_private"], 1)
+        self.assertTrue(kwargs["file_kwargs"]["file_name"].startswith("guardian_profile_image_"))
+        self.assertTrue(kwargs["file_kwargs"]["file_name"].endswith(".jpg"))
+        self.assertTrue(kwargs["file_kwargs"]["content"].startswith(b"\xff\xd8\xff"))
 
         classification = kwargs["classification"]
         self.assertEqual(classification["primary_subject_type"], "Student Applicant")
@@ -1045,19 +1499,29 @@ class TestSubmitApplication(FrappeTestCase):
         self._created.append(("School", doc.name))
         return doc.name
 
-    def _create_required_applicant_policy_version(self, *, organization: str, school: str) -> str:
-        policy = frappe.get_doc(
-            {
-                "doctype": "Institutional Policy",
-                "policy_key": f"applicant_policy_{frappe.generate_hash(length=8)}",
-                "policy_title": "Applicant Portal Policy",
-                "policy_category": "Admissions",
-                "applies_to": "Applicant",
-                "organization": organization,
-                "school": school,
-                "is_active": 1,
-            }
-        ).insert(ignore_permissions=True)
+    def _create_required_applicant_policy_version(
+        self,
+        *,
+        organization: str,
+        school: str,
+        admissions_acknowledgement_mode: str | None = None,
+    ) -> str:
+        policy_payload = {
+            "doctype": "Institutional Policy",
+            "policy_key": f"applicant_policy_{frappe.generate_hash(length=8)}",
+            "policy_title": f"Applicant Portal Policy {frappe.generate_hash(length=6)}",
+            "policy_category": "Admissions",
+            "applies_to": "Applicant",
+            "organization": organization,
+            "school": school,
+            "is_active": 1,
+        }
+        if admissions_acknowledgement_mode is not None and frappe.db.has_column(
+            "Institutional Policy", "admissions_acknowledgement_mode"
+        ):
+            policy_payload["admissions_acknowledgement_mode"] = admissions_acknowledgement_mode
+
+        policy = frappe.get_doc(policy_payload).insert(ignore_permissions=True)
         self._created.append(("Institutional Policy", policy.name))
 
         version = frappe.get_doc(
@@ -1111,6 +1575,229 @@ class TestSubmitApplication(FrappeTestCase):
             "show_guardians_in_admissions_profile",
             1 if int(value or 0) else 0,
         )
+
+    def _set_admissions_access_mode(self, value: str):
+        frappe.db.set_single_value("Admission Settings", "admissions_access_mode", value)
+
+    def _create_family_user(self):
+        email = f"family-{frappe.generate_hash(length=8)}@example.com"
+        user = frappe.get_doc(
+            {
+                "doctype": "User",
+                "email": email,
+                "first_name": "Family",
+                "last_name": "Portal",
+                "enabled": 1,
+                "roles": [{"role": "Admissions Family"}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("User", user.name))
+        frappe.clear_cache(user=user.name)
+        return user
+
+    def _create_guardian_record(self, *, user: str | None = None):
+        email = user or f"guardian-{frappe.generate_hash(length=8)}@example.com"
+        guardian = frappe.get_doc(
+            {
+                "doctype": "Guardian",
+                "guardian_first_name": "Family",
+                "guardian_last_name": "Guardian",
+                "guardian_email": email,
+                "guardian_mobile_phone": "+14155550121",
+                "user": user,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Guardian", guardian.name))
+        return guardian
+
+    def _link_family_guardian(self, applicant, *, guardian_name: str, user: str):
+        applicant.append(
+            "guardians",
+            {
+                "guardian": guardian_name,
+                "user": user,
+                "relationship": "Mother",
+                "can_consent": 1,
+                "is_primary": 1,
+                "guardian_first_name": "Family",
+                "guardian_last_name": "Guardian",
+                "guardian_email": user,
+                "guardian_mobile_phone": "+14155550121",
+                "guardian_image": "/private/files/family-guardian.png",
+            },
+        )
+        applicant.save(ignore_permissions=True)
+
+    def _create_basket_group(self, basket_group_name: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Basket Group",
+                "basket_group_name": basket_group_name,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Basket Group", doc.name))
+        return doc
+
+    def _create_offer_plan(
+        self,
+        *,
+        status: str,
+        offer_message: str | None = None,
+        required_course_basket_groups: list[str] | None = None,
+        optional_course_basket_groups: list[str] | None = None,
+        enrollment_rules: list[dict] | None = None,
+    ):
+        academic_year = frappe.get_doc(
+            {
+                "doctype": "Academic Year",
+                "academic_year_name": f"AY {frappe.generate_hash(length=6)}",
+                "school": self.school,
+                "year_start_date": "2025-08-01",
+                "year_end_date": "2026-06-30",
+                "archived": 0,
+                "visible_to_admission": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Academic Year", academic_year.name))
+
+        grade_scale = frappe.get_doc(
+            {
+                "doctype": "Grade Scale",
+                "grade_scale_name": f"Scale {frappe.generate_hash(length=6)}",
+                "boundaries": [
+                    {"grade_code": "B-", "boundary_interval": 70},
+                    {"grade_code": "C", "boundary_interval": 60},
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Grade Scale", grade_scale.name))
+
+        required_course = frappe.get_doc(
+            {
+                "doctype": "Course",
+                "course_name": f"Offer Course {frappe.generate_hash(length=6)}",
+                "status": "Active",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Course", required_course.name))
+
+        optional_course = None
+        if optional_course_basket_groups is not None:
+            optional_course = frappe.get_doc(
+                {
+                    "doctype": "Course",
+                    "course_name": f"Optional Offer Course {frappe.generate_hash(length=6)}",
+                    "status": "Active",
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("Course", optional_course.name))
+
+        for basket_group in sorted(
+            {
+                *set(required_course_basket_groups or []),
+                *set(optional_course_basket_groups or []),
+                *{
+                    (row.get("basket_group") or "").strip()
+                    for row in (enrollment_rules or [])
+                    if (row.get("basket_group") or "").strip()
+                },
+            }
+        ):
+            self._create_basket_group(basket_group)
+
+        program = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Program {frappe.generate_hash(length=6)}",
+                "grade_scale": grade_scale.name,
+                "courses": [
+                    {"course": required_course.name, "level": "None"},
+                    *([{"course": optional_course.name, "level": "None"}] if optional_course else []),
+                ],
+                "course_basket_groups": [
+                    *[
+                        {"course": required_course.name, "basket_group": basket_group}
+                        for basket_group in (required_course_basket_groups or [])
+                    ],
+                    *[
+                        {"course": optional_course.name, "basket_group": basket_group}
+                        for basket_group in (optional_course_basket_groups or [])
+                    ],
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Program", program.name))
+
+        offering = frappe.get_doc(
+            {
+                "doctype": "Program Offering",
+                "program": program.name,
+                "school": self.school,
+                "offering_title": f"Offering {frappe.generate_hash(length=6)}",
+                "offering_academic_years": [{"academic_year": academic_year.name}],
+                "offering_courses": [
+                    {
+                        "course": required_course.name,
+                        "course_name": required_course.course_name,
+                        "required": 1,
+                        "start_academic_year": academic_year.name,
+                        "end_academic_year": academic_year.name,
+                    },
+                    *(
+                        [
+                            {
+                                "course": optional_course.name,
+                                "course_name": optional_course.course_name,
+                                "required": 0,
+                                "start_academic_year": academic_year.name,
+                                "end_academic_year": academic_year.name,
+                            }
+                        ]
+                        if optional_course
+                        else []
+                    ),
+                ],
+                "offering_course_basket_groups": [
+                    *[
+                        {"course": required_course.name, "basket_group": basket_group}
+                        for basket_group in (required_course_basket_groups or [])
+                    ],
+                    *[
+                        {"course": optional_course.name, "basket_group": basket_group}
+                        for basket_group in (optional_course_basket_groups or [])
+                    ],
+                ],
+                "enrollment_rules": enrollment_rules or [],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Program Offering", offering.name))
+
+        self.applicant.db_set("application_status", "Approved", update_modified=False)
+        self.applicant.db_set("academic_year", academic_year.name, update_modified=False)
+        self.applicant.db_set("program", program.name, update_modified=False)
+        self.applicant.db_set("program_offering", offering.name, update_modified=False)
+        self.applicant.reload()
+
+        plan = frappe.get_doc(
+            {
+                "doctype": "Applicant Enrollment Plan",
+                "student_applicant": self.applicant.name,
+                "academic_year": academic_year.name,
+                "program": program.name,
+                "program_offering": offering.name,
+                "status": status,
+                "offer_message": offer_message or "",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Enrollment Plan", plan.name))
+        return {
+            "plan": plan,
+            "academic_year": academic_year,
+            "program": program,
+            "offering": offering,
+            "required_course": required_course,
+            "optional_course": optional_course,
+        }
 
     def _get_or_create_language_xtra(self) -> str:
         existing = frappe.get_all("Language Xtra", filters={"enabled": 1}, fields=["name"], limit=1)

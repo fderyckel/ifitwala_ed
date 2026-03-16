@@ -3,6 +3,7 @@
 <!--
 Used by:
 - StaffHome.vue
+- StudentAttendanceTool.vue
 - Student Log quick-create flows
 -->
 
@@ -48,11 +49,16 @@ Used by:
 									{{
 										step === 'review'
 											? __('Once submitted, this note cannot be edited.')
-											: mode === 'group'
-												? __('Fast entry for this class.')
+											: mode === 'attendance'
+												? __('Fast capture for the selected student.')
 												: __('Search across your school.')
 									}}
 								</p>
+								<span
+									class="mt-2 inline-flex items-center rounded-full border border-border/70 bg-[rgb(var(--surface-strong-rgb))] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-ink/70"
+								>
+									{{ sourcePillLabel }}
+								</span>
 							</div>
 
 							<button
@@ -88,22 +94,35 @@ Used by:
 								<section class="space-y-2">
 									<p class="type-caption text-ink/70">{{ __('Student') }}</p>
 
-									<!-- Group mode: roster select -->
-									<div v-if="mode === 'group'" class="space-y-2">
-										<FormControl
-											type="select"
-											size="md"
-											:options="groupStudentOptions"
-											option-label="label"
-											option-value="value"
-											:model-value="form.student"
-											:disabled="!groupStudentOptions.length || submitting"
-											placeholder="Select student"
-											@update:modelValue="onStudentSelected"
-										/>
+									<!-- Attendance mode: locked student context -->
+									<div
+										v-if="mode === 'attendance'"
+										class="rounded-2xl border border-border/70 bg-white px-4 py-3 shadow-soft"
+									>
+										<div class="flex items-center gap-3">
+											<img
+												v-if="selectedStudentImage"
+												:src="selectedStudentImage"
+												alt=""
+												class="h-10 w-10 rounded-full object-cover ring-1 ring-black/5"
+												loading="lazy"
+												decoding="async"
+											/>
+											<div class="min-w-0">
+												<p class="type-body-strong truncate text-ink">
+													{{ selectedStudentLabel || form.student }}
+												</p>
+												<p v-if="selectedStudentMeta" class="type-caption truncate text-ink/55">
+													{{ selectedStudentMeta }}
+												</p>
+											</div>
+										</div>
+										<p v-if="attendanceContextLabel" class="mt-2 type-caption text-ink/55">
+											{{ attendanceContextLabel }}
+										</p>
 									</div>
 
-									<!-- School mode: search OR selected card -->
+									<!-- Home mode: search OR selected card -->
 									<div v-else class="space-y-2">
 										<!-- Search UI: only when no student selected -->
 										<div v-if="!form.student" class="space-y-2">
@@ -177,6 +196,7 @@ Used by:
 												type="button"
 												class="type-caption text-ink/70 hover:text-ink underline underline-offset-4"
 												:disabled="submitting"
+												v-if="mode === 'home'"
 												@click="changeStudent()"
 											>
 												{{ __('Change') }}
@@ -543,19 +563,29 @@ import { Button, FormControl, FeatherIcon, Spinner } from 'frappe-ui';
 import { __ } from '@/lib/i18n';
 import { createStudentLogService } from '@/lib/services/studentLog/studentLogService';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import {
+	hasStudentLogDraftContent,
+	normalizeStudentLogOverlayMode,
+	shouldPromptStudentLogDiscard,
+} from './studentLogOverlayRules';
 import type { Response as GetFormOptionsResponse } from '@/types/contracts/student_log/get_form_options';
 import type { Response as SearchFollowUpUsersResponse } from '@/types/contracts/student_log/search_follow_up_users';
 import type { Response as SearchStudentsResponse } from '@/types/contracts/student_log/search_students';
 import type { Request as SubmitStudentLogRequest } from '@/types/contracts/student_log/submit_student_log';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
-type Mode = 'group' | 'school';
+type Mode = 'attendance' | 'home';
 
-type GroupStudent = {
-	student: string;
-	student_name?: string | null;
-	preferred_name?: string | null;
-	student_image?: string | null;
+type OverlayStudent = {
+	id: string;
+	label?: string | null;
+	image?: string | null;
+	meta?: string | null;
+};
+
+type OverlayStudentGroup = {
+	id: string;
+	label?: string | null;
 };
 
 type PickerItem = {
@@ -569,9 +599,10 @@ const props = defineProps<{
 	open: boolean;
 	zIndex?: number;
 	mode: Mode;
-	// in 'group' mode:
-	studentGroup?: string | null;
-	students?: GroupStudent[] | null;
+	student?: OverlayStudent | null;
+	student_group?: OverlayStudentGroup | null;
+	context_school?: string | null;
+	sourceLabel?: string | null;
 	overlayId?: string | null;
 }>();
 
@@ -632,7 +663,24 @@ function clearError() {
 	errorMessage.value = '';
 }
 
+function hasDraftContent() {
+	return hasStudentLogDraftContent({
+		log: form.log,
+		log_type: form.log_type,
+		requires_follow_up: form.requires_follow_up,
+		next_step: form.next_step,
+		follow_up_person: form.follow_up_person,
+		visible_to_student: form.visible_to_student,
+		visible_to_guardians: form.visible_to_guardians,
+	});
+}
+
 function emitClose(reason: CloseReason) {
+	if (shouldPromptStudentLogDiscard(reason, hasDraftContent())) {
+		const shouldDiscard = window.confirm(__('Discard this log?'));
+		if (!shouldDiscard) return;
+	}
+
 	const overlayId = props.overlayId || null;
 	if (overlayId) {
 		try {
@@ -668,14 +716,51 @@ function onKeydown(e: KeyboardEvent) {
 	if (e.key === 'Escape') emitClose('esc');
 }
 
-watch(
-	() => props.open,
-	v => {
-		if (v) document.addEventListener('keydown', onKeydown, true);
-		else document.removeEventListener('keydown', onKeydown, true);
-	},
-	{ immediate: true }
-);
+function resetFormState() {
+	step.value = 'edit';
+	form.student = '';
+	form.log_type = '';
+	form.log = '';
+	form.requires_follow_up = false;
+	form.next_step = '';
+	form.follow_up_person = '';
+	form.visible_to_student = false;
+	form.visible_to_guardians = false;
+
+	selectedStudentLabel.value = '';
+	selectedStudentImage.value = null;
+	selectedStudentMeta.value = null;
+	selectedAssigneeLabel.value = '';
+	assigneeQuery.value = '';
+	assigneeCandidates.value = [];
+	studentQuery.value = '';
+	studentCandidates.value = [];
+	optionsData.value = null;
+}
+
+function hydrateFromAttendanceProps() {
+	const studentId = (props.student?.id || '').trim();
+	if (!studentId) {
+		setError(null, __('Attendance mode requires a selected student.'));
+		return;
+	}
+
+	form.student = studentId;
+	selectedStudentLabel.value = (props.student?.label || studentId).trim();
+	selectedStudentImage.value = props.student?.image || null;
+	selectedStudentMeta.value = (props.student?.meta || '').trim() || null;
+
+	loadFormOptions(studentId);
+}
+
+function initializeForOpen() {
+	clearError();
+	resetFormState();
+
+	if (mode.value === 'attendance') {
+		hydrateFromAttendanceProps();
+	}
+}
 
 onBeforeUnmount(() => {
 	document.removeEventListener('keydown', onKeydown, true);
@@ -692,7 +777,17 @@ function goEdit() {
 	step.value = 'edit';
 }
 
-const mode = computed(() => props.mode);
+const mode = computed<Mode>(() => normalizeStudentLogOverlayMode(props.mode));
+const sourcePillLabel = computed(() => {
+	const explicit = (props.sourceLabel || '').trim();
+	if (explicit) return explicit;
+	return mode.value === 'attendance' ? __('Attendance') : __('Staff Home');
+});
+const attendanceContextLabel = computed(() => {
+	if (mode.value !== 'attendance') return '';
+	const groupLabel = (props.student_group?.label || props.student_group?.id || '').trim();
+	return groupLabel ? __('Group: {0}', [groupLabel]) : '';
+});
 
 const submitting = ref(false);
 
@@ -730,23 +825,6 @@ const canSubmit = computed(() => {
 	}
 	return true;
 });
-
-/* Group student options */
-const groupStudentOptions = computed(() => {
-	const list = props.students || [];
-	return list.map(s => {
-		const name = (s.preferred_name || s.student_name || '').trim();
-		return { value: s.student, label: name || s.student };
-	});
-});
-
-function _getGroupStudentMeta(id: string) {
-	const s = (props.students || []).find(x => x.student === id);
-	if (!s) return { label: id, image: null as string | null, meta: null as string | null };
-	const display = (s.preferred_name || s.student_name || id).trim();
-	const meta = s.preferred_name && s.student_name ? s.student_name : null;
-	return { label: display, image: s.student_image || null, meta };
-}
 
 /* Student search */
 const studentQuery = ref('');
@@ -831,36 +909,20 @@ function selectAssignee(user: string, label: string) {
 	assigneeQuery.value = label;
 }
 
-/* Student selection */
-function onStudentSelected(studentId: string) {
-	clearError();
+watch(
+	() => props.open,
+	v => {
+		if (v) {
+			document.addEventListener('keydown', onKeydown, true);
+			initializeForOpen();
+			return;
+		}
+		document.removeEventListener('keydown', onKeydown, true);
+	},
+	{ immediate: true }
+);
 
-	const picked =
-		mode.value === 'school' ? studentCandidates.value.find(x => x.value === studentId) : null;
-
-	form.student = studentId;
-
-	form.log_type = '';
-	form.next_step = '';
-	form.follow_up_person = '';
-	selectedAssigneeLabel.value = '';
-	assigneeQuery.value = '';
-	assigneeCandidates.value = [];
-
-	studentCandidates.value = [];
-	studentQuery.value = '';
-
-	if (mode.value === 'group') {
-		const m = _getGroupStudentMeta(studentId);
-		selectedStudentLabel.value = m.label;
-		selectedStudentImage.value = m.image;
-		selectedStudentMeta.value = m.meta;
-	} else {
-		selectedStudentLabel.value = picked?.label || studentId;
-		selectedStudentImage.value = picked?.image || null;
-		selectedStudentMeta.value = picked?.meta || null;
-	}
-
+function loadFormOptions(studentId: string) {
 	optionsLoading.value = true;
 	studentLogService
 		.getFormOptions({ student: studentId })
@@ -874,6 +936,32 @@ function onStudentSelected(studentId: string) {
 		.finally(() => {
 			optionsLoading.value = false;
 		});
+}
+
+/* Student selection */
+function onStudentSelected(studentId: string) {
+	clearError();
+
+	const picked =
+		mode.value === 'home' ? studentCandidates.value.find(x => x.value === studentId) : null;
+
+	form.student = studentId;
+
+	form.log_type = '';
+	form.next_step = '';
+	form.follow_up_person = '';
+	selectedAssigneeLabel.value = '';
+	assigneeQuery.value = '';
+	assigneeCandidates.value = [];
+
+	studentCandidates.value = [];
+	studentQuery.value = '';
+
+	selectedStudentLabel.value = picked?.label || studentId;
+	selectedStudentImage.value = picked?.image || null;
+	selectedStudentMeta.value = picked?.meta || null;
+
+	loadFormOptions(studentId);
 }
 
 /* Voice to Text */
@@ -936,26 +1024,14 @@ function toggleSpeech() {
 
 function changeStudent() {
 	clearError();
-	step.value = 'edit';
-
-	form.student = '';
-	form.log_type = '';
-	form.requires_follow_up = false;
-	form.next_step = '';
-	form.follow_up_person = '';
-
-	selectedAssigneeLabel.value = '';
-	assigneeQuery.value = '';
-	assigneeCandidates.value = [];
-
-	studentQuery.value = '';
-	studentCandidates.value = [];
-
-	selectedStudentLabel.value = '';
-	selectedStudentImage.value = null;
-	selectedStudentMeta.value = null;
-
-	optionsData.value = null;
+	if (mode.value !== 'home') return;
+	if (hasDraftContent()) {
+		const shouldDiscard = window.confirm(
+			__('Changing student will discard this draft. Continue?')
+		);
+		if (!shouldDiscard) return;
+	}
+	resetFormState();
 }
 
 function onNextStepSelected(v: string) {

@@ -45,6 +45,7 @@
   "courses_and_prerequisites",
   "course_section_section",
   "courses",
+  "course_basket_groups",
   "course_prerequisites_section",
   "prerequisites",
   "old_parent",
@@ -84,6 +85,13 @@
    "fieldtype": "Table",
    "label": "Courses",
    "options": "Program Course"
+  },
+  {
+   "description": "Map each program course to the enrollment baskets it can satisfy.",
+   "fieldname": "course_basket_groups",
+   "fieldtype": "Table",
+   "label": "Enrollment Basket Memberships",
+   "options": "Program Course Basket Group"
   },
   {
    "fieldname": "description_section",
@@ -165,6 +173,8 @@
    "fieldname": "parent_program",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Parent Program",
    "options": "Program"
   },
@@ -299,7 +309,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-01-19 13:25:19",
+ "modified": "2026-03-11 13:47:00.422488",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Program",

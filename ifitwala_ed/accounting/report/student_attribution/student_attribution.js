@@ -13,6 +13,12 @@ frappe.query_reports["Student Attribution"] = {
 			fieldtype: "Date",
 		},
 		{
+			fieldname: "fiscal_year",
+			label: __("Fiscal Year"),
+			fieldtype: "Link",
+			options: "Fiscal Year",
+		},
+		{
 			fieldname: "to_date",
 			label: __("To Date"),
 			fieldtype: "Date",
@@ -22,6 +28,18 @@ frappe.query_reports["Student Attribution"] = {
 			label: __("Student"),
 			fieldtype: "Link",
 			options: "Student",
+		},
+		{
+			fieldname: "school",
+			label: __("School"),
+			fieldtype: "Link",
+			options: "School",
+		},
+		{
+			fieldname: "program",
+			label: __("Program"),
+			fieldtype: "Link",
+			options: "Program",
 		},
 		{
 			fieldname: "account_holder",

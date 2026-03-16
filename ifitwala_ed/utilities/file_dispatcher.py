@@ -12,6 +12,10 @@ from frappe import _
 from frappe.model.document import Document
 
 from ifitwala_ed.utilities import file_management
+from ifitwala_ed.utilities.file_classification_contract import (
+    ALLOWED_PRIMARY_SUBJECT_TYPES,
+    is_school_required_for_subject_type,
+)
 
 REQUIRED_CLASSIFICATION_FIELDS = {
     "primary_subject_type",
@@ -24,12 +28,12 @@ REQUIRED_CLASSIFICATION_FIELDS = {
     "school",
 }
 
-ALLOWED_SUBJECT_TYPES = {"Student", "Guardian", "Employee", "Student Applicant"}
+ALLOWED_SUBJECT_TYPES = ALLOWED_PRIMARY_SUBJECT_TYPES
 
 
 def _missing_required_fields(classification: Dict[str, Any]) -> List[str]:
     missing = REQUIRED_CLASSIFICATION_FIELDS - set(classification.keys())
-    if "school" in missing and classification.get("primary_subject_type") == "Employee":
+    if "school" in missing and not is_school_required_for_subject_type(classification.get("primary_subject_type")):
         missing.remove("school")
     return sorted(missing)
 
@@ -47,7 +51,7 @@ def _validate_classification_payload(classification: Dict[str, Any]) -> None:
         frappe.throw(_("Invalid primary_subject_type."))
 
     for fieldname in REQUIRED_CLASSIFICATION_FIELDS:
-        if fieldname == "school" and primary_subject_type == "Employee":
+        if fieldname == "school" and not is_school_required_for_subject_type(primary_subject_type):
             continue
         if not classification.get(fieldname):
             frappe.throw(_("{0} is required.").format(fieldname.replace("_", " ").title()))
@@ -140,7 +144,7 @@ def _build_file_classification_payload(
     }
     if retention_until:
         payload["retention_until"] = retention_until
-    if classification.get("school") or classification.get("primary_subject_type") != "Employee":
+    if classification.get("school") or is_school_required_for_subject_type(classification.get("primary_subject_type")):
         payload["school"] = classification.get("school")
     return payload
 

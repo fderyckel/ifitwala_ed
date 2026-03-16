@@ -10,6 +10,8 @@
   "party_type",
   "party",
   "organization",
+  "school",
+  "program",
   "posting_date",
   "paid_to",
   "paid_amount",
@@ -57,6 +59,20 @@
    "reqd": 1
   },
   {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program",
+   "read_only": 1
+  },
+  {
    "fieldname": "posting_date",
    "fieldtype": "Date",
    "in_list_view": 1,
@@ -97,7 +113,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-01 00:00:00.000000",
+ "modified": "2025-02-01 00:00:11",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Payment Entry",

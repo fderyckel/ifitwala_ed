@@ -6,7 +6,14 @@ from urllib.parse import quote
 
 import frappe
 
-ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
+from ifitwala_ed.admission.access import ADMISSIONS_APPLICANT_ROLE as _ADMISSIONS_APPLICANT_ROLE
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_PORTAL_ROLES,
+    has_open_admissions_portal_access,
+)
+
+# Backwards-compatible export for existing routing/auth imports.
+ADMISSIONS_APPLICANT_ROLE = _ADMISSIONS_APPLICANT_ROLE
 CANONICAL_PORTAL_PREFIX = "/hub"
 
 PORTAL_SECTION_PRIORITY = ("staff", "student", "guardian")
@@ -101,7 +108,7 @@ def _active_employee_status_from_login_email(*, user: str) -> tuple[bool, str]:
             "employee_professional_email": login_email,
         },
         fields=["name", "user_id"],
-        limit_page_length=2,
+        limit=2,
     )
     if len(matches) != 1:
         return False, ""
@@ -181,7 +188,7 @@ def resolve_login_redirect_path(*, user: str, roles: set[str]) -> str:
     if has_staff_portal_access(user=user, roles=roles):
         return canonical_path_for_section("staff")
 
-    if ADMISSIONS_APPLICANT_ROLE in roles:
+    if roles & ADMISSIONS_PORTAL_ROLES and has_open_admissions_portal_access(user=user, roles=roles):
         return "/admissions"
 
     sections = resolve_portal_sections(user=user, roles=roles)

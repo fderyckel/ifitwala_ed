@@ -10,9 +10,13 @@ from frappe import _
 from frappe.utils import add_days, add_to_date, get_datetime, getdate, now_datetime, today
 
 from ifitwala_ed.api.org_comm_utils import check_audience_match
-from ifitwala_ed.api.policy_signature import launch_staff_policy_campaign
+from ifitwala_ed.api.policy_signature import (
+    get_policy_version_history_rows,
+    get_staff_policy_signature_state_for_user,
+    launch_staff_policy_campaign,
+)
 from ifitwala_ed.governance.policy_scope_utils import is_policy_within_user_scope
-from ifitwala_ed.governance.policy_utils import ensure_policy_admin
+from ifitwala_ed.governance.policy_utils import ensure_policy_admin, get_policy_applies_to_tokens
 
 SCOPE_ORGANIZATION_ALL_SCHOOLS = "organization_all_schools"
 SCOPE_SCHOOL = "school"
@@ -50,14 +54,16 @@ def _parse_change_stats(raw_stats) -> dict[str, int]:
 
 
 def _default_recipient_flags(applies_to: str | None) -> dict[str, int]:
-    token = (applies_to or "").strip()
-    if token == "Student":
-        return {"to_staff": 1, "to_students": 1, "to_guardians": 0, "to_community": 0}
-    if token == "Guardian":
-        return {"to_staff": 1, "to_students": 0, "to_guardians": 1, "to_community": 0}
-    if token == "Applicant":
-        return {"to_staff": 1, "to_students": 1, "to_guardians": 1, "to_community": 0}
-    return {"to_staff": 1, "to_students": 0, "to_guardians": 0, "to_community": 0}
+    tokens = set(get_policy_applies_to_tokens(applies_to))
+    flags = {"to_staff": 1, "to_students": 0, "to_guardians": 0, "to_community": 0}
+    if "Applicant" in tokens:
+        flags["to_students"] = 1
+        flags["to_guardians"] = 1
+    if "Student" in tokens:
+        flags["to_students"] = 1
+    if "Guardian" in tokens:
+        flags["to_guardians"] = 1
+    return flags
 
 
 def _policy_row(policy_version: str) -> dict:
@@ -425,10 +431,17 @@ def get_policy_inform_payload(
         or (row.get("institutional_policy") or "").strip()
         or (row.get("policy_version") or "").strip()
     )
+    institutional_policy = (row.get("institutional_policy") or "").strip()
+    signature_state = get_staff_policy_signature_state_for_user(
+        policy_version=(row.get("policy_version") or "").strip(),
+        institutional_policy=institutional_policy or None,
+        user=user,
+    )
+    history_rows = get_policy_version_history_rows(institutional_policy)
 
     return {
         "policy_version": (row.get("policy_version") or "").strip(),
-        "institutional_policy": (row.get("institutional_policy") or "").strip() or None,
+        "institutional_policy": institutional_policy or None,
         "policy_key": (row.get("policy_key") or "").strip() or None,
         "policy_title": (row.get("policy_title") or "").strip() or None,
         "policy_label": policy_label,
@@ -440,4 +453,8 @@ def get_policy_inform_payload(
         "change_stats": _parse_change_stats(row.get("change_stats")),
         "diff_html": row.get("diff_html") or "",
         "policy_text_html": row.get("policy_text") or "",
+        "history": history_rows,
+        "signature_required": bool(signature_state.get("signature_required")),
+        "acknowledgement_status": (signature_state.get("acknowledgement_status") or "").strip() or "informational",
+        "acknowledged_at": signature_state.get("acknowledged_at"),
     }

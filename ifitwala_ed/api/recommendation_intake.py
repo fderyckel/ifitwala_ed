@@ -14,9 +14,13 @@ from ifitwala_ed.admission import admissions_portal as admission_upload_api
 from ifitwala_ed.admission.admission_utils import (
     ensure_admissions_permission,
     get_applicant_scope_ancestors,
+    has_open_overall_application_review_access,
+    has_scoped_staff_access_to_student_applicant,
+    is_admissions_file_staff_user,
     is_applicant_document_type_in_scope,
     normalize_email_value,
 )
+from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
 
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
 RECOMMENDATION_TEMPLATE_DOCTYPE = "Recommendation Template"
@@ -270,6 +274,42 @@ def _ensure_template_scope_for_applicant(*, student_applicant: str, template_nam
         frappe.throw(_("Recommendation target document type must be repeatable for multiple letters."))
 
     return applicant_row, template_row
+
+
+def get_recommendation_template_rows_for_applicant(
+    *,
+    student_applicant: str,
+    include_confidential: bool = False,
+    fields: list[str] | tuple[str, ...] | None = None,
+) -> list[dict]:
+    if not _feature_ready():
+        return []
+
+    student_applicant = (student_applicant or "").strip()
+    if not student_applicant:
+        return []
+
+    _, org_scope, school_scope = _request_scope_ancestors(student_applicant)
+
+    required_fields = ["name", "organization", "school"]
+    if not include_confidential:
+        required_fields.append("applicant_can_view_status")
+    query_fields = list(dict.fromkeys(required_fields + list(fields or [])))
+
+    rows = frappe.get_all(
+        RECOMMENDATION_TEMPLATE_DOCTYPE,
+        filters={"is_active": 1},
+        fields=query_fields,
+    )
+
+    template_rows = []
+    for row in rows:
+        if not _template_in_scope(template_row=row, org_scope=org_scope, school_scope=school_scope):
+            continue
+        if not include_confidential and not cint(row.get("applicant_can_view_status")):
+            continue
+        template_rows.append(row)
+    return template_rows
 
 
 def _new_item_key(student_applicant: str) -> str:
@@ -527,6 +567,29 @@ def _summary_from_rows(rows: list[dict], *, required_total: int, received_total:
     }
 
 
+def _default_recommendation_status_payload(*, include_confidential: bool = False) -> dict:
+    payload = {
+        "ok": True,
+        "required_total": 0,
+        "received_total": 0,
+        "requested_total": 0,
+        "missing": [],
+        "rows": [],
+        "state": "optional",
+        "counts": {status: 0 for status in sorted(REQUEST_STATUS_ALL)},
+    }
+    if include_confidential:
+        payload.update(
+            {
+                "review_rows": [],
+                "pending_review_count": 0,
+                "first_pending_review": None,
+                "latest_submitted_on": None,
+            }
+        )
+    return payload
+
+
 def _applicant_for_user(user: str) -> dict:
     rows = frappe.get_all(
         "Student Applicant",
@@ -539,6 +602,506 @@ def _applicant_for_user(user: str) -> dict:
     if len(rows) > 1:
         frappe.throw(_("Admissions access is linked to multiple Applicants."), frappe.PermissionError)
     return rows[0]
+
+
+def _require_staff_recommendation_access(*, student_applicant: str | None = None, user: str | None = None) -> str:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        frappe.throw(_("You need to sign in to perform this action."), frappe.PermissionError)
+
+    applicant_name = (student_applicant or "").strip()
+    if is_admissions_file_staff_user(resolved_user):
+        if applicant_name and not has_scoped_staff_access_to_student_applicant(
+            user=resolved_user,
+            student_applicant=applicant_name,
+        ):
+            frappe.throw(_("You do not have permission to access this Applicant."), frappe.PermissionError)
+        return resolved_user
+
+    if applicant_name and has_open_overall_application_review_access(
+        user=resolved_user,
+        student_applicant=applicant_name,
+    ):
+        return resolved_user
+
+    frappe.throw(_("You do not have permission to perform this action."), frappe.PermissionError)
+    return resolved_user
+
+
+def _sort_datetime_value(value) -> str:
+    if not value:
+        return ""
+    try:
+        return get_datetime(value).isoformat()
+    except Exception:
+        return str(value or "")
+
+
+def _render_recommendation_answer_value(field_type: str, value) -> str:
+    normalized_type = (field_type or "Data").strip()
+    if normalized_type == "Check":
+        return _("Yes") if cint(value) else _("No")
+    if value is None:
+        return ""
+    text = str(value).strip()
+    return text
+
+
+def _build_recommendation_answer_rows(snapshot: dict, answers_json: str | None) -> list[dict]:
+    parsed_answers = {}
+    if answers_json:
+        try:
+            candidate = frappe.parse_json(answers_json)
+            if isinstance(candidate, dict):
+                parsed_answers = candidate
+        except Exception:
+            parsed_answers = {}
+
+    rows: list[dict] = []
+    seen_keys: set[str] = set()
+
+    for field in snapshot.get("fields") or []:
+        field_key = frappe.scrub((field.get("field_key") or "").strip())[:80]
+        if not field_key:
+            continue
+
+        answer_entry = parsed_answers.get(field_key)
+        if isinstance(answer_entry, dict):
+            value = answer_entry.get("value")
+            label = (answer_entry.get("label") or field.get("label") or field_key).strip()
+            field_type = (answer_entry.get("field_type") or field.get("field_type") or "Data").strip()
+        else:
+            value = answer_entry
+            label = (field.get("label") or field_key).strip()
+            field_type = (field.get("field_type") or "Data").strip()
+
+        display_value = _render_recommendation_answer_value(field_type, value)
+        rows.append(
+            {
+                "field_key": field_key,
+                "label": label or field_key,
+                "field_type": field_type,
+                "value": value,
+                "display_value": display_value,
+                "has_value": True if field_type == "Check" else bool(display_value),
+            }
+        )
+        seen_keys.add(field_key)
+
+    for field_key, answer_entry in parsed_answers.items():
+        normalized_key = frappe.scrub((field_key or "").strip())[:80]
+        if not normalized_key or normalized_key in seen_keys:
+            continue
+
+        if isinstance(answer_entry, dict):
+            value = answer_entry.get("value")
+            label = (answer_entry.get("label") or normalized_key).strip()
+            field_type = (answer_entry.get("field_type") or "Data").strip()
+        else:
+            value = answer_entry
+            label = normalized_key
+            field_type = "Data"
+
+        display_value = _render_recommendation_answer_value(field_type, value)
+        rows.append(
+            {
+                "field_key": normalized_key,
+                "label": label or normalized_key,
+                "field_type": field_type,
+                "value": value,
+                "display_value": display_value,
+                "has_value": True if field_type == "Check" else bool(display_value),
+            }
+        )
+
+    return rows
+
+
+def get_recommendation_status_batch_for_applicants(
+    *,
+    applicant_rows: list[dict],
+    include_confidential: bool = False,
+) -> dict[str, dict]:
+    normalized_applicants: list[dict] = []
+    applicant_names: list[str] = []
+    seen_names: set[str] = set()
+    for row in applicant_rows or []:
+        applicant_name = (row.get("name") or "").strip()
+        if not applicant_name or applicant_name in seen_names:
+            continue
+        seen_names.add(applicant_name)
+        normalized_row = {
+            "name": applicant_name,
+            "organization": (row.get("organization") or "").strip(),
+            "school": (row.get("school") or "").strip(),
+        }
+        normalized_applicants.append(normalized_row)
+        applicant_names.append(applicant_name)
+
+    if not applicant_names:
+        return {}
+
+    if not _feature_ready():
+        return {
+            applicant_name: _default_recommendation_status_payload(include_confidential=include_confidential)
+            for applicant_name in applicant_names
+        }
+
+    template_query_fields = ["name", "template_name", "minimum_required", "organization", "school"]
+    if not include_confidential:
+        template_query_fields.append("applicant_can_view_status")
+
+    active_template_rows = frappe.get_all(
+        RECOMMENDATION_TEMPLATE_DOCTYPE,
+        filters={"is_active": 1},
+        fields=template_query_fields,
+        limit_page_length=10000,
+    )
+
+    scope_cache: dict[tuple[str, str], tuple[set[str], set[str]]] = {}
+    templates_by_applicant: dict[str, list[dict]] = {}
+    active_template_names: set[str] = set()
+
+    for applicant_row in normalized_applicants:
+        organization = applicant_row.get("organization")
+        school = applicant_row.get("school")
+        applicant_name = applicant_row.get("name")
+
+        scope_key = (organization or "", school or "")
+        if scope_key not in scope_cache:
+            org_scope, school_scope = get_applicant_scope_ancestors(
+                organization=organization,
+                school=school,
+            )
+            scope_cache[scope_key] = (set(org_scope), set(school_scope))
+
+        org_scope, school_scope = scope_cache[scope_key]
+        in_scope_templates: list[dict] = []
+        for template_row in active_template_rows:
+            if not _template_in_scope(template_row=template_row, org_scope=org_scope, school_scope=school_scope):
+                continue
+            if not include_confidential and not cint(template_row.get("applicant_can_view_status")):
+                continue
+            in_scope_templates.append(template_row)
+            template_name = (template_row.get("name") or "").strip()
+            if template_name:
+                active_template_names.add(template_name)
+
+        templates_by_applicant[applicant_name] = in_scope_templates
+
+    summary_request_rows = []
+    if active_template_names:
+        summary_request_rows = frappe.get_all(
+            RECOMMENDATION_REQUEST_DOCTYPE,
+            filters={
+                "student_applicant": ["in", applicant_names],
+                "recommendation_template": ["in", sorted(active_template_names)],
+            },
+            fields=["student_applicant", "recommendation_template", "request_status"],
+            limit_page_length=10000,
+        )
+
+    grouped_statuses_by_applicant: dict[str, dict[str, list[str]]] = {
+        applicant_name: {} for applicant_name in applicant_names
+    }
+    status_counts_by_applicant: dict[str, dict[str, int]] = {
+        applicant_name: {status: 0 for status in sorted(REQUEST_STATUS_ALL)} for applicant_name in applicant_names
+    }
+
+    for request_row in summary_request_rows:
+        applicant_name = (request_row.get("student_applicant") or "").strip()
+        template_name = (request_row.get("recommendation_template") or "").strip()
+        if not applicant_name or not template_name:
+            continue
+        status = (request_row.get("request_status") or "").strip()
+        grouped_statuses_by_applicant.setdefault(applicant_name, {}).setdefault(template_name, []).append(status)
+        if status in status_counts_by_applicant.get(applicant_name, {}):
+            status_counts_by_applicant[applicant_name][status] += 1
+
+    review_rows_by_applicant: dict[str, list[dict]] = {applicant_name: [] for applicant_name in applicant_names}
+    pending_review_count_by_applicant: dict[str, int] = {applicant_name: 0 for applicant_name in applicant_names}
+    first_pending_review_by_applicant: dict[str, dict | None] = {
+        applicant_name: None for applicant_name in applicant_names
+    }
+    latest_submitted_on_by_applicant: dict[str, object | None] = {
+        applicant_name: None for applicant_name in applicant_names
+    }
+
+    if include_confidential and frappe.db.table_exists(RECOMMENDATION_REQUEST_DOCTYPE):
+        review_request_rows = frappe.get_all(
+            RECOMMENDATION_REQUEST_DOCTYPE,
+            filters={"student_applicant": ["in", applicant_names]},
+            fields=[
+                "name",
+                "student_applicant",
+                "recommendation_template",
+                "target_document_type",
+                "applicant_document",
+                "applicant_document_item",
+                "item_key",
+                "item_label",
+                "request_status",
+                "recommender_name",
+                "recommender_email",
+                "recommender_relationship",
+                "expires_on",
+                "sent_on",
+                "opened_on",
+                "consumed_on",
+                "resend_count",
+                "submission",
+            ],
+            order_by="consumed_on desc, modified desc",
+            limit_page_length=10000,
+        )
+
+        review_template_names = sorted(
+            {
+                (row.get("recommendation_template") or "").strip()
+                for row in review_request_rows
+                if (row.get("recommendation_template") or "").strip()
+            }
+        )
+        review_template_map = {}
+        if review_template_names:
+            review_template_map = {
+                (row.get("name") or "").strip(): row
+                for row in frappe.get_all(
+                    RECOMMENDATION_TEMPLATE_DOCTYPE,
+                    filters={"name": ["in", review_template_names]},
+                    fields=["name", "template_name"],
+                    limit_page_length=len(review_template_names),
+                )
+                if (row.get("name") or "").strip()
+            }
+
+        submission_by_request: dict[str, dict] = {}
+        submission_names = [
+            (row.get("submission") or "").strip()
+            for row in review_request_rows
+            if (row.get("submission") or "").strip()
+        ]
+        if submission_names and frappe.db.table_exists(RECOMMENDATION_SUBMISSION_DOCTYPE):
+            submission_rows = frappe.get_all(
+                RECOMMENDATION_SUBMISSION_DOCTYPE,
+                filters={"name": ["in", sorted(set(submission_names))]},
+                fields=[
+                    "name",
+                    "recommendation_request",
+                    "applicant_document",
+                    "applicant_document_item",
+                    "submitted_on",
+                    "has_file",
+                    "attestation_confirmed",
+                ],
+                limit_page_length=len(set(submission_names)),
+            )
+            submission_by_request = {
+                (row.get("recommendation_request") or "").strip(): row
+                for row in submission_rows
+                if (row.get("recommendation_request") or "").strip()
+            }
+
+        applicant_document_item_names = sorted(
+            {
+                (submission_by_request.get((row.get("name") or "").strip()) or {}).get("applicant_document_item")
+                or row.get("applicant_document_item")
+                for row in review_request_rows
+                if (
+                    (submission_by_request.get((row.get("name") or "").strip()) or {}).get("applicant_document_item")
+                    or row.get("applicant_document_item")
+                )
+            }
+        )
+        item_map = {}
+        if applicant_document_item_names:
+            item_rows = frappe.get_all(
+                "Applicant Document Item",
+                filters={"name": ["in", applicant_document_item_names]},
+                fields=["name", "review_status", "reviewed_by", "reviewed_on"],
+                limit_page_length=len(applicant_document_item_names),
+            )
+            item_map = {(row.get("name") or "").strip(): row for row in item_rows if (row.get("name") or "").strip()}
+
+        latest_file_by_item = {}
+        if applicant_document_item_names:
+            file_rows = frappe.get_all(
+                "File",
+                filters={
+                    "attached_to_doctype": "Applicant Document Item",
+                    "attached_to_name": ["in", applicant_document_item_names],
+                },
+                fields=["name", "attached_to_name", "file_name", "file_url", "creation"],
+                order_by="creation desc",
+                limit_page_length=10000,
+            )
+            for file_row in file_rows:
+                attached_to_name = (file_row.get("attached_to_name") or "").strip()
+                if not attached_to_name or attached_to_name in latest_file_by_item:
+                    continue
+                latest_file_by_item[attached_to_name] = file_row
+
+        for request_row in review_request_rows:
+            applicant_name = (request_row.get("student_applicant") or "").strip()
+            request_name = (request_row.get("name") or "").strip()
+            if not applicant_name or not request_name:
+                continue
+
+            submission_row = submission_by_request.get(request_name) or {}
+            applicant_document_item = (submission_row.get("applicant_document_item") or "").strip() or (
+                request_row.get("applicant_document_item") or ""
+            ).strip()
+            item_row = item_map.get(applicant_document_item) or {}
+            review_status = (item_row.get("review_status") or "").strip() or "Pending"
+            latest_file = latest_file_by_item.get(applicant_document_item) or {}
+            submitted_on = submission_row.get("submitted_on") or request_row.get("consumed_on")
+            template_name = (request_row.get("recommendation_template") or "").strip()
+            template_meta = review_template_map.get(template_name) or {}
+            needs_review = (
+                request_row.get("request_status") or ""
+            ).strip() == "Submitted" and review_status == "Pending"
+
+            review_row = {
+                "recommendation_request": request_name,
+                "recommendation_submission": (submission_row.get("name") or "").strip() or None,
+                "student_applicant": applicant_name,
+                "recommendation_template": template_name or None,
+                "template_name": (template_meta.get("template_name") or template_name or "").strip() or None,
+                "target_document_type": (request_row.get("target_document_type") or "").strip() or None,
+                "applicant_document": (
+                    (submission_row.get("applicant_document") or "").strip()
+                    or (request_row.get("applicant_document") or "").strip()
+                    or None
+                ),
+                "applicant_document_item": applicant_document_item or None,
+                "item_key": (request_row.get("item_key") or "").strip() or None,
+                "item_label": (request_row.get("item_label") or "").strip() or None,
+                "request_status": (request_row.get("request_status") or "").strip() or None,
+                "review_status": review_status,
+                "reviewed_by": (item_row.get("reviewed_by") or "").strip() or None,
+                "reviewed_on": item_row.get("reviewed_on"),
+                "recommender_name": (request_row.get("recommender_name") or "").strip() or None,
+                "recommender_email": (request_row.get("recommender_email") or "").strip() or None,
+                "recommender_relationship": (request_row.get("recommender_relationship") or "").strip() or None,
+                "sent_on": request_row.get("sent_on"),
+                "opened_on": request_row.get("opened_on"),
+                "submitted_on": submitted_on,
+                "expires_on": request_row.get("expires_on"),
+                "resend_count": cint(request_row.get("resend_count") or 0),
+                "has_file": bool(cint(submission_row.get("has_file"))),
+                "attestation_confirmed": bool(cint(submission_row.get("attestation_confirmed"))),
+                "file_name": (latest_file.get("file_name") or "").strip() or None,
+                "file_url": (
+                    resolve_admissions_file_open_url(
+                        file_name=latest_file.get("name"),
+                        file_url=latest_file.get("file_url"),
+                        context_doctype="Student Applicant",
+                        context_name=applicant_name,
+                    )
+                    if latest_file
+                    else None
+                ),
+                "needs_review": bool(needs_review),
+                "can_review": bool(
+                    (request_row.get("request_status") or "").strip() == "Submitted" and applicant_document_item
+                ),
+            }
+            review_rows_by_applicant.setdefault(applicant_name, []).append(review_row)
+
+            if submitted_on and not latest_submitted_on_by_applicant.get(applicant_name):
+                latest_submitted_on_by_applicant[applicant_name] = submitted_on
+
+            if needs_review:
+                pending_review_count_by_applicant[applicant_name] = (
+                    pending_review_count_by_applicant.get(applicant_name, 0) + 1
+                )
+                if not first_pending_review_by_applicant.get(applicant_name):
+                    first_pending_review_by_applicant[applicant_name] = {
+                        "recommendation_request": review_row.get("recommendation_request"),
+                        "recommendation_submission": review_row.get("recommendation_submission"),
+                        "applicant_document_item": review_row.get("applicant_document_item"),
+                        "recommender_name": review_row.get("recommender_name"),
+                        "template_name": review_row.get("template_name"),
+                        "submitted_on": review_row.get("submitted_on"),
+                    }
+
+        for applicant_name, rows in review_rows_by_applicant.items():
+            rows.sort(
+                key=lambda row: (
+                    _sort_datetime_value(row.get("submitted_on")),
+                    _sort_datetime_value(row.get("sent_on")),
+                    row.get("recommendation_request") or "",
+                ),
+                reverse=True,
+            )
+            latest_submitted = next((row.get("submitted_on") for row in rows if row.get("submitted_on")), None)
+            latest_submitted_on_by_applicant[applicant_name] = latest_submitted
+
+    status_by_applicant: dict[str, dict] = {}
+    for applicant_name in applicant_names:
+        template_rows = templates_by_applicant.get(applicant_name) or []
+        required_total = 0
+        received_total = 0
+        requested_total = 0
+        missing: list[str] = []
+        aggregate_rows: list[dict] = []
+
+        for template_row in template_rows:
+            template_name = (template_row.get("name") or "").strip()
+            template_label = (template_row.get("template_name") or template_name or "").strip()
+            minimum_required = max(0, cint(template_row.get("minimum_required") or 0))
+            template_statuses = grouped_statuses_by_applicant.get(applicant_name, {}).get(template_name, [])
+            submitted_count = len([status for status in template_statuses if status == "Submitted"])
+            requested_count = len([status for status in template_statuses if status in {"Sent", "Opened", "Submitted"}])
+
+            required_total += minimum_required
+            received_total += submitted_count
+            requested_total += requested_count
+            if minimum_required > submitted_count:
+                missing.append(template_label or template_name)
+
+            aggregate_rows.append(
+                {
+                    "recommendation_template": template_name or None,
+                    "template_name": template_label or None,
+                    "minimum_required": minimum_required,
+                    "submitted_count": submitted_count,
+                    "requested_count": requested_count,
+                }
+            )
+
+        summary = _summary_from_rows(
+            [
+                {"request_status": status}
+                for template_statuses in grouped_statuses_by_applicant.get(applicant_name, {}).values()
+                for status in template_statuses
+            ],
+            required_total=required_total,
+            received_total=received_total,
+        )
+        payload = {
+            "ok": not missing,
+            "required_total": required_total,
+            "received_total": received_total,
+            "requested_total": requested_total,
+            "missing": missing,
+            "rows": aggregate_rows,
+            "state": summary.get("state"),
+            "counts": status_counts_by_applicant.get(applicant_name)
+            or {status: 0 for status in sorted(REQUEST_STATUS_ALL)},
+        }
+        if include_confidential:
+            payload.update(
+                {
+                    "review_rows": review_rows_by_applicant.get(applicant_name) or [],
+                    "pending_review_count": pending_review_count_by_applicant.get(applicant_name, 0),
+                    "first_pending_review": first_pending_review_by_applicant.get(applicant_name),
+                    "latest_submitted_on": latest_submitted_on_by_applicant.get(applicant_name),
+                }
+            )
+        status_by_applicant[applicant_name] = payload
+
+    return status_by_applicant
 
 
 @frappe.whitelist()
@@ -852,7 +1415,7 @@ def list_recommendation_requests(*, student_applicant: str | None = None):
     _require_feature_ready()
     user = frappe.session.user
     roles = set(frappe.get_roles(user))
-    applicant_mode = ADMISSIONS_APPLICANT_ROLE in roles and not (roles & {"Admission Manager", "Admission Officer"})
+    applicant_mode = ADMISSIONS_APPLICANT_ROLE in roles and not is_admissions_file_staff_user(user)
 
     target_student_applicant = (student_applicant or "").strip()
     if applicant_mode:
@@ -861,7 +1424,10 @@ def list_recommendation_requests(*, student_applicant: str | None = None):
             frappe.throw(_("You do not have permission to access this Applicant."), frappe.PermissionError)
         target_student_applicant = applicant_row.get("name")
     else:
-        ensure_admissions_permission()
+        if target_student_applicant:
+            _require_staff_recommendation_access(student_applicant=target_student_applicant, user=user)
+        else:
+            ensure_admissions_permission()
 
     if target_student_applicant:
         _refresh_expired_requests(student_applicant=target_student_applicant)
@@ -942,10 +1508,17 @@ def list_recommendation_requests(*, student_applicant: str | None = None):
     required_total = sum(required_by_template.values())
 
     summary = _summary_from_rows(payload, required_total=required_total, received_total=received_total)
-    return {
+    response = {
         "requests": payload,
         "summary": summary,
     }
+    if not applicant_mode and target_student_applicant:
+        confidential_summary = get_recommendation_status_for_applicant(
+            student_applicant=target_student_applicant,
+            include_confidential=True,
+        )
+        response["review_rows"] = confidential_summary.get("review_rows") or []
+    return response
 
 
 @frappe.whitelist()
@@ -958,128 +1531,207 @@ def get_recommendation_status_for_applicant(
     student_applicant: str,
     include_confidential: bool = False,
 ) -> dict:
-    if not _feature_ready():
-        return {
-            "ok": True,
-            "required_total": 0,
-            "received_total": 0,
-            "requested_total": 0,
-            "missing": [],
-            "rows": [],
-            "state": "optional",
-            "counts": {status: 0 for status in sorted(REQUEST_STATUS_ALL)},
-        }
-
     student_applicant = (student_applicant or "").strip()
     if not student_applicant:
-        return {
-            "ok": True,
-            "required_total": 0,
-            "received_total": 0,
-            "requested_total": 0,
-            "missing": [],
-            "rows": [],
-            "state": "optional",
-            "counts": {status: 0 for status in sorted(REQUEST_STATUS_ALL)},
-        }
+        return _default_recommendation_status_payload(include_confidential=include_confidential)
+
+    applicant_row = frappe.db.get_value(
+        "Student Applicant",
+        student_applicant,
+        ["name", "organization", "school"],
+        as_dict=True,
+    )
+    if not applicant_row:
+        return _default_recommendation_status_payload(include_confidential=include_confidential)
 
     _refresh_expired_requests(student_applicant=student_applicant)
-    applicant_row, org_scope, school_scope = _request_scope_ancestors(student_applicant)
-    templates = frappe.get_all(
-        RECOMMENDATION_TEMPLATE_DOCTYPE,
-        filters={"is_active": 1},
-        fields=[
-            "name",
-            "template_name",
-            "minimum_required",
-            "applicant_can_view_status",
-            "organization",
-            "school",
-        ],
+    batch_payload = get_recommendation_status_batch_for_applicants(
+        applicant_rows=[applicant_row],
+        include_confidential=include_confidential,
     )
-    template_rows = []
-    for row in templates:
-        if not _template_in_scope(template_row=row, org_scope=org_scope, school_scope=school_scope):
-            continue
-        if not include_confidential and not cint(row.get("applicant_can_view_status")):
-            continue
-        template_rows.append(row)
+    return batch_payload.get(student_applicant) or _default_recommendation_status_payload(
+        include_confidential=include_confidential
+    )
 
-    if not template_rows:
-        return {
-            "ok": True,
-            "required_total": 0,
-            "received_total": 0,
-            "requested_total": 0,
-            "missing": [],
-            "rows": [],
-            "state": "optional",
-            "counts": {status: 0 for status in sorted(REQUEST_STATUS_ALL)},
-        }
 
-    template_names = [row.get("name") for row in template_rows if row.get("name")]
-    request_rows = frappe.get_all(
+@frappe.whitelist()
+def get_recommendation_review_payload(
+    *,
+    student_applicant: str | None = None,
+    recommendation_request: str | None = None,
+    recommendation_submission: str | None = None,
+    applicant_document_item: str | None = None,
+):
+    _require_feature_ready()
+
+    applicant_name = (student_applicant or "").strip()
+    request_name = (recommendation_request or "").strip()
+    submission_name = (recommendation_submission or "").strip()
+    item_name = (applicant_document_item or "").strip()
+
+    anchors_used = sum(bool(value) for value in (request_name, submission_name, item_name))
+    if anchors_used != 1:
+        frappe.throw(_("Provide exactly one recommendation reference."), frappe.ValidationError)
+
+    request_filters: dict[str, object]
+    if request_name:
+        request_filters = {"name": request_name}
+    elif submission_name:
+        request_filters = {"submission": submission_name}
+    else:
+        request_filters = {"applicant_document_item": item_name}
+
+    request_row = frappe.db.get_value(
         RECOMMENDATION_REQUEST_DOCTYPE,
-        filters={
-            "student_applicant": applicant_row.get("name"),
-            "recommendation_template": ["in", template_names],
-        },
-        fields=["recommendation_template", "request_status"],
+        request_filters,
+        [
+            "name",
+            "student_applicant",
+            "recommendation_template",
+            "target_document_type",
+            "applicant_document",
+            "applicant_document_item",
+            "item_key",
+            "item_label",
+            "request_status",
+            "recommender_name",
+            "recommender_email",
+            "recommender_relationship",
+            "expires_on",
+            "sent_on",
+            "opened_on",
+            "consumed_on",
+            "submission",
+            "template_snapshot_json",
+        ],
+        as_dict=True,
     )
-    grouped = {}
-    counts = {status: 0 for status in sorted(REQUEST_STATUS_ALL)}
-    for request_row in request_rows:
-        template_name = request_row.get("recommendation_template")
-        if not template_name:
-            continue
-        status = (request_row.get("request_status") or "").strip()
-        grouped.setdefault(template_name, []).append(status)
-        if status in counts:
-            counts[status] += 1
+    if not request_row:
+        frappe.throw(_("Recommendation review reference was not found."), frappe.DoesNotExistError)
 
-    rows = []
-    missing = []
-    required_total = 0
-    received_total = 0
-    requested_total = 0
-    for template in template_rows:
-        template_name = template.get("name")
-        statuses = grouped.get(template_name, [])
-        minimum_required = max(0, cint(template.get("minimum_required") or 0))
-        submitted_count = len([status for status in statuses if status == "Submitted"])
-        active_count = len([status for status in statuses if status in {"Sent", "Opened", "Submitted"}])
+    resolved_applicant = (request_row.get("student_applicant") or "").strip()
+    if applicant_name and applicant_name != resolved_applicant:
+        frappe.throw(_("Recommendation does not belong to this Applicant."), frappe.PermissionError)
 
-        required_total += minimum_required
-        received_total += submitted_count
-        requested_total += active_count
+    _require_staff_recommendation_access(student_applicant=resolved_applicant)
 
-        if minimum_required > submitted_count:
-            missing.append(template.get("template_name") or template_name)
+    request_status = (request_row.get("request_status") or "").strip()
+    if request_status != "Submitted" or not (request_row.get("submission") or "").strip():
+        frappe.throw(_("This recommendation has not been submitted yet."), frappe.ValidationError)
 
-        rows.append(
-            {
-                "recommendation_template": template_name,
-                "template_name": template.get("template_name") or template_name,
-                "minimum_required": minimum_required,
-                "submitted_count": submitted_count,
-                "requested_count": active_count,
-            }
+    submission_row = frappe.db.get_value(
+        RECOMMENDATION_SUBMISSION_DOCTYPE,
+        (request_row.get("submission") or "").strip(),
+        [
+            "name",
+            "recommendation_request",
+            "student_applicant",
+            "recommendation_template",
+            "applicant_document",
+            "applicant_document_item",
+            "recommender_name",
+            "recommender_email",
+            "answers_json",
+            "attestation_confirmed",
+            "has_file",
+            "submitted_on",
+        ],
+        as_dict=True,
+    )
+    if not submission_row:
+        frappe.throw(_("Recommendation submission payload was not found."), frappe.DoesNotExistError)
+
+    applicant_document_item_name = (submission_row.get("applicant_document_item") or "").strip() or (
+        request_row.get("applicant_document_item") or ""
+    ).strip()
+    item_row = {}
+    if applicant_document_item_name:
+        item_row = (
+            frappe.db.get_value(
+                "Applicant Document Item",
+                applicant_document_item_name,
+                ["name", "review_status", "reviewed_by", "reviewed_on"],
+                as_dict=True,
+            )
+            or {}
         )
 
-    summary = _summary_from_rows(
-        [{"request_status": status} for status in [status for group in grouped.values() for status in group]],
-        required_total=required_total,
-        received_total=received_total,
+    latest_file = {}
+    if applicant_document_item_name:
+        latest_file_rows = frappe.get_all(
+            "File",
+            filters={
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": applicant_document_item_name,
+            },
+            fields=["name", "file_name", "file_url", "creation"],
+            order_by="creation desc",
+            limit_page_length=1,
+        )
+        latest_file = latest_file_rows[0] if latest_file_rows else {}
+
+    template_name = (request_row.get("recommendation_template") or "").strip()
+    template_meta = (
+        frappe.db.get_value(
+            RECOMMENDATION_TEMPLATE_DOCTYPE,
+            template_name,
+            ["name", "template_name"],
+            as_dict=True,
+        )
+        or {}
     )
+    snapshot = _parse_snapshot(request_row.get("template_snapshot_json"), template_name)
+
     return {
-        "ok": not missing,
-        "required_total": required_total,
-        "received_total": received_total,
-        "requested_total": requested_total,
-        "missing": missing,
-        "rows": rows,
-        "state": summary.get("state"),
-        "counts": counts,
+        "ok": True,
+        "recommendation": {
+            "student_applicant": resolved_applicant,
+            "recommendation_request": (request_row.get("name") or "").strip(),
+            "recommendation_submission": (submission_row.get("name") or "").strip(),
+            "recommendation_template": template_name or None,
+            "template_name": (template_meta.get("template_name") or template_name or "").strip() or None,
+            "target_document_type": (request_row.get("target_document_type") or "").strip() or None,
+            "applicant_document": (
+                (submission_row.get("applicant_document") or "").strip()
+                or (request_row.get("applicant_document") or "").strip()
+                or None
+            ),
+            "applicant_document_item": applicant_document_item_name or None,
+            "item_key": (request_row.get("item_key") or "").strip() or None,
+            "item_label": (request_row.get("item_label") or "").strip() or None,
+            "request_status": request_status,
+            "review_status": (item_row.get("review_status") or "").strip() or "Pending",
+            "reviewed_by": (item_row.get("reviewed_by") or "").strip() or None,
+            "reviewed_on": item_row.get("reviewed_on"),
+            "recommender_name": (request_row.get("recommender_name") or "").strip() or None,
+            "recommender_email": (request_row.get("recommender_email") or "").strip() or None,
+            "recommender_relationship": (request_row.get("recommender_relationship") or "").strip() or None,
+            "sent_on": request_row.get("sent_on"),
+            "opened_on": request_row.get("opened_on"),
+            "submitted_on": submission_row.get("submitted_on") or request_row.get("consumed_on"),
+            "expires_on": request_row.get("expires_on"),
+            "has_file": bool(cint(submission_row.get("has_file"))),
+            "attestation_confirmed": bool(cint(submission_row.get("attestation_confirmed"))),
+            "file_name": (latest_file.get("file_name") or "").strip() or None,
+            "file_url": (
+                resolve_admissions_file_open_url(
+                    file_name=latest_file.get("name"),
+                    file_url=latest_file.get("file_url"),
+                    context_doctype="Student Applicant",
+                    context_name=resolved_applicant,
+                )
+                if latest_file
+                else None
+            ),
+            "answers": _build_recommendation_answer_rows(snapshot, submission_row.get("answers_json")),
+            "can_review": bool(
+                applicant_document_item_name
+                and (item_row.get("review_status") or "").strip() in {"", "Pending", "Needs Follow-Up", "Rejected"}
+            ),
+            "needs_review": bool(
+                applicant_document_item_name and (item_row.get("review_status") or "").strip() in {"", "Pending"}
+            ),
+        },
     }
 
 

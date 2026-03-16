@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "GOV-POL-.####",
  "creation": "2026-02-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -10,6 +10,7 @@
   "policy_title",
   "policy_category",
   "applies_to",
+  "admissions_acknowledgement_mode",
   "organization",
   "school",
   "description",
@@ -29,7 +30,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Policy Title",
-   "reqd": 1
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fieldname": "policy_category",
@@ -42,12 +44,20 @@
   },
   {
    "fieldname": "applies_to",
-   "fieldtype": "Select",
+   "fieldtype": "MultiSelect",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Applies To",
    "options": "Applicant\nStudent\nGuardian\nStaff",
    "reqd": 1
+  },
+  {
+   "default": "Child Acknowledgement",
+   "description": "Admissions-only policy signature scope. Ignored for non-Applicant policies.",
+   "fieldname": "admissions_acknowledgement_mode",
+   "fieldtype": "Select",
+   "label": "Admissions Acknowledgement Mode",
+   "options": "Child Acknowledgement\nFamily Acknowledgement\nChild Optional Consent"
   },
   {
    "fieldname": "organization",
@@ -80,11 +90,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-28 23:13:42.507783",
+ "modified": "2026-03-15 11:29:04.000000",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Institutional Policy",
- "naming_rule": "Random",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

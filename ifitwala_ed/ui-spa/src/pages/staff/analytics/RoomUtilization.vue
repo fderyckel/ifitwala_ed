@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/analytics/RoomUtilization.vue -->
 <template>
-	<div ref="snapshotRoot" class="analytics-shell">
+	<div class="analytics-shell">
 		<header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div>
 				<h1 class="type-h2 text-canopy">Room Utilization</h1>
@@ -16,14 +16,6 @@
 				>
 					Refresh Data
 				</button>
-				<AnalyticsSnapshotActions
-					:exporting-png="snapshotExport.exportingPng"
-					:exporting-pdf="snapshotExport.exportingPdf"
-					:message="snapshotExport.actionMessage"
-					:disabled="!canViewAnalytics"
-					@export-png="snapshotExport.exportPng"
-					@export-pdf="snapshotExport.exportPdf"
-				/>
 			</div>
 		</header>
 
@@ -416,10 +408,8 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { createResource } from 'frappe-ui';
 
-import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
 import StatsTile from '@/components/analytics/StatsTile.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
-import { useAnalyticsSnapshotExport } from '@/composables/useAnalyticsSnapshotExport';
 
 type SchoolOption = { name: string; label: string };
 
@@ -451,8 +441,6 @@ type CapacityRoom = {
 };
 
 const today = new Date().toISOString().slice(0, 10);
-const snapshotRoot = ref<HTMLElement | null>(null);
-
 const selectedSchool = ref('');
 
 const availabilityFilters = ref({
@@ -472,28 +460,6 @@ const timeUtilFilters = ref({
 const capacityFilters = ref({
 	from_date: today,
 	to_date: today,
-});
-
-const exportFilters = computed(() => ({
-	School: selectedSchool.value || 'All',
-	'Finder Date': availabilityFilters.value.date || 'Today',
-	'Finder Start': availabilityFilters.value.start_time || 'None',
-	'Finder End': availabilityFilters.value.end_time || 'None',
-	'Minimum Capacity': availabilityFilters.value.capacity_needed || 'None',
-	'Time Util From': timeUtilFilters.value.from_date || 'None',
-	'Time Util To': timeUtilFilters.value.to_date || 'None',
-	'Time Window': `${timeUtilFilters.value.day_start_time || '00:00'} - ${
-		timeUtilFilters.value.day_end_time || '23:59'
-	}`,
-	'Capacity From': capacityFilters.value.from_date || 'None',
-	'Capacity To': capacityFilters.value.to_date || 'None',
-}));
-
-const snapshotExport = useAnalyticsSnapshotExport({
-	dashboardSlug: 'room-utilization',
-	dashboardTitle: 'Room Utilization',
-	getTarget: () => snapshotRoot.value,
-	getFilters: () => exportFilters.value,
 });
 
 const filterMetaResource = createResource({

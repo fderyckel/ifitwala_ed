@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "format:Guardian-{YYYY}-{####}",
+ "autoname": "GUARD-.YY.-.####",
  "creation": "2024-12-11 15:57:16.365779",
  "description": "Doctype to collect information about student's legal guardians",
  "doctype": "DocType",
@@ -189,7 +189,7 @@
  "image_field": "guardian_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-19 15:51:50.195578",
+ "modified": "2026-03-15 14:48:06.217463",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Guardian",
@@ -302,5 +302,6 @@
  "search_fields": "guardian_first_name, guardian_last_name, guardian_email, guardian_mobile_phone",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "guardian_full_name"
 }

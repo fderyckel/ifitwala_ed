@@ -3,68 +3,90 @@ title: "Applicant Review Assignment: Materialized Review Work Item"
 slug: applicant-review-assignment
 category: Admission
 doc_order: 9
-version: "1.0.0"
-last_change_date: "2026-02-23"
-summary: "System-generated admissions review assignments powering Focus actions and reviewer audit summary."
+version: "1.2.1"
+last_change_date: "2026-03-09"
+summary: "System-generated admissions review work items for evidence submissions, health, and overall application decisions."
 seo_title: "Applicant Review Assignment: Materialized Review Work Item"
-seo_description: "System-generated admissions review assignments powering Focus actions and reviewer audit summary."
+seo_description: "System-generated admissions review work items for evidence submissions, health, and overall application decisions."
 ---
 
-## Applicant Review Assignment: Materialized Review Work Item
+## Contract
 
-`Applicant Review Assignment` is system-created and drives reviewer actions.
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/applicant_review_assignment/applicant_review_assignment.py`, `ifitwala_ed/admission/applicant_review_workflow.py`
+Test refs: `ifitwala_ed/admission/doctype/applicant_review_assignment/test_applicant_review_assignment.py`, `ifitwala_ed/api/test_focus_applicant_review.py`
 
-This doctype is not the primary user surface.
+`Applicant Review Assignment` is a system-created work item.
+
+It is not the canonical business record for evidence or health. It is the workflow wrapper that tells a reviewer what needs a decision.
 
 ## Targets
 
-Each assignment references one target:
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/applicant_review_assignment/applicant_review_assignment.json`, `ifitwala_ed/admission/applicant_review_workflow.py`
+Test refs: `ifitwala_ed/api/test_focus_applicant_review.py`
 
-- `Applicant Document`
+Each assignment targets exactly one of:
+
+- `Applicant Document Item`
 - `Applicant Health Profile`
-- `Student Applicant` (overall application review)
+- `Student Applicant`
 
-## Assignment Actor Contract
+`Applicant Document Item` is the only implemented evidence-review target. Parent `Applicant Document` rows are aggregate requirement cards and are not human review targets.
 
-Exactly one actor must be set:
+## Lifecycle and Decision Mapping
 
-- `assigned_to_user`, or
-- `assigned_to_role`
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/applicant_review_assignment/applicant_review_assignment.py`, `ifitwala_ed/admission/applicant_review_workflow.py`
+Test refs: `ifitwala_ed/admission/doctype/applicant_review_assignment/test_applicant_review_assignment.py`, `ifitwala_ed/api/test_focus_applicant_review.py`
 
-Open-assignment uniqueness is enforced per `(target_type, target_name, assignee)`.
+Assignment actor contract:
 
-## Lifecycle
+- exactly one of `assigned_to_user` or `assigned_to_role`
+- open-assignment uniqueness is enforced per target + assignee
 
-- `Open` → reviewer can act in Focus.
-- `Done` → decision captured, item disappears from Focus.
-- `Cancelled` → reserved for operational cleanup.
+Lifecycle:
 
-For repeat cycles (health re-declare, resubmitted application), completed assignments are reopened instead of duplicated.
+- `Open` -> actionable in Focus
+- `Done` -> decision captured
+- `Cancelled` -> reserved for cleanup
 
-## Decisions
+Decision mapping:
 
-Decision set depends on target type.
+- `Applicant Document Item`: `Approved`, `Needs Follow-Up`, `Rejected`
+- `Applicant Health Profile`: `Cleared`, `Needs Follow-Up`
+- `Student Applicant`: `Recommend Admit`, `Recommend Waitlist`, `Recommend Reject`, `Needs Follow-Up`
 
-- Applicant Document: `Approved`, `Needs Follow-Up`, `Rejected`
-- Applicant Health Profile: `Cleared`, `Needs Follow-Up`
-- Student Applicant: `Recommend Admit`, `Recommend Waitlist`, `Recommend Reject`, `Needs Follow-Up`
+Runtime effects:
 
-Document decision mapping to `Applicant Document.review_status`:
+- document item target decisions write `Applicant Document Item.review_status` and then resync the parent bucket from items
+- health target decisions write `Applicant Health Profile.review_status`
+- overall application decisions are advisory and do not mutate `Student Applicant.application_status`
 
-- `Approved` → `Approved`
-- `Rejected` → `Rejected`
-- `Needs Follow-Up` → `Pending`
+## User Surfaces
 
-## Focus Integration
+Status: Implemented
+Code refs: `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/api/focus_listing.py`, `ifitwala_ed/ui-spa/src/components/focus/ApplicantReviewAssignmentAction.vue`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`
+Test refs: `ifitwala_ed/api/test_focus_applicant_review.py`
 
-Open assignments generate Focus items with action type:
+Assignments are primarily consumed through Focus.
 
-- `applicant_review.assignment.decide`
+Current surface split:
 
-Submission endpoint:
+- Focus shows open assignments and supports claim / reassign / submit for non-admissions reviewers, and for Health / Overall Application review work
+- admissions roles do not use Focus for `Applicant Document Item` evidence review; they work from applicant context instead
+- admissions cockpit applicant workspace and Desk `Student Applicant.documents_summary` are the canonical admissions-staff evidence review surfaces
+- Desk `Student Applicant.review_assignments_summary` renders completed Health and Overall Application decisions
+- document reviewer truth is rendered in `Student Applicant.documents_summary`, not in the assignment summary table
 
-- `ifitwala_ed.api.focus.submit_applicant_review_assignment`
+## Technical Notes (IT)
 
-## Audit/Reporting
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/applicant_review_assignment/applicant_review_assignment.json`, `ifitwala_ed/admission/doctype/applicant_review_assignment/applicant_review_assignment.py`, `ifitwala_ed/admission/applicant_review_workflow.py`
+Test refs: `ifitwala_ed/admission/doctype/applicant_review_assignment/test_applicant_review_assignment.py`, `ifitwala_ed/api/test_focus_applicant_review.py`
 
-Completed assignments are aggregated into Desk `Student Applicant.review_assignments_summary`.
+- Schema supports the three runtime target types listed above.
+- Scope fields (`organization`, `school`, `program_offering`) are synced from the linked `Student Applicant`.
+- Rule materialization is handled in `applicant_review_workflow.py`, not in the doctype controller.
+- Document-item assignment decisions resync parent document state through `sync_applicant_document_review_from_items(...)`.
+- Admissions-workspace users are intentionally blocked from `Applicant Document Item` Focus actions so admissions evidence review stays in applicant context.

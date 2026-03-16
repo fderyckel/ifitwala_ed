@@ -1,0 +1,168 @@
+# Copyright (c) 2026, François de Ryckel and contributors
+# For license information, please see license.txt
+
+import re
+import sys
+from datetime import date, datetime
+from types import ModuleType, SimpleNamespace
+from unittest import TestCase
+from unittest.mock import patch
+
+try:
+    import frappe  # type: ignore
+except ModuleNotFoundError:
+    frappe = ModuleType("frappe")
+    frappe.session = SimpleNamespace(user="Administrator")
+    frappe.PermissionError = type("PermissionError", (Exception,), {})
+    frappe.ValidationError = type("ValidationError", (Exception,), {})
+    frappe.db = SimpleNamespace(sql=lambda *args, **kwargs: [], get_value=lambda *args, **kwargs: None)
+    frappe.get_roles = lambda user: ["Administrator"]
+    frappe.parse_json = lambda value: value
+    frappe.log_error = lambda *args, **kwargs: None
+    frappe.throw = lambda message, exc=None: (_ for _ in ()).throw((exc or Exception)(message))
+    frappe.whitelist = lambda *args, **kwargs: lambda fn: fn
+
+    frappe_utils = ModuleType("frappe.utils")
+
+    def _getdate(value):
+        if isinstance(value, date):
+            return value
+        return datetime.strptime(str(value), "%Y-%m-%d").date()
+
+    def _get_datetime(value):
+        if isinstance(value, datetime):
+            return value
+        raw = str(value).strip().replace("T", " ")
+        fmt = "%Y-%m-%d %H:%M:%S" if " " in raw else "%Y-%m-%d"
+        parsed = datetime.strptime(raw, fmt)
+        if fmt == "%Y-%m-%d":
+            return datetime.combine(parsed.date(), datetime.min.time())
+        return parsed
+
+    def _strip_html(value):
+        return re.sub(r"<[^>]+>", " ", str(value or "")).strip()
+
+    frappe_utils.getdate = _getdate
+    frappe_utils.get_datetime = _get_datetime
+    frappe_utils.strip_html = _strip_html
+
+    frappe_nestedset = ModuleType("frappe.utils.nestedset")
+    frappe_nestedset.get_descendants_of = lambda *args, **kwargs: []
+
+    student_log_stub = ModuleType("ifitwala_ed.students.doctype.student_log.student_log")
+    student_log_stub.get_student_log_visibility_predicate = lambda *args, **kwargs: ("1=1", {})
+
+    sys.modules["frappe"] = frappe
+    sys.modules["frappe.utils"] = frappe_utils
+    sys.modules["frappe.utils.nestedset"] = frappe_nestedset
+    sys.modules["ifitwala_ed.students.doctype.student_log.student_log"] = student_log_stub
+
+from ifitwala_ed.api import student_log_dashboard as dashboard_api
+
+
+class TestStudentLogDashboard(TestCase):
+    def test_get_dashboard_data_includes_follow_up_summaries_for_selected_student_rows(self):
+        def fake_sql(query, params=None, as_dict=False):
+            if "GROUP BY sl.log_type" in query:
+                return []
+            if "GROUP BY pe.cohort" in query:
+                return []
+            if "GROUP BY sl.program" in query:
+                return []
+            if "GROUP BY sl.author_name" in query:
+                return []
+            if "GROUP BY sl.next_step" in query:
+                return []
+            if "GROUP BY label ORDER BY label ASC" in query:
+                return []
+            if "COUNT(*) FROM `tabStudent Log` sl" in query:
+                return [[0]]
+            if "FROM `tabStudent Log Follow Up` fu" in query:
+                return [
+                    {
+                        "name": "SLFU-0001",
+                        "student_log": "SLOG-0001",
+                        "date": "2026-03-10",
+                        "follow_up_author": "Counsellor Jane",
+                        "follow_up": "<p>Met student and guardian.</p>",
+                        "responded_at": "2026-03-10 11:30:00",
+                    }
+                ]
+            if "sl.student = %(field_student)s" in query:
+                return [
+                    {
+                        "name": "SLOG-0001",
+                        "date": "2026-03-10",
+                        "log_type": "Wellbeing",
+                        "content": "Needs counselor follow-up.",
+                        "author": "Teacher One",
+                        "requires_follow_up": 1,
+                        "next_step": "Refer to Counselor",
+                        "created_at": "2026-03-10 08:00:00",
+                    }
+                ]
+            raise AssertionError(f"Unexpected SQL in test_get_dashboard_data: {query}")
+
+        with (
+            patch.object(dashboard_api, "_ensure_student_log_analytics_access", return_value="Administrator"),
+            patch.object(dashboard_api, "get_student_log_visibility_predicate", return_value=("1=1", {})),
+            patch.object(dashboard_api.frappe.db, "sql", side_effect=fake_sql),
+        ):
+            result = dashboard_api.get_dashboard_data(filters={"student": "STU-0001"})
+
+        student_logs = result.get("studentLogs") or []
+        self.assertEqual(len(student_logs), 1)
+        self.assertEqual(student_logs[0].get("follow_up_count"), 1)
+
+        follow_ups = student_logs[0].get("follow_ups") or []
+        self.assertEqual(len(follow_ups), 1)
+        self.assertEqual(follow_ups[0].get("doctype"), "Student Log Follow Up")
+        self.assertEqual(follow_ups[0].get("next_step"), "Refer to Counselor")
+        self.assertEqual(follow_ups[0].get("responded_in_minutes"), 210)
+        self.assertEqual(follow_ups[0].get("responded_in_label"), "3h 30m")
+        self.assertEqual(follow_ups[0].get("comment_text"), "Met student and guardian.")
+
+    def test_get_recent_logs_includes_submitted_follow_up_stack(self):
+        def fake_sql(query, params=None, as_dict=False):
+            if "FROM `tabStudent Log Follow Up` fu" in query:
+                return [
+                    {
+                        "name": "SLFU-0002",
+                        "student_log": "SLOG-0002",
+                        "date": "2026-03-11",
+                        "follow_up_author": "Pastoral Lead",
+                        "follow_up": "<div>Spoke with family and created a support plan.</div>",
+                        "responded_at": "2026-03-11 10:45:00",
+                    }
+                ]
+            if "FROM `tabStudent Log` sl" in query and "LIMIT %(start)s, %(page_len)s" in query:
+                return [
+                    {
+                        "name": "SLOG-0002",
+                        "date": "2026-03-11",
+                        "student": "STU-0002",
+                        "student_full_name": "Student Two",
+                        "program": "PYP",
+                        "log_type": "Pastoral",
+                        "content": "Student arrived distressed.",
+                        "author": "Teacher Two",
+                        "requires_follow_up": 1,
+                        "next_step": "Parent Call",
+                        "created_at": "2026-03-11 09:00:00",
+                    }
+                ]
+            raise AssertionError(f"Unexpected SQL in test_get_recent_logs: {query}")
+
+        with (
+            patch.object(dashboard_api, "_ensure_student_log_analytics_access", return_value="Administrator"),
+            patch.object(dashboard_api, "get_student_log_visibility_predicate", return_value=("1=1", {})),
+            patch.object(dashboard_api.frappe.db, "sql", side_effect=fake_sql),
+        ):
+            rows = dashboard_api.get_recent_logs(filters={}, start=0, page_length=25)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].get("follow_up_count"), 1)
+        self.assertEqual(rows[0].get("follow_ups")[0].get("responded_in_label"), "1h 45m")
+        self.assertEqual(
+            rows[0].get("follow_ups")[0].get("comment_text"), "Spoke with family and created a support plan."
+        )

@@ -11,6 +11,7 @@ from ifitwala_ed.api.attendance import ADMIN_ROLES, COUNSELOR_ROLES, INSTRUCTOR_
 from ifitwala_ed.api.enrollment_analytics import ALLOWED_ANALYTICS_ROLES as ENROLLMENT_ANALYTICS_ROLES
 from ifitwala_ed.api.inquiry import ALLOWED_ANALYTICS_ROLES as INQUIRY_ANALYTICS_ROLES
 from ifitwala_ed.api.policy_signature import (
+    POLICY_LIBRARY_ROLES,
     POLICY_SIGNATURE_ANALYTICS_ROLES,
     POLICY_SIGNATURE_MANAGER_ROLES,
 )
@@ -94,6 +95,7 @@ def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> 
         "analytics_scheduling": bool(roles & (set(SCHEDULING_ROLES) | set(ADMIN_ROLES))),
         "analytics_policy_signatures": bool(roles & set(POLICY_SIGNATURE_ANALYTICS_ROLES)),
         "manage_policy_signatures": bool(roles & set(POLICY_SIGNATURE_MANAGER_ROLES)),
+        "staff_policy_library": bool(roles & set(POLICY_LIBRARY_ROLES)),
         "quick_action_create_task": has_instructor_role,
         "quick_action_gradebook": has_instructor_role,
         "quick_action_student_log": has_academic_staff_role,

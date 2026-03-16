@@ -1,6 +1,7 @@
 # ifitwala_ed/api/test_guardian_home.py
 
 from datetime import date
+from unittest.mock import patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -9,10 +10,176 @@ from ifitwala_ed.api.guardian_home import (
     _assert_no_internal_schedule_keys,
     _find_forbidden_keys,
     _resolve_chip_status,
+    get_guardian_home_snapshot,
 )
 
 
 class TestGuardianHome(FrappeTestCase):
+    def test_snapshot_returns_empty_structure_when_guardian_has_no_linked_children(self):
+        with (
+            patch("ifitwala_ed.api.guardian_home.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch(
+                "ifitwala_ed.api.guardian_home.now_datetime",
+                return_value=frappe.utils.get_datetime("2026-02-02 08:00:00"),
+            ),
+            patch("ifitwala_ed.api.guardian_home._resolve_guardian_scope", return_value=("GRD-0001", [])),
+            patch("ifitwala_ed.api.guardian_home._get_student_group_membership") as membership_mock,
+        ):
+            payload = get_guardian_home_snapshot(anchor_date="2026-02-02", school_days=7)
+
+        self.assertEqual(payload["meta"]["guardian"]["name"], "GRD-0001")
+        self.assertEqual(payload["family"]["children"], [])
+        self.assertEqual(payload["zones"]["family_timeline"], [])
+        self.assertEqual(payload["zones"]["attention_needed"], [])
+        self.assertEqual(payload["zones"]["preparation_and_support"], [])
+        self.assertEqual(payload["zones"]["recent_activity"], [])
+        self.assertEqual(
+            payload["counts"],
+            {
+                "unread_communications": 0,
+                "unread_visible_student_logs": 0,
+                "upcoming_due_tasks": 0,
+                "upcoming_assessments": 0,
+            },
+        )
+        membership_mock.assert_not_called()
+
+    def test_snapshot_assembles_phase1_sections_from_helper_bundles(self):
+        children = [
+            {
+                "student": "STU-0001",
+                "full_name": "Amina Example",
+                "school": "SCHOOL-1",
+                "student_image_url": None,
+            }
+        ]
+        membership = {"STU-0001": {"GRP-1"}}
+        group_context = {
+            "GRP-1": {
+                "name": "GRP-1",
+                "student_group_name": "Group 1",
+                "school_schedule": "SCHED-1",
+                "academic_year": "AY-2026",
+                "course": "COURSE-1",
+            }
+        }
+        task_bundle = {
+            "chips_by_student_date": {},
+            "upcoming_due_count": 2,
+            "upcoming_assessments_count": 1,
+            "recent_task_results": [
+                {
+                    "type": "task_result",
+                    "student": "STU-0001",
+                    "task_outcome": "OUT-1",
+                    "title": "Published task",
+                    "published_on": "2026-02-01T12:00:00",
+                }
+            ],
+        }
+        family_timeline = [
+            {
+                "date": "2026-02-02",
+                "label": "Mon 02 Feb",
+                "is_school_day": True,
+                "children": [
+                    {
+                        "student": "STU-0001",
+                        "day_summary": {"start_time": "08:00", "end_time": "14:00", "note": None},
+                        "blocks": [{"start_time": "08:00", "end_time": "09:00", "title": "Math", "kind": "course"}],
+                        "tasks_due": [],
+                        "assessments_upcoming": [],
+                    }
+                ],
+            }
+        ]
+        log_bundle = {
+            "attention_items": [
+                {
+                    "type": "student_log",
+                    "student": "STU-0001",
+                    "student_log": "LOG-1",
+                    "date": "2026-02-02",
+                    "summary": "Needs a follow-up",
+                }
+            ],
+            "recent_activity_items": [
+                {
+                    "type": "student_log",
+                    "student": "STU-0001",
+                    "student_log": "LOG-1",
+                    "date": "2026-02-02",
+                    "summary": "Needs a follow-up",
+                }
+            ],
+            "unread_count": 1,
+        }
+        attendance_attention = [
+            {"type": "attendance", "student": "STU-0001", "date": "2026-02-02", "summary": "Absent"}
+        ]
+        communication_bundle = {
+            "attention_items": [
+                {
+                    "type": "communication",
+                    "communication": "COMM-1",
+                    "date": "2026-02-01",
+                    "title": "School message",
+                    "is_unread": True,
+                }
+            ],
+            "recent_activity_items": [
+                {
+                    "type": "communication",
+                    "communication": "COMM-1",
+                    "date": "2026-02-01",
+                    "title": "School message",
+                    "is_unread": True,
+                }
+            ],
+            "unread_count": 3,
+        }
+        prep_items = [
+            {"student": "STU-0001", "date": "2026-02-02", "label": "Prepare for: Math quiz", "source": "task"}
+        ]
+        recent_activity = [
+            {"type": "communication", "communication": "COMM-1", "date": "2026-02-01", "title": "School message"}
+        ]
+
+        with (
+            patch("ifitwala_ed.api.guardian_home.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch(
+                "ifitwala_ed.api.guardian_home.now_datetime",
+                return_value=frappe.utils.get_datetime("2026-02-02 08:00:00"),
+            ),
+            patch("ifitwala_ed.api.guardian_home._resolve_guardian_scope", return_value=("GRD-0001", children)),
+            patch("ifitwala_ed.api.guardian_home._get_student_group_membership", return_value=membership),
+            patch("ifitwala_ed.api.guardian_home._get_student_group_context", return_value=group_context),
+            patch("ifitwala_ed.api.guardian_home._build_task_bundle", return_value=task_bundle),
+            patch("ifitwala_ed.api.guardian_home._build_family_timeline", return_value=family_timeline),
+            patch("ifitwala_ed.api.guardian_home._build_student_log_bundle", return_value=log_bundle),
+            patch("ifitwala_ed.api.guardian_home._build_attendance_attention", return_value=attendance_attention),
+            patch("ifitwala_ed.api.guardian_home._build_communication_bundle", return_value=communication_bundle),
+            patch("ifitwala_ed.api.guardian_home._build_preparation_items", return_value=prep_items),
+            patch("ifitwala_ed.api.guardian_home._build_recent_activity", return_value=recent_activity),
+            patch("ifitwala_ed.api.guardian_home._assert_no_internal_schedule_keys") as leakage_mock,
+        ):
+            payload = get_guardian_home_snapshot(anchor_date="2026-02-02", school_days=7)
+
+        self.assertEqual(payload["meta"]["guardian"]["name"], "GRD-0001")
+        self.assertEqual(payload["family"]["children"], children)
+        self.assertEqual(payload["zones"]["family_timeline"], family_timeline)
+        self.assertEqual(payload["zones"]["preparation_and_support"], prep_items)
+        self.assertEqual(payload["zones"]["recent_activity"], recent_activity)
+        self.assertEqual(payload["counts"]["unread_communications"], 3)
+        self.assertEqual(payload["counts"]["unread_visible_student_logs"], 1)
+        self.assertEqual(payload["counts"]["upcoming_due_tasks"], 2)
+        self.assertEqual(payload["counts"]["upcoming_assessments"], 1)
+        attention_types = [item["type"] for item in payload["zones"]["attention_needed"]]
+        self.assertEqual(len(attention_types), 3)
+        self.assertEqual(attention_types[-1], "communication")
+        self.assertCountEqual(attention_types[:2], ["student_log", "attendance"])
+        leakage_mock.assert_called_once()
+
     def test_resolve_chip_status_respects_availability_and_lock_window(self):
         anchor = date(2026, 2, 2)
 

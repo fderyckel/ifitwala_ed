@@ -8,6 +8,8 @@
  "field_order": [
   "course",
   "course_name",
+  "required",
+  "applied_basket_group",
   "apply_to_level",
   "choice_rank",
   "status"
@@ -27,6 +29,20 @@
    "fieldtype": "Data",
    "label": "Course Name",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "required",
+   "fieldtype": "Check",
+   "label": "Required",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applied_basket_group",
+   "fieldtype": "Link",
+   "description": "Resolved enrollment basket this request row is intended to satisfy.",
+   "label": "Applied Basket Group (Enrollment)",
+   "options": "Basket Group"
   },
   {
    "fieldname": "apply_to_level",
@@ -52,7 +68,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-01-01 00:00:00.000000",
+ "modified": "2026-03-11 12:23:16",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Request Course",

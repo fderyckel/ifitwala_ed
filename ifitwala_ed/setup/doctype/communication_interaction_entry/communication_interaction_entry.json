@@ -6,7 +6,6 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_linkage",
-  "communication_interaction",
   "org_communication",
   "user",
   "audience_type",
@@ -25,15 +24,6 @@
    "fieldname": "section_break_linkage",
    "fieldtype": "Section Break",
    "label": "Linkage"
-  },
-  {
-   "fieldname": "communication_interaction",
-   "fieldtype": "Link",
-   "in_filter": 1,
-   "in_list_view": 1,
-   "label": "Communication Interaction",
-   "options": "Communication Interaction",
-   "reqd": 1
   },
   {
    "fieldname": "org_communication",

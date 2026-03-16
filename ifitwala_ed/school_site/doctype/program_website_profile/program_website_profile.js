@@ -67,6 +67,65 @@ function getPropsBuilder() {
 	});
 }
 
+function getOrganizationMediaDialog() {
+	return new Promise((resolve) => {
+		const existing = window.ifitwalaEd && window.ifitwalaEd.organizationMedia;
+		if (existing) {
+			resolve(existing);
+			return;
+		}
+
+		frappe.require("/assets/ifitwala_ed/js/organization_media_dialog.js", () => {
+			resolve((window.ifitwalaEd && window.ifitwalaEd.organizationMedia) || null);
+		});
+	});
+}
+
+function setupHeroImagePicker(frm) {
+	frm.set_df_property(
+		"hero_image",
+		"description",
+		__("Choose a governed organization media image for this program hero.")
+	);
+	frm.set_df_property("hero_image", "read_only", 1);
+
+	frm.remove_custom_button(__("Choose Hero Image"), __("Actions"));
+	frm.remove_custom_button(__("Choose Hero Image"));
+	frm.remove_custom_button(__("Clear Hero Image"), __("Actions"));
+	frm.remove_custom_button(__("Clear Hero Image"));
+
+	const openPicker = async () => {
+		if (!frm.doc.school) {
+			frappe.msgprint(__("Select a School before choosing a hero image."));
+			return;
+		}
+
+		const dialogApi = await getOrganizationMediaDialog();
+		if (!dialogApi || typeof dialogApi.openPicker !== "function") {
+			frappe.msgprint(__("Organization Media is not available. Please refresh the page."));
+			return;
+		}
+
+		dialogApi.openPicker({
+			school: frm.doc.school,
+			currentValue: frm.doc.hero_image || "",
+			title: __("Choose Hero Image"),
+			onSelect(item) {
+				frm.set_value("hero_image", item.file_url || "");
+			},
+		});
+	};
+
+	frm.add_custom_button(__("Choose Hero Image"), openPicker, __("Actions"));
+	if (frm.doc.hero_image) {
+		frm.add_custom_button(
+			__("Clear Hero Image"),
+			() => frm.set_value("hero_image", ""),
+			__("Actions")
+		);
+	}
+}
+
 function getSelectedBlockRow(frm) {
 	const rows = frm.doc.blocks || [];
 	if (!rows.length) {
@@ -393,6 +452,7 @@ async function refreshSeoAssistant(frm, { showErrorToast = false } = {}) {
 frappe.ui.form.on("Program Website Profile", {
 	refresh(frm) {
 		frm.clear_custom_buttons();
+		setupHeroImagePicker(frm);
 		syncAllowedBlockTypes(frm);
 		refreshSeoAssistant(frm);
 

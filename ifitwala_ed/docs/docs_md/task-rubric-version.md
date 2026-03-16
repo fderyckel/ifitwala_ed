@@ -3,8 +3,8 @@ title: "Task Rubric Version: Freezing Criteria at Delivery Time"
 slug: task-rubric-version
 category: Assessment
 doc_order: 6
-version: "1.0.0"
-last_change_date: "2026-02-25"
+version: "1.2.0"
+last_change_date: "2026-03-12"
 summary: "Snapshot rubric criteria per delivery so grading remains historically stable even if the master task rubric changes later."
 seo_title: "Task Rubric Version: Freezing Criteria at Delivery Time"
 seo_description: "Snapshot rubric criteria per delivery so grading remains historically stable even if the master task rubric changes later."
@@ -12,37 +12,66 @@ seo_description: "Snapshot rubric criteria per delivery so grading remains histo
 
 ## Task Rubric Version: Freezing Criteria at Delivery Time
 
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task_rubric_version/task_rubric_version.json`, `ifitwala_ed/assessment/doctype/task_rubric_version/task_rubric_version.py`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_outcome_service.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_rubric_version/test_task_rubric_version.py`)
+
+`Task Rubric Version` is the historical snapshot of criteria used by a criteria-mode delivery. It prevents later edits to task criteria from silently rewriting grading meaning.
+
+Current workspace note: rubric snapshots are now created through the submit-driven delivery launch path. Legacy criteria deliveries missing their snapshot can be repaired through the gradebook roster repair workflow.
+
 ## Before You Start (Prerequisites)
 
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/doctype/task/task.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_rubric_version/test_task_rubric_version.py`)
+
 - Prepare `Task` criteria templates first.
-- Create rubric snapshots via `Task Delivery` submission flow, not ad-hoc manual entry.
-- Use `Criteria` grading mode on delivery when rubric snapshot behavior is required.
-
-`Task Rubric Version` is the historical safety net for criteria-based grading. It preserves exactly which criteria/weights applied when a delivery went live.
-
-<Callout type="note" title="Why this exists">
-Without snapshots, later edits to task criteria would silently rewrite grading history. Rubric versions prevent that.
-</Callout>
+- Use `Criteria` grading mode on the target delivery.
+- Launch the delivery through a path that actually executes rubric snapshot creation.
 
 ## Where It Is Used Across the ERP
 
-- Created from [**Task Delivery**](/docs/en/task-delivery/) on submit for criteria-mode deliveries.
-- Stores criteria rows (`Task Rubric Criterion`) copied from [**Task**](/docs/en/task/) template criteria.
-- Read by official outcome computation in `assessment/task_outcome_service.py` to apply criterion weighting correctly.
-- Linked back to grade-scale policy via [**Grade Scale**](/docs/en/grade-scale/).
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_outcome_service.py`, `ifitwala_ed/api/gradebook.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_rubric_version/test_task_rubric_version.py`)
+
+- Created from [**Task Delivery**](/docs/en/task-delivery/) for criteria-mode deliveries.
+- Stores [**Task Rubric Criterion**](/docs/en/task-rubric-criterion/) rows copied from [**Task Template Criterion**](/docs/en/task-template-criterion/).
+- Read by `assessment/task_outcome_service.py` to apply criterion weighting.
+- Read by `ifitwala_ed/api/gradebook.py` when building criteria payload for gradebook.
 
 ## Lifecycle and Linked Documents
 
-1. Prepare criteria on the parent `Task` before delivery launch.
-2. At delivery submit (criteria mode), create a rubric snapshot row and child criteria snapshot entries.
-3. Use that frozen rubric for contribution and outcome computations.
-4. Preserve historical grading meaning even when the base task rubric is later edited.
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_creation_service.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/api/test_gradebook.py`
 
-<Callout type="info" title="Historical integrity">
-Rubric versions exist to prevent hidden historical rewrites. Keep snapshot behavior enabled for criteria-based grading.
-</Callout>
+1. Define criteria on the parent `Task`.
+2. Canonical contract: on delivery launch, create one rubric snapshot for the delivery.
+3. Use the frozen rubric for contribution validation and outcome recomputation.
+4. Preserve historical grading meaning even when the base task rubric changes later.
+
+Current workspace constraints: criteria snapshots depend on delivery launch semantics, so older deliveries created before the fixed submit path may still need `api/gradebook.py::repair_task_roster()` to build the snapshot and outcome rows.
+
+## Related Docs
+
+Status: Implemented
+Code refs: None (documentation cross-reference section)
+Test refs: None
+
+- [**Task**](/docs/en/task/)
+- [**Task Template Criterion**](/docs/en/task-template-criterion/)
+- [**Task Delivery**](/docs/en/task-delivery/)
+- [**Task Rubric Criterion**](/docs/en/task-rubric-criterion/)
+- [**Task Contribution**](/docs/en/task-contribution/)
+- [**Task Outcome**](/docs/en/task-outcome/)
 
 ## Technical Notes (IT)
+
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task_rubric_version/task_rubric_version.json`, `ifitwala_ed/assessment/doctype/task_rubric_version/task_rubric_version.py`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`
+Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_rubric_version/test_task_rubric_version.py`)
 
 ### Schema and Controller Snapshot
 
@@ -52,35 +81,17 @@ Rubric versions exist to prevent hidden historical rewrites. Keep snapshot behav
   - `task` (`Link` -> `Task`)
   - `task_delivery` (`Link` -> `Task Delivery`)
   - `grading_mode` (`Select`)
-- **Lifecycle hooks in controller**: none (reference/master behavior, or handled by framework defaults).
-- **Operational/public methods**: none beyond standard document behavior.
+- **Child table**:
+  - `criteria` (`Task Rubric Criterion`)
+- **Controller**: thin (`pass`); orchestration lives in the delivery layer.
 
-- **DocType**: `Task Rubric Version` (`ifitwala_ed/assessment/doctype/task_rubric_version/`)
-- **Autoname**: `TRV-{YYYY}-{#####}`
-- **Child table**: `criteria` (`Task Rubric Criterion`)
-- **Key links**:
-  - `task`
-  - `task_delivery`
-  - `grade_scale`
-- **Controller**: thin (`pass`), with creation/orchestration handled by Task Delivery controller.
-- **Creation path**:
-  - `TaskDelivery._ensure_rubric_snapshot` builds rows at submit time
-  - guards against empty criteria snapshots
-- **Desk client script**: stub-only (`task_rubric_version.js`)
-- **Architecture guarantees (embedded from assessment doctrine)**:
-  - rubric version preserves criteria structure used at grading time
-  - snapshot behavior protects auditability when Task criteria evolve after release
-  - criterion totals remain strategy-dependent (`Sum Total` vs `Separate Criteria`)
+### Current Contract
 
-### Permission Matrix
+- `TaskDelivery._ensure_rubric_snapshot()` is the canonical snapshot builder.
+- Criteria rows are copied from `Task.task_criteria`.
+- `task_outcome_service.py` reads rubric criteria weighting when computing criteria-mode official totals.
 
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
+### Current Constraints To Preserve In Review
 
-## Related Docs
-
-- [**Task**](/docs/en/task/)
-- [**Task Delivery**](/docs/en/task-delivery/)
-- [**Task Contribution**](/docs/en/task-contribution/)
-- [**Task Outcome**](/docs/en/task-outcome/)
+- Snapshot semantics are correct only when delivery launch semantics stay submit-driven and idempotent.
+- Legacy repair must keep using the delivery-layer snapshot builder rather than inventing a parallel rubric-copy path.

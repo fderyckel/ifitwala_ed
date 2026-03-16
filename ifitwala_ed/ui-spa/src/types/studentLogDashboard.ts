@@ -28,11 +28,28 @@ export type StudentLogDashboardMeta = StudentLogFilterMeta
 
 export type StudentLogChartSeries = { label: string; value: number }
 
+export type StudentLogFollowUpSummary = {
+	name: string
+	doctype: 'Student Log Follow Up'
+	next_step?: string | null
+	date?: string | null
+	responded_at?: string | null
+	responded_in_minutes?: number | null
+	responded_in_label?: string | null
+	follow_up_author?: string | null
+	comment_text?: string | null
+}
+
 export type StudentLogStudentRow = {
+	name: string
 	date: string
 	log_type: string
 	content?: string | null
 	author: string
+	requires_follow_up: 0 | 1 | boolean
+	next_step?: string | null
+	follow_up_count: number
+	follow_ups: StudentLogFollowUpSummary[]
 }
 
 export type StudentLogDashboardData = {
@@ -49,6 +66,7 @@ export type StudentLogDashboardData = {
 export type StudentLogDashboardSummary = StudentLogDashboardData
 
 export type StudentLogRecentRow = {
+	name: string
 	date: string
 	student: string
 	student_full_name: string | null
@@ -57,6 +75,9 @@ export type StudentLogRecentRow = {
 	content?: string | null
 	author: string
 	requires_follow_up: 0 | 1 | boolean
+	next_step?: string | null
+	follow_up_count: number
+	follow_ups: StudentLogFollowUpSummary[]
 }
 
 export type StudentSearchResult = {

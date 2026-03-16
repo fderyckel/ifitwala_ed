@@ -5,12 +5,29 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 
-from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_APPLICANT_ROLE,
+    ADMISSIONS_FAMILY_ROLE,
+    build_admissions_portal_access_exists_sql,
+    user_can_access_student_applicant,
+)
+from ifitwala_ed.admission.admission_utils import (
+    ADMISSIONS_ROLES,
+    READ_LIKE_PERMISSION_TYPES,
+    build_admissions_file_scope_exists_sql,
+    has_scoped_staff_access_to_student_applicant,
+    is_admissions_file_staff_user,
+)
 from ifitwala_ed.admission.doctype.applicant_document.applicant_document import (
     sync_applicant_document_review_from_items,
 )
 
-UPLOAD_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager", "Admissions Applicant"}
+UPLOAD_ROLES = ADMISSIONS_ROLES | {
+    "Academic Admin",
+    "System Manager",
+    ADMISSIONS_APPLICANT_ROLE,
+    ADMISSIONS_FAMILY_ROLE,
+}
 REVIEW_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
 
 
@@ -29,10 +46,15 @@ class ApplicantDocumentItem(Document):
         sync_applicant_document_review_from_items(self.applicant_document)
 
     def on_trash(self):
+        self._validate_delete_allowed()
         sync_applicant_document_review_from_items(self.applicant_document)
 
-    def before_delete(self):
+    def before_trash(self):
         self._validate_delete_allowed()
+
+    # Keep compatibility with older hook naming used in this app.
+    def before_delete(self):
+        self.before_trash()
 
     def _normalize_fields(self):
         self.applicant_document = (self.applicant_document or "").strip()
@@ -50,6 +72,21 @@ class ApplicantDocumentItem(Document):
         user_roles = set(frappe.get_roles(frappe.session.user))
         if not user_roles & UPLOAD_ROLES:
             frappe.throw(_("You do not have permission to manage Applicant Document Items."))
+
+        student_applicant = _resolve_item_student_applicant(self)
+        if is_admissions_file_staff_user(frappe.session.user):
+            if not has_scoped_staff_access_to_student_applicant(
+                user=frappe.session.user,
+                student_applicant=student_applicant,
+            ):
+                frappe.throw(
+                    _("You do not have permission to manage this Applicant Document Item."), frappe.PermissionError
+                )
+        elif user_roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE}:
+            if not user_can_access_student_applicant(user=frappe.session.user, student_applicant=student_applicant):
+                frappe.throw(
+                    _("You do not have permission to manage this Applicant Document Item."), frappe.PermissionError
+                )
 
         if self._review_fields_changed(before) and not user_roles & REVIEW_ROLES:
             frappe.throw(
@@ -130,3 +167,95 @@ class ApplicantDocumentItem(Document):
         if "System Manager" in user_roles:
             return
         frappe.throw(_("Cannot delete Applicant Document Item with attached files."))
+
+
+def get_permission_query_conditions(user: str | None = None) -> str | None:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return "1=0"
+
+    conditions: list[str] = []
+    if is_admissions_file_staff_user(resolved_user):
+        staff_condition = build_admissions_file_scope_exists_sql(
+            user=resolved_user,
+            student_applicant_expr_sql=(
+                "(SELECT ad.student_applicant "
+                "FROM `tabApplicant Document` ad "
+                "WHERE ad.name = `tabApplicant Document Item`.`applicant_document`)"
+            ),
+        )
+        if staff_condition is None:
+            return None
+        if staff_condition != "1=0":
+            conditions.append(f"({staff_condition})")
+
+    portal_condition = build_admissions_portal_access_exists_sql(
+        user=resolved_user,
+        student_applicant_expr_sql=(
+            "(SELECT ad.student_applicant "
+            "FROM `tabApplicant Document` ad "
+            "WHERE ad.name = `tabApplicant Document Item`.`applicant_document`)"
+        ),
+    )
+    if portal_condition != "1=0":
+        conditions.append(f"({portal_condition})")
+
+    return " OR ".join(conditions) if conditions else "1=0"
+
+
+def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    op = (ptype or "read").lower()
+    if not resolved_user or resolved_user == "Guest":
+        return False
+
+    if is_admissions_file_staff_user(resolved_user):
+        staff_ops = READ_LIKE_PERMISSION_TYPES | {"write", "create", "delete", "submit", "cancel", "amend"}
+        if op not in staff_ops:
+            return False
+        if op == "create" and not doc:
+            return True
+        if not doc:
+            return True
+        student_applicant = _resolve_item_student_applicant(doc)
+        return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=student_applicant)
+
+    roles = set(frappe.get_roles(resolved_user))
+    if not roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE}:
+        return False
+
+    applicant_ops = READ_LIKE_PERMISSION_TYPES | {"write", "create"}
+    if op not in applicant_ops:
+        return False
+    if op == "create" and not doc:
+        return True
+    if not doc:
+        return op in READ_LIKE_PERMISSION_TYPES
+    return user_can_access_student_applicant(
+        user=resolved_user,
+        student_applicant=_resolve_item_student_applicant(doc),
+    )
+
+
+def _resolve_item_student_applicant(doc) -> str:
+    if isinstance(doc, str):
+        item_name = (doc or "").strip()
+        if not item_name:
+            return ""
+        parent_name = (frappe.db.get_value("Applicant Document Item", item_name, "applicant_document") or "").strip()
+        if not parent_name:
+            return ""
+        return (frappe.db.get_value("Applicant Document", parent_name, "student_applicant") or "").strip()
+
+    if isinstance(doc, dict):
+        parent_name = (doc.get("applicant_document") or "").strip()
+        item_name = (doc.get("name") or "").strip()
+    else:
+        parent_name = (getattr(doc, "applicant_document", None) or "").strip()
+        item_name = (getattr(doc, "name", None) or "").strip()
+
+    if not parent_name and item_name:
+        parent_name = (frappe.db.get_value("Applicant Document Item", item_name, "applicant_document") or "").strip()
+    if not parent_name:
+        return ""
+    return (frappe.db.get_value("Applicant Document", parent_name, "student_applicant") or "").strip()

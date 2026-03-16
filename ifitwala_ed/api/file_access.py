@@ -9,13 +9,18 @@ from urllib.parse import urlencode
 import frappe
 from frappe import _
 
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_APPLICANT_ROLE,
+    ADMISSIONS_FAMILY_ROLE,
+    user_can_access_student_applicant,
+)
 from ifitwala_ed.admission.admission_utils import (
+    has_open_overall_application_review_access,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
-    normalize_email_value,
 )
 
-ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document", "Applicant Document Item", "Student Applicant", "Contact"}
+ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document Item", "Student Applicant", "Contact"}
 CONTEXT_STUDENT_APPLICANT = "Student Applicant"
 CONTEXT_APPLICANT_INTERVIEW = "Applicant Interview"
 CONTEXT_TASK_SUBMISSION = "Task Submission"
@@ -181,9 +186,7 @@ def _resolve_student_applicant_from_file(file_row: dict) -> str:
     if not attached_to_name:
         frappe.throw(_("File attachment context is incomplete."), frappe.ValidationError)
 
-    if attached_to_doctype == "Applicant Document":
-        student_applicant = frappe.db.get_value("Applicant Document", attached_to_name, "student_applicant")
-    elif attached_to_doctype == "Applicant Document Item":
+    if attached_to_doctype == "Applicant Document Item":
         applicant_document = frappe.db.get_value("Applicant Document Item", attached_to_name, "applicant_document")
         student_applicant = (
             frappe.db.get_value("Applicant Document", applicant_document, "student_applicant")
@@ -202,23 +205,7 @@ def _resolve_student_applicant_from_file(file_row: dict) -> str:
 
 
 def _is_student_applicant_self_user(*, student_applicant: str, user: str) -> bool:
-    row = frappe.db.get_value(
-        "Student Applicant",
-        student_applicant,
-        ["applicant_user", "portal_account_email", "applicant_email"],
-        as_dict=True,
-    )
-    if not row:
-        return False
-
-    if (row.get("applicant_user") or "").strip() == user:
-        return True
-
-    normalized_user = normalize_email_value(user)
-    return normalized_user in {
-        normalize_email_value(row.get("portal_account_email")),
-        normalize_email_value(row.get("applicant_email")),
-    }
+    return user_can_access_student_applicant(user=user, student_applicant=student_applicant)
 
 
 def _assert_can_access_student_applicant(*, user: str, student_applicant: str) -> None:
@@ -228,9 +215,13 @@ def _assert_can_access_student_applicant(*, user: str, student_applicant: str) -
         frappe.throw(_("You do not have permission to access this applicant file."), frappe.PermissionError)
 
     roles = set(frappe.get_roles(user))
-    if "Admissions Applicant" in roles and _is_student_applicant_self_user(
-        student_applicant=student_applicant, user=user
+    if roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE} and _is_student_applicant_self_user(
+        student_applicant=student_applicant,
+        user=user,
     ):
+        return
+
+    if has_open_overall_application_review_access(user=user, student_applicant=student_applicant):
         return
 
     frappe.throw(_("You do not have permission to access this applicant file."), frappe.PermissionError)
@@ -287,6 +278,8 @@ def _assert_context_permission(
         if is_admissions_file_staff_user(user) and has_scoped_staff_access_to_student_applicant(
             user=user, student_applicant=file_student_applicant
         ):
+            return
+        if has_open_overall_application_review_access(user=user, student_applicant=file_student_applicant):
             return
         if _is_interviewer_on_interview(user=user, interview_name=resolved_name):
             return

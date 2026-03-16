@@ -172,6 +172,8 @@ permission_query_conditions = {
     "Inquiry": "ifitwala_ed.admission.doctype.inquiry.inquiry.get_permission_query_conditions",
     "Student Applicant": "ifitwala_ed.admission.doctype.student_applicant.student_applicant.get_permission_query_conditions",
     "Applicant Document": "ifitwala_ed.admission.doctype.applicant_document.applicant_document.get_permission_query_conditions",
+    "Applicant Document Item": "ifitwala_ed.admission.doctype.applicant_document_item.applicant_document_item.get_permission_query_conditions",
+    "Applicant Review Assignment": "ifitwala_ed.admission.doctype.applicant_review_assignment.applicant_review_assignment.get_permission_query_conditions",
     "Applicant Health Profile": "ifitwala_ed.admission.doctype.applicant_health_profile.applicant_health_profile.get_permission_query_conditions",
     "Applicant Interview": "ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.get_permission_query_conditions",
     "Applicant Interview Feedback": "ifitwala_ed.admission.doctype.applicant_interview_feedback.applicant_interview_feedback.get_permission_query_conditions",
@@ -207,6 +209,8 @@ has_permission = {
     "Inquiry": "ifitwala_ed.admission.doctype.inquiry.inquiry.has_permission",
     "Student Applicant": "ifitwala_ed.admission.doctype.student_applicant.student_applicant.has_permission",
     "Applicant Document": "ifitwala_ed.admission.doctype.applicant_document.applicant_document.has_permission",
+    "Applicant Document Item": "ifitwala_ed.admission.doctype.applicant_document_item.applicant_document_item.has_permission",
+    "Applicant Review Assignment": "ifitwala_ed.admission.doctype.applicant_review_assignment.applicant_review_assignment.has_permission",
     "Applicant Health Profile": "ifitwala_ed.admission.doctype.applicant_health_profile.applicant_health_profile.has_permission",
     "Applicant Interview": "ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.has_permission",
     "Applicant Interview Feedback": "ifitwala_ed.admission.doctype.applicant_interview_feedback.applicant_interview_feedback.has_permission",
@@ -297,10 +301,10 @@ scheduler_events = {
         "ifitwala_ed.schedule.attendance_jobs.prewarm_meeting_dates_hourly_guard",
     ],
     "daily": [
-        "ifitwala_ed.students.doctype.student_log.student_log.auto_close_completed_logs",
-        "ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry.process_expired_allocation",
-        "ifitwala_ed.hr.utils.allocate_earned_leaves",
-        "ifitwala_ed.hr.utils.generate_leave_encashment",
+        "ifitwala_ed.students.doctype.student_log.student_log.dispatch_auto_close_completed_logs",
+        "ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry.dispatch_process_expired_allocation",
+        "ifitwala_ed.hr.utils.dispatch_allocate_earned_leaves",
+        "ifitwala_ed.hr.utils.dispatch_generate_leave_encashment",
     ],
 }
 
@@ -337,7 +341,7 @@ scheduler_events = {
 
 # Request Events
 # ----------------
-# after_request = ["ifitwala.utils.after_request"]
+after_request = ["ifitwala_ed.request_hooks.apply_default_security_headers"]
 
 # Job Events
 # ----------

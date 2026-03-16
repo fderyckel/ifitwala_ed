@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:TDL-{YYYY}-{#####}",
+ "autoname": "TDL-.YY.-.MM.-.####",
  "creation": "2026-01-06 12:57:03.984592",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -25,11 +25,20 @@
   "grade_scale",
   "rubric_scoring_strategy",
   "rubric_version",
+  "quiz_section",
+  "quiz_question_bank",
+  "quiz_question_count",
+  "quiz_time_limit_minutes",
+  "quiz_max_attempts",
+  "quiz_pass_percentage",
+  "quiz_shuffle_questions",
+  "quiz_shuffle_choices",
   "section_break_rwq9",
   "course",
   "academic_year",
   "school",
-  "lesson_instance"
+  "lesson_instance",
+  "amended_from"
  ],
  "fields": [
   {
@@ -150,6 +159,56 @@
    "read_only": 1
   },
   {
+   "fieldname": "quiz_section",
+   "fieldtype": "Section Break",
+   "label": "Quiz Snapshot"
+  },
+  {
+   "fieldname": "quiz_question_bank",
+   "fieldtype": "Link",
+   "label": "Quiz Question Bank",
+   "options": "Quiz Question Bank",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quiz_question_count",
+   "fieldtype": "Int",
+   "label": "Questions Per Attempt",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quiz_time_limit_minutes",
+   "fieldtype": "Int",
+   "label": "Time Limit (minutes)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quiz_max_attempts",
+   "fieldtype": "Int",
+   "label": "Maximum Attempts",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quiz_pass_percentage",
+   "fieldtype": "Float",
+   "label": "Pass Percentage",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "quiz_shuffle_questions",
+   "fieldtype": "Check",
+   "label": "Shuffle Questions",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "quiz_shuffle_choices",
+   "fieldtype": "Check",
+   "label": "Shuffle Choices",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_rwq9",
    "fieldtype": "Section Break"
   },
@@ -182,12 +241,23 @@
    "fieldtype": "Link",
    "label": "Lesson Instance",
    "options": "Lesson Instance"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Task Delivery",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-01-06 20:30:33",
+ "modified": "2026-03-13 13:26:48.439504",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Delivery",
@@ -195,6 +265,7 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -204,9 +275,11 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -216,9 +289,11 @@
    "report": 1,
    "role": "Academic Admin",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -228,12 +303,23 @@
    "report": 1,
    "role": "Instructor",
    "share": 1,
+   "submit": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "task"
 }

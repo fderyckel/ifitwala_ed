@@ -23,4 +23,16 @@ export type Response = {
 	} | null;
 	diff_html?: string | null;
 	policy_text_html?: string | null;
+	history?: Array<{
+		policy_version: string;
+		version_label?: string | null;
+		based_on_version?: string | null;
+		effective_from?: string | null;
+		effective_to?: string | null;
+		approved_on?: string | null;
+		is_active: boolean;
+	}>;
+	signature_required?: boolean;
+	acknowledgement_status?: 'informational' | 'pending' | 'new_version' | 'signed';
+	acknowledged_at?: string | null;
 };

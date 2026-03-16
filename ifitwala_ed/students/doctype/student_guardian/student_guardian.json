@@ -10,6 +10,7 @@
   "guardian",
   "guardian_name",
   "relation",
+  "can_consent",
   "email",
   "phone"
  ],
@@ -44,6 +45,13 @@
    "reqd": 1
   },
   {
+   "default": "1",
+   "fieldname": "can_consent",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Authorized Signer"
+  },
+  {
    "fetch_from": "guardian.guardian_email",
    "fieldname": "email",
    "fieldtype": "Data",
@@ -61,7 +69,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-01 14:29:59.851189",
+ "modified": "2026-03-15 12:00:36.000000",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Guardian",

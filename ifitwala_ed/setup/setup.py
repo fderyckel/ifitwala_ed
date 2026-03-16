@@ -8,6 +8,7 @@ import frappe
 from frappe import _
 from frappe.utils import get_files_path
 
+from ifitwala_ed.admission.access import ADMISSIONS_FAMILY_ROLE
 from ifitwala_ed.routing.policy import canonical_path_for_section
 from ifitwala_ed.school_site.doctype.website_theme_profile.website_theme_profile import (
     ensure_theme_profile_presets,
@@ -86,6 +87,7 @@ def create_roles_with_homepage():
         {"role_name": "Student", "desk_access": 0, "home_page": canonical_path_for_section("student")},
         {"role_name": "Guardian", "desk_access": 0, "home_page": canonical_path_for_section("guardian")},
         {"role_name": "Admissions Applicant", "desk_access": 0, "home_page": "/admissions"},
+        {"role_name": ADMISSIONS_FAMILY_ROLE, "desk_access": 0, "home_page": "/admissions"},
         {"role_name": "Nurse", "desk_access": 1, "home_page": "/desk/health"},
         {"role_name": "Academic Admin", "desk_access": 1, "home_page": "/desk/admin"},
         {"role_name": "Admission Officer", "desk_access": 1, "home_page": "/desk/admission"},
@@ -405,19 +407,39 @@ def get_website_block_definition_records():
 
 
 def grant_core_crm_permissions():
-    """Ensure critical roles have access to Contact and Address Doctypes."""
+    """Ensure Contact/Address Desk permissions stay aligned with the app contract."""
 
-    crm_doctypes = ["Contact", "Address"]
-
-    # Define permissions by role
-    role_permissions = {
-        "Admission Officer": ["read", "email", "comment", "assign"],
-        "Admission Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
-        "Academic Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
-        "Academic Assistant": ["read", "write", "create", "delete", "email", "comment", "assign"],
+    doctype_role_permissions = {
+        "Contact": {
+            "Admission Officer": ["read", "write", "create", "email", "comment", "assign"],
+            "Admission Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Academic Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Academic Assistant": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Assistant Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Accounts User": ["read", "write", "create", "email", "comment", "assign"],
+            "Accounts Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
+        },
+        "Address": {
+            "Admission Officer": ["read", "email", "comment", "assign"],
+            "Admission Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Academic Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Academic Assistant": ["read", "write", "create", "delete", "email", "comment", "assign"],
+        },
     }
 
-    for doctype in crm_doctypes:
+    required_roles = sorted(
+        {
+            role
+            for role_permissions in doctype_role_permissions.values()
+            for role in role_permissions
+            if (role or "").strip()
+        }
+    )
+    for role_name in required_roles:
+        if not frappe.db.exists("Role", role_name):
+            frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+
+    for doctype, role_permissions in doctype_role_permissions.items():
         for role, perms in role_permissions.items():
             existing = frappe.get_all("Custom DocPerm", filters={"parent": doctype, "role": role, "permlevel": 0})
             if existing:

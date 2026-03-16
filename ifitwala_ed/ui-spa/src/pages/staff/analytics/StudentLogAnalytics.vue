@@ -4,11 +4,11 @@ import { computed, onMounted, ref, watch } from 'vue';
 
 import AnalyticsCard from '@/components/analytics/AnalyticsCard.vue';
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
-import AnalyticsSnapshotActions from '@/components/analytics/AnalyticsSnapshotActions.vue';
 import StatsTile from '@/components/analytics/StatsTile.vue';
-import { useAnalyticsSnapshotExport } from '@/composables/useAnalyticsSnapshotExport';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { formatLocalizedDateTime } from '@/lib/datetime';
+import { openAnalyticsChartOverlay, openAnalyticsTableOverlay } from '@/lib/analyticsOverlay';
 import {
 	createDebouncedRunner,
 	useStudentLogDashboard,
@@ -19,6 +19,7 @@ import {
 import type {
 	StudentLogChartSeries,
 	StudentLogDashboardFilters,
+	StudentLogFollowUpSummary,
 	StudentLogRecentRow,
 	StudentLogStudentRow,
 } from '@/types/studentLogDashboard';
@@ -26,6 +27,8 @@ import type {
 type ChartOption = Record<string, unknown>;
 
 type TableRow = StudentLogRecentRow | StudentLogStudentRow;
+
+const INLINE_FOLLOW_UP_LIMIT = 2;
 
 const filters = ref<StudentLogDashboardFilters>({
 	school: null,
@@ -36,7 +39,6 @@ const filters = ref<StudentLogDashboardFilters>({
 	to_date: null,
 	student: null,
 });
-const snapshotRoot = ref<HTMLElement | null>(null);
 
 const selectedStudentLabel = ref('');
 
@@ -58,23 +60,6 @@ const authors = computed(() => filterMeta.value.authors);
 const programsForSchool = computed(() => {
 	return allPrograms.value;
 });
-const exportFilters = computed(() => ({
-	School: filters.value.school || 'All',
-	'Academic Year': filters.value.academic_year || 'All',
-	Program: filters.value.program || 'All',
-	Author: filters.value.author || 'All',
-	'From Date': filters.value.from_date || 'None',
-	'To Date': filters.value.to_date || 'None',
-	Student: filters.value.student || 'All',
-}));
-
-const snapshotExport = useAnalyticsSnapshotExport({
-	dashboardSlug: 'student-log-analytics',
-	dashboardTitle: 'Student Log Analytics',
-	getTarget: () => snapshotRoot.value,
-	getFilters: () => exportFilters.value,
-});
-
 watch(
 	filterMeta,
 	data => {
@@ -176,21 +161,11 @@ onMounted(() => {
 });
 
 function openChartOverlay(title: string, option: ChartOption) {
-	overlay.open('student-log-analytics-expand', {
-		title,
-		chartOption: option,
-		kind: 'chart',
-	});
+	openAnalyticsChartOverlay(overlay, title, option);
 }
 
 function openTableOverlay(title: string, rows: TableRow[], subtitle?: string | null) {
-	overlay.open('student-log-analytics-expand', {
-		title,
-		chartOption: {},
-		kind: 'table',
-		rows,
-		subtitle: subtitle ?? null,
-	});
+	openAnalyticsTableOverlay(overlay, title, rows, subtitle);
 }
 
 function selectStudentFromRecent(row: StudentLogRecentRow) {
@@ -214,10 +189,31 @@ function truncate(text: string, max = 140) {
 	if (!text) return '';
 	return text.length > max ? `${text.slice(0, max)}...` : text;
 }
+
+function visibleFollowUps(row: TableRow, limit = INLINE_FOLLOW_UP_LIMIT) {
+	return (row.follow_ups || []).slice(0, limit);
+}
+
+function hiddenFollowUpCount(row: TableRow, limit = INLINE_FOLLOW_UP_LIMIT) {
+	const total = row.follow_ups?.length || 0;
+	return total > limit ? total - limit : 0;
+}
+
+function followUpEmptyLabel(row: TableRow) {
+	return row.requires_follow_up ? 'Awaiting submitted follow-up' : 'No follow-up recorded';
+}
+
+function formatRespondedAt(value: string | null | undefined) {
+	return value ? formatLocalizedDateTime(value, { includeWeekday: false, month: 'short' }) : '';
+}
+
+function responseMetric(followUp: StudentLogFollowUpSummary) {
+	return followUp.responded_in_label ? `Responded in ${followUp.responded_in_label}` : '';
+}
 </script>
 
 <template>
-	<div ref="snapshotRoot" class="analytics-shell">
+	<div class="analytics-shell">
 		<header class="flex flex-wrap items-center justify-between gap-3">
 			<div>
 				<h1 class="type-h2 text-canopy">Student Log Analytics</h1>
@@ -228,13 +224,6 @@ function truncate(text: string, max = 140) {
 
 			<div class="flex flex-col items-end gap-2">
 				<StatsTile :value="openFollowUps" label="Open follow-ups" tone="warning" />
-				<AnalyticsSnapshotActions
-					:exporting-png="snapshotExport.exportingPng"
-					:exporting-pdf="snapshotExport.exportingPdf"
-					:message="snapshotExport.actionMessage"
-					@export-png="snapshotExport.exportPng"
-					@export-pdf="snapshotExport.exportPdf"
-				/>
 			</div>
 		</header>
 
@@ -369,61 +358,102 @@ function truncate(text: string, max = 140) {
 			     Change: bump body typography from caption -> body
 			   ============================================================ -->
 			<AnalyticsCard
+				class="md:col-span-2 xl:col-span-2"
 				title="Recent Student Logs"
 				@expand="openTableOverlay('Recent Student Logs', recentRows)"
 			>
 				<template #body>
 					<div class="max-h-[320px] overflow-auto">
-						<table class="min-w-full border-collapse text-ink/80">
+						<table class="min-w-[680px] w-full table-fixed border-collapse text-ink/80">
+							<colgroup>
+								<col style="width: 16%" />
+								<col style="width: 18%" />
+								<col style="width: 14%" />
+								<col style="width: 22%" />
+								<col style="width: 30%" />
+							</colgroup>
 							<thead>
 								<tr class="border-b border-slate-200 bg-slate-50">
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Date</th>
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Student</th>
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Program</th>
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Type</th>
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Log</th>
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Author</th>
-									<th class="px-2 py-2 text-center type-label text-slate-token/70">FU</th>
+									<th class="px-2 py-2 text-left type-label text-slate-token/70">Follow-ups</th>
 								</tr>
 							</thead>
 
 							<tbody class="type-body">
 								<tr
 									v-for="row in recentRows"
-									:key="`${row.date}-${row.student}-${row.log_type}-${row.author}`"
+									:key="row.name"
 									class="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
 									@click.stop="selectStudentFromRecent(row)"
 								>
 									<td class="px-2 py-2 align-top whitespace-nowrap">
 										{{ formatDate(row.date) }}
 									</td>
-									<td class="px-2 py-2 align-top whitespace-nowrap">
-										{{ row.student_full_name || row.student }}
+									<td class="px-2 py-2 align-top">
+										<div
+											class="analytics-table__cell-truncate"
+											:title="row.student_full_name || row.student"
+										>
+											{{ row.student_full_name || row.student }}
+										</div>
 									</td>
-									<td class="px-2 py-2 align-top whitespace-nowrap">
-										{{ row.program || '-' }}
-									</td>
-									<td class="px-2 py-2 align-top whitespace-nowrap">
-										{{ row.log_type }}
+									<td class="px-2 py-2 align-top">
+										<div class="analytics-table__cell-truncate" :title="row.log_type">
+											{{ row.log_type }}
+										</div>
 									</td>
 									<td class="px-2 py-2 align-top" :title="stripHtml(row.content || '')">
-										{{ truncate(stripHtml(row.content || '')) }}
+										<div class="analytics-recent-log__snippet">
+											{{ truncate(stripHtml(row.content || '')) }}
+										</div>
 									</td>
-									<td class="px-2 py-2 align-top whitespace-nowrap">
-										{{ row.author }}
-									</td>
-									<td class="px-2 py-2 align-top text-center">
-										<span
-											v-if="row.requires_follow_up"
-											class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 type-badge-label text-amber-700"
-										>
-											Y
-										</span>
+									<td class="px-2 py-2 align-top">
+										<div v-if="row.follow_ups.length" class="analytics-followup-stack">
+											<div
+												v-for="followUp in visibleFollowUps(row)"
+												:key="followUp.name"
+												class="analytics-followup-card"
+											>
+												<div class="analytics-followup-card__meta">
+													<span class="analytics-followup-card__chip">{{ followUp.doctype }}</span>
+													<span v-if="followUp.next_step"
+														>Next step: {{ followUp.next_step }}</span
+													>
+													<span v-if="responseMetric(followUp)">
+														{{ responseMetric(followUp) }}
+													</span>
+												</div>
+												<div class="analytics-followup-card__submeta">
+													<span v-if="followUp.follow_up_author">
+														{{ followUp.follow_up_author }}
+													</span>
+													<span v-if="formatRespondedAt(followUp.responded_at)">
+														{{ formatRespondedAt(followUp.responded_at) }}
+													</span>
+												</div>
+												<p v-if="followUp.comment_text" class="analytics-followup-card__comment">
+													{{ truncate(followUp.comment_text, 120) }}
+												</p>
+											</div>
+											<p v-if="hiddenFollowUpCount(row)" class="analytics-followup-stack__more">
+												+{{ hiddenFollowUpCount(row) }} more follow-up<span
+													v-if="hiddenFollowUpCount(row) > 1"
+												>
+													s
+												</span>
+											</p>
+										</div>
+										<div v-else class="analytics-followup-empty">
+											{{ followUpEmptyLabel(row) }}
+										</div>
 									</td>
 								</tr>
 
 								<tr v-if="!recentRows.length">
-									<td colspan="7" class="px-2 py-3 text-center type-empty">
+									<td colspan="5" class="px-2 py-3 text-center type-empty">
 										No logs in this period.
 									</td>
 								</tr>
@@ -449,6 +479,7 @@ function truncate(text: string, max = 140) {
 			     Change: bump body typography from caption -> body
 			   ============================================================ -->
 			<AnalyticsCard
+				class="md:col-span-2 xl:col-span-3"
 				title="Selected Student Logs"
 				@expand="
 					openTableOverlay(
@@ -476,13 +507,14 @@ function truncate(text: string, max = 140) {
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Type</th>
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Log</th>
 									<th class="px-2 py-2 text-left type-label text-slate-token/70">Author</th>
+									<th class="px-2 py-2 text-left type-label text-slate-token/70">Follow-ups</th>
 								</tr>
 							</thead>
 
 							<tbody class="type-body">
 								<tr
 									v-for="row in studentLogs"
-									:key="`${row.date}-${row.log_type}-${row.author}`"
+									:key="row.name"
 									class="border-b border-slate-100 hover:bg-slate-50"
 								>
 									<td class="px-2 py-2 align-top whitespace-nowrap">
@@ -497,10 +529,50 @@ function truncate(text: string, max = 140) {
 									<td class="px-2 py-2 align-top whitespace-nowrap">
 										{{ row.author }}
 									</td>
+									<td class="px-2 py-2 align-top">
+										<div v-if="row.follow_ups.length" class="analytics-followup-stack">
+											<div
+												v-for="followUp in visibleFollowUps(row)"
+												:key="followUp.name"
+												class="analytics-followup-card"
+											>
+												<div class="analytics-followup-card__meta">
+													<span class="analytics-followup-card__chip">{{ followUp.doctype }}</span>
+													<span v-if="followUp.next_step"
+														>Next step: {{ followUp.next_step }}</span
+													>
+													<span v-if="responseMetric(followUp)">
+														{{ responseMetric(followUp) }}
+													</span>
+												</div>
+												<div class="analytics-followup-card__submeta">
+													<span v-if="followUp.follow_up_author">
+														{{ followUp.follow_up_author }}
+													</span>
+													<span v-if="formatRespondedAt(followUp.responded_at)">
+														{{ formatRespondedAt(followUp.responded_at) }}
+													</span>
+												</div>
+												<p v-if="followUp.comment_text" class="analytics-followup-card__comment">
+													{{ truncate(followUp.comment_text, 140) }}
+												</p>
+											</div>
+											<p v-if="hiddenFollowUpCount(row)" class="analytics-followup-stack__more">
+												+{{ hiddenFollowUpCount(row) }} more follow-up<span
+													v-if="hiddenFollowUpCount(row) > 1"
+												>
+													s
+												</span>
+											</p>
+										</div>
+										<div v-else class="analytics-followup-empty">
+											{{ followUpEmptyLabel(row) }}
+										</div>
+									</td>
 								</tr>
 
 								<tr v-if="!studentLogs.length">
-									<td colspan="4" class="px-2 py-3 text-center type-empty">
+									<td colspan="5" class="px-2 py-3 text-center type-empty">
 										No logs to show yet.
 									</td>
 								</tr>
@@ -512,3 +584,78 @@ function truncate(text: string, max = 140) {
 		</section>
 	</div>
 </template>
+
+<style scoped>
+.analytics-table__cell-truncate {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.analytics-recent-log__snippet {
+	display: -webkit-box;
+	overflow: hidden;
+	word-break: break-word;
+	line-height: 1.5rem;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 4;
+}
+
+.analytics-followup-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.analytics-followup-card {
+	border: 1px solid rgba(148, 163, 184, 0.24);
+	border-radius: 0.9rem;
+	padding: 0.55rem 0.7rem;
+	background: linear-gradient(135deg, rgba(255, 251, 235, 0.75), rgba(255, 255, 255, 0.98)), #fff;
+}
+
+.analytics-followup-card__meta,
+.analytics-followup-card__submeta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem 0.55rem;
+	align-items: center;
+}
+
+.analytics-followup-card__meta {
+	font-size: 0.73rem;
+	line-height: 1.05rem;
+	font-weight: 600;
+	color: rgb(146 64 14);
+}
+
+.analytics-followup-card__submeta {
+	margin-top: 0.22rem;
+	font-size: 0.72rem;
+	line-height: 1rem;
+	color: rgb(71 85 105);
+}
+
+.analytics-followup-card__chip {
+	display: inline-flex;
+	align-items: center;
+	border-radius: 9999px;
+	padding: 0.08rem 0.48rem;
+	background: rgba(251, 191, 36, 0.18);
+	color: rgb(120 53 15);
+}
+
+.analytics-followup-card__comment {
+	margin-top: 0.4rem;
+	font-size: 0.8rem;
+	line-height: 1.25rem;
+	color: rgb(30 41 59);
+}
+
+.analytics-followup-stack__more,
+.analytics-followup-empty {
+	font-size: 0.75rem;
+	line-height: 1rem;
+	color: rgb(100 116 139);
+}
+</style>

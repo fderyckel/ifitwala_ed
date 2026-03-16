@@ -234,14 +234,56 @@ def _resolve_applicant_document_item(
     item_label: str | None = None,
     fallback_label: str | None = None,
 ):
+    doc_type_row = (
+        frappe.db.get_value(
+            "Applicant Document Type",
+            applicant_document.document_type,
+            ["is_repeatable", "code", "document_type_name"],
+            as_dict=True,
+        )
+        or {}
+    )
+    is_repeatable = bool(cint(doc_type_row.get("is_repeatable")))
+    default_single_item_key = (
+        frappe.scrub((doc_type_row.get("code") or applicant_document.document_type or "document").strip())[:80]
+        or "document"
+    )
+
     if applicant_document_item:
         item_doc = frappe.get_doc("Applicant Document Item", applicant_document_item)
         if item_doc.applicant_document != applicant_document.name:
             frappe.throw(_("Applicant Document Item does not match the provided Applicant Document."))
         return item_doc
 
+    if not is_repeatable:
+        existing = frappe.get_all(
+            "Applicant Document Item",
+            filters={"applicant_document": applicant_document.name},
+            fields=["name", "item_label"],
+            order_by="modified desc",
+            limit_page_length=1,
+        )
+        if existing:
+            item_doc = frappe.get_doc("Applicant Document Item", existing[0].get("name"))
+            requested_label = (item_label or "").strip() or (fallback_label or "").strip()
+            if requested_label and requested_label != (item_doc.item_label or "").strip():
+                frappe.db.set_value(
+                    "Applicant Document Item",
+                    item_doc.name,
+                    "item_label",
+                    requested_label,
+                    update_modified=False,
+                )
+                item_doc.item_label = requested_label
+            return item_doc
+
     requested_key = _sanitize_item_key(item_key)
-    requested_label = (item_label or "").strip() or (fallback_label or "").strip() or _("Uploaded file")
+    requested_label = (
+        (item_label or "").strip()
+        or (fallback_label or "").strip()
+        or (doc_type_row.get("document_type_name") or "").strip()
+        or _("Uploaded file")
+    )
 
     if requested_key:
         existing = frappe.db.get_value(
@@ -263,10 +305,8 @@ def _resolve_applicant_document_item(
             return item_doc
         key_value = requested_key
     else:
-        key_value = _next_item_key(
-            applicant_document=applicant_document.name,
-            preferred=requested_label,
-        )
+        preferred_key = requested_label if is_repeatable else default_single_item_key
+        key_value = _next_item_key(applicant_document=applicant_document.name, preferred=preferred_key)
 
     item_doc = frappe.get_doc(
         {

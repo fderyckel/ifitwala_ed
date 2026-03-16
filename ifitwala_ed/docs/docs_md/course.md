@@ -3,8 +3,8 @@ title: "Course: Catalog Unit for Program and Enrollment Design"
 slug: course
 category: Curriculum
 doc_order: 2
-version: "1.0.0"
-last_change_date: "2026-02-28"
+version: "1.1.1"
+last_change_date: "2026-03-13"
 summary: "Define a reusable catalog course with grade-scale context, assessment categories/criteria, and status used by Program and Program Offering enrollment flows."
 seo_title: "Course: Catalog Unit for Program and Enrollment Design"
 seo_description: "Define a reusable catalog course with grade-scale context, assessment categories/criteria, and status used by Program and Program Offering enrollment flows."
@@ -14,9 +14,11 @@ seo_description: "Define a reusable catalog course with grade-scale context, ass
 
 `Course` is the catalog-level learning unit that programs and offerings reference. Enrollment logic validates against course identity plus program/offering policies.
 
+In staff forms, the taxonomy field is labeled `Course Group (Catalog)` to distinguish it from enrollment basket terminology.
+
 ## Before You Start (Prerequisites)
 
-- Create supporting masters (`Grade Scale`, `Course Group`, assessment masters) as needed.
+- Create supporting masters (`Grade Scale`, `Course Group`, shown in forms as `Course Group (Catalog)`, assessment masters) as needed.
 - Confirm how the course should behave in scheduling (`term_long`) and reporting exclusions.
 - If the course will participate in weighted criteria grading, prepare criterion rows before activation.
 
@@ -25,6 +27,7 @@ seo_description: "Define a reusable catalog course with grade-scale context, ass
 - `Program` catalog rows and offering rows point to `Course`.
 - Program validation allows only `Course.status = Active` in program catalog.
 - Enrollment and tooling use course identity for course-level placement in enrollments.
+- `Course Group` remains catalog taxonomy only; enrollment basket semantics live on `Basket Group`.
 
 <Callout type="info" title="Assessment weighting rule">
 If `assessment_criteria` rows are used, their `criteria_weighting` total must be exactly 100%.
@@ -43,6 +46,7 @@ If `assessment_criteria` rows are used, their `criteria_weighting` total must be
 ## Lifecycle and Linked Documents
 
 1. Create course identity and school/context links.
+   On a new Desk form, `school` now prefills from the current user's default school when available; staff can still change or clear it before save.
 2. Configure grade-scale fields (`default_grade_scale`, optional `grade_scale` override).
 3. Configure `assessment_categories` and `assessment_criteria` rows.
 4. Set lifecycle flags (`status`, `term_long`, publish flags).

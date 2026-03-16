@@ -3,8 +3,8 @@ title: "Assessment Criteria: Defining What Good Work Looks Like"
 slug: assessment-criteria
 category: Assessment
 doc_order: 2
-version: "1.0.0"
-last_change_date: "2026-02-25"
+version: "1.0.1"
+last_change_date: "2026-03-11"
 summary: "Create reusable criteria and performance levels that power rubric-based grading across tasks, outcomes, moderation, and reporting."
 seo_title: "Assessment Criteria: Defining What Good Work Looks Like"
 seo_description: "Create reusable criteria and performance levels that power rubric-based grading across tasks, outcomes, moderation, and reporting."
@@ -15,7 +15,7 @@ seo_description: "Create reusable criteria and performance levels that power rub
 ## Before You Start (Prerequisites)
 
 - Define rubric language and criterion naming standards first.
-- If you use course-group-aware naming, create `Course Group` records first.
+- If you use course-group-aware naming, create `Course Group` records first. In staff forms this taxonomy appears as `Course Group (Catalog)`.
 - Create reusable criteria before building `Task` templates that reference them.
 
 `Assessment Criteria` is where schools encode the quality standards behind grading. Instead of re-writing rubrics for every task, you define criteria once and reuse them across classes and years.
@@ -32,7 +32,7 @@ Criteria are curriculum truth, not one-off task notes. That keeps grading consis
 - [**Task Outcome**](/docs/en/task-outcome/) via `Task Outcome Criterion` official criterion results.
 - Curriculum models:
   - [**Course**](/docs/en/course/) via `Course Assessment Criteria`
-  - `course_group` linking for framework/program organization
+  - `course_group` linking for catalog/framework organization
 - Staff gradebook rendering (`/staff/gradebook`) for criteria-level inputs and feedback.
 - Desk Workspaces:
   - `Curriculum` workspace

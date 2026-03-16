@@ -13,6 +13,11 @@
   "academic_year",
   "term",
   "school",
+  "section_break_source",
+  "source_program_offering",
+  "source_course",
+  "column_break_source_filters",
+  "source_academic_year",
   "section_break_z4cm",
   "students",
   "section_break_mane",
@@ -88,12 +93,39 @@
    "fieldtype": "Link",
    "label": "School",
    "options": "School"
+  },
+  {
+   "fieldname": "section_break_source",
+   "fieldtype": "Section Break",
+   "label": "Source Course Filter"
+  },
+  {
+   "fieldname": "source_program_offering",
+   "fieldtype": "Link",
+   "label": "Source Program Offering",
+   "options": "Program Offering"
+  },
+  {
+   "fieldname": "source_course",
+   "fieldtype": "Link",
+   "label": "Source Course",
+   "options": "Course"
+  },
+  {
+   "fieldname": "column_break_source_filters",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "source_academic_year",
+   "fieldtype": "Link",
+   "label": "Source Academic Year",
+   "options": "Academic Year"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-10-04 20:26:05.979016",
+ "modified": "2026-03-11 12:27:19",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Course Enrollment Tool",

@@ -35,6 +35,12 @@ It applies equally to:
 
 There are **no exceptions**.
 
+Organization-owned reusable public media is governed by the canonical extension documented in:
+
+* `ifitwala_ed/docs/files_and_policies/files_05_organization_media_governance.md`
+
+That contract is intentionally defined at the organization level first, with school scoping and nested inheritance layered on top.
+
 ---
 
 ## 1. Core principles (non‑negotiable)
@@ -93,6 +99,7 @@ If any other dimension is missing, the upload is invalid.
 ## 3. Canonical logical storage model
 
 > This is a **logical model**. Physical storage may change later (FS → S3 → GCS).
+> The architecture must also tolerate future separation of application runtime, database, and storage bucket without changing business contracts.
 
 ```
 Home/
@@ -238,6 +245,8 @@ There are no direct `File.insert()` calls in business logic.
 * Return canonical File record
 
 The dispatcher is the **only authority** on storage decisions.
+
+This includes future organization-owned public media flows. UI and renderer code must consume canonical URLs or governed references only; they must not depend on local filesystem layout.
 
 ---
 

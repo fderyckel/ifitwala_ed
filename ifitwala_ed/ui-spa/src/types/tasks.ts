@@ -3,6 +3,7 @@
 export type CreateTaskDeliveryPayload = {
 	task: string;
 	task_delivery: string;
+	outcomes_created?: number;
 };
 
 export type CreateTaskDeliveryInput = {
@@ -18,4 +19,9 @@ export type CreateTaskDeliveryInput = {
 	group_submission?: 0 | 1;
 	grading_mode?: 'None' | 'Completion' | 'Binary' | 'Points';
 	max_points?: number | string;
+	quiz_question_bank?: string;
+	quiz_question_count?: number | string;
+	quiz_time_limit_minutes?: number | string;
+	quiz_max_attempts?: number | string;
+	quiz_pass_percentage?: number | string;
 };

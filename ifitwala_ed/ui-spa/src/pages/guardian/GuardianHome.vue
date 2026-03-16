@@ -280,22 +280,40 @@ const quickLinks = [
 		to: { name: 'guardian-activities' },
 	},
 	{
+		title: 'Attendance',
+		description: 'Review daily attendance across all children.',
+		icon: 'calendar',
+		to: { name: 'guardian-attendance' },
+	},
+	{
 		title: 'Family Timeline',
 		description: 'Review upcoming classes and day summaries.',
 		icon: 'calendar',
 		to: { name: 'guardian-home' },
 	},
 	{
+		title: 'Policies',
+		description: 'Review and acknowledge guardian policies in scope.',
+		icon: 'shield',
+		to: { name: 'guardian-policies' },
+	},
+	{
+		title: 'Finance',
+		description: 'See invoices and payment history for your family.',
+		icon: 'credit-card',
+		to: { name: 'guardian-finance' },
+	},
+	{
+		title: 'Monitoring',
+		description: 'Track visible logs and published results across children.',
+		icon: 'file-text',
+		to: { name: 'guardian-monitoring' },
+	},
+	{
 		title: 'Showcase Portfolio',
 		description: 'View approved showcase evidence by child.',
 		icon: 'layers',
 		to: { name: 'guardian-portfolio' },
-	},
-	{
-		title: 'Updates',
-		description: 'Track communications and support items.',
-		icon: 'message-square',
-		to: { name: 'guardian-home' },
 	},
 ];
 

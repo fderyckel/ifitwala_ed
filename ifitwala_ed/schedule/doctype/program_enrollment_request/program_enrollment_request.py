@@ -5,7 +5,11 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-from ifitwala_ed.schedule.enrollment_request_utils import validate_program_enrollment_request
+from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
+from ifitwala_ed.schedule.enrollment_request_utils import (
+    build_program_enrollment_request_validation,
+    validate_program_enrollment_request,
+)
 
 
 class ProgramEnrollmentRequest(Document):
@@ -26,6 +30,9 @@ class ProgramEnrollmentRequest(Document):
         if request_kind == "Activity" and not self.activity_booking:
             frappe.throw(_("Activity Request Kind requires Activity Booking reference."))
 
+        self._sync_course_semantics_from_offering()
+        self._validate_course_rows()
+
         needs_snapshot = target_status in {"Submitted", "Under Review", "Approved"}
 
         if not needs_snapshot:
@@ -35,32 +42,35 @@ class ProgramEnrollmentRequest(Document):
         if self.is_new():
             frappe.throw(_("Please save this request before submitting for validation."))
 
-        # Stable basket fingerprint (unique, deterministic)
-        current_courses = []
-        seen = set()
-        for r in self.courses or []:
-            c = (r.course or "").strip()
-            if not c or c in seen:
-                continue
-            seen.add(c)
-            current_courses.append(c)
-        current_courses.sort()
+        # Stable basket fingerprint (unique, deterministic, includes resolved basket semantics)
+        current_rows = _normalize_request_rows(self.courses or [])
 
-        # Read prior snapshot courses (if any) to avoid redundant revalidation
-        prior_courses = None
+        # Read prior snapshot rows (if any) to avoid redundant revalidation
+        prior_rows = None
         if self.validation_payload:
             try:
                 payload = frappe.parse_json(self.validation_payload)
-                prior_courses = payload.get("requested_courses")
-                if isinstance(prior_courses, list):
-                    prior_courses = sorted({(x or "").strip() for x in prior_courses if (x or "").strip()})
+                prior_rows = payload.get("requested_rows")
+                if isinstance(prior_rows, list):
+                    prior_rows = _normalize_request_rows(prior_rows)
                 else:
-                    prior_courses = None
+                    prior_courses = payload.get("requested_courses")
+                    if isinstance(prior_courses, list):
+                        prior_rows = [
+                            {
+                                "course": course_name,
+                                "applied_basket_group": "",
+                                "choice_rank": None,
+                            }
+                            for course_name in sorted({(x or "").strip() for x in prior_courses if (x or "").strip()})
+                        ]
+                    else:
+                        prior_rows = None
             except Exception:
-                prior_courses = None
+                prior_rows = None
 
         status_changed = self.has_value_changed("status") if not self.is_new() else True
-        basket_changed = (prior_courses is None) or (prior_courses != current_courses)
+        basket_changed = (prior_rows is None) or (prior_rows != current_rows)
 
         # If nothing relevant changed and we already have a snapshot, keep it (still enforce override gate)
         if (
@@ -81,8 +91,10 @@ class ProgramEnrollmentRequest(Document):
                 frappe.throw(_("Request must be Valid before it can be Approved."))
             return
 
-        # Force validation refresh (single truth)
-        validate_program_enrollment_request(self.name, force=1)
+        # Validate the current in-memory request snapshot before save persists it.
+        _engine_payload, validation_updates = build_program_enrollment_request_validation(self, force=1)
+        for fieldname, value in (validation_updates or {}).items():
+            self.set(fieldname, value)
 
         # Enforce gates after refresh
         if target_status == "Approved":
@@ -93,32 +105,94 @@ class ProgramEnrollmentRequest(Document):
                     _("This request requires an override and must be override-approved before it can be Approved.")
                 )
 
+    def _sync_course_semantics_from_offering(self):
+        if not self.program_offering or not getattr(self, "courses", None):
+            return
+
+        offering_semantics = get_offering_course_semantics(self.program_offering)
+        for row in self.courses or []:
+            course = (row.course or "").strip()
+            if not course:
+                continue
+            row.required = 1 if (offering_semantics.get(course) or {}).get("required") else 0
+
+    def _validate_course_rows(self):
+        if not getattr(self, "courses", None):
+            return
+
+        offering_semantics = get_offering_course_semantics(self.program_offering) if self.program_offering else {}
+        gate_statuses = {"Submitted", "Under Review", "Approved"}
+        seen = set()
+
+        for idx, row in enumerate(self.courses or [], start=1):
+            course = (row.course or "").strip()
+            if not course:
+                frappe.throw(_("Course row {0}: Course is required.").format(idx))
+            if course in seen:
+                frappe.throw(_("Course row {0}: duplicate course {1}.").format(idx, course))
+            seen.add(course)
+
+            semantics = offering_semantics.get(course) or {}
+            allowed_groups = list(semantics.get("basket_groups") or [])
+            applied_group = (row.applied_basket_group or "").strip()
+
+            if applied_group and applied_group not in allowed_groups:
+                frappe.throw(
+                    _("Course row {0}: Applied Basket Group (Enrollment) {1} is not allowed for course {2}.").format(
+                        idx, applied_group, course
+                    )
+                )
+
+            if not applied_group and len(allowed_groups) == 1 and not int(row.required or 0):
+                row.applied_basket_group = allowed_groups[0]
+                applied_group = allowed_groups[0]
+
+            if row.choice_rank and not applied_group:
+                frappe.throw(
+                    _("Course row {0}: Choice Rank requires an Applied Basket Group (Enrollment).").format(idx)
+                )
+
+            if (self.status or "").strip() in gate_statuses and len(allowed_groups) > 1 and not applied_group:
+                frappe.throw(
+                    _(
+                        "Course row {0}: select an Applied Basket Group (Enrollment) for course {1} before the request can advance."
+                    ).format(idx, course)
+                )
+
+
+def _normalize_request_rows(rows):
+    normalized = []
+    seen = set()
+
+    for row in rows or []:
+        course = ((row or {}).get("course") or "").strip()
+        if not course or course in seen:
+            continue
+        seen.add(course)
+        normalized.append(
+            {
+                "course": course,
+                "applied_basket_group": ((row or {}).get("applied_basket_group") or "").strip(),
+                "choice_rank": (row or {}).get("choice_rank"),
+            }
+        )
+
+    normalized.sort(
+        key=lambda row: (
+            row.get("course") or "",
+            row.get("applied_basket_group") or "",
+            "" if row.get("choice_rank") is None else str(row.get("choice_rank")),
+        )
+    )
+    return normalized
+
 
 @frappe.whitelist()
 def get_offering_catalog(program_offering):
     if not program_offering:
         frappe.throw(_("Program Offering is required."))
 
-    rows = frappe.get_all(
-        "Program Offering Course",
-        filters={
-            "parent": program_offering,
-            "parenttype": "Program Offering",
-        },
-        fields=[
-            "course",
-            "course_name",
-            "required",
-            "elective_group",
-            "capacity",
-            "waitlist_enabled",
-            "reserved_seats",
-            "grade_scale",
-        ],
-        order_by="idx asc",
-    )
-
-    return rows
+    return list(get_offering_course_semantics(program_offering).values())
 
 
 @frappe.whitelist()

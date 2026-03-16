@@ -3,8 +3,6 @@
 
 // ifitwala_ed/schedule/doctype/program_enrollment_tool/program_enrollment_tool.js
 
-// Helpers
-
 function canFetchStudents(frm) {
 	const source = frm.doc.get_students_from;
 	if (source === 'Program Enrollment') {
@@ -16,36 +14,70 @@ function canFetchStudents(frm) {
 	return false;
 }
 
+function hasDestinationContext(frm) {
+	return Boolean(frm.doc.new_program_offering && frm.doc.new_target_academic_year);
+}
+
+function hasStudents(frm) {
+	return Boolean((frm.doc.students || []).length);
+}
+
+function prettyCountLabel(key) {
+	return String(key || '')
+		.split('_')
+		.map(part => part.charAt(0).toUpperCase() + part.slice(1))
+		.join(' ');
+}
+
+function runToolAction(frm, method) {
+	if (!hasDestinationContext(frm)) {
+		frappe.msgprint(__('Please choose a destination Program Offering and destination Academic Year first.'));
+		return;
+	}
+	if (!hasStudents(frm)) {
+		frappe.msgprint(__('Please load or add students first.'));
+		return;
+	}
+
+	frappe.call({
+		doc: frm.doc,
+		method,
+		freeze: true
+	});
+}
+
 frappe.ui.form.on('Program Enrollment Tool', {
 	refresh(frm) {
 		frm.disable_save();
+		frm.clear_custom_buttons();
 
-		// idempotent realtime bindings
 		if (!frm.__pe_rt_bound) {
 			frappe.realtime.on('program_enrollment_tool', data => {
 				frappe.hide_msgprint(true);
-				frappe.show_progress(__('Enrolling students'), data.progress[0], data.progress[1]);
+				frappe.show_progress(
+					data.action_label || __('Processing'),
+					data.progress?.[0] || 0,
+					data.progress?.[1] || 0
+				);
 			});
 
 			frappe.realtime.on('program_enrollment_tool_done', summary => {
-				const msg = `Created: ${summary.created}, Skipped: ${summary.skipped}, Failed: ${summary.failed}`;
-				if (summary.fail_link) {
-					const url = summary.fail_link; // server returns full file_url
-					frappe.msgprint({
-						title: __('Batch Finished'),
-						message: `${msg}<br><a href="${url}" target="_blank">Download failures CSV</a>`,
-						indicator: 'green'
-					});
-				} else {
-					frappe.msgprint(msg);
-				}
-				frm.set_value('students', []);
+				const counts = Object.entries(summary?.counts || {})
+					.map(([key, value]) => `${prettyCountLabel(key)}: ${value}`)
+					.join(', ');
+				const detailsLink = summary?.details_link
+					? `<br><a href="${summary.details_link}" target="_blank">${__('Download details CSV')}</a>`
+					: '';
+				frappe.msgprint({
+					title: summary?.title || __('Batch Finished'),
+					message: `${counts}${detailsLink}`,
+					indicator: 'green'
+				});
 			});
 
 			frm.__pe_rt_bound = true;
 		}
 
-		// Constrain AY pickers to the chosen Program Offering's date window
 		frm.set_query('target_academic_year', () => ({
 			query: 'ifitwala_ed.schedule.doctype.program_enrollment_tool.program_enrollment_tool.program_offering_target_ay_query',
 			filters: { program_offering: frm.doc.program_offering }
@@ -56,29 +88,24 @@ frappe.ui.form.on('Program Enrollment Tool', {
 			filters: { program_offering: frm.doc.new_program_offering }
 		}));
 
-		// Field visibility
-		toggle_filter_fields(frm);
-
-		// Table toolbar
-		add_table_toolbar(frm);
+		toggleFilterFields(frm);
+		addTableToolbar(frm);
+		addActionButtons(frm);
 	},
 
 	get_students_from(frm) {
-		toggle_filter_fields(frm);
+		toggleFilterFields(frm);
 	},
 
-	// When Program Offering changes, reset & tighten AY list to overlap
 	program_offering(frm) {
 		frm.set_value('target_academic_year', null);
 	},
 
-	// New Program Offering → reset target AY
 	new_program_offering(frm) {
 		frm.set_value('new_target_academic_year', null);
 	},
 
 	get_students(frm) {
-		// Guardrails per source
 		if (!canFetchStudents(frm)) {
 			frappe.msgprint(__('Please complete the required filters for the selected source first.'));
 			return;
@@ -91,68 +118,76 @@ frappe.ui.form.on('Program Enrollment Tool', {
 			callback(r) {
 				if (r.message) {
 					frm.set_value('students', r.message);
-					highlight_duplicates(frm);
+					highlightTargetCollisions(frm);
+					frm.refresh();
 				}
 			}
 		});
 	},
 
 	enroll_students(frm) {
-		frappe.call({
-			doc: frm.doc,
-			method: 'enroll_students',
-			freeze: true,
-			callback() {
-				// summary comes via realtime
-			}
-		});
+		runToolAction(frm, 'prepare_requests');
 	}
 });
 
-// -------------------------
-// Helper Functions
-// -------------------------
-function add_table_toolbar(frm) {
-	const grid = frm.get_field('students').grid;
+function addActionButtons(frm) {
+	if (!hasDestinationContext(frm) || !hasStudents(frm)) {
+		return;
+	}
 
-	// Select All
+	frm.add_custom_button(__('Validate Requests'), () => runToolAction(frm, 'validate_requests'), __('Actions'));
+	frm.add_custom_button(__('Approve Valid Requests'), () => runToolAction(frm, 'approve_requests'), __('Actions'));
+	frm.add_custom_button(__('Materialize Requests'), () => runToolAction(frm, 'materialize_requests'), __('Actions'));
+}
+
+function addTableToolbar(frm) {
+	const grid = frm.get_field('students').grid;
+	if (grid.__programEnrollmentToolToolbarBound) {
+		return;
+	}
+
 	grid.add_custom_button(__('Select All'), () => {
-		grid.grid_rows.forEach(r => r.doc.__checked = 1);
+		grid.grid_rows.forEach(row => {
+			row.doc.__checked = 1;
+		});
 		grid.refresh();
 	});
 
-	// Clear
 	grid.add_custom_button(__('Clear Table'), () => {
 		frm.set_value('students', []);
 	});
 
-	// Add Student manually
 	grid.add_custom_button(__('Add Student…'), () => {
-		frappe.prompt([
-			{ fieldtype: 'Link', label: 'Student', fieldname: 'student', options: 'Student', reqd: 1 }
-		], values => {
-			frappe.db.get_value('Student', values.student, ['student_full_name','cohort']).then(({ message }) => {
-				grid.add_new_row({
-					student: values.student,
-					student_name: message.student_full_name,
-					student_cohort: message.cohort
+		frappe.prompt(
+			[{ fieldtype: 'Link', label: 'Student', fieldname: 'student', options: 'Student', reqd: 1 }],
+			values => {
+				frappe.db.get_value('Student', values.student, ['student_full_name', 'cohort']).then(({ message }) => {
+					grid.add_new_row({
+						student: values.student,
+						student_name: message.student_full_name,
+						student_cohort: message.cohort
+					});
+					grid.refresh();
 				});
-				grid.refresh();
-			});
-		});
+			}
+		);
 	});
+
+	grid.__programEnrollmentToolToolbarBound = true;
 }
 
-function highlight_duplicates(frm) {
+function highlightTargetCollisions(frm) {
 	const grid = frm.get_field('students').grid;
 	grid.grid_rows.forEach(row => {
 		if (row.doc.already_enrolled) {
 			row.wrapper.css({ background: '#ffebe9' });
+		} else {
+			row.wrapper.css({ background: '' });
 		}
 	});
 }
 
-function toggle_filter_fields(frm) {
+function toggleFilterFields(frm) {
 	const source = frm.doc.get_students_from;
 
 	frm.toggle_display('program_offering', false);
@@ -162,7 +197,7 @@ function toggle_filter_fields(frm) {
 	if (source === 'Program Enrollment') {
 		frm.toggle_display('program_offering', true);
 		frm.toggle_display('target_academic_year', true);
-		frm.toggle_display('student_cohort', true); // optional cohort filter
+		frm.toggle_display('student_cohort', true);
 	} else if (source === 'Cohort') {
 		frm.toggle_display('student_cohort', true);
 	}

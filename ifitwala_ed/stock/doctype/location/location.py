@@ -1,13 +1,14 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# ifitwala_ed/stock/doctype/location/location.py
+# /Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/stock/doctype/location/location.py
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint
 
+from ifitwala_ed.utilities.location_utils import get_location_scope
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 
@@ -168,17 +169,19 @@ class Location(Document):
         if cap <= 0:
             return
 
-        # 1) Find active Student Groups that reference this Location
+        location_scope = tuple(get_location_scope(self.name, include_children=True) or [self.name])
+
+        # 1) Find active Student Groups that reference this Location subtree
         sg_rows = frappe.db.sql(
             """
             SELECT DISTINCT sg.name AS name
             FROM `tabStudent Group Schedule` AS sgs
             INNER JOIN `tabStudent Group` AS sg
                 ON sg.name = sgs.parent
-            WHERE sgs.location = %s
+            WHERE sgs.location IN %(locations)s
               AND sg.status = 'Active'
             """,
-            (self.name,),
+            {"locations": location_scope},
             as_dict=True,
         )
 

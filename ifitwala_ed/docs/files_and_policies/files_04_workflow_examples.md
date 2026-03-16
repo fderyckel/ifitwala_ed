@@ -1,5 +1,11 @@
 # A️ Task Submission Flows (Students uploading work)
 
+> Organization-owned reusable media for websites / branding is not defined in this example note.
+> That contract is documented separately in:
+> `ifitwala_ed/docs/files_and_policies/files_05_organization_media_governance.md`
+
+No website or gallery workflow should be implemented from examples in this file without first conforming to that organization-media contract.
+
 ## 1. What a Task Submission *is* (re-anchoring)
 
 A **Task Submission file** is:

@@ -7,11 +7,11 @@
  "hidden": 0,
  "icon": "non-profit",
  "icon_type": "Link",
- "idx": 0,
+ "idx": 6,
  "label": "Health",
  "link_to": "Health",
  "link_type": "Workspace Sidebar",
- "modified": "2026-02-28 09:26:45.960423",
+ "modified": "2026-03-11 14:23:11.861755",
  "modified_by": "Administrator",
  "name": "Health",
  "owner": "Administrator",
@@ -24,10 +24,10 @@
    "role": "Academic Assistant"
   },
   {
-   "role": "Academic Assistant"
+   "role": "Academic Admin"
   },
   {
-   "role": "Academic Admin"
+   "role": "Accreditation Visitor"
   }
  ],
  "sidebar": "Health",

@@ -6,18 +6,27 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
+  "status",
   "account_holder",
   "organization",
+  "school",
+  "program",
   "program_offering",
+  "adjustment_type",
+  "against_sales_invoice",
   "posting_date",
   "due_date",
+  "payment_terms_template",
   "taxes_and_charges",
   "items",
+  "payment_schedule",
   "taxes",
   "total",
   "total_taxes",
   "grand_total",
+  "paid_amount",
   "outstanding_amount",
+  "credit_note_total",
   "remarks"
  ],
  "fields": [
@@ -27,6 +36,15 @@
    "label": "Naming Series",
    "options": "SINV-.#####",
    "default": "SINV-.#####"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nUnpaid\nPartly Paid\nPaid\nOverdue\nCredit Note\nPartly Credited\nCredited\nCancelled",
+   "read_only": 1
   },
   {
    "fieldname": "account_holder",
@@ -45,10 +63,36 @@
    "reqd": 1
   },
   {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program",
+   "read_only": 1
+  },
+  {
    "fieldname": "program_offering",
    "fieldtype": "Link",
    "label": "Program Offering",
    "options": "Program Offering"
+  },
+  {
+   "fieldname": "adjustment_type",
+   "fieldtype": "Select",
+   "label": "Adjustment Type",
+   "options": "\nCredit Note\nDebit Note"
+  },
+  {
+   "fieldname": "against_sales_invoice",
+   "fieldtype": "Link",
+   "label": "Against Sales Invoice",
+   "options": "Sales Invoice"
   },
   {
    "fieldname": "posting_date",
@@ -63,6 +107,12 @@
    "label": "Due Date"
   },
   {
+   "fieldname": "payment_terms_template",
+   "fieldtype": "Link",
+   "label": "Payment Terms Template",
+   "options": "Payment Terms Template"
+  },
+  {
    "fieldname": "taxes_and_charges",
    "fieldtype": "Link",
    "label": "Tax Template",
@@ -74,6 +124,12 @@
    "label": "Items",
    "options": "Sales Invoice Item",
    "reqd": 1
+  },
+  {
+   "fieldname": "payment_schedule",
+   "fieldtype": "Table",
+   "label": "Payment Schedule",
+   "options": "Sales Invoice Payment Schedule"
   },
   {
    "fieldname": "taxes",
@@ -100,9 +156,21 @@
    "read_only": 1
   },
   {
+   "fieldname": "paid_amount",
+   "fieldtype": "Currency",
+   "label": "Paid Amount",
+   "read_only": 1
+  },
+  {
    "fieldname": "outstanding_amount",
    "fieldtype": "Currency",
    "label": "Outstanding Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "credit_note_total",
+   "fieldtype": "Currency",
+   "label": "Credit Note Total",
    "read_only": 1
   },
   {

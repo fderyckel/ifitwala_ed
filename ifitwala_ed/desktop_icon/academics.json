@@ -6,11 +6,11 @@
  "doctype": "Desktop Icon",
  "hidden": 0,
  "icon_type": "Link",
- "idx": 0,
+ "idx": 2,
  "label": "Academics",
  "link_to": "Academics",
  "link_type": "Workspace Sidebar",
- "modified": "2026-02-28 09:25:00.396892",
+ "modified": "2026-03-11 14:25:15.075385",
  "modified_by": "Administrator",
  "name": "Academics",
  "owner": "Administrator",
@@ -27,6 +27,9 @@
   },
   {
    "role": "Administrator"
+  },
+  {
+   "role": "Accreditation Visitor"
   }
  ],
  "sidebar": "Academics",

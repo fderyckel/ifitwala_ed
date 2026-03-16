@@ -1,10 +1,13 @@
 import frappe
 from frappe.utils import flt, getdate, today
 
+from ifitwala_ed.accounting.fiscal_year_utils import fill_date_range_from_fiscal_year
+
 
 def execute(filters=None):
     filters = filters or {}
-    as_of = getdate(filters.get("as_of_date") or today())
+    from_date, to_date = fill_date_range_from_fiscal_year(filters)
+    as_of = getdate(filters.get("as_of_date") or to_date or today())
 
     columns = [
         {
@@ -21,6 +24,9 @@ def execute(filters=None):
             "options": "Sales Invoice",
             "width": 140,
         },
+        {"label": "Status", "fieldname": "status", "fieldtype": "Data", "width": 120},
+        {"label": "School", "fieldname": "school", "fieldtype": "Link", "options": "School", "width": 160},
+        {"label": "Program", "fieldname": "program", "fieldtype": "Link", "options": "Program", "width": 160},
         {"label": "Posting Date", "fieldname": "posting_date", "fieldtype": "Date", "width": 110},
         {"label": "Due Date", "fieldname": "due_date", "fieldtype": "Date", "width": 110},
         {"label": "Outstanding", "fieldname": "outstanding_amount", "fieldtype": "Currency", "width": 120},
@@ -28,19 +34,49 @@ def execute(filters=None):
         {"label": "Bucket", "fieldname": "bucket", "fieldtype": "Data", "width": 100},
     ]
 
-    invoice_filters = {
-        "organization": filters.get("organization"),
-        "docstatus": 1,
-        "outstanding_amount": [">", 0],
-    }
+    conditions = ["si.organization = %(organization)s", "si.docstatus = 1", "si.outstanding_amount > 0"]
+    params = {"organization": filters.get("organization")}
     if filters.get("account_holder"):
-        invoice_filters["account_holder"] = filters.get("account_holder")
+        conditions.append("si.account_holder = %(account_holder)s")
+        params["account_holder"] = filters.get("account_holder")
+    if filters.get("school"):
+        conditions.append(
+            "exists (select 1 from `tabSales Invoice Item` sii where sii.parent = si.name and sii.school = %(school)s)"
+        )
+        params["school"] = filters.get("school")
+    if filters.get("program"):
+        conditions.append(
+            "exists (select 1 from `tabSales Invoice Item` sii where sii.parent = si.name and sii.program = %(program)s)"
+        )
+        params["program"] = filters.get("program")
+    if from_date and to_date:
+        conditions.append("si.posting_date between %(from_date)s and %(to_date)s")
+        params["from_date"] = from_date
+        params["to_date"] = to_date
+    elif from_date:
+        conditions.append("si.posting_date >= %(from_date)s")
+        params["from_date"] = from_date
+    elif to_date:
+        conditions.append("si.posting_date <= %(to_date)s")
+        params["to_date"] = to_date
 
-    invoices = frappe.get_all(
-        "Sales Invoice",
-        filters=invoice_filters,
-        fields=["name", "account_holder", "posting_date", "due_date", "outstanding_amount"],
-        order_by="due_date asc, posting_date asc",
+    invoices = frappe.db.sql(
+        f"""
+        select
+            si.name,
+            si.account_holder,
+            si.status,
+            si.school,
+            si.program,
+            si.posting_date,
+            si.due_date,
+            si.outstanding_amount
+        from `tabSales Invoice` si
+        where {" and ".join(conditions)}
+        order by si.due_date asc, si.posting_date asc
+        """,
+        params,
+        as_dict=True,
     )
 
     rows = []
@@ -60,6 +96,9 @@ def execute(filters=None):
             {
                 "account_holder": inv.account_holder,
                 "sales_invoice": inv.name,
+                "status": inv.status,
+                "school": inv.school,
+                "program": inv.program,
                 "posting_date": inv.posting_date,
                 "due_date": inv.due_date,
                 "outstanding_amount": flt(inv.outstanding_amount),

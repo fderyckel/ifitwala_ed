@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+
 import frappe
-from frappe.utils import getdate
+from frappe.utils import get_datetime, getdate, strip_html
 from frappe.utils.nestedset import get_descendants_of
 
 from ifitwala_ed.students.doctype.student_log.student_log import (
@@ -23,6 +25,8 @@ ALLOWED_ANALYTICS_ROLES = {
     "System Manager",
     "Administrator",
 }
+
+FOLLOW_UP_DOCTYPE = "Student Log Follow Up"
 
 
 def _ensure_student_log_analytics_access(user: str | None = None) -> str:
@@ -143,6 +147,106 @@ def _apply_common_filters(filters, visibility_clause, visibility_params):
     return where_clause, params
 
 
+def _format_response_time_label(total_minutes: int | None) -> str | None:
+    if total_minutes is None:
+        return None
+
+    total_minutes = max(int(total_minutes), 0)
+    days, rem_minutes = divmod(total_minutes, 24 * 60)
+    hours, minutes = divmod(rem_minutes, 60)
+
+    if days:
+        return f"{days}d {hours}h" if hours else f"{days}d"
+    if hours:
+        return f"{hours}h {minutes}m" if minutes else f"{hours}h"
+    return f"{minutes} min"
+
+
+def _get_response_latency(log_created_at, follow_up_created_at):
+    if not log_created_at or not follow_up_created_at:
+        return None, None
+
+    try:
+        log_dt = get_datetime(log_created_at)
+        follow_up_dt = get_datetime(follow_up_created_at)
+    except Exception:
+        return None, None
+
+    if not log_dt or not follow_up_dt:
+        return None, None
+
+    total_minutes = max(int((follow_up_dt - log_dt).total_seconds() // 60), 0)
+    return total_minutes, _format_response_time_label(total_minutes)
+
+
+def _attach_follow_up_summaries(log_rows):
+    if not log_rows:
+        return log_rows
+
+    log_names = [row.get("name") for row in log_rows if row.get("name")]
+    if not log_names:
+        return log_rows
+
+    log_context = {
+        row["name"]: {
+            "next_step": row.get("next_step"),
+            "created_at": row.get("created_at"),
+        }
+        for row in log_rows
+        if row.get("name")
+    }
+
+    follow_up_rows = frappe.db.sql(
+        f"""
+        SELECT
+            fu.name,
+            fu.student_log,
+            fu.date,
+            fu.follow_up_author,
+            fu.follow_up,
+            fu.creation AS responded_at
+        FROM `tab{FOLLOW_UP_DOCTYPE}` fu
+        WHERE fu.docstatus = 1
+          AND fu.student_log IN %(log_names)s
+        ORDER BY fu.student_log ASC, fu.creation DESC, fu.name DESC
+        """,
+        {"log_names": tuple(log_names)},
+        as_dict=True,
+    )
+
+    follow_ups_by_log = defaultdict(list)
+    for follow_up_row in follow_up_rows:
+        log_name = follow_up_row.get("student_log")
+        if not log_name or log_name not in log_context:
+            continue
+
+        response_minutes, response_label = _get_response_latency(
+            log_context[log_name].get("created_at"),
+            follow_up_row.get("responded_at"),
+        )
+        comment_text = strip_html(follow_up_row.get("follow_up") or "").strip()
+        follow_ups_by_log[log_name].append(
+            {
+                "name": follow_up_row.get("name"),
+                "doctype": FOLLOW_UP_DOCTYPE,
+                "next_step": log_context[log_name].get("next_step"),
+                "date": str(follow_up_row.get("date")) if follow_up_row.get("date") else None,
+                "responded_at": str(follow_up_row.get("responded_at")) if follow_up_row.get("responded_at") else None,
+                "responded_in_minutes": response_minutes,
+                "responded_in_label": response_label,
+                "follow_up_author": follow_up_row.get("follow_up_author"),
+                "comment_text": comment_text,
+            }
+        )
+
+    for row in log_rows:
+        follow_ups = follow_ups_by_log.get(row.get("name"), [])
+        row["follow_ups"] = follow_ups
+        row["follow_up_count"] = len(follow_ups)
+
+    return log_rows
+
+
 @frappe.whitelist()
 def get_dashboard_data(filters=None):
     user = _ensure_student_log_analytics_access()
@@ -222,10 +326,14 @@ def get_dashboard_data(filters=None):
             student_logs = frappe.db.sql(
                 f"""
                 SELECT
+                    sl.name,
                     sl.date,
                     sl.log_type,
                     sl.log         AS content,
-                    sl.author_name AS author
+                    sl.author_name AS author,
+                    sl.requires_follow_up,
+                    sl.next_step,
+                    sl.creation    AS created_at
                 FROM `tabStudent Log` sl
                 WHERE {where_detail}
                 ORDER BY sl.date DESC
@@ -233,6 +341,8 @@ def get_dashboard_data(filters=None):
                 p,
                 as_dict=True,
             )
+
+        student_logs = _attach_follow_up_summaries(student_logs)
 
         return {
             "logTypeCount": log_type_count,
@@ -303,6 +413,7 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
     logs = frappe.db.sql(
         f"""
         SELECT
+            sl.name,
             sl.date,
             sl.student          AS student,
             s.student_full_name AS student_full_name,
@@ -310,7 +421,9 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
             sl.log_type,
             sl.log              AS content,
             sl.author_name      AS author,
-            sl.requires_follow_up
+            sl.requires_follow_up,
+            sl.next_step,
+            sl.creation         AS created_at
         FROM `tabStudent Log` sl
         LEFT JOIN `tabStudent` s ON s.name = sl.student
         WHERE {where_clause}
@@ -320,7 +433,7 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
         {**params, "start": start, "page_len": page_length},
         as_dict=True,
     )
-    return logs
+    return _attach_follow_up_summaries(logs)
 
 
 def get_authorized_schools(user):

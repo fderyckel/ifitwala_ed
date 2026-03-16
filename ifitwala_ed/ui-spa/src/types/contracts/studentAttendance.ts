@@ -31,6 +31,27 @@ export type FetchActiveProgramsResponse = Array<{
 	program_name?: string | null
 }>
 
+export type AttendanceLedgerContextRequest = {
+	school?: string | null
+	program?: string | null
+	academic_year?: string | null
+	term?: string | null
+	student_group?: string | null
+}
+
+export type AttendanceLedgerContextResponse = {
+	schools: FetchSchoolFilterContextResponse['schools']
+	default_school: string | null
+	programs: FetchActiveProgramsResponse
+	default_program: string | null
+	academic_years: FetchPortalAcademicYearsResponse
+	default_academic_year: string | null
+	terms: FetchPortalTermsResponse
+	default_term: string | null
+	student_groups: FetchPortalStudentGroupsResponse
+	default_student_group: string | null
+}
+
 export type FetchPortalAcademicYearsRequest = {
 	school: string | null
 }
@@ -77,11 +98,39 @@ export type ListAttendanceCodesRequest = {
 
 export type ListAttendanceCodesResponse = StudentAttendanceCodeRow[]
 
+export type AttendanceToolBootstrapRequest = {
+	school?: string | null
+	program?: string | null
+	student_group?: string | null
+}
+
+export type AttendanceToolBootstrapResponse = {
+	schools: FetchSchoolFilterContextResponse['schools']
+	default_school: string | null
+	programs: FetchActiveProgramsResponse
+	default_program: string | null
+	student_groups: FetchPortalStudentGroupsResponse
+	default_student_group: string | null
+	attendance_codes: ListAttendanceCodesResponse
+	default_code: string | null
+}
+
 export type GetWeekendDaysRequest = {
 	student_group: string | null
 }
 
 export type GetWeekendDaysResponse = number[]
+
+export type AttendanceToolGroupContextRequest = {
+	student_group: string
+}
+
+export type AttendanceToolGroupContextResponse = {
+	weekend_days: GetWeekendDaysResponse
+	meeting_dates: GetMeetingDatesResponse
+	recorded_dates: AttendanceRecordedDatesResponse
+	default_selected_date: string | null
+}
 
 export type GetMeetingDatesRequest = {
 	student_group: string
@@ -143,6 +192,18 @@ export type FetchBlocksForDayRequest = {
 }
 
 export type FetchBlocksForDayResponse = AttendanceBlockNumber[]
+
+export type AttendanceToolRosterContextRequest = {
+	student_group: string
+	attendance_date: string
+}
+
+export type AttendanceToolRosterContextResponse = {
+	roster: FetchStudentsResponse
+	prev_map: PreviousStatusMapResponse
+	existing_map: FetchExistingAttendanceResponse
+	blocks: FetchBlocksForDayResponse
+}
 
 export type BulkUpsertAttendanceRow = {
 	student: string

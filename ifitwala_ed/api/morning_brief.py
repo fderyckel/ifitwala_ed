@@ -7,7 +7,7 @@ import frappe
 from frappe.utils import add_days, formatdate, getdate, now_datetime, strip_html, today
 
 from ifitwala_ed.api.org_comm_utils import check_audience_match
-from ifitwala_ed.utilities.school_tree import get_descendant_schools
+from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
 
 
 @frappe.whitelist()
@@ -175,18 +175,27 @@ def get_admissions_pulse():
 def get_critical_incidents_count():
     """Count of Open logs marked as 'Requires Follow Up'."""
     user = frappe.session.user
-    employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+    visibility_sql, visibility_params = get_student_log_visibility_predicate(
+        user=user,
+        table_alias="sl",
+        allow_aggregate_only=True,
+    )
+    if visibility_sql == "0=1":
+        return 0
 
-    filters = {
-        "requires_follow_up": 1,
-        "follow_up_status": "Open",
-        "docstatus": 1,
-    }
-
-    if employee and employee.school:
-        filters["school"] = employee.school
-
-    return frappe.db.count("Student Log", filters)
+    row = frappe.db.sql(
+        f"""
+        SELECT COUNT(*) AS count
+        FROM `tabStudent Log` sl
+        WHERE sl.docstatus = 1
+          AND sl.requires_follow_up = 1
+          AND sl.follow_up_status = 'Open'
+          AND ({visibility_sql})
+        """,
+        visibility_params,
+        as_dict=True,
+    )
+    return int((row[0].get("count") if row else 0) or 0)
 
 
 def get_my_student_groups(user: str) -> list[str]:
@@ -254,41 +263,38 @@ def get_pending_grading_tasks(group_names):
 
 def get_recent_student_logs(user):
     from_date = add_days(today(), -1)
-    filters = {
-        "date": (">=", from_date),
-        "log_type": ("!=", "Medical"),
-    }
-
-    # FIX: Only fetch 'school' (removed default_school)
-    employee = frappe.db.get_value(
-        "Employee",
-        {"user_id": user},
-        ["name", "school"],
-        as_dict=True,
+    visibility_sql, visibility_params = get_student_log_visibility_predicate(
+        user=user,
+        table_alias="sl",
+        allow_aggregate_only=False,
     )
+    if visibility_sql == "0=1":
+        return []
 
-    if employee and employee.school:
-        # FIX: Use utility function get_descendant_schools
-        # Admin/Leads at Parent School see logs from Child Schools
-        schools = get_descendant_schools(employee.school)
-        if schools:
-            filters["school"] = ("in", schools)
-
-    logs = frappe.get_all(
-        "Student Log",
-        fields=[
-            "name",
-            "student_name",
-            "student_image",
-            "log_type",
-            "date",
-            "requires_follow_up",
-            "follow_up_status",
-            "log",
-        ],
-        filters=filters,
-        order_by="date desc, time desc",
-        limit=50,
+    logs = frappe.db.sql(
+        f"""
+        SELECT
+            sl.name,
+            sl.student_name,
+            sl.student_image,
+            sl.log_type,
+            sl.date,
+            sl.requires_follow_up,
+            sl.follow_up_status,
+            sl.log
+        FROM `tabStudent Log` sl
+        WHERE sl.docstatus = 1
+          AND sl.date >= %(from_date)s
+          AND sl.log_type != 'Medical'
+          AND ({visibility_sql})
+        ORDER BY sl.date DESC, sl.time DESC
+        LIMIT 50
+        """,
+        {
+            **(visibility_params or {}),
+            "from_date": from_date,
+        },
+        as_dict=True,
     )
 
     formatted_logs = []
@@ -480,22 +486,32 @@ def get_critical_incidents_details():
     Returns detailed list of Open logs marked as 'Requires Follow Up'.
     """
     user = frappe.session.user
-    employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+    visibility_sql, visibility_params = get_student_log_visibility_predicate(
+        user=user,
+        table_alias="sl",
+        allow_aggregate_only=False,
+    )
+    if visibility_sql == "0=1":
+        return []
 
-    filters = {
-        "requires_follow_up": 1,
-        "follow_up_status": "Open",
-        "docstatus": 1,
-    }
-
-    if employee and employee.school:
-        filters["school"] = employee.school
-
-    logs = frappe.get_all(
-        "Student Log",
-        filters=filters,
-        fields=["name", "student_name", "student_image", "log_type", "date", "log"],
-        order_by="date desc, creation desc",
+    logs = frappe.db.sql(
+        f"""
+        SELECT
+            sl.name,
+            sl.student_name,
+            sl.student_image,
+            sl.log_type,
+            sl.date,
+            sl.log
+        FROM `tabStudent Log` sl
+        WHERE sl.docstatus = 1
+          AND sl.requires_follow_up = 1
+          AND sl.follow_up_status = 'Open'
+          AND ({visibility_sql})
+        ORDER BY sl.date DESC, sl.creation DESC
+        """,
+        visibility_params,
+        as_dict=True,
     )
 
     for log in logs:

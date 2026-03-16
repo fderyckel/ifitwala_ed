@@ -19,6 +19,7 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ADMISSIONS_ROLES = {"Admission Manager", "Admission Officer"}
 ADMISSIONS_FILE_STAFF_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
+ADMISSIONS_WORKSPACE_ROLES = ADMISSIONS_FILE_STAFF_ROLES
 READ_LIKE_PERMISSION_TYPES = {"read", "report", "export", "print", "email"}
 
 
@@ -549,12 +550,14 @@ def _validate_inquiry_assignee_scope(user: str, inquiry_doc) -> dict:
             )
 
     if inquiry_school:
-        school_scope = get_descendant_schools(inquiry_school) or []
+        school_scope = get_school_ancestors_including_self(inquiry_school) or []
         if not school_scope:
             frappe.throw(_("Invalid Inquiry School scope: {0}.").format(inquiry_school))
         if (employee.get("school") or "").strip() not in set(school_scope):
             frappe.throw(
-                _("Assignee must belong to School {0} or one of its descendants.").format(frappe.bold(inquiry_school))
+                _("Assignee must belong to School {0} or one of its parent schools.").format(
+                    frappe.bold(inquiry_school)
+                )
             )
 
     return employee
@@ -605,6 +608,47 @@ def is_admissions_file_staff_user(user: str | None = None) -> bool:
     return bool(roles & ADMISSIONS_FILE_STAFF_ROLES)
 
 
+def is_admissions_workspace_user(user: str | None = None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return False
+    if resolved_user == "Administrator":
+        return True
+    roles = set(frappe.get_roles(resolved_user))
+    return bool(roles & ADMISSIONS_WORKSPACE_ROLES)
+
+
+def has_open_overall_application_review_access(*, user: str | None = None, student_applicant: str | None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    applicant_name = (student_applicant or "").strip()
+    if not resolved_user or resolved_user == "Guest" or not applicant_name:
+        return False
+    if resolved_user == "Administrator":
+        return True
+
+    roles = {(role_name or "").strip() for role_name in frappe.get_roles(resolved_user) if (role_name or "").strip()}
+
+    rows = frappe.get_all(
+        "Applicant Review Assignment",
+        filters={
+            "student_applicant": applicant_name,
+            "target_type": "Student Applicant",
+            "target_name": applicant_name,
+            "status": "Open",
+        },
+        fields=["assigned_to_user", "assigned_to_role"],
+        limit_page_length=200,
+    )
+    for row in rows:
+        assigned_user = (row.get("assigned_to_user") or "").strip()
+        assigned_role = (row.get("assigned_to_role") or "").strip()
+        if assigned_user and assigned_user == resolved_user:
+            return True
+        if assigned_role and assigned_role in roles:
+            return True
+    return False
+
+
 def get_admissions_file_staff_scope(user: str | None = None) -> dict:
     resolved_user = (user or frappe.session.user or "").strip()
     denied = {
@@ -634,6 +678,7 @@ def get_admissions_file_staff_scope(user: str | None = None) -> dict:
 
     org_scope = set(_get_organization_scope(employee.get("organization")))
     school_scope = set(get_descendant_schools(employee.get("school")) or [])
+
     if not org_scope and not school_scope:
         return denied
 
@@ -899,15 +944,46 @@ def sync_student_applicant_contact_binding(*, student_applicant: str, contact_na
 
     seen: set[str] = set()
     emails_synced: list[str] = []
-    for value in (
-        applicant.get("applicant_email"),
-        applicant.get("portal_account_email"),
-        applicant.get("applicant_user"),
+    for source_fieldname, value in (
+        ("applicant_email", applicant.get("applicant_email")),
+        ("portal_account_email", applicant.get("portal_account_email")),
+        ("applicant_user", applicant.get("applicant_user")),
     ):
         normalized = normalize_email_value(value)
         if not normalized or normalized in seen:
             continue
         seen.add(normalized)
+        existing_parent = (frappe.db.get_value("Contact Email", {"email_id": normalized}, "parent") or "").strip()
+        if existing_parent and existing_parent != resolved_contact:
+            existing_link = frappe.db.exists(
+                "Dynamic Link",
+                {
+                    "parenttype": "Contact",
+                    "parentfield": "links",
+                    "parent": existing_parent,
+                    "link_doctype": "Student Applicant",
+                    "link_name": applicant.name,
+                },
+            )
+            existing_user_link = False
+            applicant_user = (applicant.get("applicant_user") or "").strip()
+            if applicant_user:
+                existing_user_link = bool(
+                    frappe.db.exists(
+                        "Dynamic Link",
+                        {
+                            "parenttype": "Contact",
+                            "parentfield": "links",
+                            "parent": existing_parent,
+                            "link_doctype": "User",
+                            "link_name": applicant_user,
+                        },
+                    )
+                )
+            if existing_link or existing_user_link:
+                continue
+            if source_fieldname == "applicant_user":
+                continue
         upsert_contact_email(resolved_contact, normalized, set_primary_if_missing=True)
         emails_synced.append(normalized)
 
@@ -1234,7 +1310,6 @@ def get_admission_officers(doctype, txt, searchfield, start, page_len, filters):
 
 
 @frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
 def get_inquiry_assignees(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
     ensure_admissions_permission()
     filters = filters or {}
@@ -1245,7 +1320,7 @@ def get_inquiry_assignees(doctype=None, txt=None, searchfield=None, start=0, pag
     if organization and not org_scope:
         return []
 
-    school_scope = get_descendant_schools(school) if school else []
+    school_scope = get_school_ancestors_including_self(school) if school else []
     if school and not school_scope:
         return []
 

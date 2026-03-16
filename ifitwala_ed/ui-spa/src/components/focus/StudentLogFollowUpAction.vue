@@ -25,7 +25,7 @@
 					<div class="type-meta text-muted mt-1">
 						<span v-if="log?.student_name">{{ log.student_name }}</span>
 						<span v-if="log?.log_type"> • {{ log.log_type }}</span>
-						<span v-if="log?.date"> • {{ log.date }}</span>
+						<span v-if="logTimestampLabel"> • {{ logTimestampLabel }}</span>
 					</div>
 
 					<div v-if="log?.follow_up_status" class="type-meta text-muted mt-1">
@@ -72,7 +72,7 @@
 						<div class="min-w-0">
 							<div class="type-meta text-muted">
 								<span v-if="fu.follow_up_author">{{ fu.follow_up_author }}</span>
-								<span v-if="fu.date"> • {{ fu.date }}</span>
+								<span v-if="fu.date"> • {{ followUpDateLabel(fu.date) }}</span>
 								<span v-if="fu.docstatus === 0"> • Draft</span>
 								<span v-else> • Submitted</span>
 							</div>
@@ -225,6 +225,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
+import { formatHumanDateTimeFields } from '@/lib/datetime';
 import { __ } from '@/lib/i18n';
 import { createFocusService } from '@/lib/services/focus/focusService';
 
@@ -284,6 +285,11 @@ const reassignTo = ref('');
 const actionError = ref<string | null>(null);
 
 const activeStudentLogName = computed(() => log.value?.name || null);
+const logTimestampLabel = computed(() =>
+	formatHumanDateTimeFields(log.value?.date, log.value?.time, {
+		fallback: String(log.value?.date || '').trim(),
+	})
+);
 
 const canSubmit = computed(() => {
 	return !!activeStudentLogName.value && (draftText.value || '').trim().length >= 5;
@@ -344,6 +350,12 @@ function openInDesk(doctype: string, name: string) {
 
 function trustedHtml(html: string) {
 	return html || '';
+}
+
+function followUpDateLabel(dateValue?: string | null) {
+	return formatHumanDateTimeFields(dateValue, null, {
+		fallback: String(dateValue || '').trim(),
+	});
 }
 
 function requireFocusItemId(): string | null {

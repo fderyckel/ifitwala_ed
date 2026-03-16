@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "hash",
+ "autoname": "ADM-APPL-REV-.YY.-.MM.-.####",
  "creation": "2026-02-23 00:00:00",
  "description": "Materialized review task assignment for admissions review workflows.",
  "doctype": "DocType",
@@ -30,7 +30,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Target Type",
-   "options": "Applicant Document\nApplicant Document Item\nApplicant Health Profile\nStudent Applicant",
+   "options": "Applicant Document Item\nApplicant Health Profile\nStudent Applicant",
    "reqd": 1,
    "search_index": 1
   },
@@ -63,6 +63,8 @@
   {
    "fieldname": "school",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "School",
    "options": "School",
    "read_only": 1,
@@ -101,6 +103,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
    "options": "Open\nDone\nCancelled",
    "reqd": 1,
@@ -145,10 +148,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-23 00:00:00",
+ "modified": "2026-03-12 08:28:15.052497",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Review Assignment",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -203,5 +207,6 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "target_name"
 }

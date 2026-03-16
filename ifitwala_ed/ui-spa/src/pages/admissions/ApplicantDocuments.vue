@@ -83,8 +83,14 @@
 							</span>
 						</div>
 						<p class="mt-1 type-caption" :class="doc.statusTone">{{ doc.statusLabel }}</p>
+						<p v-if="doc.countSummary" class="mt-1 type-caption text-ink/55">
+							{{ doc.countSummary }}
+						</p>
 						<p v-if="doc.description" class="mt-1 type-caption text-ink/60">
 							{{ doc.description }}
+						</p>
+						<p v-if="doc.overrideReason" class="mt-1 type-caption text-ink/60">
+							{{ doc.overrideReason }}
 						</p>
 					</div>
 					<div class="flex items-center gap-3">
@@ -173,7 +179,7 @@ import type { Response as DocumentsResponse } from '@/types/contracts/admissions
 
 const service = createAdmissionsService();
 const overlay = useOverlayStack();
-const { session } = useAdmissionsSession();
+const { session, currentApplicantName } = useAdmissionsSession();
 
 const documents = ref<DocumentsResponse['documents']>([]);
 const documentTypes = ref<DocumentTypesResponse['document_types']>([]);
@@ -198,6 +204,7 @@ type DisplayDocument = {
 	document_type: string;
 	label: string;
 	description: string;
+	overrideReason?: string | null;
 	is_required: boolean;
 	is_repeatable: boolean;
 	requiredCount: number;
@@ -207,6 +214,7 @@ type DisplayDocument = {
 	statusKey: string;
 	statusLabel: string;
 	statusTone: string;
+	countSummary: string;
 	canUpload: boolean;
 	canAddItem: boolean;
 };
@@ -221,19 +229,25 @@ function itemStatusKey(item: DisplayItem): string {
 function itemStatusLabel(item: DisplayItem): string {
 	const statusKey = itemStatusKey(item);
 	if (statusKey === 'approved') return __('Approved');
-	if (statusKey === 'rejected') return __('Rejected');
-	if (statusKey === 'pending') return __('Pending review');
+	if (statusKey === 'rejected') return __('Changes requested');
+	if (statusKey === 'pending') return __('Uploaded - waiting for review');
 	return __('Missing');
 }
 
 function statusToneFor(statusKey: string): string {
 	switch (statusKey) {
 		case 'approved':
+		case 'complete':
+		case 'waived':
+		case 'exception_approved':
 			return 'text-leaf';
 		case 'rejected':
+		case 'changes_requested':
 		case 'missing':
+		case 'not_started':
 			return 'text-rose-700';
 		case 'pending':
+		case 'waiting_review':
 			return 'text-sun';
 		default:
 			return 'text-ink/55';
@@ -243,12 +257,18 @@ function statusToneFor(statusKey: string): string {
 function statusSortWeight(statusKey: string): number {
 	switch (statusKey) {
 		case 'missing':
+		case 'not_started':
 			return 0;
 		case 'rejected':
+		case 'changes_requested':
 			return 1;
 		case 'pending':
+		case 'waiting_review':
 			return 2;
 		case 'approved':
+		case 'complete':
+		case 'waived':
+		case 'exception_approved':
 			return 3;
 		default:
 			return 4;
@@ -321,42 +341,65 @@ const displayDocuments = computed<DisplayDocument[]>(() => {
 			file_name: row.file_name || null,
 		}));
 
-		const requiredCount = docType.is_required
-			? docType.is_repeatable
-				? Math.max(1, Number(docType.min_items_required || 1))
-				: 1
-			: 0;
-		const uploadedCount = documentItems.filter(row => Boolean(row.file_url)).length;
-		const approvedCount = documentItems.filter(
-			row => Boolean(row.file_url) && row.review_status === 'Approved'
-		).length;
+		const requiredCount =
+			typeof doc?.required_count === 'number'
+				? doc.required_count
+				: docType.is_required
+					? docType.is_repeatable
+						? Math.max(1, Number(docType.min_items_required || 1))
+						: 1
+					: 0;
+		const uploadedCount =
+			typeof doc?.uploaded_count === 'number'
+				? doc.uploaded_count
+				: documentItems.filter(row => Boolean(row.file_url)).length;
+		const approvedCount =
+			typeof doc?.approved_count === 'number'
+				? doc.approved_count
+				: documentItems.filter(row => Boolean(row.file_url) && row.review_status === 'Approved')
+						.length;
 		const hasRejected = documentItems.some(
 			row => Boolean(row.file_url) && row.review_status === 'Rejected'
 		);
-		const summary = summarizeDocumentStatus({
+		const fallbackSummary = summarizeDocumentStatus({
 			is_required: Boolean(docType.is_required),
 			required_count: requiredCount,
 			uploaded_count: uploadedCount,
 			approved_count: approvedCount,
 			has_rejected: hasRejected,
 		});
+		const statusKey = String(doc?.requirement_state || '').trim() || fallbackSummary.key;
+		const statusLabel = String(doc?.requirement_state_label || '').trim() || fallbackSummary.label;
+		const requirementOverride = String(doc?.requirement_override || '').trim();
+		const countSummary = requirementOverride
+			? ''
+			: requiredCount
+				? __('Approved {0} of {1} required files.')
+						.replace('{0}', String(approvedCount))
+						.replace('{1}', String(requiredCount))
+				: uploadedCount
+					? __('Uploaded {0} file(s).').replace('{0}', String(uploadedCount))
+					: '';
 
 		return {
 			key: docType.name,
 			document_type: docType.name,
-			label: docType.document_type_name || docType.code || docType.name,
-			description: docType.description,
+			label: String(doc?.label || docType.document_type_name || docType.code || docType.name),
+			description: String(doc?.description || docType.description || ''),
+			overrideReason: doc?.override_reason || null,
 			is_required: Boolean(docType.is_required),
 			is_repeatable: Boolean(docType.is_repeatable),
 			requiredCount,
 			uploadedCount,
 			approvedCount,
 			items: documentItems,
-			statusKey: summary.key,
-			statusLabel: summary.label,
-			statusTone: statusToneFor(summary.key),
-			canUpload: true,
-			canAddItem: Boolean(docType.is_repeatable) || documentItems.length === 0,
+			statusKey,
+			statusLabel,
+			statusTone: statusToneFor(statusKey),
+			countSummary,
+			canUpload: !requirementOverride,
+			canAddItem:
+				!requirementOverride && (Boolean(docType.is_repeatable) || documentItems.length === 0),
 		};
 	});
 
@@ -375,32 +418,27 @@ const displayDocuments = computed<DisplayDocument[]>(() => {
 		const approvedCount = documentItems.filter(
 			row => Boolean(row.file_url) && row.review_status === 'Approved'
 		).length;
-		const hasRejected = documentItems.some(
-			row => Boolean(row.file_url) && row.review_status === 'Rejected'
-		);
-		const summary = summarizeDocumentStatus({
-			is_required: false,
-			required_count: 0,
-			uploaded_count: uploadedCount,
-			approved_count: approvedCount,
-			has_rejected: hasRejected,
-		});
 		items.push({
 			key: doc.document_type,
 			document_type: doc.document_type,
-			label: doc.document_type,
-			description: '',
+			label: String(doc.label || doc.document_type),
+			description: String(doc.description || ''),
+			overrideReason: doc.override_reason || null,
 			is_required: false,
-			is_repeatable: true,
+			is_repeatable: Boolean(doc.is_repeatable),
 			requiredCount: 0,
 			uploadedCount,
 			approvedCount,
 			items: documentItems,
-			statusKey: summary.key,
-			statusLabel: summary.label,
-			statusTone: statusToneFor(summary.key),
-			canUpload: false,
-			canAddItem: false,
+			statusKey: String(doc.requirement_state || '').trim() || 'optional',
+			statusLabel: String(doc.requirement_state_label || '').trim() || __('Optional'),
+			statusTone: statusToneFor(String(doc.requirement_state || '').trim() || 'optional'),
+			countSummary: uploadedCount
+				? __('Uploaded {0} file(s).').replace('{0}', String(uploadedCount))
+				: '',
+			canUpload: !doc.requirement_override,
+			canAddItem:
+				!doc.requirement_override && (Boolean(doc.is_repeatable) || documentItems.length === 0),
 		});
 	});
 
@@ -415,40 +453,45 @@ const displayDocuments = computed<DisplayDocument[]>(() => {
 const requiredDocuments = computed(() => displayDocuments.value.filter(doc => doc.is_required));
 const requiredTotalCount = computed(() => requiredDocuments.value.length);
 const requiredApprovedCount = computed(
-	() => requiredDocuments.value.filter(doc => doc.approvedCount >= doc.requiredCount).length
-);
-const requiredUploadedCount = computed(
-	() => requiredDocuments.value.filter(doc => doc.uploadedCount >= doc.requiredCount).length
+	() =>
+		requiredDocuments.value.filter(doc =>
+			['complete', 'approved', 'waived', 'exception_approved'].includes(doc.statusKey)
+		).length
 );
 const nextRequiredDoc = computed(
-	() => requiredDocuments.value.find(doc => doc.approvedCount < doc.requiredCount) || null
+	() =>
+		requiredDocuments.value.find(
+			doc => !['complete', 'approved', 'waived', 'exception_approved'].includes(doc.statusKey)
+		) || null
 );
 const requiredSummaryText = computed(() => {
 	const total = requiredTotalCount.value;
 	const approved = requiredApprovedCount.value;
-	const uploaded = requiredUploadedCount.value;
 	if (!total) return __('No required documents configured.');
-	if (uploaded < total) {
-		return __('Uploaded complete files for {0} of {1} required document types.')
-			.replace('{0}', String(uploaded))
+	if (approved < total) {
+		return __('Complete or approved {0} of {1} required document types.')
+			.replace('{0}', String(approved))
 			.replace('{1}', String(total));
 	}
-	if (approved < total) {
-		return __('All required files are uploaded. Admissions review is in progress.');
-	}
-	return __('Approved {0} of {1} required document types.')
+	return __('Complete or approved {0} of {1} required document types.')
 		.replace('{0}', String(approved))
 		.replace('{1}', String(total));
 });
 
 async function loadDocuments() {
+	if (!currentApplicantName.value) {
+		documents.value = [];
+		documentTypes.value = [];
+		error.value = null;
+		return;
+	}
 	loading.value = true;
 	error.value = null;
 	actionError.value = '';
 	try {
 		const [docsResp, typesResp] = await Promise.all([
-			service.listDocuments(),
-			service.listDocumentTypes(),
+			service.listDocuments({ student_applicant: currentApplicantName.value }),
+			service.listDocumentTypes({ student_applicant: currentApplicantName.value }),
 		]);
 		documents.value = docsResp.documents || [];
 		documentTypes.value = typesResp.document_types || [];
@@ -472,7 +515,9 @@ function openUpload(doc: DisplayDocument, item: DisplayItem | null) {
 		return;
 	}
 	if (!doc.canUpload) {
-		actionError.value = __('This document can no longer be uploaded from the applicant portal.');
+		actionError.value = __(
+			'This requirement is already completed by admissions and does not need another upload.'
+		);
 		return;
 	}
 	if (!item && !doc.canAddItem) {
@@ -481,6 +526,7 @@ function openUpload(doc: DisplayDocument, item: DisplayItem | null) {
 	}
 	actionError.value = '';
 	overlay.open('admissions-document-upload', {
+		studentApplicant: currentApplicantName.value,
 		documentType: doc.document_type,
 		documentLabel: doc.label,
 		description: doc.description || '',

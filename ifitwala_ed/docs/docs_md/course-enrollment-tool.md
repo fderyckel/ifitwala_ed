@@ -3,64 +3,81 @@ title: "Course Enrollment Tool: Add One Course to Many Enrollments"
 slug: course-enrollment-tool
 category: Enrollment
 doc_order: 7
-version: "1.0.0"
-last_change_date: "2026-02-28"
-summary: "Add a selected offering course to many eligible students' Program Enrollments using server-side eligibility checks and term-window defaults."
+version: "1.2.0"
+last_change_date: "2026-03-11"
+summary: "Add one offering course to many Program Enrollments, with optional source-course filtering for course-to-course promotion, server-side eligibility checks, and basket-group safety rules."
 seo_title: "Course Enrollment Tool: Add One Course to Many Enrollments"
-seo_description: "Add a selected offering course to many eligible students' Program Enrollments using server-side eligibility checks and term-window defaults."
+seo_description: "Add a selected offering course to many eligible students' Program Enrollments, optionally filtered by a source course from a prior offering or year."
 ---
 
 ## Course Enrollment Tool: Add One Course to Many Enrollments
 
-`Course Enrollment Tool` is a single doctype for assigning one selected course to multiple students who already have matching Program Enrollment context.
+`Course Enrollment Tool` adds one selected destination course to many existing `Program Enrollment` rows.
+
+It is the canonical staff tool for:
+
+- adding one course across a whole cohort
+- moving students from one course to the next by filtering from a prior source course
+- finishing destination enrollment baskets after batch request materialization
 
 ## Before You Start (Prerequisites)
 
-- Select `program_offering`, `academic_year`, and `course`.
-- Ensure selected course exists in the offering-course rows.
-- Ensure target students already have active `Program Enrollment` in that offering/year.
+- Select destination `Program Offering`, `Academic Year`, and `Course`.
+- Ensure the selected destination course exists in the offering-course rows.
+- Ensure target students already have active destination `Program Enrollment`.
+- If you are promoting students from one course to the next, fill all three source filters:
+  - `Source Program Offering`
+  - `Source Academic Year`
+  - `Source Course`
 
 ## Why It Matters
 
-- Prevents manual per-enrollment course row edits.
-- Uses server eligibility query to list only students without that course already.
-- Preserves offering-bound course policy and term precedence when adding rows.
+- Prevents manual per-enrollment course edits.
+- Supports low-friction course progression by loading only students who took a selected source course.
+- Preserves offering-bound course policy and basket-group rules when adding destination rows.
 
-<Callout type="tip" title="Term precedence on insert">
-When adding a course row: `Course.term_long + tool.term` wins first, then offering-course term bounds, then school AY term bounds fallback.
+<Callout type="tip" title="Source-course promotion filter">
+When source filters are provided, the tool lists only students whose historical Program Enrollment contains that source course and whose destination enrollment does not already contain the target course.
 </Callout>
 
 ## Workflow
 
-1. Choose `program_offering` (tool derives and locks `program`, sets `school`).
-2. Choose `academic_year` (scoped to offering AY list).
-3. Choose `course` (scoped to offering courses, AY-aware).
-4. Load eligible students (server query excludes enrollments already containing the course).
-5. Optionally add individual students manually in table.
-6. Click `Add Course` to append rows to each target `Program Enrollment`.
+1. Choose the destination `Program Offering`, `Academic Year`, and `Course`.
+2. Optionally choose source offering/year/course to restrict the batch.
+3. Load eligible students.
+4. Optionally add individual students manually.
+5. Click `Add Course`.
 
 ## Worked Examples
 
 ### Example 1: Add Optional Course Mid-Year
 
-- Offering: `IB DP 2026`
-- AY: `AY-2026-2027`
-- Course: `Visual Arts`
-- Tool lists only students with matching enrollment and without existing `Visual Arts` row.
-- Action appends `Program Enrollment Course(status=Enrolled)` on each eligible enrollment.
+- Destination offering: `IB DP 2026`
+- Destination AY: `AY-2026-2027`
+- Destination course: `Visual Arts`
+- Result: the tool lists students with matching destination enrollments and without an existing `Visual Arts` row.
 
-### Example 2: Term-Long Course
+### Example 2: Promote French 5 to French 6
 
-- Course has `term_long = 1`
-- Staff selects `term = Term-2`
-- Inserted enrollment-course row is set with `term_start = term_end = Term-2`.
+- Source offering/year/course filter points to `French 5`
+- Destination offering/year/course points to `French 6`
+- Result: the tool lists only students who took `French 5` and adds `French 6` to their destination enrollments
 
-<DoDont doTitle="Do" dontTitle="Don't">
-  <Do>Use offering-scoped selectors so only valid course/AY combinations are applied.</Do>
-  <Do>Review warnings for elective-group overlaps before finalizing batch updates.</Do>
-  <Dont>Add courses not present in the offering course map.</Dont>
-  <Dont>Rely on manual guesses for term bounds when school AY terms are missing.</Dont>
-</DoDont>
+### Example 3: Basket-Aware Boundary
+
+- Destination course: `ESS`
+- Offering basket groups:
+  - `ESS -> Group 3 Humanities`
+  - `ESS -> Group 4 Sciences`
+
+Result: the tool does not guess the credited basket group. It stops with a clear error so staff use a basket-aware flow instead of creating ambiguous enrollment truth.
+
+## Related Docs
+
+- [**Program Enrollment**](/docs/en/program-enrollment/)
+- [**Program Offering Course**](/docs/en/program-offering-course/)
+- [**Program Enrollment Tool**](/docs/en/program-enrollment-tool/)
+- [**Student Enrollment Playbook**](/docs/en/student-enrollment-playbook/)
 
 ## Technical Notes (IT)
 
@@ -72,7 +89,10 @@ When adding a course row: `Course.term_long + tool.term` wins first, then offeri
   - `program_offering` (`Link`)
   - `academic_year` (`Link`)
   - `course` (`Link`)
-- **Lifecycle hooks in controller**: none beyond standard document behavior.
+- **Optional source filter fields**:
+  - `source_program_offering`
+  - `source_academic_year`
+  - `source_course`
 - **Operational/public methods**:
   - document method `add_course_to_program_enrollment()` (whitelisted)
   - `fetch_eligible_students(...)`
@@ -82,10 +102,15 @@ When adding a course row: `Course.term_long + tool.term` wins first, then offeri
 - **DocType**: `Course Enrollment Tool` (`ifitwala_ed/schedule/doctype/course_enrollment_tool/`)
 - **Single doc**: `issingle = 1`
 - **Server checks**:
-  - selected AY must be in offering AY set
-  - selected course must exist in offering-course map
-  - rows are added only for existing active Program Enrollments in that offering/AY
-  - duplicate course rows per enrollment are prevented
+  - selected destination AY must be in the destination offering AY set
+  - selected destination course must exist in the destination offering-course map
+  - destination rows are added only for existing active destination Program Enrollments
+  - duplicate destination course rows are prevented
+  - source filtering requires all three source fields together
+  - source-course filtering is enforced server-side, not just in the link query
+  - `required` is synced from destination offering semantics
+  - single-group optional courses auto-fill `credited_basket_group`
+  - multi-group optional courses are rejected so the tool cannot invent a basket assignment
 
 ### Permission Matrix
 
@@ -96,9 +121,3 @@ When adding a course row: `Course.term_long + tool.term` wins first, then offeri
 | `Academic Admin` | Yes | Yes | Yes | Yes |
 | `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
 | `Academic Assistant` | Yes | Yes | Yes | Yes |
-
-## Related Docs
-
-- [**Program Enrollment**](/docs/en/program-enrollment/)
-- [**Program Offering Course**](/docs/en/program-offering-course/)
-- [**Student Enrollment Playbook**](/docs/en/student-enrollment-playbook/)

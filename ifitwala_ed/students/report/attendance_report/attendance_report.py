@@ -1,9 +1,13 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
+# /Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/students/report/attendance_report/attendance_report.py
+
 import frappe
 from frappe import _
 from frappe.utils import getdate
+
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 MANDATORY_FILTERS = ("school", "academic_year", "from_date", "to_date")
 
@@ -26,6 +30,7 @@ def execute(filters=None):
             "to_date": getdate(filters.get("to_date")),
         }
     )
+    params["school_list"] = tuple(get_descendant_schools(filters.get("school")) or [filters.get("school")])
 
     def add(cond, key=None):
         if key is not None and filters.get(key) is None:
@@ -34,7 +39,7 @@ def execute(filters=None):
         if key is not None:
             params[key] = filters.get(key)
 
-    add("sa.school = %(school)s", "school")
+    where.append("sa.school IN %(school_list)s")
     add("sa.academic_year = %(academic_year)s", "academic_year")
     add("sa.term = %(term)s", "term")
     add("sa.program = %(program)s", "program")

@@ -9,6 +9,7 @@ import type {
 
 export type Request = ApplicantProfile & {
   student_applicant?: string
+  expected_modified?: string | null
   guardians?: ApplicantGuardianProfile[]
 }
 
@@ -18,6 +19,7 @@ export type Response = {
   completeness: ApplicantProfileCompleteness
   application_context: ApplicantApplicationContext
   applicant_image?: string
+  record_modified?: string
   guardian_section_enabled?: boolean
   guardians?: ApplicantGuardianProfile[]
   options: {

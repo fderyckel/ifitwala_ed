@@ -1,10 +1,12 @@
 # Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
 
-# /ifitwala_ed/ifitwala_ed/utilities/school_tree.py
+# /Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/utilities/school_tree.py
 
 import frappe
 from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
+
+from ifitwala_ed.utilities.tree_utils import get_ancestors_inclusive, get_descendants_inclusive
 
 CACHE_TTL = 600  # seconds
 
@@ -135,14 +137,7 @@ def get_descendant_schools(user_school: str | None = None):
     if not user_school:
         return []
 
-    # Use the NestedSet lft/rgt logic
-    school_doc = frappe.get_doc("School", user_school)
-    return [
-        s.name
-        for s in frappe.get_all(
-            "School", filters={"lft": (">=", school_doc.lft), "rgt": ("<=", school_doc.rgt)}, fields=["name"]
-        )
-    ]
+    return get_descendants_inclusive("School", user_school, cache_ttl=CACHE_TTL)
 
 
 # Used to get a list of schools that are ancestors of a given school
@@ -151,14 +146,7 @@ def get_ancestor_schools(user_school):
     # Defensive: Return [] if no school set
     if not user_school:
         return []
-    # Use the NestedSet lft/rgt logic (find all ancestors including self)
-    school_doc = frappe.get_doc("School", user_school)
-    return [
-        s.name
-        for s in frappe.get_all(
-            "School", filters={"lft": ("<=", school_doc.lft), "rgt": (">=", school_doc.rgt)}, fields=["name"]
-        )
-    ]
+    return get_ancestors_inclusive("School", user_school, cache_ttl=CACHE_TTL)
 
 
 def get_school_lineage(school: str | None) -> list[str]:

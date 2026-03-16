@@ -11,7 +11,7 @@ export type OverlayType =
   | 'attendance-remark'
   | 'student-log-create'
   | 'student-log-follow-up'
-  | 'student-log-analytics-expand'
+  | 'analytics-expand'
   | 'org-chart-person'
   | 'staff-policy-inform'
   | 'staff-policy-signature-campaign'
@@ -24,7 +24,7 @@ export type OverlayType =
   | 'admissions-document-upload'
   | 'admissions-policy-ack'
   | 'admissions-submit'
-  | 'admissions-interview-workspace'
+  | 'admissions-workspace'
 
 export type OverlayEntry = {
   id: string

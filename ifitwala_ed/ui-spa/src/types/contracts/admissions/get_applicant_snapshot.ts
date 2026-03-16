@@ -1,6 +1,7 @@
 // ifitwala_ed/ui-spa/src/types/contracts/admissions/get_applicant_snapshot.ts
 
 import type {
+  AdmissionsEnrollmentOffer,
   ApplicantApplicationContext,
   ApplicantProfile,
   CompletionState,
@@ -30,6 +31,7 @@ export type Response = {
     recommendations: CompletionState
   }
   next_actions: NextAction[]
+  enrollment_offer?: AdmissionsEnrollmentOffer | null
   recommendations_summary: {
     ok: boolean
     required_total: number
