@@ -145,6 +145,9 @@ Agents MUST NOT invent field names.
 - Never map/copy/read a field unless its existence is verified from authoritative schema.
 - Never defensively read missing fields merely to avoid runtime errors.
 - If a target requires data the source schema does not provide, stop and require an explicit architecture/schema decision.
+- Never change DocType metadata `.json` or server-side production logic solely to make a test pass.
+- If a test is failing because of setup, fixtures, naming, or isolation, fix the test or fixture first.
+- Any DocType metadata `.json` change requires explicit user approval before editing.
 
 Allowed sources:
 

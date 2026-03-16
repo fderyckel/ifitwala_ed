@@ -375,7 +375,7 @@ def _make_student(prefix):
     previous_in_migration = bool(getattr(frappe.flags, "in_migration", False))
     frappe.flags.in_migration = True
     try:
-        student.insert()
+        student.insert(set_name=f"TEST-STU-{frappe.generate_hash(length=10)}")
     finally:
         frappe.flags.in_migration = previous_in_migration
     return student
