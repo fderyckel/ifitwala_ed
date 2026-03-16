@@ -54,6 +54,23 @@ def _append_role(user_doc, role: str) -> None:
     user_doc.append("roles", {"role": role})
 
 
+def _create_redirect_applicant(*, organization: str, school: str, applicant_user: str = ""):
+    applicant = frappe.get_doc(
+        {
+            "doctype": "Student Applicant",
+            "first_name": "Redirect",
+            "last_name": f"Applicant {frappe.generate_hash(length=6)}",
+            "organization": organization,
+            "school": school,
+            "application_status": "Draft",
+        }
+    ).insert(ignore_permissions=True)
+    if applicant_user:
+        applicant.db_set("applicant_user", applicant_user, update_modified=False)
+    applicant.reload()
+    return applicant
+
+
 class TestUserRedirect(FrappeTestCase):
     """Test unified login redirect logic."""
 
@@ -234,17 +251,11 @@ class TestUserRedirect(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
 
-        applicant = frappe.get_doc(
-            {
-                "doctype": "Student Applicant",
-                "first_name": "Test",
-                "last_name": "Admissions Applicant",
-                "organization": school.organization,
-                "school": school.name,
-                "application_status": "Invited",
-                "applicant_user": user.email,
-            }
-        ).insert(ignore_permissions=True)
+        applicant = _create_redirect_applicant(
+            organization=school.organization,
+            school=school.name,
+            applicant_user=user.email,
+        )
 
         try:
             # Simulate login
@@ -440,30 +451,26 @@ class TestUserRedirect(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
 
-        applicant = frappe.get_doc(
+        applicant = _create_redirect_applicant(
+            organization=school.organization,
+            school=school.name,
+        )
+        applicant.append(
+            "guardians",
             {
-                "doctype": "Student Applicant",
-                "first_name": "Family",
-                "last_name": "Applicant",
-                "organization": school.organization,
-                "school": school.name,
-                "application_status": "Invited",
-                "guardians": [
-                    {
-                        "guardian": guardian.name,
-                        "user": user.email,
-                        "relationship": "Mother",
-                        "can_consent": 1,
-                        "is_primary": 1,
-                        "guardian_first_name": "Family",
-                        "guardian_last_name": "Admissions",
-                        "guardian_email": user.email,
-                        "guardian_mobile_phone": "+14155550141",
-                        "guardian_image": "/private/files/family-admissions.png",
-                    }
-                ],
-            }
-        ).insert(ignore_permissions=True)
+                "guardian": guardian.name,
+                "user": user.email,
+                "relationship": "Mother",
+                "can_consent": 1,
+                "is_primary": 1,
+                "guardian_first_name": "Family",
+                "guardian_last_name": "Admissions",
+                "guardian_email": user.email,
+                "guardian_mobile_phone": "+14155550141",
+                "guardian_image": "/private/files/family-admissions.png",
+            },
+        )
+        applicant.save(ignore_permissions=True)
 
         try:
             frappe.db.set_single_value("Admission Settings", "admissions_access_mode", "Family Workspace")

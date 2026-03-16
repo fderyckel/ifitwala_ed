@@ -60,7 +60,7 @@ class TestInstitutionalPolicy(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             policy.insert(ignore_permissions=True)
 
-    def test_schema_check_accepts_meta_field_when_has_column_is_false(self):
+    def test_schema_check_rejects_missing_db_column_even_when_meta_has_field(self):
         with (
             patch("ifitwala_ed.governance.policy_utils.frappe.db.has_column", return_value=False),
             patch(
@@ -70,4 +70,5 @@ class TestInstitutionalPolicy(FrappeTestCase):
         ):
             result = ensure_policy_applies_to_column(caller="test")
 
-        self.assertTrue(result.get("ok"))
+        self.assertFalse(result.get("ok"))
+        self.assertIn("missing", (result.get("message") or "").lower())

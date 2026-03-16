@@ -42,6 +42,10 @@ def _admission_settings_has_field(fieldname: str) -> bool:
     return bool(frappe.get_meta("Admission Settings").has_field(fieldname))
 
 
+def _policy_schema_available() -> bool:
+    return frappe.db.has_column("Institutional Policy", "applies_to")
+
+
 class TestAdmissionsPortalAuthGuards(FrappeTestCase):
     def test_require_admissions_applicant_rejects_none_literal_as_unauthenticated(self):
         with patch("ifitwala_ed.api.admissions_portal._session_user", return_value=""):
@@ -587,10 +591,12 @@ class TestSubmitApplication(FrappeTestCase):
         self.school = self._create_school(self.organization)
         self.applicant_user = self._create_applicant_user()
         self.applicant = self._create_applicant(self.organization, self.school, self.applicant_user)
-        self.policy_version = self._create_required_applicant_policy_version(
-            organization=self.organization,
-            school=self.school,
-        )
+        self.policy_version = None
+        if _policy_schema_available():
+            self.policy_version = self._create_required_applicant_policy_version(
+                organization=self.organization,
+                school=self.school,
+            )
 
     def tearDown(self):
         frappe.set_user("Administrator")
@@ -637,6 +643,8 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertTrue(bool(self.applicant.submitted_at))
 
     def test_get_applicant_snapshot_includes_profile_and_application_context(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy.applies_to column is required for readiness snapshot tests.")
         frappe.set_user(self.applicant_user)
         payload = get_applicant_snapshot(student_applicant=self.applicant.name)
         self.assertIn("profile", payload)
@@ -646,6 +654,8 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertIn("recommendations_summary", payload)
 
     def test_offer_sent_snapshot_surfaces_offer_response_action(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy.applies_to column is required for admissions offer snapshot tests.")
         self._create_offer_plan(status="Offer Sent", offer_message="Review your place.")
 
         frappe.set_user(self.applicant_user)
@@ -660,6 +670,8 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertTrue(bool((snapshot.get("next_actions") or [])[0].get("is_blocking")))
 
     def test_offer_sent_snapshot_surfaces_course_choice_action_when_choices_are_incomplete(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy.applies_to column is required for admissions offer snapshot tests.")
         humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
         self._create_offer_plan(
             status="Offer Sent",
@@ -806,6 +818,8 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual((session_payload.get("applicant") or {}).get("portal_status"), "Accepted")
 
     def test_decline_enrollment_offer_is_idempotent_and_visible_after_decline(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy.applies_to column is required for admissions offer snapshot tests.")
         self._create_offer_plan(status="Offer Sent")
 
         frappe.set_user(self.applicant_user)
@@ -822,6 +836,8 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual((snapshot.get("enrollment_offer") or {}).get("status"), "Offer Declined")
 
     def test_get_applicant_policies_includes_expected_signature_name(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy.applies_to column is required for applicant policy tests.")
         frappe.set_user(self.applicant_user)
         payload = get_applicant_policies(student_applicant=self.applicant.name)
         policies = payload.get("policies") or []
@@ -836,6 +852,8 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(target.get("expected_signature_name"), expected_name)
 
     def test_acknowledge_policy_requires_attestation_confirmation(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy.applies_to column is required for applicant policy tests.")
         frappe.set_user(self.applicant_user)
         expected_name = f"{self.applicant.first_name} {self.applicant.last_name}".strip()
 
@@ -848,6 +866,8 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
     def test_acknowledge_policy_requires_matching_typed_signature(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy.applies_to column is required for applicant policy tests.")
         frappe.set_user(self.applicant_user)
 
         with self.assertRaises(frappe.ValidationError):
@@ -859,6 +879,8 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
     def test_acknowledge_policy_creates_row_for_valid_signature(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy.applies_to column is required for applicant policy tests.")
         frappe.set_user(self.applicant_user)
         expected_name = f"{self.applicant.first_name} {self.applicant.last_name}".strip()
 
@@ -887,6 +909,8 @@ class TestSubmitApplication(FrappeTestCase):
         self._created.append(("Policy Acknowledgement", ack.get("name")))
 
     def test_acknowledge_policy_family_mode_creates_guardian_context(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy.applies_to column is required for family acknowledgement tests.")
         if not _admission_settings_has_field("admissions_access_mode"):
             self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
         if not frappe.db.has_column("Institutional Policy", "admissions_acknowledgement_mode"):

@@ -110,14 +110,12 @@ def ensure_policy_applies_to_column(*, throw: bool = False, caller: str | None =
         return {"ok": True}
 
     meta = frappe.get_meta("Institutional Policy")
-    if meta and meta.has_field("applies_to"):
-        return {"ok": True}
-
     debug_payload = {
         "doctype": "Institutional Policy",
         "missing_column": "applies_to",
         "caller": caller,
         "site": getattr(frappe.local, "site", None),
+        "meta_has_field": bool(meta and meta.has_field("applies_to")),
     }
     frappe.log_error(message=frappe.as_json(debug_payload), title="Policy schema mismatch")
 
