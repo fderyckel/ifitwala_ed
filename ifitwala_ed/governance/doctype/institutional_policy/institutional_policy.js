@@ -3,7 +3,19 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Institutional Policy", {
+	setup(frm) {
+		ensureAppliesToControlCompatibility(frm);
+	},
+
+	onload_post_render(frm) {
+		ensureAppliesToControlCompatibility(frm);
+		syncAppliesToControl(frm);
+	},
+
 	refresh(frm) {
+		ensureAppliesToControlCompatibility(frm);
+		syncAppliesToControl(frm);
+
 		if (frm.is_new() || !frm.doc.name) return;
 
 		frm.add_custom_button(__("Create Policy Version"), async () => {
@@ -51,6 +63,75 @@ frappe.ui.form.on("Institutional Policy", {
 		});
 	},
 });
+
+function ensureAppliesToControlCompatibility(frm) {
+	const control = frm.get_field("applies_to");
+	if (!control || control.__ifitwalaAppliesToPatched) return;
+
+	const originalValidate = control.validate?.bind(control);
+	control.validate = (value) => {
+		const normalized = normalizeAppliesToUiValue(value, getAppliesToOptions(control));
+		if (normalized.tokens.length && !normalized.invalidTokens.length) {
+			return normalized.uiValue;
+		}
+		return originalValidate ? originalValidate(value) : value;
+	};
+
+	const originalSetFormattedInput = control.set_formatted_input?.bind(control);
+	control.set_formatted_input = (value) => {
+		const normalized = normalizeAppliesToUiValue(value, getAppliesToOptions(control));
+		if (originalSetFormattedInput) {
+			return originalSetFormattedInput(normalized.uiValue);
+		}
+		return undefined;
+	};
+
+	control.__ifitwalaAppliesToPatched = true;
+}
+
+function syncAppliesToControl(frm) {
+	const control = frm.get_field("applies_to");
+	if (!control || typeof control.set_formatted_input !== "function") return;
+
+	control.set_formatted_input(frm.doc.applies_to || "");
+}
+
+function getAppliesToOptions(control) {
+	return String(control?.df?.options || "")
+		.split("\n")
+		.map((value) => String(value || "").trim())
+		.filter(Boolean);
+}
+
+function normalizeAppliesToUiValue(value, options) {
+	const optionMap = new Map(
+		(options || []).map((option) => [String(option || "").trim().toLowerCase(), String(option || "").trim()])
+	);
+	const rawValues = Array.isArray(value) ? value : String(value || "").split(/[\n,]/);
+	const tokens = [];
+	const invalidTokens = [];
+	const seen = new Set();
+
+	for (const rawValue of rawValues) {
+		const token = String(rawValue || "").trim();
+		if (!token) continue;
+
+		const canonical = optionMap.get(token.toLowerCase());
+		if (!canonical) {
+			invalidTokens.push(token);
+			continue;
+		}
+		if (seen.has(canonical)) continue;
+		seen.add(canonical);
+		tokens.push(canonical);
+	}
+
+	return {
+		tokens,
+		invalidTokens,
+		uiValue: tokens.join(", "),
+	};
+}
 
 function suggestNextVersionLabel(label) {
 	const value = String(label || "").trim();
