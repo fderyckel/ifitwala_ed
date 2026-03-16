@@ -1,6 +1,14 @@
 // ifitwala_ed/ui-spa/src/test/setup.ts
 
-import { afterEach } from 'vitest'
+import { afterEach, vi } from 'vitest'
+
+class ResizeObserverStub {
+	disconnect() {}
+	observe() {}
+	unobserve() {}
+}
+
+vi.stubGlobal('ResizeObserver', ResizeObserverStub)
 
 afterEach(() => {
 	const w = window as any
