@@ -1,6 +1,7 @@
 # ifitwala_ed/utilities/test_organization_media.py
 
 import base64
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import frappe
@@ -229,9 +230,12 @@ class TestOrganizationMedia(FrappeTestCase):
         self.assertIn(self.leaf_school, {row["name"] for row in payload["schools"]})
 
     def test_upload_organization_media_asset_creates_governed_classified_file(self):
-        with patch(
-            "ifitwala_ed.utilities.governed_uploads._get_uploaded_file",
-            return_value=("homepage-hero.png", base64.b64decode(self._tiny_png_base64())),
+        with (
+            self._patched_drive_media_bridge(),
+            patch(
+                "ifitwala_ed.utilities.governed_uploads._get_uploaded_file",
+                return_value=("homepage-hero.png", base64.b64decode(self._tiny_png_base64())),
+            ),
         ):
             payload = upload_organization_media_asset(
                 organization=self.child_org,
@@ -258,9 +262,12 @@ class TestOrganizationMedia(FrappeTestCase):
         self.assertEqual(classification["slot"], "organization_media__homepage_hero")
 
     def test_upload_organization_logo_updates_org_with_governed_file(self):
-        with patch(
-            "ifitwala_ed.utilities.governed_uploads._get_uploaded_file",
-            return_value=("org-logo.png", base64.b64decode(self._tiny_png_base64())),
+        with (
+            self._patched_drive_media_bridge(),
+            patch(
+                "ifitwala_ed.utilities.governed_uploads._get_uploaded_file",
+                return_value=("org-logo.png", base64.b64decode(self._tiny_png_base64())),
+            ),
         ):
             payload = upload_organization_logo(organization=self.child_org)
 
@@ -361,6 +368,73 @@ class TestOrganizationMedia(FrappeTestCase):
         )
         self._track_classified_file(file_doc.name)
         return file_doc
+
+    @contextmanager
+    def _patched_drive_media_bridge(self):
+        fake_drive_media = type(
+            "FakeDriveMedia",
+            (),
+            {
+                "upload_organization_media_asset": object(),
+                "upload_organization_logo": object(),
+                "upload_school_logo": object(),
+                "upload_school_gallery_image": object(),
+            },
+        )()
+
+        def _fake_drive_upload_and_finalize(*, create_session_callable, payload, content):
+            if create_session_callable is fake_drive_media.upload_organization_logo:
+                slot = build_organization_logo_slot(organization=payload["organization"])
+                school = None
+            elif create_session_callable is fake_drive_media.upload_school_logo:
+                slot = build_school_logo_slot(school=payload["school"])
+                school = payload["school"]
+            elif create_session_callable is fake_drive_media.upload_school_gallery_image:
+                row_name = payload.get("row_name") or frappe.generate_hash(length=10)
+                slot = build_school_gallery_slot(row_name=row_name)
+                school = payload["school"]
+            else:
+                slot = build_organization_media_slot(media_key=payload["media_key"])
+                school = payload.get("school")
+
+            file_doc = file_dispatcher.create_and_classify_file(
+                file_kwargs={
+                    "attached_to_doctype": "Organization",
+                    "attached_to_name": payload["organization"],
+                    "file_name": payload["filename_original"],
+                    "content": content,
+                    "is_private": 0,
+                },
+                classification=build_organization_media_classification(
+                    organization=payload["organization"],
+                    school=school,
+                    slot=slot,
+                    upload_source=payload.get("upload_source") or "Desk",
+                ),
+                context_override=build_organization_media_context(
+                    organization=payload["organization"],
+                    school=school,
+                    slot=slot,
+                ),
+            )
+
+            finalize_response = {
+                "file_id": file_doc.name,
+                "file_url": file_doc.file_url,
+            }
+            return {"upload_session_id": "DUS-TEST"}, finalize_response, file_doc
+
+        with (
+            patch(
+                "ifitwala_ed.utilities.governed_uploads._load_drive_module",
+                return_value=fake_drive_media,
+            ),
+            patch(
+                "ifitwala_ed.utilities.governed_uploads._drive_upload_and_finalize",
+                side_effect=_fake_drive_upload_and_finalize,
+            ),
+        ):
+            yield
 
     def _track_classified_file(self, file_name: str | None):
         if not file_name:

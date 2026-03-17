@@ -3,15 +3,19 @@
 # See license.txt
 
 import base64
+from contextlib import contextmanager
+from unittest.mock import patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
 from ifitwala_ed.api.admissions_portal import (
     list_applicant_document_types,
     list_applicant_documents,
     upload_applicant_document,
 )
+from ifitwala_ed.utilities import file_dispatcher
 
 
 class TestAdmissionsDocumentItems(FrappeTestCase):
@@ -34,14 +38,15 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
 
     def test_upload_creates_item_and_returns_item_metadata(self):
         frappe.set_user(self.applicant_user)
-        payload = upload_applicant_document(
-            student_applicant=self.applicant.name,
-            document_type=self.document_type,
-            item_key="aisl_2019",
-            item_label="AISL transcript 2019",
-            file_name="aisl-2019.txt",
-            content=self._tiny_file_base64(),
-        )
+        with self._patched_drive_admissions_bridge():
+            payload = upload_applicant_document(
+                student_applicant=self.applicant.name,
+                document_type=self.document_type,
+                item_key="aisl_2019",
+                item_label="AISL transcript 2019",
+                file_name="aisl-2019.txt",
+                content=self._tiny_file_base64(),
+            )
 
         self.assertTrue(bool(payload.get("applicant_document")))
         self.assertTrue(bool(payload.get("applicant_document_item")))
@@ -60,22 +65,23 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
 
     def test_repeatable_upload_keeps_multiple_items(self):
         frappe.set_user(self.applicant_user)
-        upload_applicant_document(
-            student_applicant=self.applicant.name,
-            document_type=self.document_type,
-            item_key="aisl_2019",
-            item_label="AISL transcript 2019",
-            file_name="aisl-2019.txt",
-            content=self._tiny_file_base64(),
-        )
-        upload_applicant_document(
-            student_applicant=self.applicant.name,
-            document_type=self.document_type,
-            item_key="isl_2020",
-            item_label="ISL transcript 2020",
-            file_name="isl-2020.txt",
-            content=self._tiny_file_base64(),
-        )
+        with self._patched_drive_admissions_bridge():
+            upload_applicant_document(
+                student_applicant=self.applicant.name,
+                document_type=self.document_type,
+                item_key="aisl_2019",
+                item_label="AISL transcript 2019",
+                file_name="aisl-2019.txt",
+                content=self._tiny_file_base64(),
+            )
+            upload_applicant_document(
+                student_applicant=self.applicant.name,
+                document_type=self.document_type,
+                item_key="isl_2020",
+                item_label="ISL transcript 2020",
+                file_name="isl-2020.txt",
+                content=self._tiny_file_base64(),
+            )
 
         payload = list_applicant_documents(student_applicant=self.applicant.name)
         documents = payload.get("documents") or []
@@ -89,12 +95,13 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
 
     def test_upload_without_item_description_uses_server_generated_submission_label(self):
         frappe.set_user(self.applicant_user)
-        payload = upload_applicant_document(
-            student_applicant=self.applicant.name,
-            document_type=self.document_type,
-            file_name="unknown.txt",
-            content=self._tiny_file_base64(),
-        )
+        with self._patched_drive_admissions_bridge():
+            payload = upload_applicant_document(
+                student_applicant=self.applicant.name,
+                document_type=self.document_type,
+                file_name="unknown.txt",
+                content=self._tiny_file_base64(),
+            )
 
         row = frappe.db.get_value(
             "Applicant Document Item",
@@ -136,12 +143,68 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         )
 
         with self.assertRaises(frappe.ValidationError):
-            upload_applicant_document(
-                student_applicant=self.applicant.name,
-                document_type=recommendation_document_type,
-                file_name="recommendation.txt",
-                content=self._tiny_file_base64(),
+            with self._patched_drive_admissions_bridge():
+                upload_applicant_document(
+                    student_applicant=self.applicant.name,
+                    document_type=recommendation_document_type,
+                    file_name="recommendation.txt",
+                    content=self._tiny_file_base64(),
+                )
+
+    @contextmanager
+    def _patched_drive_admissions_bridge(self):
+        fake_drive_admissions = type("FakeDriveAdmissions", (), {"upload_applicant_document": object()})()
+
+        def _fake_drive_upload_and_finalize(*, create_session_callable, payload, content):
+            self.assertIs(create_session_callable, fake_drive_admissions.upload_applicant_document)
+            slot_spec = get_applicant_document_slot_spec(document_type=payload["document_type"])
+            item_slot_key = f"{slot_spec['slot']}_{frappe.scrub(payload['item_key'])[:80]}"
+            file_doc = file_dispatcher.create_and_classify_file(
+                file_kwargs={
+                    "attached_to_doctype": "Applicant Document Item",
+                    "attached_to_name": payload["applicant_document_item"],
+                    "file_name": payload["filename_original"],
+                    "content": content,
+                    "is_private": 1,
+                },
+                classification={
+                    "primary_subject_type": "Student Applicant",
+                    "primary_subject_id": payload["student_applicant"],
+                    "data_class": slot_spec["data_class"],
+                    "purpose": slot_spec["purpose"],
+                    "retention_policy": slot_spec["retention_policy"],
+                    "slot": item_slot_key,
+                    "organization": self.organization,
+                    "school": self.school,
+                    "upload_source": payload.get("upload_source") or "SPA",
+                },
             )
+            classification_name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
+            return (
+                {"upload_session_id": "DUS-TEST"},
+                {
+                    "file_id": file_doc.name,
+                    "file_url": file_doc.file_url,
+                    "classification": classification_name,
+                    "applicant_document": payload["applicant_document"],
+                    "applicant_document_item": payload["applicant_document_item"],
+                    "item_key": payload["item_key"],
+                    "item_label": payload["item_label"],
+                },
+                file_doc,
+            )
+
+        with (
+            patch(
+                "ifitwala_ed.admission.admissions_portal._load_drive_module",
+                return_value=fake_drive_admissions,
+            ),
+            patch(
+                "ifitwala_ed.admission.admissions_portal._drive_upload_and_finalize",
+                side_effect=_fake_drive_upload_and_finalize,
+            ),
+        ):
+            yield
 
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):

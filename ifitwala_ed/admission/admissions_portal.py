@@ -9,11 +9,7 @@ from frappe import _
 from frappe.utils import cint, now_datetime
 
 from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
-from ifitwala_ed.admission.applicant_review_workflow import materialize_document_item_review_assignments
-from ifitwala_ed.admission.doctype.applicant_document.applicant_document import (
-    sync_applicant_document_review_from_items,
-)
-from ifitwala_ed.utilities import file_dispatcher
+from ifitwala_ed.utilities.governed_uploads import _drive_upload_and_finalize, _load_drive_module
 
 ALLOWED_UPLOAD_SOURCES = {"Desk", "SPA", "API", "Job"}
 
@@ -89,86 +85,34 @@ def upload_applicant_document(
             if cached:
                 return frappe.parse_json(cached)
 
-        had_existing_file = bool(
-            frappe.db.exists(
-                "File",
-                {
-                    "attached_to_doctype": "Applicant Document Item",
-                    "attached_to_name": item_doc.name,
-                },
-            )
-        )
+        drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
 
-        file_kwargs = {
-            "attached_to_doctype": "Applicant Document Item",
-            "attached_to_name": item_doc.name,
-            "is_private": cint(is_private) if is_private is not None else 1,
-            "file_name": filename,
-            "content": content,
-        }
-
-        item_slot_key = f"{slot_spec['slot']}_{frappe.scrub(item_doc.item_key)[:80]}"
-        classification = {
-            "primary_subject_type": "Student Applicant",
-            "primary_subject_id": doc.student_applicant,
-            "data_class": slot_spec["data_class"],
-            "purpose": slot_spec["purpose"],
-            "retention_policy": slot_spec["retention_policy"],
-            "slot": item_slot_key,
-            "organization": applicant_row.get("organization"),
-            "school": applicant_row.get("school"),
-            "upload_source": source,
-        }
-
-        file_doc = file_dispatcher.create_and_classify_file(
-            file_kwargs=file_kwargs,
-            classification=classification,
-        )
-
-        frappe.db.set_value(
-            "Applicant Document Item",
-            item_doc.name,
-            {
-                "review_status": "Pending",
-                "review_notes": None,
-                "reviewed_by": None,
-                "reviewed_on": None,
+        _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
+            create_session_callable=drive_admissions_api.upload_applicant_document,
+            payload={
+                "student_applicant": doc.student_applicant,
+                "document_type": doc.document_type,
+                "applicant_document": doc.name,
+                "applicant_document_item": item_doc.name,
+                "item_key": item_doc.item_key,
+                "item_label": item_doc.item_label,
+                "filename_original": filename,
+                "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+                "expected_size_bytes": len(content),
+                "upload_source": source,
+                "is_private": cint(is_private) if is_private is not None else 1,
             },
-            update_modified=False,
-        )
-        sync_applicant_document_review_from_items(doc.name)
-
-        classification_name = frappe.db.get_value(
-            "File Classification",
-            {"file": file_doc.name},
-            "name",
-        )
-
-        _append_document_upload_timeline(
-            student_applicant=doc.student_applicant,
-            applicant_document=doc.name,
-            applicant_document_item=item_doc.name,
-            item_key=item_doc.item_key,
-            item_label=item_doc.item_label,
-            document_type=doc.document_type,
-            document_type_code=doc_type_code,
-            file_url=file_doc.file_url,
-            upload_source=source,
-            action="replaced" if had_existing_file else "uploaded",
-        )
-        materialize_document_item_review_assignments(
-            applicant_document_item=item_doc.name,
-            source_event="document_item_uploaded",
+            content=content,
         )
 
         response = {
             "file": file_doc.name,
             "file_url": file_doc.file_url,
-            "classification": classification_name,
-            "applicant_document": doc.name,
-            "applicant_document_item": item_doc.name,
-            "item_key": item_doc.item_key,
-            "item_label": item_doc.item_label,
+            "classification": finalize_response.get("classification"),
+            "applicant_document": finalize_response.get("applicant_document") or doc.name,
+            "applicant_document_item": finalize_response.get("applicant_document_item") or item_doc.name,
+            "item_key": finalize_response.get("item_key") or item_doc.item_key,
+            "item_label": finalize_response.get("item_label") or item_doc.item_label,
         }
         if cache_key:
             cache.set_value(cache_key, frappe.as_json(response), expires_in_sec=60 * 10)
