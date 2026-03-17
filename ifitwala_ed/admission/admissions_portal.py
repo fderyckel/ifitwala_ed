@@ -119,6 +119,58 @@ def upload_applicant_document(
         return response
 
 
+def upload_applicant_health_vaccination_proof(
+    *,
+    student_applicant: str,
+    applicant_health_profile: str,
+    vaccine_name: str | None = None,
+    date: str | None = None,
+    row_index: int | None = None,
+    file_name: str,
+    content,
+    upload_source: str | None = "API",
+):
+    """Governed admissions health upload endpoint routed through Drive."""
+    if not student_applicant:
+        frappe.throw(_("student_applicant is required."))
+    if not applicant_health_profile:
+        frappe.throw(_("applicant_health_profile is required."))
+    if not file_name:
+        frappe.throw(_("file_name is required when sending raw content."))
+    if content is None:
+        frappe.throw(_("File content is required."))
+
+    source = upload_source or "API"
+    if source not in ALLOWED_UPLOAD_SOURCES:
+        frappe.throw(_("Invalid upload_source."))
+
+    drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+    _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_admissions_api.upload_applicant_health_vaccination_proof,
+        payload={
+            "student_applicant": student_applicant,
+            "applicant_health_profile": applicant_health_profile,
+            "vaccine_name": vaccine_name,
+            "date": date,
+            "row_index": row_index,
+            "filename_original": file_name,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
+            "upload_source": source,
+        },
+        content=content,
+    )
+
+    return {
+        "file": file_doc.name,
+        "file_url": file_doc.file_url,
+        "classification": finalize_response.get("classification"),
+        "student_applicant": finalize_response.get("student_applicant") or student_applicant,
+        "applicant_health_profile": finalize_response.get("applicant_health_profile") or applicant_health_profile,
+        "slot": finalize_response.get("slot"),
+    }
+
+
 def _resolve_applicant_document(*, applicant_document=None, student_applicant=None, document_type=None):
     if applicant_document:
         doc = frappe.get_doc("Applicant Document", applicant_document)

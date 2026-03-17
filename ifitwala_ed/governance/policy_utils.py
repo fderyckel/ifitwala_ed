@@ -41,6 +41,10 @@ POLICY_CATEGORIES = (
     "Employment",
 )
 POLICY_APPLIES_TO_OPTIONS = ("Applicant", "Student", "Guardian", "Staff")
+POLICY_AUDIENCE_DOCTYPE = "Policy Audience"
+POLICY_APPLIES_TO_CHILD_DOCTYPE = "Institutional Policy Audience"
+POLICY_APPLIES_TO_LINK_FIELD = "policy_audience"
+POLICY_APPLIES_TO_PARENTFIELD = "applies_to"
 POLICY_ADMIN_ROLES = frozenset(
     {
         SYSTEM_MANAGER_ROLE,
@@ -137,25 +141,78 @@ def institutional_policy_db_has_column(column_name: str) -> bool:
     return exists
 
 
-def ensure_policy_applies_to_column(*, throw: bool = False, caller: str | None = None) -> dict:
-    if institutional_policy_db_has_column("applies_to"):
+def ensure_policy_audience_records() -> None:
+    if not frappe.db.table_exists(POLICY_AUDIENCE_DOCTYPE):
+        return
+
+    for audience in POLICY_APPLIES_TO_OPTIONS:
+        if frappe.db.exists(POLICY_AUDIENCE_DOCTYPE, audience):
+            continue
+        frappe.get_doc(
+            {
+                "doctype": POLICY_AUDIENCE_DOCTYPE,
+                "policy_audience_name": audience,
+            }
+        ).insert(ignore_permissions=True)
+
+
+def ensure_policy_applies_to_storage(*, throw: bool = False, caller: str | None = None) -> dict:
+    meta = frappe.get_meta("Institutional Policy")
+    applies_to_field = meta.get_field(POLICY_APPLIES_TO_PARENTFIELD) if meta else None
+    child_table_ready = bool(
+        frappe.db.table_exists(POLICY_APPLIES_TO_CHILD_DOCTYPE)
+        and frappe.db.has_column(POLICY_APPLIES_TO_CHILD_DOCTYPE, POLICY_APPLIES_TO_LINK_FIELD)
+        and frappe.db.table_exists(POLICY_AUDIENCE_DOCTYPE)
+        and applies_to_field
+        and applies_to_field.fieldtype == "Table MultiSelect"
+        and applies_to_field.options == POLICY_APPLIES_TO_CHILD_DOCTYPE
+    )
+    if child_table_ready:
         return {"ok": True}
 
-    meta = frappe.get_meta("Institutional Policy")
     debug_payload = {
         "doctype": "Institutional Policy",
-        "missing_column": "applies_to",
         "caller": caller,
+        "missing_table": POLICY_APPLIES_TO_CHILD_DOCTYPE,
+        "missing_link_doctype": POLICY_AUDIENCE_DOCTYPE,
+        "missing_link_field": POLICY_APPLIES_TO_LINK_FIELD,
         "site": getattr(frappe.local, "site", None),
         "meta_has_field": bool(meta and meta.has_field("applies_to")),
-        "db_has_column": False,
+        "meta_fieldtype": getattr(applies_to_field, "fieldtype", None),
+        "meta_options": getattr(applies_to_field, "options", None),
+        "child_table_exists": frappe.db.table_exists(POLICY_APPLIES_TO_CHILD_DOCTYPE),
+        "child_link_field_exists": frappe.db.has_column(POLICY_APPLIES_TO_CHILD_DOCTYPE, POLICY_APPLIES_TO_LINK_FIELD)
+        if frappe.db.table_exists(POLICY_APPLIES_TO_CHILD_DOCTYPE)
+        else False,
+        "link_doctype_exists": frappe.db.table_exists(POLICY_AUDIENCE_DOCTYPE),
     }
     frappe.log_error(message=frappe.as_json(debug_payload), title="Policy schema mismatch")
 
-    message = _("Institutional Policy is missing the applies_to field. Run migrations or reload the DocType.")
+    message = _("Institutional Policy applies_to storage is not configured. Run migrations or reload the DocTypes.")
     if throw:
         frappe.throw(message)
     return {"ok": False, "message": message}
+
+
+def ensure_policy_applies_to_column(*, throw: bool = False, caller: str | None = None) -> dict:
+    return ensure_policy_applies_to_storage(throw=throw, caller=caller)
+
+
+def _extract_policy_audience_token(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, dict):
+        if isinstance(value.get("applies_to_tokens"), (list, tuple, set)):
+            tokens = get_policy_applies_to_tokens(value.get("applies_to_tokens"))
+            return tokens[0] if tokens else ""
+        for key in (POLICY_APPLIES_TO_LINK_FIELD, "applies_to", "audience"):
+            token = (value.get(key) or "").strip()
+            if token:
+                return token
+        return ""
+    if hasattr(value, POLICY_APPLIES_TO_LINK_FIELD):
+        return (getattr(value, POLICY_APPLIES_TO_LINK_FIELD, None) or "").strip()
+    return str(value or "").strip()
 
 
 def get_policy_applies_to_tokens(raw_value) -> tuple[str, ...]:
@@ -163,7 +220,9 @@ def get_policy_applies_to_tokens(raw_value) -> tuple[str, ...]:
         return ()
 
     if isinstance(raw_value, (list, tuple, set)):
-        source_values = raw_value
+        source_values = [_extract_policy_audience_token(value) for value in raw_value]
+    elif isinstance(raw_value, dict) and isinstance(raw_value.get("applies_to_tokens"), (list, tuple, set)):
+        source_values = list(raw_value.get("applies_to_tokens") or [])
     else:
         source_values = str(raw_value).replace(",", "\n").splitlines()
 
@@ -178,8 +237,52 @@ def get_policy_applies_to_tokens(raw_value) -> tuple[str, ...]:
     return tuple(tokens)
 
 
-def normalize_policy_applies_to(raw_value) -> str:
-    return "\n".join(get_policy_applies_to_tokens(raw_value))
+def get_policy_applies_to_token_map(policy_names: list[str] | tuple[str, ...] | set[str]) -> dict[str, tuple[str, ...]]:
+    names = sorted({(name or "").strip() for name in policy_names if (name or "").strip()})
+    if not names or not frappe.db.table_exists(POLICY_APPLIES_TO_CHILD_DOCTYPE):
+        return {}
+
+    rows = frappe.get_all(
+        POLICY_APPLIES_TO_CHILD_DOCTYPE,
+        filters={
+            "parent": ["in", names],
+            "parenttype": "Institutional Policy",
+            "parentfield": POLICY_APPLIES_TO_PARENTFIELD,
+        },
+        fields=["parent", POLICY_APPLIES_TO_LINK_FIELD, "idx"],
+        order_by="parent asc, idx asc",
+        limit_page_length=0,
+    )
+    out: dict[str, list[str]] = {}
+    for row in rows:
+        parent = (row.get("parent") or "").strip()
+        token = (row.get(POLICY_APPLIES_TO_LINK_FIELD) or "").strip()
+        if not parent or not token:
+            continue
+        out.setdefault(parent, []).append(token)
+    return {name: get_policy_applies_to_tokens(values) for name, values in out.items()}
+
+
+def get_policy_applies_to_tokens_for_policy(policy_name: str | None) -> tuple[str, ...]:
+    policy_name = (policy_name or "").strip()
+    if not policy_name:
+        return ()
+    return get_policy_applies_to_token_map([policy_name]).get(policy_name, ())
+
+
+def policy_applies_to_filter_sql(
+    *, policy_alias: str = "ip", audience_placeholder: str = "%s", child_alias: str = "ipa"
+) -> str:
+    return f"""
+        EXISTS (
+            SELECT 1
+            FROM `tab{POLICY_APPLIES_TO_CHILD_DOCTYPE}` {child_alias}
+            WHERE {child_alias}.parent = {policy_alias}.name
+              AND {child_alias}.parenttype = 'Institutional Policy'
+              AND {child_alias}.parentfield = '{POLICY_APPLIES_TO_PARENTFIELD}'
+              AND {child_alias}.{POLICY_APPLIES_TO_LINK_FIELD} = {audience_placeholder}
+        )
+    """.strip()
 
 
 def policy_applies_to(raw_value, audience: str) -> bool:
@@ -304,7 +407,7 @@ def _resolve_applicant_policy_candidates(
         return []
     school_ancestors = get_school_ancestors_including_self(school)
 
-    schema_check = ensure_policy_applies_to_column(caller="_resolve_applicant_policy_candidates")
+    schema_check = ensure_policy_applies_to_storage(caller="_resolve_applicant_policy_candidates")
     if not schema_check.get("ok"):
         return []
 
@@ -338,9 +441,9 @@ def _resolve_applicant_policy_candidates(
            AND pv.is_active = 1
            AND ip.organization IN ({org_placeholders})
            AND (ip.school IS NULL OR ip.school = ''{school_scope_sql})
-           AND ip.applies_to LIKE %s
+           AND {policy_applies_to_filter_sql(policy_alias="ip", audience_placeholder="%s")}
         """,
-        (*ancestor_orgs, *school_params, "%Applicant%"),
+        (*ancestor_orgs, *school_params, "Applicant"),
         as_dict=True,
     )
 
@@ -361,7 +464,7 @@ def get_applicant_policy_status(
     school: str | None = None,
     user: str | None = None,
 ) -> dict:
-    schema_check = ensure_policy_applies_to_column(caller="get_applicant_policy_status")
+    schema_check = ensure_policy_applies_to_storage(caller="get_applicant_policy_status")
     if not schema_check.get("ok"):
         return {
             "ok": False,

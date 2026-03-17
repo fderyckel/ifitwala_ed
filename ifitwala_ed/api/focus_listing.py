@@ -475,7 +475,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
               and (%(open_only)s = 0 or t.status = 'Open')
               and pv.is_active = 1
               and ip.is_active = 1
-              and ip.applies_to like %(applies_to)s
+              and {policy_applies_to_filter_sql(policy_alias="ip", audience_placeholder="%(applies_to)s")}
             order by ifnull(t.date, '9999-12-31') asc, t.modified desc
             limit %(limit)s offset %(offset)s
             """,
@@ -485,7 +485,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
                 "open_only": open_only,
                 "limit": limit,
                 "offset": offset,
-                "applies_to": "%Staff%",
+                "applies_to": "Staff",
             },
             as_dict=True,
         )

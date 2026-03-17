@@ -7,12 +7,14 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
 
 from ifitwala_ed.governance.doctype.policy_version.policy_version import approved_by_user_query
+from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
 from ifitwala_ed.tests.factories.users import make_user
 
 
 class TestPolicyVersionApprovedBy(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
+        ensure_policy_audience_records()
         self.created: list[tuple[str, str]] = []
 
         self.organization = self._make_organization("PV Org")
@@ -134,7 +136,7 @@ class TestPolicyVersionApprovedBy(FrappeTestCase):
                 "policy_key": f"approved_by_scope_{frappe.generate_hash(length=8)}",
                 "policy_title": "Approved By Scope Policy",
                 "policy_category": "Operations",
-                "applies_to": "Staff",
+                "applies_to": [{"policy_audience": "Staff"}],
                 "organization": organization,
                 "school": school,
                 "is_active": 1,
@@ -187,6 +189,7 @@ class TestPolicyVersionApprovedBy(FrappeTestCase):
 class TestPolicyVersionAmendments(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
+        ensure_policy_audience_records()
         self.created: list[tuple[str, str]] = []
 
         self.organization = self._make_organization("PV Amend Org")
@@ -411,7 +414,7 @@ class TestPolicyVersionAmendments(FrappeTestCase):
                 "policy_key": f"{policy_key_prefix}_{frappe.generate_hash(length=8)}",
                 "policy_title": "Staff Policy",
                 "policy_category": "Operations",
-                "applies_to": "Staff",
+                "applies_to": [{"policy_audience": "Staff"}],
                 "organization": organization,
                 "school": school,
                 "is_active": 1,

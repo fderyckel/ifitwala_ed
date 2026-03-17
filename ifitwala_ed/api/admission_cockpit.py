@@ -23,7 +23,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     get_school_ancestors_including_self,
     select_nearest_policy_rows_by_key,
 )
-from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column
+from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_storage, policy_applies_to_filter_sql
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ALLOWED_COCKPIT_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager", "Administrator"}
@@ -553,7 +553,7 @@ def _build_documents_state(applicant_rows: list[dict], applicant_names: list[str
 def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) -> dict[str, dict]:
     out: dict[str, dict] = {}
 
-    schema_check = ensure_policy_applies_to_column(caller="admission_cockpit.get_admissions_cockpit_data")
+    schema_check = ensure_policy_applies_to_storage(caller="admission_cockpit.get_admissions_cockpit_data")
     if not schema_check.get("ok"):
         schema_message = _to_text(schema_check.get("message")) or _("Policy schema is not configured.")
         for applicant_name in applicant_names:
@@ -611,9 +611,9 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
                AND pv.is_active = 1
                AND ip.organization IN ({org_placeholders})
                AND (ip.school IS NULL OR ip.school = ''{school_scope_sql})
-               AND ip.applies_to LIKE %s
+               AND {policy_applies_to_filter_sql(policy_alias="ip", audience_placeholder="%s")}
             """,
-            (*org_values, *school_params, "%Applicant%"),
+            (*org_values, *school_params, "Applicant"),
             as_dict=True,
         )
 

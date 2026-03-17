@@ -380,7 +380,7 @@ Institutional Policy
 | `policy_key`      | Data                | ✅        | Stable, machine identifier (immutable)                         |
 | `policy_title`    | Data                | ✅        | Human-readable                                                 |
 | `policy_category` | Select              | ✅        | Safeguarding / Privacy & Data Protection / Admissions / Academic / Conduct & Behaviour / Health & Safety / Operations / Handbooks / Employment |
-| `applies_to`      | MultiSelect         | ✅        | Applicant, Student, Guardian, Staff                            |
+| `applies_to`      | Table MultiSelect   | ✅        | Child rows linked to `Policy Audience`: Applicant, Student, Guardian, Staff |
 | `organization`    | Link → Organization | ✅        | Immutable                                                      |
 | `school`          | Link → School       | ❌        | NULL = org-wide                                                |
 | `description`     | Small Text          | ❌        | Non-legal                                                      |

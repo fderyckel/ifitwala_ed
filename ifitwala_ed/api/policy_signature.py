@@ -12,7 +12,11 @@ from ifitwala_ed.governance.policy_scope_utils import (
     is_policy_organization_applicable_to_context,
     select_nearest_policy_rows_by_key,
 )
-from ifitwala_ed.governance.policy_utils import policy_applies_to
+from ifitwala_ed.governance.policy_utils import (
+    get_policy_applies_to_tokens_for_policy,
+    policy_applies_to,
+    policy_applies_to_filter_sql,
+)
 from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -163,7 +167,7 @@ def _active_staff_policy_rows_for_context(
 
     params: dict = {
         "policy_organizations": tuple(ancestor_orgs),
-        "applies_to": "%Staff%",
+        "applies_to": "Staff",
     }
 
     school_scope_clause = " AND (ifnull(ip.school, '') = '')"
@@ -196,7 +200,7 @@ def _active_staff_policy_rows_for_context(
         WHERE pv.is_active = 1
           AND ip.is_active = 1
           AND ip.organization IN %(policy_organizations)s
-          AND ip.applies_to LIKE %(applies_to)s
+          AND {policy_applies_to_filter_sql(policy_alias="ip", audience_placeholder="%(applies_to)s")}
           {school_scope_clause}
         ORDER BY ip.policy_title ASC, pv.modified DESC
         """,
@@ -458,7 +462,6 @@ def get_policy_version_context(
             ip.name AS institutional_policy,
             ip.policy_key,
             ip.policy_title,
-            ip.applies_to,
             ip.organization AS policy_organization,
             ip.school AS policy_school,
             ip.is_active AS policy_is_active
@@ -476,10 +479,11 @@ def get_policy_version_context(
         frappe.throw(_("Policy Version not found."), frappe.DoesNotExistError)
 
     row = rows[0]
+    row["applies_to_tokens"] = list(get_policy_applies_to_tokens_for_policy(row.get("institutional_policy")))
     if require_active and (not row.get("policy_version_is_active") or not row.get("policy_is_active")):
         frappe.throw(_("Policy Version must be active under an active Institutional Policy."))
 
-    if require_staff_applies and not _policy_applies_to_staff(row.get("applies_to")):
+    if require_staff_applies and not _policy_applies_to_staff(row.get("applies_to_tokens")):
         frappe.throw(_("Selected Policy Version does not apply to Staff."))
 
     return row
@@ -813,10 +817,10 @@ def get_staff_policy_campaign_options(
             WHERE pv.is_active = 1
               AND ip.is_active = 1
               AND ip.organization IN %(policy_organizations)s
-              AND ip.applies_to LIKE %(applies_to)s
+              AND {policy_applies_to_filter_sql(policy_alias="ip", audience_placeholder="%(applies_to)s")}
             ORDER BY ip.policy_title ASC, pv.version_label DESC
             """,
-            {**policy_params, "applies_to": "%Staff%"},
+            {**policy_params, "applies_to": "Staff"},
             as_dict=True,
         )
 

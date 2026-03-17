@@ -9,6 +9,7 @@ from frappe import _
 from frappe.utils import get_files_path
 
 from ifitwala_ed.admission.access import ADMISSIONS_FAMILY_ROLE
+from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
 from ifitwala_ed.routing.policy import canonical_path_for_section
 from ifitwala_ed.school_site.doctype.website_theme_profile.website_theme_profile import (
     ensure_theme_profile_presets,
@@ -39,6 +40,7 @@ def setup_education():
     setup_website_theme_profiles()
     setup_default_website_pages()
     grant_core_crm_permissions()
+    ensure_policy_audience_records()
 
 
 def ensure_initial_setup_flag():

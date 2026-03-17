@@ -3,8 +3,8 @@ title: "Institutional Policy: Policy Identity and Scope Anchor"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "1.2.0"
-last_change_date: "2026-03-15"
+version: "1.3.0"
+last_change_date: "2026-03-17"
 summary: "Define policy identity, organization/school scope, target audience, and admissions acknowledgement mode so active policy versions can be resolved and acknowledged correctly."
 seo_title: "Institutional Policy: Policy Identity and Scope Anchor"
 seo_description: "Define policy identity, organization/school scope, and target audience so active policy versions can be resolved and acknowledged correctly."
@@ -59,7 +59,8 @@ There is no separate "policy key catalog" DocType in the current model. Existing
   - `Student`
   - `Guardian`
   - `Staff`
-- `applies_to` is normalized server-side before save. Runtime checks use audience inclusion, not exact string equality.
+- `applies_to` is stored as a Frappe-native `Table MultiSelect` backed by `Institutional Policy Audience` child rows linked to `Policy Audience`.
+- `applies_to` rows are normalized server-side before save. Runtime checks use audience inclusion, not exact string equality.
 - `admissions_acknowledgement_mode` controls how admissions portal acknowledgement is written:
   - `Child Acknowledgement`
   - `Family Acknowledgement`
@@ -130,7 +131,7 @@ Treat this record as long-lived identity. Version the legal text in [**Policy Ve
   - `policy_key` (`Data`)
   - `policy_title` (`Data`)
   - `policy_category` (`Select`)
-  - `applies_to` (`MultiSelect`)
+  - `applies_to` (`Table MultiSelect` -> `Institutional Policy Audience`)
   - `organization` (`Link` -> [**Organization**](/docs/en/organization/))
   - `is_active` (`Check`)
 - **Lifecycle hooks in controller**: `before_insert`, `before_save`, `before_delete`
@@ -143,7 +144,8 @@ Treat this record as long-lived identity. Version the legal text in [**Policy Ve
   - `policy_key` (Data, required)
   - `policy_title` (Data, required)
   - `policy_category` (Select, required)
-  - `applies_to` (MultiSelect, required): `Applicant`, `Student`, `Guardian`, `Staff`
+  - `applies_to` (Table MultiSelect, required): child rows of `Institutional Policy Audience`
+  - `policy_audience` (Link -> `Policy Audience`, required on each child row): `Applicant`, `Student`, `Guardian`, `Staff`
   - `admissions_acknowledgement_mode` (Select, default `Child Acknowledgement`): `Child Acknowledgement`, `Family Acknowledgement`, `Child Optional Consent`
   - `organization` (Link -> [**Organization**](/docs/en/organization/), required)
   - `school` (Link -> School, optional)

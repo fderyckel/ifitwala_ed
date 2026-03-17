@@ -129,15 +129,15 @@ function buildPolicyMessageHtml(frm, policyMeta) {
 }
 
 function defaultRecipients(policyMeta) {
-	const appliesTo = String(policyMeta.applies_to || "").trim();
-	if (appliesTo === "Student") {
+	const appliesTo = new Set(getPolicyAudienceTokens(policyMeta));
+	if (appliesTo.has("Applicant")) {
+		return { to_staff: 1, to_students: 1, to_guardians: 1, to_community: 0 };
+	}
+	if (appliesTo.has("Student")) {
 		return { to_staff: 1, to_students: 1, to_guardians: 0, to_community: 0 };
 	}
-	if (appliesTo === "Guardian") {
+	if (appliesTo.has("Guardian")) {
 		return { to_staff: 1, to_students: 0, to_guardians: 1, to_community: 0 };
-	}
-	if (appliesTo === "Applicant") {
-		return { to_staff: 1, to_students: 1, to_guardians: 1, to_community: 0 };
 	}
 	return { to_staff: 1, to_students: 0, to_guardians: 0, to_community: 0 };
 }
@@ -148,14 +148,26 @@ function defaultTargetScope(policyMeta) {
 
 async function getInstitutionalPolicyMeta(policyName) {
 	const response = await frappe.call({
-		method: "frappe.client.get_value",
+		method: "frappe.client.get",
 		args: {
 			doctype: "Institutional Policy",
-			filters: { name: policyName },
-			fieldname: ["name", "policy_title", "policy_key", "organization", "school", "applies_to"],
+			name: policyName,
 		},
 	});
 	return response?.message || {};
+}
+
+function getPolicyAudienceTokens(policyMeta) {
+	if (typeof policyMeta?.applies_to === "string") {
+		return String(policyMeta.applies_to)
+			.split(/[\n,]/)
+			.map((value) => String(value || "").trim())
+			.filter(Boolean);
+	}
+
+	return (policyMeta?.applies_to || [])
+		.map((row) => String(row?.policy_audience || "").trim())
+		.filter(Boolean);
 }
 
 async function openSharePolicyDialog(frm) {
@@ -183,7 +195,7 @@ async function openSharePolicyDialog(frm) {
 		? `${policyLabel} - Version ${versionLabel} update`
 		: `${policyLabel} update`;
 	const recipientDefaults = defaultRecipients(policyMeta);
-	const isStaffPolicy = String(policyMeta.applies_to || "").trim() === "Staff";
+	const isStaffPolicy = getPolicyAudienceTokens(policyMeta).includes("Staff");
 
 	let d = null;
 	const submitAction = async values => {

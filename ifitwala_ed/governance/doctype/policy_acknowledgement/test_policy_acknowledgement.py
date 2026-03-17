@@ -6,6 +6,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
 
+from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
 from ifitwala_ed.tests.factories.organization import make_organization, make_school
 from ifitwala_ed.tests.factories.users import make_user
 
@@ -13,6 +14,7 @@ from ifitwala_ed.tests.factories.users import make_user
 class TestPolicyAcknowledgement(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
+        ensure_policy_audience_records()
         self.created: list[tuple[str, str]] = []
 
         self.organization = make_organization(prefix="PA Org")
@@ -30,7 +32,7 @@ class TestPolicyAcknowledgement(FrappeTestCase):
                 "policy_key": f"policy_ack_{frappe.generate_hash(length=8)}",
                 "policy_title": "Policy Acknowledgement Lifecycle",
                 "policy_category": "Employment",
-                "applies_to": "Staff",
+                "applies_to": [{"policy_audience": "Staff"}],
                 "organization": self.organization.name,
                 "is_active": 1,
             }

@@ -6,12 +6,13 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.governance import policy_utils
-from ifitwala_ed.governance.policy_utils import has_applicant_policy_acknowledgement
+from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records, has_applicant_policy_acknowledgement
 
 
 class TestPolicyScopeInheritance(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
+        ensure_policy_audience_records()
 
     def test_parent_policy_scope_allows_descendant_school(self):
         parent_org = self._make_organization("Parent", is_group=1)
@@ -230,7 +231,7 @@ class TestPolicyScopeInheritance(FrappeTestCase):
                 "policy_key": policy_key,
                 "policy_title": f"Policy {policy_key}",
                 "policy_category": "Admissions",
-                "applies_to": "Applicant",
+                "applies_to": [{"policy_audience": "Applicant"}],
                 "organization": organization,
                 "school": school,
                 "is_active": 1,

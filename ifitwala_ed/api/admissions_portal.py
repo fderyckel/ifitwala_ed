@@ -481,13 +481,6 @@ def _portal_health_state(student_applicant: str) -> dict:
     return {"ok": False, "status": "in_progress"}
 
 
-def _vaccination_slot(row: dict, index: int) -> str:
-    vaccine = _as_text(row.get("vaccine_name")).strip()
-    date_value = _as_text(row.get("date")).strip()
-    base = "_".join(part for part in [vaccine, date_value] if part) or f"row_{index + 1}"
-    return f"health_vaccination_proof_{frappe.scrub(base)[:80]}"
-
-
 def _upload_vaccination_proof(
     *,
     applicant_row: dict,
@@ -518,36 +511,18 @@ def _upload_vaccination_proof(
     file_name = (
         _as_text(vaccination_row.get("vaccination_proof_file_name")).strip() or f"vaccination_proof_{index + 1}.png"
     )
-    slot = _vaccination_slot(vaccination_row, index)
 
-    file_doc = file_dispatcher.create_and_classify_file(
-        file_kwargs={
-            "attached_to_doctype": "Applicant Health Profile",
-            "attached_to_name": health_doc_name,
-            "attached_to_field": "vaccinations",
-            "file_name": file_name,
-            "content": content,
-            "is_private": 1,
-        },
-        classification={
-            "primary_subject_type": "Student Applicant",
-            "primary_subject_id": applicant_row.get("name"),
-            "data_class": "safeguarding",
-            "purpose": "medical_record",
-            "retention_policy": "until_school_exit_plus_6m",
-            "slot": slot,
-            "organization": applicant_row.get("organization"),
-            "school": applicant_row.get("school"),
-            "upload_source": "SPA",
-        },
-        context_override={
-            "root_folder": "Home/Admissions",
-            "subfolder": f"Applicant/{applicant_row.get('name')}/Health",
-            "file_category": "Admissions Health",
-            "logical_key": slot,
-        },
+    upload_result = admission_api.upload_applicant_health_vaccination_proof(
+        student_applicant=applicant_row.get("name"),
+        applicant_health_profile=health_doc_name,
+        vaccine_name=_as_text(vaccination_row.get("vaccine_name")).strip(),
+        date=_as_text(vaccination_row.get("date")).strip(),
+        row_index=index,
+        file_name=file_name,
+        content=content,
+        upload_source="SPA",
     )
-    return _as_text(file_doc.file_url)
+    return _as_text(upload_result.get("file_url"))
 
 
 def _normalize_vaccinations(vaccinations) -> list[dict]:

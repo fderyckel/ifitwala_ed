@@ -10,12 +10,13 @@ from ifitwala_ed.governance.policy_scope_utils import (
     is_school_within_policy_organization_scope,
 )
 from ifitwala_ed.governance.policy_utils import (
+    POLICY_APPLIES_TO_CHILD_DOCTYPE,
+    POLICY_APPLIES_TO_LINK_FIELD,
     POLICY_APPLIES_TO_OPTIONS,
     POLICY_CATEGORIES,
     ensure_policy_admin,
     get_policy_applies_to_tokens,
     is_system_manager,
-    normalize_policy_applies_to,
 )
 
 
@@ -92,7 +93,6 @@ class InstitutionalPolicy(Document):
             frappe.throw(_("Policy Category must be one of: {0}.").format(", ".join(POLICY_CATEGORIES)))
 
     def _validate_applies_to(self):
-        self.applies_to = normalize_policy_applies_to(self.applies_to)
         tokens = get_policy_applies_to_tokens(self.applies_to)
         if not tokens:
             frappe.throw(_("Applies To must include at least one audience."))
@@ -105,6 +105,17 @@ class InstitutionalPolicy(Document):
                     ", ".join(invalid),
                 )
             )
+
+        self.set(
+            "applies_to",
+            [
+                {
+                    "doctype": POLICY_APPLIES_TO_CHILD_DOCTYPE,
+                    POLICY_APPLIES_TO_LINK_FIELD: token,
+                }
+                for token in tokens
+            ],
+        )
 
 
 def _escaped_in(values: list[str]) -> str:

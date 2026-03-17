@@ -35,6 +35,7 @@ from ifitwala_ed.api.admissions_portal import (
 )
 from ifitwala_ed.governance.policy_utils import (
     ensure_policy_applies_to_column,
+    ensure_policy_audience_records,
     institutional_policy_db_has_column,
 )
 from ifitwala_ed.utilities import file_dispatcher
@@ -648,7 +649,7 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_get_applicant_snapshot_includes_profile_and_application_context(self):
         if not _policy_schema_available():
-            self.skipTest("Institutional Policy.applies_to column is required for readiness snapshot tests.")
+            self.skipTest("Institutional Policy applies_to storage is required for readiness snapshot tests.")
         frappe.set_user(self.applicant_user)
         payload = get_applicant_snapshot(student_applicant=self.applicant.name)
         self.assertIn("profile", payload)
@@ -659,7 +660,7 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_offer_sent_snapshot_surfaces_offer_response_action(self):
         if not _policy_schema_available():
-            self.skipTest("Institutional Policy.applies_to column is required for admissions offer snapshot tests.")
+            self.skipTest("Institutional Policy applies_to storage is required for admissions offer snapshot tests.")
         self._create_offer_plan(status="Offer Sent", offer_message="Review your place.")
 
         frappe.set_user(self.applicant_user)
@@ -675,7 +676,7 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_offer_sent_snapshot_surfaces_course_choice_action_when_choices_are_incomplete(self):
         if not _policy_schema_available():
-            self.skipTest("Institutional Policy.applies_to column is required for admissions offer snapshot tests.")
+            self.skipTest("Institutional Policy applies_to storage is required for admissions offer snapshot tests.")
         humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
         self._create_offer_plan(
             status="Offer Sent",
@@ -823,7 +824,7 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_decline_enrollment_offer_is_idempotent_and_visible_after_decline(self):
         if not _policy_schema_available():
-            self.skipTest("Institutional Policy.applies_to column is required for admissions offer snapshot tests.")
+            self.skipTest("Institutional Policy applies_to storage is required for admissions offer snapshot tests.")
         self._create_offer_plan(status="Offer Sent")
 
         frappe.set_user(self.applicant_user)
@@ -841,7 +842,7 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_get_applicant_policies_includes_expected_signature_name(self):
         if not _policy_schema_available():
-            self.skipTest("Institutional Policy.applies_to column is required for applicant policy tests.")
+            self.skipTest("Institutional Policy applies_to storage is required for applicant policy tests.")
         frappe.set_user(self.applicant_user)
         payload = get_applicant_policies(student_applicant=self.applicant.name)
         policies = payload.get("policies") or []
@@ -857,7 +858,7 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_acknowledge_policy_requires_attestation_confirmation(self):
         if not _policy_schema_available():
-            self.skipTest("Institutional Policy.applies_to column is required for applicant policy tests.")
+            self.skipTest("Institutional Policy applies_to storage is required for applicant policy tests.")
         frappe.set_user(self.applicant_user)
         expected_name = f"{self.applicant.first_name} {self.applicant.last_name}".strip()
 
@@ -871,7 +872,7 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_acknowledge_policy_requires_matching_typed_signature(self):
         if not _policy_schema_available():
-            self.skipTest("Institutional Policy.applies_to column is required for applicant policy tests.")
+            self.skipTest("Institutional Policy applies_to storage is required for applicant policy tests.")
         frappe.set_user(self.applicant_user)
 
         with self.assertRaises(frappe.ValidationError):
@@ -884,7 +885,7 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_acknowledge_policy_creates_row_for_valid_signature(self):
         if not _policy_schema_available():
-            self.skipTest("Institutional Policy.applies_to column is required for applicant policy tests.")
+            self.skipTest("Institutional Policy applies_to storage is required for applicant policy tests.")
         frappe.set_user(self.applicant_user)
         expected_name = f"{self.applicant.first_name} {self.applicant.last_name}".strip()
 
@@ -914,7 +915,7 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_acknowledge_policy_family_mode_creates_guardian_context(self):
         if not _policy_schema_available():
-            self.skipTest("Institutional Policy.applies_to column is required for family acknowledgement tests.")
+            self.skipTest("Institutional Policy applies_to storage is required for family acknowledgement tests.")
         if not _admission_settings_has_field("admissions_access_mode"):
             self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
         if not institutional_policy_db_has_column("admissions_acknowledgement_mode"):
@@ -1441,25 +1442,22 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_update_applicant_health_vaccination_upload_attaches_with_persisted_profile_name(self):
         captured: dict = {}
-        fake_file = SimpleNamespace(
-            name=f"FILE-{frappe.generate_hash(length=8)}",
-            file_url=f"/private/files/health-proof-{frappe.generate_hash(length=6)}.png",
-            file_name="mmr-proof.png",
-            file_size=128,
-            is_private=1,
-        )
 
-        def _capture_file_dispatch(*, file_kwargs, classification, context_override):
-            captured["file_kwargs"] = file_kwargs
-            captured["classification"] = classification
-            captured["context_override"] = context_override
-            return fake_file
+        def _capture_drive_upload(**kwargs):
+            captured.update(kwargs)
+            return {
+                "file": f"FILE-{frappe.generate_hash(length=8)}",
+                "file_url": f"/private/files/health-proof-{frappe.generate_hash(length=6)}.png",
+                "classification": f"FC-{frappe.generate_hash(length=6)}",
+                "student_applicant": kwargs.get("student_applicant"),
+                "applicant_health_profile": kwargs.get("applicant_health_profile"),
+            }
 
         frappe.set_user(self.applicant_user)
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.file_dispatcher.create_and_classify_file",
-                side_effect=_capture_file_dispatch,
+                "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_health_vaccination_proof",
+                side_effect=_capture_drive_upload,
             ),
             patch("ifitwala_ed.api.admissions_portal.materialize_health_review_assignments"),
         ):
@@ -1482,7 +1480,7 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
         self.assertTrue(payload.get("ok"))
-        self.assertIn("file_kwargs", captured)
+        self.assertIn("applicant_health_profile", captured)
 
         health_name = frappe.db.get_value(
             "Applicant Health Profile",
@@ -1490,11 +1488,14 @@ class TestSubmitApplication(FrappeTestCase):
             "name",
         )
         self.assertTrue(bool(health_name))
-        self.assertIsInstance(captured["file_kwargs"]["attached_to_name"], str)
-        self.assertEqual(captured["file_kwargs"]["attached_to_name"], health_name)
-        self.assertEqual(captured["file_kwargs"]["attached_to_doctype"], "Applicant Health Profile")
-        self.assertEqual(captured["file_kwargs"]["attached_to_field"], "vaccinations")
-        self.assertEqual(captured["file_kwargs"]["is_private"], 1)
+        self.assertIsInstance(captured["applicant_health_profile"], str)
+        self.assertEqual(captured["applicant_health_profile"], health_name)
+        self.assertEqual(captured["student_applicant"], self.applicant.name)
+        self.assertEqual(captured["vaccine_name"], "MMR")
+        self.assertEqual(captured["date"], "2020-03-04")
+        self.assertEqual(captured["row_index"], 0)
+        self.assertEqual(captured["file_name"], "mmr-proof.png")
+        self.assertEqual(captured["upload_source"], "SPA")
 
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):
@@ -1534,12 +1535,13 @@ class TestSubmitApplication(FrappeTestCase):
         school: str,
         admissions_acknowledgement_mode: str | None = None,
     ) -> str:
+        ensure_policy_audience_records()
         policy_payload = {
             "doctype": "Institutional Policy",
             "policy_key": f"applicant_policy_{frappe.generate_hash(length=8)}",
             "policy_title": f"Applicant Portal Policy {frappe.generate_hash(length=6)}",
             "policy_category": "Admissions",
-            "applies_to": "Applicant",
+            "applies_to": [{"policy_audience": "Applicant"}],
             "organization": organization,
             "school": school,
             "is_active": 1,
