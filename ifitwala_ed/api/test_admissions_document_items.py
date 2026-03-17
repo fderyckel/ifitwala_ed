@@ -63,6 +63,27 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         self.assertEqual(row.get("item_key"), "aisl_2019")
         self.assertEqual(row.get("item_label"), "AISL transcript 2019")
 
+    def test_upload_reads_flat_form_payload_when_request_binding_omits_kwargs(self):
+        frappe.set_user(self.applicant_user)
+        with self._patched_form_dict(
+            {
+                "student_applicant": self.applicant.name,
+                "document_type": self.document_type,
+                "item_key": "passport",
+                "item_label": "Passport",
+                "client_request_id": f"upload_{frappe.generate_hash(length=8)}",
+                "file_name": "passport.txt",
+                "content": self._tiny_file_base64(),
+            }
+        ):
+            with self._patched_drive_admissions_bridge():
+                payload = upload_applicant_document()
+
+        self.assertTrue(bool(payload.get("applicant_document")))
+        self.assertTrue(bool(payload.get("applicant_document_item")))
+        self.assertEqual(payload.get("item_key"), "passport")
+        self.assertEqual(payload.get("item_label"), "Passport")
+
     def test_repeatable_upload_keeps_multiple_items(self):
         frappe.set_user(self.applicant_user)
         with self._patched_drive_admissions_bridge():
@@ -205,6 +226,21 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
             ),
         ):
             yield
+
+    @contextmanager
+    def _patched_form_dict(self, payload: dict):
+        original_form_dict = getattr(frappe, "form_dict", None)
+        frappe.form_dict = frappe._dict(payload)
+        try:
+            yield
+        finally:
+            if original_form_dict is None:
+                try:
+                    del frappe.form_dict
+                except AttributeError:
+                    pass
+            else:
+                frappe.form_dict = original_form_dict
 
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):

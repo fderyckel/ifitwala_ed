@@ -248,6 +248,31 @@ def _as_text(value) -> str:
     return str(value)
 
 
+def _request_form_value(key: str, current_value=None):
+    if current_value is not None:
+        return current_value
+
+    form_dict = getattr(frappe, "form_dict", None)
+    if not form_dict or not hasattr(form_dict, "get"):
+        return None
+
+    value = form_dict.get(key)
+    if value is not None:
+        return value
+
+    args = form_dict.get("args")
+    if not args:
+        return None
+    if isinstance(args, str):
+        try:
+            args = frappe.parse_json(args)
+        except Exception:
+            return None
+    if isinstance(args, dict):
+        return args.get(key)
+    return None
+
+
 def _session_user() -> str:
     user = _as_text(getattr(frappe.session, "user", None)).strip()
     if not user:
@@ -2541,6 +2566,15 @@ def upload_applicant_document(
     file_name: str | None = None,
     content: str | None = None,
 ):
+    student_applicant = _request_form_value("student_applicant", student_applicant)
+    document_type = _request_form_value("document_type", document_type)
+    applicant_document_item = _request_form_value("applicant_document_item", applicant_document_item)
+    item_key = _request_form_value("item_key", item_key)
+    item_label = _request_form_value("item_label", item_label)
+    client_request_id = _request_form_value("client_request_id", client_request_id)
+    file_name = _request_form_value("file_name", file_name)
+    content = _request_form_value("content", content)
+
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
     hidden_document_types = _recommendation_target_document_types_for_applicant((row.get("name") or "").strip())
