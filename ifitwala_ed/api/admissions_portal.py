@@ -54,7 +54,6 @@ from ifitwala_ed.governance.policy_utils import (
     ADMISSIONS_POLICY_MODE_FAMILY,
     get_applicant_policy_status,
 )
-from ifitwala_ed.utilities import file_dispatcher
 
 INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
 
@@ -817,11 +816,17 @@ def _rehome_guardian_image_to_contact(
     if attached_doctype == "Contact" and attached_name == resolved_contact:
         return _as_text(file_row.get("file_url")).strip()
 
-    if (
-        attached_doctype != "Student Applicant"
-        or attached_name != applicant_name
-        or attached_field == "applicant_image"
-    ):
+    row_parent = ""
+    if attached_doctype == "Student Applicant Guardian" and attached_name:
+        row_parent = _as_text(frappe.db.get_value("Student Applicant Guardian", attached_name, "parent")).strip()
+
+    can_rehome_from_applicant = attached_doctype == "Student Applicant" and attached_name == applicant_name
+    can_rehome_from_guardian_row = attached_doctype == "Student Applicant Guardian" and row_parent == applicant_name
+
+    if not can_rehome_from_applicant and not can_rehome_from_guardian_row:
+        return _as_text(file_row.get("file_url")).strip() or _as_text(guardian_image).strip()
+
+    if attached_field == "applicant_image":
         return _as_text(file_row.get("file_url")).strip() or _as_text(guardian_image).strip()
 
     frappe.db.set_value(
@@ -1914,45 +1919,20 @@ def upload_applicant_profile_image(
     if not applicant.get("organization") or not applicant.get("school"):
         frappe.throw(_("Organization and School are required for file classification."))
 
-    file_doc = file_dispatcher.create_and_classify_file(
-        file_kwargs={
-            "attached_to_doctype": "Student Applicant",
-            "attached_to_name": applicant.name,
-            "attached_to_field": "applicant_image",
-            "file_name": normalized_file_name,
-            "content": normalized_content,
-            "is_private": 1,
-        },
-        classification={
-            "primary_subject_type": "Student Applicant",
-            "primary_subject_id": applicant.name,
-            "data_class": "identity_image",
-            "purpose": "applicant_profile_display",
-            "retention_policy": "until_school_exit_plus_6m",
-            "slot": "profile_image",
-            "organization": applicant.organization,
-            "school": applicant.school,
-            "upload_source": "SPA",
-        },
+    upload_result = admission_api.upload_applicant_profile_image(
+        student_applicant=applicant.name,
+        file_name=normalized_file_name,
+        content=normalized_content,
+        upload_source="SPA",
     )
-    _ensure_file_on_disk(file_doc)
-
-    frappe.db.set_value(
-        "Student Applicant",
-        applicant.name,
-        "applicant_image",
-        file_doc.file_url,
-        update_modified=False,
-    )
-    classification_name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
 
     return {
         "ok": True,
-        "file": file_doc.name,
-        "file_url": file_doc.file_url,
-        "file_name": file_doc.file_name,
-        "file_size": file_doc.file_size,
-        "classification": classification_name,
+        "file": upload_result.get("file"),
+        "file_url": upload_result.get("file_url"),
+        "file_name": normalized_file_name,
+        "file_size": len(normalized_content),
+        "classification": upload_result.get("classification"),
     }
 
 
@@ -1960,6 +1940,7 @@ def upload_applicant_profile_image(
 def upload_applicant_guardian_image(
     *,
     student_applicant: str | None = None,
+    guardian_row_name: str | None = None,
     file_name: str | None = None,
     content: str | None = None,
 ):
@@ -1973,6 +1954,9 @@ def upload_applicant_guardian_image(
     applicant_name = _as_text(row.get("name")).strip()
     if not applicant_name:
         frappe.throw(_("Applicant context is missing."))
+    guardian_row_name = _as_text(_request_form_value("guardian_row_name", guardian_row_name)).strip()
+    if not guardian_row_name:
+        frappe.throw(_("guardian_row_name is required."))
 
     upload_name = _as_text(file_name).strip()
     if not upload_name:
@@ -1989,37 +1973,21 @@ def upload_applicant_guardian_image(
     if not applicant.get("organization") or not applicant.get("school"):
         frappe.throw(_("Organization and School are required for file classification."))
 
-    file_doc = file_dispatcher.create_and_classify_file(
-        file_kwargs={
-            "attached_to_doctype": "Student Applicant",
-            "attached_to_name": applicant.name,
-            "attached_to_field": "guardians",
-            "file_name": normalized_file_name,
-            "content": normalized_content,
-            "is_private": 1,
-        },
-        classification={
-            "primary_subject_type": "Student Applicant",
-            "primary_subject_id": applicant.name,
-            "data_class": "identity_image",
-            "purpose": "applicant_profile_display",
-            "retention_policy": "until_school_exit_plus_6m",
-            "slot": "guardian_profile_image",
-            "organization": applicant.organization,
-            "school": applicant.school,
-            "upload_source": "SPA",
-        },
+    upload_result = admission_api.upload_applicant_guardian_image(
+        student_applicant=applicant.name,
+        guardian_row_name=guardian_row_name,
+        file_name=normalized_file_name,
+        content=normalized_content,
+        upload_source="SPA",
     )
-    _ensure_file_on_disk(file_doc)
-    classification_name = frappe.db.get_value("File Classification", {"file": file_doc.name}, "name")
 
     return {
         "ok": True,
-        "file": file_doc.name,
-        "file_url": file_doc.file_url,
-        "file_name": file_doc.file_name,
-        "file_size": file_doc.file_size,
-        "classification": classification_name,
+        "file": upload_result.get("file"),
+        "file_url": upload_result.get("file_url"),
+        "file_name": normalized_file_name,
+        "file_size": len(normalized_content),
+        "classification": upload_result.get("classification"),
     }
 
 

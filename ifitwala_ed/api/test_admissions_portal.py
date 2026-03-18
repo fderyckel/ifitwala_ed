@@ -3,7 +3,6 @@
 # See license.txt
 
 import base64
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import frappe
@@ -1284,21 +1283,21 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
     def test_upload_applicant_profile_image_creates_governed_file(self):
-        fake_file = SimpleNamespace(
-            name=f"FILE-{frappe.generate_hash(length=8)}",
-            file_url=f"/private/files/applicant-{frappe.generate_hash(length=6)}.jpg",
-            file_name="applicant_profile_image_test.jpg",
-            file_size=128,
-            is_private=1,
-        )
+        captured: dict = {}
+
+        def _capture_drive_upload(**kwargs):
+            captured.update(kwargs)
+            return {
+                "file": f"FILE-{frappe.generate_hash(length=8)}",
+                "file_url": f"/private/files/applicant-{frappe.generate_hash(length=6)}.jpg",
+                "classification": f"FC-{frappe.generate_hash(length=6)}",
+                "student_applicant": kwargs.get("student_applicant"),
+            }
 
         frappe.set_user(self.applicant_user)
-        with (
-            patch(
-                "ifitwala_ed.api.admissions_portal.file_dispatcher.create_and_classify_file",
-                return_value=fake_file,
-            ) as mocked_dispatcher,
-            patch("ifitwala_ed.api.admissions_portal._ensure_file_on_disk"),
+        with patch(
+            "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_profile_image",
+            side_effect=_capture_drive_upload,
         ):
             payload = upload_applicant_profile_image(
                 student_applicant=self.applicant.name,
@@ -1307,31 +1306,12 @@ class TestSubmitApplication(FrappeTestCase):
             )
 
         self.assertTrue(payload.get("ok"))
-        self.assertEqual(payload.get("file_url"), fake_file.file_url)
-
-        self.applicant.reload()
-        self.assertEqual(self.applicant.applicant_image, fake_file.file_url)
-
-        self.assertEqual(mocked_dispatcher.call_count, 1)
-        kwargs = mocked_dispatcher.call_args.kwargs
-        self.assertEqual(kwargs["file_kwargs"]["attached_to_doctype"], "Student Applicant")
-        self.assertEqual(kwargs["file_kwargs"]["attached_to_name"], self.applicant.name)
-        self.assertEqual(kwargs["file_kwargs"]["attached_to_field"], "applicant_image")
-        self.assertEqual(kwargs["file_kwargs"]["is_private"], 1)
-        self.assertTrue(kwargs["file_kwargs"]["file_name"].startswith("applicant_profile_image_"))
-        self.assertTrue(kwargs["file_kwargs"]["file_name"].endswith(".jpg"))
-        self.assertTrue(kwargs["file_kwargs"]["content"].startswith(b"\xff\xd8\xff"))
-
-        classification = kwargs["classification"]
-        self.assertEqual(classification["primary_subject_type"], "Student Applicant")
-        self.assertEqual(classification["primary_subject_id"], self.applicant.name)
-        self.assertEqual(classification["data_class"], "identity_image")
-        self.assertEqual(classification["purpose"], "applicant_profile_display")
-        self.assertEqual(classification["retention_policy"], "until_school_exit_plus_6m")
-        self.assertEqual(classification["slot"], "profile_image")
-        self.assertEqual(classification["organization"], self.organization)
-        self.assertEqual(classification["school"], self.school)
-        self.assertEqual(classification["upload_source"], "SPA")
+        self.assertTrue(str(payload.get("file_url") or "").startswith("/private/files/applicant-"))
+        self.assertEqual(captured["student_applicant"], self.applicant.name)
+        self.assertEqual(captured["upload_source"], "SPA")
+        self.assertTrue(captured["file_name"].startswith("applicant_profile_image_"))
+        self.assertTrue(captured["file_name"].endswith(".jpg"))
+        self.assertTrue(captured["content"].startswith(b"\xff\xd8\xff"))
 
     def test_upload_applicant_profile_image_rejects_heic_extension(self):
         frappe.set_user(self.applicant_user)
@@ -1383,51 +1363,51 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertIn("Max image size is", str(error_context.exception))
 
     def test_upload_applicant_guardian_image_creates_governed_file(self):
-        fake_file = SimpleNamespace(
-            name=f"FILE-{frappe.generate_hash(length=8)}",
-            file_url=f"/private/files/guardian-{frappe.generate_hash(length=6)}.jpg",
-            file_name="guardian_profile_image_test.jpg",
-            file_size=256,
-            is_private=1,
+        guardian_row = self.applicant.append(
+            "guardians",
+            {
+                "relationship": "Mother",
+                "guardian_first_name": "Mina",
+                "guardian_last_name": "Guardian",
+                "guardian_email": f"guardian-{frappe.generate_hash(length=6)}@example.com",
+                "guardian_mobile_phone": "+14155550121",
+            },
         )
+        self.applicant.save(ignore_permissions=True)
+        guardian_row_name = guardian_row.name
+
+        captured: dict = {}
+
+        def _capture_drive_upload(**kwargs):
+            captured.update(kwargs)
+            return {
+                "file": f"FILE-{frappe.generate_hash(length=8)}",
+                "file_url": f"/private/files/guardian-{frappe.generate_hash(length=6)}.jpg",
+                "classification": f"FC-{frappe.generate_hash(length=6)}",
+                "student_applicant": kwargs.get("student_applicant"),
+                "guardian_row_name": kwargs.get("guardian_row_name"),
+            }
 
         frappe.set_user(self.applicant_user)
-        with (
-            patch(
-                "ifitwala_ed.api.admissions_portal.file_dispatcher.create_and_classify_file",
-                return_value=fake_file,
-            ) as mocked_dispatcher,
-            patch("ifitwala_ed.api.admissions_portal._ensure_file_on_disk"),
+        with patch(
+            "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_guardian_image",
+            side_effect=_capture_drive_upload,
         ):
             payload = upload_applicant_guardian_image(
                 student_applicant=self.applicant.name,
+                guardian_row_name=guardian_row_name,
                 file_name="guardian.png",
                 content=self._tiny_png_base64(),
             )
 
         self.assertTrue(payload.get("ok"))
-        self.assertEqual(payload.get("file_url"), fake_file.file_url)
-        self.assertEqual(mocked_dispatcher.call_count, 1)
-
-        kwargs = mocked_dispatcher.call_args.kwargs
-        self.assertEqual(kwargs["file_kwargs"]["attached_to_doctype"], "Student Applicant")
-        self.assertEqual(kwargs["file_kwargs"]["attached_to_name"], self.applicant.name)
-        self.assertEqual(kwargs["file_kwargs"]["attached_to_field"], "guardians")
-        self.assertEqual(kwargs["file_kwargs"]["is_private"], 1)
-        self.assertTrue(kwargs["file_kwargs"]["file_name"].startswith("guardian_profile_image_"))
-        self.assertTrue(kwargs["file_kwargs"]["file_name"].endswith(".jpg"))
-        self.assertTrue(kwargs["file_kwargs"]["content"].startswith(b"\xff\xd8\xff"))
-
-        classification = kwargs["classification"]
-        self.assertEqual(classification["primary_subject_type"], "Student Applicant")
-        self.assertEqual(classification["primary_subject_id"], self.applicant.name)
-        self.assertEqual(classification["data_class"], "identity_image")
-        self.assertEqual(classification["purpose"], "applicant_profile_display")
-        self.assertEqual(classification["retention_policy"], "until_school_exit_plus_6m")
-        self.assertEqual(classification["slot"], "guardian_profile_image")
-        self.assertEqual(classification["organization"], self.organization)
-        self.assertEqual(classification["school"], self.school)
-        self.assertEqual(classification["upload_source"], "SPA")
+        self.assertTrue(str(payload.get("file_url") or "").startswith("/private/files/guardian-"))
+        self.assertEqual(captured["student_applicant"], self.applicant.name)
+        self.assertEqual(captured["guardian_row_name"], guardian_row_name)
+        self.assertEqual(captured["upload_source"], "SPA")
+        self.assertTrue(captured["file_name"].startswith("guardian_profile_image_"))
+        self.assertTrue(captured["file_name"].endswith(".jpg"))
+        self.assertTrue(captured["content"].startswith(b"\xff\xd8\xff"))
 
     def test_update_applicant_profile_rejects_changing_admission_date(self):
         self.applicant.db_set("student_joining_date", "2026-01-10", update_modified=False)
