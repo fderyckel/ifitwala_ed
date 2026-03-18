@@ -266,43 +266,67 @@ def get_dashboard_data(filters=None):
 
         where_clause, params = _apply_common_filters(filters, visibility_clause, visibility_params)
 
-        def q(sql):
-            return frappe.db.sql(sql.format(w=where_clause), params, as_dict=True)
+        # Consolidate 6 aggregate queries into single UNION query to reduce DB round-trips
+        # per AGENTS.md §5: "Reduce DB round-trips aggressively"
+        union_sql = f"""
+            SELECT 'log_type' AS metric, sl.log_type AS label, COUNT(*) AS value
+            FROM `tabStudent Log` sl WHERE {where_clause}
+            GROUP BY sl.log_type
 
-        log_type_count = q(
-            "SELECT sl.log_type AS label, COUNT(*) AS value "
-            "FROM `tabStudent Log` sl WHERE {w} "
-            "GROUP BY sl.log_type ORDER BY value DESC"
-        )
+            UNION ALL
 
-        logs_by_cohort = q(
-            "SELECT pe.cohort AS label, COUNT(sl.name) AS value "
-            "FROM `tabStudent Log` sl "
-            "LEFT JOIN `tabProgram Enrollment` pe "
-            "  ON pe.student = sl.student "
-            " AND pe.academic_year = sl.academic_year "
-            "WHERE {w} GROUP BY pe.cohort ORDER BY value DESC"
-        )
+            SELECT 'cohort' AS metric, pe.cohort AS label, COUNT(sl.name) AS value
+            FROM `tabStudent Log` sl
+            LEFT JOIN `tabProgram Enrollment` pe
+              ON pe.student = sl.student
+             AND pe.academic_year = sl.academic_year
+            WHERE {where_clause}
+            GROUP BY pe.cohort
 
-        logs_by_program = q(
-            "SELECT sl.program AS label, COUNT(sl.name) AS value "
-            "FROM `tabStudent Log` sl WHERE {w} GROUP BY sl.program ORDER BY value DESC"
-        )
+            UNION ALL
 
-        logs_by_author = q(
-            "SELECT sl.author_name AS label, COUNT(*) AS value "
-            "FROM `tabStudent Log` sl WHERE {w} GROUP BY sl.author_name ORDER BY value DESC"
-        )
+            SELECT 'program' AS metric, sl.program AS label, COUNT(sl.name) AS value
+            FROM `tabStudent Log` sl WHERE {where_clause}
+            GROUP BY sl.program
 
-        next_step_types = q(
-            "SELECT sl.next_step AS label, COUNT(*) AS value "
-            "FROM `tabStudent Log` sl WHERE {w} GROUP BY sl.next_step ORDER BY value DESC"
-        )
+            UNION ALL
 
-        incidents_over_time = q(
-            "SELECT DATE_FORMAT(sl.date,'%%Y-%%m-%%d') AS label, COUNT(*) AS value "
-            "FROM `tabStudent Log` sl WHERE {w} GROUP BY label ORDER BY label ASC"
-        )
+            SELECT 'author' AS metric, sl.author_name AS label, COUNT(*) AS value
+            FROM `tabStudent Log` sl WHERE {where_clause}
+            GROUP BY sl.author_name
+
+            UNION ALL
+
+            SELECT 'next_step' AS metric, sl.next_step AS label, COUNT(*) AS value
+            FROM `tabStudent Log` sl WHERE {where_clause}
+            GROUP BY sl.next_step
+
+            UNION ALL
+
+            SELECT 'date' AS metric, DATE_FORMAT(sl.date,'%Y-%m-%d') AS label, COUNT(*) AS value
+            FROM `tabStudent Log` sl WHERE {where_clause}
+            GROUP BY DATE_FORMAT(sl.date,'%Y-%m-%d')
+        """
+        union_results = frappe.db.sql(union_sql, params, as_dict=True)
+
+        # Pivot results by metric
+        buckets = defaultdict(list)
+        for row in union_results:
+            buckets[row["metric"]].append({"label": row["label"], "value": row["value"]})
+
+        # Apply sorting: DESC by value (except date which is ASC by label)
+        for key in buckets:
+            if key == "date":
+                buckets[key].sort(key=lambda x: x["label"])
+            else:
+                buckets[key].sort(key=lambda x: x["value"], reverse=True)
+
+        log_type_count = buckets.get("log_type", [])
+        logs_by_cohort = buckets.get("cohort", [])
+        logs_by_program = buckets.get("program", [])
+        logs_by_author = buckets.get("author", [])
+        next_step_types = buckets.get("next_step", [])
+        incidents_over_time = buckets.get("date", [])
 
         open_follow_ups = frappe.db.sql(
             f"SELECT COUNT(*) FROM `tabStudent Log` sl WHERE {where_clause} AND sl.follow_up_status = 'Open'",

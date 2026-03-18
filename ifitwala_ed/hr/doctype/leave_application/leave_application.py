@@ -514,6 +514,11 @@ class LeaveApplication(Document, PWANotificationsMixin):
             # hack! if name is null, it could cause problems with !=
             self.name = "New Leave Application"
 
+        # Pre-calculate half-day count once to avoid N+1 query in loop
+        total_leaves_on_half_day = None
+        if cint(self.half_day) == 1:
+            total_leaves_on_half_day = self.get_total_leaves_on_half_day()
+
         for d in frappe.db.sql(
             """
 			select
@@ -539,7 +544,6 @@ class LeaveApplication(Document, PWANotificationsMixin):
                     or getdate(self.to_date) == getdate(d.from_date)
                 )
             ):
-                total_leaves_on_half_day = self.get_total_leaves_on_half_day()
                 if total_leaves_on_half_day >= 1:
                     self.throw_overlap_error(d)
             else:

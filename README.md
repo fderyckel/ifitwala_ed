@@ -10,20 +10,20 @@ Built on the enterprise-grade **Frappe Framework**, it is designed for schools, 
 
 ## 🚀 The Paradigm Shift
 
-Most educational institutions operate on a "Frankenstein stack": an SIS for enrollment, an LMS for grading, a separate timetable tool, and endless spreadsheets to bridge the gaps.
+Most educational institutions operate on a "Frankenstein stack": an SIS for enrollment, an LMS for grading, a separate timetable tool, a HR module that is not connected to education, a Tableau dashboard for analytics, and endless spreadsheets to bridge the gaps.
 
 **The result?** Data is duplicated, permissions drift, analytics require manual reconciliation, and staff waste time moving information instead of acting on it.
 
 **Ifitwala_Ed eliminates fragmentation at the root.**
-We do not build "integrations" between disconnected modules. We build **one backbone** where every module—Academic, Operational, and Financial—references the same single source of truth.
+We do not build "integrations" between disconnected modules. We build **one backbone** where every module — Academic, Operational, HR, Marketing & Communication, and Financial — references the same single source of truth.
 
 ---
 
 ## 🏛️ Architecture: The Nested Set Hierarchy
 
-Education is hierarchical by nature. Software should reflect this structure, not fight it.
+Education is hierarchical by nature. Ifitwala Ed reflect this structure.
 
-Ifitwala_Ed uses a **Nested Set Hierarchy** to model the reality of your institution. This is not just a labeling system; it is the logic engine that drives permissions, reporting, and policy inheritance.
+Ifitwala_Ed uses a **Nested Set Hierarchy** to model the reality of your institution. This is a lot more than just a labeling system; it is the logic engine that drives permissions, reporting, and policy inheritance throughout the whole system.
 
 ### Visualizing the Nested Reality
 
@@ -87,7 +87,7 @@ graph TD
 
 **Why this matters:**
 
-1. **Inheritance:** A policy set at the `School` level automatically applies to all `Programs` within it.
+1. **Inheritance:** A policy set at the `School` level automatically applies to all `Programs` within it.  A dashboard for a school applies to all the schools within it as well.
 2. **Scoped Analytics:** A Head of Department sees data strictly for their node in the tree.
 3. **Scalability:** The same system supports a single K-12 school or a multi-campus university group without re-architecture.
 

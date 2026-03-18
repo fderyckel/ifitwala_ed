@@ -63,19 +63,11 @@ from ifitwala_ed.api import student_log_dashboard as dashboard_api
 class TestStudentLogDashboard(TestCase):
     def test_get_dashboard_data_includes_follow_up_summaries_for_selected_student_rows(self):
         def fake_sql(query, params=None, as_dict=False):
-            if "GROUP BY sl.log_type" in query:
+            # Consolidated UNION query for dashboard aggregates (metric column identifies result type)
+            if "UNION ALL" in query and "'log_type' AS metric" in query:
                 return []
-            if "GROUP BY pe.cohort" in query:
-                return []
-            if "GROUP BY sl.program" in query:
-                return []
-            if "GROUP BY sl.author_name" in query:
-                return []
-            if "GROUP BY sl.next_step" in query:
-                return []
-            if "GROUP BY label ORDER BY label ASC" in query:
-                return []
-            if "COUNT(*) FROM `tabStudent Log` sl" in query:
+            # Open follow-ups count query
+            if "follow_up_status = 'Open'" in query:
                 return [[0]]
             if "FROM `tabStudent Log Follow Up` fu" in query:
                 return [
