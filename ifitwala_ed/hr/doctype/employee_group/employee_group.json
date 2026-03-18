@@ -23,7 +23,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-04 12:38:16.667540",
+ "modified": "2026-03-18 15:31:48.684528",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee Group",
@@ -67,6 +67,24 @@
    "read": 1,
    "report": 1,
    "role": "Academic Staff",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
    "share": 1
   }
  ],
