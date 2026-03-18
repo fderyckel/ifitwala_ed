@@ -60,15 +60,23 @@ except ModuleNotFoundError:
 from ifitwala_ed.api import student_log_dashboard as dashboard_api
 
 
+class _CacheStub:
+    def __init__(self):
+        self.values = {}
+
+    def get_value(self, key):
+        return self.values.get(key)
+
+    def set_value(self, key, value, expires_in_sec=None):
+        self.values[key] = value
+
+
 class TestStudentLogDashboard(TestCase):
     def test_get_dashboard_data_includes_follow_up_summaries_for_selected_student_rows(self):
         def fake_sql(query, params=None, as_dict=False):
             # Consolidated UNION query for dashboard aggregates (metric column identifies result type)
             if "UNION ALL" in query and "'log_type' AS metric" in query:
-                return []
-            # Open follow-ups count query
-            if "follow_up_status = 'Open'" in query:
-                return [[0]]
+                return [{"metric": "open_follow_ups", "label": "open_follow_ups", "value": 0}]
             if "FROM `tabStudent Log Follow Up` fu" in query:
                 return [
                     {
@@ -158,3 +166,43 @@ class TestStudentLogDashboard(TestCase):
         self.assertEqual(
             rows[0].get("follow_ups")[0].get("comment_text"), "Spoke with family and created a support plan."
         )
+
+    def test_get_filter_meta_uses_scoped_cache(self):
+        cache = _CacheStub()
+        sql_calls = []
+
+        def fake_sql(query, params=None, as_dict=False):
+            sql_calls.append(query)
+            if "JOIN `tabSchool` sc" in query:
+                return [{"name": "SCH-1", "label": "School One"}]
+            if "JOIN `tabAcademic Year` ay" in query:
+                return [
+                    {
+                        "name": "AY-1",
+                        "label": "AY 1",
+                        "year_start_date": "2026-08-01",
+                        "year_end_date": "2027-06-30",
+                        "school": "SCH-1",
+                    }
+                ]
+            if "JOIN `tabProgram` p" in query:
+                return [{"name": "PRG-1", "label": "Program One"}]
+            if "JOIN `tabEmployee` e" in query:
+                return [{"user_id": "teacher@example.com", "label": "Teacher Example"}]
+            raise AssertionError(f"Unexpected SQL in test_get_filter_meta_uses_scoped_cache: {query}")
+
+        defaults = SimpleNamespace(get_user_default=lambda *args, **kwargs: "SCH-1")
+
+        with (
+            patch.object(dashboard_api, "_ensure_student_log_analytics_access", return_value="teacher@example.com"),
+            patch.object(dashboard_api, "get_student_log_visibility_predicate", return_value=("1=1", {})),
+            patch.object(dashboard_api.frappe.db, "sql", side_effect=fake_sql),
+            patch.object(dashboard_api.frappe, "cache", return_value=cache, create=True),
+            patch.object(dashboard_api.frappe, "defaults", defaults, create=True),
+        ):
+            first = dashboard_api.get_filter_meta()
+            second = dashboard_api.get_filter_meta()
+
+        self.assertEqual(first, second)
+        self.assertEqual(len(sql_calls), 4)
+        self.assertTrue(cache.values)

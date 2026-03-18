@@ -25,6 +25,7 @@ export type OverlayType =
   | 'admissions-policy-ack'
   | 'admissions-submit'
   | 'admissions-workspace'
+  | 'critical-incidents-list'
 
 export type OverlayEntry = {
   id: string

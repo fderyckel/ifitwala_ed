@@ -64,6 +64,7 @@ import ApplicantDocumentUploadOverlay from '@/overlays/admissions/ApplicantDocum
 import ApplicantPolicyAcknowledgeOverlay from '@/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue';
 import ApplicantSubmitOverlay from '@/overlays/admissions/ApplicantSubmitOverlay.vue';
 import AdmissionsWorkspaceOverlay from '@/overlays/admissions/AdmissionsWorkspaceOverlay.vue';
+import CriticalIncidentsListOverlay from '@/overlays/morning_brief/CriticalIncidentsListOverlay.vue';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
@@ -215,6 +216,8 @@ function resolveComponent(type: OverlayType) {
 			return ApplicantSubmitOverlay;
 		case 'admissions-workspace':
 			return AdmissionsWorkspaceOverlay;
+		case 'critical-incidents-list':
+			return CriticalIncidentsListOverlay;
 		default:
 			return CreateTaskDeliveryOverlay;
 	}

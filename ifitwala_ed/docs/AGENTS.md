@@ -112,7 +112,9 @@ For docs under `ifitwala_ed/docs/docs_md/`:
   - `version`
   - `last_change_date`
 - update both on every change
+- `## Related Docs` should appear immediately before `## Technical Notes (IT)` when that section exists
 - `## Technical Notes (IT)` must be the final top-level section
+- `## Technical Notes (IT)` is reserved for administrator and system-admin implementation detail, not general product guidance
 - preserve figure tags exactly
 
 Do not break the existing docs pipeline conventions.

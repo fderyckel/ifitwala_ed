@@ -291,7 +291,7 @@
 						<div
 							v-if="widgets.data?.critical_incidents !== undefined"
 							class="paper-card cursor-pointer border-l-4 border-l-flame p-5 transition-shadow hover:shadow-md"
-							@click="openCriticalIncidents"
+							@click="openCriticalIncidentsOverlay"
 						>
 							<h3 class="section-header mb-1 text-flame/80">Critical Incidents</h3>
 							<div class="text-3xl font-bold text-ink">
@@ -636,57 +636,6 @@
 			</template>
 		</GenericListDialog>
 
-		<!-- CRITICAL INCIDENTS DIALOG -->
-		<GenericListDialog
-			v-model="showCriticalIncidents"
-			title="Critical Incidents"
-			subtitle="Open logs requiring follow-up"
-			:items="criticalIncidentsList.data || []"
-			:loading="criticalIncidentsList.loading"
-		>
-			<template #item="{ item }">
-				<div class="flex gap-4 p-4">
-					<div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-surface-soft">
-						<img
-							v-if="item.student_image"
-							:src="item.student_image"
-							class="h-full w-full object-cover"
-						/>
-						<div
-							v-else
-							class="flex h-full w-full items-center justify-center text-xs font-bold text-slate-token/65"
-						>
-							{{ item.student_name.substring(0, 2) }}
-						</div>
-					</div>
-					<div class="min-w-0 flex-1">
-						<div class="flex items-start justify-between">
-							<h4 class="text-sm font-bold text-ink">
-								{{ item.student_name }}
-							</h4>
-							<span class="text-xs text-slate-token/80">
-								{{ item.date_display }}
-							</span>
-						</div>
-						<span
-							class="mt-1 mb-2 inline-block rounded bg-surface-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-token/80"
-						>
-							{{ item.log_type }}
-						</span>
-						<p class="text-sm text-slate-token/90 line-clamp-2">
-							{{ item.snippet }}
-						</p>
-						<button
-							@click="openLog(item)"
-							class="mt-2 text-xs font-medium text-jacaranda hover:text-jacaranda/80"
-						>
-							View Full Log
-						</button>
-					</div>
-				</div>
-			</template>
-		</GenericListDialog>
-
 		<!-- CLINIC HISTORY DIALOG -->
 		<HistoryDialog
 			v-model="showClinicHistory"
@@ -770,7 +719,6 @@ const dialogContent = ref<DialogContent>({
 
 // State for new dialogs
 const showAnnouncementCenter = ref<boolean>(false);
-const showCriticalIncidents = ref<boolean>(false);
 const showClinicHistory = ref<boolean>(false);
 const showInteractionDrawer = ref<boolean>(false);
 const activeCommunication = ref<Announcement | null>(null);
@@ -1139,9 +1087,28 @@ function openPolicyInformOverlay(payload: PolicyInformLinkPayload): void {
 	});
 }
 
-function openCriticalIncidents(): void {
-	showCriticalIncidents.value = true;
-	criticalIncidentsList.fetch();
+function openCriticalIncidentsOverlay(): void {
+	// Fetch data if not already loaded
+	if (!criticalIncidentsList.data && !criticalIncidentsList.loading) {
+		criticalIncidentsList.fetch();
+	}
+
+	overlay.open('critical-incidents-list', {
+		items: criticalIncidentsList.data || [],
+		loading: criticalIncidentsList.loading,
+		onViewLog: (item: StudentLogDetail) => {
+			openLog({
+				name: item.name,
+				student_name: item.student_name,
+				student_image: item.student_image,
+				log_type: item.log_type,
+				date_display: item.date_display,
+				snippet: item.snippet,
+				full_content: item.log,
+				status_color: 'red',
+			});
+		},
+	});
 }
 
 const formattedDate = computed<string>(() => widgets.data?.today_label ?? '');

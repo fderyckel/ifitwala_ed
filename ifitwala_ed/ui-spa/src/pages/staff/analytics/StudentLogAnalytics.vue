@@ -72,18 +72,42 @@ watch(
 );
 
 const dashboard = dashboardState.dashboard;
-const recentRows = recentState.rows;
+const dashboardRecord = computed<Record<string, unknown> | null>(() => {
+	const value = dashboard.value;
+	return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+});
+const recentRows = computed<StudentLogRecentRow[]>(() => {
+	const rows = recentState.rows.value;
+	if (!Array.isArray(rows)) return [];
+	return rows.map(row => normalizeRecentRow(row));
+});
 const recentLoading = recentState.loading;
 const recentHasMore = recentState.hasMore;
 
-const openFollowUps = computed(() => dashboard.value.openFollowUps);
-const logTypeCount = computed(() => dashboard.value.logTypeCount);
-const logsByCohort = computed(() => dashboard.value.logsByCohort);
-const logsByProgram = computed(() => dashboard.value.logsByProgram);
-const logsByAuthor = computed(() => dashboard.value.logsByAuthor);
-const nextStepTypes = computed(() => dashboard.value.nextStepTypes);
-const incidentsOverTime = computed(() => dashboard.value.incidentsOverTime);
-const studentLogs = computed(() => dashboard.value.studentLogs);
+const dashboardError = computed(() => {
+	const error = dashboardRecord.value?.error;
+	if (typeof error === 'string') return error;
+	if (error instanceof Error) return error.message || 'Analytics summary request failed.';
+	return '';
+});
+
+const openFollowUps = computed(() => {
+	const value = dashboardRecord.value?.openFollowUps;
+	return typeof value === 'number' ? value : 0;
+});
+const logTypeCount = computed(() => coerceChartSeries(dashboardRecord.value?.logTypeCount));
+const logsByCohort = computed(() => coerceChartSeries(dashboardRecord.value?.logsByCohort));
+const logsByProgram = computed(() => coerceChartSeries(dashboardRecord.value?.logsByProgram));
+const logsByAuthor = computed(() => coerceChartSeries(dashboardRecord.value?.logsByAuthor));
+const nextStepTypes = computed(() => coerceChartSeries(dashboardRecord.value?.nextStepTypes));
+const incidentsOverTime = computed(() =>
+	coerceChartSeries(dashboardRecord.value?.incidentsOverTime)
+);
+const studentLogs = computed<StudentLogStudentRow[]>(() => {
+	const rows = dashboardRecord.value?.studentLogs;
+	if (!Array.isArray(rows)) return [];
+	return rows.map(row => normalizeStudentRow(row));
+});
 
 const incidentsOption = computed<ChartOption>(() => {
 	const data = incidentsOverTime.value;
@@ -133,24 +157,40 @@ const nextStepTypesOption = computed(() => buildBarOption(nextStepTypes.value));
 const logsByCohortOption = computed(() => buildBarOption(logsByCohort.value));
 const logsByProgramOption = computed(() => buildBarOption(logsByProgram.value));
 const logsByAuthorOption = computed(() => buildBarOption(logsByAuthor.value));
+const nonStudentFilterKey = computed(() =>
+	JSON.stringify({
+		school: filters.value.school,
+		academic_year: filters.value.academic_year,
+		program: filters.value.program,
+		author: filters.value.author,
+		from_date: filters.value.from_date,
+		to_date: filters.value.to_date,
+	})
+);
 
 const scheduleRefresh = createDebouncedRunner(400);
 
 watch(
-	filters,
+	nonStudentFilterKey,
 	() => {
 		scheduleRefresh(() => {
 			dashboardState.reload();
 			recentState.reload({ reset: true });
 		});
 	},
-	{ deep: true }
+	{ immediate: false }
 );
 
 watch(
 	() => filters.value.student,
-	value => {
-		if (!value) selectedStudentLabel.value = '';
+	(value, previous) => {
+		if (!value) {
+			selectedStudentLabel.value = '';
+			return;
+		}
+		if (value !== previous) {
+			dashboardState.reload();
+		}
 	}
 );
 
@@ -190,12 +230,48 @@ function truncate(text: string, max = 140) {
 	return text.length > max ? `${text.slice(0, max)}...` : text;
 }
 
+function coerceChartSeries(series: unknown): StudentLogChartSeries[] {
+	return Array.isArray(series) ? (series as StudentLogChartSeries[]) : [];
+}
+
+function normalizeRecentRow(row: StudentLogRecentRow): StudentLogRecentRow {
+	const followUps = Array.isArray(row.follow_ups) ? row.follow_ups : [];
+	return {
+		...row,
+		follow_ups: followUps,
+		follow_up_count:
+			typeof row.follow_up_count === 'number' ? row.follow_up_count : followUps.length,
+	};
+}
+
+function normalizeStudentRow(row: StudentLogStudentRow): StudentLogStudentRow {
+	const followUps = Array.isArray(row.follow_ups) ? row.follow_ups : [];
+	return {
+		...row,
+		follow_ups: followUps,
+		follow_up_count:
+			typeof row.follow_up_count === 'number' ? row.follow_up_count : followUps.length,
+	};
+}
+
+function chartHasData(series: StudentLogChartSeries[] | null | undefined) {
+	return Array.isArray(series) && series.length > 0;
+}
+
+function dashboardCardMessage(fallback: string) {
+	return dashboardError.value ? 'Summary unavailable while analytics reloads.' : fallback;
+}
+
+function followUpsFor(row: TableRow) {
+	return Array.isArray(row.follow_ups) ? row.follow_ups : [];
+}
+
 function visibleFollowUps(row: TableRow, limit = INLINE_FOLLOW_UP_LIMIT) {
-	return (row.follow_ups || []).slice(0, limit);
+	return followUpsFor(row).slice(0, limit);
 }
 
 function hiddenFollowUpCount(row: TableRow, limit = INLINE_FOLLOW_UP_LIMIT) {
-	const total = row.follow_ups?.length || 0;
+	const total = followUpsFor(row).length;
 	return total > limit ? total - limit : 0;
 }
 
@@ -294,6 +370,19 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 			</div>
 		</FiltersBar>
 
+		<div
+			v-if="dashboardError"
+			class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3"
+		>
+			<h2 class="text-sm font-semibold text-amber-900">Analytics summary unavailable</h2>
+			<p class="mt-1 text-xs text-amber-800">
+				The summary cards could not be loaded. Recent student logs still load below.
+			</p>
+			<p class="mt-1 text-xs text-amber-700">
+				{{ dashboardError }}
+			</p>
+		</div>
+
 		<section class="analytics-grid">
 			<AnalyticsCard
 				class="analytics-card--wide"
@@ -301,15 +390,17 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 				@expand="openChartOverlay('Logs Over Time', incidentsOption)"
 			>
 				<template #body>
-					<AnalyticsChart v-if="incidentsOverTime.length" :option="incidentsOption" />
-					<div v-else class="analytics-empty">No logs for this period.</div>
+					<AnalyticsChart v-if="chartHasData(incidentsOverTime)" :option="incidentsOption" />
+					<div v-else class="analytics-empty">
+						{{ dashboardCardMessage('No logs for this period.') }}
+					</div>
 				</template>
 			</AnalyticsCard>
 
 			<AnalyticsCard title="Log Types" @expand="openChartOverlay('Log Types', logTypeOption)">
 				<template #body>
-					<AnalyticsChart v-if="logTypeCount.length" :option="logTypeOption" />
-					<div v-else class="analytics-empty">No logs found.</div>
+					<AnalyticsChart v-if="chartHasData(logTypeCount)" :option="logTypeOption" />
+					<div v-else class="analytics-empty">{{ dashboardCardMessage('No logs found.') }}</div>
 				</template>
 			</AnalyticsCard>
 
@@ -318,8 +409,10 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 				@expand="openChartOverlay('Next Step Types', nextStepTypesOption)"
 			>
 				<template #body>
-					<AnalyticsChart v-if="nextStepTypes.length" :option="nextStepTypesOption" />
-					<div v-else class="analytics-empty">No next steps recorded.</div>
+					<AnalyticsChart v-if="chartHasData(nextStepTypes)" :option="nextStepTypesOption" />
+					<div v-else class="analytics-empty">
+						{{ dashboardCardMessage('No next steps recorded.') }}
+					</div>
 				</template>
 			</AnalyticsCard>
 
@@ -328,8 +421,8 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 				@expand="openChartOverlay('Logs by Cohort', logsByCohortOption)"
 			>
 				<template #body>
-					<AnalyticsChart v-if="logsByCohort.length" :option="logsByCohortOption" />
-					<div v-else class="analytics-empty">No cohorts found.</div>
+					<AnalyticsChart v-if="chartHasData(logsByCohort)" :option="logsByCohortOption" />
+					<div v-else class="analytics-empty">{{ dashboardCardMessage('No cohorts found.') }}</div>
 				</template>
 			</AnalyticsCard>
 
@@ -338,8 +431,10 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 				@expand="openChartOverlay('Logs by Program', logsByProgramOption)"
 			>
 				<template #body>
-					<AnalyticsChart v-if="logsByProgram.length" :option="logsByProgramOption" />
-					<div v-else class="analytics-empty">No programs found.</div>
+					<AnalyticsChart v-if="chartHasData(logsByProgram)" :option="logsByProgramOption" />
+					<div v-else class="analytics-empty">
+						{{ dashboardCardMessage('No programs found.') }}
+					</div>
 				</template>
 			</AnalyticsCard>
 
@@ -348,8 +443,8 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 				@expand="openChartOverlay('Logs by Author', logsByAuthorOption)"
 			>
 				<template #body>
-					<AnalyticsChart v-if="logsByAuthor.length" :option="logsByAuthorOption" />
-					<div v-else class="analytics-empty">No authors found.</div>
+					<AnalyticsChart v-if="chartHasData(logsByAuthor)" :option="logsByAuthorOption" />
+					<div v-else class="analytics-empty">{{ dashboardCardMessage('No authors found.') }}</div>
 				</template>
 			</AnalyticsCard>
 
@@ -411,7 +506,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 										</div>
 									</td>
 									<td class="px-2 py-2 align-top">
-										<div v-if="row.follow_ups.length" class="analytics-followup-stack">
+										<div v-if="followUpsFor(row).length" class="analytics-followup-stack">
 											<div
 												v-for="followUp in visibleFollowUps(row)"
 												:key="followUp.name"
@@ -530,7 +625,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 										{{ row.author }}
 									</td>
 									<td class="px-2 py-2 align-top">
-										<div v-if="row.follow_ups.length" class="analytics-followup-stack">
+										<div v-if="followUpsFor(row).length" class="analytics-followup-stack">
 											<div
 												v-for="followUp in visibleFollowUps(row)"
 												:key="followUp.name"
@@ -573,7 +668,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 
 								<tr v-if="!studentLogs.length">
 									<td colspan="5" class="px-2 py-3 text-center type-empty">
-										No logs to show yet.
+										{{ dashboardCardMessage('No logs to show yet.') }}
 									</td>
 								</tr>
 							</tbody>
