@@ -210,31 +210,66 @@ def _bucket_age(age: int | None) -> str | None:
 
 
 def _build_family_groups(guardians: list[dict], student_dobs: dict[str, date | None]):
-    """Group students by primary guardian (fallback: first guardian)."""
-    by_student = defaultdict(list)
+    """
+    Group students into families based on shared guardians.
+
+    Students belong to the same family if they share at least one guardian.
+    This correctly handles:
+    - Traditional families (both parents as guardians for all children)
+    - Divorced with shared custody (both parents as guardians)
+    - Divorced with separate custody (different guardians = different families)
+
+    Uses Union-Find for efficient connected component grouping.
+    """
+    from collections import defaultdict
+
+    # Build student -> set of guardians mapping
+    student_guardians = defaultdict(set)
     for row in guardians:
-        by_student[row["student"]].append(row)
+        student_guardians[row["student"]].add(row["guardian"])
 
-    student_family = {}
+    # Union-Find data structure
+    parent = {}
+
+    def find(x):
+        if x not in parent:
+            parent[x] = x
+        if parent[x] != x:
+            parent[x] = find(parent[x])  # Path compression
+        return parent[x]
+
+    def union(x, y):
+        px, py = find(x), find(y)
+        if px != py:
+            parent[px] = py
+
+    # Build guardian -> students mapping for efficient lookup
+    guardian_students = defaultdict(set)
+    for student, guards in student_guardians.items():
+        for guardian in guards:
+            guardian_students[guardian].add(student)
+
+    # Union all students who share any guardian
+    for guardian, students in guardian_students.items():
+        students_list = list(students)
+        for i in range(1, len(students_list)):
+            union(students_list[0], students_list[i])
+
+    # Build families from union-find structure
     families = defaultdict(set)
+    student_family = {}
 
-    for student, links in by_student.items():
-        primary = next((link for link in links if link.get("is_primary_guardian")), None)
-        if primary:
-            family_id = primary["guardian"]
-        elif links:
-            family_id = links[0]["guardian"]
-        else:
-            family_id = None
-
-        if family_id:
-            student_family[student] = family_id
-            families[family_id].add(student)
+    for student in student_guardians:
+        family_id = find(student)
+        families[family_id].add(student)
+        student_family[student] = family_id
 
     # Prepare sibling classification using DOB ordering inside each family
     sibling_flags = {}
     for family_id, members in families.items():
-        # sort by dob (oldest first); missing dob last
+        if len(members) <= 1:
+            continue  # No siblings in single-child families
+        # Sort by dob (oldest first); missing dob last
         sorted_members = sorted(
             list(members),
             key=lambda s: student_dobs.get(s) or date(2999, 1, 1),
