@@ -1,65 +1,119 @@
 <!-- ifitwala_ed/ui-spa/src/components/analytics/GenericListDialog.vue -->
-<!--
-  GenericListDialog.vue
-  A reusable dialog for displaying list data (e.g. students, logs) in a modal.
-  Supports slots for custom item rendering.
-
-  Used by:
-  - EnrollmentAnalytics.vue
-  - StudentLogAnalytics.vue
--->
 <template>
-	<Dialog v-model="show" :options="{ size: 'xl', title: null }">
-		<template #body-content>
-			<div class="flex flex-col h-[80vh]">
-				<!-- Header -->
-				<div
-					class="px-6 py-5 border-b border-line-soft bg-surface-soft/70 flex items-center justify-between shrink-0"
+	<Teleport to="body">
+		<TransitionRoot as="template" :show="show">
+			<Dialog
+				as="div"
+				class="if-overlay if-overlay--morning-brief-list"
+				:initialFocus="closeButtonRef"
+				@close="onDialogClose"
+			>
+				<TransitionChild
+					as="template"
+					enter="if-overlay__fade-enter"
+					enter-from="if-overlay__fade-from"
+					enter-to="if-overlay__fade-to"
+					leave="if-overlay__fade-leave"
+					leave-from="if-overlay__fade-to"
+					leave-to="if-overlay__fade-from"
 				>
-					<div>
-						<h3 class="text-xl font-bold text-ink">{{ title }}</h3>
-						<p v-if="subtitle" class="text-sm text-slate-token/70 mt-1">{{ subtitle }}</p>
-					</div>
-					<button
-						@click="show = false"
-						class="p-2 rounded-full border border-line-soft bg-surface-soft text-slate-token/60 transition-colors hover:border-jacaranda/40 hover:text-jacaranda"
+					<div class="if-overlay__backdrop" @click="closeDialog" />
+				</TransitionChild>
+
+				<div class="if-overlay__wrap generic-list-dialog__wrap" @click.self="closeDialog">
+					<TransitionChild
+						as="template"
+						enter="if-overlay__panel-enter"
+						enter-from="if-overlay__panel-from"
+						enter-to="if-overlay__panel-to"
+						leave="if-overlay__panel-leave"
+						leave-from="if-overlay__panel-to"
+						leave-to="if-overlay__panel-from"
 					>
-						<FeatherIcon name="x" class="h-5 w-5" />
-					</button>
+						<DialogPanel class="if-overlay__panel generic-list-dialog__panel">
+							<header class="generic-list-dialog__header">
+								<div class="min-w-0">
+									<p class="type-overline generic-list-dialog__eyebrow">
+										{{ __('Morning Brief') }}
+									</p>
+									<DialogTitle class="type-h2 text-ink mt-2">
+										{{ title }}
+									</DialogTitle>
+									<p v-if="subtitle" class="type-caption mt-2 text-ink/65">
+										{{ subtitle }}
+									</p>
+								</div>
+
+								<button
+									ref="closeButtonRef"
+									type="button"
+									class="if-overlay__icon-button"
+									aria-label="Close"
+									@click="closeDialog"
+								>
+									<FeatherIcon name="x" class="h-4 w-4" />
+								</button>
+							</header>
+
+							<section class="if-overlay__body generic-list-dialog__body custom-scrollbar">
+								<div v-if="loading" class="generic-list-dialog__state">
+									<FeatherIcon name="loader" class="h-8 w-8 animate-spin text-slate-token/40" />
+								</div>
+
+								<div
+									v-else-if="items && items.length > 0"
+									class="generic-list-dialog__list divide-y divide-border/45"
+								>
+									<div
+										v-for="(item, index) in items"
+										:key="index"
+										class="generic-list-dialog__item"
+									>
+										<slot name="item" :item="item" :index="index">
+											<div class="p-4">{{ item }}</div>
+										</slot>
+									</div>
+								</div>
+
+								<div v-else class="generic-list-dialog__empty">
+									<div class="generic-list-dialog__empty-icon">
+										<FeatherIcon name="inbox" class="h-8 w-8 text-slate-token/45" />
+									</div>
+									<p class="mt-4 text-sm font-semibold text-ink/75">{{ __('No items found') }}</p>
+									<p class="mt-1 text-xs text-slate-token/65">
+										{{ __('This list is currently empty for the selected briefing context.') }}
+									</p>
+								</div>
+							</section>
+
+							<footer class="if-overlay__footer">
+								<button
+									type="button"
+									class="generic-list-dialog__footer-button"
+									@click="closeDialog"
+								>
+									{{ __('Close') }}
+								</button>
+							</footer>
+						</DialogPanel>
+					</TransitionChild>
 				</div>
-
-				<!-- Content Area -->
-				<div class="flex-1 overflow-y-auto p-0 custom-scrollbar bg-surface-soft/80">
-					<div v-if="loading" class="p-10 flex justify-center">
-						<FeatherIcon name="loader" class="h-8 w-8 animate-spin text-slate-token/40" />
-					</div>
-
-					<div v-else-if="items && items.length > 0" class="divide-y divide-border/60">
-						<div
-							v-for="(item, index) in items"
-							:key="index"
-							class="bg-white/90 hover:bg-surface-soft transition-colors"
-						>
-							<!-- SLOT gives parent full rendering control -->
-							<slot name="item" :item="item" :index="index">
-								<div class="p-4">{{ item }}</div>
-							</slot>
-						</div>
-					</div>
-
-					<div v-else class="p-10 text-center text-slate-token/50">
-						<FeatherIcon name="inbox" class="h-10 w-10 mx-auto mb-3 opacity-50" />
-						<p>No items found</p>
-					</div>
-				</div>
-			</div>
-		</template>
-	</Dialog>
+			</Dialog>
+		</TransitionRoot>
+	</Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { Dialog, FeatherIcon } from 'frappe-ui';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import {
+	Dialog,
+	DialogPanel,
+	DialogTitle,
+	TransitionChild,
+	TransitionRoot,
+} from '@headlessui/vue';
+import { FeatherIcon } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 
 const props = defineProps<{
 	modelValue: boolean;
@@ -69,10 +123,141 @@ const props = defineProps<{
 	loading?: boolean;
 }>();
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits<{
+	(event: 'update:modelValue', value: boolean): void;
+}>();
+
+const closeButtonRef = ref<HTMLButtonElement | null>(null);
 
 const show = computed({
 	get: () => props.modelValue,
-	set: val => emit('update:modelValue', val),
+	set: value => emit('update:modelValue', value),
+});
+
+function closeDialog() {
+	show.value = false;
+}
+
+function onDialogClose(_payload: unknown) {
+	// Explicit close paths only.
+}
+
+function onKeydown(event: KeyboardEvent) {
+	if (!show.value) return;
+	if (event.key === 'Escape') closeDialog();
+}
+
+onMounted(() => {
+	document.addEventListener('keydown', onKeydown, true);
+});
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true);
 });
 </script>
+
+<style scoped>
+.generic-list-dialog__wrap {
+	align-items: center;
+}
+
+.generic-list-dialog__panel {
+	max-width: min(64rem, calc(100vw - 1.5rem));
+}
+
+.generic-list-dialog__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 1.35rem 1.5rem;
+	border-bottom: 1px solid rgb(var(--border-rgb) / 0.65);
+	background:
+		radial-gradient(circle at top left, rgb(var(--flame-rgb) / 0.08), transparent 32%),
+		radial-gradient(circle at top right, rgb(var(--leaf-rgb) / 0.12), transparent 35%),
+		linear-gradient(180deg, rgb(var(--surface-rgb) / 0.98), rgb(var(--surface-strong-rgb) / 1));
+}
+
+.generic-list-dialog__eyebrow {
+	color: rgb(var(--slate-rgb) / 0.74);
+}
+
+.generic-list-dialog__body {
+	padding: 0;
+	background: linear-gradient(
+		180deg,
+		rgb(var(--surface-rgb) / 0.72),
+		rgb(var(--surface-strong-rgb) / 0.94)
+	);
+}
+
+.generic-list-dialog__list {
+	padding: 0.5rem;
+}
+
+.generic-list-dialog__item {
+	border-radius: 1.25rem;
+	background: rgb(var(--surface-strong-rgb) / 0.94);
+	box-shadow: var(--shadow-soft);
+}
+
+.generic-list-dialog__item + .generic-list-dialog__item {
+	margin-top: 0.5rem;
+}
+
+.generic-list-dialog__state,
+.generic-list-dialog__empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 18rem;
+	padding: 2rem;
+	text-align: center;
+}
+
+.generic-list-dialog__empty-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 4rem;
+	width: 4rem;
+	border-radius: 9999px;
+	background: rgb(var(--surface-rgb) / 0.9);
+	border: 1px solid rgb(var(--border-rgb) / 0.7);
+}
+
+.generic-list-dialog__footer-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 9999px;
+	border: 1px solid rgb(var(--border-rgb) / 0.85);
+	background: rgb(var(--surface-strong-rgb) / 1);
+	padding: 0.6rem 1.05rem;
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: rgb(var(--ink-rgb) / 0.9);
+	transition:
+		border-color 120ms ease,
+		color 120ms ease,
+		transform 120ms ease;
+}
+
+.generic-list-dialog__footer-button:hover {
+	border-color: rgb(var(--jacaranda-rgb) / 0.35);
+	color: rgb(var(--jacaranda-rgb) / 0.95);
+	transform: translateY(-1px);
+}
+
+@media (max-width: 767px) {
+	.generic-list-dialog__panel {
+		max-width: calc(100vw - 1rem);
+		max-height: calc(100vh - 1rem);
+	}
+
+	.generic-list-dialog__header {
+		padding: 1rem;
+	}
+}
+</style>
