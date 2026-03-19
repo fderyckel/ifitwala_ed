@@ -143,3 +143,41 @@ Before finalizing a SPA change, verify:
 - no backend contract normalization was added
 - data loading is not bloated or waterfall-heavy
 - related overlays/pages remain safe under repeat clicks and slow networks
+
+---
+
+## 11. High Concurrency SPA Rule
+
+The canonical performance/concurrency note for SPA integration work is:
+
+- `ifitwala_ed/docs/high_concurrency_contract.md`
+
+For SPA surfaces, this means:
+
+- one bounded bootstrap/read call per page mode wherever practical
+- no client waterfalls for tightly related data
+- explicit refresh ownership
+- no accidental request stampedes from watchers, repeated mounts, or overlapping invalidations
+- no background refresh loops without a bounded stale policy
+
+If a page needs many dependent calls to become usable, stop and redesign the server contract first.
+
+---
+
+## 12. Drive Surface Rule
+
+When integrating Ifitwala_drive into the SPA:
+
+- treat Drive as the file authority
+- keep Ifitwala_Ed as the context authority
+- use typed contracts for Drive browse and grant APIs
+- do not use raw `file_url` as the primary SPA contract
+- use preview/download grants for file actions
+- prefer route-based workspaces for sustained browsing and overlays only for short, focused mutations
+
+Drive browsing pages must remain A+ compliant:
+
+- typed request/response contracts
+- no transport normalization
+- bounded page-init requests
+- no guessing of storage paths or URL formats in components

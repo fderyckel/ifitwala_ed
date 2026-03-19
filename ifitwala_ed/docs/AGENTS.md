@@ -148,3 +148,20 @@ Before finalizing a docs change, verify:
 - status is honest
 - obsolete sections are retired or deprecated cleanly
 - formatting/front matter/section-order rules remain valid
+
+---
+
+## 9. High Concurrency Documentation Rule
+
+For any hot-path, dashboard, workspace, or SPA-supporting feature doc, the canonical concurrency note is:
+
+- `ifitwala_ed/docs/high_concurrency_contract.md`
+
+Docs must not describe request-heavy, cache-unsafe, or client-waterfall designs as acceptable if they conflict with that note.
+
+When documenting Drive or file-related UX in Ifitwala_Ed, explicitly state:
+
+- whether the surface is context-first or browse-first
+- whether the endpoint is bootstrap, read-model, or mutation
+- how many foundational calls the SPA is expected to make
+- whether preview/download uses Drive grants instead of raw URLs
