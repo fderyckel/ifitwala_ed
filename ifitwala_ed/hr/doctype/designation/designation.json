@@ -130,7 +130,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-19 10:30:00.000000",
+ "modified": "2026-03-19 17:17:29.927459",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Designation",
@@ -210,6 +210,10 @@
    "report": 1,
    "role": "Instructor",
    "share": 1
+  },
+  {
+   "read": 1,
+   "role": "Accreditation Visitor"
   }
  ],
  "row_format": "Dynamic",
