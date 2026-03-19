@@ -196,6 +196,23 @@ Ifitwala_Ed is **Open Source by design**. We believe institutions should own the
 
 ---
 
+## 🎯 Who is this for?
+
+* **Schools & Colleges** tired of maintaining fragile integrations between 5+ systems.
+* **Universities** requiring a flexible hierarchy for multi-faculty management.
+* **IT Directors** who want clean, queryable SQL data and API access.
+* **EdTech Consultants** looking for a serious, open-source alternative to legacy ERPs.
+
+---
+
+### 📬 Get in Touch
+
+If you are exploring **modern, open, analytics-driven infrastructure for education**:
+
+📧 **Email:** [f.deryckel@gmail.com](mailto:f.deryckel@gmail.com)
+
+---
+
 ## ✅ Testing & CI
 
 The repository includes a phased testing program with strict CI quality gates.
@@ -262,20 +279,3 @@ yarn type-check:spa
 5. `spa-typecheck-build`
 
 Nightly heavy suites are defined separately in `.github/workflows/nightly.yml`.
-
----
-
-## 🎯 Who is this for?
-
-* **Schools & Colleges** tired of maintaining fragile integrations between 5+ systems.
-* **Universities** requiring a flexible hierarchy for multi-faculty management.
-* **IT Directors** who want clean, queryable SQL data and API access.
-* **EdTech Consultants** looking for a serious, open-source alternative to legacy ERPs.
-
----
-
-### 📬 Get in Touch
-
-If you are exploring **modern, open, analytics-driven infrastructure for education**:
-
-📧 **Email:** [f.deryckel@gmail.com](mailto:f.deryckel@gmail.com)
