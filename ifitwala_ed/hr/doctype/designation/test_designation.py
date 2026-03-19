@@ -27,8 +27,7 @@ class TestDesignation(FrappeTestCase):
 
         self.assertEqual(
             condition,
-            "(`tabDesignation`.`organization` IN ('All Organizations', 'ORG-ROOT') "
-            "AND IFNULL(`tabDesignation`.`school`, '') = '')",
+            "(`tabDesignation`.`organization` IN ('All Organizations', 'ORG-ROOT') AND 1=1)",
         )
 
     def test_designation_pqc_includes_school_ancestor_scope_when_user_has_child_school(self):
@@ -88,6 +87,24 @@ class TestDesignation(FrappeTestCase):
 
         self.assertTrue(allowed)
 
+    def test_designation_has_permission_school_scope_is_ignored_when_user_has_no_school(self):
+        doc = frappe._dict(organization="ORG-ROOT", school="SCH-ROOT")
+
+        with (
+            patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["HR Manager"]),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_org_scope",
+                return_value=["All Organizations", "ORG-ROOT"],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_school_scope",
+                return_value=None,
+            ),
+        ):
+            allowed = designation_controller.has_permission(doc, ptype="write", user="hr.manager@example.com")
+
+        self.assertTrue(allowed)
+
     def test_designation_has_permission_blocks_sibling_school_user(self):
         doc = frappe._dict(organization="ORG-ROOT", school="SCH-ROOT")
 
@@ -142,3 +159,12 @@ class TestDesignation(FrappeTestCase):
             scope = designation_controller._resolve_designation_school_scope("staff@example.com")
 
         self.assertEqual(scope, ["SCH-ROOT", "SCH-CHILD"])
+
+    def test_resolve_designation_school_scope_returns_none_when_user_has_no_school(self):
+        with patch(
+            "ifitwala_ed.hr.doctype.designation.designation._resolve_user_base_school",
+            return_value=None,
+        ):
+            scope = designation_controller._resolve_designation_school_scope("staff@example.com")
+
+        self.assertIsNone(scope)

@@ -159,8 +159,10 @@ def get_permission_query_conditions(user=None):
     org_condition = f"`tabDesignation`.`organization` IN ({escaped_orgs})"
 
     visible_schools = _resolve_designation_school_scope(user)
-    if not visible_schools:
-        school_condition = "IFNULL(`tabDesignation`.`school`, '') = ''"
+    if visible_schools is None:
+        school_condition = "1=1"
+    elif not visible_schools:
+        school_condition = "1=0"
     else:
         escaped_schools = ", ".join(frappe.db.escape(school) for school in visible_schools)
         school_condition = (
@@ -193,7 +195,10 @@ def has_permission(doc, ptype=None, user=None):
     if not designation_school:
         return True
 
-    visible_schools = set(_resolve_designation_school_scope(user))
+    resolved_school_scope = _resolve_designation_school_scope(user)
+    if resolved_school_scope is None:
+        return True
+    visible_schools = set(resolved_school_scope)
     return designation_school in visible_schools
 
 
@@ -206,10 +211,10 @@ def _resolve_designation_org_scope(user: str) -> list[str]:
     return sorted(visible_orgs)
 
 
-def _resolve_designation_school_scope(user: str) -> list[str]:
+def _resolve_designation_school_scope(user: str) -> list[str] | None:
     school = _resolve_user_base_school(user)
     if not school:
-        return []
+        return None
     return _get_ancestor_schools_uncached(school)
 
 
