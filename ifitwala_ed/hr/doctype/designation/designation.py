@@ -8,11 +8,12 @@ from frappe.utils import cstr, get_link_to_form
 from frappe.utils.nestedset import get_ancestors_of
 
 from ifitwala_ed.utilities.employee_utils import get_user_base_org, get_user_base_school
-from ifitwala_ed.utilities.tree_utils import get_ancestors_inclusive
+from ifitwala_ed.utilities.tree_utils import get_ancestors_inclusive, get_descendants_inclusive
 
 READ_LIKE_PERMS = {"read", "report", "export", "print"}
 SCOPED_DOC_PERMS = READ_LIKE_PERMS | {"write", "delete", "submit", "cancel", "amend"}
 ALL_ORGANIZATIONS = "All Organizations"
+OPERATOR_SCOPE_ROLES = {"HR Manager", "HR User"}
 
 
 class Designation(Document):
@@ -148,10 +149,20 @@ def get_permission_query_conditions(user=None):
     if not user or user == "Guest":
         return None
 
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+    roles = set(frappe.get_roles(user))
+    if user == "Administrator" or "System Manager" in roles:
         return None
 
-    visible_orgs = _resolve_designation_org_scope(user)
+    if roles & OPERATOR_SCOPE_ROLES:
+        visible_orgs = _resolve_designation_operator_org_scope(user)
+        if not visible_orgs:
+            return "1=0"
+
+        escaped_orgs = ", ".join(frappe.db.escape(org) for org in visible_orgs)
+        org_condition = f"`tabDesignation`.`organization` IN ({escaped_orgs})"
+        return f"({org_condition} AND 1=1)"
+
+    visible_orgs = _resolve_designation_applicable_org_scope(user)
     if not visible_orgs:
         return "1=0"
 
@@ -177,17 +188,26 @@ def has_permission(doc, ptype=None, user=None):
     if not user or user == "Guest":
         return False
 
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+    roles = set(frappe.get_roles(user))
+    if user == "Administrator" or "System Manager" in roles:
         return True
 
-    if (ptype or "read") not in SCOPED_DOC_PERMS:
+    ptype = ptype or "read"
+    if ptype not in SCOPED_DOC_PERMS:
         return None
 
     designation_org = cstr(getattr(doc, "organization", "")).strip()
     if not designation_org:
         return False
 
-    visible_orgs = set(_resolve_designation_org_scope(user))
+    if roles & OPERATOR_SCOPE_ROLES:
+        visible_orgs = set(_resolve_designation_operator_org_scope(user))
+        return designation_org in visible_orgs
+
+    if ptype not in READ_LIKE_PERMS:
+        return False
+
+    visible_orgs = set(_resolve_designation_applicable_org_scope(user))
     if designation_org not in visible_orgs:
         return False
 
@@ -202,11 +222,20 @@ def has_permission(doc, ptype=None, user=None):
     return designation_school in visible_schools
 
 
-def _resolve_designation_org_scope(user: str) -> list[str]:
+def _resolve_designation_applicable_org_scope(user: str) -> list[str]:
     visible_orgs: set[str] = set()
 
     for org in _get_effective_user_organizations(user):
         visible_orgs.update(_get_ancestor_organizations_uncached(org))
+
+    return sorted(visible_orgs)
+
+
+def _resolve_designation_operator_org_scope(user: str) -> list[str]:
+    visible_orgs: set[str] = set()
+
+    for org in _get_effective_user_organizations(user):
+        visible_orgs.update(_get_descendant_organizations_uncached(org))
 
     return sorted(visible_orgs)
 
@@ -271,3 +300,10 @@ def _get_ancestor_schools_uncached(school: str) -> list[str]:
     if not school:
         return []
     return [cstr(item).strip() for item in (get_ancestors_inclusive("School", school) or []) if cstr(item).strip()]
+
+
+def _get_descendant_organizations_uncached(org: str) -> list[str]:
+    org = cstr(org).strip()
+    if not org:
+        return []
+    return [cstr(item).strip() for item in (get_descendants_inclusive("Organization", org) or []) if cstr(item).strip()]
