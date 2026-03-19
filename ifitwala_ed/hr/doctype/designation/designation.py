@@ -4,8 +4,15 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import get_link_to_form
+from frappe.utils import cstr, get_link_to_form
 from frappe.utils.nestedset import get_ancestors_of
+
+from ifitwala_ed.utilities.employee_utils import get_user_base_org, get_user_base_school
+from ifitwala_ed.utilities.tree_utils import get_ancestors_inclusive
+
+READ_LIKE_PERMS = {"read", "report", "export", "print"}
+SCOPED_DOC_PERMS = READ_LIKE_PERMS | {"write", "delete", "submit", "cancel", "amend"}
+ALL_ORGANIZATIONS = "All Organizations"
 
 
 class Designation(Document):
@@ -134,3 +141,128 @@ def get_assignable_roles(doctype, txt, searchfield, start, page_len, filters):
         limit_page_length=page_len,
         as_list=True,  # return list-of-lists for link queries
     )
+
+
+def get_permission_query_conditions(user=None):
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return None
+
+    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+        return None
+
+    visible_orgs = _resolve_designation_org_scope(user)
+    if not visible_orgs:
+        return "1=0"
+
+    escaped_orgs = ", ".join(frappe.db.escape(org) for org in visible_orgs)
+    org_condition = f"`tabDesignation`.`organization` IN ({escaped_orgs})"
+
+    visible_schools = _resolve_designation_school_scope(user)
+    if not visible_schools:
+        school_condition = "IFNULL(`tabDesignation`.`school`, '') = ''"
+    else:
+        escaped_schools = ", ".join(frappe.db.escape(school) for school in visible_schools)
+        school_condition = (
+            f"(IFNULL(`tabDesignation`.`school`, '') = '' OR `tabDesignation`.`school` IN ({escaped_schools}))"
+        )
+
+    return f"({org_condition} AND {school_condition})"
+
+
+def has_permission(doc, ptype=None, user=None):
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return False
+
+    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+        return True
+
+    if (ptype or "read") not in SCOPED_DOC_PERMS:
+        return None
+
+    designation_org = cstr(getattr(doc, "organization", "")).strip()
+    if not designation_org:
+        return False
+
+    visible_orgs = set(_resolve_designation_org_scope(user))
+    if designation_org not in visible_orgs:
+        return False
+
+    designation_school = cstr(getattr(doc, "school", "")).strip()
+    if not designation_school:
+        return True
+
+    visible_schools = set(_resolve_designation_school_scope(user))
+    return designation_school in visible_schools
+
+
+def _resolve_designation_org_scope(user: str) -> list[str]:
+    visible_orgs: set[str] = set()
+
+    for org in _get_effective_user_organizations(user):
+        visible_orgs.update(_get_ancestor_organizations_uncached(org))
+
+    return sorted(visible_orgs)
+
+
+def _resolve_designation_school_scope(user: str) -> list[str]:
+    school = _resolve_user_base_school(user)
+    if not school:
+        return []
+    return _get_ancestor_schools_uncached(school)
+
+
+def _get_effective_user_organizations(user: str) -> list[str]:
+    orgs: set[str] = set()
+
+    base_org = _resolve_user_base_org(user)
+    if base_org:
+        orgs.add(base_org)
+
+    explicit_orgs = frappe.get_all(
+        "User Permission",
+        filters={"user": user, "allow": "Organization"},
+        pluck="for_value",
+    )
+    for org in explicit_orgs or []:
+        org_name = cstr(org).strip()
+        if org_name:
+            orgs.add(org_name)
+
+    return sorted(orgs)
+
+
+def _resolve_user_base_org(user: str) -> str | None:
+    return (get_user_base_org(user) or "").strip() or (_get_user_default_from_db(user, "organization") or None)
+
+
+def _resolve_user_base_school(user: str) -> str | None:
+    return (get_user_base_school(user) or "").strip() or (_get_user_default_from_db(user, "school") or None)
+
+
+def _get_user_default_from_db(user: str, key: str) -> str | None:
+    rows = frappe.get_all(
+        "DefaultValue",
+        filters={"parent": user, "defkey": key},
+        fields=["defvalue"],
+        order_by="modified desc, creation desc, name desc",
+        limit=1,
+    )
+    if not rows:
+        return None
+    return cstr(rows[0].get("defvalue")).strip() or None
+
+
+def _get_ancestor_organizations_uncached(org: str) -> list[str]:
+    org = cstr(org).strip()
+    if not org:
+        return []
+    return [cstr(item).strip() for item in (get_ancestors_inclusive("Organization", org) or []) if cstr(item).strip()]
+
+
+def _get_ancestor_schools_uncached(school: str) -> list[str]:
+    school = cstr(school).strip()
+    if not school:
+        return []
+    return [cstr(item).strip() for item in (get_ancestors_inclusive("School", school) or []) if cstr(item).strip()]
