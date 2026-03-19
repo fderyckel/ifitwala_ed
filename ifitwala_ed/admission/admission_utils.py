@@ -21,6 +21,7 @@ ADMISSIONS_ROLES = {"Admission Manager", "Admission Officer"}
 ADMISSIONS_FILE_STAFF_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
 ADMISSIONS_WORKSPACE_ROLES = ADMISSIONS_FILE_STAFF_ROLES
 READ_LIKE_PERMISSION_TYPES = {"read", "report", "export", "print", "email"}
+APPLICANT_REVIEW_TARGET_APPLICATION = "Student Applicant"
 
 
 APPLICANT_DOCUMENT_CLASSIFICATION_FIELDS = (
@@ -619,6 +620,22 @@ def is_admissions_workspace_user(user: str | None = None) -> bool:
 
 
 def has_open_overall_application_review_access(*, user: str | None = None, student_applicant: str | None) -> bool:
+    applicant_name = (student_applicant or "").strip()
+    return has_open_applicant_review_access(
+        user=user,
+        student_applicant=applicant_name,
+        target_types={APPLICANT_REVIEW_TARGET_APPLICATION},
+        target_name=applicant_name,
+    )
+
+
+def has_open_applicant_review_access(
+    *,
+    user: str | None = None,
+    student_applicant: str | None,
+    target_types: set[str] | None = None,
+    target_name: str | None = None,
+) -> bool:
     resolved_user = (user or frappe.session.user or "").strip()
     applicant_name = (student_applicant or "").strip()
     if not resolved_user or resolved_user == "Guest" or not applicant_name:
@@ -627,15 +644,21 @@ def has_open_overall_application_review_access(*, user: str | None = None, stude
         return True
 
     roles = {(role_name or "").strip() for role_name in frappe.get_roles(resolved_user) if (role_name or "").strip()}
+    assignment_filters: dict[str, object] = {
+        "student_applicant": applicant_name,
+        "status": "Open",
+    }
+    cleaned_target_types = sorted({(value or "").strip() for value in (target_types or set()) if (value or "").strip()})
+    if cleaned_target_types:
+        assignment_filters["target_type"] = ["in", cleaned_target_types]
+
+    resolved_target_name = (target_name or "").strip()
+    if resolved_target_name:
+        assignment_filters["target_name"] = resolved_target_name
 
     rows = frappe.get_all(
         "Applicant Review Assignment",
-        filters={
-            "student_applicant": applicant_name,
-            "target_type": "Student Applicant",
-            "target_name": applicant_name,
-            "status": "Open",
-        },
+        filters=assignment_filters,
         fields=["assigned_to_user", "assigned_to_role"],
         limit_page_length=200,
     )
@@ -647,6 +670,49 @@ def has_open_overall_application_review_access(*, user: str | None = None, stude
         if assigned_role and assigned_role in roles:
             return True
     return False
+
+
+def build_open_applicant_review_access_exists_sql(
+    *,
+    user: str | None = None,
+    student_applicant_expr_sql: str,
+    target_types: set[str] | None = None,
+    target_name_expr_sql: str | None = None,
+) -> str:
+    resolved_user = (user or "").strip()
+    applicant_expr = (student_applicant_expr_sql or "").strip()
+    if not resolved_user or not applicant_expr:
+        return "1=0"
+
+    escaped_user = frappe.db.escape(resolved_user)
+    roles = {(role_name or "").strip() for role_name in frappe.get_roles(resolved_user) if (role_name or "").strip()}
+    actor_parts = [f"ara.assigned_to_user = {escaped_user}"]
+    role_values = ", ".join(frappe.db.escape(role_name) for role_name in sorted(roles))
+    if role_values:
+        actor_parts.append(f"ara.assigned_to_role IN ({role_values})")
+
+    target_type_condition = ""
+    cleaned_target_types = sorted({(value or "").strip() for value in (target_types or set()) if (value or "").strip()})
+    if cleaned_target_types:
+        target_type_values = ", ".join(frappe.db.escape(value) for value in cleaned_target_types)
+        target_type_condition = f" AND ara.target_type IN ({target_type_values})"
+
+    target_name_condition = ""
+    resolved_target_expr = (target_name_expr_sql or "").strip()
+    if resolved_target_expr:
+        target_name_condition = f" AND ara.target_name = {resolved_target_expr}"
+
+    return (
+        "EXISTS ("
+        "SELECT 1 "
+        "FROM `tabApplicant Review Assignment` ara "
+        f"WHERE ara.student_applicant = {applicant_expr} "
+        "AND ara.status = 'Open' "
+        f"{target_type_condition}"
+        f"{target_name_condition}"
+        " AND (" + " OR ".join(actor_parts) + ")"
+        ")"
+    )
 
 
 def get_admissions_file_staff_scope(user: str | None = None) -> dict:

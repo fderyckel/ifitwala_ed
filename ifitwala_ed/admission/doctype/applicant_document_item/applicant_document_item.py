@@ -15,6 +15,8 @@ from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     READ_LIKE_PERMISSION_TYPES,
     build_admissions_file_scope_exists_sql,
+    build_open_applicant_review_access_exists_sql,
+    has_open_applicant_review_access,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
@@ -200,6 +202,17 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
     if portal_condition != "1=0":
         conditions.append(f"({portal_condition})")
 
+    reviewer_condition = build_open_applicant_review_access_exists_sql(
+        user=resolved_user,
+        student_applicant_expr_sql=(
+            "(SELECT ad.student_applicant "
+            "FROM `tabApplicant Document` ad "
+            "WHERE ad.name = `tabApplicant Document Item`.`applicant_document`)"
+        ),
+    )
+    if reviewer_condition != "1=0":
+        conditions.append(f"({reviewer_condition})")
+
     return " OR ".join(conditions) if conditions else "1=0"
 
 
@@ -219,6 +232,11 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
             return True
         student_applicant = _resolve_item_student_applicant(doc)
         return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=student_applicant)
+
+    if op in READ_LIKE_PERMISSION_TYPES and doc:
+        student_applicant = _resolve_item_student_applicant(doc)
+        if has_open_applicant_review_access(user=resolved_user, student_applicant=student_applicant):
+            return True
 
     roles = set(frappe.get_roles(resolved_user))
     if not roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE}:

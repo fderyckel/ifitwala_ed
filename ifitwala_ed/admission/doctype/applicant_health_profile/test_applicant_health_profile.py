@@ -87,6 +87,52 @@ class TestApplicantHealthProfile(FrappeTestCase):
         self.assertEqual(profile.reviewed_by, nurse_user)
         self.assertIsNotNone(profile.reviewed_on)
 
+    def test_assigned_health_reviewer_gets_read_only_health_and_applicant_access(self):
+        frappe.db.set_value(
+            "Student Applicant",
+            self.applicant,
+            "application_status",
+            "Submitted",
+            update_modified=False,
+        )
+        frappe.set_user(self.user)
+        profile = frappe.get_doc(
+            {
+                "doctype": "Applicant Health Profile",
+                "student_applicant": self.applicant,
+                "blood_group": "AB Positive",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Health Profile", profile.name))
+
+        reviewer_user = self._create_user_with_role("Academic Assistant")
+        assignment = frappe.get_doc(
+            {
+                "doctype": "Applicant Review Assignment",
+                "target_type": "Applicant Health Profile",
+                "target_name": profile.name,
+                "student_applicant": self.applicant,
+                "assigned_to_user": reviewer_user,
+                "status": "Open",
+                "source_event": "health_declared_complete",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Review Assignment", assignment.name))
+
+        frappe.clear_cache(user=reviewer_user)
+        self.assertTrue(
+            frappe.has_permission("Applicant Health Profile", ptype="read", doc=profile.name, user=reviewer_user)
+        )
+        self.assertFalse(
+            frappe.has_permission("Applicant Health Profile", ptype="write", doc=profile.name, user=reviewer_user)
+        )
+        self.assertTrue(
+            frappe.has_permission("Student Applicant", ptype="read", doc=self.applicant, user=reviewer_user)
+        )
+        self.assertFalse(
+            frappe.has_permission("Student Applicant", ptype="write", doc=self.applicant, user=reviewer_user)
+        )
+
     def _create_organization(self) -> str:
         doc = frappe.get_doc(
             {

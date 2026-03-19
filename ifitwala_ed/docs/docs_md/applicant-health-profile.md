@@ -3,8 +3,8 @@ title: "Applicant Health Profile: Health Disclosure and Clearance"
 slug: applicant-health-profile
 category: Admission
 doc_order: 7
-version: "2.4.0"
-last_change_date: "2026-03-08"
+version: "2.4.1"
+last_change_date: "2026-03-19"
 summary: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
 seo_title: "Applicant Health Profile: Health Disclosure and Clearance"
 seo_description: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
@@ -36,6 +36,7 @@ seo_description: "Capture health details, control family/staff editing by applic
   - `update_applicant_health`
   - declaration-complete transition (`applicant_health_declared_complete: 0 -> 1`) materializes reviewer assignments
 - Staff review UI: reviewer metadata stamped when moving to review outcomes.
+- Assigned reviewers can inspect the full applicant folder read-only from Admissions Workspace or Desk while the review assignment remains open.
 - Admission workspace card: direct operational access.
 
 ## Review States
@@ -137,5 +138,6 @@ When school policy requires health clearance, do not move applicants to final ap
 Runtime controller rules:
 - Family/applicant editing is allowed only when user linkage to the applicant is valid and status is non-terminal (`Draft` through `Withdrawn`, excluding `Rejected`).
 - Admissions/academic staff are scoped by applicant organization/school visibility; `System Manager` remains global.
+- An assigned reviewer with an open `Applicant Review Assignment` for the applicant gets read-only access to this profile and the applicant folder, but does not get direct write permission outside the review workflow.
 - Review fields are staff-only (`Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`, `Nurse`).
 - Terminal applicant states (`Rejected`, `Promoted`) are read-only.

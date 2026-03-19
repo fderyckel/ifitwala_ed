@@ -30,6 +30,7 @@ ADMISSIONS_ANALYTICS_ROLES = frozenset(ADMISSIONS_ROLES | INQUIRY_ANALYTICS_ROLE
 DEMOGRAPHICS_ANALYTICS_ROLES = frozenset(STUDENT_DEMOGRAPHICS_ANALYTICS_ROLES)
 MEETING_CREATE_ROLES = frozenset({"Employee", "System Manager"})
 SCHOOL_EVENT_CREATE_ROLES = frozenset({"System Manager", "Academic Admin", "Academic Assistant", "Organization IT"})
+ORG_COMMUNICATION_CREATE_ROLES = frozenset({"System Manager", "Academic Staff", "Academic Admin", "Employee"})
 
 
 def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_name: str | None) -> str:
@@ -81,9 +82,11 @@ def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> 
     if user:
         can_create_meeting = bool(frappe.has_permission("Meeting", ptype="create", user=user))
         can_create_school_event = bool(frappe.has_permission("School Event", ptype="create", user=user))
+        can_create_org_communication = bool(frappe.has_permission("Org Communication", ptype="create", user=user))
     else:
         can_create_meeting = bool(roles & set(MEETING_CREATE_ROLES))
         can_create_school_event = bool(roles & set(SCHOOL_EVENT_CREATE_ROLES))
+        can_create_org_communication = bool(roles & set(ORG_COMMUNICATION_CREATE_ROLES))
 
     return {
         "analytics_attendance": bool(roles & attendance_roles),
@@ -102,6 +105,7 @@ def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> 
         "quick_action_create_meeting": can_create_meeting,
         "quick_action_create_school_event": can_create_school_event,
         "quick_action_create_event": can_create_meeting or can_create_school_event,
+        "quick_action_org_communication": can_create_org_communication,
         "can_open_desk": bool(roles & set(STAFF_ROLES)),
     }
 

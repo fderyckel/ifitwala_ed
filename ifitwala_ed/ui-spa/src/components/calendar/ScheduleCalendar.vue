@@ -133,8 +133,6 @@ import { CalendarSource, useCalendarEvents } from '@/composables/useCalendarEven
 import { useCalendarPrefs } from '@/composables/useCalendarPrefs';
 import { SIGNAL_CALENDAR_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 
-import OrgCommunicationQuickCreateModal from '@/components/communication/OrgCommunicationQuickCreateModal.vue';
-
 // ✅ Overlay stack (single renderer via OverlayHost teleported to #overlay-root)
 import { useOverlayStack } from '@/composables/useOverlayStack';
 

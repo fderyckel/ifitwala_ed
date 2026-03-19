@@ -682,7 +682,7 @@ class TestUserRedirect(FrappeTestCase):
         frappe.set_user("Administrator")
 
     def test_get_website_user_home_page_uses_canonical_policy(self):
-        """Website home hook should resolve to canonical portal/staff for active staff users."""
+        """Website home hook should resolve to canonical hub/staff for active staff users."""
         user = frappe.new_doc("User")
         user.email = "test_website_home_policy@example.com"
         user.first_name = "Web"

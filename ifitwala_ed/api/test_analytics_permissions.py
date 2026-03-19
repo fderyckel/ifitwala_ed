@@ -86,6 +86,7 @@ class TestAnalyticsPermissions(FrappeTestCase):
         self.assertFalse(caps.get("quick_action_create_event"))
         self.assertFalse(caps.get("quick_action_create_meeting"))
         self.assertFalse(caps.get("quick_action_create_school_event"))
+        self.assertFalse(caps.get("quick_action_org_communication"))
 
     def test_staff_home_quick_actions_for_academic_staff(self):
         caps = _build_staff_home_capabilities({"Academic Staff"})
@@ -95,15 +96,18 @@ class TestAnalyticsPermissions(FrappeTestCase):
         self.assertFalse(caps.get("quick_action_create_event"))
         self.assertFalse(caps.get("quick_action_create_meeting"))
         self.assertFalse(caps.get("quick_action_create_school_event"))
+        self.assertTrue(caps.get("quick_action_org_communication"))
 
     def test_staff_home_quick_actions_for_employee_meeting_creation(self):
         caps = _build_staff_home_capabilities({"Employee"})
         self.assertTrue(caps.get("quick_action_create_meeting"))
         self.assertFalse(caps.get("quick_action_create_school_event"))
         self.assertTrue(caps.get("quick_action_create_event"))
+        self.assertTrue(caps.get("quick_action_org_communication"))
 
     def test_staff_home_quick_actions_for_school_event_roles(self):
         caps = _build_staff_home_capabilities({"Academic Admin"})
         self.assertFalse(caps.get("quick_action_create_meeting"))
         self.assertTrue(caps.get("quick_action_create_school_event"))
         self.assertTrue(caps.get("quick_action_create_event"))
+        self.assertTrue(caps.get("quick_action_org_communication"))

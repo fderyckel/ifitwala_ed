@@ -132,6 +132,29 @@
 						/>
 					</button>
 
+					<button
+						v-if="userCapabilities.quick_action_org_communication"
+						type="button"
+						class="action-tile group"
+						@click="openOrgCommunication"
+					>
+						<div class="action-tile__icon">
+							<FeatherIcon name="send" class="h-6 w-6" />
+						</div>
+						<div class="flex-1 min-w-0">
+							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+								Create communication
+							</p>
+							<p class="truncate type-caption text-slate-token/70">
+								Publish to staff, a student group, or your wider school community
+							</p>
+						</div>
+						<FeatherIcon
+							name="chevron-right"
+							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+						/>
+					</button>
+
 					<!-- Standard Quick Actions (router links, not overlays) -->
 					<RouterLink
 						v-for="action in visibleQuickActions"
@@ -313,6 +336,7 @@ import type { FocusItem } from '@/types/focusItem';
 import {
 	uiSignals,
 	SIGNAL_FOCUS_INVALIDATE,
+	SIGNAL_ORG_COMMUNICATION_INVALIDATE,
 	SIGNAL_STUDENT_LOG_INVALIDATE,
 } from '@/lib/uiSignals';
 
@@ -380,6 +404,7 @@ const hasVisibleQuickActions = computed(
 		Boolean(userCapabilities.value.quick_action_create_task) ||
 		Boolean(userCapabilities.value.quick_action_create_event) ||
 		Boolean(userCapabilities.value.quick_action_student_log) ||
+		Boolean(userCapabilities.value.quick_action_org_communication) ||
 		visibleQuickActions.value.length > 0
 );
 
@@ -490,6 +515,7 @@ function refreshFocus(reason: string) {
 let focusTimer: ReturnType<typeof setInterval> | null = null;
 let disposeFocusInvalidate: (() => void) | null = null;
 let disposeStudentLogInvalidate: (() => void) | null = null;
+let disposeOrgCommunicationInvalidate: (() => void) | null = null;
 
 // Local intent flag: only toast “Saved” when StaffHome initiated the workflow.
 // Avoids global spam if student_log:invalidate is emitted from other surfaces.
@@ -526,6 +552,16 @@ function onStudentLogInvalidated() {
 		});
 }
 
+function onOrgCommunicationInvalidated(payload?: { reason?: string }) {
+	if (payload?.reason !== 'quick_create') return;
+
+	toast.create({
+		title: 'Communication created',
+		text: 'Your communication is ready on the relevant announcement surfaces.',
+		icon: 'check',
+	});
+}
+
 onMounted(async () => {
 	// Initial load
 	await refreshFocus('mount');
@@ -547,6 +583,10 @@ onMounted(async () => {
 		SIGNAL_STUDENT_LOG_INVALIDATE,
 		onStudentLogInvalidated
 	);
+	disposeOrgCommunicationInvalidate = uiSignals.subscribe(
+		SIGNAL_ORG_COMMUNICATION_INVALIDATE,
+		onOrgCommunicationInvalidated
+	);
 });
 
 onBeforeUnmount(() => {
@@ -554,6 +594,7 @@ onBeforeUnmount(() => {
 	document.removeEventListener('visibilitychange', onVisibilityChange);
 	if (disposeFocusInvalidate) disposeFocusInvalidate();
 	if (disposeStudentLogInvalidate) disposeStudentLogInvalidate();
+	if (disposeOrgCommunicationInvalidate) disposeOrgCommunicationInvalidate();
 });
 
 function openFocusItem(item: FocusItem) {
@@ -853,6 +894,13 @@ function openStudentLog() {
 
 	overlay.open('student-log-create', {
 		mode: 'home',
+		sourceLabel: 'Staff Home',
+	});
+}
+
+function openOrgCommunication() {
+	overlay.open('org-communication-quick-create', {
+		entryMode: 'staff-home',
 		sourceLabel: 'Staff Home',
 	});
 }
