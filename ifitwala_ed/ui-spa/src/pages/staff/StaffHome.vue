@@ -40,9 +40,9 @@
 		     - Left: “what needs attention” (Focus)
 		     - Right: “what can I do quickly” (Quick Actions)
 		   ============================================================ -->
-		<section class="grid grid-cols-1 gap-10 lg:grid-cols-12">
+		<section class="grid grid-cols-1 gap-6 md:grid-cols-12 md:items-start xl:gap-10">
 			<!-- LEFT COL: TASKS / FOCUS -------------------------------->
-			<div class="lg:col-span-8 space-y-4">
+			<div class="min-w-0 space-y-4 md:col-span-7 lg:col-span-8">
 				<!-- Focus is a read-only attention surface, not a task manager -->
 				<FocusListCard
 					:items="focusItems"
@@ -56,18 +56,18 @@
 			</div>
 
 			<!-- RIGHT COL: QUICK ACTIONS ------------------------------->
-			<div class="lg:col-span-4 space-y-4">
+			<div class="min-w-0 space-y-4 md:col-span-5 lg:col-span-4 xl:sticky xl:top-6">
 				<h3 class="px-1 type-h3 text-canopy">Quick Actions</h3>
 
-				<div class="grid gap-3">
+				<div class="grid min-w-0 gap-3">
 					<!-- Create task uses overlay stack (single overlay system) -->
 					<button
 						v-if="userCapabilities.quick_action_create_task"
 						type="button"
-						class="action-tile group"
+						class="action-tile group w-full min-w-0"
 						@click="openCreateTask"
 					>
-						<div class="action-tile__icon">
+						<div class="action-tile__icon shrink-0">
 							<FeatherIcon name="clipboard" class="h-6 w-6" />
 						</div>
 						<div class="flex-1 min-w-0">
@@ -80,7 +80,7 @@
 						</div>
 						<FeatherIcon
 							name="chevron-right"
-							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+							class="h-4 w-4 shrink-0 text-slate-token/40 transition-colors group-hover:text-jacaranda"
 						/>
 					</button>
 
@@ -88,10 +88,10 @@
 					<button
 						v-if="userCapabilities.quick_action_create_event"
 						type="button"
-						class="action-tile group"
+						class="action-tile group w-full min-w-0"
 						@click="openCreateEvent"
 					>
-						<div class="action-tile__icon">
+						<div class="action-tile__icon shrink-0">
 							<FeatherIcon name="calendar" class="h-6 w-6" />
 						</div>
 						<div class="flex-1 min-w-0">
@@ -104,7 +104,7 @@
 						</div>
 						<FeatherIcon
 							name="chevron-right"
-							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+							class="h-4 w-4 shrink-0 text-slate-token/40 transition-colors group-hover:text-jacaranda"
 						/>
 					</button>
 
@@ -112,10 +112,10 @@
 					<button
 						v-if="userCapabilities.quick_action_student_log"
 						type="button"
-						class="action-tile group"
+						class="action-tile group w-full min-w-0"
 						@click="openStudentLog"
 					>
-						<div class="action-tile__icon">
+						<div class="action-tile__icon shrink-0">
 							<FeatherIcon name="edit-3" class="h-6 w-6" />
 						</div>
 						<div class="flex-1 min-w-0">
@@ -128,17 +128,17 @@
 						</div>
 						<FeatherIcon
 							name="chevron-right"
-							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+							class="h-4 w-4 shrink-0 text-slate-token/40 transition-colors group-hover:text-jacaranda"
 						/>
 					</button>
 
 					<button
 						v-if="userCapabilities.quick_action_org_communication"
 						type="button"
-						class="action-tile group"
+						class="action-tile group w-full min-w-0"
 						@click="openOrgCommunication"
 					>
-						<div class="action-tile__icon">
+						<div class="action-tile__icon shrink-0">
 							<FeatherIcon name="send" class="h-6 w-6" />
 						</div>
 						<div class="flex-1 min-w-0">
@@ -151,7 +151,7 @@
 						</div>
 						<FeatherIcon
 							name="chevron-right"
-							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+							class="h-4 w-4 shrink-0 text-slate-token/40 transition-colors group-hover:text-jacaranda"
 						/>
 					</button>
 
@@ -160,9 +160,9 @@
 						v-for="action in visibleQuickActions"
 						:key="action.label"
 						:to="action.to"
-						class="action-tile group"
+						class="action-tile group w-full min-w-0"
 					>
-						<div class="action-tile__icon">
+						<div class="action-tile__icon shrink-0">
 							<FeatherIcon :name="action.icon" class="h-6 w-6" />
 						</div>
 
@@ -177,7 +177,7 @@
 
 						<FeatherIcon
 							name="chevron-right"
-							class="h-4 w-4 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+							class="h-4 w-4 shrink-0 text-slate-token/40 transition-colors group-hover:text-jacaranda"
 						/>
 					</RouterLink>
 
@@ -224,7 +224,7 @@
 				</div>
 
 				<div
-					class="grid grid-cols-1 gap-3 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6 lg:grid-cols-3"
+					class="grid grid-cols-1 gap-3 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6 md:grid-cols-2 xl:grid-cols-3"
 				>
 					<RouterLink
 						v-for="link in visibleAnalyticsQuickLinks"

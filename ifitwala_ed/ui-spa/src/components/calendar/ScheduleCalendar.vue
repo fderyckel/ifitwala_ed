@@ -16,7 +16,7 @@
 -->
 <template>
 	<div class="relative">
-		<section class="paper-card schedule-card p-6">
+		<section class="paper-card schedule-card p-4 sm:p-6">
 			<header
 				class="flex flex-col gap-4 border-b border-[rgb(var(--border-rgb)/0.9)] pb-4 md:flex-row md:items-center md:justify-between"
 			>
@@ -27,7 +27,9 @@
 					</p>
 				</div>
 
-				<div class="flex items-center gap-3 type-caption">
+				<div
+					class="flex w-full flex-wrap items-center gap-3 type-caption md:w-auto md:flex-nowrap"
+				>
 					<span v-if="lastUpdatedLabel"> Updated {{ lastUpdatedLabel }} </span>
 					<button class="if-action type-button-label" @click="handleRefresh">
 						<FeatherIcon name="refresh-cw" class="h-4 w-4" />
@@ -37,9 +39,11 @@
 			</header>
 
 			<!-- Chips row -->
-			<div class="mt-4 flex flex-wrap items-center gap-3">
+			<div class="mt-4 space-y-3">
 				<!-- Weekend / Full-day toggles -->
-				<div class="mr-auto flex items-center gap-3">
+				<div
+					class="-mx-1 flex items-center gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
+				>
 					<button
 						class="if-pill type-button-label"
 						:class="showWeekends ? 'if-pill--off' : 'if-pill--on'"
@@ -59,25 +63,29 @@
 				</div>
 
 				<!-- Source chips -->
-				<button
-					v-for="chip in sourceChips"
-					:key="chip.id"
-					type="button"
-					class="if-pill type-button-label"
-					:class="chip.active ? chip.activeClass : 'if-pill--off'"
-					@click="toggleChip(chip.id)"
+				<div
+					class="-mx-1 flex items-center gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
 				>
-					<span class="if-pill__dot" :class="chip.dotClass"></span>
-					{{ chip.label }}
-					<span class="if-pill__count type-badge-label">
-						{{ chip.count }}
-					</span>
-				</button>
+					<button
+						v-for="chip in sourceChips"
+						:key="chip.id"
+						type="button"
+						class="if-pill type-button-label"
+						:class="chip.active ? chip.activeClass : 'if-pill--off'"
+						@click="toggleChip(chip.id)"
+					>
+						<span class="if-pill__dot" :class="chip.dotClass"></span>
+						{{ chip.label }}
+						<span class="if-pill__count type-badge-label">
+							{{ chip.count }}
+						</span>
+					</button>
+				</div>
 			</div>
 
 			<!-- Calendar shell with rounded corners + clipping and breathing room -->
 			<div
-				class="relative mt-6 overflow-hidden rounded-2xl border border-[rgb(var(--border-rgb)/0.95)] bg-white shadow-soft p-3 sm:p-4"
+				class="relative mt-6 overflow-hidden rounded-2xl border border-[rgb(var(--border-rgb)/0.95)] bg-white p-2 shadow-soft sm:p-4"
 			>
 				<FullCalendar ref="calendarRef" :options="calendarOptions" class="calendar-shell" />
 
@@ -209,26 +217,26 @@ const subtitle = computed(() => {
 });
 
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null);
+type CalendarScreen = 'phone' | 'tablet' | 'desktop';
+type CalendarViewName = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek';
+type CalendarHeaderToolbar = {
+	left: string;
+	center: string;
+	right: string;
+};
 
-const prefersCompact =
-	typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-		? window.matchMedia('(max-width: 768px)').matches
-		: false;
+const PHONE_MAX_WIDTH = 767;
+const TABLET_MAX_WIDTH = 1023;
 
-const preferredView = ref<'timeGridWeek' | 'listWeek'>(
-	prefersCompact ? 'listWeek' : 'timeGridWeek'
-);
+const currentScreen = ref<CalendarScreen>(resolveCalendarScreen());
+const preferredView = ref<CalendarViewName>(defaultViewForScreen(currentScreen.value));
 const calendarHeight = ref<number>(computeCalendarHeight());
 
 const calendarOptions = ref({
 	plugins: [dayGridPlugin, timeGridPlugin, listPlugin],
 	initialView: preferredView.value,
 	height: calendarHeight.value,
-	headerToolbar: {
-		left: 'prev,next today',
-		center: 'title',
-		right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
-	},
+	headerToolbar: buildHeaderToolbar(currentScreen.value),
 	slotDuration: '00:30:00',
 	slotMinTime: slotMin.value,
 	slotMaxTime: slotMax.value,
@@ -267,9 +275,55 @@ watch(showFullDay, val => {
 	calendarOptions.value.slotMaxTime = val ? '24:00:00' : slotMax.value;
 });
 
+function resolveCalendarScreen(): CalendarScreen {
+	if (typeof window === 'undefined') return 'desktop';
+	const width = window.innerWidth || 0;
+	if (width <= PHONE_MAX_WIDTH) return 'phone';
+	if (width <= TABLET_MAX_WIDTH) return 'tablet';
+	return 'desktop';
+}
+
+function defaultViewForScreen(screen: CalendarScreen): CalendarViewName {
+	return screen === 'phone' ? 'listWeek' : 'timeGridWeek';
+}
+
+function buildHeaderToolbar(screen: CalendarScreen): CalendarHeaderToolbar {
+	if (screen === 'phone') {
+		return {
+			left: 'prev,next',
+			center: 'title',
+			right: 'today,listWeek',
+		};
+	}
+
+	if (screen === 'tablet') {
+		return {
+			left: 'prev,next today',
+			center: 'title',
+			right: 'timeGridWeek,timeGridDay,listWeek',
+		};
+	}
+
+	return {
+		left: 'prev,next today',
+		center: 'title',
+		right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
+	};
+}
+
 function computeCalendarHeight(): number {
 	if (typeof window === 'undefined') return 640;
 	const viewportHeight = window.innerHeight || 0;
+	if (currentScreen.value === 'phone') {
+		const target = Math.round(viewportHeight * 0.5);
+		return Math.max(360, Math.min(target, 460));
+	}
+
+	if (currentScreen.value === 'tablet') {
+		const target = Math.round(viewportHeight * 0.58);
+		return Math.max(440, Math.min(target, 620));
+	}
+
 	const target = Math.round(viewportHeight * 0.65);
 	return Math.max(520, Math.min(target, 760));
 }
@@ -278,6 +332,45 @@ function applyCalendarHeight() {
 	const nextHeight = computeCalendarHeight();
 	calendarHeight.value = nextHeight;
 	calendarOptions.value.height = nextHeight;
+	const api = calendarRef.value?.getApi();
+	if (api) api.setOption('height', nextHeight);
+}
+
+function applyResponsiveCalendarLayout(nextScreen = resolveCalendarScreen()) {
+	currentScreen.value = nextScreen;
+	calendarOptions.value.headerToolbar = buildHeaderToolbar(nextScreen);
+	applyCalendarHeight();
+
+	const nextDefaultView = defaultViewForScreen(nextScreen);
+	const api = calendarRef.value?.getApi();
+	if (!api) {
+		preferredView.value = nextDefaultView;
+		calendarOptions.value.initialView = nextDefaultView;
+		return;
+	}
+
+	api.setOption('headerToolbar', calendarOptions.value.headerToolbar);
+
+	const currentView = api.view.type as CalendarViewName;
+	if (nextScreen === 'phone') {
+		if (currentView !== 'listWeek') {
+			preferredView.value = 'listWeek';
+			calendarOptions.value.initialView = 'listWeek';
+			api.changeView('listWeek');
+		}
+		return;
+	}
+
+	const tabletAllowedViews: CalendarViewName[] = ['timeGridWeek', 'timeGridDay', 'listWeek'];
+	const shouldResetToDefault =
+		currentView === 'listWeek' ||
+		(nextScreen === 'tablet' && !tabletAllowedViews.includes(currentView));
+
+	if (shouldResetToDefault) {
+		preferredView.value = nextDefaultView;
+		calendarOptions.value.initialView = nextDefaultView;
+		api.changeView(nextDefaultView);
+	}
 }
 
 onMounted(async () => {
@@ -295,7 +388,7 @@ onMounted(async () => {
 		}
 	}
 	syncCalendarTimezone();
-	applyCalendarHeight();
+	applyResponsiveCalendarLayout();
 });
 
 function handleDatesSet(arg: DatesSetArg) {
@@ -490,22 +583,6 @@ function handleEventClick(info: EventClickArg) {
 	}
 }
 
-// -----------------------------------------------------------------------------
-// Responsiveness / auto-refresh / resize (unchanged)
-// -----------------------------------------------------------------------------
-function setupMediaWatcher() {
-	if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-	const mq = window.matchMedia('(max-width: 768px)');
-	const handler = (event: MediaQueryListEvent) => {
-		const newView = event.matches ? 'listWeek' : 'timeGridWeek';
-		preferredView.value = newView;
-		const calendarApi = calendarRef.value?.getApi?.();
-		calendarApi?.changeView(newView);
-	};
-	mq.addEventListener('change', handler);
-	cleanupFns.push(() => mq.removeEventListener('change', handler));
-}
-
 const cleanupFns: Array<() => void> = [];
 let intervalHandle: number | null = null;
 let disposeCalendarInvalidate: (() => void) | null = null;
@@ -534,13 +611,12 @@ function setupIntervals() {
 
 function setupCalendarHeightListener() {
 	if (typeof window === 'undefined') return;
-	const handleResize = () => applyCalendarHeight();
+	const handleResize = () => applyResponsiveCalendarLayout();
 	window.addEventListener('resize', handleResize);
 	cleanupFns.push(() => window.removeEventListener('resize', handleResize));
 }
 
 onMounted(() => {
-	setupMediaWatcher();
 	setupIntervals();
 	setupCalendarHeightListener();
 	disposeCalendarInvalidate = uiSignals.subscribe(SIGNAL_CALENDAR_INVALIDATE, () => {

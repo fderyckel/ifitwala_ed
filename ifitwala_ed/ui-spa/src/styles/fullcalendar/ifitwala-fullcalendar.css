@@ -127,6 +127,62 @@
 	}
 }
 
+@media (max-width: 767px) {
+	.calendar-shell .fc .fc-toolbar {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0.5rem;
+	}
+
+	.calendar-shell .fc .fc-toolbar-chunk {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+
+	.calendar-shell .fc .fc-toolbar-title {
+		font-size: 1.25rem;
+	}
+
+	.calendar-shell .fc .fc-button {
+		height: 2rem;
+		padding: 0 0.7rem;
+		font-size: 0.72rem;
+	}
+
+	.calendar-shell .fc .fc-button-group .fc-button {
+		height: 1.85rem;
+		padding: 0 0.75rem;
+	}
+
+	.calendar-shell .fc .fc-today-button {
+		margin-left: 0;
+	}
+
+	.calendar-shell .fc .fc-list-event-time,
+	.calendar-shell .fc .fc-list-event-title {
+		font-size: 0.82rem;
+	}
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+	.calendar-shell .fc .fc-toolbar {
+		flex-wrap: wrap;
+	}
+
+	.calendar-shell .fc .fc-toolbar-title {
+		font-size: 1.45rem;
+	}
+
+	.calendar-shell .fc .fc-toolbar-chunk {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+}
+
 @layer components {
 	/* FullCalendar can apply its own button resets; enforce our look */
 	.calendar-shell .fc .fc-button,
