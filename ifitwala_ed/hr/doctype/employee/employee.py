@@ -715,6 +715,17 @@ class Employee(NestedSet):
         u.append("roles", {"role": role})
         u.save(ignore_permissions=True)
 
+    def _access_sync_signature(self, doc=None) -> tuple[bool, tuple[str, ...], str]:
+        source = doc or self
+        if not source:
+            return False, tuple(), ""
+
+        from ifitwala_ed.hr.employee_access import compute_effective_access_from_employee
+
+        roles, workspace = compute_effective_access_from_employee(source)
+        is_active = cstr(getattr(source, "employment_status", "")).strip().lower() == "active"
+        return is_active, tuple(sorted(roles)), cstr(workspace).strip()
+
     def _apply_designation_role(self):
         if not self.user_id:
             return
@@ -722,12 +733,12 @@ class Employee(NestedSet):
             return
 
         prev = self.get_doc_before_save()
-        designation_changed = (not prev) or ((prev.designation or "") != (self.designation or ""))
-        user_linked_now = (not prev) or (not prev.user_id and bool(self.user_id))
-        if not (designation_changed or user_linked_now):
+        user_changed = (not prev) or ((prev.user_id or "") != (self.user_id or ""))
+        if not user_changed and self._access_sync_signature(prev) == self._access_sync_signature():
             return
 
-        # Keep designation-driven roles aligned with the managed sync model.
+        # Keep designation-driven roles aligned with the managed sync model,
+        # including secondary Employee History changes that alter effective access.
         from ifitwala_ed.hr.employee_access import sync_user_access_from_employee
 
         sync_user_access_from_employee(self, notify_role_additions=True)
