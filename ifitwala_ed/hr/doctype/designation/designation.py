@@ -18,8 +18,22 @@ OPERATOR_SCOPE_ROLES = {"HR Manager", "HR User"}
 
 class Designation(Document):
     def validate(self):
+        self.validate_organization_scope()
         self.validate_reports_to_hierarchy()
         self.validate_default_role()
+
+    def validate_organization_scope(self):
+        organization = cstr(self.organization).strip()
+        if not organization:
+            frappe.throw(_("Organization is required."))
+
+        if organization == ALL_ORGANIZATIONS:
+            frappe.throw(
+                _(
+                    "Designation cannot use All Organizations. "
+                    "Please select the actual organization that owns this designation."
+                )
+            )
 
     def validate_reports_to_hierarchy(self):
         if not self.reports_to:
@@ -226,7 +240,7 @@ def _resolve_designation_applicable_org_scope(user: str) -> list[str]:
     visible_orgs: set[str] = set()
 
     for org in _get_effective_user_organizations(user):
-        visible_orgs.update(_get_ancestor_organizations_uncached(org))
+        visible_orgs.update(item for item in _get_ancestor_organizations_uncached(org) if item != ALL_ORGANIZATIONS)
 
     return sorted(visible_orgs)
 
@@ -236,6 +250,9 @@ def _resolve_designation_operator_org_scope(user: str) -> list[str]:
 
     for org in _get_effective_user_organizations(user):
         visible_orgs.update(_get_descendant_organizations_uncached(org))
+
+    if frappe.db.exists("Organization", ALL_ORGANIZATIONS):
+        visible_orgs.add(ALL_ORGANIZATIONS)
 
     return sorted(visible_orgs)
 
@@ -307,3 +324,8 @@ def _get_descendant_organizations_uncached(org: str) -> list[str]:
     if not org:
         return []
     return [cstr(item).strip() for item in (get_descendants_inclusive("Organization", org) or []) if cstr(item).strip()]
+
+
+@frappe.whitelist()
+def get_default_designation_organization() -> str | None:
+    return _resolve_user_base_org(frappe.session.user)

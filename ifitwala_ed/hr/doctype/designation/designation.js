@@ -8,6 +8,8 @@ frappe.ui.form.on("Designation", {
     },
 
     refresh: function(frm) {
+        set_organization_filter(frm);
+        prefill_organization(frm);
         set_school_filter(frm);
         set_reports_to_filter(frm);
 				frm.set_query("default_role_profile", () => {
@@ -21,6 +23,32 @@ frappe.ui.form.on("Designation", {
         set_reports_to_filter(frm);
     }
 });
+
+function set_organization_filter(frm) {
+    frm.set_query("organization", () => {
+        return {
+            filters: {
+                name: ["!=", "All Organizations"]
+            }
+        };
+    });
+}
+
+function prefill_organization(frm) {
+    if (!frm.is_new() || frm.doc.organization) {
+        return;
+    }
+
+    frappe.call({
+        method: "ifitwala_ed.hr.doctype.designation.designation.get_default_designation_organization",
+        callback: function(r) {
+            const organization = r.message;
+            if (organization && organization !== "All Organizations" && !frm.doc.organization) {
+                frm.set_value("organization", organization);
+            }
+        }
+    });
+}
 
 function set_school_filter(frm) {
     if (frm.doc.organization && frm.doc.organization !== "All Organizations") {

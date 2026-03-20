@@ -10,6 +10,13 @@ from ifitwala_ed.hr.doctype.designation import designation as designation_contro
 
 
 class TestDesignation(FrappeTestCase):
+    def test_validate_organization_scope_requires_real_organization(self):
+        doc = designation_controller.Designation.__new__(designation_controller.Designation)
+        doc.organization = "All Organizations"
+
+        with self.assertRaises(frappe.ValidationError):
+            doc.validate_organization_scope()
+
     def test_designation_pqc_operator_scope_uses_org_descendants(self):
         with (
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["HR Manager"]),
@@ -47,14 +54,14 @@ class TestDesignation(FrappeTestCase):
             "AND (IFNULL(`tabDesignation`.`school`, '') = '' OR `tabDesignation`.`school` IN ('SCH-ROOT', 'SCH-CHILD')))",
         )
 
-    def test_designation_has_permission_academic_admin_reads_all_organizations_from_parent_scope(self):
+    def test_designation_has_permission_academic_admin_does_not_read_all_organizations_row(self):
         doc = frappe._dict(organization="All Organizations", school="")
 
         with (
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["Academic Admin"]),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_applicable_org_scope",
-                return_value=["All Organizations", "ORG-ROOT"],
+                return_value=["ORG-ROOT"],
             ),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_school_scope",
@@ -63,7 +70,7 @@ class TestDesignation(FrappeTestCase):
         ):
             allowed = designation_controller.has_permission(doc, ptype="read", user="academic.admin@example.com")
 
-        self.assertTrue(allowed)
+        self.assertFalse(allowed)
 
     def test_designation_has_permission_academic_admin_cannot_write(self):
         doc = frappe._dict(organization="ORG-ROOT", school="")
@@ -151,7 +158,7 @@ class TestDesignation(FrappeTestCase):
         ):
             scope = designation_controller._resolve_designation_applicable_org_scope("staff@example.com")
 
-        self.assertEqual(scope, ["All Organizations", "ORG-CHILD", "ORG-EXPLICIT", "ORG-OTHER", "ORG-ROOT"])
+        self.assertEqual(scope, ["ORG-CHILD", "ORG-EXPLICIT", "ORG-OTHER", "ORG-ROOT"])
 
     def test_resolve_designation_operator_org_scope_uses_user_org_descendants_and_explicit_org_permissions(self):
         with (
@@ -159,6 +166,7 @@ class TestDesignation(FrappeTestCase):
                 "ifitwala_ed.hr.doctype.designation.designation._resolve_user_base_org",
                 return_value="ORG-ROOT",
             ),
+            patch("ifitwala_ed.hr.doctype.designation.designation.frappe.db.exists", return_value=True),
             patch(
                 "ifitwala_ed.hr.doctype.designation.designation.frappe.get_all",
                 return_value=["ORG-EXPLICIT"],
@@ -173,7 +181,7 @@ class TestDesignation(FrappeTestCase):
         ):
             scope = designation_controller._resolve_designation_operator_org_scope("staff@example.com")
 
-        self.assertEqual(scope, ["ORG-CHILD", "ORG-EXPLICIT", "ORG-EXPLICIT-CHILD", "ORG-ROOT"])
+        self.assertEqual(scope, ["All Organizations", "ORG-CHILD", "ORG-EXPLICIT", "ORG-EXPLICIT-CHILD", "ORG-ROOT"])
 
     def test_resolve_designation_school_scope_uses_school_ancestors(self):
         with (
@@ -198,3 +206,12 @@ class TestDesignation(FrappeTestCase):
             scope = designation_controller._resolve_designation_school_scope("staff@example.com")
 
         self.assertIsNone(scope)
+
+    def test_get_default_designation_organization_uses_resolved_user_org(self):
+        with patch(
+            "ifitwala_ed.hr.doctype.designation.designation._resolve_user_base_org",
+            return_value="ORG-ROOT",
+        ):
+            organization = designation_controller.get_default_designation_organization()
+
+        self.assertEqual(organization, "ORG-ROOT")
