@@ -14,6 +14,7 @@ frappe.ui.form.on("Task", {
 		set_learning_unit_query(frm);
 		set_lesson_query(frm);
 		set_quiz_question_bank_query(frm);
+		frm.trigger("setup_governed_resource_upload");
 	},
 
 	course(frm) {
@@ -34,6 +35,55 @@ frappe.ui.form.on("Task", {
 
 	default_delivery_mode(frm) {
 		enforce_delivery_mode_defaults(frm);
+	},
+
+	setup_governed_resource_upload(frm) {
+		const openUploader = () => {
+			if (frm.is_new()) {
+				frappe.msgprint(__("Please save the Task before uploading resources."));
+				return;
+			}
+
+			new frappe.ui.FileUploader({
+				method: "ifitwala_ed.utilities.governed_uploads.upload_task_resource",
+				args: { task: frm.doc.name },
+				doctype: "Task",
+				docname: frm.doc.name,
+				is_private: 1,
+				disable_private: true,
+				allow_multiple: false,
+				on_success(fileDoc) {
+					const payload = fileDoc?.message
+						|| (Array.isArray(fileDoc) ? fileDoc[0] : fileDoc)
+						|| (typeof fileDoc === "string" ? { file_url: fileDoc } : null);
+					if (payload?.file_url) {
+						frm.refresh_field("attachments");
+					}
+					frm.reload_doc();
+				},
+				on_error() {
+					frappe.msgprint(__("Upload failed. Please try again."));
+				},
+			});
+		};
+
+		const table_field = frm.get_field("attachments");
+		if (table_field?.grid) {
+			table_field.grid.update_docfield_property("file", "read_only", 1);
+		}
+
+		frm.set_df_property(
+			"attachments",
+			"description",
+			__("Use the Upload Task Resource action for governed files. External URLs can still be added manually.")
+		);
+
+		frm.remove_custom_button(__("Upload Task Resource"), __("Actions"));
+		frm.remove_custom_button(__("Upload Task Resource"));
+		frm.add_custom_button(
+			__("Upload Task Resource"),
+			openUploader
+		);
 	}
 });
 

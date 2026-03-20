@@ -17,6 +17,7 @@ class Task(Document):
         self._enforce_quiz_defaults()
         self._validate_task_criteria_unique()
         self._enforce_grading_defaults()
+        self._validate_governed_attachments()
 
     def on_trash(self):
         used = frappe.db.get_value("Task Delivery", {"task": self.name}, "name")
@@ -205,3 +206,58 @@ class Task(Document):
             if criteria in seen:
                 frappe.throw(_("Duplicate Assessment Criteria in Task Criteria are not allowed."))
             seen.add(criteria)
+
+    def _validate_governed_attachments(self):
+        rows = self.get("attachments") or []
+        if not rows:
+            return
+
+        before = None if self.is_new() else self.get_doc_before_save()
+        unchanged_files = {}
+        if before:
+            for row in before.get("attachments") or []:
+                row_name = (row.get("name") or "").strip()
+                if row_name:
+                    unchanged_files[row_name] = (row.get("file") or "").strip()
+
+        for row in rows:
+            file_url = (row.get("file") or "").strip()
+            if not file_url:
+                continue
+
+            row_name = (row.get("name") or "").strip()
+            if row_name and unchanged_files.get(row_name) == file_url:
+                continue
+
+            if not self.name:
+                frappe.throw(_("Save the Task before attaching governed resources."))
+
+            file_name = frappe.db.get_value(
+                "File",
+                {
+                    "attached_to_doctype": "Task",
+                    "attached_to_name": self.name,
+                    "file_url": file_url,
+                },
+                "name",
+            )
+            if not file_name:
+                frappe.throw(_("Task resources must be uploaded through the governed Task resource action."))
+
+            if not row_name:
+                frappe.throw(_("Task resource rows must carry a stable governed row key."))
+
+            binding_name = frappe.db.get_value(
+                "Drive Binding",
+                {
+                    "binding_doctype": "Task",
+                    "binding_name": self.name,
+                    "binding_role": "task_resource",
+                    "slot": f"supporting_material__{row_name}",
+                    "file": file_name,
+                    "status": "active",
+                },
+                "name",
+            )
+            if not binding_name:
+                frappe.throw(_("Task resource rows must reference an active governed Drive binding."))

@@ -470,7 +470,7 @@ Desk forms MUST NOT use the generic Attach/Attach Image uploader for governed fi
 Instead, each doctype exposes a **named, whitelisted upload method** that:
 
 1) reads the uploaded file
-2) calls `create_and_classify_file(...)`
+2) calls the authoritative governed upload boundary (`create_and_classify_file(...)` directly or the Drive session/finalize wrapper)
 3) updates the owning document field / attachment table
 
 Current governed Desk endpoints:
@@ -478,6 +478,7 @@ Current governed Desk endpoints:
 * `upload_employee_image(employee)`
 * `upload_student_image(student)`
 * `upload_applicant_image(student_applicant)`
+* `upload_task_resource(task)`
 * `upload_task_submission_attachment(task_submission)`
 
 These are the only allowed upload entry points for:
@@ -485,12 +486,14 @@ These are the only allowed upload entry points for:
 * Employee `employee_image`
 * Student `student_image`
 * Student Applicant `applicant_image`
+* Task `attachments` file rows
 * Task Submission attachments
 
 Server-side enforcement:
 
 * Any `File` attached to the doctypes above that was **not** created by the dispatcher
   is rejected during `File.validate`.
+* Any new `Task.attachments.file` value without a matching governed `Drive Binding` is rejected during `Task.validate`.
 * This blocks sidebar uploads and prevents silent unclassified files.
 
 ---

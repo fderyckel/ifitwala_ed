@@ -102,6 +102,20 @@ def _response_payload(file_doc):
     }
 
 
+def _append_attached_document_row(doc, *, fieldname: str, file_doc, title: str | None = None):
+    doc.append(
+        fieldname,
+        {
+            "section_break_sbex": title or file_doc.file_name,
+            "file": file_doc.file_url,
+            "file_name": file_doc.file_name,
+            "file_size": file_doc.file_size,
+            "public": 0,
+        },
+    )
+    doc.save(ignore_permissions=True)
+
+
 def _ensure_file_on_disk(file_doc):
     if not file_doc or not file_doc.file_url:
         frappe.throw(_("File URL missing after upload."))
@@ -279,44 +293,53 @@ def upload_task_submission_attachment(task_submission: str | None = None, **_kwa
     if not doc.school or not doc.student:
         frappe.throw(_("Student and School are required for file classification."))
 
-    organization = _get_org_from_school(doc.school)
     filename, content = _get_uploaded_file()
+    drive_submissions_api = _load_drive_module("ifitwala_drive.api.submissions")
 
-    file_doc = file_dispatcher.create_and_classify_file(
-        file_kwargs={
-            "attached_to_doctype": "Task Submission",
-            "attached_to_name": doc.name,
-            "file_name": filename,
-            "content": content,
-            "is_private": 1,
-        },
-        classification={
-            "primary_subject_type": "Student",
-            "primary_subject_id": doc.student,
-            "data_class": "academic",
-            "purpose": "assessment_submission",
-            "retention_policy": "until_program_end_plus_1y",
-            "slot": "submission",
-            "organization": organization,
-            "school": doc.school,
+    _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_submissions_api.upload_task_submission_artifact,
+        payload={
+            "task_submission": doc.name,
+            "filename_original": filename,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
             "upload_source": "Desk",
         },
+        content=content,
     )
     _ensure_file_on_disk(file_doc)
 
-    doc.append(
-        "attachments",
-        {
-            "section_break_sbex": file_doc.file_name,
-            "file": file_doc.file_url,
-            "file_name": file_doc.file_name,
-            "file_size": file_doc.file_size,
-            "public": 0,
-        },
-    )
-    doc.save(ignore_permissions=True)
+    _append_attached_document_row(doc, fieldname="attachments", file_doc=file_doc)
 
     return _response_payload(file_doc)
+
+
+@frappe.whitelist()
+def upload_task_resource(task: str | None = None, row_name: str | None = None, **_kwargs):
+    task = task or _get_form_arg("task") or frappe.form_dict.get("docname")
+    row_name = row_name or _get_form_arg("row_name")
+    doc = _require_clean_saved_doc(_require_doc("Task", task), action_label=_("Upload Task Resource"))
+
+    filename, content = _get_uploaded_file()
+    drive_resources_api = _load_drive_module("ifitwala_drive.api.resources")
+
+    session_response, finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_resources_api.upload_task_resource,
+        payload={
+            "task": doc.name,
+            "row_name": row_name,
+            "filename_original": filename,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
+            "upload_source": "Desk",
+        },
+        content=content,
+    )
+    _ensure_file_on_disk(file_doc)
+
+    payload = _response_payload(file_doc)
+    payload["row_name"] = finalize_response.get("row_name") or session_response.get("row_name")
+    return payload
 
 
 @frappe.whitelist()

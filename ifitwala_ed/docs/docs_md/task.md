@@ -79,7 +79,7 @@ Test refs: None
 
 Status: Partial
 Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/doctype/task/task.js`, `ifitwala_ed/assessment/task_creation_service.py`
-Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.py`)
+Test refs: `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 
 ### Schema and Controller Snapshot
 
@@ -101,7 +101,8 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.p
 
 - `Task` is the reusable definition artifact. It is not the grading fact table.
 - `task.py` enforces curriculum alignment, duplicate criterion guards, and coherent default grading configuration.
-- `task.js` filters `learning_unit` and `lesson` choices by course context and clears stale curriculum links when course changes.
+- `task.js` filters `learning_unit` and `lesson` choices by course context, clears stale curriculum links when course changes, and replaces generic Task resource uploads with the governed Task-resource action.
+- `task.py` now treats `attachments` as a compatibility display surface only: new file-backed rows must resolve to a governed `File` plus active `Drive Binding`.
 - The current task schema stops at `lesson`; it does not currently expose `lesson_activity` or `lesson_instance`.
 - `assessment/task_creation_service.py` supports the overlay path that creates both `Task` and `Task Delivery` in one transaction.
 

@@ -144,6 +144,7 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
         "Student",
         "Student Applicant",
         "Task Submission",
+        "Task",
         "School",
         "Organization",
     }:
@@ -151,6 +152,8 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
             ("Employee", "employee_image"): _("Upload Employee Image"),
             ("Student", "student_image"): _("Upload Student Image"),
             ("Student Applicant", "applicant_image"): _("Upload Applicant Image"),
+            ("Task", None): _("Upload Task Resource"),
+            ("Task", ""): _("Upload Task Resource"),
             ("School", "school_logo"): _("Upload School Logo"),
             ("Organization", None): _("the governed organization media upload action"),
             ("Organization", ""): _("the governed organization media upload action"),
