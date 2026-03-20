@@ -1,0 +1,250 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:PDB-{YYYY}-{####}",
+ "creation": "2026-03-20 09:59:26.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_scope",
+  "organization",
+  "school",
+  "academic_year",
+  "budget_mode",
+  "pool_label",
+  "professional_development_theme",
+  "is_active",
+  "section_break_targeting",
+  "employee",
+  "department",
+  "program",
+  "section_break_finance",
+  "encumbrance_account",
+  "expense_account",
+  "clearing_account",
+  "section_break_amounts",
+  "budget_amount",
+  "reserved_amount",
+  "liquidated_amount",
+  "available_amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_scope",
+   "fieldtype": "Section Break",
+   "label": "Scope"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "default": "Hybrid",
+   "fieldname": "budget_mode",
+   "fieldtype": "Select",
+   "label": "Budget Mode",
+   "options": "School Pool\nEmployee Allowance\nDepartment Pool\nProgram Pool\nHybrid",
+   "reqd": 1
+  },
+  {
+   "fieldname": "pool_label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Pool Label",
+   "reqd": 1
+  },
+  {
+   "fieldname": "professional_development_theme",
+   "fieldtype": "Link",
+   "label": "Professional Development Theme",
+   "options": "Professional Development Theme"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "section_break_targeting",
+   "fieldtype": "Section Break",
+   "label": "Targeting"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program"
+  },
+  {
+   "fieldname": "section_break_finance",
+   "fieldtype": "Section Break",
+   "label": "Finance"
+  },
+  {
+   "fieldname": "encumbrance_account",
+   "fieldtype": "Link",
+   "label": "Encumbrance Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "expense_account",
+   "fieldtype": "Link",
+   "label": "Expense Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "clearing_account",
+   "fieldtype": "Link",
+   "label": "Clearing Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_amounts",
+   "fieldtype": "Section Break",
+   "label": "Amounts"
+  },
+  {
+   "default": "0",
+   "fieldname": "budget_amount",
+   "fieldtype": "Currency",
+   "label": "Budget Amount",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "reserved_amount",
+   "fieldtype": "Currency",
+   "label": "Reserved Amount",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "liquidated_amount",
+   "fieldtype": "Currency",
+   "label": "Liquidated Amount",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "available_amount",
+   "fieldtype": "Currency",
+   "label": "Available Amount",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-20 09:59:26.000000",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "Professional Development Budget",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

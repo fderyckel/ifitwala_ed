@@ -385,6 +385,13 @@ const userCapabilities = computed<Record<string, boolean>>(
 /* QUICK ACTIONS ------------------------------------------------ */
 const quickActions = [
 	{
+		label: 'My Growth',
+		caption: 'Requests, budgets, and completion follow-through',
+		icon: 'book-open',
+		to: { name: 'staff-professional-development' },
+		capability: 'staff_professional_development',
+	},
+	{
 		label: 'Update Gradebook',
 		caption: 'Capture evidence, notes, and marks',
 		icon: 'edit-3',

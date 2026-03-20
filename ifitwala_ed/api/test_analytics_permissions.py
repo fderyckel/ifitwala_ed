@@ -111,3 +111,21 @@ class TestAnalyticsPermissions(FrappeTestCase):
         self.assertTrue(caps.get("quick_action_create_school_event"))
         self.assertTrue(caps.get("quick_action_create_event"))
         self.assertTrue(caps.get("quick_action_org_communication"))
+
+    def test_staff_home_professional_development_capabilities_for_employee(self):
+        caps = _build_staff_home_capabilities({"Employee"})
+        self.assertTrue(caps.get("staff_professional_development"))
+        self.assertFalse(caps.get("professional_development_decide"))
+        self.assertFalse(caps.get("professional_development_liquidate"))
+
+    def test_staff_home_professional_development_capabilities_for_finance(self):
+        caps = _build_staff_home_capabilities({"Accounts Manager"})
+        self.assertFalse(caps.get("staff_professional_development"))
+        self.assertFalse(caps.get("professional_development_decide"))
+        self.assertTrue(caps.get("professional_development_liquidate"))
+
+    def test_staff_home_professional_development_capabilities_for_hr(self):
+        caps = _build_staff_home_capabilities({"HR Manager"})
+        self.assertTrue(caps.get("staff_professional_development"))
+        self.assertTrue(caps.get("professional_development_decide"))
+        self.assertFalse(caps.get("professional_development_liquidate"))

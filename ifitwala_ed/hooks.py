@@ -190,6 +190,12 @@ permission_query_conditions = {
     "Compensatory Leave Request": "ifitwala_ed.hr.leave_permissions.compensatory_leave_request_pqc",
     "Leave Adjustment": "ifitwala_ed.hr.leave_permissions.leave_adjustment_pqc",
     "Leave Encashment": "ifitwala_ed.hr.leave_permissions.leave_encashment_pqc",
+    "Professional Development Theme": "ifitwala_ed.hr.professional_development_permissions.professional_development_theme_pqc",
+    "Professional Development Budget": "ifitwala_ed.hr.professional_development_permissions.professional_development_budget_pqc",
+    "Professional Development Request": "ifitwala_ed.hr.professional_development_permissions.professional_development_request_pqc",
+    "Professional Development Record": "ifitwala_ed.hr.professional_development_permissions.professional_development_record_pqc",
+    "Professional Development Outcome": "ifitwala_ed.hr.professional_development_permissions.professional_development_outcome_pqc",
+    "Professional Development Encumbrance": "ifitwala_ed.hr.professional_development_permissions.professional_development_encumbrance_pqc",
 }
 
 has_permission = {
@@ -229,6 +235,12 @@ has_permission = {
     "Leave Adjustment": "ifitwala_ed.hr.leave_permissions.leave_adjustment_has_permission",
     "Leave Encashment": "ifitwala_ed.hr.leave_permissions.leave_encashment_has_permission",
     "Leave Control Panel": "ifitwala_ed.hr.leave_permissions.leave_control_panel_has_permission",
+    "Professional Development Theme": "ifitwala_ed.hr.professional_development_permissions.professional_development_theme_has_permission",
+    "Professional Development Budget": "ifitwala_ed.hr.professional_development_permissions.professional_development_budget_has_permission",
+    "Professional Development Request": "ifitwala_ed.hr.professional_development_permissions.professional_development_request_has_permission",
+    "Professional Development Record": "ifitwala_ed.hr.professional_development_permissions.professional_development_record_has_permission",
+    "Professional Development Outcome": "ifitwala_ed.hr.professional_development_permissions.professional_development_outcome_has_permission",
+    "Professional Development Encumbrance": "ifitwala_ed.hr.professional_development_permissions.professional_development_encumbrance_has_permission",
 }
 
 default_roles = [

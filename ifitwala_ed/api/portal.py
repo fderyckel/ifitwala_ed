@@ -31,6 +31,17 @@ DEMOGRAPHICS_ANALYTICS_ROLES = frozenset(STUDENT_DEMOGRAPHICS_ANALYTICS_ROLES)
 MEETING_CREATE_ROLES = frozenset({"Employee", "System Manager"})
 SCHOOL_EVENT_CREATE_ROLES = frozenset({"System Manager", "Academic Admin", "Academic Assistant", "Organization IT"})
 ORG_COMMUNICATION_CREATE_ROLES = frozenset({"System Manager", "Academic Staff", "Academic Admin", "Employee"})
+PROFESSIONAL_DEVELOPMENT_PORTAL_ROLES = frozenset(
+    {
+        "Employee",
+        "Academic Staff",
+        "Instructor",
+        "HR User",
+        "HR Manager",
+        "Academic Admin",
+        "System Manager",
+    }
+)
 
 
 def _resolve_staff_first_name(user: str, user_first_name: str | None, user_full_name: str | None) -> str:
@@ -107,6 +118,9 @@ def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> 
         "quick_action_create_event": can_create_meeting or can_create_school_event,
         "quick_action_org_communication": can_create_org_communication,
         "can_open_desk": bool(roles & set(STAFF_ROLES)),
+        "staff_professional_development": bool(roles & set(PROFESSIONAL_DEVELOPMENT_PORTAL_ROLES)),
+        "professional_development_decide": bool(roles & {"HR User", "HR Manager", "Academic Admin", "System Manager"}),
+        "professional_development_liquidate": bool(roles & {"Accounts Manager", "Accounts User", "System Manager"}),
     }
 
 

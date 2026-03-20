@@ -91,6 +91,7 @@ const routes: RouteRecordRaw[] = [
   // Staff
   { path: '/staff', name: 'staff-home', component: () => import('@/pages/staff/StaffHome.vue'), meta: { layout: 'staff' } },
   { path: '/staff/portfolio', name: 'staff-portfolio', component: () => import('@/pages/staff/StaffPortfolioFeed.vue'), meta: { layout: 'staff', portal: 'Staff' } },
+  { path: '/staff/professional-development', name: 'staff-professional-development', component: () => import('@/pages/staff/ProfessionalDevelopment.vue'), meta: { layout: 'staff' } },
   { path: '/staff/organization-chart', name: 'staff-organization-chart', component: () => import('@/pages/staff/organization_chart/OrganizationChart.vue'), meta: { layout: 'staff' } },
   { path: '/staff/class/:studentGroup', name: 'ClassHub', component: () => import('@/pages/staff/ClassHub.vue'), meta: { layout: 'staff' } },
 

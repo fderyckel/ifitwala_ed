@@ -15,6 +15,8 @@ export type OverlayType =
   | 'org-chart-person'
   | 'staff-policy-inform'
   | 'staff-policy-signature-campaign'
+  | 'staff-professional-development-request'
+  | 'staff-professional-development-completion'
   | 'focus-router'
   | 'class-hub-student-context'
   | 'class-hub-quick-evidence'
