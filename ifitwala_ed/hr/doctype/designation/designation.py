@@ -14,6 +14,7 @@ READ_LIKE_PERMS = {"read", "report", "export", "print"}
 SCOPED_DOC_PERMS = READ_LIKE_PERMS | {"write", "delete", "submit", "cancel", "amend"}
 ALL_ORGANIZATIONS = "All Organizations"
 OPERATOR_SCOPE_ROLES = {"HR Manager", "HR User"}
+DESIGNATION_EMPLOYEE_LOOKUP_ROLES = OPERATOR_SCOPE_ROLES | {"System Manager"}
 
 
 class Designation(Document):
@@ -329,3 +330,331 @@ def _get_descendant_organizations_uncached(org: str) -> list[str]:
 @frappe.whitelist()
 def get_default_designation_organization() -> str | None:
     return _resolve_user_base_org(frappe.session.user)
+
+
+@frappe.whitelist()
+def get_scoped_designation_employees(designation: str) -> dict:
+    designation_name = cstr(designation).strip()
+    if not designation_name:
+        frappe.throw(_("Designation is required."))
+
+    user = frappe.session.user
+    designation_doc = frappe.get_doc("Designation", designation_name)
+    _assert_designation_employee_lookup_allowed(designation_doc, user)
+
+    org_scope = _resolve_designation_employee_org_scope(designation_doc, user)
+    school_scope, allow_blank_school = _resolve_designation_employee_school_scope(
+        designation_doc,
+        user,
+        org_scope=org_scope,
+    )
+
+    if not org_scope or (school_scope == [] and not allow_blank_school):
+        return {
+            "designation": designation_doc.name,
+            "designation_label": cstr(designation_doc.designation_name).strip() or designation_doc.name,
+            "employees": [],
+            "count": 0,
+        }
+
+    primary_rows = _get_primary_designation_employee_matches(
+        designation=designation_doc.name,
+        org_scope=org_scope,
+        school_scope=school_scope,
+        allow_blank_school=allow_blank_school,
+    )
+    history_rows = _get_current_history_designation_matches(
+        designation=designation_doc.name,
+        org_scope=org_scope,
+        school_scope=school_scope,
+        allow_blank_school=allow_blank_school,
+    )
+
+    employees = _merge_designation_employee_matches(primary_rows, history_rows)
+    return {
+        "designation": designation_doc.name,
+        "designation_label": cstr(designation_doc.designation_name).strip() or designation_doc.name,
+        "employees": employees,
+        "count": len(employees),
+    }
+
+
+def _assert_designation_employee_lookup_allowed(designation_doc, user: str) -> None:
+    roles = set(frappe.get_roles(user))
+    if user != "Administrator" and not (roles & DESIGNATION_EMPLOYEE_LOOKUP_ROLES):
+        frappe.throw(
+            _("Only HR or System Manager can view employees for a designation."),
+            frappe.PermissionError,
+        )
+
+    if not has_permission(designation_doc, ptype="read", user=user):
+        frappe.throw(
+            _("You do not have access to this designation."),
+            frappe.PermissionError,
+        )
+
+
+def _resolve_designation_employee_org_scope(designation_doc, user: str) -> list[str]:
+    designation_orgs = [
+        item
+        for item in _get_descendant_organizations_uncached(cstr(getattr(designation_doc, "organization", "")).strip())
+        if item and item != ALL_ORGANIZATIONS
+    ]
+    if not designation_orgs:
+        return []
+
+    roles = set(frappe.get_roles(user))
+    if user == "Administrator" or "System Manager" in roles:
+        return designation_orgs
+
+    operator_scope = {
+        item for item in _resolve_designation_operator_org_scope(user) if item and item != ALL_ORGANIZATIONS
+    }
+    return sorted(set(designation_orgs) & operator_scope)
+
+
+def _resolve_designation_employee_school_scope(
+    designation_doc,
+    user: str,
+    *,
+    org_scope: list[str],
+) -> tuple[list[str] | None, bool]:
+    roles = set(frappe.get_roles(user))
+    user_school = _resolve_user_base_school(user)
+
+    if user == "Administrator" or "System Manager" in roles:
+        user_schools = None
+    elif user_school:
+        user_schools = _get_descendant_schools_uncached(user_school)
+    else:
+        user_schools = _get_schools_for_organizations(org_scope)
+
+    designation_school = cstr(getattr(designation_doc, "school", "")).strip()
+    if designation_school:
+        designation_schools = _get_descendant_schools_uncached(designation_school)
+        if user_schools is None:
+            return designation_schools, False
+        return sorted(set(user_schools) & set(designation_schools)), False
+
+    return user_schools, True
+
+
+def _get_descendant_schools_uncached(school: str) -> list[str]:
+    school = cstr(school).strip()
+    if not school:
+        return []
+    return [cstr(item).strip() for item in (get_descendants_inclusive("School", school) or []) if cstr(item).strip()]
+
+
+def _get_schools_for_organizations(org_scope: list[str]) -> list[str]:
+    if not org_scope:
+        return []
+
+    return [
+        cstr(item).strip()
+        for item in frappe.get_all(
+            "School",
+            filters={"organization": ["in", org_scope]},
+            pluck="name",
+            order_by="lft asc, name asc",
+        )
+        if cstr(item).strip()
+    ]
+
+
+def _build_scope_conditions(
+    *,
+    organization_expr: str,
+    school_expr: str,
+    org_scope: list[str],
+    school_scope: list[str] | None,
+    allow_blank_school: bool,
+) -> tuple[list[str], list]:
+    conditions: list[str] = []
+    params: list = []
+
+    if org_scope:
+        org_placeholders = ", ".join(["%s"] * len(org_scope))
+        conditions.append(f"{organization_expr} IN ({org_placeholders})")
+        params.extend(org_scope)
+
+    if school_scope is None:
+        return conditions, params
+
+    if school_scope:
+        school_placeholders = ", ".join(["%s"] * len(school_scope))
+        if allow_blank_school:
+            conditions.append(f"({school_expr} = '' OR {school_expr} IN ({school_placeholders}))")
+        else:
+            conditions.append(f"{school_expr} IN ({school_placeholders})")
+        params.extend(school_scope)
+        return conditions, params
+
+    if allow_blank_school:
+        conditions.append(f"{school_expr} = ''")
+    else:
+        conditions.append("1=0")
+    return conditions, params
+
+
+def _get_primary_designation_employee_matches(
+    *,
+    designation: str,
+    org_scope: list[str],
+    school_scope: list[str] | None,
+    allow_blank_school: bool,
+) -> list[dict]:
+    conditions = [
+        "emp.employment_status = %s",
+        "emp.designation = %s",
+    ]
+    params: list = ["Active", designation]
+
+    scope_conditions, scope_params = _build_scope_conditions(
+        organization_expr="COALESCE(NULLIF(emp.organization, ''), '')",
+        school_expr="COALESCE(NULLIF(emp.school, ''), '')",
+        org_scope=org_scope,
+        school_scope=school_scope,
+        allow_blank_school=allow_blank_school,
+    )
+    conditions.extend(scope_conditions)
+    params.extend(scope_params)
+
+    query = f"""
+        SELECT
+            emp.name AS employee,
+            emp.employee_full_name,
+            emp.user_id,
+            COALESCE(NULLIF(emp.organization, ''), '') AS organization,
+            COALESCE(NULLIF(emp.school, ''), '') AS school
+        FROM `tabEmployee` emp
+        WHERE {" AND ".join(conditions)}
+        ORDER BY
+            COALESCE(NULLIF(emp.organization, ''), '') ASC,
+            COALESCE(NULLIF(emp.school, ''), '') ASC,
+            COALESCE(NULLIF(emp.employee_full_name, ''), emp.name) ASC,
+            emp.name ASC
+    """
+    return frappe.db.sql(query, params, as_dict=True) or []
+
+
+def _get_current_history_designation_matches(
+    *,
+    designation: str,
+    org_scope: list[str],
+    school_scope: list[str] | None,
+    allow_blank_school: bool,
+) -> list[dict]:
+    assignment_org = "COALESCE(NULLIF(hist.organization, ''), COALESCE(NULLIF(emp.organization, ''), ''))"
+    assignment_school = "COALESCE(NULLIF(hist.school, ''), COALESCE(NULLIF(emp.school, ''), ''))"
+
+    conditions = [
+        "emp.employment_status = %s",
+        "hist.parenttype = %s",
+        "hist.designation = %s",
+        "COALESCE(hist.is_current, 0) = 1",
+    ]
+    params: list = ["Active", "Employee", designation]
+
+    scope_conditions, scope_params = _build_scope_conditions(
+        organization_expr=assignment_org,
+        school_expr=assignment_school,
+        org_scope=org_scope,
+        school_scope=school_scope,
+        allow_blank_school=allow_blank_school,
+    )
+    conditions.extend(scope_conditions)
+    params.extend(scope_params)
+
+    query = f"""
+        SELECT
+            emp.name AS employee,
+            emp.employee_full_name,
+            emp.user_id,
+            {assignment_org} AS organization,
+            {assignment_school} AS school,
+            hist.from_date
+        FROM `tabEmployee History` hist
+        INNER JOIN `tabEmployee` emp
+            ON emp.name = hist.parent
+        WHERE {" AND ".join(conditions)}
+        ORDER BY
+            {assignment_org} ASC,
+            {assignment_school} ASC,
+            COALESCE(NULLIF(emp.employee_full_name, ''), emp.name) ASC,
+            emp.name ASC,
+            hist.from_date ASC
+    """
+    return frappe.db.sql(query, params, as_dict=True) or []
+
+
+def _merge_designation_employee_matches(primary_rows: list[dict], history_rows: list[dict]) -> list[dict]:
+    merged: dict[str, dict] = {}
+
+    def ensure_entry(row: dict) -> dict:
+        employee_name = cstr(row.get("employee")).strip()
+        if employee_name not in merged:
+            merged[employee_name] = {
+                "employee": employee_name,
+                "employee_full_name": cstr(row.get("employee_full_name")).strip() or employee_name,
+                "user_id": cstr(row.get("user_id")).strip() or None,
+                "organizations": set(),
+                "schools": set(),
+                "match_sources": set(),
+                "history_matches": [],
+            }
+        entry = merged[employee_name]
+        organization = cstr(row.get("organization")).strip()
+        school = cstr(row.get("school")).strip()
+        if organization:
+            entry["organizations"].add(organization)
+        if school:
+            entry["schools"].add(school)
+        return entry
+
+    for row in primary_rows:
+        entry = ensure_entry(row)
+        entry["match_sources"].add("Primary designation")
+
+    for row in history_rows:
+        entry = ensure_entry(row)
+        entry["match_sources"].add("Current history")
+        history_match = {
+            "organization": cstr(row.get("organization")).strip() or None,
+            "school": cstr(row.get("school")).strip() or None,
+            "from_date": row.get("from_date"),
+        }
+        if history_match not in entry["history_matches"]:
+            entry["history_matches"].append(history_match)
+
+    employees = []
+    for entry in merged.values():
+        organizations = sorted(entry.pop("organizations"))
+        schools = sorted(entry.pop("schools"))
+        history_matches = sorted(
+            entry["history_matches"],
+            key=lambda item: (
+                cstr(item.get("organization")).strip(),
+                cstr(item.get("school")).strip(),
+                cstr(item.get("from_date")).strip(),
+            ),
+        )
+        employees.append(
+            {
+                **entry,
+                "organizations": organizations,
+                "schools": schools,
+                "match_sources": sorted(entry["match_sources"]),
+                "history_matches": history_matches,
+            }
+        )
+
+    employees.sort(
+        key=lambda item: (
+            item["organizations"][0] if item["organizations"] else "",
+            item["schools"][0] if item["schools"] else "",
+            cstr(item.get("employee_full_name")).strip().lower(),
+            cstr(item.get("employee")).strip(),
+        )
+    )
+    return employees

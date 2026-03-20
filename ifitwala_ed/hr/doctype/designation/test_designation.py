@@ -215,3 +215,121 @@ class TestDesignation(FrappeTestCase):
             organization = designation_controller.get_default_designation_organization()
 
         self.assertEqual(organization, "ORG-ROOT")
+
+    def test_get_scoped_designation_employees_denies_non_hr_lookup(self):
+        designation_doc = frappe._dict(name="Teacher", designation_name="Teacher", organization="ORG-ROOT", school="")
+
+        with (
+            patch.object(frappe.session, "user", "academic.admin@example.com"),
+            patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_doc", return_value=designation_doc),
+            patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["Academic Admin"]),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                designation_controller.get_scoped_designation_employees("Teacher")
+
+    def test_resolve_designation_employee_school_scope_intersects_descendants(self):
+        designation_doc = frappe._dict(school="SCH-ROOT")
+
+        with (
+            patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["HR Manager"]),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_user_base_school",
+                return_value="SCH-CHILD",
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._get_descendant_schools_uncached",
+                side_effect=lambda school: {
+                    "SCH-CHILD": ["SCH-CHILD", "SCH-GRANDCHILD"],
+                    "SCH-ROOT": ["SCH-ROOT", "SCH-CHILD", "SCH-GRANDCHILD"],
+                }[school],
+            ),
+        ):
+            schools, allow_blank = designation_controller._resolve_designation_employee_school_scope(
+                designation_doc,
+                "hr.manager@example.com",
+                org_scope=["ORG-ROOT"],
+            )
+
+        self.assertEqual(schools, ["SCH-CHILD", "SCH-GRANDCHILD"])
+        self.assertFalse(allow_blank)
+
+    def test_get_current_history_designation_matches_filters_on_current_rows(self):
+        with patch("ifitwala_ed.hr.doctype.designation.designation.frappe.db.sql", return_value=[]) as sql:
+            designation_controller._get_current_history_designation_matches(
+                designation="Teacher",
+                org_scope=["ORG-ROOT"],
+                school_scope=["SCH-ROOT"],
+                allow_blank_school=False,
+            )
+
+        query = sql.call_args.args[0]
+        params = sql.call_args.args[1]
+
+        self.assertIn("COALESCE(hist.is_current, 0) = 1", query)
+        self.assertEqual(params[:3], ["Active", "Employee", "Teacher"])
+
+    def test_get_scoped_designation_employees_merges_primary_and_current_history(self):
+        designation_doc = frappe._dict(name="Teacher", designation_name="Teacher", organization="ORG-ROOT", school="")
+
+        primary_rows = [
+            frappe._dict(
+                {
+                    "employee": "EMP-001",
+                    "employee_full_name": "Ada Lovelace",
+                    "user_id": "ada@example.com",
+                    "organization": "ORG-ROOT",
+                    "school": "SCH-ROOT",
+                }
+            )
+        ]
+        history_rows = [
+            frappe._dict(
+                {
+                    "employee": "EMP-001",
+                    "employee_full_name": "Ada Lovelace",
+                    "user_id": "ada@example.com",
+                    "organization": "ORG-ROOT",
+                    "school": "SCH-ROOT",
+                    "from_date": "2026-01-01",
+                }
+            ),
+            frappe._dict(
+                {
+                    "employee": "EMP-002",
+                    "employee_full_name": "Grace Hopper",
+                    "user_id": "grace@example.com",
+                    "organization": "ORG-ROOT",
+                    "school": "SCH-CHILD",
+                    "from_date": "2026-02-01",
+                }
+            ),
+        ]
+
+        with (
+            patch.object(frappe.session, "user", "hr.manager@example.com"),
+            patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_doc", return_value=designation_doc),
+            patch("ifitwala_ed.hr.doctype.designation.designation._assert_designation_employee_lookup_allowed"),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_employee_org_scope",
+                return_value=["ORG-ROOT"],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_employee_school_scope",
+                return_value=(["SCH-ROOT", "SCH-CHILD"], True),
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._get_primary_designation_employee_matches",
+                return_value=primary_rows,
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._get_current_history_designation_matches",
+                return_value=history_rows,
+            ),
+        ):
+            payload = designation_controller.get_scoped_designation_employees("Teacher")
+
+        self.assertEqual(payload["count"], 2)
+        self.assertEqual([row["employee"] for row in payload["employees"]], ["EMP-001", "EMP-002"])
+        self.assertEqual(payload["employees"][0]["match_sources"], ["Current history", "Primary designation"])
+        self.assertEqual(payload["employees"][0]["history_matches"][0]["from_date"], "2026-01-01")
+        self.assertEqual(payload["employees"][1]["match_sources"], ["Current history"])
