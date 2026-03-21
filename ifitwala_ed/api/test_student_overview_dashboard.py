@@ -9,6 +9,7 @@ import frappe
 
 from ifitwala_ed.api.student_overview_dashboard import (
     _history_block,
+    _wellbeing_block,
     get_filter_meta,
     get_student_center_snapshot,
     search_students,
@@ -17,6 +18,76 @@ from ifitwala_ed.tests.base import IfitwalaFrappeTestCase
 
 
 class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
+    def test_wellbeing_block_merges_logs_referrals_visits_and_health_note(self):
+        logs = [
+            frappe._dict(
+                name="LOG-001",
+                date="2026-03-02",
+                academic_year="2025-2026",
+                log_type="Positive Attitude",
+                log="<p>Encouraging progress</p>",
+                follow_up_status="Open",
+                requires_follow_up=1,
+            )
+        ]
+        referrals = [
+            frappe._dict(
+                name="SRF-001",
+                date="2026-03-03",
+                academic_year="2025-2026",
+                referral_category="Pastoral",
+                referral_source="Staff",
+                referral_description="<p>Needs counselor check-in</p>",
+            )
+        ]
+        nurse_visits = [
+            frappe._dict(
+                name="PAV-001",
+                date="2026-03-04",
+                note="<p>Rested for 20 minutes before class</p>",
+            )
+        ]
+        health_note = {
+            "doctype": "Student Patient",
+            "name": "PATIENT-001",
+            "title": "Health note to staff",
+            "summary": "Carry inhaler during PE.",
+            "updated_on": "2026-03-01 08:00:00",
+            "is_sensitive": True,
+        }
+
+        with (
+            patch("ifitwala_ed.api.student_overview_dashboard._get_visible_student_logs", return_value=logs),
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard._visible_student_log_support_counts",
+                return_value=(4, 2),
+            ),
+            patch("ifitwala_ed.api.student_overview_dashboard._get_visible_student_referrals", return_value=referrals),
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard._visible_student_referral_counts",
+                return_value=(3, 3),
+            ),
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard._get_visible_student_nurse_visits",
+                return_value=nurse_visits,
+            ),
+            patch("ifitwala_ed.api.student_overview_dashboard._visible_student_nurse_visit_count", return_value=5),
+            patch("ifitwala_ed.api.student_overview_dashboard._get_student_health_note", return_value=health_note),
+        ):
+            payload = _wellbeing_block("STU-001", "2025-2026")
+
+        self.assertEqual(payload["health_note"], health_note)
+        self.assertEqual(
+            [row["type"] for row in payload["timeline"]],
+            ["nurse_visit", "referral", "student_log"],
+        )
+        self.assertEqual(payload["timeline"][0]["summary"], "Rested for 20 minutes before class")
+        self.assertEqual(payload["timeline"][1]["summary"], "Needs counselor check-in")
+        self.assertEqual(payload["timeline"][2]["summary"], "Encouraging progress")
+        self.assertEqual(payload["metrics"]["student_logs"]["open_followups"], 2)
+        self.assertEqual(payload["metrics"]["referrals"]["active"], 3)
+        self.assertEqual(payload["metrics"]["nurse_visits"]["this_term"], 5)
+
     def test_history_block_uses_distinct_flag_for_attendance_years(self):
         def fake_get_all(doctype, **kwargs):
             if doctype == "Program Enrollment":

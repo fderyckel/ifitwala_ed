@@ -104,11 +104,14 @@ Rules:
 4. `kpis` currently contains attendance, task, support, and placeholder academic summary values.
 5. `learning` is assembled from `Task Student` joined to `Task` and `Course`, plus `Program Enrollment Course` rows for current courses.
 6. `attendance` is assembled from `Student Attendance`, `Student Attendance Code`, and `Course`.
-7. `wellbeing.timeline` merges visible `Student Log`, `Student Referral`, and `Student Patient Visit` rows, then sorts newest-first and trims to 30 items.
-8. `history.year_options` use `Program Enrollment.academic_year` as the canonical backbone.
-9. `history.academic_trend` is derived from task rows grouped by academic year.
-10. `history.attendance_trend` is derived from distinct `Student Attendance.academic_year` values.
-11. `history.reflection_flags` is currently returned as an empty list.
+7. `wellbeing.timeline` is event-only and merges visible `Student Log`, `Student Referral`, and `Student Patient Visit` rows, then sorts newest-first and trims to 30 items.
+8. `wellbeing.health_note` is a separate optional staff-facing card sourced from `Student Patient.medical_info`; it is not inserted into the date-sorted timeline.
+9. Referral rows in `wellbeing.timeline` must honor `Student Referral` server-side permission rules before they are returned to the SPA.
+10. Nurse visit rows in `wellbeing.timeline` must use `Student Patient Visit.note` only; `treatment` is not part of the dashboard timeline contract.
+11. `history.year_options` use `Program Enrollment.academic_year` as the canonical backbone.
+12. `history.academic_trend` is derived from task rows grouped by academic year.
+13. `history.attendance_trend` is derived from distinct `Student Attendance.academic_year` values.
+14. `history.reflection_flags` is currently returned as an empty list.
 
 ## 5. Query and Frappe v16 Contract Notes
 
@@ -149,7 +152,7 @@ Test refs:
 
 | Concern | Canonical owner | Code refs | Test refs |
 | --- | --- | --- | --- |
-| Schema / DocType | `Student`, `Program Enrollment`, `Student Group Student`, `Student Group`, `Student Attendance`, `Student Attendance Code`, `Task`, `Task Student`, `Program Enrollment Course`, `Student Log`, `Student Referral`, `Student Patient Visit` | `ifitwala_ed/api/student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
+| Schema / DocType | `Student`, `Program Enrollment`, `Student Group Student`, `Student Group`, `Student Attendance`, `Student Attendance Code`, `Task`, `Task Student`, `Program Enrollment Course`, `Student Log`, `Student Referral`, `Student Patient`, `Student Patient Visit` | `ifitwala_ed/api/student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
 | Controller / workflow logic | `student_overview_dashboard.py` block builders and scope checks | `ifitwala_ed/api/student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
 | API endpoints | `get_filter_meta`, `search_students`, `get_student_center_snapshot` | `ifitwala_ed/api/student_overview_dashboard.py` | `ifitwala_ed/api/test_student_overview_dashboard.py` |
 | SPA/UI surfaces | Staff analytics page and its named route | `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentOverview.vue` | `None` |

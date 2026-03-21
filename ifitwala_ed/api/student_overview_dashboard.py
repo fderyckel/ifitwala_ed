@@ -9,17 +9,22 @@ from datetime import date
 from typing import Dict, List
 
 import frappe
-from frappe.utils import getdate, nowdate
+from frappe.utils import getdate, nowdate, strip_html
 
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
 from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
+from ifitwala_ed.students.doctype.student_referral.student_referral import (
+    get_permission_query_conditions as get_student_referral_permission_query_conditions,
+)
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ALLOWED_STAFF_ROLES = {
     "Academic Admin",
-    "Curriculum Coordinator",
+    "Counselor",
     "Counsellor",
+    "Curriculum Coordinator",
     "Attendance",
+    "Pastoral Lead",
     "System Manager",
     "Administrator",
     "Academic Staff",
@@ -707,29 +712,10 @@ def _learning_block(student: str, program: str | None, academic_year: str | None
 
 
 def _wellbeing_block(student: str, academic_year: str | None):
-    logs = _get_visible_student_logs(student=student, academic_year=academic_year, limit=20)
-
-    # Referrals
-    referrals = []
-    if frappe.db.exists("DocType", "Student Referral"):
-        referrals = frappe.db.get_all(
-            "Student Referral",
-            filters={"student": student},
-            fields=["name", "date", "referral_category", "referral_source", "referral_description"],
-            order_by="date desc",
-            limit=10,
-        )
-
-    # Nurse visits
-    nurse = []
-    if frappe.db.exists("DocType", "Student Patient Visit"):
-        nurse = frappe.db.get_all(
-            "Student Patient Visit",
-            filters={"student_patient": student},
-            fields=["name", "date", "note", "treatment"],
-            order_by="date desc",
-            limit=10,
-        )
+    logs = _get_visible_student_logs(student=student, academic_year=None, limit=20)
+    referrals = _get_visible_student_referrals(student=student, academic_year=None, limit=10)
+    nurse = _get_visible_student_nurse_visits(student=student, limit=10)
+    health_note = _get_student_health_note(student)
 
     timeline = []
     for r in logs:
@@ -739,8 +725,9 @@ def _wellbeing_block(student: str, academic_year: str | None):
                 "doctype": "Student Log",
                 "name": r.name,
                 "date": r.date,
+                "academic_year": r.academic_year,
                 "title": r.log_type or "Log",
-                "summary": (r.log or "")[:140],
+                "summary": _preview_text(r.log),
                 "status": r.follow_up_status,
                 "is_sensitive": False,
             }
@@ -752,8 +739,9 @@ def _wellbeing_block(student: str, academic_year: str | None):
                 "doctype": "Student Referral",
                 "name": r.name,
                 "date": r.date,
+                "academic_year": r.academic_year,
                 "title": r.referral_category or r.referral_source or "Referral",
-                "summary": (r.referral_description or "")[:140],
+                "summary": _preview_text(r.referral_description),
                 "status": None,
                 "is_sensitive": True,
             }
@@ -766,25 +754,183 @@ def _wellbeing_block(student: str, academic_year: str | None):
                 "name": r.name,
                 "date": r.date,
                 "title": "Nurse visit",
-                "summary": (r.note or r.treatment or "")[:140],
+                "summary": _preview_text(r.note),
                 "status": None,
                 "is_sensitive": True,
             }
         )
 
     timeline = sorted(timeline, key=lambda r: r.get("date") or "", reverse=True)[:30]
+    visible_logs_total, visible_logs_open_followups = _visible_student_log_support_counts(student, academic_year)
+    visible_referrals_total, visible_referrals_active = _visible_student_referral_counts(student)
+    visible_nurse_visits_total = _visible_student_nurse_visit_count(student)
 
     metrics = {
-        "student_logs": {"total": len(logs), "open_followups": sum(1 for r in logs if r.requires_follow_up)},
-        "referrals": {
-            "total": len(referrals),
-            "active": sum(1 for r in referrals if (r.status or "").lower() != "closed"),
+        "student_logs": {
+            "total": visible_logs_total,
+            "open_followups": visible_logs_open_followups,
         },
-        "nurse_visits": {"total": len(nurse)},
+        "referrals": {
+            "total": visible_referrals_total,
+            "active": visible_referrals_active,
+        },
+        "nurse_visits": {"total": visible_nurse_visits_total, "this_term": visible_nurse_visits_total},
         "time_series": [],
     }
 
-    return {"timeline": timeline, "metrics": metrics}
+    return {"timeline": timeline, "health_note": health_note, "metrics": metrics}
+
+
+def _preview_text(value: str | None, limit: int = 140) -> str | None:
+    text = strip_html(value or "").strip()
+    if not text:
+        return None
+    compact = " ".join(text.split())
+    return compact[:limit]
+
+
+def _get_visible_student_referrals(student: str, academic_year: str | None, limit: int = 10) -> list[dict]:
+    if not frappe.db.exists("DocType", "Student Referral"):
+        return []
+
+    user = _current_user()
+    if not frappe.has_permission("Student Referral", ptype="read", user=user):
+        return []
+
+    visibility_sql = get_student_referral_permission_query_conditions(user=user)
+    params = {"student": student, "limit": int(limit)}
+    conditions = ["docstatus = 1", "student = %(student)s"]
+
+    if academic_year:
+        conditions.append("academic_year = %(academic_year)s")
+        params["academic_year"] = academic_year
+    if visibility_sql:
+        conditions.append(f"({visibility_sql})")
+
+    return frappe.db.sql(
+        f"""
+        SELECT
+            name,
+            date,
+            academic_year,
+            referral_category,
+            referral_source,
+            referral_description
+        FROM `tabStudent Referral`
+        WHERE {" AND ".join(conditions)}
+        ORDER BY date DESC, modified DESC
+        LIMIT %(limit)s
+        """,
+        params,
+        as_dict=True,
+    )
+
+
+def _visible_student_referral_counts(student: str) -> tuple[int, int]:
+    if not frappe.db.exists("DocType", "Student Referral"):
+        return 0, 0
+
+    user = _current_user()
+    if not frappe.has_permission("Student Referral", ptype="read", user=user):
+        return 0, 0
+
+    visibility_sql = get_student_referral_permission_query_conditions(user=user)
+    params = {"student": student}
+    conditions = ["docstatus = 1", "student = %(student)s"]
+    if visibility_sql:
+        conditions.append(f"({visibility_sql})")
+
+    row = frappe.db.sql(
+        f"""
+        SELECT COUNT(*) AS total_referrals
+        FROM `tabStudent Referral`
+        WHERE {" AND ".join(conditions)}
+        """,
+        params,
+        as_dict=True,
+    )
+    total = int((row or [{}])[0].get("total_referrals") or 0)
+    return total, total
+
+
+def _get_student_health_note(student: str) -> dict | None:
+    if not frappe.db.exists("DocType", "Student Patient"):
+        return None
+
+    patient = frappe.db.get_value(
+        "Student Patient",
+        {"student": student},
+        ["name", "medical_info", "modified"],
+        as_dict=True,
+    )
+    if not patient or not patient.name:
+        return None
+    if not frappe.has_permission("Student Patient", ptype="read", doc=patient.name, user=_current_user()):
+        return None
+
+    summary = _preview_text(patient.medical_info, limit=240)
+    if not summary:
+        return None
+
+    return {
+        "doctype": "Student Patient",
+        "name": patient.name,
+        "title": "Health note to staff",
+        "summary": summary,
+        "updated_on": patient.modified,
+        "is_sensitive": True,
+    }
+
+
+def _get_visible_student_nurse_visits(student: str, limit: int = 10) -> list[dict]:
+    if not frappe.db.exists("DocType", "Student Patient Visit"):
+        return []
+
+    student_patient = frappe.db.get_value("Student Patient", {"student": student}, "name")
+    if not student_patient:
+        return []
+
+    user = _current_user()
+    if not frappe.has_permission("Student Patient Visit", ptype="read", user=user):
+        return []
+
+    return frappe.db.sql(
+        """
+        SELECT
+            name,
+            date,
+            note
+        FROM `tabStudent Patient Visit`
+        WHERE docstatus = 1
+          AND student_patient = %(student_patient)s
+        ORDER BY date DESC, modified DESC
+        LIMIT %(limit)s
+        """,
+        {"student_patient": student_patient, "limit": int(limit)},
+        as_dict=True,
+    )
+
+
+def _visible_student_nurse_visit_count(student: str) -> int:
+    if not frappe.db.exists("DocType", "Student Patient Visit"):
+        return 0
+
+    student_patient = frappe.db.get_value("Student Patient", {"student": student}, "name")
+    if not student_patient:
+        return 0
+    if not frappe.has_permission("Student Patient Visit", ptype="read", user=_current_user()):
+        return 0
+
+    return int(
+        frappe.db.count(
+            "Student Patient Visit",
+            {
+                "docstatus": 1,
+                "student_patient": student_patient,
+            },
+        )
+        or 0
+    )
 
 
 def _get_visible_student_logs(student: str, academic_year: str | None, limit: int = 20) -> list[dict]:
@@ -811,6 +957,7 @@ def _get_visible_student_logs(student: str, academic_year: str | None, limit: in
         SELECT
             sl.name,
             sl.date,
+            sl.academic_year,
             sl.log_type,
             sl.follow_up_status,
             sl.log,
@@ -935,6 +1082,8 @@ def _kpi_block(student: str, academic_year: str | None):
     attendance_summary = _attendance_block(student, academic_year)["summary"]
     task_rows = _task_rows(student, None)
     student_logs_total, student_logs_open_followups = _visible_student_log_support_counts(student, academic_year)
+    visible_referrals_total, visible_referrals_active = _visible_student_referral_counts(student)
+    visible_nurse_visits_total = _visible_student_nurse_visit_count(student)
     if academic_year:
         task_rows = [r for r in task_rows if not r.academic_year or r.academic_year == academic_year]
 
@@ -960,24 +1109,24 @@ def _kpi_block(student: str, academic_year: str | None):
         "support": {
             "student_logs_total": student_logs_total,
             "student_logs_open_followups": student_logs_open_followups,
-            "active_referrals": frappe.db.count("Student Referral", {"student": student})
-            if frappe.db.exists("DocType", "Student Referral")
-            else 0,
-            "nurse_visits_this_term": frappe.db.count("Student Patient Visit", {"student_patient": student})
-            if frappe.db.exists("DocType", "Student Patient Visit")
-            else 0,
+            "active_referrals": visible_referrals_active,
+            "nurse_visits_this_term": visible_nurse_visits_total,
         },
     }
 
 
 def _permissions_for_view(view_mode: str) -> Dict[str, bool]:
     is_student_view = view_mode in {"student", "guardian"}
+    user = _current_user()
     return {
         "can_view_tasks": True,
         "can_view_task_marks": not is_student_view,
-        "can_view_logs": not is_student_view,
-        "can_view_referrals": not is_student_view,
-        "can_view_nurse_details": not is_student_view,
+        "can_view_logs": not is_student_view and bool(frappe.has_permission("Student Log", ptype="read", user=user)),
+        "can_view_referrals": not is_student_view
+        and bool(frappe.has_permission("Student Referral", ptype="read", user=user)),
+        "can_view_nurse_details": not is_student_view
+        and bool(frappe.has_permission("Student Patient", ptype="read", user=user))
+        and bool(frappe.has_permission("Student Patient Visit", ptype="read", user=user)),
         "can_view_attendance_details": True,
     }
 
