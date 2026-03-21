@@ -65,6 +65,5 @@ class TestLocation(TestCase):
             "Location",
             filters={"is_group": 1, "organization": "Ifitwala Roots Campus"},
             fields=["name", "school"],
-            order_by="name asc",
         )
         self.assertEqual(results, [["Bathroom Wing"]])
