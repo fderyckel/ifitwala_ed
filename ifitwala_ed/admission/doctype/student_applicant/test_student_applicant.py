@@ -15,6 +15,10 @@ class TestStudentApplicant(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self._created = []
+        self._auto_hydrate_setting_before = frappe.db.get_single_value(
+            "Admission Settings", "auto_hydrate_enrollment_request_after_promotion"
+        )
+        frappe.db.set_single_value("Admission Settings", "auto_hydrate_enrollment_request_after_promotion", 1)
         self._ensure_role("Admissions Applicant")
         self._ensure_role("Student")
         self._ensure_role("Guardian")
@@ -42,6 +46,11 @@ class TestStudentApplicant(FrappeTestCase):
 
     def tearDown(self):
         frappe.set_user("Administrator")
+        frappe.db.set_single_value(
+            "Admission Settings",
+            "auto_hydrate_enrollment_request_after_promotion",
+            0 if self._auto_hydrate_setting_before in (None, "") else self._auto_hydrate_setting_before,
+        )
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
@@ -1396,10 +1405,7 @@ class TestStudentApplicant(FrappeTestCase):
         self._created.append(("Student", student_name))
 
         plan.reload()
-        if not plan.program_enrollment_request:
-            hydrated = plan.hydrate_program_enrollment_request()
-            self.assertTrue(bool((hydrated or {}).get("name")))
-            plan.reload()
+        self.assertTrue(bool(plan.program_enrollment_request))
         request = frappe.get_doc("Program Enrollment Request", plan.program_enrollment_request)
         self._created.append(("Program Enrollment Request", request.name))
 
