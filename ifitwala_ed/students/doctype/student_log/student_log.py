@@ -38,24 +38,47 @@ def _record_auto_close_summary(summary):
     frappe.logger("student_log_scheduler", allow_site=True).info(summary)
 
 
+def _get_school_follow_up_due_days(school):
+    if not school:
+        return 5
+
+    return cint(frappe.db.get_value("School", school, "default_follow_up_due_in_days")) or 5
+
+
+def _get_school_follow_up_due_days_map(school_names):
+    school_names = [school for school in dict.fromkeys(school_names or []) if school]
+    if not school_names:
+        return {}
+
+    rows = frappe.get_all(
+        "School",
+        filters={"name": ["in", school_names]},
+        fields=["name", "default_follow_up_due_in_days"],
+    )
+    return {row.name: (cint(row.default_follow_up_due_in_days) or 5) for row in rows}
+
+
 def _get_auto_close_eligible_rows(log_names=None):
-    filters = {"follow_up_status": "In Progress", "auto_close_after_days": [">", 0]}
+    filters = {"follow_up_status": "In Progress"}
     if log_names:
         filters["name"] = ["in", list(dict.fromkeys(log_names))]
 
     rows = frappe.get_all(
         "Student Log",
         filters=filters,
-        fields=["name", "modified", "auto_close_after_days"],
+        fields=["name", "modified", "school"],
     )
     if not rows:
         return []
 
     today = frappe.utils.today()
+    due_days_by_school = _get_school_follow_up_due_days_map(row.school for row in rows)
     eligible = []
     for row in rows:
+        due_days = due_days_by_school.get(row.school, 5)
         last_updated = get_datetime(row.modified)
-        if date_diff(today, last_updated.date()) >= row.auto_close_after_days:
+        if date_diff(today, last_updated.date()) >= due_days:
+            row.auto_close_due_in_days = due_days
             eligible.append(row)
     return eligible
 
@@ -115,7 +138,7 @@ def process_auto_close_completed_logs_chunk(log_names=None):
 
         for row in eligible_rows:
             frappe.db.set_value("Student Log", row.name, "follow_up_status", "Completed")
-            message = f"Auto-completed after {row.auto_close_after_days or 0} days of inactivity."
+            message = f"Auto-completed after {row.auto_close_due_in_days or 0} days of inactivity."
             already = frappe.db.exists(
                 "Comment",
                 {
@@ -533,7 +556,7 @@ class StudentLog(Document):
         if self.program:
             # due date from School.default_follow_up_due_in_days (fallback 5)
             school = self.school or self._resolve_school()
-            due_days = frappe.get_value("School", school, "default_follow_up_due_in_days") or 5
+            due_days = _get_school_follow_up_due_days(school)
             due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
 
         # Create/ensure a single OPEN ToDo for the assignee
@@ -761,7 +784,7 @@ def assign_follow_up(log_name: str, user: str):
     )
 
     # Create new OPEN ToDo for assignee (lean insert)
-    due_days = frappe.db.get_value("School", sl.school, "default_follow_up_due_in_days") or 5
+    due_days = _get_school_follow_up_due_days(sl.school)
     due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
     frappe.get_doc(
         {
@@ -954,7 +977,7 @@ def reopen_log(log_name: str):
             "name",
         )
         if not has_open:
-            due_days = frappe.db.get_value("School", row.school, "default_follow_up_due_in_days") or 5
+            due_days = _get_school_follow_up_due_days(row.school)
             due_date = frappe.utils.add_days(frappe.utils.today(), int(due_days))
             frappe.get_doc(
                 {

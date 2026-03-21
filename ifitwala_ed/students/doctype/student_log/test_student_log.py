@@ -10,6 +10,7 @@ import frappe
 
 from ifitwala_ed.students.doctype.student_log.student_log import (
     StudentLog,
+    _get_auto_close_eligible_rows,
     _interpolate_sql_params,
     _is_accreditation_visitor_only,
     dispatch_auto_close_completed_logs,
@@ -150,9 +151,41 @@ class TestStudentLog(TestCase):
         second_call = enqueue.call_args_list[1]
         self.assertEqual(second_call.kwargs["log_names"], ["LOG-0003"])
 
+    def test_get_auto_close_eligible_rows_uses_school_due_days_contract(self):
+        student_log_rows = [
+            frappe._dict({"name": "LOG-0001", "modified": "2026-03-10 08:00:00", "school": "SCH-1"}),
+            frappe._dict({"name": "LOG-0002", "modified": "2026-03-17 08:00:00", "school": "SCH-2"}),
+            frappe._dict({"name": "LOG-0003", "modified": "2026-03-16 08:00:00", "school": None}),
+        ]
+        school_rows = [
+            frappe._dict({"name": "SCH-1", "default_follow_up_due_in_days": 7}),
+            frappe._dict({"name": "SCH-2", "default_follow_up_due_in_days": 5}),
+        ]
+
+        def fake_get_all(doctype, filters=None, fields=None):
+            if doctype == "Student Log":
+                self.assertEqual(filters, {"follow_up_status": "In Progress"})
+                self.assertEqual(fields, ["name", "modified", "school"])
+                return student_log_rows
+            if doctype == "School":
+                self.assertEqual(fields, ["name", "default_follow_up_due_in_days"])
+                self.assertEqual(filters, {"name": ["in", ["SCH-1", "SCH-2"]]})
+                return school_rows
+            self.fail(f"Unexpected doctype lookup: {doctype}")
+
+        with (
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.get_all", side_effect=fake_get_all),
+            patch("ifitwala_ed.students.doctype.student_log.student_log.frappe.utils.today", return_value="2026-03-21"),
+        ):
+            eligible = _get_auto_close_eligible_rows()
+
+        self.assertEqual([row.name for row in eligible], ["LOG-0001", "LOG-0003"])
+        self.assertEqual(eligible[0].auto_close_due_in_days, 7)
+        self.assertEqual(eligible[1].auto_close_due_in_days, 5)
+
     def test_process_auto_close_completed_logs_chunk_only_updates_currently_eligible_logs(self):
         cache = _DummyCache()
-        eligible_rows = [frappe._dict({"name": "LOG-0001", "auto_close_after_days": 7})]
+        eligible_rows = [frappe._dict({"name": "LOG-0001", "auto_close_due_in_days": 7})]
         inserted_comments = []
 
         class _FakeComment:

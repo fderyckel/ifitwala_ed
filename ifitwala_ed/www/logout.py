@@ -23,14 +23,20 @@ def _redirect(to: str):
 
 
 def _logout_current_session():
+    session_user = str(getattr(getattr(frappe, "session", None), "user", "") or "Guest")
+    if session_user == "Guest":
+        return False
+
     login_manager = getattr(frappe.local, "login_manager", None)
     if not login_manager or not hasattr(login_manager, "logout"):
         frappe.log_error(
             title="LOGOUT LOGIN_MANAGER MISSING",
-            message=frappe.as_json({"path": "/logout", "session_user": frappe.session.user}),
+            message=frappe.as_json({"path": "/logout", "session_user": session_user}),
         )
-        return
+        return False
+
     login_manager.logout()
+    return True
 
 
 def get_context(context):
