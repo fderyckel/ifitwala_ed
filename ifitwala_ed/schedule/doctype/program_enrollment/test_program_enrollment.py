@@ -77,7 +77,7 @@ class TestProgramEnrollment(TestCase):
     )
     @patch.object(ProgramEnrollment, "update_student_joining_date")
     def test_on_update_auto_upgrades_when_inserted_active(self, mock_update_joining_date, mock_auto_upgrade):
-        enrollment = ProgramEnrollment({"name": "PE-TEST-NEW", "student": "STU-TEST", "archived": 0})
+        enrollment = _make_program_enrollment_doc("PE-TEST-NEW")
 
         with patch.object(enrollment, "get_doc_before_save", return_value=None):
             enrollment.on_update()
@@ -93,7 +93,7 @@ class TestProgramEnrollment(TestCase):
     )
     @patch.object(ProgramEnrollment, "update_student_joining_date")
     def test_on_update_skips_auto_upgrade_for_active_edit(self, mock_update_joining_date, mock_auto_upgrade):
-        enrollment = ProgramEnrollment({"name": "PE-TEST-EDIT", "student": "STU-TEST", "archived": 0})
+        enrollment = _make_program_enrollment_doc("PE-TEST-EDIT")
         before = frappe._dict({"archived": 0})
 
         with patch.object(enrollment, "get_doc_before_save", return_value=before):
@@ -107,7 +107,7 @@ class TestProgramEnrollment(TestCase):
     )
     @patch.object(ProgramEnrollment, "update_student_joining_date")
     def test_on_update_auto_upgrades_when_unarchived(self, mock_update_joining_date, mock_auto_upgrade):
-        enrollment = ProgramEnrollment({"name": "PE-TEST-UNARCHIVE", "student": "STU-TEST", "archived": 0})
+        enrollment = _make_program_enrollment_doc("PE-TEST-UNARCHIVE")
         before = frappe._dict({"archived": 1})
 
         with patch.object(enrollment, "get_doc_before_save", return_value=before):
@@ -118,3 +118,14 @@ class TestProgramEnrollment(TestCase):
             student_name="STU-TEST",
             program_enrollment="PE-TEST-UNARCHIVE",
         )
+
+
+def _make_program_enrollment_doc(name):
+    return ProgramEnrollment(
+        {
+            "doctype": "Program Enrollment",
+            "name": name,
+            "student": "STU-TEST",
+            "archived": 0,
+        }
+    )
