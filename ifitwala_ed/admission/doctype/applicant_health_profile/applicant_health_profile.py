@@ -36,6 +36,7 @@ class ApplicantHealthProfile(Document):
         user_roles = set(frappe.get_roles(frappe.session.user))
         is_family = bool(user_roles & (FAMILY_ROLES | {ADMISSIONS_APPLICANT_ROLE}))
         is_staff = bool(user_roles & STAFF_ROLES)
+        is_family_only = is_family and not is_staff
 
         if not is_family and not is_staff:
             frappe.throw(_("You do not have permission to edit Applicant Health Profiles."))
@@ -50,7 +51,7 @@ class ApplicantHealthProfile(Document):
                     frappe.PermissionError,
                 )
 
-        if is_family:
+        if is_family_only:
             if not _is_family_linked_to_student_applicant(self.student_applicant, frappe.session.user, user_roles):
                 frappe.throw(
                     _("You do not have permission to edit this Applicant Health Profile."), frappe.PermissionError
@@ -60,7 +61,7 @@ class ApplicantHealthProfile(Document):
         if status in {"Rejected", "Promoted"}:
             frappe.throw(_("Applicant is read-only in terminal states."))
 
-        if is_family:
+        if is_family_only:
             if status not in {
                 "Draft",
                 "Invited",

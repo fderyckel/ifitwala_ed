@@ -133,6 +133,23 @@ class TestApplicantHealthProfile(FrappeTestCase):
             frappe.has_permission("Student Applicant", ptype="write", doc=self.applicant, user=reviewer_user)
         )
 
+    def test_mixed_role_staff_user_is_evaluated_as_staff_not_family(self):
+        mixed_user = self._create_user_with_roles(["Admission Manager", "Admissions Applicant"])
+        self._create_employee(user_id=mixed_user, school=self.school)
+        frappe.clear_cache(user=mixed_user)
+        frappe.set_user(mixed_user)
+
+        profile = frappe.get_doc(
+            {
+                "doctype": "Applicant Health Profile",
+                "student_applicant": self.applicant,
+                "blood_group": "B Positive",
+            }
+        ).insert(ignore_permissions=True)
+
+        self._created.append(("Applicant Health Profile", profile.name))
+        self.assertEqual(profile.review_status, "Pending")
+
     def _create_organization(self) -> str:
         doc = frappe.get_doc(
             {
@@ -157,9 +174,13 @@ class TestApplicantHealthProfile(FrappeTestCase):
         return doc.name
 
     def _create_user_with_role(self, role_name: str) -> str:
-        if not frappe.db.exists("Role", role_name):
-            frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
-            self._created.append(("Role", role_name))
+        return self._create_user_with_roles([role_name])
+
+    def _create_user_with_roles(self, role_names: list[str]) -> str:
+        for role_name in role_names:
+            if not frappe.db.exists("Role", role_name):
+                frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+                self._created.append(("Role", role_name))
 
         user = frappe.get_doc(
             {
@@ -168,11 +189,29 @@ class TestApplicantHealthProfile(FrappeTestCase):
                 "first_name": "Admissions",
                 "last_name": "Applicant",
                 "enabled": 1,
-                "roles": [{"role": role_name}],
+                "roles": [{"role": role_name} for role_name in role_names],
             }
         ).insert(ignore_permissions=True)
         self._created.append(("User", user.name))
         return user.name
+
+    def _create_employee(self, *, user_id: str, school: str):
+        employee = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": "Admissions",
+                "employee_last_name": "Staff",
+                "employee_gender": "Male",
+                "employee_professional_email": user_id,
+                "date_of_joining": "2028-01-01",
+                "employment_status": "Active",
+                "organization": self.organization,
+                "school": school,
+                "user_id": user_id,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Employee", employee.name))
+        return employee.name
 
     def _create_student_applicant(self, organization: str, school: str, applicant_user: str) -> str:
         doc = frappe.get_doc(
