@@ -145,6 +145,7 @@ def _build_program_tool_context():
         },
     )
     source_enrollment.save()
+    source_enrollment.db_set("archived", 1, update_modified=False)
 
     return {
         "student": student,
