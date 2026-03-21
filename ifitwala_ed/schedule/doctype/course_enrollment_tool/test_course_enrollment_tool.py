@@ -119,6 +119,7 @@ def _build_course_tool_context():
     )
     matching_source_enrollment.append("courses", {"course": source_course.name, "status": "Completed"})
     matching_source_enrollment.save()
+    matching_source_enrollment.db_set("archived", 1, update_modified=False)
 
     other_source_enrollment = _make_enrollment(
         student=other_student.name,
@@ -129,6 +130,7 @@ def _build_course_tool_context():
     )
     other_source_enrollment.append("courses", {"course": other_source_course.name, "status": "Completed"})
     other_source_enrollment.save()
+    other_source_enrollment.db_set("archived", 1, update_modified=False)
 
     matching_target_enrollment = _make_enrollment(
         student=matching_student.name,
