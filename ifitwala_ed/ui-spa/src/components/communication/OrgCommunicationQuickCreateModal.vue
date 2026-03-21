@@ -193,12 +193,15 @@
 												<p class="type-overline text-ink/55">Delivery</p>
 												<h3 class="type-h3 text-ink">Publishing and surfaces</h3>
 												<p class="type-caption text-ink/65">
-													Choose whether this is saved as a draft, scheduled, or published
-													immediately.
+													{{
+														isClassEventMode
+															? 'Choose whether this is saved as a draft, scheduled, or published immediately.'
+															: 'Publish will send now or schedule from Publish from. Save as draft keeps the communication editable.'
+													}}
 												</p>
 											</div>
 
-											<div class="mt-4 flex flex-wrap gap-2">
+											<div v-if="isClassEventMode" class="mt-4 flex flex-wrap gap-2">
 												<button
 													v-for="statusOption in statusOptions"
 													:key="statusOption"
@@ -214,6 +217,17 @@
 												>
 													{{ statusOption }}
 												</button>
+											</div>
+											<div
+												v-else
+												class="mt-4 rounded-2xl border border-sky/30 bg-sky/10 px-4 py-3"
+											>
+												<p class="type-caption text-canopy">
+													Publish action status:
+													<span class="type-body-strong text-canopy">
+														{{ publishActionStatus }}
+													</span>
+												</p>
 											</div>
 
 											<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -468,9 +482,11 @@
 
 											<div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
 												<div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-													<p class="type-caption text-white/60">Delivery</p>
+													<p class="type-caption text-white/60">
+														{{ isClassEventMode ? 'Delivery' : 'Publish action' }}
+													</p>
 													<p class="mt-1 type-body-strong text-white">
-														{{ form.status }} · {{ form.portal_surface }}
+														{{ publishActionStatus }} · {{ form.portal_surface }}
 													</p>
 												</div>
 												<div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
@@ -552,12 +568,20 @@
 										Cancel
 									</Button>
 									<Button
+										v-if="!isClassEventMode"
+										appearance="secondary"
+										:disabled="submitDisabled"
+										@click="submitDraft"
+									>
+										Save as draft
+									</Button>
+									<Button
 										appearance="primary"
 										:loading="submitting"
 										:disabled="submitDisabled"
 										type="submit"
 									>
-										{{ submitLabel }}
+										{{ primarySubmitLabel }}
 									</Button>
 								</footer>
 							</form>
@@ -748,10 +772,22 @@ const overlayTitle = computed(() =>
 const overlayDescription = computed(() =>
 	isClassEventMode.value
 		? 'Create an org communication from this class context without leaving the calendar flow.'
-		: 'Publish a communication for staff, a student group, or your broader school community from Staff Home.'
+		: 'Publish or save a communication for staff, a student group, or your broader school community from Staff Home.'
 );
-const submitLabel = computed(() =>
-	form.status === 'Draft' ? 'Save draft' : 'Create communication'
+const isFuturePublishFrom = computed(() => {
+	if (!form.publish_from) return false;
+	return toTimestamp(form.publish_from) > Date.now();
+});
+const publishActionStatus = computed(() => {
+	if (isClassEventMode.value) return form.status || 'Published';
+	return isFuturePublishFrom.value ? 'Scheduled' : 'Published';
+});
+const primarySubmitLabel = computed(() =>
+	isClassEventMode.value
+		? form.status === 'Draft'
+			? 'Save draft'
+			: 'Create communication'
+		: 'Publish'
 );
 const summaryTitle = computed(() =>
 	form.title.trim() ? form.title.trim() : 'Untitled communication'
@@ -1185,13 +1221,13 @@ function buildAudiencePayload(): OrgCommunicationQuickAudienceRow[] {
 	}));
 }
 
-function buildPayload(): CreateOrgCommunicationQuickRequest {
+function buildPayload(statusOverride?: string): CreateOrgCommunicationQuickRequest {
 	const briefStartDate = form.brief_start_date || null;
 	const briefEndDate = form.brief_end_date || briefStartDate;
 	return {
 		title: form.title.trim(),
 		communication_type: form.communication_type,
-		status: form.status,
+		status: statusOverride || form.status,
 		priority: form.priority,
 		portal_surface: form.portal_surface,
 		publish_from: toFrappeDatetime(form.publish_from),
@@ -1212,6 +1248,22 @@ function buildPayload(): CreateOrgCommunicationQuickRequest {
 }
 
 async function submit() {
+	if (!isClassEventMode.value) {
+		await submitPublish();
+		return;
+	}
+	await submitWithStatus(form.status);
+}
+
+async function submitDraft() {
+	await submitWithStatus('Draft');
+}
+
+async function submitPublish() {
+	await submitWithStatus(isFuturePublishFrom.value ? 'Scheduled' : 'Published');
+}
+
+async function submitWithStatus(statusOverride: string) {
 	const validationError = validationMessage.value;
 	if (validationError) {
 		errorMessage.value = validationError;
@@ -1222,7 +1274,7 @@ async function submit() {
 	submitting.value = true;
 
 	try {
-		const response = await createOrgCommunicationQuick(buildPayload());
+		const response = await createOrgCommunicationQuick(buildPayload(statusOverride));
 		emit('close', 'programmatic');
 		emit('done', response);
 	} catch (error) {

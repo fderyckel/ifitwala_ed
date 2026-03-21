@@ -970,6 +970,8 @@ const wellbeingTimeline = computed(() => {
 	});
 });
 
+const wellbeingTimelineNeedsScroll = computed(() => wellbeingTimeline.value.length > 5);
+
 const kpiTiles = computed(() => [
 	{
 		label: 'Attendance',
@@ -1614,7 +1616,9 @@ const reflectionFlags = computed(() => {
 					</section>
 
 					<!-- Band 4: Wellbeing & Support -->
-					<section class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+					<section
+						class="grid grid-cols-1 gap-6 lg:items-start lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
+					>
 						<div
 							class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm"
 						>
@@ -1646,45 +1650,53 @@ const reflectionFlags = computed(() => {
 									</select>
 								</div>
 							</header>
-							<div class="space-y-3">
-								<div
-									v-for="item in wellbeingTimeline"
-									:key="item.name"
-									class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2"
-								>
+							<div>
+								<p v-if="wellbeingTimelineNeedsScroll" class="mb-2 text-[11px] text-slate-500">
+									Showing the latest items first. Scroll for older wellbeing activity.
+								</p>
+								<div class="max-h-[32rem] space-y-3 overflow-y-auto pr-1">
 									<div
-										class="mt-1 h-2.5 w-2.5 rounded-full"
-										:class="{
-											'bg-emerald-500': item.type === 'student_log',
-											'bg-amber-500': item.type === 'referral',
-											'bg-sky-500': item.type === 'nurse_visit',
-											'bg-rose-500': item.type === 'attendance_incident',
-										}"
-									></div>
-									<div class="flex-1 text-sm text-slate-700">
-										<div class="flex items-center justify-between">
-											<div class="font-semibold text-slate-900">{{ item.title }}</div>
-											<span class="text-[11px] text-slate-500">{{ formatDate(item.date) }}</span>
-										</div>
-										<p class="text-xs text-slate-500">{{ item.summary }}</p>
-										<div class="mt-1 flex items-center gap-2 text-[11px] text-slate-500">
-											<span class="rounded-full bg-white px-2 py-0.5 shadow-sm">
-												{{ item.type }}
-											</span>
-											<span v-if="item.status" class="rounded-full bg-white px-2 py-0.5 shadow-sm">
-												{{ item.status }}
-											</span>
+										v-for="item in wellbeingTimeline"
+										:key="item.name"
+										class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2"
+									>
+										<div
+											class="mt-1 h-2.5 w-2.5 rounded-full"
+											:class="{
+												'bg-emerald-500': item.type === 'student_log',
+												'bg-amber-500': item.type === 'referral',
+												'bg-sky-500': item.type === 'nurse_visit',
+												'bg-rose-500': item.type === 'attendance_incident',
+											}"
+										></div>
+										<div class="flex-1 text-sm text-slate-700">
+											<div class="flex items-center justify-between">
+												<div class="font-semibold text-slate-900">{{ item.title }}</div>
+												<span class="text-[11px] text-slate-500">{{ formatDate(item.date) }}</span>
+											</div>
+											<p class="text-xs text-slate-500">{{ item.summary }}</p>
+											<div class="mt-1 flex items-center gap-2 text-[11px] text-slate-500">
+												<span class="rounded-full bg-white px-2 py-0.5 shadow-sm">
+													{{ item.type }}
+												</span>
+												<span
+													v-if="item.status"
+													class="rounded-full bg-white px-2 py-0.5 shadow-sm"
+												>
+													{{ item.status }}
+												</span>
+											</div>
 										</div>
 									</div>
-								</div>
-								<div v-if="!wellbeingTimeline.length" class="text-xs text-slate-400">
-									No wellbeing items for this scope.
+									<div v-if="!wellbeingTimeline.length" class="text-xs text-slate-400">
+										No wellbeing items for this scope.
+									</div>
 								</div>
 							</div>
 						</div>
 
 						<div
-							class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm"
+							class="self-start rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm"
 						>
 							<header class="mb-3 flex items-center justify-between">
 								<h3 class="text-sm font-semibold text-slate-800">Support metrics & patterns</h3>

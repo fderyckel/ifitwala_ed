@@ -31,6 +31,13 @@ Rules:
 3. The overlay supports explicit `entryMode='staff-home' | 'class-event'`.
 4. `entryMode='staff-home'` is the general-purpose quick-create workflow for staff, student-group, and community communications.
 5. `entryMode='class-event'` is a prefilled, locked context mode that keeps the communication anchored to the selected class event and student group.
+6. In `entryMode='staff-home'`, the footer exposes two explicit actions:
+   - `Publish`
+   - `Save as draft`
+7. The `Publish` action derives workflow state from the entered publish window:
+   - future `publish_from` => `Scheduled`
+   - blank or current/past `publish_from` => `Published`
+8. The `Save as draft` action always persists `status='Draft'`.
 
 ## 2. API and Payload Contract
 
@@ -99,6 +106,7 @@ Rules:
 2. The quick-create service emits `SIGNAL_ORG_COMMUNICATION_INVALIDATE` only after semantic success.
 3. The overlay never owns cross-surface refresh.
 4. Refresh owners such as the archive page remain responsible for reloading their own org-communication data.
+5. Staff Home quick-create must not rely on the DocType default status to decide the primary action.
 
 ## 5. Technical Notes (IT)
 
