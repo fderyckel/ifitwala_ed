@@ -20,7 +20,6 @@ class TestEnrollmentReport(TestCase):
     )
     def test_get_program_data_uses_descendant_aware_school_scope(
         self,
-        _mock_session,
         mock_get_allowed_schools,
         mock_sql,
     ):
@@ -42,7 +41,6 @@ class TestEnrollmentReport(TestCase):
     )
     def test_get_cohort_data_uses_descendant_aware_school_scope(
         self,
-        _mock_session,
         mock_get_allowed_schools,
         mock_sql,
     ):
@@ -64,7 +62,6 @@ class TestEnrollmentReport(TestCase):
     )
     def test_get_course_data_uses_descendant_aware_school_scope(
         self,
-        _mock_session,
         mock_get_allowed_schools,
         mock_sql,
     ):
