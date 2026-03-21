@@ -338,6 +338,30 @@ frappe.ui.form.on("Employee", {
   },
 });
 
+frappe.ui.form.on("Employee History", {
+  employee_history_add(frm, cdt, cdn) {
+    apply_employee_history_scope_defaults(frm, cdt, cdn);
+  },
+});
+
+function apply_employee_history_scope_defaults(frm, cdt, cdn) {
+  const row = locals[cdt][cdn];
+  if (!row) return;
+
+  const employeeOrganization = (frm.doc.organization || "").trim();
+  const employeeSchool = (frm.doc.school || "").trim();
+  const rowOrganization = (row.organization || "").trim();
+  const rowSchool = (row.school || "").trim();
+
+  if (rowOrganization !== employeeOrganization) {
+    frappe.model.set_value(cdt, cdn, "organization", employeeOrganization);
+  }
+
+  if (rowSchool !== employeeSchool) {
+    frappe.model.set_value(cdt, cdn, "school", employeeSchool);
+  }
+}
+
 /**
  * Lock the rendered Contact/Address UI so it behaves as "display-only".
  *
