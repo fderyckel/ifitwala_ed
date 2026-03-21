@@ -497,7 +497,7 @@ import {
 	ref,
 	watch,
 } from 'vue';
-import { createResource } from 'frappe-ui';
+import { createResource, FeatherIcon } from 'frappe-ui';
 
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
