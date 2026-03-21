@@ -760,6 +760,11 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 		icon: 'calendar',
 		links: [
 			{
+				label: 'Academic Load',
+				to: { name: 'staff-academic-load' },
+				capability: 'analytics_academic_load',
+			},
+			{
 				label: 'Room Occupancy',
 				to: { name: 'staff-room-utilization' },
 				capability: 'analytics_scheduling',

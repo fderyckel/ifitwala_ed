@@ -107,6 +107,17 @@ def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> 
         "analytics_admissions": bool(roles & set(ADMISSIONS_ANALYTICS_ROLES)),
         "analytics_demographics": bool(roles & set(DEMOGRAPHICS_ANALYTICS_ROLES)),
         "analytics_scheduling": bool(roles & (set(SCHEDULING_ROLES) | set(ADMIN_ROLES))),
+        "analytics_academic_load": bool(
+            roles
+            & {
+                "Academic Admin",
+                "Academic Assistant",
+                "Assistant Admin",
+                "Curriculum Coordinator",
+                "System Manager",
+                "Administrator",
+            }
+        ),
         "analytics_policy_signatures": bool(roles & set(POLICY_SIGNATURE_ANALYTICS_ROLES)),
         "manage_policy_signatures": bool(roles & set(POLICY_SIGNATURE_MANAGER_ROLES)),
         "staff_policy_library": bool(roles & set(POLICY_LIBRARY_ROLES)),

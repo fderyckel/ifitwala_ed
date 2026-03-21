@@ -165,6 +165,7 @@ permission_query_conditions = {
     "Employee": "ifitwala_ed.hr.doctype.employee.employee.get_permission_query_conditions",
     "Designation": "ifitwala_ed.hr.doctype.designation.designation.get_permission_query_conditions",
     "Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.get_permission_query_conditions",
+    "Academic Load Policy": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.get_permission_query_conditions",
     "Activity Booking": "ifitwala_ed.eca.doctype.activity_booking.activity_booking.get_permission_query_conditions",
     "Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.get_permission_query_conditions",
     "Institutional Policy": "ifitwala_ed.governance.doctype.institutional_policy.institutional_policy.get_permission_query_conditions",
@@ -209,6 +210,7 @@ has_permission = {
     "Employee": "ifitwala_ed.hr.doctype.employee.employee.employee_has_permission",
     "Designation": "ifitwala_ed.hr.doctype.designation.designation.has_permission",
     "Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.has_permission",
+    "Academic Load Policy": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.has_permission",
     "Activity Booking": "ifitwala_ed.eca.doctype.activity_booking.activity_booking.has_permission",
     "Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.has_permission",
     "Institutional Policy": "ifitwala_ed.governance.doctype.institutional_policy.institutional_policy.has_permission",
@@ -284,8 +286,59 @@ doc_events = {
         "after_insert": "ifitwala_ed.utilities.file_dispatcher.handle_file_after_insert",
         "on_update": "ifitwala_ed.utilities.file_dispatcher.handle_file_on_update",
     },
-    "Student Group": {"on_update": "ifitwala_ed.schedule.schedule_utils.invalidate_for_student_group"},
+    "Student Group": {
+        "on_update": [
+            "ifitwala_ed.schedule.schedule_utils.invalidate_for_student_group",
+            "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        ]
+    },
+    "Student Group Student": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "Student Group Instructor": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
     "School Calendar Holiday": {"after_insert": "ifitwala_ed.schedule.schedule_utils.invalidate_all_for_calendar"},
+    "Program Offering": {
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache"
+    },
+    "Program Offering Activity Section": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "Meeting": {
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "Meeting Participant": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "School Event": {
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "School Event Participant": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "Employee Booking": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "Academic Load Policy": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
 }
 
 # Scheduled Tasks

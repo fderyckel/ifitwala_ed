@@ -74,6 +74,14 @@ class TestAnalyticsPermissions(FrappeTestCase):
         self.assertTrue(caps.get("analytics_policy_signatures"))
         self.assertTrue(caps.get("manage_policy_signatures"))
 
+    def test_staff_home_academic_load_capability_for_academic_admin(self):
+        caps = _build_staff_home_capabilities({"Academic Admin"})
+        self.assertTrue(caps.get("analytics_academic_load"))
+
+    def test_staff_home_academic_load_capability_is_hidden_from_instructor(self):
+        caps = _build_staff_home_capabilities({"Instructor"})
+        self.assertFalse(caps.get("analytics_academic_load"))
+
     def test_staff_home_policy_library_capability_for_employee(self):
         caps = _build_staff_home_capabilities({"Employee"})
         self.assertTrue(caps.get("staff_policy_library"))

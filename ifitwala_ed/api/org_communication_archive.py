@@ -289,9 +289,13 @@ def get_org_communication_item(name=None):
     roles = frappe.get_roles(user)
 
     # Only what we actually need here (no department)
+    # Keep detail visibility aligned with the feed endpoint. The feed already scopes
+    # the visible list using the user-linked Employee record without an extra status
+    # filter, so the detail endpoint must resolve the same context or users can see a
+    # row in the archive list but silently lose the full body in the detail pane.
     employee = frappe.db.get_value(
         "Employee",
-        {"user_id": user, "employment_status": "Active"},
+        {"user_id": user},
         ["name", "school", "organization"],
         as_dict=True,
     )
