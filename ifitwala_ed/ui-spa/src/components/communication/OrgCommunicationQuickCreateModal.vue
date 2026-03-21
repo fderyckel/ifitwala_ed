@@ -165,13 +165,18 @@
 
 											<div class="mt-4 space-y-1">
 												<label class="type-label">Message</label>
-												<FormControl
-													v-model="form.message"
-													type="textarea"
-													:rows="9"
-													placeholder="Share the update, call to action, or announcement."
-													:disabled="submitting"
-												/>
+												<div
+													class="if-org-communication-message-editor overflow-hidden rounded-2xl border border-border/80 bg-white shadow-sm"
+												>
+													<TextEditor
+														:content="form.message"
+														placeholder="Share the update, call to action, or announcement."
+														:editable="!submitting"
+														:fixed-menu="messageEditorButtons"
+														editor-class="prose prose-sm max-w-none min-h-[14rem] bg-white px-4 py-3 text-sm text-ink focus:outline-none"
+														@change="updateMessage"
+													/>
+												</div>
 											</div>
 
 											<div class="mt-4 space-y-1">
@@ -472,7 +477,7 @@
 
 									<aside class="space-y-5">
 										<section
-											class="overflow-hidden rounded-[32px] border border-canopy/10 bg-[linear-gradient(160deg,rgba(var(--canopy-rgb),0.96),rgba(var(--ink-rgb),0.92))] p-5 text-white shadow-soft"
+											class="if-org-communication-ready-check overflow-hidden rounded-[32px] border border-canopy/10 bg-canopy bg-[linear-gradient(160deg,rgb(var(--canopy-rgb)/0.96),rgb(var(--ink-rgb)/0.92))] p-5 text-white shadow-soft"
 										>
 											<p class="type-overline text-white/65">Ready check</p>
 											<h3 class="mt-1 type-h3 text-white">{{ summaryTitle }}</h3>
@@ -602,7 +607,7 @@ import {
 	TransitionChild,
 	TransitionRoot,
 } from '@headlessui/vue';
-import { Button, FeatherIcon, FormControl, Spinner } from 'frappe-ui';
+import { Button, FeatherIcon, FormControl, Spinner, TextEditor } from 'frappe-ui';
 
 import {
 	createOrgCommunicationQuick,
@@ -761,6 +766,20 @@ const recipientToggleDefinitions: Array<{ field: RecipientField; label: string }
 	{ field: 'to_students', label: 'Students' },
 	{ field: 'to_guardians', label: 'Guardians' },
 	{ field: 'to_community', label: 'Community' },
+];
+const messageEditorButtons = [
+	'Paragraph',
+	['Heading 2', 'Heading 3'],
+	'Separator',
+	'Bold',
+	'Italic',
+	'Underline',
+	'Separator',
+	'Bullet List',
+	'Numbered List',
+	'Separator',
+	'Link',
+	'Blockquote',
 ];
 
 const eyebrow = computed(
@@ -1175,6 +1194,10 @@ function toggleRecipient(row: AudienceRowState, field: RecipientField, event: Ev
 	if (!target) return;
 	row[field] = target.checked;
 	applyAudienceDefaults(row);
+}
+
+function updateMessage(content: string) {
+	form.message = content;
 }
 
 function toFrappeDatetime(value: string) {

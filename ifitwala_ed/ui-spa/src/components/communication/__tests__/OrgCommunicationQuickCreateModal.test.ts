@@ -127,6 +127,23 @@ vi.mock('frappe-ui', () => ({
 			return () => h('span');
 		},
 	}),
+	TextEditor: defineComponent({
+		name: 'TextEditorStub',
+		props: ['content', 'placeholder', 'editable', 'fixedMenu', 'editorClass'],
+		emits: ['change'],
+		setup(props, { emit }) {
+			return () =>
+				h('textarea', {
+					value: props.content ?? '',
+					placeholder: props.placeholder,
+					disabled: props.editable === false,
+					'data-text-editor': 'true',
+					class: props.editorClass,
+					onInput: (event: Event) =>
+						emit('change', (event.target as HTMLTextAreaElement).value),
+				});
+		},
+	}),
 }));
 
 vi.mock('@/lib/services/orgCommunicationQuickCreateService', () => ({
@@ -248,6 +265,13 @@ function setPublishFrom(value: string) {
 	input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+function setRichMessage(value: string) {
+	const editor = document.querySelector('[data-text-editor="true"]') as HTMLTextAreaElement | null;
+	if (!editor) return;
+	editor.value = value;
+	editor.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 afterEach(() => {
 	createOrgCommunicationQuickMock.mockReset();
 	getOptionsMock.mockReset();
@@ -328,5 +352,40 @@ describe('OrgCommunicationQuickCreateModal', () => {
 			status: 'Scheduled',
 			publish_from: '2099-03-21 09:30:00',
 		});
+	});
+
+	it('submits rich-text message HTML from the overlay editor', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-0004',
+			title: 'Weekly staff update',
+		});
+
+		mountModal();
+		await flushUi();
+
+		setRichMessage('<p><strong>Important</strong> update</p><ul><li>Agenda</li></ul>');
+		clickRecipient('Students');
+		await flushUi();
+		clickButton('Publish');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(createOrgCommunicationQuickMock.mock.calls[0][0]).toMatchObject({
+			message: '<p><strong>Important</strong> update</p><ul><li>Agenda</li></ul>',
+		});
+	});
+
+	it('renders the ready-check card with a solid canopy fallback background', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+
+		mountModal();
+		await flushUi();
+
+		const readyCheckCard = document.querySelector('.if-org-communication-ready-check');
+		expect(readyCheckCard).toBeTruthy();
+		expect(readyCheckCard?.getAttribute('class') || '').toContain('bg-canopy');
 	});
 });
