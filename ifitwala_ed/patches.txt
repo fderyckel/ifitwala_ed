@@ -1,2 +1,3 @@
 # removed most stuff
 ifitwala_ed.patches.create_default_academic_load_policies
+ifitwala_ed.patches.normalize_staff_role_home_pages

@@ -90,6 +90,7 @@ def create_roles_with_homepage():
         {"role_name": "Guardian", "desk_access": 0, "home_page": canonical_path_for_section("guardian")},
         {"role_name": "Admissions Applicant", "desk_access": 0, "home_page": "/admissions"},
         {"role_name": ADMISSIONS_FAMILY_ROLE, "desk_access": 0, "home_page": "/admissions"},
+        {"role_name": "Academic Staff", "desk_access": 1, "home_page": canonical_path_for_section("staff")},
         {"role_name": "Nurse", "desk_access": 1, "home_page": "/desk/health"},
         {"role_name": "Academic Admin", "desk_access": 1, "home_page": "/desk/admin"},
         {"role_name": "Admission Officer", "desk_access": 1, "home_page": "/desk/admission"},
