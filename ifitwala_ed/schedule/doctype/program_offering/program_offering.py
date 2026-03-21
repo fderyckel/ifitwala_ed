@@ -1002,14 +1002,14 @@ def program_course_link_query(doctype, txt, searchfield, start, page_len, filter
             ["Program Course", "course_name", "like", like_txt],
         ]
 
-    rows = frappe.get_list(
+    rows = frappe.get_all(
         "Program Course",
         fields=["course", "course_name"],
         filters=db_filters,
         or_filters=or_filters,
         order_by="idx asc",
         start=int(start or 0),
-        page_length=int(page_len or 20),
+        limit=int(page_len or 20),
     )
     return [[row.get("course"), (row.get("course_name") or row.get("course"))] for row in rows if row.get("course")]
 
