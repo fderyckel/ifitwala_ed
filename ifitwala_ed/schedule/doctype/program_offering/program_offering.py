@@ -986,7 +986,10 @@ def program_course_link_query(doctype, txt, searchfield, start, page_len, filter
     else:
         exclude_courses = []
 
-    db_filters = {"parent": program}
+    db_filters = {
+        "parent": program,
+        "parenttype": "Program",
+    }
     if exclude_courses:
         db_filters["course"] = ["not in", exclude_courses]
 
