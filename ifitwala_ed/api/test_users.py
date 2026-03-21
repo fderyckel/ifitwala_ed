@@ -75,11 +75,13 @@ class TestUserRedirect(FrappeTestCase):
                 args={"redirect-to": "/desk/eca"},
             )
             frappe.form_dict = frappe._dict({"redirect_to": "/desk/eca"})
-            with self.assertRaises(RequestRedirect) as ctx:
-                sanitize_login_redirect_param()
+            with patch("frappe.log_error") as log_error:
+                with self.assertRaises(RequestRedirect) as ctx:
+                    sanitize_login_redirect_param()
             self.assertEqual(getattr(ctx.exception, "new_url", None), "/login?foo=bar")
             self.assertEqual(frappe.form_dict.get("redirect_to"), "")
             self.assertEqual(frappe.form_dict.get("redirect-to"), "")
+            log_error.assert_not_called()
         finally:
             if original_request is None:
                 if hasattr(frappe.local, "request"):
@@ -346,6 +348,54 @@ class TestUserRedirect(FrappeTestCase):
         frappe.set_user("Administrator")
         frappe.delete_doc("Employee", employee.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
+
+    def test_login_redirect_trace_does_not_write_error_log(self):
+        user = frappe.new_doc("User")
+        user.email = f"test_redirect_trace_logging_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Trace"
+        user.last_name = "Logging"
+        user.enabled = 1
+        _append_role(user, "Employee")
+        user.insert(ignore_permissions=True)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Trace"
+        employee.employee_last_name = "Logging"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        employee.insert(ignore_permissions=True)
+
+        original_request = getattr(frappe.local, "request", None)
+        original_form_dict = getattr(frappe, "form_dict", None)
+        try:
+            frappe.set_user(user.email)
+            frappe.local.response = {}
+            frappe.local.request = frappe._dict(path="/login", method="POST")
+            frappe.form_dict = frappe._dict({"cmd": "login", "redirect_to": "/hub/staff"})
+
+            with patch("frappe.log_error") as log_error:
+                redirect_user_to_entry_portal()
+
+            self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
+            self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+            log_error.assert_not_called()
+        finally:
+            if original_form_dict is None:
+                if hasattr(frappe, "form_dict"):
+                    delattr(frappe, "form_dict")
+            else:
+                frappe.form_dict = original_form_dict
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
+            frappe.set_user("Administrator")
+            frappe.delete_doc("Employee", employee.name, force=True)
+            frappe.delete_doc("User", user.email, force=True)
 
     def test_guardian_redirects_to_guardian_portal(self):
         """Guardians should be redirected to /hub/guardian."""
