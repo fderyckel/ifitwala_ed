@@ -319,9 +319,9 @@ def get_dashboard_data(filters=None):
 
             UNION ALL
 
-            SELECT 'date' AS metric, DATE_FORMAT(sl.date,'%Y-%m-%d') AS label, COUNT(*) AS value
+            SELECT 'date' AS metric, DATE_FORMAT(sl.date,'%%Y-%%m-%%d') AS label, COUNT(*) AS value
             FROM `tabStudent Log` sl WHERE {where_clause}
-            GROUP BY DATE_FORMAT(sl.date,'%Y-%m-%d')
+            GROUP BY DATE_FORMAT(sl.date,'%%Y-%%m-%%d')
 
             UNION ALL
 

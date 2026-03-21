@@ -72,6 +72,30 @@ class _CacheStub:
 
 
 class TestStudentLogDashboard(TestCase):
+    def test_get_dashboard_data_escapes_date_format_tokens_in_union_query(self):
+        seen_union_query = None
+
+        def fake_sql(query, params=None, as_dict=False):
+            nonlocal seen_union_query
+            if "UNION ALL" in query and "'log_type' AS metric" in query:
+                seen_union_query = query
+                return [
+                    {"metric": "date", "label": "2026-03-10", "value": 2},
+                    {"metric": "open_follow_ups", "label": "open_follow_ups", "value": 1},
+                ]
+            raise AssertionError(f"Unexpected SQL in test_get_dashboard_data_escapes_date_format_tokens: {query}")
+
+        with (
+            patch.object(dashboard_api, "_ensure_student_log_analytics_access", return_value="Administrator"),
+            patch.object(dashboard_api, "get_student_log_visibility_predicate", return_value=("1=1", {})),
+            patch.object(dashboard_api.frappe.db, "sql", side_effect=fake_sql),
+        ):
+            result = dashboard_api.get_dashboard_data(filters={})
+
+        self.assertIn("DATE_FORMAT(sl.date,'%%Y-%%m-%%d')", seen_union_query)
+        self.assertEqual(result.get("incidentsOverTime"), [{"label": "2026-03-10", "value": 2}])
+        self.assertEqual(result.get("openFollowUps"), 1)
+
     def test_get_dashboard_data_includes_follow_up_summaries_for_selected_student_rows(self):
         def fake_sql(query, params=None, as_dict=False):
             # Consolidated UNION query for dashboard aggregates (metric column identifies result type)
