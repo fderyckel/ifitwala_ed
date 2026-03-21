@@ -4,6 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 
 import AnalyticsCard from '@/components/analytics/AnalyticsCard.vue';
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
+import AnalyticsTextPreview from '@/components/analytics/AnalyticsTextPreview.vue';
 import StatsTile from '@/components/analytics/StatsTile.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
@@ -223,11 +224,6 @@ function stripHtml(html: string) {
 		.replace(/<[^>]+>/g, ' ')
 		.replace(/\s+/g, ' ')
 		.trim();
-}
-
-function truncate(text: string, max = 140) {
-	if (!text) return '';
-	return text.length > max ? `${text.slice(0, max)}...` : text;
 }
 
 function coerceChartSeries(series: unknown): StudentLogChartSeries[] {
@@ -500,10 +496,12 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 											{{ row.log_type }}
 										</div>
 									</td>
-									<td class="px-2 py-2 align-top" :title="stripHtml(row.content || '')">
-										<div class="analytics-recent-log__snippet">
-											{{ truncate(stripHtml(row.content || '')) }}
-										</div>
+									<td class="px-2 py-2 align-top">
+										<AnalyticsTextPreview
+											class="analytics-recent-log__snippet"
+											:text="stripHtml(row.content || '')"
+											:lines="4"
+										/>
 									</td>
 									<td class="px-2 py-2 align-top">
 										<div v-if="followUpsFor(row).length" class="analytics-followup-stack">
@@ -529,9 +527,13 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 														{{ formatRespondedAt(followUp.responded_at) }}
 													</span>
 												</div>
-												<p v-if="followUp.comment_text" class="analytics-followup-card__comment">
-													{{ truncate(followUp.comment_text, 120) }}
-												</p>
+												<AnalyticsTextPreview
+													v-if="followUp.comment_text"
+													class="analytics-followup-card__comment"
+													:text="followUp.comment_text"
+													:lines="2"
+													:preview-width="500"
+												/>
 											</div>
 											<p v-if="hiddenFollowUpCount(row)" class="analytics-followup-stack__more">
 												+{{ hiddenFollowUpCount(row) }} more follow-up<span
@@ -618,8 +620,12 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 									<td class="px-2 py-2 align-top whitespace-nowrap">
 										{{ row.log_type }}
 									</td>
-									<td class="px-2 py-2 align-top" :title="stripHtml(row.content || '')">
-										{{ truncate(stripHtml(row.content || ''), 200) }}
+									<td class="px-2 py-2 align-top">
+										<AnalyticsTextPreview
+											class="analytics-selected-log__snippet"
+											:text="stripHtml(row.content || '')"
+											:lines="3"
+										/>
 									</td>
 									<td class="px-2 py-2 align-top whitespace-nowrap">
 										{{ row.author }}
@@ -648,9 +654,13 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 														{{ formatRespondedAt(followUp.responded_at) }}
 													</span>
 												</div>
-												<p v-if="followUp.comment_text" class="analytics-followup-card__comment">
-													{{ truncate(followUp.comment_text, 140) }}
-												</p>
+												<AnalyticsTextPreview
+													v-if="followUp.comment_text"
+													class="analytics-followup-card__comment"
+													:text="followUp.comment_text"
+													:lines="2"
+													:preview-width="500"
+												/>
 											</div>
 											<p v-if="hiddenFollowUpCount(row)" class="analytics-followup-stack__more">
 												+{{ hiddenFollowUpCount(row) }} more follow-up<span
@@ -688,12 +698,15 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 }
 
 .analytics-recent-log__snippet {
-	display: -webkit-box;
-	overflow: hidden;
-	word-break: break-word;
+	font-size: 1rem;
 	line-height: 1.5rem;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 4;
+	color: rgb(30 41 59);
+}
+
+.analytics-selected-log__snippet {
+	font-size: 1rem;
+	line-height: 1.6rem;
+	color: rgb(30 41 59);
 }
 
 .analytics-followup-stack {

@@ -243,12 +243,16 @@ Used by:
 													? 'bg-flame/10 text-flame animate-pulse'
 													: 'bg-surface-soft text-slate-token/70 hover:text-jacaranda'
 											"
+											:disabled="submitting || speechAvailability === 'unsupported'"
 											@click="toggleSpeech"
 										>
 											<FeatherIcon name="mic" class="h-3 w-3" />
 											{{ isListening ? __('Listening…') : __('Dictate') }}
 										</button>
 									</div>
+									<p v-if="speechHint" class="type-caption text-ink/55">
+										{{ speechHint }}
+									</p>
 									<textarea
 										v-model="form.log"
 										class="w-full rounded-2xl border border-border/70 bg-white px-4 py-3 text-sm text-ink shadow-soft outline-none focus:ring-2 focus:ring-[rgb(var(--leaf-rgb)/0.35)]"
@@ -595,6 +599,21 @@ type PickerItem = {
 	meta?: string | null;
 };
 
+type SpeechAvailability = 'unknown' | 'ready' | 'blocked' | 'unsupported';
+type SpeechRecognitionLike = {
+	continuous: boolean;
+	interimResults: boolean;
+	lang: string;
+	onstart: null | (() => void);
+	onresult: null | ((event: any) => void);
+	onerror: null | ((event: any) => void);
+	onend: null | (() => void);
+	start: () => void;
+	stop: () => void;
+	abort?: () => void;
+};
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+
 const props = defineProps<{
 	open: boolean;
 	zIndex?: number;
@@ -699,6 +718,7 @@ function emitClose(reason: CloseReason) {
 function emitAfterLeave() {
 	step.value = 'edit';
 	clearError();
+	stopSpeechRecognition();
 	emit('after-leave');
 }
 
@@ -738,6 +758,110 @@ function resetFormState() {
 	optionsData.value = null;
 }
 
+function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
+	const maybeWindow = window as any;
+	return maybeWindow.SpeechRecognition || maybeWindow.webkitSpeechRecognition || null;
+}
+
+function stopSpeechRecognition() {
+	if (!recognition) {
+		isListening.value = false;
+		return;
+	}
+
+	try {
+		recognition.onstart = null;
+		recognition.onresult = null;
+		recognition.onerror = null;
+		recognition.onend = null;
+		recognition.abort?.();
+	} catch (_err) {
+		try {
+			recognition.stop();
+		} catch (_stopErr) {
+			// Best effort cleanup only.
+		}
+	} finally {
+		recognition = null;
+		isListening.value = false;
+	}
+}
+
+function setSpeechState(state: SpeechAvailability, message = '') {
+	speechAvailability.value = state;
+	speechHint.value = message;
+}
+
+async function refreshSpeechAvailability() {
+	const SpeechRecognition = getSpeechRecognitionCtor();
+	if (!SpeechRecognition) {
+		setSpeechState(
+			'unsupported',
+			__('Dictation is not available in this browser. Type the note instead.')
+		);
+		return;
+	}
+
+	if (!window.isSecureContext) {
+		setSpeechState(
+			'blocked',
+			__(
+				'Dictation needs a secure connection. Open this site on HTTPS or localhost, then try again.'
+			)
+		);
+		return;
+	}
+
+	setSpeechState('ready');
+
+	try {
+		const permissionsApi = navigator.permissions;
+		if (!permissionsApi?.query) return;
+
+		const status = await permissionsApi.query({ name: 'microphone' as PermissionName });
+		if (status.state === 'denied') {
+			setSpeechState(
+				'blocked',
+				__(
+					'Microphone access is blocked for this site. Allow microphone access in your browser settings, then try dictation again.'
+				)
+			);
+		}
+	} catch (_err) {
+		// Some browsers do not expose microphone permissions through the Permissions API.
+	}
+}
+
+function getSpeechErrorMessage(errorCode: string) {
+	switch (errorCode) {
+		case 'audio-capture':
+			return __(
+				'No working microphone was found. Check your device input and browser microphone selection.'
+			);
+		case 'language-not-supported':
+			return __('This browser does not support dictation for the selected language.');
+		case 'network':
+			return __(
+				'Speech recognition could not reach the browser service. Check your connection and try again.'
+			);
+		case 'not-allowed':
+			if (!window.isSecureContext) {
+				return __(
+					'Dictation needs a secure connection. Open this site on HTTPS or localhost, then try again.'
+				);
+			}
+			return __(
+				'Microphone access is blocked for this site. Allow microphone access in your browser settings, then try dictation again.'
+			);
+		case 'service-not-allowed':
+			return __(
+				'This browser blocked speech recognition on this page. Check browser permissions and try again.'
+			);
+		default:
+			return __('Microphone error');
+	}
+}
+
 function hydrateFromAttendanceProps() {
 	const studentId = (props.student?.id || '').trim();
 	if (!studentId) {
@@ -756,6 +880,9 @@ function hydrateFromAttendanceProps() {
 function initializeForOpen() {
 	clearError();
 	resetFormState();
+	stopSpeechRecognition();
+	setSpeechState('unknown');
+	void refreshSpeechAvailability();
 
 	if (mode.value === 'attendance') {
 		hydrateFromAttendanceProps();
@@ -764,6 +891,7 @@ function initializeForOpen() {
 
 onBeforeUnmount(() => {
 	document.removeEventListener('keydown', onKeydown, true);
+	stopSpeechRecognition();
 });
 
 function goReview() {
@@ -918,6 +1046,7 @@ watch(
 			return;
 		}
 		document.removeEventListener('keydown', onKeydown, true);
+		stopSpeechRecognition();
 	},
 	{ immediate: true }
 );
@@ -966,10 +1095,12 @@ function onStudentSelected(studentId: string) {
 
 /* Voice to Text */
 const isListening = ref(false);
-const hasSpeechSupport = ref(!!(window as any).webkitSpeechRecognition);
-let recognition: any = null;
+const speechAvailability = ref<SpeechAvailability>('unknown');
+const speechHint = ref('');
+const hasSpeechSupport = computed(() => speechAvailability.value !== 'unsupported');
+let recognition: SpeechRecognitionLike | null = null;
 
-function toggleSpeech() {
+async function toggleSpeech() {
 	if (!hasSpeechSupport.value) return;
 
 	if (isListening.value) {
@@ -978,8 +1109,25 @@ function toggleSpeech() {
 		return;
 	}
 
+	clearError();
+	await refreshSpeechAvailability();
+	if (speechAvailability.value === 'blocked' || speechAvailability.value === 'unsupported') {
+		setError(speechHint.value, __('Microphone error'));
+		return;
+	}
+
 	try {
-		const SpeechRecognition = (window as any).webkitSpeechRecognition;
+		const SpeechRecognition = getSpeechRecognitionCtor();
+		if (!SpeechRecognition) {
+			setSpeechState(
+				'unsupported',
+				__('Dictation is not available in this browser. Type the note instead.')
+			);
+			setError(speechHint.value, __('Microphone error'));
+			return;
+		}
+
+		stopSpeechRecognition();
 		recognition = new SpeechRecognition();
 		recognition.continuous = true;
 		recognition.interimResults = false;
@@ -988,12 +1136,15 @@ function toggleSpeech() {
 		recognition.onstart = () => {
 			isListening.value = true;
 			clearError();
+			setSpeechState('ready');
 		};
 
 		recognition.onresult = (event: any) => {
 			const transcript = Array.from(event.results)
+				.slice(event.resultIndex || 0)
 				.map((result: any) => result[0].transcript)
-				.join('');
+				.join(' ')
+				.trim();
 
 			if (transcript) {
 				// Append with space if needed
@@ -1007,18 +1158,27 @@ function toggleSpeech() {
 			console.warn('Speech error', event);
 			isListening.value = false;
 			if (event.error !== 'no-speech' && event.error !== 'aborted') {
-				setError(event.error, __('Microphone error'));
+				const message = getSpeechErrorMessage(String(event.error || ''));
+				if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+					setSpeechState('blocked', message);
+				}
+				setError(message, __('Microphone error'));
 			}
 		};
 
 		recognition.onend = () => {
 			isListening.value = false;
+			recognition = null;
 		};
 
 		recognition.start();
 	} catch (e) {
 		console.error(e);
 		isListening.value = false;
+		setError(
+			e instanceof Error && e.message ? e.message : getSpeechErrorMessage('service-not-allowed'),
+			__('Microphone error')
+		);
 	}
 }
 
