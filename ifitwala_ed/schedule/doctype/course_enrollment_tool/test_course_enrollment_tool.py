@@ -73,8 +73,8 @@ def _build_course_tool_context():
     school = _make_school(organization)
     source_ay = _make_academic_year(school.name, "2025-08-01", "2026-06-30")
     target_ay = _make_academic_year(school.name, "2026-08-01", "2027-06-30")
-    _make_term(source_ay.name, "2025-08-01", "2026-06-30")
-    _make_term(target_ay.name, "2026-08-01", "2027-06-30")
+    _make_term(school.name, source_ay.name, "2025-08-01", "2026-06-30")
+    _make_term(school.name, target_ay.name, "2026-08-01", "2027-06-30")
 
     source_course = _make_course("French 5")
     other_source_course = _make_course("Spanish 5")
@@ -175,10 +175,11 @@ def _make_academic_year(school, start_date, end_date):
     ).insert()
 
 
-def _make_term(academic_year, start_date, end_date):
+def _make_term(school, academic_year, start_date, end_date):
     return frappe.get_doc(
         {
             "doctype": "Term",
+            "school": school,
             "academic_year": academic_year,
             "term_name": f"Term {frappe.generate_hash(length=6)}",
             "term_type": "Academic",
