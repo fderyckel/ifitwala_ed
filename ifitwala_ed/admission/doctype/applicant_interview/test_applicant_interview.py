@@ -720,6 +720,7 @@ class TestApplicantInterview(FrappeTestCase):
     def test_assigned_health_reviewer_can_read_applicant_workspace_and_download_files(self):
         reviewer = self._create_user("health_review_delegate")
 
+        frappe.set_user("Administrator")
         health_profile = frappe.get_doc(
             {
                 "doctype": "Applicant Health Profile",
@@ -1045,6 +1046,7 @@ class TestApplicantInterview(FrappeTestCase):
         self._create_employee(admissions_user, first_name="Health", last_name="Staff")
         reviewer = self._create_user("health_review_recommendation_delegate")
 
+        frappe.set_user("Administrator")
         health_profile = frappe.get_doc(
             {
                 "doctype": "Applicant Health Profile",
