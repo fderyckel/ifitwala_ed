@@ -1466,11 +1466,14 @@ class TestStudentApplicant(FrappeTestCase):
         return doc.name
 
     def _create_academic_year(self, school, academic_year_name, archived=0, visible=1):
+        start_year, end_year = academic_year_name.split("-", 1)
         doc = frappe.get_doc(
             {
                 "doctype": "Academic Year",
                 "academic_year_name": academic_year_name,
                 "school": school,
+                "year_start_date": f"{start_year}-08-01",
+                "year_end_date": f"{end_year}-06-30",
                 "archived": archived,
                 "visible_to_admission": visible,
             }
