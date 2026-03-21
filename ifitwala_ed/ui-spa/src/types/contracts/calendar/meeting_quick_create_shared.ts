@@ -24,6 +24,8 @@ export type MeetingSlotSuggestion = {
 	end_time: string
 	label: string
 	blocked_count: number
+	available_room_count?: number | null
+	suggested_room?: MeetingRoomSuggestion | null
 }
 
 export type MeetingRoomSuggestion = {

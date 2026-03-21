@@ -270,10 +270,13 @@
 												"
 												class="max-h-56 space-y-2 overflow-y-auto rounded-2xl border border-border/70 bg-slate-50 p-2"
 											>
-												<div
+												<button
 													v-for="attendee in availableSearchResults"
 													:key="`${attendee.kind}:${attendee.value}`"
-													class="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 shadow-soft"
+													type="button"
+													class="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-left shadow-soft transition hover:-translate-y-0.5 hover:shadow-md"
+													:disabled="submitting"
+													@click="addAttendee(attendee)"
 												>
 													<div class="min-w-0">
 														<p class="truncate type-body-strong text-ink">
@@ -284,15 +287,12 @@
 															<span v-if="attendee.meta"> · {{ attendee.meta }}</span>
 														</p>
 													</div>
-													<button
-														type="button"
-														class="rounded-full bg-jacaranda px-3 py-1.5 type-button-label text-white transition hover:bg-jacaranda/90"
-														:disabled="submitting"
-														@click="addAttendee(attendee)"
+													<span
+														class="rounded-full bg-jacaranda px-3 py-1.5 type-button-label text-white"
 													>
 														Add
-													</button>
-												</div>
+													</span>
+												</button>
 											</div>
 											<p
 												v-else-if="attendeeSearchQuery.trim().length >= 2"
@@ -359,8 +359,9 @@
 											<div class="space-y-1">
 												<h3 class="type-h3 text-ink">Common time finder</h3>
 												<p class="type-caption text-ink/70">
-													Server-side suggestions use batched availability checks and rank the best
-													common slots first.
+													Server-side suggestions use batched attendee availability checks and, for
+													in-person or hybrid meetings, only keep exact matches that still have a
+													free room in the selected school.
 												</p>
 											</div>
 											<button
@@ -430,7 +431,7 @@
 												<div class="flex items-center justify-between gap-2">
 													<h4 class="type-body-strong text-ink">Best common times</h4>
 													<span class="type-caption text-ink/55">
-														{{ slotSuggestions.length }} exact matches
+														{{ exactMatchSummary }}
 													</span>
 												</div>
 												<div
@@ -451,6 +452,9 @@
 															</p>
 															<p class="type-caption text-ink/60">
 																{{ slot.date }} · {{ slot.start_time }} to {{ slot.end_time }}
+															</p>
+															<p v-if="slot.suggested_room" class="type-caption text-canopy">
+																{{ slotRoomSummary(slot) }}
 															</p>
 														</div>
 														<span
@@ -498,6 +502,13 @@
 															</p>
 															<p class="type-caption text-ink/60">
 																{{ slot.date }} · {{ slot.start_time }} to {{ slot.end_time }}
+															</p>
+															<p
+																v-if="showRoomAssistant"
+																class="type-caption"
+																:class="slot.suggested_room ? 'text-canopy' : 'text-amber-700'"
+															>
+																{{ fallbackRoomSummary(slot) }}
 															</p>
 														</div>
 														<span
@@ -567,6 +578,8 @@
 												<h3 class="type-h3 text-ink">Room suggestions</h3>
 												<p class="type-caption text-ink/70">
 													Available rooms are ranked server-side from live location bookings.
+													Applying a room-aware common time also prefills the best-ranked free
+													room.
 												</p>
 											</div>
 											<button
@@ -1160,6 +1173,13 @@ const availableSearchResults = computed(() =>
 const roomCapacityTarget = computed(() => selectedAttendees.value.length + 1);
 const showRoomAssistant = computed(() => meetingForm.meeting_format !== 'virtual');
 
+const exactMatchSummary = computed(() => {
+	if (!showRoomAssistant.value) {
+		return `${slotSuggestions.value.length} exact match${slotSuggestions.value.length === 1 ? '' : 'es'}`;
+	}
+	return `${slotSuggestions.value.length} room-safe match${slotSuggestions.value.length === 1 ? '' : 'es'}`;
+});
+
 function emitAfterLeave() {
 	emit('after-leave');
 }
@@ -1567,6 +1587,9 @@ function validateCommonTimeRequest() {
 	if (!selectedAttendees.value.length) {
 		return 'Add at least one attendee before asking for common times.';
 	}
+	if (showRoomAssistant.value && !meetingForm.school) {
+		return 'Host school is required before ranking common times that include room availability.';
+	}
 	if (!meetingForm.date_from || !meetingForm.date_to) {
 		return 'Search start and end dates are required.';
 	}
@@ -1687,6 +1710,8 @@ async function findCommonTimes() {
 			date_to: meetingForm.date_to,
 			day_start_time: meetingForm.day_start_time,
 			day_end_time: meetingForm.day_end_time,
+			school: showRoomAssistant.value ? meetingForm.school || null : null,
+			require_room: showRoomAssistant.value,
 		});
 
 		if (requestSeq !== slotRequestSeq) return;
@@ -1723,10 +1748,28 @@ function slotDisplayLabel(slot: MeetingSlotSuggestion) {
 	);
 }
 
+function slotRoomSummary(slot: MeetingSlotSuggestion) {
+	if (!slot.suggested_room) return '';
+	const roomCount = slot.available_room_count || 0;
+	const roomCountLabel =
+		roomCount > 1 ? ` · ${roomCount} rooms free` : roomCount === 1 ? ' · 1 room free' : '';
+	return `Best room: ${slot.suggested_room.label}${roomCountLabel}`;
+}
+
+function fallbackRoomSummary(slot: MeetingSlotSuggestion) {
+	if (slot.suggested_room) {
+		return slotRoomSummary(slot);
+	}
+	return 'No free room for this slot in the selected school scope.';
+}
+
 async function applySuggestedSlot(slot: MeetingSlotSuggestion) {
 	meetingForm.date = slot.date;
 	meetingForm.start_time = slot.start_time;
 	meetingForm.end_time = slot.end_time;
+	if (showRoomAssistant.value) {
+		meetingForm.location = slot.suggested_room?.value || '';
+	}
 
 	const startMinutes = parseTimeToMinutes(slot.start_time);
 	const endMinutes = parseTimeToMinutes(slot.end_time);
@@ -1914,6 +1957,10 @@ watch(
 		resetSlotSuggestions();
 	}
 );
+
+watch([() => meetingForm.school, () => meetingForm.meeting_format], () => {
+	resetSlotSuggestions();
+});
 
 watch(
 	[

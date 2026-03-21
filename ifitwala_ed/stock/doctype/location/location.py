@@ -440,15 +440,19 @@ class Location(Document):
 
 
 @frappe.whitelist()
-def get_valid_parent_locations(organization=None, school=None):
+@frappe.validate_and_sanitize_search_inputs
+def get_valid_parent_locations(doctype, txt, searchfield, start, page_len, filters):
     """
-    Return valid parent Locations for a given Organization + School context.
+    Return valid parent Locations for the parent_location link field.
 
     Rules:
     - is_group = 1
-    - organization must match
+    - organization must match when provided
     - school must be in lineage (parent_school ∈ ancestors(child_school))
     """
+    filters = frappe.parse_json(filters) if isinstance(filters, str) else (filters or {})
+    organization = filters.get("organization")
+    school = filters.get("school")
     filters = {"is_group": 1}
 
     if organization:
@@ -460,9 +464,14 @@ def get_valid_parent_locations(organization=None, school=None):
         fields=["name", "school"],
     )
 
-    if not school:
-        return locations
+    if school:
+        allowed_schools = set(get_ancestor_schools(school) or [school])
+        locations = [loc for loc in locations if not loc.school or loc.school in allowed_schools]
 
-    allowed_schools = set(get_ancestor_schools(school) or [school])
+    search_txt = (txt or "").strip().lower()
+    if search_txt:
+        locations = [loc for loc in locations if search_txt in (loc.name or "").lower()]
 
-    return [loc for loc in locations if not loc.school or loc.school in allowed_schools]
+    start = cint(start or 0)
+    page_len = cint(page_len or 20)
+    return [[loc.name] for loc in locations[start : start + page_len]]
