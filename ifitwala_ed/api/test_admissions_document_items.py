@@ -9,6 +9,7 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.admission.admissions_portal import _resolve_applicant_document
 from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
 from ifitwala_ed.api.admissions_portal import (
     list_applicant_document_types,
@@ -133,6 +134,26 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         self.assertTrue(bool(row))
         self.assertTrue(bool(row.get("item_key")))
         self.assertTrue(bool(row.get("item_label")))
+
+    def test_resolve_applicant_document_from_item_without_document_type(self):
+        frappe.set_user(self.applicant_user)
+        with self._patched_drive_admissions_bridge():
+            payload = upload_applicant_document(
+                student_applicant=self.applicant.name,
+                document_type=self.document_type,
+                item_label="Passport",
+                file_name="passport.txt",
+                content=self._tiny_file_base64(),
+            )
+
+        doc = _resolve_applicant_document(
+            student_applicant=self.applicant.name,
+            applicant_document_item=payload.get("applicant_document_item"),
+        )
+
+        self.assertEqual(doc.name, payload.get("applicant_document"))
+        self.assertEqual(doc.student_applicant, self.applicant.name)
+        self.assertEqual(doc.document_type, self.document_type)
 
     def test_recommendation_target_document_types_are_hidden_from_documents_and_uploads(self):
         recommendation_document_type = self._create_recommendation_document_type(

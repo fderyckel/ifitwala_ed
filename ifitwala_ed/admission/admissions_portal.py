@@ -258,9 +258,24 @@ def upload_applicant_health_vaccination_proof(
     }
 
 
-def _resolve_applicant_document(*, applicant_document=None, student_applicant=None, document_type=None):
+def _resolve_applicant_document(
+    *,
+    applicant_document=None,
+    student_applicant=None,
+    document_type=None,
+    applicant_document_item=None,
+):
     if applicant_document:
         doc = frappe.get_doc("Applicant Document", applicant_document)
+        if student_applicant and doc.student_applicant != student_applicant:
+            frappe.throw(_("Applicant Document does not match the provided Student Applicant."))
+        if document_type and doc.document_type != document_type:
+            frappe.throw(_("Applicant Document does not match the provided Document Type."))
+        return doc
+
+    if applicant_document_item:
+        item_doc = frappe.get_doc("Applicant Document Item", applicant_document_item)
+        doc = frappe.get_doc("Applicant Document", item_doc.applicant_document)
         if student_applicant and doc.student_applicant != student_applicant:
             frappe.throw(_("Applicant Document does not match the provided Student Applicant."))
         if document_type and doc.document_type != document_type:
