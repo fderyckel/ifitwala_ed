@@ -1396,6 +1396,10 @@ class TestStudentApplicant(FrappeTestCase):
         self._created.append(("Student", student_name))
 
         plan.reload()
+        if not plan.program_enrollment_request:
+            hydrated = plan.hydrate_program_enrollment_request()
+            self.assertTrue(bool((hydrated or {}).get("name")))
+            plan.reload()
         request = frappe.get_doc("Program Enrollment Request", plan.program_enrollment_request)
         self._created.append(("Program Enrollment Request", request.name))
 
