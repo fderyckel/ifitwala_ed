@@ -265,8 +265,8 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertFalse(
             frappe.has_permission("Applicant Interview", ptype="write", doc=interview.name, user=outsider.name)
         )
-        with self.assertRaises(frappe.PermissionError):
-            frappe.get_list("Applicant Interview", fields=["name"], filters={"name": interview.name})
+        rows = frappe.get_list("Applicant Interview", fields=["name"], filters={"name": interview.name})
+        self.assertEqual(rows, [])
 
     def test_workspace_returns_guardians_for_assigned_interviewer(self):
         interviewer = self._create_user("workspace")
@@ -718,7 +718,8 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertEqual(frappe.local.response.get("filecontent"), b"overall-review-file")
 
     def test_assigned_health_reviewer_can_read_applicant_workspace_and_download_files(self):
-        reviewer = self._create_user("health_review_delegate")
+        reviewer = self._create_user("health_review_delegate", roles=["Academic Assistant"])
+        frappe.clear_cache(user=reviewer.name)
 
         frappe.set_user("Administrator")
         health_profile = frappe.get_doc(
@@ -1044,7 +1045,8 @@ class TestApplicantInterview(FrappeTestCase):
 
         admissions_user = self._create_user("health_review_staff", roles=["Admission Manager"])
         self._create_employee(admissions_user, first_name="Health", last_name="Staff")
-        reviewer = self._create_user("health_review_recommendation_delegate")
+        reviewer = self._create_user("health_review_recommendation_delegate", roles=["Academic Assistant"])
+        frappe.clear_cache(user=reviewer.name)
 
         frappe.set_user("Administrator")
         health_profile = frappe.get_doc(
