@@ -20,17 +20,6 @@
   {
    "child": 0,
    "collapsible": 1,
-   "indent": 0,
-   "keep_closed": 0,
-   "label": "Portal",
-   "link_type": "URL",
-   "show_arrow": 0,
-   "type": "Link",
-   "url": "/hub/staff"
-  },
-  {
-   "child": 0,
-   "collapsible": 1,
    "icon": "comment",
    "indent": 0,
    "keep_closed": 0,
@@ -41,7 +30,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-18 15:34:36.859340",
+ "modified": "2026-03-21 18:39:03.636731",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Admin",
