@@ -41,7 +41,6 @@ function mountOverlay() {
 	document.body.appendChild(host);
 
 	const onClose = vi.fn();
-	const onViewLog = vi.fn();
 
 	const app: App = createApp(
 		defineComponent({
@@ -50,7 +49,6 @@ function mountOverlay() {
 					open: true,
 					items: [item],
 					onClose,
-					onViewLog,
 				});
 			},
 		})
@@ -62,7 +60,7 @@ function mountOverlay() {
 		host.remove();
 	});
 
-	return { onClose, onViewLog };
+	return { onClose };
 }
 
 afterEach(() => {
@@ -87,8 +85,8 @@ describe('CriticalIncidentsListOverlay', () => {
 		expect(onClose).toHaveBeenCalledWith('backdrop');
 	});
 
-	it('opens the selected log from the incident card action', async () => {
-		const { onViewLog } = mountOverlay();
+	it('opens the selected log inside the same overlay and returns to the list', async () => {
+		mountOverlay();
 
 		await nextTick();
 
@@ -97,7 +95,43 @@ describe('CriticalIncidentsListOverlay', () => {
 
 		button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-		expect(onViewLog).toHaveBeenCalledTimes(1);
-		expect(onViewLog).toHaveBeenCalledWith(item);
+		await nextTick();
+
+		expect(document.body.textContent).toContain('Full student log content');
+		expect(document.body.textContent).toContain('Back to incidents');
+
+		const backButtons = Array.from(
+			document.body.querySelectorAll('.critical-incidents__back-button')
+		);
+		expect(backButtons.length).toBeGreaterThan(0);
+
+		backButtons[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		await nextTick();
+
+		expect(document.body.textContent).toContain('Critical Incidents');
+		expect(document.body.textContent).not.toContain('Full student log content');
+	});
+
+	it('still closes cleanly from detail mode', async () => {
+		const { onClose } = mountOverlay();
+
+		await nextTick();
+
+		const button = document.body.querySelector('.critical-incidents__action-button');
+		expect(button).not.toBeNull();
+		button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		await nextTick();
+
+		const closeButtons = Array.from(
+			document.body.querySelectorAll('.critical-incidents__footer-button')
+		);
+		expect(closeButtons.length).toBeGreaterThan(0);
+
+		closeButtons[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(onClose).toHaveBeenCalledTimes(1);
+		expect(onClose).toHaveBeenCalledWith('programmatic');
 	});
 });

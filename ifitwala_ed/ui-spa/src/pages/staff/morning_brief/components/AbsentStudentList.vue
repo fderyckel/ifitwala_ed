@@ -1,6 +1,6 @@
 <template>
-	<div class="paper-card p-5 border-l-4 border-l-flame">
-		<div class="flex items-center justify-between mb-4">
+	<div class="paper-card border-l-4 border-l-flame p-4 sm:p-5">
+		<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 			<h3 class="section-header flex items-center gap-2 text-flame">
 				<FeatherIcon name="user-x" class="h-3 w-3" /> Absences Today
 			</h3>
@@ -32,10 +32,10 @@
 				</div>
 
 				<div class="flex-1 min-w-0">
-					<div class="flex justify-between items-start">
+					<div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
 						<h4 class="text-sm font-bold text-ink truncate">{{ stu.student_name }}</h4>
 						<span
-							class="text-[10px] font-bold px-1.5 py-0.5 rounded border"
+							class="w-fit text-[10px] font-bold px-1.5 py-0.5 rounded border"
 							:style="{
 								borderColor: stu.status_color,
 								color: stu.status_color,

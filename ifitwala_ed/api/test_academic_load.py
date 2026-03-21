@@ -19,6 +19,30 @@ class TestAcademicLoadApi(FrappeTestCase):
             with self.assertRaises(frappe.PermissionError):
                 academic_load._resolve_scope({"school": "SCH-2"}, "staff@example.com")
 
+    def test_load_academic_year_options_falls_back_to_ancestor_scope(self):
+        with (
+            patch.object(
+                academic_load,
+                "_query_academic_year_rows",
+                side_effect=[
+                    [],
+                    [
+                        {
+                            "name": "AY-2026",
+                            "label": "2026-2027",
+                            "year_start_date": date(2026, 8, 1),
+                            "year_end_date": date(2027, 6, 30),
+                            "school": "SCH-PARENT",
+                        }
+                    ],
+                ],
+            ),
+            patch.object(academic_load, "get_school_lineage", return_value=["SCH-CHILD", "SCH-PARENT"]),
+        ):
+            rows = academic_load._load_academic_year_options(["SCH-CHILD"], "SCH-CHILD")
+
+        self.assertEqual(rows[0]["name"], "AY-2026")
+
     def test_build_rows_excludes_activity_groups_from_student_adjustment(self):
         policy = SimpleNamespace(
             meeting_window_days=30,

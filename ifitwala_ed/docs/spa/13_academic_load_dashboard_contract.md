@@ -130,11 +130,12 @@ Test refs:
 Rules:
 
 1. `get_academic_load_filter_meta(payload=None)` returns allowed schools, academic years, student-group options, staff-role options, and the active policy summary.
-2. `get_academic_load_dashboard(payload=None, start=0, page_length=50)` returns `policy`, `summary`, `kpis`, `rows`, `fairness`, and `effective_filters`.
-3. `get_academic_load_staff_detail(payload=None, employee=None)` returns one educator detail payload with breakdown tabs.
-4. `get_academic_load_cover_candidates(payload=None, student_group=None, from_datetime=None, to_datetime=None)` ranks substitute candidates for one requested block.
-5. Dashboard caches are Redis-scoped by user, filters, and an Academic Load cache version.
-6. Cache invalidation is triggered by `Student Group`, `Student Group Student`, `Student Group Instructor`, `Program Offering`, `Program Offering Activity Section`, `Meeting`, `Meeting Participant`, `School Event`, `School Event Participant`, `Employee Booking`, and `Academic Load Policy` changes.
+2. Academic year options must support nearest-ancestor fallback when the selected school keeps its calendar higher in the school tree, and may infer year names from visible student groups when no direct `Academic Year` rows exist in scope.
+3. `get_academic_load_dashboard(payload=None, start=0, page_length=50)` returns `policy`, `summary`, `kpis`, `rows`, `fairness`, and `effective_filters`.
+4. `get_academic_load_staff_detail(payload=None, employee=None)` returns one educator detail payload with breakdown tabs.
+5. `get_academic_load_cover_candidates(payload=None, student_group=None, from_datetime=None, to_datetime=None)` ranks substitute candidates for one requested block.
+6. Dashboard caches are Redis-scoped by user, filters, and an Academic Load cache version.
+7. Cache invalidation is triggered by `Student Group`, `Student Group Student`, `Student Group Instructor`, `Program Offering`, `Program Offering Activity Section`, `Meeting`, `Meeting Participant`, `School Event`, `School Event Participant`, `Employee Booking`, and `Academic Load Policy` changes.
 
 ## 6. Contract Matrix
 

@@ -48,6 +48,7 @@
 					v-model="filters.academic_year"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
 				>
+					<option value="">All academic years</option>
 					<option v-for="year in academicYearOptions" :key="year.name" :value="year.name">
 						{{ year.label || year.name }}
 					</option>
@@ -790,7 +791,7 @@ async function loadFilterMeta() {
 }
 
 async function loadDashboard() {
-	if (!metaReady.value || !filters.school || !filters.academic_year) return;
+	if (!metaReady.value || !filters.school) return;
 	dashboardLoading.value = true;
 	pageError.value = null;
 	try {

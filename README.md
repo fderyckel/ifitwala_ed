@@ -165,7 +165,7 @@ Stop "reply-all" fatigue.
 ### Health & Safeguarding
 
 * **Isolation:** Medical records are structurally isolated.
-* **Role-Gated:** Only Nurses/Doctors see clinical data.
+* **Role-Gated:** Clinical details remain role-gated; aggregate Morning Brief clinic volume follows `Student Patient Visit` read permission.
 * **Integrated Workflow:** If a student visits the nurse, the teacher is notified of the absence context without revealing sensitive details.
 
 ---

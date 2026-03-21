@@ -45,20 +45,12 @@
 								</div>
 
 								<div class="history-dialog__header-actions">
-									<div class="history-dialog__range-group">
-										<button
-											v-for="range in ranges"
-											:key="range.value"
-											type="button"
-											class="history-dialog__range-chip"
-											:class="{
-												'history-dialog__range-chip--active': selectedRange === range.value,
-											}"
-											@click="selectedRange = range.value"
-										>
-											{{ range.label }}
-										</button>
-									</div>
+									<DateRangePills
+										v-model="selectedRange"
+										:items="ranges"
+										size="sm"
+										wrap-class="history-dialog__range-group"
+									/>
 
 									<button
 										ref="closeButtonRef"
@@ -103,9 +95,11 @@
 												</p>
 												<p class="mt-1 text-sm text-slate-token/80">
 													{{
-														hasData
-															? __('Read the recent movement at a glance.')
-															: __('Waiting for enough data to draw the trend.')
+														errorMessage
+															? __('The history request failed. Review the message below.')
+															: hasData
+																? __('Read the recent movement at a glance.')
+																: __('Waiting for enough data to draw the trend.')
 													}}
 												</p>
 											</div>
@@ -118,7 +112,17 @@
 											<div v-if="loading" class="history-dialog__chart-loading">
 												<FeatherIcon name="loader" class="h-7 w-7 animate-spin text-jacaranda" />
 											</div>
-											<AnalyticsChart :option="chartOption" class="h-full w-full" />
+											<div v-else-if="errorMessage" class="history-dialog__chart-empty">
+												<FeatherIcon name="alert-circle" class="h-5 w-5 text-flame" />
+												<span>{{ errorMessage }}</span>
+											</div>
+											<div v-else-if="isEmpty" class="history-dialog__chart-empty">
+												<FeatherIcon name="bar-chart-2" class="h-5 w-5 text-jacaranda" />
+												<span>{{
+													__('No business-day clinic data is available for this range yet.')
+												}}</span>
+											</div>
+											<AnalyticsChart v-else :option="chartOption" class="h-full w-full" />
 										</div>
 									</div>
 
@@ -237,6 +241,7 @@ import {
 import { Avatar, FeatherIcon, createResource } from 'frappe-ui';
 import { __ } from '@/lib/i18n';
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
+import DateRangePills from '@/components/filters/DateRangePills.vue';
 
 type HistoryComment = {
 	id?: string | number;
@@ -261,6 +266,8 @@ const props = defineProps<{
 	title?: string;
 	comments?: HistoryComment[];
 	loadingComments?: boolean;
+	rangeOptions?: ReadonlyArray<{ label: string; value: string }>;
+	defaultRange?: string;
 }>();
 
 const emit = defineEmits<{
@@ -277,14 +284,15 @@ const show = computed({
 
 const titleText = computed(() => props.title || __('History view'));
 
-const ranges: Array<{ label: string; value: string }> = [
+const defaultRanges: ReadonlyArray<{ label: string; value: string }> = [
 	{ label: '1M', value: '1M' },
 	{ label: '3M', value: '3M' },
 	{ label: '6M', value: '6M' },
 	{ label: 'YTD', value: 'YTD' },
 ];
 
-const selectedRange = ref('1M');
+const ranges = computed(() => (props.rangeOptions?.length ? props.rangeOptions : defaultRanges));
+const selectedRange = ref(props.defaultRange || ranges.value[0]?.value || '1M');
 const commentDraft = ref('');
 
 const resource = createResource({
@@ -299,7 +307,21 @@ const resource = createResource({
 });
 
 const loading = computed(() => resource.loading);
-const schoolName = computed(() => resource.data?.school || __('Loading...'));
+const errorMessage = computed(() => {
+	const err = resource.error;
+	if (!err) return '';
+	if (typeof err === 'string') return err;
+	if (err instanceof Error) return err.message || __('Unable to load history.');
+	if (err && typeof err === 'object' && 'message' in err) {
+		const message = typeof err.message === 'string' ? err.message : '';
+		return message || __('Unable to load history.');
+	}
+	return __('Unable to load history.');
+});
+const schoolName = computed(() => {
+	if (errorMessage.value) return __('Unavailable');
+	return resource.data?.school || __('Loading...');
+});
 const totalPoints = computed(() => resource.data?.data?.length || 0);
 const totalCount = computed(() => {
 	const data = resource.data?.data || [];
@@ -310,8 +332,10 @@ const averageCount = computed(() => {
 	return Number((totalCount.value / totalPoints.value).toFixed(1));
 });
 const hasData = computed(() => totalPoints.value > 0);
+const isEmpty = computed(() => !loading.value && !errorMessage.value && !hasData.value);
 const selectedRangeLabel = computed(
-	() => ranges.find(range => range.value === selectedRange.value)?.label || selectedRange.value
+	() =>
+		ranges.value.find(range => range.value === selectedRange.value)?.label || selectedRange.value
 );
 
 const displayedComments = computed<HistoryComment[]>(() => props.comments || []);
@@ -338,6 +362,15 @@ watch(selectedRange, () => {
 		resource.fetch();
 	}
 });
+
+watch(
+	() => props.defaultRange,
+	value => {
+		if (typeof value === 'string' && value && value !== selectedRange.value) {
+			selectedRange.value = value;
+		}
+	}
+);
 
 function submitComment() {
 	const note = commentDraft.value.trim();
@@ -590,6 +623,23 @@ const chartOption = computed(() => {
 	justify-content: center;
 	background: rgb(var(--surface-strong-rgb) / 0.7);
 	backdrop-filter: blur(4px);
+}
+
+.history-dialog__chart-empty {
+	display: flex;
+	height: 100%;
+	min-height: 14rem;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.65rem;
+	border: 1px dashed rgb(var(--border-rgb) / 0.78);
+	border-radius: 1.15rem;
+	background: rgb(var(--surface-rgb) / 0.72);
+	padding: 1rem;
+	text-align: center;
+	font-size: 0.86rem;
+	color: rgb(var(--slate-rgb) / 0.82);
 }
 
 .history-dialog__comment-stream {

@@ -44,22 +44,63 @@
 								<p class="type-overline critical-incidents__eyebrow">
 									{{ __('Morning Brief') }}
 								</p>
-								<DialogTitle class="type-h2 text-ink mt-2 flex items-center gap-2">
-									<FeatherIcon name="alert-triangle" class="h-5 w-5 text-flame" />
-									{{ __('Critical Incidents') }}
+								<DialogTitle class="type-h2 mt-2 flex items-center gap-2 text-ink">
+									<template v-if="selectedLog">
+										{{ selectedLog.student_name }}
+									</template>
+									<template v-else>
+										<FeatherIcon name="alert-triangle" class="h-5 w-5 text-flame" />
+										{{ __('Critical Incidents') }}
+									</template>
 								</DialogTitle>
 								<p class="mt-2 text-sm text-ink/70">
-									{{
-										__('Open student logs that still need follow-up from academic administration.')
-									}}
+									<template v-if="selectedLog">
+										{{ selectedLog.date_display }}
+										<span class="mx-2 text-slate-token/40">•</span>
+										{{ selectedLog.log_type }}
+									</template>
+									<template v-else>
+										{{
+											__(
+												'Open student logs that still need follow-up from academic administration.'
+											)
+										}}
+									</template>
 								</p>
+								<button
+									v-if="selectedLog"
+									type="button"
+									class="critical-incidents__back-button"
+									@click="returnToList"
+								>
+									<FeatherIcon name="arrow-left" class="h-3.5 w-3.5" />
+									<span>{{ __('Back to incidents') }}</span>
+								</button>
 							</div>
 
 							<div class="critical-incidents__hero-meta">
-								<div class="critical-incidents__count-chip">
-									<span class="critical-incidents__count-value">{{ items?.length || 0 }}</span>
-									<span class="critical-incidents__count-label">{{ __('Open') }}</span>
-								</div>
+								<template v-if="selectedLog">
+									<div class="critical-incidents__avatar critical-incidents__avatar--hero">
+										<img
+											v-if="selectedLog.student_image"
+											:src="selectedLog.student_image"
+											class="h-full w-full object-cover"
+											alt=""
+										/>
+										<div
+											v-else
+											class="flex h-full w-full items-center justify-center text-sm font-bold text-slate-token/65"
+										>
+											{{ selectedLog.student_name.substring(0, 2) }}
+										</div>
+									</div>
+								</template>
+								<template v-else>
+									<div class="critical-incidents__count-chip">
+										<span class="critical-incidents__count-value">{{ items?.length || 0 }}</span>
+										<span class="critical-incidents__count-label">{{ __('Open') }}</span>
+									</div>
+								</template>
 								<button
 									ref="closeBtnEl"
 									type="button"
@@ -72,9 +113,30 @@
 							</div>
 						</header>
 
-						<section class="if-overlay__body critical-incidents__body custom-scrollbar">
+						<section
+							ref="bodyEl"
+							class="if-overlay__body critical-incidents__body custom-scrollbar"
+						>
 							<div v-if="loading" class="critical-incidents__state">
 								<FeatherIcon name="loader" class="h-8 w-8 animate-spin text-slate-token/40" />
+							</div>
+
+							<div v-else-if="selectedLog" class="critical-incidents__detail">
+								<div class="critical-incidents__detail-card">
+									<div class="critical-incidents__detail-meta">
+										<span class="critical-incidents__type-pill">
+											{{ selectedLog.log_type }}
+										</span>
+										<span class="text-xs text-slate-token/65">
+											{{ selectedLog.date_display }}
+										</span>
+									</div>
+									<div
+										class="critical-incidents__detail-content prose prose-sm max-w-none text-slate-token/90"
+									>
+										<div v-html="selectedLog.log"></div>
+									</div>
+								</div>
 							</div>
 
 							<div v-else-if="!items || items.length === 0" class="critical-incidents__empty">
@@ -142,20 +204,46 @@
 						</section>
 
 						<footer class="if-overlay__footer critical-incidents__footer">
-							<p class="text-xs text-slate-token/70">
-								{{
-									__(
-										'Open the full log to review context, comments, and required follow-up action.'
-									)
-								}}
-							</p>
-							<button
-								type="button"
-								class="critical-incidents__footer-button"
-								@click="emitClose('programmatic')"
-							>
-								{{ __('Close') }}
-							</button>
+							<template v-if="selectedLog">
+								<p class="text-xs text-slate-token/70">
+									{{
+										__('Return to the incident list or close this workspace when you are done.')
+									}}
+								</p>
+								<div class="critical-incidents__footer-actions">
+									<button
+										type="button"
+										class="critical-incidents__back-button"
+										@click="returnToList"
+									>
+										<FeatherIcon name="arrow-left" class="h-3.5 w-3.5" />
+										<span>{{ __('Back to incidents') }}</span>
+									</button>
+									<button
+										type="button"
+										class="critical-incidents__footer-button"
+										@click="emitClose('programmatic')"
+									>
+										{{ __('Close') }}
+									</button>
+								</div>
+							</template>
+							<template v-else>
+								<p class="text-xs text-slate-token/70">
+									{{
+										__(
+											'Open the full log to review context, comments, and required follow-up action.'
+										)
+									}}
+								</p>
+								<button
+									type="button"
+									class="critical-incidents__footer-button"
+									@click="emitClose('programmatic')"
+								>
+									{{ __('Close') }}
+								</button>
+							</template>
 						</footer>
 					</DialogPanel>
 				</TransitionChild>
@@ -165,7 +253,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
 	Dialog,
 	DialogPanel,
@@ -187,19 +275,20 @@ const props = defineProps<{
 	overlayId?: string;
 	items: StudentLogDetail[];
 	loading?: boolean;
-	onViewLog?: (item: StudentLogDetail) => void;
 }>();
 
 const emit = defineEmits<{
 	(e: 'close', reason: CloseReason): void;
 	(e: 'after-leave'): void;
-	(e: 'view-log', item: StudentLogDetail): void;
 }>();
 
 const overlay = useOverlayStack();
 
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 0 }));
 const closeBtnEl = ref<HTMLButtonElement | null>(null);
+const bodyEl = ref<HTMLElement | null>(null);
+const selectedLog = ref<StudentLogDetail | null>(null);
+const listScrollTop = ref(0);
 
 function emitClose(reason: CloseReason) {
 	const overlayId = props.overlayId || null;
@@ -223,10 +312,22 @@ function onDialogClose(_payload: unknown) {
 }
 
 function openLog(item: StudentLogDetail) {
-	if (props.onViewLog) {
-		props.onViewLog(item);
-	}
-	emit('view-log', item);
+	listScrollTop.value = bodyEl.value?.scrollTop || 0;
+	selectedLog.value = item;
+	void nextTick(() => {
+		if (bodyEl.value) {
+			bodyEl.value.scrollTop = 0;
+		}
+	});
+}
+
+function returnToList() {
+	selectedLog.value = null;
+	void nextTick(() => {
+		if (bodyEl.value) {
+			bodyEl.value.scrollTop = listScrollTop.value;
+		}
+	});
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -317,6 +418,33 @@ onBeforeUnmount(() => {
 	);
 }
 
+.critical-incidents__detail {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.critical-incidents__detail-card {
+	border-radius: 1.5rem;
+	border: 1px solid rgb(var(--border-rgb) / 0.72);
+	background: rgb(var(--surface-strong-rgb) / 0.98);
+	padding: 1.25rem;
+	box-shadow: var(--shadow-soft);
+}
+
+.critical-incidents__detail-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-bottom: 1rem;
+}
+
+.critical-incidents__detail-content {
+	line-height: 1.7;
+}
+
 .critical-incidents__grid {
 	display: grid;
 	gap: 1rem;
@@ -387,7 +515,8 @@ onBeforeUnmount(() => {
 }
 
 .critical-incidents__action-button,
-.critical-incidents__footer-button {
+.critical-incidents__footer-button,
+.critical-incidents__back-button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -409,14 +538,31 @@ onBeforeUnmount(() => {
 	color: rgb(var(--jacaranda-rgb) / 0.96);
 }
 
+.critical-incidents__back-button {
+	margin-top: 0.9rem;
+	width: fit-content;
+	border: 1px solid rgb(var(--border-rgb) / 0.8);
+	background: rgb(var(--surface-strong-rgb) / 0.98);
+	color: rgb(var(--ink-rgb) / 0.92);
+}
+
 .critical-incidents__action-button:hover,
-.critical-incidents__footer-button:hover {
+.critical-incidents__footer-button:hover,
+.critical-incidents__back-button:hover {
 	transform: translateY(-1px);
 }
 
 .critical-incidents__footer {
 	justify-content: space-between;
 	align-items: center;
+}
+
+.critical-incidents__footer-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.75rem;
 }
 
 .critical-incidents__footer-button {
@@ -463,6 +609,10 @@ onBeforeUnmount(() => {
 		justify-content: space-between;
 	}
 
+	.critical-incidents__avatar--hero {
+		order: -1;
+	}
+
 	.critical-incidents__body {
 		padding: 1rem;
 	}
@@ -475,6 +625,16 @@ onBeforeUnmount(() => {
 		flex-direction: column;
 		align-items: stretch;
 		gap: 0.75rem;
+	}
+
+	.critical-incidents__footer-actions {
+		width: 100%;
+		justify-content: stretch;
+	}
+
+	.critical-incidents__back-button,
+	.critical-incidents__footer-button {
+		width: 100%;
 	}
 }
 </style>

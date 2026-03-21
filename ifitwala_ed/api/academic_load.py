@@ -19,7 +19,7 @@ from ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_poli
     get_academic_load_cache_version,
     get_active_policy_for_school,
 )
-from ifitwala_ed.utilities.school_tree import get_descendant_schools
+from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_school_lineage
 
 ALLOWED_ANALYTICS_ROLES = {
     "Academic Admin",
@@ -144,7 +144,7 @@ def _resolve_scope(filters: dict, user: str) -> dict:
     }
 
 
-def _load_academic_year_options(school_scope: list[str]) -> list[dict]:
+def _query_academic_year_rows(school_scope: list[str]) -> list[dict]:
     if not school_scope:
         return []
 
@@ -163,6 +163,51 @@ def _load_academic_year_options(school_scope: list[str]) -> list[dict]:
         {"schools": tuple(school_scope)},
         as_dict=True,
     )
+
+
+def _derive_academic_year_rows_from_groups(school_scope: list[str]) -> list[dict]:
+    if not school_scope:
+        return []
+
+    group_rows = frappe.db.sql(
+        """
+        SELECT DISTINCT sg.academic_year AS name
+        FROM `tabStudent Group` sg
+        WHERE sg.school IN %(schools)s
+          AND COALESCE(sg.academic_year, '') != ''
+        ORDER BY sg.academic_year DESC
+        """,
+        {"schools": tuple(school_scope)},
+        as_dict=True,
+    )
+    if not group_rows:
+        return []
+
+    names = [row["name"] for row in group_rows if row.get("name")]
+    meta_rows = frappe.get_all(
+        "Academic Year",
+        filters={"name": ["in", names]},
+        fields=["name", "academic_year_name as label", "year_start_date", "year_end_date", "school"],
+    )
+    meta_by_name = {row["name"]: row for row in meta_rows}
+    return [meta_by_name.get(name, {"name": name, "label": name}) for name in names]
+
+
+def _load_academic_year_options(school_scope: list[str], selected_school: str | None = None) -> list[dict]:
+    if not school_scope:
+        return []
+
+    if rows := _query_academic_year_rows(school_scope):
+        return rows
+
+    anchor_school = (selected_school or "").strip() or (school_scope[0] if len(school_scope) == 1 else None)
+    if anchor_school:
+        for ancestor_school in get_school_lineage(anchor_school):
+            ancestor_rows = _query_academic_year_rows([ancestor_school])
+            if ancestor_rows:
+                return ancestor_rows
+
+    return _derive_academic_year_rows_from_groups(school_scope)
 
 
 def _resolve_academic_year(filters: dict, scope: dict, options: list[dict]) -> str | None:
@@ -949,7 +994,7 @@ def _build_summary(rows: list[dict], policy) -> tuple[dict, list[dict]]:
 
 def _build_dataset(filters: dict, user: str) -> dict:
     scope = _resolve_scope(filters, user)
-    options = _load_academic_year_options(scope["school_scope"])
+    options = _load_academic_year_options(scope["school_scope"], scope["selected_school"])
     academic_year = _resolve_academic_year(filters, scope, options)
     policy = get_active_policy_for_school(scope["selected_school"])
     rows, meta = _build_rows(filters, scope, academic_year, policy)
@@ -977,7 +1022,7 @@ def get_academic_load_filter_meta(payload=None):
     user = _ensure_access()
     filters = _normalize_filters(_parse_payload(payload))
     scope = _resolve_scope(filters, user)
-    academic_year_options = _load_academic_year_options(scope["school_scope"])
+    academic_year_options = _load_academic_year_options(scope["school_scope"], scope["selected_school"])
     academic_year = _resolve_academic_year(filters, scope, academic_year_options)
     policy = get_active_policy_for_school(scope["selected_school"])
     student_groups = _load_student_group_options(scope["school_scope"], academic_year)

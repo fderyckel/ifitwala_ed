@@ -1,11 +1,11 @@
 <template>
-	<div class="paper-card p-5">
-		<div class="flex items-center justify-between mb-4">
+	<div class="paper-card p-4 sm:p-5">
+		<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 			<h3 class="section-header flex items-center gap-2 text-slate-500">
 				<FeatherIcon name="bar-chart-2" class="h-3 w-3" /> 30-Day Absence Trend
 			</h3>
 		</div>
-		<div class="h-64 w-full">
+		<div class="h-56 w-full sm:h-64">
 			<AnalyticsChart :option="chartOption" />
 		</div>
 	</div>
