@@ -1304,8 +1304,8 @@ class TestStudentApplicant(FrappeTestCase):
         first_student = frappe.get_doc("Student", first_student_name)
         second_student = frappe.get_doc("Student", second_student_name)
 
-        self.assertIn(second_student_name, [row.sibling for row in (first_student.get("siblings") or [])])
-        self.assertIn(first_student_name, [row.sibling for row in (second_student.get("siblings") or [])])
+        self.assertIn(second_student_name, [row.student for row in (first_student.get("siblings") or [])])
+        self.assertIn(first_student_name, [row.student for row in (second_student.get("siblings") or [])])
 
     def test_promote_blocks_when_latest_enrollment_plan_is_not_accepted(self):
         offer_context = self._create_offer_context()
