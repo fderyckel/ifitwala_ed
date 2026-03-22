@@ -341,6 +341,7 @@ class TestCalendarApi(TestCase):
         ]
 
         with (
+            patch("ifitwala_ed.api.calendar_quick_create._", side_effect=lambda message: message),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
@@ -400,6 +401,7 @@ class TestCalendarApi(TestCase):
         )
 
         with (
+            patch("ifitwala_ed.api.calendar_quick_create._", side_effect=lambda message: message),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
