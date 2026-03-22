@@ -9,8 +9,8 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.admission.admissions_portal import _resolve_applicant_document
 from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
+from ifitwala_ed.admission.admissions_portal import _resolve_applicant_document
 from ifitwala_ed.api.admissions_portal import (
     list_applicant_document_types,
     list_applicant_documents,
