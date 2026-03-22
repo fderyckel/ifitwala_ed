@@ -345,7 +345,7 @@ class TestPaymentEntry(FrappeTestCase):
         invoice = self.make_sales_invoice(
             organization=ctx["org"].name,
             account_holder=ctx["account_holder"].name,
-            posting_date="2026-01-10",
+            posting_date=nowdate(),
             items=[
                 {
                     "billable_offering": ctx["invoice"].items[0].billable_offering,
