@@ -74,6 +74,14 @@ class TestAnalyticsPermissions(FrappeTestCase):
         self.assertTrue(caps.get("analytics_policy_signatures"))
         self.assertTrue(caps.get("manage_policy_signatures"))
 
+    def test_staff_home_academic_load_capability_for_academic_admin(self):
+        caps = _build_staff_home_capabilities({"Academic Admin"})
+        self.assertTrue(caps.get("analytics_academic_load"))
+
+    def test_staff_home_academic_load_capability_is_hidden_from_instructor(self):
+        caps = _build_staff_home_capabilities({"Instructor"})
+        self.assertFalse(caps.get("analytics_academic_load"))
+
     def test_staff_home_policy_library_capability_for_employee(self):
         caps = _build_staff_home_capabilities({"Employee"})
         self.assertTrue(caps.get("staff_policy_library"))
@@ -86,6 +94,7 @@ class TestAnalyticsPermissions(FrappeTestCase):
         self.assertFalse(caps.get("quick_action_create_event"))
         self.assertFalse(caps.get("quick_action_create_meeting"))
         self.assertFalse(caps.get("quick_action_create_school_event"))
+        self.assertFalse(caps.get("quick_action_org_communication"))
 
     def test_staff_home_quick_actions_for_academic_staff(self):
         caps = _build_staff_home_capabilities({"Academic Staff"})
@@ -95,15 +104,36 @@ class TestAnalyticsPermissions(FrappeTestCase):
         self.assertFalse(caps.get("quick_action_create_event"))
         self.assertFalse(caps.get("quick_action_create_meeting"))
         self.assertFalse(caps.get("quick_action_create_school_event"))
+        self.assertTrue(caps.get("quick_action_org_communication"))
 
     def test_staff_home_quick_actions_for_employee_meeting_creation(self):
         caps = _build_staff_home_capabilities({"Employee"})
         self.assertTrue(caps.get("quick_action_create_meeting"))
         self.assertFalse(caps.get("quick_action_create_school_event"))
         self.assertTrue(caps.get("quick_action_create_event"))
+        self.assertTrue(caps.get("quick_action_org_communication"))
 
     def test_staff_home_quick_actions_for_school_event_roles(self):
         caps = _build_staff_home_capabilities({"Academic Admin"})
         self.assertFalse(caps.get("quick_action_create_meeting"))
         self.assertTrue(caps.get("quick_action_create_school_event"))
         self.assertTrue(caps.get("quick_action_create_event"))
+        self.assertTrue(caps.get("quick_action_org_communication"))
+
+    def test_staff_home_professional_development_capabilities_for_employee(self):
+        caps = _build_staff_home_capabilities({"Employee"})
+        self.assertTrue(caps.get("staff_professional_development"))
+        self.assertFalse(caps.get("professional_development_decide"))
+        self.assertFalse(caps.get("professional_development_liquidate"))
+
+    def test_staff_home_professional_development_capabilities_for_finance(self):
+        caps = _build_staff_home_capabilities({"Accounts Manager"})
+        self.assertFalse(caps.get("staff_professional_development"))
+        self.assertFalse(caps.get("professional_development_decide"))
+        self.assertTrue(caps.get("professional_development_liquidate"))
+
+    def test_staff_home_professional_development_capabilities_for_hr(self):
+        caps = _build_staff_home_capabilities({"HR Manager"})
+        self.assertTrue(caps.get("staff_professional_development"))
+        self.assertTrue(caps.get("professional_development_decide"))
+        self.assertFalse(caps.get("professional_development_liquidate"))

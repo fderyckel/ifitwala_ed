@@ -427,7 +427,7 @@ def search_students(**payload):
             ["Student", "student_preferred_name", "like", f"%{query}%"],
             ["Student", "name", "like", f"%{query}%"],
         ],
-        limit_page_length=limit,
+        limit=limit,
     )
 
     out = []

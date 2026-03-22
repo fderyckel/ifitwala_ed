@@ -15,6 +15,8 @@ from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     READ_LIKE_PERMISSION_TYPES,
     build_admissions_file_scope_exists_sql,
+    build_open_applicant_review_access_exists_sql,
+    has_open_applicant_review_access,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
@@ -34,6 +36,7 @@ class ApplicantHealthProfile(Document):
         user_roles = set(frappe.get_roles(frappe.session.user))
         is_family = bool(user_roles & (FAMILY_ROLES | {ADMISSIONS_APPLICANT_ROLE}))
         is_staff = bool(user_roles & STAFF_ROLES)
+        is_family_only = is_family and not is_staff
 
         if not is_family and not is_staff:
             frappe.throw(_("You do not have permission to edit Applicant Health Profiles."))
@@ -48,7 +51,7 @@ class ApplicantHealthProfile(Document):
                     frappe.PermissionError,
                 )
 
-        if is_family:
+        if is_family_only:
             if not _is_family_linked_to_student_applicant(self.student_applicant, frappe.session.user, user_roles):
                 frappe.throw(
                     _("You do not have permission to edit this Applicant Health Profile."), frappe.PermissionError
@@ -58,7 +61,7 @@ class ApplicantHealthProfile(Document):
         if status in {"Rejected", "Promoted"}:
             frappe.throw(_("Applicant is read-only in terminal states."))
 
-        if is_family:
+        if is_family_only:
             if status not in {
                 "Draft",
                 "Invited",
@@ -139,6 +142,13 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
     if portal_condition != "1=0":
         conditions.append(f"({portal_condition})")
 
+    reviewer_condition = build_open_applicant_review_access_exists_sql(
+        user=resolved_user,
+        student_applicant_expr_sql="`tabApplicant Health Profile`.`student_applicant`",
+    )
+    if reviewer_condition != "1=0":
+        conditions.append(f"({reviewer_condition})")
+
     return " OR ".join(conditions) if conditions else "1=0"
 
 
@@ -163,6 +173,11 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
             return True
         student_applicant = _resolve_health_student_applicant(doc)
         return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=student_applicant)
+
+    if op in READ_LIKE_PERMISSION_TYPES and doc:
+        student_applicant = _resolve_health_student_applicant(doc)
+        if has_open_applicant_review_access(user=resolved_user, student_applicant=student_applicant):
+            return True
 
     family_roles = FAMILY_ROLES | {ADMISSIONS_APPLICANT_ROLE}
     if not (roles & family_roles):

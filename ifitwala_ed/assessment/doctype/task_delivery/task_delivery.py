@@ -455,7 +455,7 @@ class TaskDelivery(Document):
             "Task Outcome",
             filters={"task_delivery": self.name},
             pluck="name",
-            limit_page_length=0,
+            limit=0,
         )
         if not outcome_names:
             return False

@@ -33,6 +33,7 @@ from ifitwala_ed.api.policy_signature import (
     parse_employee_from_todo_description,
     validate_staff_policy_scope_for_employee,
 )
+from ifitwala_ed.governance.policy_utils import policy_applies_to_filter_sql
 
 
 def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
@@ -125,7 +126,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
             "Student Log Next Step",
             filters={"name": ["in", next_step_names]},
             fields=["name", "next_step"],
-            limit_page_length=1000,
+            limit=1000,
             ignore_permissions=True,
         )
         next_step_title_by_name = {x["name"]: x.get("next_step") for x in ns}
@@ -363,8 +364,13 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
     # ------------------------------------------------------------
     user_roles = _normalize_roles(frappe.get_roles(user))
     admissions_workspace_user = is_admissions_workspace_user(user)
+
+    # Build role placeholders for IN clause (frappe.db.sql doesn't expand tuples)
+    roles_params = tuple(user_roles) or ("",)
+    role_placeholders = ", ".join(["%s"] * len(roles_params))
+
     assignment_rows = frappe.db.sql(
-        """
+        f"""
         select
             a.name,
             a.target_type,
@@ -394,24 +400,18 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
           on ad_item.name = adi.applicant_document
         left join `tabApplicant Document Type` adt
           on adt.name = ad_item.document_type
-        where (%(open_only)s = 0 or a.status = 'Open')
+        where (%s = 0 or a.status = 'Open')
           and (
-                a.assigned_to_user = %(user)s
+                a.assigned_to_user = %s
              or (
                     ifnull(a.assigned_to_role, '') != ''
-                and a.assigned_to_role in %(roles)s
+                and a.assigned_to_role in ({role_placeholders})
              )
           )
         order by a.modified desc
-        limit %(limit)s offset %(offset)s
+        limit %s offset %s
         """,
-        {
-            "open_only": open_only,
-            "user": user,
-            "roles": tuple(user_roles) or ("",),
-            "limit": limit,
-            "offset": offset,
-        },
+        (open_only, user, *roles_params, limit, offset),
         as_dict=True,
     )
 
@@ -452,7 +452,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
     active_employee = _active_employee_row(user)
     if active_employee:
         policy_rows = frappe.db.sql(
-            """
+            f"""
             select
                 t.reference_name as policy_version,
                 t.date as todo_due_date,
@@ -475,7 +475,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
               and (%(open_only)s = 0 or t.status = 'Open')
               and pv.is_active = 1
               and ip.is_active = 1
-              and ip.applies_to like %(applies_to)s
+              and {policy_applies_to_filter_sql(policy_alias="ip", audience_placeholder="%(applies_to)s")}
             order by ifnull(t.date, '9999-12-31') asc, t.modified desc
             limit %(limit)s offset %(offset)s
             """,
@@ -485,7 +485,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
                 "open_only": open_only,
                 "limit": limit,
                 "offset": offset,
-                "applies_to": "%Staff%",
+                "applies_to": "Staff",
             },
             as_dict=True,
         )

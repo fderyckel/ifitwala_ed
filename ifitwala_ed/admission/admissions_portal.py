@@ -9,11 +9,7 @@ from frappe import _
 from frappe.utils import cint, now_datetime
 
 from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
-from ifitwala_ed.admission.applicant_review_workflow import materialize_document_item_review_assignments
-from ifitwala_ed.admission.doctype.applicant_document.applicant_document import (
-    sync_applicant_document_review_from_items,
-)
-from ifitwala_ed.utilities import file_dispatcher
+from ifitwala_ed.utilities.governed_uploads import _drive_upload_and_finalize, _load_drive_module
 
 ALLOWED_UPLOAD_SOURCES = {"Desk", "SPA", "API", "Job"}
 
@@ -89,95 +85,197 @@ def upload_applicant_document(
             if cached:
                 return frappe.parse_json(cached)
 
-        had_existing_file = bool(
-            frappe.db.exists(
-                "File",
-                {
-                    "attached_to_doctype": "Applicant Document Item",
-                    "attached_to_name": item_doc.name,
-                },
-            )
-        )
+        drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
 
-        file_kwargs = {
-            "attached_to_doctype": "Applicant Document Item",
-            "attached_to_name": item_doc.name,
-            "is_private": cint(is_private) if is_private is not None else 1,
-            "file_name": filename,
-            "content": content,
-        }
-
-        item_slot_key = f"{slot_spec['slot']}_{frappe.scrub(item_doc.item_key)[:80]}"
-        classification = {
-            "primary_subject_type": "Student Applicant",
-            "primary_subject_id": doc.student_applicant,
-            "data_class": slot_spec["data_class"],
-            "purpose": slot_spec["purpose"],
-            "retention_policy": slot_spec["retention_policy"],
-            "slot": item_slot_key,
-            "organization": applicant_row.get("organization"),
-            "school": applicant_row.get("school"),
-            "upload_source": source,
-        }
-
-        file_doc = file_dispatcher.create_and_classify_file(
-            file_kwargs=file_kwargs,
-            classification=classification,
-        )
-
-        frappe.db.set_value(
-            "Applicant Document Item",
-            item_doc.name,
-            {
-                "review_status": "Pending",
-                "review_notes": None,
-                "reviewed_by": None,
-                "reviewed_on": None,
+        _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
+            create_session_callable=drive_admissions_api.upload_applicant_document,
+            payload={
+                "student_applicant": doc.student_applicant,
+                "document_type": doc.document_type,
+                "applicant_document": doc.name,
+                "applicant_document_item": item_doc.name,
+                "item_key": item_doc.item_key,
+                "item_label": item_doc.item_label,
+                "filename_original": filename,
+                "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+                "expected_size_bytes": len(content),
+                "upload_source": source,
+                "is_private": cint(is_private) if is_private is not None else 1,
             },
-            update_modified=False,
-        )
-        sync_applicant_document_review_from_items(doc.name)
-
-        classification_name = frappe.db.get_value(
-            "File Classification",
-            {"file": file_doc.name},
-            "name",
-        )
-
-        _append_document_upload_timeline(
-            student_applicant=doc.student_applicant,
-            applicant_document=doc.name,
-            applicant_document_item=item_doc.name,
-            item_key=item_doc.item_key,
-            item_label=item_doc.item_label,
-            document_type=doc.document_type,
-            document_type_code=doc_type_code,
-            file_url=file_doc.file_url,
-            upload_source=source,
-            action="replaced" if had_existing_file else "uploaded",
-        )
-        materialize_document_item_review_assignments(
-            applicant_document_item=item_doc.name,
-            source_event="document_item_uploaded",
+            content=content,
         )
 
         response = {
             "file": file_doc.name,
             "file_url": file_doc.file_url,
-            "classification": classification_name,
-            "applicant_document": doc.name,
-            "applicant_document_item": item_doc.name,
-            "item_key": item_doc.item_key,
-            "item_label": item_doc.item_label,
+            "classification": finalize_response.get("classification"),
+            "applicant_document": finalize_response.get("applicant_document") or doc.name,
+            "applicant_document_item": finalize_response.get("applicant_document_item") or item_doc.name,
+            "item_key": finalize_response.get("item_key") or item_doc.item_key,
+            "item_label": finalize_response.get("item_label") or item_doc.item_label,
         }
         if cache_key:
             cache.set_value(cache_key, frappe.as_json(response), expires_in_sec=60 * 10)
         return response
 
 
-def _resolve_applicant_document(*, applicant_document=None, student_applicant=None, document_type=None):
+def upload_applicant_profile_image(
+    *,
+    student_applicant: str,
+    file_name: str,
+    content,
+    upload_source: str | None = "API",
+):
+    """Governed admissions applicant-profile image upload routed through Drive."""
+    if not student_applicant:
+        frappe.throw(_("student_applicant is required."))
+    if not file_name:
+        frappe.throw(_("file_name is required when sending raw content."))
+    if content is None:
+        frappe.throw(_("File content is required."))
+
+    source = upload_source or "API"
+    if source not in ALLOWED_UPLOAD_SOURCES:
+        frappe.throw(_("Invalid upload_source."))
+
+    drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+    _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_admissions_api.upload_applicant_profile_image,
+        payload={
+            "student_applicant": student_applicant,
+            "filename_original": file_name,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
+            "upload_source": source,
+        },
+        content=content,
+    )
+
+    return {
+        "file": file_doc.name,
+        "file_url": file_doc.file_url,
+        "classification": finalize_response.get("classification"),
+        "student_applicant": finalize_response.get("student_applicant") or student_applicant,
+        "slot": finalize_response.get("slot"),
+    }
+
+
+def upload_applicant_guardian_image(
+    *,
+    student_applicant: str,
+    guardian_row_name: str,
+    file_name: str,
+    content,
+    upload_source: str | None = "API",
+):
+    """Governed admissions guardian image upload routed through Drive."""
+    if not student_applicant:
+        frappe.throw(_("student_applicant is required."))
+    if not guardian_row_name:
+        frappe.throw(_("guardian_row_name is required."))
+    if not file_name:
+        frappe.throw(_("file_name is required when sending raw content."))
+    if content is None:
+        frappe.throw(_("File content is required."))
+
+    source = upload_source or "API"
+    if source not in ALLOWED_UPLOAD_SOURCES:
+        frappe.throw(_("Invalid upload_source."))
+
+    drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+    _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_admissions_api.upload_applicant_guardian_image,
+        payload={
+            "student_applicant": student_applicant,
+            "guardian_row_name": guardian_row_name,
+            "filename_original": file_name,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
+            "upload_source": source,
+        },
+        content=content,
+    )
+
+    return {
+        "file": file_doc.name,
+        "file_url": file_doc.file_url,
+        "classification": finalize_response.get("classification"),
+        "student_applicant": finalize_response.get("student_applicant") or student_applicant,
+        "guardian_row_name": finalize_response.get("guardian_row_name") or guardian_row_name,
+        "slot": finalize_response.get("slot"),
+    }
+
+
+def upload_applicant_health_vaccination_proof(
+    *,
+    student_applicant: str,
+    applicant_health_profile: str,
+    vaccine_name: str | None = None,
+    date: str | None = None,
+    row_index: int | None = None,
+    file_name: str,
+    content,
+    upload_source: str | None = "API",
+):
+    """Governed admissions health upload endpoint routed through Drive."""
+    if not student_applicant:
+        frappe.throw(_("student_applicant is required."))
+    if not applicant_health_profile:
+        frappe.throw(_("applicant_health_profile is required."))
+    if not file_name:
+        frappe.throw(_("file_name is required when sending raw content."))
+    if content is None:
+        frappe.throw(_("File content is required."))
+
+    source = upload_source or "API"
+    if source not in ALLOWED_UPLOAD_SOURCES:
+        frappe.throw(_("Invalid upload_source."))
+
+    drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+    _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_admissions_api.upload_applicant_health_vaccination_proof,
+        payload={
+            "student_applicant": student_applicant,
+            "applicant_health_profile": applicant_health_profile,
+            "vaccine_name": vaccine_name,
+            "date": date,
+            "row_index": row_index,
+            "filename_original": file_name,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
+            "upload_source": source,
+        },
+        content=content,
+    )
+
+    return {
+        "file": file_doc.name,
+        "file_url": file_doc.file_url,
+        "classification": finalize_response.get("classification"),
+        "student_applicant": finalize_response.get("student_applicant") or student_applicant,
+        "applicant_health_profile": finalize_response.get("applicant_health_profile") or applicant_health_profile,
+        "slot": finalize_response.get("slot"),
+    }
+
+
+def _resolve_applicant_document(
+    *,
+    applicant_document=None,
+    student_applicant=None,
+    document_type=None,
+    applicant_document_item=None,
+):
     if applicant_document:
         doc = frappe.get_doc("Applicant Document", applicant_document)
+        if student_applicant and doc.student_applicant != student_applicant:
+            frappe.throw(_("Applicant Document does not match the provided Student Applicant."))
+        if document_type and doc.document_type != document_type:
+            frappe.throw(_("Applicant Document does not match the provided Document Type."))
+        return doc
+
+    if applicant_document_item:
+        item_doc = frappe.get_doc("Applicant Document Item", applicant_document_item)
+        doc = frappe.get_doc("Applicant Document", item_doc.applicant_document)
         if student_applicant and doc.student_applicant != student_applicant:
             frappe.throw(_("Applicant Document does not match the provided Student Applicant."))
         if document_type and doc.document_type != document_type:
@@ -261,7 +359,7 @@ def _resolve_applicant_document_item(
             filters={"applicant_document": applicant_document.name},
             fields=["name", "item_label"],
             order_by="modified desc",
-            limit_page_length=1,
+            limit=1,
         )
         if existing:
             item_doc = frappe.get_doc("Applicant Document Item", existing[0].get("name"))

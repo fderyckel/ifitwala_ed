@@ -483,7 +483,7 @@ def _any_student_has_active_group_membership(student_names: set[str], group_name
             "active": 1,
         },
         fields=["name"],
-        limit_page_length=1,
+        limit=1,
         ignore_permissions=True,
     )
     return bool(row)

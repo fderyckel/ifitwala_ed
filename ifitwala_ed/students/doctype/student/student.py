@@ -542,6 +542,19 @@ def get_contact_linked_to_student(student_name):
     )
 
 
+@frappe.whitelist()
+def get_student_guardians(student_id: str) -> list[dict]:
+    """Return guardians for a given student. Used for sibling guardian sync."""
+    if not student_id or not frappe.db.exists("Student", student_id):
+        return []
+
+    return frappe.get_all(
+        "Student Guardian",
+        filters={"parent": student_id, "parenttype": "Student", "parentfield": "guardians"},
+        fields=["guardian", "guardian_name", "relation", "can_consent", "email", "phone"],
+    )
+
+
 def on_doctype_update():
     # speed up reverse lookups and parent scans
     frappe.db.add_index("Student Sibling", ["student"])

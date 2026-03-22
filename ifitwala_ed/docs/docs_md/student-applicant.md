@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.19.0"
-last_change_date: "2026-03-15"
+version: "1.20.0"
+last_change_date: "2026-03-17"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
@@ -513,23 +513,24 @@ Test refs:
 | Concern | Canonical owner | Code refs | Test refs |
 |---|---|---|---|
 | Schema / DocType | Applicant-stage and student-stage guardian relationship rows carry canonical signer authority; policy audience remains on Institutional Policy | `admission/doctype/student_applicant_guardian/student_applicant_guardian.json`, `students/doctype/student_guardian/student_guardian.json`, `governance/doctype/institutional_policy/institutional_policy.json` | `admission/doctype/student_applicant/test_student_applicant.py`, `governance/doctype/institutional_policy/test_institutional_policy.py` |
-| Controller / workflow logic | Promotion carries signer authority forward; policy audience is normalized; guardian/student acknowledgement visibility respects signer authority | `admission/doctype/student_applicant/student_applicant.py`, `governance/doctype/institutional_policy/institutional_policy.py`, `governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `api/guardian_policy.py` | `admission/doctype/student_applicant/test_student_applicant.py`, `api/test_guardian_phase2.py`, `governance/doctype/institutional_policy/test_institutional_policy.py` |
+| Controller / workflow logic | Promotion carries signer authority forward; policy audience uses canonical `Table MultiSelect` rows; guardian/student acknowledgement visibility respects signer authority | `admission/doctype/student_applicant/student_applicant.py`, `governance/doctype/institutional_policy/institutional_policy.py`, `governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `api/guardian_policy.py` | `admission/doctype/student_applicant/test_student_applicant.py`, `api/test_guardian_phase2.py`, `governance/doctype/institutional_policy/test_institutional_policy.py` |
 | API endpoints | Admissions family invite eligibility and guardian policy visibility use the signer-authority contract; admissions policy acknowledgement remains a named workflow | `api/admissions_portal.py`, `api/guardian_policy.py` | `api/test_admissions_portal.py`, `api/test_guardian_phase2.py` |
 | SPA / UI surfaces | Admissions family guardian rows present signer authority explicitly; guardian portal policy page consumes the filtered policy overview | `ui-spa/src/pages/admissions/ApplicantProfile.vue`, `ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue` | `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts` |
-| Reports / dashboards / briefings | Staff policy communication defaults and guardian policy status views follow the normalized audience contract | `api/policy_communication.py`, `api/policy_signature.py`, `ui-spa/src/pages/guardian/GuardianPolicies.vue` | `api/test_guardian_phase2.py` |
+| Reports / dashboards / briefings | Staff policy communication defaults and guardian policy status views follow the canonical audience-row contract | `api/policy_communication.py`, `api/policy_signature.py`, `ui-spa/src/pages/guardian/GuardianPolicies.vue` | `api/test_guardian_phase2.py` |
 | Scheduler / background jobs | None in this signer-authority workflow | None | None |
 | Tests | Coverage exists for policy audience normalization, guardian policy filtering, and promotion carry-forward of signer authority | `governance/doctype/institutional_policy/test_institutional_policy.py`, `api/test_guardian_phase2.py`, `admission/doctype/student_applicant/test_student_applicant.py`, `api/test_admissions_portal.py` | Implemented |
 
-### Troubleshooting: `Policy schema mismatch` (`missing_column: applies_to`)
+### Troubleshooting: `Policy schema mismatch` (`applies_to` storage)
 
 If you see an error log like:
 
 - title: `Policy schema mismatch`
 - caller: `StudentApplicant.has_required_policies`
 - doctype: `Institutional Policy`
-- missing_column: `applies_to`
+- missing_table: `Institutional Policy Audience`
+- missing_link_doctype: `Policy Audience`
 
-it means code expects `Institutional Policy.applies_to`, but your site database table does not have that column.
+it means code expects the canonical `Institutional Policy.applies_to` child-table storage, but your site schema is missing the related audience DocTypes or child table.
 
 Current implementation impact:
 
@@ -540,10 +541,12 @@ What to do (site operations):
 
 1. Run migrations for the affected site:
    - `bench --site <site-name> migrate`
-2. If the column is still missing, reload the DocType schema:
+2. If the schema is still missing, reload the related DocTypes:
    - `bench --site <site-name> reload-doc governance doctype institutional_policy`
-3. Verify column presence:
-   - `bench --site <site-name> mariadb -e "SHOW COLUMNS FROM \`tabInstitutional Policy\` LIKE 'applies_to';"`
+   - `bench --site <site-name> reload-doc governance doctype institutional_policy_audience`
+   - `bench --site <site-name> reload-doc governance doctype policy_audience`
+3. Verify the child table exists:
+   - `bench --site <site-name> mariadb -e "SHOW TABLES LIKE 'tabInstitutional Policy Audience';"`
 4. Re-test applicant policy readiness/API and confirm no new `Policy schema mismatch` logs are created.
 
 ### Permission Matrix

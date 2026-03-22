@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"2ZEKCIFXhC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Staff Calendar\",\"col\":3}},{\"id\":\"jWVGn2pXes\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Employee\",\"col\":3}},{\"id\":\"N5HOjIizuz\",\"type\":\"header\",\"data\":{\"text\":\"<br>\",\"col\":12}},{\"id\":\"2RtsIQZnHc\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}},{\"id\":\"TWmZIg6AHQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Professional Growth Plan\",\"col\":4}},{\"id\":\"Yp4LCkAfaM\",\"type\":\"card\",\"data\":{\"card_name\":\"Communication\",\"col\":4}},{\"id\":\"JL5e-ow9vG\",\"type\":\"card\",\"data\":{\"card_name\":\"Leave\",\"col\":4}},{\"id\":\"cQh43EktlU\",\"type\":\"card\",\"data\":{\"card_name\":\"HR Settings\",\"col\":4}}]",
+ "content": "[{\"id\":\"2ZEKCIFXhC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Staff Calendar\",\"col\":3}},{\"id\":\"jWVGn2pXes\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Employee\",\"col\":3}},{\"id\":\"N5HOjIizuz\",\"type\":\"header\",\"data\":{\"text\":\"<br>\",\"col\":12}},{\"id\":\"2RtsIQZnHc\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}},{\"id\":\"TWmZIg6AHQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Professional Growth Plan\",\"col\":4}},{\"id\":\"PDc0m8dP1A\",\"type\":\"card\",\"data\":{\"card_name\":\"Professional Development\",\"col\":4}},{\"id\":\"Yp4LCkAfaM\",\"type\":\"card\",\"data\":{\"card_name\":\"Communication\",\"col\":4}},{\"id\":\"JL5e-ow9vG\",\"type\":\"card\",\"data\":{\"card_name\":\"Leave\",\"col\":4}},{\"id\":\"cQh43EktlU\",\"type\":\"card\",\"data\":{\"card_name\":\"HR Settings\",\"col\":4}}]",
  "creation": "2025-04-22 08:21:35.205048",
  "custom_blocks": [],
  "docstatus": 0,
@@ -87,6 +87,75 @@
    "label": "PGP Rating",
    "link_count": 0,
    "link_to": "PGP Rating",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Professional Development",
+   "link_count": 6,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Professional Development Request",
+   "link_count": 0,
+   "link_to": "Professional Development Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Professional Development Record",
+   "link_count": 0,
+   "link_to": "Professional Development Record",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Professional Development Outcome",
+   "link_count": 0,
+   "link_to": "Professional Development Outcome",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Professional Development Budget",
+   "link_count": 0,
+   "link_to": "Professional Development Budget",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Professional Development Theme",
+   "link_count": 0,
+   "link_to": "Professional Development Theme",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Professional Development Encumbrance",
+   "link_count": 0,
+   "link_to": "Professional Development Encumbrance",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -239,7 +308,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-02-19 15:21:47",
+ "modified": "2026-03-20 10:37:48",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",

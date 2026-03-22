@@ -21,6 +21,7 @@ frappe.ui.form.on('Student', {
 		}
 
 		frm.trigger("setup_governed_image_upload");
+		frm.trigger("setup_sibling_guardian_sync");
 	},
 
     anchor_school: function(frm) {
@@ -45,7 +46,152 @@ frappe.ui.form.on('Student', {
                 }
              });
         }
-    }
+    },
+
+	setup_sibling_guardian_sync: function(frm) {
+		// Track siblings before save to detect new additions
+		if (!frm.__siblings_before_save) {
+			frm.__siblings_before_save = (frm.doc.siblings || []).map(s => s.student);
+		}
+	},
+
+	show_guardian_sync_dialog: function(frm, sibling_id, sibling_name) {
+		if (!sibling_id) return;
+
+		// Fetch sibling's guardians
+		frappe.call({
+			method: 'ifitwala_ed.students.doctype.student.student.get_student_guardians',
+			args: { student_id: sibling_id },
+			callback: function(r) {
+				if (!r.message || r.message.length === 0) {
+					frappe.show_alert({
+						message: __('Sibling has no guardians to sync.'),
+						indicator: 'orange'
+					});
+					return;
+				}
+
+				const sibling_guardians = r.message;
+				const current_guardian_ids = (frm.doc.guardians || []).map(g => g.guardian);
+
+				// Filter out guardians already present
+				const new_guardians = sibling_guardians.filter(g => !current_guardian_ids.includes(g.guardian));
+
+				if (new_guardians.length === 0) {
+					frappe.show_alert({
+						message: __('All guardians from this sibling are already added.'),
+						indicator: 'green'
+					});
+					return;
+				}
+
+				// Build dialog content
+				const guardian_list = new_guardians.map(g =>
+					'<li><strong>' + frappe.utils.escape_html(g.guardian_name) + '</strong> (' + frappe.utils.escape_html(g.relation) + ')</li>'
+				).join('');
+
+				const d = new frappe.ui.Dialog({
+					title: __('Sync Guardians from {0}', [sibling_name || sibling_id]),
+					fields: [
+						{
+							fieldtype: 'HTML',
+							fieldname: 'info',
+							options: '<p>' + __('This sibling has the following guardians. Would you like to add them to this student?') + '</p><ul>' + guardian_list + '</ul>'
+						}
+					],
+					primary_action_label: __('Add Guardians'),
+					primary_action: function() {
+						// Add guardians to current student
+						new_guardians.forEach(g => {
+							const row = frm.add_child('guardians');
+							row.guardian = g.guardian;
+							row.guardian_name = g.guardian_name;
+							row.relation = g.relation;
+							row.can_consent = g.can_consent;
+							row.email = g.email;
+							row.phone = g.phone;
+						});
+						frm.refresh_field('guardians');
+						frappe.show_alert({
+							message: __('{0} guardian(s) added.', [new_guardians.length]),
+							indicator: 'green'
+						});
+						d.hide();
+					},
+					secondary_action_label: __('Skip'),
+					secondary_action: function() {
+						d.hide();
+					}
+				});
+				d.show();
+			}
+		});
+	},
+
+	before_save: function(frm) {
+		// Detect newly added siblings and show guardian sync dialog
+		if (frm.__siblings_before_save) {
+			const current_siblings = (frm.doc.siblings || []).map(s => s.student);
+			const new_siblings = current_siblings.filter(s => !frm.__siblings_before_save.includes(s));
+
+			if (new_siblings.length > 0 && !frm.__guardian_sync_shown) {
+				frm.__guardian_sync_shown = true;
+				// Get the first new sibling's details
+				const sibling_row = frm.doc.siblings.find(s => s.student === new_siblings[0]);
+				if (sibling_row) {
+					// Delay to allow save to complete first
+					setTimeout(() => {
+						frm.events.show_guardian_sync_dialog(frm, sibling_row.student, sibling_row.sibling_name);
+					}, 500);
+				}
+			}
+		}
+		frm.__siblings_before_save = (frm.doc.siblings || []).map(s => s.student);
+	}
+});
+
+// Child table event handlers for siblings
+frappe.ui.form.on('Student Sibling', {
+	sibling_add: function(frm, cdt, cdn) {
+		// Track that a new sibling was added
+		if (!frm.__siblings_before_save) {
+			frm.__siblings_before_save = (frm.doc.siblings || []).filter(s => s.name !== cdn).map(s => s.student);
+		}
+	},
+
+	student: function(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		if (row.student && !row.__guardian_sync_checked) {
+			row.__guardian_sync_checked = true;
+			// Will be handled in before_save
+		}
+	},
+
+	form_render: function(frm, cdt, cdn) {
+		// Add sync button to each row
+		const row = locals[cdt][cdn];
+		const wrapper = frm.fields_dict.siblings.grid.grid_rows_by_docname[cdn]?.row;
+
+		if (wrapper && row.student) {
+			// Check if button already exists
+			if (!wrapper.find('.btn-sync-guardians').length) {
+				const $btn = $('<button class="btn btn-xs btn-default btn-sync-guardians" style="margin-left: 5px;">' +
+					'<i class="fa fa-users"></i> ' + __('Sync Guardians') + '</button>');
+
+				$btn.on('click', function(e) {
+					e.preventDefault();
+					e.stopPropagation();
+					frm.events.show_guardian_sync_dialog(frm, row.student, row.sibling_name);
+				});
+
+				// Add button next to the row actions
+				const $actions = wrapper.find('.row-check, .row-index');
+				if ($actions.length) {
+					$actions.after($btn);
+				}
+			}
+		}
+	}
 });
 
 frappe.ui.form.on("Student", {

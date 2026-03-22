@@ -1,0 +1,266 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-03-21 13:18:35.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "school",
+  "is_active",
+  "is_system_default",
+  "was_customized",
+  "score_weights_section",
+  "teaching_weight",
+  "student_weight",
+  "student_ratio_divisor",
+  "activity_weight",
+  "meeting_weight",
+  "school_event_weight",
+  "window_rules_section",
+  "meeting_window_days",
+  "future_horizon_days",
+  "meeting_blend_mode",
+  "thresholds_section",
+  "underutilized_threshold",
+  "high_load_threshold",
+  "overload_threshold",
+  "exclusions_section",
+  "exclude_cancelled_meetings",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Active"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_system_default",
+   "fieldtype": "Check",
+   "label": "Is System Default"
+  },
+  {
+   "default": "0",
+   "fieldname": "was_customized",
+   "fieldtype": "Check",
+   "label": "Was Customized"
+  },
+  {
+   "fieldname": "score_weights_section",
+   "fieldtype": "Section Break",
+   "label": "Score Weights"
+  },
+  {
+   "default": "1.0",
+   "fieldname": "teaching_weight",
+   "fieldtype": "Float",
+   "label": "Teaching Weight",
+   "reqd": 1
+  },
+  {
+   "default": "1.0",
+   "fieldname": "student_weight",
+   "fieldtype": "Float",
+   "label": "Student Weight",
+   "reqd": 1
+  },
+  {
+   "default": "15",
+   "fieldname": "student_ratio_divisor",
+   "fieldtype": "Float",
+   "label": "Student Ratio Divisor",
+   "reqd": 1
+  },
+  {
+   "default": "1.0",
+   "fieldname": "activity_weight",
+   "fieldtype": "Float",
+   "label": "Activity Weight",
+   "reqd": 1
+  },
+  {
+   "default": "0.75",
+   "fieldname": "meeting_weight",
+   "fieldtype": "Float",
+   "label": "Meeting Weight",
+   "reqd": 1
+  },
+  {
+   "default": "0.75",
+   "fieldname": "school_event_weight",
+   "fieldtype": "Float",
+   "label": "School Event Weight",
+   "reqd": 1
+  },
+  {
+   "fieldname": "window_rules_section",
+   "fieldtype": "Section Break",
+   "label": "Window Rules"
+  },
+  {
+   "default": "30",
+   "fieldname": "meeting_window_days",
+   "fieldtype": "Int",
+   "label": "Meeting Window Days",
+   "reqd": 1
+  },
+  {
+   "default": "14",
+   "fieldname": "future_horizon_days",
+   "fieldtype": "Int",
+   "label": "Future Horizon Days",
+   "reqd": 1
+  },
+  {
+   "default": "Blended Past + Future",
+   "fieldname": "meeting_blend_mode",
+   "fieldtype": "Select",
+   "label": "Meeting Blend Mode",
+   "options": "Past Average Only\nFuture Scheduled Only\nBlended Past + Future",
+   "reqd": 1
+  },
+  {
+   "fieldname": "thresholds_section",
+   "fieldtype": "Section Break",
+   "label": "Thresholds"
+  },
+  {
+   "default": "12",
+   "fieldname": "underutilized_threshold",
+   "fieldtype": "Float",
+   "label": "Underutilized Threshold",
+   "reqd": 1
+  },
+  {
+   "default": "24",
+   "fieldname": "high_load_threshold",
+   "fieldtype": "Float",
+   "label": "High Load Threshold",
+   "reqd": 1
+  },
+  {
+   "default": "30",
+   "fieldname": "overload_threshold",
+   "fieldtype": "Float",
+   "label": "Overload Threshold",
+   "reqd": 1
+  },
+  {
+   "fieldname": "exclusions_section",
+   "fieldtype": "Section Break",
+   "label": "Exclusions"
+  },
+  {
+   "default": "1",
+   "fieldname": "exclude_cancelled_meetings",
+   "fieldtype": "Check",
+   "label": "Exclude Cancelled Meetings"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-21 13:18:35.000000",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "Academic Load Policy",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Assistant Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "school",
+ "show_name_in_global_search": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "school"
+}

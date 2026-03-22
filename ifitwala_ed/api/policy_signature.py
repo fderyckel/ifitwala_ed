@@ -12,7 +12,11 @@ from ifitwala_ed.governance.policy_scope_utils import (
     is_policy_organization_applicable_to_context,
     select_nearest_policy_rows_by_key,
 )
-from ifitwala_ed.governance.policy_utils import policy_applies_to
+from ifitwala_ed.governance.policy_utils import (
+    get_policy_applies_to_tokens_for_policy,
+    policy_applies_to,
+    policy_applies_to_filter_sql,
+)
 from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -163,7 +167,7 @@ def _active_staff_policy_rows_for_context(
 
     params: dict = {
         "policy_organizations": tuple(ancestor_orgs),
-        "applies_to": "%Staff%",
+        "applies_to": "Staff",
     }
 
     school_scope_clause = " AND (ifnull(ip.school, '') = '')"
@@ -196,7 +200,7 @@ def _active_staff_policy_rows_for_context(
         WHERE pv.is_active = 1
           AND ip.is_active = 1
           AND ip.organization IN %(policy_organizations)s
-          AND ip.applies_to LIKE %(applies_to)s
+          AND {policy_applies_to_filter_sql(policy_alias="ip", audience_placeholder="%(applies_to)s")}
           {school_scope_clause}
         ORDER BY ip.policy_title ASC, pv.modified DESC
         """,
@@ -254,7 +258,7 @@ def get_policy_version_history_rows(institutional_policy: str | None) -> list[di
             "modified",
         ],
         order_by="creation desc, modified desc",
-        limit_page_length=0,
+        limit=0,
     )
     out = []
     for row in rows:
@@ -458,7 +462,6 @@ def get_policy_version_context(
             ip.name AS institutional_policy,
             ip.policy_key,
             ip.policy_title,
-            ip.applies_to,
             ip.organization AS policy_organization,
             ip.school AS policy_school,
             ip.is_active AS policy_is_active
@@ -476,10 +479,11 @@ def get_policy_version_context(
         frappe.throw(_("Policy Version not found."), frappe.DoesNotExistError)
 
     row = rows[0]
+    row["applies_to_tokens"] = list(get_policy_applies_to_tokens_for_policy(row.get("institutional_policy")))
     if require_active and (not row.get("policy_version_is_active") or not row.get("policy_is_active")):
         frappe.throw(_("Policy Version must be active under an active Institutional Policy."))
 
-    if require_staff_applies and not _policy_applies_to_staff(row.get("applies_to")):
+    if require_staff_applies and not _policy_applies_to_staff(row.get("applies_to_tokens")):
         frappe.throw(_("Selected Policy Version does not apply to Staff."))
 
     return row
@@ -523,7 +527,7 @@ def find_open_staff_policy_todos(*, user: str, policy_version: str) -> list[dict
         },
         fields=["name", "date", "description", "assigned_by", "assigned_by_full_name"],
         order_by="modified desc",
-        limit_page_length=200,
+        limit=200,
     )
 
 
@@ -605,7 +609,7 @@ def _target_employees(*, organization: str, school: str | None, employee_group: 
         filters=filters,
         fields=["name", "employee_full_name", "organization", "school", "employee_group", "user_id"],
         order_by="name asc",
-        limit_page_length=0,
+        limit=0,
     )
 
     out = []
@@ -631,7 +635,7 @@ def _acknowledged_employee_names(policy_version: str, employee_names: list[str])
             "context_name": ["in", tuple(names)],
         },
         fields=["context_name"],
-        limit_page_length=0,
+        limit=0,
     )
     return {(row.get("context_name") or "").strip() for row in rows if (row.get("context_name") or "").strip()}
 
@@ -650,7 +654,7 @@ def _open_todo_users(policy_version: str, users: list[str]) -> set[str]:
             "status": "Open",
         },
         fields=["allocated_to"],
-        limit_page_length=0,
+        limit=0,
     )
     return {(row.get("allocated_to") or "").strip() for row in rows if (row.get("allocated_to") or "").strip()}
 
@@ -753,7 +757,7 @@ def get_staff_policy_campaign_options(
             "School",
             filters={"organization": ["in", tuple(org_scope)]},
             fields=["name"],
-            limit_page_length=0,
+            limit=0,
         )
         school_options = sorted(
             {(row.get("name") or "").strip() for row in school_rows if (row.get("name") or "").strip()}
@@ -813,10 +817,10 @@ def get_staff_policy_campaign_options(
             WHERE pv.is_active = 1
               AND ip.is_active = 1
               AND ip.organization IN %(policy_organizations)s
-              AND ip.applies_to LIKE %(applies_to)s
+              AND {policy_applies_to_filter_sql(policy_alias="ip", audience_placeholder="%(applies_to)s")}
             ORDER BY ip.policy_title ASC, pv.version_label DESC
             """,
-            {**policy_params, "applies_to": "%Staff%"},
+            {**policy_params, "applies_to": "Staff"},
             as_dict=True,
         )
 
@@ -1145,7 +1149,7 @@ def get_staff_policy_signature_dashboard(
             },
             fields=["context_name", "acknowledged_at", "acknowledged_by"],
             order_by="acknowledged_at desc",
-            limit_page_length=0,
+            limit=0,
         )
         if employee_names
         else []

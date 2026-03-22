@@ -10,6 +10,7 @@ declare module 'frappe-ui' {
 	export const FormControl: any;
 	export const LoadingIndicator: any;
 	export const Spinner: any;
+	export const TextEditor: any;
 
 	export function call(method: string, params?: Record<string, any>): Promise<any>;
 	export function createResource<T = any>(options: Record<string, any>): any;

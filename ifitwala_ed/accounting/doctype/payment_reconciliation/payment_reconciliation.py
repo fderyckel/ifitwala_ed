@@ -85,7 +85,7 @@ class PaymentReconciliation(Document):
             "Sales Invoice",
             filters={"name": ["in", [row.sales_invoice for row in self.allocations if row.sales_invoice]]},
             fields=["school", "program"],
-            limit_page_length=max(50, len(self.allocations) + 10),
+            limit=max(50, len(self.allocations) + 10),
         )
         schools = {row.get("school") for row in rows if row.get("school")}
         programs = {row.get("program") for row in rows if row.get("program")}
@@ -204,7 +204,7 @@ def load_open_invoices(name: str) -> str:
         },
         fields=["name", "outstanding_amount"],
         order_by="due_date asc, posting_date asc",
-        limit_page_length=2000,
+        limit=2000,
     )
 
     doc.set(

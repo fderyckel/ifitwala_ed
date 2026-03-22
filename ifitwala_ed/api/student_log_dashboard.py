@@ -27,6 +27,7 @@ ALLOWED_ANALYTICS_ROLES = {
 }
 
 FOLLOW_UP_DOCTYPE = "Student Log Follow Up"
+FILTER_META_CACHE_TTL_SECONDS = 60 * 5
 
 
 def _ensure_student_log_analytics_access(user: str | None = None) -> str:
@@ -104,7 +105,7 @@ def _resolve_date_window(filters):
     return ay_start_s, ay_end_s
 
 
-def _apply_common_filters(filters, visibility_clause, visibility_params):
+def _apply_common_filters(filters, visibility_clause, visibility_params, school_scope=None):
     """
     Build WHERE conditions/params shared by queries, including date window.
     """
@@ -115,11 +116,9 @@ def _apply_common_filters(filters, visibility_clause, visibility_params):
         conditions.append(visibility_clause)
 
     # School filter (include descendants)
-    if filters.get("school"):
-        descendants = get_descendants_of("School", filters["school"], ignore_permissions=True) or []
-        schools = [filters["school"], *descendants]
+    if school_scope:
         conditions.append("sl.school IN %(field_school)s")
-        params["field_school"] = tuple(schools)
+        params["field_school"] = school_scope
 
     # Direct columns in Student Log (alias sl)
     direct_map = {
@@ -145,6 +144,20 @@ def _apply_common_filters(filters, visibility_clause, visibility_params):
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"
     return where_clause, params
+
+
+def _resolve_school_scope(filters):
+    school = (filters or {}).get("school")
+    if not school:
+        return None
+
+    descendants = get_descendants_of("School", school, ignore_permissions=True) or []
+    return tuple([school, *descendants])
+
+
+def _filter_meta_cache_key(user: str) -> str:
+    site = getattr(getattr(frappe, "local", None), "site", None) or "site"
+    return f"ifitwala_ed:student_log_dashboard:filter_meta:v1:{site}:{user}"
 
 
 def _format_response_time_label(total_minutes: int | None) -> str | None:
@@ -257,6 +270,7 @@ def get_dashboard_data(filters=None):
         else:
             filters = filters or {}
 
+        school_scope = _resolve_school_scope(filters)
         visibility_clause, visibility_params = get_student_log_visibility_predicate(
             user=user, table_alias="sl", allow_aggregate_only=True
         )
@@ -264,50 +278,81 @@ def get_dashboard_data(filters=None):
             user=user, table_alias="sl", allow_aggregate_only=False
         )
 
-        where_clause, params = _apply_common_filters(filters, visibility_clause, visibility_params)
-
-        def q(sql):
-            return frappe.db.sql(sql.format(w=where_clause), params, as_dict=True)
-
-        log_type_count = q(
-            "SELECT sl.log_type AS label, COUNT(*) AS value "
-            "FROM `tabStudent Log` sl WHERE {w} "
-            "GROUP BY sl.log_type ORDER BY value DESC"
+        where_clause, params = _apply_common_filters(
+            filters, visibility_clause, visibility_params, school_scope=school_scope
         )
 
-        logs_by_cohort = q(
-            "SELECT pe.cohort AS label, COUNT(sl.name) AS value "
-            "FROM `tabStudent Log` sl "
-            "LEFT JOIN `tabProgram Enrollment` pe "
-            "  ON pe.student = sl.student "
-            " AND pe.academic_year = sl.academic_year "
-            "WHERE {w} GROUP BY pe.cohort ORDER BY value DESC"
-        )
+        # Consolidate 6 aggregate queries into single UNION query to reduce DB round-trips
+        # per AGENTS.md §5: "Reduce DB round-trips aggressively"
+        union_sql = f"""
+            SELECT 'log_type' AS metric, sl.log_type AS label, COUNT(*) AS value
+            FROM `tabStudent Log` sl WHERE {where_clause}
+            GROUP BY sl.log_type
 
-        logs_by_program = q(
-            "SELECT sl.program AS label, COUNT(sl.name) AS value "
-            "FROM `tabStudent Log` sl WHERE {w} GROUP BY sl.program ORDER BY value DESC"
-        )
+            UNION ALL
 
-        logs_by_author = q(
-            "SELECT sl.author_name AS label, COUNT(*) AS value "
-            "FROM `tabStudent Log` sl WHERE {w} GROUP BY sl.author_name ORDER BY value DESC"
-        )
+            SELECT 'cohort' AS metric, pe.cohort AS label, COUNT(sl.name) AS value
+            FROM `tabStudent Log` sl
+            LEFT JOIN `tabProgram Enrollment` pe
+              ON pe.student = sl.student
+             AND pe.academic_year = sl.academic_year
+            WHERE {where_clause}
+            GROUP BY pe.cohort
 
-        next_step_types = q(
-            "SELECT sl.next_step AS label, COUNT(*) AS value "
-            "FROM `tabStudent Log` sl WHERE {w} GROUP BY sl.next_step ORDER BY value DESC"
-        )
+            UNION ALL
 
-        incidents_over_time = q(
-            "SELECT DATE_FORMAT(sl.date,'%%Y-%%m-%%d') AS label, COUNT(*) AS value "
-            "FROM `tabStudent Log` sl WHERE {w} GROUP BY label ORDER BY label ASC"
-        )
+            SELECT 'program' AS metric, sl.program AS label, COUNT(sl.name) AS value
+            FROM `tabStudent Log` sl WHERE {where_clause}
+            GROUP BY sl.program
 
-        open_follow_ups = frappe.db.sql(
-            f"SELECT COUNT(*) FROM `tabStudent Log` sl WHERE {where_clause} AND sl.follow_up_status = 'Open'",
-            params,
-        )[0][0]
+            UNION ALL
+
+            SELECT 'author' AS metric, sl.author_name AS label, COUNT(*) AS value
+            FROM `tabStudent Log` sl WHERE {where_clause}
+            GROUP BY sl.author_name
+
+            UNION ALL
+
+            SELECT 'next_step' AS metric, sl.next_step AS label, COUNT(*) AS value
+            FROM `tabStudent Log` sl WHERE {where_clause}
+            GROUP BY sl.next_step
+
+            UNION ALL
+
+            SELECT 'date' AS metric, DATE_FORMAT(sl.date,'%%Y-%%m-%%d') AS label, COUNT(*) AS value
+            FROM `tabStudent Log` sl WHERE {where_clause}
+            GROUP BY DATE_FORMAT(sl.date,'%%Y-%%m-%%d')
+
+            UNION ALL
+
+            SELECT 'open_follow_ups' AS metric, 'open_follow_ups' AS label, COUNT(*) AS value
+            FROM `tabStudent Log` sl
+            WHERE {where_clause} AND sl.follow_up_status = 'Open'
+        """
+        union_results = frappe.db.sql(union_sql, params, as_dict=True)
+
+        # Pivot results by metric
+        buckets = defaultdict(list)
+        for row in union_results:
+            buckets[row["metric"]].append({"label": row["label"], "value": row["value"]})
+
+        # Apply sorting: DESC by value (except date which is ASC by label)
+        for key in buckets:
+            if key == "date":
+                buckets[key].sort(key=lambda x: x["label"])
+            else:
+                buckets[key].sort(key=lambda x: x["value"], reverse=True)
+
+        log_type_count = buckets.get("log_type", [])
+        logs_by_cohort = buckets.get("cohort", [])
+        logs_by_program = buckets.get("program", [])
+        logs_by_author = buckets.get("author", [])
+        next_step_types = buckets.get("next_step", [])
+        incidents_over_time = buckets.get("date", [])
+        open_follow_ups = next(
+            (row["value"] for row in buckets.get("open_follow_ups", []) if row.get("value") is not None),
+            0,
+        )
 
         # ── Student Logs (detail for a specific student) ─────────────
         student_logs = []
@@ -315,11 +360,9 @@ def get_dashboard_data(filters=None):
             conds = [detail_clause, "sl.student = %(field_student)s"]
             p = {**detail_params, "field_student": filters["student"]}
 
-            if filters.get("school"):
-                descendants = get_descendants_of("School", filters["school"], ignore_permissions=True) or []
-                schools = [filters["school"], *descendants]
+            if school_scope:
                 conds.append("sl.school IN %(field_school)s")
-                p["field_school"] = tuple(schools)
+                p["field_school"] = school_scope
 
             where_detail = " AND ".join([c for c in conds if c]) if conds else "1=1"
 
@@ -374,7 +417,10 @@ def get_distinct_students(filters=None, search_text: str = ""):
         visibility_clause, visibility_params = get_student_log_visibility_predicate(
             user=user, table_alias="sl", allow_aggregate_only=False
         )
-        where_clause, params = _apply_common_filters(filters, visibility_clause, visibility_params)
+        school_scope = _resolve_school_scope(filters)
+        where_clause, params = _apply_common_filters(
+            filters, visibility_clause, visibility_params, school_scope=school_scope
+        )
         if txt:
             where_clause = f"{where_clause} AND (sl.student LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)"
             params["txt"] = f"%{txt}%"
@@ -408,7 +454,10 @@ def get_recent_logs(filters=None, start: int = 0, page_length: int = 25):
     visibility_clause, visibility_params = get_student_log_visibility_predicate(
         user=user, table_alias="sl", allow_aggregate_only=False
     )
-    where_clause, params = _apply_common_filters(filters, visibility_clause, visibility_params)
+    school_scope = _resolve_school_scope(filters)
+    where_clause, params = _apply_common_filters(
+        filters, visibility_clause, visibility_params, school_scope=school_scope
+    )
 
     logs = frappe.db.sql(
         f"""
@@ -456,6 +505,12 @@ def get_filter_meta():
       visible Student Log set (no leakage outside permission scope).
     """
     user = _ensure_student_log_analytics_access()
+    cache = frappe.cache()
+    cache_key = _filter_meta_cache_key(user)
+    cached = cache.get_value(cache_key)
+    if cached:
+        return cached
+
     visibility_clause, visibility_params = get_student_log_visibility_predicate(
         user=user, table_alias="sl", allow_aggregate_only=True
     )
@@ -528,10 +583,12 @@ def get_filter_meta():
         as_dict=True,
     )
 
-    return {
+    response = {
         "schools": schools,
         "default_school": default_school,
         "academic_years": academic_years,
         "programs": programs,
         "authors": authors,
     }
+    cache.set_value(cache_key, response, expires_in_sec=FILTER_META_CACHE_TTL_SECONDS)
+    return response

@@ -228,7 +228,7 @@ def get_student_delivery_state_map(
         "Task Outcome",
         filters={"task_delivery": ["in", delivery_ids], "student": student},
         fields=["name", "task_delivery", "submission_status", "grading_status", "is_complete"],
-        limit_page_length=0,
+        limit=0,
     )
     outcome_by_delivery = {row["task_delivery"]: row for row in outcomes if row.get("task_delivery")}
     outcome_ids = [row["name"] for row in outcomes if row.get("name")]
@@ -250,7 +250,7 @@ def get_student_delivery_state_map(
                 "expires_on",
             ],
             order_by="attempt_number desc, modified desc",
-            limit_page_length=0,
+            limit=0,
         )
         if outcome_ids
         else []
@@ -375,7 +375,7 @@ def _get_latest_in_progress_attempt(outcome_id: str) -> dict[str, Any] | None:
         filters={"task_outcome": outcome_id, "status": "In Progress"},
         fields=["name", "status", "expires_on", "attempt_number"],
         order_by="attempt_number desc, modified desc",
-        limit_page_length=1,
+        limit=1,
     )
     return rows[0] if rows else None
 
@@ -386,7 +386,7 @@ def _get_latest_attempt(outcome_id: str) -> dict[str, Any] | None:
         filters={"task_outcome": outcome_id},
         fields=["name", "status", "attempt_number", "percentage", "passed"],
         order_by="attempt_number desc, modified desc",
-        limit_page_length=1,
+        limit=1,
     )
     return rows[0] if rows else None
 
@@ -416,7 +416,7 @@ def _select_questions_for_attempt(delivery: dict[str, Any], *, seed_hint: str) -
         filters={"question_bank": delivery.get("quiz_question_bank"), "is_published": 1},
         fields=["name", "question_type", "prompt", "accepted_answers", "explanation"],
         order_by="modified asc, name asc",
-        limit_page_length=0,
+        limit=0,
     )
     if not questions:
         frappe.throw(_("Quiz Question Bank has no published questions."))
@@ -458,7 +458,7 @@ def _build_item_snapshots(
         },
         fields=["name", "option_text", "is_correct", "idx"],
         order_by="idx asc, name asc",
-        limit_page_length=0,
+        limit=0,
     )
     option_payload = [{"id": row["name"], "text": row.get("option_text") or ""} for row in option_rows]
     if option_payload and question["question_type"] in CHOICE_TYPES and shuffle_choices:
@@ -509,7 +509,7 @@ def _get_attempt_items(attempt_name: str) -> list[dict[str, Any]]:
             "requires_manual_grading",
         ],
         order_by="position asc, name asc",
-        limit_page_length=0,
+        limit=0,
     )
 
 

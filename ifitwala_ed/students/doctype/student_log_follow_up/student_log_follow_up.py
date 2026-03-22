@@ -35,7 +35,7 @@ class StudentLogFollowUp(Document):
                 "status": "Open",
             },
             fields=["name", "allocated_to"],
-            limit_page_length=50,
+            limit=50,
         )
 
         for t in open_todos:
@@ -99,15 +99,6 @@ class StudentLogFollowUp(Document):
         # Submission ≠ completion → ensure parent is In Progress
         if (log.follow_up_status or "").lower() != "in progress":
             log.db_set("follow_up_status", "In Progress")
-
-        # Optionally sync auto-close policy from Next Step onto the parent log
-        if log.next_step:
-            days = frappe.get_value("Student Log Next Step", log.next_step, "auto_close_after_days")
-            if days is not None:
-                try:
-                    log.db_set("auto_close_after_days", int(days))
-                except Exception:
-                    pass
 
         # Close OPEN ToDo(s) for this log (single-open policy)
         self._close_open_todos_for_log(log.name)

@@ -42,10 +42,17 @@ class StudentPatientVisit(Document):
             # 1. Get active groups for student
             groups = frappe.db.sql(
                 """
-				SELECT parent as name, academic_year, school, school_schedule
-				FROM `tabStudent Group Student`
-				WHERE student = %s AND active = 1
-			""",
+                SELECT
+                    sg.name,
+                    sg.academic_year,
+                    sg.school,
+                    sg.school_schedule
+                FROM `tabStudent Group Student` sgs
+                INNER JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+                WHERE sgs.student = %s
+                  AND IFNULL(sgs.active, 1) = 1
+                  AND IFNULL(sg.status, 'Active') = 'Active'
+            """,
                 (student,),
                 as_dict=True,
             )

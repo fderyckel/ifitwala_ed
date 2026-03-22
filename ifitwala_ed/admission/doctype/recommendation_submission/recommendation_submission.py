@@ -8,6 +8,8 @@ from frappe.utils import cint, now_datetime
 from ifitwala_ed.admission.admission_utils import (
     READ_LIKE_PERMISSION_TYPES,
     build_admissions_file_scope_exists_sql,
+    build_open_applicant_review_access_exists_sql,
+    has_open_applicant_review_access,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
     normalize_email_value,
@@ -112,7 +114,19 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
     )
     if staff_condition is None:
         return None
-    return staff_condition
+
+    conditions: list[str] = []
+    if staff_condition != "1=0":
+        conditions.append(f"({staff_condition})")
+
+    reviewer_condition = build_open_applicant_review_access_exists_sql(
+        user=resolved_user,
+        student_applicant_expr_sql="`tabRecommendation Submission`.`student_applicant`",
+    )
+    if reviewer_condition != "1=0":
+        conditions.append(f"({reviewer_condition})")
+
+    return " OR ".join(conditions) if conditions else "1=0"
 
 
 def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bool:
@@ -120,21 +134,25 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
     op = (ptype or "read").lower()
     if not resolved_user or resolved_user == "Guest":
         return False
-    if not is_admissions_file_staff_user(resolved_user):
-        return False
+    if is_admissions_file_staff_user(resolved_user):
+        staff_ops = READ_LIKE_PERMISSION_TYPES | {"write", "create", "delete", "submit", "cancel", "amend"}
+        if op not in staff_ops:
+            return False
 
-    staff_ops = READ_LIKE_PERMISSION_TYPES | {"write", "create", "delete", "submit", "cancel", "amend"}
-    if op not in staff_ops:
-        return False
-
-    if op == "create":
+        if op == "create":
+            if not doc:
+                return True
         if not doc:
             return True
-    if not doc:
-        return True
 
-    student_applicant = _resolve_recommendation_submission_student_applicant(doc)
-    return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=student_applicant)
+        student_applicant = _resolve_recommendation_submission_student_applicant(doc)
+        return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=student_applicant)
+
+    if op in READ_LIKE_PERMISSION_TYPES and doc:
+        student_applicant = _resolve_recommendation_submission_student_applicant(doc)
+        return has_open_applicant_review_access(user=resolved_user, student_applicant=student_applicant)
+
+    return False
 
 
 def _resolve_recommendation_submission_student_applicant(doc) -> str:

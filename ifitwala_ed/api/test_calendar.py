@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import frappe
 
+from ifitwala_ed.api import calendar_quick_create
 from ifitwala_ed.api.calendar import (
     CAL_MIN_DURATION,
     _attach_duration,
@@ -258,7 +259,13 @@ class TestCalendarApi(TestCase):
 
     def test_suggest_meeting_slots_facade_delegates_new_contract(self):
         expected = {
-            "slots": [{"start": "2026-02-01T09:00:00"}],
+            "slots": [
+                {
+                    "start": "2026-02-01T09:00:00",
+                    "available_room_count": 2,
+                    "suggested_room": {"value": "ROOM-1", "label": "Room 1"},
+                }
+            ],
             "fallback_slots": [],
             "notes": [],
             "duration_minutes": 45,
@@ -273,6 +280,8 @@ class TestCalendarApi(TestCase):
                 date_to="2026-02-05",
                 day_start_time="08:00",
                 day_end_time="17:00",
+                school="SCHOOL-1",
+                require_room=True,
             )
 
         mocked.assert_called_once_with(
@@ -282,6 +291,8 @@ class TestCalendarApi(TestCase):
             date_to="2026-02-05",
             day_start_time="08:00",
             day_end_time="17:00",
+            school="SCHOOL-1",
+            require_room=True,
         )
         self.assertEqual(payload, expected)
 
@@ -307,3 +318,126 @@ class TestCalendarApi(TestCase):
             limit=5,
         )
         self.assertEqual(payload, expected)
+
+    def test_quick_create_slot_suggestions_include_best_room_when_required(self):
+        cache = _DummyCache()
+        room_rows = [
+            frappe._dict(
+                {
+                    "name": "ROOM-1",
+                    "location_name": "Room 1",
+                    "parent_location": "Block A",
+                    "maximum_capacity": 2,
+                }
+            ),
+            frappe._dict(
+                {
+                    "name": "ROOM-2",
+                    "location_name": "Room 2",
+                    "parent_location": "Block B",
+                    "maximum_capacity": 8,
+                }
+            ),
+        ]
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create._", side_effect=lambda message: message),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._resolve_attendee_contexts",
+                return_value=[
+                    {
+                        "user": "student@example.com",
+                        "label": "Student Example",
+                        "kind": "student",
+                        "availability_mode": "school_schedule",
+                    }
+                ],
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_employee_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_student_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_meeting_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_school_event_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="SCHOOL-1"),
+            patch("ifitwala_ed.api.calendar_quick_create._room_rows_for_school_scope", return_value=room_rows),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_room_busy_windows", return_value={}),
+        ):
+            payload = calendar_quick_create.suggest_meeting_slots(
+                attendees=[{"user": "student@example.com", "kind": "student"}],
+                duration_minutes=60,
+                date_from="2026-02-01",
+                date_to="2026-02-01",
+                day_start_time="08:00",
+                day_end_time="09:00",
+                school="SCHOOL-1",
+                require_room=True,
+            )
+
+        self.assertEqual(len(payload["slots"]), 1)
+        self.assertEqual(payload["slots"][0]["suggested_room"]["value"], "ROOM-1")
+        self.assertEqual(payload["slots"][0]["available_room_count"], 2)
+        self.assertIn(
+            "Exact matches already include at least one free room in the selected school scope.",
+            payload["notes"],
+        )
+
+    def test_quick_create_slot_suggestions_drop_exact_match_without_free_room(self):
+        cache = _DummyCache()
+        room_rows = [
+            frappe._dict(
+                {
+                    "name": "ROOM-1",
+                    "location_name": "Room 1",
+                    "parent_location": "Block A",
+                    "maximum_capacity": 2,
+                }
+            )
+        ]
+        blocked_window = (
+            datetime(2026, 2, 1, 8, 0, 0),
+            datetime(2026, 2, 1, 9, 0, 0),
+        )
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create._", side_effect=lambda message: message),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._resolve_attendee_contexts",
+                return_value=[
+                    {
+                        "user": "student@example.com",
+                        "label": "Student Example",
+                        "kind": "student",
+                        "availability_mode": "school_schedule",
+                    }
+                ],
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_employee_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_student_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_meeting_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_school_event_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="SCHOOL-1"),
+            patch("ifitwala_ed.api.calendar_quick_create._room_rows_for_school_scope", return_value=room_rows),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._collect_room_busy_windows",
+                return_value={"ROOM-1": [blocked_window]},
+            ),
+        ):
+            payload = calendar_quick_create.suggest_meeting_slots(
+                attendees=[{"user": "student@example.com", "kind": "student"}],
+                duration_minutes=60,
+                date_from="2026-02-01",
+                date_to="2026-02-01",
+                day_start_time="08:00",
+                day_end_time="09:00",
+                school="SCHOOL-1",
+                require_room=True,
+            )
+
+        self.assertEqual(payload["slots"], [])
+        self.assertEqual(payload["fallback_slots"], [])
+        self.assertIn("excluded because no room was free", payload["notes"][-1])

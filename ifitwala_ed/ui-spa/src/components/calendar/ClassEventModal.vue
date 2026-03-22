@@ -354,12 +354,14 @@ function emitClose(reason: CloseReason = 'programmatic') {
 function emitCreateAnnouncement() {
 	if (!data.value) return;
 
-	// Replace current modal with announcement quick-create overlay
-	// (You must have this overlay type + component registered in OverlayHost)
 	overlay.replaceTop('org-communication-quick-create', {
-		// keep it minimal: pass what the quick-create needs
+		entryMode: 'class-event',
 		studentGroup: data.value.student_group || null,
+		school: data.value.school || null,
 		title: data.value.title || '',
+		sessionDate: data.value.session_date || null,
+		courseLabel: data.value.course_name || data.value.course || null,
+		sourceLabel: 'Class Event',
 	});
 }
 

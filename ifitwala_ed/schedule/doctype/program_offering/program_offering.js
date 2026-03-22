@@ -379,7 +379,7 @@ function fetch_non_catalog_rows(frm, search, on_done) {
 	const args = {
 		doctype: "Course",
 		fields: ["name", "course_name", "status"],
-		limit_page_length: 50,
+		limit: 50,
 		order_by: "modified desc",
 		// Only active courses (per your Course schema: Status = Active/Discontinued)
 		filters: [["Course", "status", "=", "Active"]],

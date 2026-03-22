@@ -220,7 +220,7 @@ def _school_options_for_scope(school_scope: list[str]) -> list[dict]:
         filters={"name": ["in", school_scope]},
         fields=["name", "school_name"],
         order_by="school_name asc",
-        limit_page_length=500,
+        limit=500,
     )
     return [{"value": row.name, "label": row.school_name or row.name} for row in rows]
 
@@ -232,7 +232,7 @@ def _team_options_for_scope(user: str, school_scope: list[str], is_admin_like: b
             filters={"school": ["in", school_scope], "enabled": 1},
             fields=["name", "team_name"],
             order_by="team_name asc",
-            limit_page_length=500,
+            limit=500,
         )
         return [{"value": row.name, "label": row.team_name or row.name} for row in rows]
 
@@ -242,7 +242,7 @@ def _team_options_for_scope(user: str, school_scope: list[str], is_admin_like: b
             filters={"enabled": 1},
             fields=["name", "team_name"],
             order_by="team_name asc",
-            limit_page_length=500,
+            limit=500,
         )
         return [{"value": row.name, "label": row.team_name or row.name} for row in rows]
 
@@ -250,7 +250,7 @@ def _team_options_for_scope(user: str, school_scope: list[str], is_admin_like: b
         "Team Member",
         filters={"parenttype": "Team", "member": user},
         pluck="parent",
-        limit_page_length=500,
+        limit=500,
     )
     if not team_names:
         return []
@@ -260,7 +260,7 @@ def _team_options_for_scope(user: str, school_scope: list[str], is_admin_like: b
         filters={"name": ["in", sorted(set(team_names))]},
         fields=["name", "team_name"],
         order_by="team_name asc",
-        limit_page_length=500,
+        limit=500,
     )
     return [{"value": row.name, "label": row.team_name or row.name} for row in rows]
 
@@ -272,7 +272,7 @@ def _student_group_options_for_scope(user: str, school_scope: list[str]) -> list
             filters={"school": ["in", school_scope], "status": "Active"},
             fields=["name", "student_group_name"],
             order_by="student_group_name asc",
-            limit_page_length=500,
+            limit=500,
         )
         return [{"value": row.name, "label": row.student_group_name or row.name} for row in rows]
 
@@ -280,7 +280,7 @@ def _student_group_options_for_scope(user: str, school_scope: list[str]) -> list
         "Student Group Instructor",
         filters={"parenttype": "Student Group", "user_id": user},
         pluck="parent",
-        limit_page_length=500,
+        limit=500,
     )
     if not group_names:
         return []
@@ -290,7 +290,7 @@ def _student_group_options_for_scope(user: str, school_scope: list[str]) -> list
         filters={"name": ["in", sorted(set(group_names))]},
         fields=["name", "student_group_name"],
         order_by="student_group_name asc",
-        limit_page_length=500,
+        limit=500,
     )
     return [{"value": row.name, "label": row.student_group_name or row.name} for row in rows]
 
@@ -308,7 +308,7 @@ def _location_options_for_scope(school_scope: list[str], is_admin_like: bool) ->
         filters=filters,
         fields=["name", "location_name"],
         order_by="location_name asc",
-        limit_page_length=500,
+        limit=500,
     )
     return [{"value": row.name, "label": row.location_name or row.name} for row in rows]
 
@@ -363,7 +363,7 @@ def _get_quick_create_scope(user: str) -> dict:
             "School",
             filters={"is_group": 0},
             pluck="name",
-            limit_page_length=500,
+            limit=500,
         )
 
     student_scope = get_authorized_schools(user) or school_scope
@@ -459,6 +459,17 @@ def _coerce_time_required(value: object | None, label: str):
     if not parsed:
         frappe.throw(_("{0} is required.").format(label))
     return parsed
+
+
+def _coerce_flag(value: object | None) -> bool:
+    if isinstance(value, bool):
+        return value
+    text = _safe_text(value).lower()
+    if text in {"", "0", "false", "no"}:
+        return False
+    if text in {"1", "true", "yes"}:
+        return True
+    return bool(value)
 
 
 def _combine_date_and_time_local(day: date, time_value) -> datetime:
@@ -645,7 +656,7 @@ def _resolve_attendee_contexts(attendees: list[dict], organizer_user: str) -> li
         "Employee",
         filters={"user_id": ["in", ordered_users], "employment_status": "Active"},
         fields=["name", "user_id", "employee_full_name", "school", "organization"],
-        limit_page_length=max(len(ordered_users), 1),
+        limit=max(len(ordered_users), 1),
     )
     employee_by_user = {row.user_id: row for row in employee_rows if row.user_id}
 
@@ -653,7 +664,7 @@ def _resolve_attendee_contexts(attendees: list[dict], organizer_user: str) -> li
         "Student",
         filters={"student_email": ["in", ordered_users], "enabled": 1},
         fields=["name", "student_email", "student_full_name", "student_preferred_name", "anchor_school"],
-        limit_page_length=max(len(ordered_users), 1),
+        limit=max(len(ordered_users), 1),
     )
     student_by_user = {row.student_email: row for row in student_rows if row.student_email}
 
@@ -661,7 +672,7 @@ def _resolve_attendee_contexts(attendees: list[dict], organizer_user: str) -> li
         "Guardian",
         filters={"user": ["in", ordered_users]},
         fields=["name", "user", "guardian_full_name"],
-        limit_page_length=max(len(ordered_users), 1),
+        limit=max(len(ordered_users), 1),
     )
     guardian_by_user = {row.user: row for row in guardian_rows if row.user}
 
@@ -669,7 +680,7 @@ def _resolve_attendee_contexts(attendees: list[dict], organizer_user: str) -> li
         "User",
         filters={"name": ["in", ordered_users]},
         fields=["name", "full_name"],
-        limit_page_length=max(len(ordered_users), 1),
+        limit=max(len(ordered_users), 1),
     )
     user_labels = {row.name: (row.full_name or row.name) for row in user_rows if row.name}
 
@@ -680,7 +691,7 @@ def _resolve_attendee_contexts(attendees: list[dict], organizer_user: str) -> li
             "Student Group Student",
             filters={"student": ["in", student_names], "active": 1},
             fields=["student", "parent"],
-            limit_page_length=max(len(student_names) * 5, 20),
+            limit=max(len(student_names) * 5, 20),
         )
         for row in memberships:
             if row.student and row.parent:
@@ -694,7 +705,7 @@ def _resolve_attendee_contexts(attendees: list[dict], organizer_user: str) -> li
             "Guardian Student",
             filters={"parent": ["in", guardian_names], "parenttype": "Guardian"},
             fields=["parent", "student"],
-            limit_page_length=max(len(guardian_names) * 5, 20),
+            limit=max(len(guardian_names) * 5, 20),
         )
         guardian_student_names = {row.student for row in guardian_students if row.student}
         if guardian_student_names:
@@ -702,7 +713,7 @@ def _resolve_attendee_contexts(attendees: list[dict], organizer_user: str) -> li
                 "Student",
                 filters={"name": ["in", list(guardian_student_names)], "enabled": 1},
                 fields=["name", "anchor_school"],
-                limit_page_length=max(len(guardian_student_names), 1),
+                limit=max(len(guardian_student_names), 1),
             )
             student_school_map = {row.name: row.anchor_school for row in student_meta if row.name}
 
@@ -710,7 +721,7 @@ def _resolve_attendee_contexts(attendees: list[dict], organizer_user: str) -> li
                 "Student Group Student",
                 filters={"student": ["in", list(guardian_student_names)], "active": 1},
                 fields=["student", "parent"],
-                limit_page_length=max(len(guardian_student_names) * 5, 20),
+                limit=max(len(guardian_student_names) * 5, 20),
             )
             student_group_map: dict[str, set[str]] = defaultdict(set)
             for row in guardian_memberships:
@@ -823,7 +834,7 @@ def _collect_employee_busy_windows(
             "blocks_availability": 1,
         },
         fields=["employee", "from_datetime", "to_datetime"],
-        limit_page_length=max(len(employee_to_user) * 20, 50),
+        limit=max(len(employee_to_user) * 20, 50),
     )
     for row in rows:
         user_id = employee_to_user.get(row.employee)
@@ -935,7 +946,7 @@ def _collect_school_event_busy_windows(
         "School Event Participant",
         filters={"parent": ["in", event_names]},
         fields=["parent", "participant"],
-        limit_page_length=max(len(event_names) * 3, 20),
+        limit=max(len(event_names) * 3, 20),
     )
     participant_map: dict[str, set[str]] = defaultdict(set)
     for row in participants:
@@ -946,7 +957,7 @@ def _collect_school_event_busy_windows(
         "School Event Audience",
         filters={"parent": ["in", event_names]},
         fields=["parent", "audience_type", "student_group", "include_guardians"],
-        limit_page_length=max(len(event_names) * 3, 20),
+        limit=max(len(event_names) * 3, 20),
     )
     audience_map: dict[str, list[dict]] = defaultdict(list)
     for row in audience_rows:
@@ -1027,8 +1038,15 @@ def _dedupe_busy_windows(
     return deduped
 
 
-def _build_slot_payload(start_dt: datetime, end_dt: datetime, blocked_count: int) -> dict:
-    return {
+def _build_slot_payload(
+    start_dt: datetime,
+    end_dt: datetime,
+    blocked_count: int,
+    *,
+    available_room_count: int | None = None,
+    suggested_room: dict | None = None,
+) -> dict:
+    payload = {
         "start": start_dt.isoformat(),
         "end": end_dt.isoformat(),
         "date": start_dt.date().isoformat(),
@@ -1037,6 +1055,102 @@ def _build_slot_payload(start_dt: datetime, end_dt: datetime, blocked_count: int
         "label": _format_slot_label(start_dt, end_dt),
         "blocked_count": blocked_count,
     }
+    if available_room_count is not None:
+        payload["available_room_count"] = available_room_count
+        payload["suggested_room"] = suggested_room
+    return payload
+
+
+def _room_rows_for_school_scope(school: str, capacity_needed: int) -> list[dict]:
+    school_scope = get_descendant_schools(school) or [school]
+    filters = {"school": ["in", school_scope], "is_group": 0}
+    if capacity_needed > 0:
+        filters["maximum_capacity"] = [">=", capacity_needed]
+
+    return frappe.get_all(
+        "Location",
+        filters=filters,
+        fields=["name", "location_name", "parent_location", "maximum_capacity"],
+        order_by="location_name asc",
+        limit=300,
+    )
+
+
+def _rank_room_suggestions(room_rows: list[dict], *, capacity_needed: int) -> list[dict]:
+    ranked: list[dict] = []
+    for row in room_rows:
+        room_name = row.get("name")
+        if not room_name:
+            continue
+        max_capacity = cint(row.get("maximum_capacity")) if row.get("maximum_capacity") is not None else None
+        capacity_delta = (
+            max(max_capacity - capacity_needed, 0) if max_capacity is not None and capacity_needed > 0 else 9999
+        )
+        ranked.append(
+            {
+                "value": room_name,
+                "label": row.get("location_name") or room_name,
+                "building": row.get("parent_location"),
+                "max_capacity": max_capacity,
+                "_capacity_delta": capacity_delta,
+            }
+        )
+
+    ranked.sort(
+        key=lambda item: (
+            item.get("_capacity_delta", 9999),
+            item.get("max_capacity") is None,
+            item.get("label") or "",
+        )
+    )
+
+    return [
+        {
+            "value": row["value"],
+            "label": row["label"],
+            "building": row.get("building"),
+            "max_capacity": row.get("max_capacity"),
+        }
+        for row in ranked
+    ]
+
+
+def _collect_room_busy_windows(
+    room_suggestions: list[dict],
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[str, list[tuple[datetime, datetime]]]:
+    room_names = [row.get("value") for row in room_suggestions if row.get("value")]
+    if not room_names:
+        return {}
+
+    busy_by_room: dict[str, list[tuple[datetime, datetime]]] = defaultdict(list)
+    conflicts = find_room_conflicts(
+        None,
+        window_start,
+        window_end,
+        locations=room_names,
+        include_children=False,
+    )
+    for row in conflicts:
+        _append_busy_window(busy_by_room, row.get("location"), row.get("from"), row.get("to"))
+    return _dedupe_busy_windows(busy_by_room)
+
+
+def _available_room_suggestions_for_slot(
+    slot_start: datetime,
+    slot_end: datetime,
+    ranked_rooms: list[dict],
+    busy_by_room: dict[str, list[tuple[datetime, datetime]]],
+) -> list[dict]:
+    available: list[dict] = []
+    for room in ranked_rooms:
+        room_name = room.get("value")
+        room_windows = busy_by_room.get(room_name) or []
+        if any(_overlaps(slot_start, slot_end, busy_start, busy_end) for busy_start, busy_end in room_windows):
+            continue
+        available.append(room)
+    return available
 
 
 def get_event_quick_create_options():
@@ -1230,6 +1344,8 @@ def suggest_meeting_slots(
     date_to: str | None = None,
     day_start_time: str | None = None,
     day_end_time: str | None = None,
+    school: str | None = None,
+    require_room: object | None = None,
 ):
     user = frappe.session.user
     _ensure_can_create_meeting(user)
@@ -1260,6 +1376,13 @@ def suggest_meeting_slots(
     if _combine_date_and_time_local(start_date, day_end) <= _combine_date_and_time_local(start_date, day_start):
         frappe.throw(_("Latest end must be later than earliest start."))
 
+    require_room_value = _coerce_flag(require_room)
+    school_value = None
+    if require_room_value:
+        school_value = _ensure_allowed_school(user, school)
+        if not school_value:
+            frappe.throw(_("Host school is required before room-aware common times can be ranked."))
+
     cache_key = _json_cache_key(
         "ifitwala_ed:event_quick_create:slot_suggestions",
         {
@@ -1270,6 +1393,8 @@ def suggest_meeting_slots(
             "date_to": end_date.isoformat(),
             "day_start_time": str(day_start),
             "day_end_time": str(day_end),
+            "school": school_value,
+            "require_room": require_room_value,
         },
     )
     cache = frappe.cache()
@@ -1290,9 +1415,20 @@ def suggest_meeting_slots(
     _collect_school_event_busy_windows(contexts, window_start, window_end, busy_by_user)
     busy_by_user = _dedupe_busy_windows(busy_by_user)
 
+    ranked_room_candidates: list[dict] = []
+    busy_by_room: dict[str, list[tuple[datetime, datetime]]] = {}
+    room_capacity_target = attendee_count + 1
+    if require_room_value and school_value:
+        ranked_room_candidates = _rank_room_suggestions(
+            _room_rows_for_school_scope(school_value, room_capacity_target),
+            capacity_needed=room_capacity_target,
+        )
+        busy_by_room = _collect_room_busy_windows(ranked_room_candidates, window_start, window_end)
+
     duration_delta = timedelta(minutes=duration)
     exact_slots: list[dict] = []
     fallback_slots: list[dict] = []
+    room_blocked_exact_slots = 0
     cursor_day = start_date
     while cursor_day <= end_date:
         cursor = _combine_date_and_time_local(cursor_day, day_start)
@@ -1304,8 +1440,29 @@ def suggest_meeting_slots(
                 user_windows = busy_by_user.get(ctx["user"]) or []
                 if any(_overlaps(cursor, slot_end, busy_start, busy_end) for busy_start, busy_end in user_windows):
                     blocked_count += 1
-            payload = _build_slot_payload(cursor, slot_end, blocked_count)
-            if blocked_count == 0 and len(exact_slots) < MAX_SLOT_SUGGESTIONS:
+            available_rooms = []
+            available_room_count = None
+            suggested_room = None
+            if require_room_value:
+                available_rooms = _available_room_suggestions_for_slot(
+                    cursor,
+                    slot_end,
+                    ranked_room_candidates,
+                    busy_by_room,
+                )
+                available_room_count = len(available_rooms)
+                suggested_room = available_rooms[0] if available_rooms else None
+
+            payload = _build_slot_payload(
+                cursor,
+                slot_end,
+                blocked_count,
+                available_room_count=available_room_count,
+                suggested_room=suggested_room,
+            )
+            if blocked_count == 0 and require_room_value and not available_rooms:
+                room_blocked_exact_slots += 1
+            elif blocked_count == 0 and len(exact_slots) < MAX_SLOT_SUGGESTIONS:
                 exact_slots.append(payload)
             elif blocked_count > 0 and len(fallback_slots) < 50:
                 fallback_slots.append(payload)
@@ -1320,6 +1477,17 @@ def suggest_meeting_slots(
         notes.append(_("Student availability is checked against school timetable, meetings, and school events."))
     if any(ctx.get("kind") == "guardian" for ctx in contexts):
         notes.append(_("Guardian availability is limited to known school-side meetings and events."))
+    if require_room_value:
+        if ranked_room_candidates:
+            notes.append(_("Exact matches already include at least one free room in the selected school scope."))
+        else:
+            notes.append(_("No rooms are configured for the selected school scope."))
+        if room_blocked_exact_slots:
+            notes.append(
+                _(
+                    "{0} attendee-free slot(s) were excluded because no room was free in the selected school scope."
+                ).format(room_blocked_exact_slots)
+            )
 
     payload = {
         "slots": exact_slots,
@@ -1390,18 +1558,7 @@ def suggest_meeting_rooms(
         if isinstance(parsed, dict):
             return parsed
 
-    school_scope = get_descendant_schools(school_value) or [school_value]
-    location_filters = {"school": ["in", school_scope], "is_group": 0}
-    if cap_needed > 0:
-        location_filters["maximum_capacity"] = [">=", cap_needed]
-
-    rows = frappe.get_all(
-        "Location",
-        filters=location_filters,
-        fields=["name", "location_name", "parent_location", "maximum_capacity"],
-        order_by="location_name asc",
-        limit_page_length=300,
-    )
+    rows = _room_rows_for_school_scope(school_value, cap_needed)
     if not rows:
         payload = {
             "rooms": [],
@@ -1419,40 +1576,12 @@ def suggest_meeting_rooms(
     )
     busy_rooms = {row.get("location") for row in conflicts if row.get("location")}
 
-    available_rooms = []
-    for row in rows:
-        if row.name in busy_rooms:
-            continue
-        max_capacity = cint(row.maximum_capacity) if row.maximum_capacity is not None else None
-        capacity_delta = max(max_capacity - cap_needed, 0) if max_capacity is not None and cap_needed > 0 else 9999
-        available_rooms.append(
-            {
-                "value": row.name,
-                "label": row.location_name or row.name,
-                "building": row.parent_location,
-                "max_capacity": max_capacity,
-                "_capacity_delta": capacity_delta,
-            }
-        )
-
-    available_rooms.sort(
-        key=lambda item: (
-            item.get("_capacity_delta", 9999),
-            item.get("max_capacity") is None,
-            item.get("label") or "",
-        )
-    )
+    available_rooms = [
+        room for room in _rank_room_suggestions(rows, capacity_needed=cap_needed) if room.get("value") not in busy_rooms
+    ]
 
     payload = {
-        "rooms": [
-            {
-                "value": row["value"],
-                "label": row["label"],
-                "building": row.get("building"),
-                "max_capacity": row.get("max_capacity"),
-            }
-            for row in available_rooms[:room_limit]
-        ],
+        "rooms": available_rooms[:room_limit],
         "notes": [],
     }
     cache.set_value(cache_key, frappe.as_json(payload), expires_in_sec=ROOM_SUGGESTION_CACHE_TTL_SECONDS)
@@ -1467,7 +1596,7 @@ def _build_participant_rows(user_ids: list[str]) -> list[dict]:
         "Employee",
         filters={"user_id": ["in", user_ids], "employment_status": "Active"},
         fields=["name", "user_id", "employee_full_name"],
-        limit_page_length=max(len(user_ids), 1),
+        limit=max(len(user_ids), 1),
     )
     employee_by_user = {row.user_id: row for row in employee_rows if row.user_id}
 
@@ -1475,7 +1604,7 @@ def _build_participant_rows(user_ids: list[str]) -> list[dict]:
         "User",
         filters={"name": ["in", user_ids]},
         fields=["name", "full_name"],
-        limit_page_length=max(len(user_ids), 1),
+        limit=max(len(user_ids), 1),
     )
     user_label_map = {row.name: (row.full_name or row.name) for row in user_rows if row.name}
 

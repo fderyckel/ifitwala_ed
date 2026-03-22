@@ -63,7 +63,7 @@ function render_schedule_calendar_page(wrapper) {
 				if (is_sysmgr && !default_year) {
 					return frappe.call({
 						method: "frappe.client.get_list",
-						args:  { doctype: "School Calendar", fields: ["name"], limit_page_length: 0 }
+						args:  { doctype: "School Calendar", fields: ["name"], limit: 0 }
 					}).then(calResp => {
 						const calendars = calResp.message.map(r => r.name);
 						build_filters(default_instr, default_year, calendars);

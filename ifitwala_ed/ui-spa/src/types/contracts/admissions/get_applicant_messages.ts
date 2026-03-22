@@ -6,7 +6,7 @@ export type Request = {
   context_doctype?: 'Student Applicant'
   context_name?: string
   limit_start?: number
-  limit_page_length?: number
+  limit?: number
 }
 
 export type Response = {

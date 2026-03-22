@@ -14,7 +14,7 @@ from ifitwala_ed.governance.policy_scope_utils import (
     get_school_ancestors_including_self,
     select_nearest_policy_rows_by_key,
 )
-from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_column, policy_applies_to
+from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_storage, policy_applies_to_filter_sql
 
 
 @frappe.whitelist()
@@ -96,7 +96,7 @@ def acknowledge_guardian_policy(policy_version: str) -> dict[str, Any]:
 
 
 def _get_guardian_policy_rows(*, guardian_name: str, children: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    schema_check = ensure_policy_applies_to_column(caller="_get_guardian_policy_rows")
+    schema_check = ensure_policy_applies_to_storage(caller="_get_guardian_policy_rows")
     if not schema_check.get("ok") or not children:
         return []
 
@@ -193,7 +193,7 @@ def _children_with_signer_authority(*, guardian_name: str, children: list[dict[s
             "can_consent": 1,
         },
         fields=["parent"],
-        limit_page_length=0,
+        limit=0,
     )
     allowed_students = {(row.get("parent") or "").strip() for row in allowed_rows if (row.get("parent") or "").strip()}
     if not allowed_students:
@@ -253,7 +253,6 @@ def _query_policy_candidates_for_context(*, organization: str, school: str) -> l
                ip.policy_key AS policy_key,
                ip.policy_title AS policy_title,
                ip.policy_category AS policy_category,
-               ip.applies_to AS applies_to,
                ip.description AS description,
                ip.organization AS policy_organization,
                ip.school AS policy_school,
@@ -270,12 +269,13 @@ def _query_policy_candidates_for_context(*, organization: str, school: str) -> l
            AND pv.is_active = 1
            AND ip.organization IN ({org_placeholders})
            {school_scope_sql}
+           AND {policy_applies_to_filter_sql(policy_alias="ip", audience_placeholder="%s")}
         """,
-        (*params, *school_params),
+        (*params, *school_params, "Guardian"),
         as_dict=True,
     )
 
-    selected = select_nearest_policy_rows_by_key(
+    return select_nearest_policy_rows_by_key(
         rows=rows,
         context_organization=organization,
         context_school=school,
@@ -283,4 +283,3 @@ def _query_policy_candidates_for_context(*, organization: str, school: str) -> l
         policy_organization_field="policy_organization",
         policy_school_field="policy_school",
     )
-    return [row for row in selected if policy_applies_to(row.get("applies_to"), "Guardian")]

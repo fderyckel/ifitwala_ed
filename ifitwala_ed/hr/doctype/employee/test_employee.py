@@ -217,6 +217,89 @@ class TestEmployee(FrappeTestCase):
 
         sync_access.assert_called_once_with(emp, notify_role_additions=True)
 
+    def test_apply_designation_role_syncs_when_secondary_history_changes_access(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.employment_status = "Active"
+        emp.employee_history = [
+            frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None}),
+            frappe._dict({"designation": "Grade Leader", "from_date": nowdate(), "to_date": None}),
+        ]
+
+        previous = frappe._dict(
+            user_id="staff@example.com",
+            employment_status="Active",
+            employee_history=[frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None})],
+        )
+
+        def compute_access(doc):
+            if len(doc.employee_history or []) == 1:
+                return {"Academic Staff"}, "Academics"
+            return {"Academic Staff", "Grade Level Lead"}, "Academics"
+
+        with (
+            patch.object(emp, "_can_manage_user_roles", return_value=True),
+            patch.object(emp, "get_doc_before_save", return_value=previous),
+            patch(
+                "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
+                side_effect=compute_access,
+            ),
+            patch("ifitwala_ed.hr.employee_access.sync_user_access_from_employee") as sync_access,
+        ):
+            emp._apply_designation_role()
+
+        sync_access.assert_called_once_with(emp, notify_role_additions=True)
+
+    def test_apply_designation_role_skips_when_effective_access_is_unchanged(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.employment_status = "Active"
+        emp.employee_history = [frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None})]
+
+        previous = frappe._dict(
+            user_id="staff@example.com",
+            employment_status="Active",
+            employee_history=[frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None})],
+        )
+
+        with (
+            patch.object(emp, "_can_manage_user_roles", return_value=True),
+            patch.object(emp, "get_doc_before_save", return_value=previous),
+            patch(
+                "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
+                return_value=({"Academic Staff"}, "Academics"),
+            ),
+            patch("ifitwala_ed.hr.employee_access.sync_user_access_from_employee") as sync_access,
+        ):
+            emp._apply_designation_role()
+
+        sync_access.assert_not_called()
+
+    def test_apply_designation_role_syncs_when_employment_status_changes(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.employment_status = "Suspended"
+        emp.employee_history = [frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None})]
+
+        previous = frappe._dict(
+            user_id="staff@example.com",
+            employment_status="Active",
+            employee_history=[frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None})],
+        )
+
+        with (
+            patch.object(emp, "_can_manage_user_roles", return_value=True),
+            patch.object(emp, "get_doc_before_save", return_value=previous),
+            patch(
+                "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
+                return_value=({"Academic Staff"}, "Academics"),
+            ),
+            patch("ifitwala_ed.hr.employee_access.sync_user_access_from_employee") as sync_access,
+        ):
+            emp._apply_designation_role()
+
+        sync_access.assert_called_once_with(emp, notify_role_additions=True)
+
     def test_employee_pqc_hr_user_is_org_scoped_and_includes_unassigned(self):
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR User"]),

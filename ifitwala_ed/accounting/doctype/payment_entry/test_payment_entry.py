@@ -70,7 +70,7 @@ class TestPaymentEntry(FrappeTestCase):
             "Fiscal Year Organization",
             filters={"organization": organization},
             fields=["parent"],
-            limit_page_length=100,
+            limit=100,
         )
         for row in existing:
             fiscal_year = frappe.get_doc("Fiscal Year", row.parent)
@@ -345,7 +345,7 @@ class TestPaymentEntry(FrappeTestCase):
         invoice = self.make_sales_invoice(
             organization=ctx["org"].name,
             account_holder=ctx["account_holder"].name,
-            posting_date="2026-01-10",
+            posting_date=nowdate(),
             items=[
                 {
                     "billable_offering": ctx["invoice"].items[0].billable_offering,

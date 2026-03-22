@@ -242,10 +242,7 @@ const canReassign = computed(() =>
 const roleCandidates = computed(() => assignment.value?.role_candidates || []);
 const canOpenApplicantWorkspace = computed(() => {
 	if (!assignment.value) return false;
-	return (
-		assignment.value.target_type === 'Student Applicant' &&
-		Boolean(assignment.value.student_applicant)
-	);
+	return Boolean(assignment.value.student_applicant);
 });
 
 const deskUrl = computed(() => {
@@ -258,7 +255,7 @@ const deskUrl = computed(() => {
 	}
 	return `/desk/student-applicant/${encodeURIComponent(assignment.value.student_applicant)}`;
 });
-const canOpenDesk = computed(() => Boolean(deskUrl.value) && !canOpenApplicantWorkspace.value);
+const canOpenDesk = computed(() => Boolean(deskUrl.value));
 
 watch(
 	() => props.context,

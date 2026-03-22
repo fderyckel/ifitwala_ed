@@ -82,7 +82,7 @@ def _resolve_employee_for_user(
         "Employee",
         filters=fallback_filters,
         fields=[*wanted_fields, "user_id"],
-        limit_page_length=2,
+        limit=2,
     )
     if len(fallback_rows) != 1:
         return None

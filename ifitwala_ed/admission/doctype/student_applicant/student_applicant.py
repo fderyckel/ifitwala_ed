@@ -21,11 +21,13 @@ from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     READ_LIKE_PERMISSION_TYPES,
     build_admissions_file_scope_exists_sql,
+    build_open_applicant_review_access_exists_sql,
     ensure_admissions_permission,
     ensure_contact_dynamic_link,
     ensure_contact_for_email,
     get_applicant_document_slot_spec,
     get_contact_primary_email,
+    has_open_applicant_review_access,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
     normalize_email_value,
@@ -1214,7 +1216,7 @@ class StudentApplicant(Document):
                 "parentfield": "guardians",
             },
             fields=["parent"],
-            limit_page_length=max(20, len(guardian_names) * 8),
+            limit=max(20, len(guardian_names) * 8),
         )
         sibling_names = sorted(
             {
@@ -1847,7 +1849,7 @@ class StudentApplicant(Document):
                 "interview_type",
             ],
             order_by="modified desc",
-            limit_page_length=20,
+            limit=20,
         )
         rows.sort(
             key=lambda row: (
@@ -1885,7 +1887,7 @@ class StudentApplicant(Document):
                     "feedback_status": "Submitted",
                 },
                 fields=["applicant_interview", "interviewer_user"],
-                limit_page_length=max(20, len(interview_names) * 4),
+                limit=max(20, len(interview_names) * 4),
             )
 
         interviewer_ids = sorted(
@@ -2336,6 +2338,13 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
     if portal_condition != "1=0":
         conditions.append(f"({portal_condition})")
 
+    reviewer_condition = build_open_applicant_review_access_exists_sql(
+        user=resolved_user,
+        student_applicant_expr_sql="`tabStudent Applicant`.`name`",
+    )
+    if reviewer_condition != "1=0":
+        conditions.append(f"({reviewer_condition})")
+
     return " OR ".join(conditions) if conditions else "1=0"
 
 
@@ -2357,6 +2366,11 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
             return True
         applicant_name = _resolve_student_applicant_name(doc)
         return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=applicant_name)
+
+    if op in READ_LIKE_PERMISSION_TYPES and doc:
+        applicant_name = _resolve_student_applicant_name(doc)
+        if has_open_applicant_review_access(user=resolved_user, student_applicant=applicant_name):
+            return True
 
     roles = set(frappe.get_roles(resolved_user))
     if not roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE}:

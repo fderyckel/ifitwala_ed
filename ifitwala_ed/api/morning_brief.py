@@ -3,11 +3,27 @@
 
 # ifitwala_ed/api/morning_brief.py
 
+from collections import defaultdict
+
 import frappe
+from frappe import _
 from frappe.utils import add_days, formatdate, getdate, now_datetime, strip_html, today
 
 from ifitwala_ed.api.org_comm_utils import check_audience_match
+from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
+from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
+from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_user_default_school
+
+CLINIC_SUMMARY_RANGE_BUSINESS_DAYS = "3D"
+CLINIC_SUMMARY_RANGE_BUSINESS_WEEKS = "3W"
+CLINIC_TREND_RANGES = {
+    "3D": 14,
+    "3W": 21,
+    "1M": 30,
+    "3M": 90,
+    "6M": 180,
+}
 
 
 @frappe.whitelist()
@@ -30,9 +46,11 @@ def get_briefing_widgets():
     if any(r in roles for r in ["Academic Staff", "Employee", "System Manager", "Instructor"]):
         widgets["staff_birthdays"] = get_staff_birthdays()
 
-    # 3. ANALYTICS (Admin Only)
-    if "Academic Admin" in roles or "System Manager" in roles:
+    # 3. ANALYTICS
+    if _can_view_clinic_metrics(user):
         widgets["clinic_volume"] = get_clinic_activity()
+
+    if "Academic Admin" in roles or "System Manager" in roles:
         widgets["admissions_pulse"] = get_admissions_pulse()
         widgets["critical_incidents"] = get_critical_incidents_count()
 
@@ -136,22 +154,299 @@ def get_daily_bulletin(user, roles):
 # ==============================================================================
 
 
+def _can_view_clinic_metrics(user: str) -> bool:
+    if not frappe.db.exists("DocType", "Student Patient Visit"):
+        return False
+    return bool(frappe.has_permission("Student Patient Visit", ptype="read", user=user))
+
+
+def _resolve_clinic_scope() -> dict:
+    base_school = get_user_default_school()
+    if not base_school:
+        return {
+            "base_school": None,
+            "school_scope": [],
+            "scope_label": _("School assignment required"),
+            "error": _("Assign a default school or Employee.school before opening clinic volume."),
+        }
+
+    school_scope = list(dict.fromkeys(get_descendant_schools(base_school) or [base_school]))
+    school_label = frappe.db.get_value("School", base_school, "school_name") or base_school
+    if len(school_scope) > 1:
+        scope_label = _("{0} + {1} schools").format(school_label, len(school_scope) - 1)
+    else:
+        scope_label = school_label
+
+    return {
+        "base_school": base_school,
+        "school_scope": school_scope,
+        "scope_label": scope_label,
+        "error": None,
+    }
+
+
+def _load_clinic_calendar_context(school_scope: list[str], start_date, end_date) -> dict[str, list[dict]]:
+    start_value = getdate(start_date)
+    end_value = getdate(end_date)
+    windows_by_school: dict[str, list[dict]] = defaultdict(list)
+    calendar_names: set[str] = set()
+
+    for school in school_scope:
+        for row in resolve_school_calendars_for_window(school, start_value, end_value):
+            calendar_name = row.get("name")
+            if not calendar_name:
+                continue
+
+            calendar_names.add(calendar_name)
+            windows_by_school[school].append(
+                {
+                    "calendar_name": calendar_name,
+                    "start_date": getdate(row.get("year_start_date")),
+                    "end_date": getdate(row.get("year_end_date")),
+                }
+            )
+
+    holiday_by_calendar: dict[str, set] = defaultdict(set)
+    if calendar_names:
+        holiday_rows = frappe.get_all(
+            "School Calendar Holidays",
+            filters={
+                "parent": ["in", list(calendar_names)],
+                "holiday_date": ["between", [start_value, end_value]],
+            },
+            fields=["parent", "holiday_date"],
+            order_by="holiday_date asc",
+        )
+        for row in holiday_rows:
+            calendar_name = row.get("parent")
+            holiday_date = row.get("holiday_date")
+            if not calendar_name or not holiday_date:
+                continue
+            holiday_by_calendar[calendar_name].add(getdate(holiday_date))
+
+    context: dict[str, list[dict]] = {}
+    for school in school_scope:
+        windows: list[dict] = []
+        for row in windows_by_school.get(school, []):
+            calendar_name = row["calendar_name"]
+            windows.append(
+                {
+                    "start_date": row["start_date"],
+                    "end_date": row["end_date"],
+                    "weekend_days": set(get_weekend_days_for_calendar(calendar_name) or [6, 0]),
+                    "holidays": holiday_by_calendar.get(calendar_name, set()),
+                }
+            )
+        context[school] = windows
+
+    return context
+
+
+def _is_business_day_for_school(calendar_context: dict[str, list[dict]], school: str, day_value) -> bool:
+    day_value = getdate(day_value)
+    js_weekday = (day_value.weekday() + 1) % 7
+    windows = calendar_context.get(school) or []
+
+    if not windows:
+        return js_weekday not in {6, 0}
+
+    matched_window = False
+    for window in windows:
+        if day_value < window["start_date"] or day_value > window["end_date"]:
+            continue
+
+        matched_window = True
+        if js_weekday in window["weekend_days"]:
+            continue
+        if day_value in window["holidays"]:
+            continue
+        return True
+
+    if not matched_window:
+        return js_weekday not in {6, 0}
+
+    return False
+
+
+def _is_scope_business_day(calendar_context: dict[str, list[dict]], school_scope: list[str], day_value) -> bool:
+    if not school_scope:
+        day_value = getdate(day_value)
+        return (day_value.weekday() + 1) % 7 not in {6, 0}
+
+    return any(_is_business_day_for_school(calendar_context, school, day_value) for school in school_scope)
+
+
+def _query_clinic_visit_counts(school_scope: list[str], start_date, end_date) -> list[dict]:
+    school_condition = "AND school IN %(schools)s" if school_scope else ""
+    return frappe.db.sql(
+        f"""
+        SELECT school, date, COUNT(*) AS count
+        FROM `tabStudent Patient Visit`
+        WHERE docstatus = 1
+          AND date BETWEEN %(start_date)s AND %(end_date)s
+          {school_condition}
+        GROUP BY school, date
+        ORDER BY date ASC
+        """,
+        {
+            "schools": tuple(school_scope),
+            "start_date": getdate(start_date),
+            "end_date": getdate(end_date),
+        },
+        as_dict=True,
+    )
+
+
+def _build_clinic_count_map(rows: list[dict]) -> dict[tuple[str, object], int]:
+    count_map: dict[tuple[str, object], int] = {}
+    for row in rows or []:
+        school = row.get("school")
+        visit_date = row.get("date")
+        if not school or not visit_date:
+            continue
+        count_map[(school, getdate(visit_date))] = int(row.get("count") or 0)
+    return count_map
+
+
+def _sum_clinic_counts_for_day(
+    count_map: dict[tuple[str, object], int],
+    calendar_context: dict[str, list[dict]],
+    school_scope: list[str],
+    day_value,
+) -> int:
+    day_value = getdate(day_value)
+    total = 0
+    for school in school_scope:
+        if not _is_business_day_for_school(calendar_context, school, day_value):
+            continue
+        total += count_map.get((school, day_value), 0)
+    return total
+
+
+def _collect_recent_business_dates(
+    calendar_context: dict[str, list[dict]],
+    school_scope: list[str],
+    end_date,
+    limit: int,
+) -> list:
+    dates: list = []
+    cursor = getdate(end_date)
+    inspected_days = 0
+    max_lookback = max(limit * 30, 90)
+
+    while len(dates) < limit and inspected_days < max_lookback:
+        if _is_scope_business_day(calendar_context, school_scope, cursor):
+            dates.append(cursor)
+        cursor = getdate(add_days(cursor, -1))
+        inspected_days += 1
+
+    return dates
+
+
+def _format_week_range_label(start_date, end_date) -> str:
+    start_label = formatdate(start_date, "dd MMM")
+    end_label = formatdate(end_date, "dd MMM")
+    return f"{start_label} - {end_label}"
+
+
+def _build_clinic_business_day_summary(
+    count_map: dict[tuple[str, object], int],
+    calendar_context: dict[str, list[dict]],
+    school_scope: list[str],
+    end_date,
+    limit: int = 3,
+) -> list[dict]:
+    points: list[dict] = []
+    for day_value in _collect_recent_business_dates(calendar_context, school_scope, end_date, limit):
+        points.append(
+            {
+                "label": formatdate(day_value, "dd-MMM"),
+                "count": _sum_clinic_counts_for_day(count_map, calendar_context, school_scope, day_value),
+            }
+        )
+    return points
+
+
+def _build_clinic_business_week_summary(
+    count_map: dict[tuple[str, object], int],
+    calendar_context: dict[str, list[dict]],
+    school_scope: list[str],
+    end_date,
+    limit: int = 3,
+) -> list[dict]:
+    end_value = getdate(end_date)
+    current_week_start = getdate(add_days(end_value, -end_value.weekday()))
+    points: list[dict] = []
+
+    for offset in range(limit):
+        week_start = getdate(add_days(current_week_start, -(offset * 7)))
+        week_end = getdate(add_days(week_start, 6))
+        if week_end > end_value:
+            week_end = end_value
+
+        cursor = week_start
+        total = 0
+        while cursor <= week_end:
+            if _is_scope_business_day(calendar_context, school_scope, cursor):
+                total += _sum_clinic_counts_for_day(count_map, calendar_context, school_scope, cursor)
+            cursor = getdate(add_days(cursor, 1))
+
+        points.append({"label": _format_week_range_label(week_start, week_end), "count": total})
+
+    return points
+
+
+def _resolve_clinic_trend_start_date(time_range: str, end_date):
+    end_value = getdate(end_date)
+    if time_range == "YTD":
+        academic_year = frappe.db.get_value("Academic Year", {"current": 1}, "year_start_date")
+        if academic_year:
+            return getdate(academic_year)
+        return getdate(f"{end_value.year}-01-01")
+
+    if time_range == CLINIC_SUMMARY_RANGE_BUSINESS_WEEKS:
+        current_week_start = getdate(add_days(end_value, -end_value.weekday()))
+        return getdate(add_days(current_week_start, -14))
+
+    lookback_days = CLINIC_TREND_RANGES.get(time_range, CLINIC_TREND_RANGES["1M"])
+    return getdate(add_days(end_value, -lookback_days))
+
+
 def get_clinic_activity():
-    """Count of Student Patient Visits for the last 3 days."""
-    user = frappe.session.user
-    employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+    """Business-day clinic volume summary for the Morning Brief card."""
+    scope = _resolve_clinic_scope()
+    if scope["error"]:
+        return {
+            "default_view": CLINIC_SUMMARY_RANGE_BUSINESS_DAYS,
+            "school": scope["scope_label"],
+            "views": {
+                CLINIC_SUMMARY_RANGE_BUSINESS_DAYS: [],
+                CLINIC_SUMMARY_RANGE_BUSINESS_WEEKS: [],
+            },
+            "error": scope["error"],
+        }
 
-    filters = {"docstatus": 1}
-    if employee and employee.school:
-        filters["school"] = employee.school
+    end_date = getdate(today())
+    summary_scan_start = getdate(add_days(end_date, -90))
+    calendar_context = _load_clinic_calendar_context(scope["school_scope"], summary_scan_start, end_date)
+    recent_business_days = _collect_recent_business_dates(calendar_context, scope["school_scope"], end_date, 3)
+    week_window_start = getdate(add_days(getdate(add_days(end_date, -end_date.weekday())), -14))
+    query_start = min([*recent_business_days, week_window_start], default=week_window_start)
+    count_map = _build_clinic_count_map(_query_clinic_visit_counts(scope["school_scope"], query_start, end_date))
 
-    dates = [today(), add_days(today(), -1), add_days(today(), -2)]
-    data = []
-    for d in dates:
-        filters["date"] = d
-        count = frappe.db.count("Student Patient Visit", filters)
-        data.append({"date": formatdate(d, "dd-MMM"), "count": count})
-    return data
+    return {
+        "default_view": CLINIC_SUMMARY_RANGE_BUSINESS_DAYS,
+        "school": scope["scope_label"],
+        "views": {
+            CLINIC_SUMMARY_RANGE_BUSINESS_DAYS: _build_clinic_business_day_summary(
+                count_map, calendar_context, scope["school_scope"], end_date
+            ),
+            CLINIC_SUMMARY_RANGE_BUSINESS_WEEKS: _build_clinic_business_week_summary(
+                count_map, calendar_context, scope["school_scope"], end_date
+            ),
+        },
+        "error": None,
+    }
 
 
 def get_admissions_pulse():
@@ -525,68 +820,46 @@ def get_critical_incidents_details():
 @frappe.whitelist()
 def get_clinic_visits_trend(time_range="1M"):
     """
-    Returns daily visit counts for the specified range.
-    time_range: '1M', '3M', '6M', 'YTD'
+    Returns business-day visit counts for the specified range.
+    time_range: '3D', '3W', '1M', '3M', '6M', 'YTD'
     """
     user = frappe.session.user
-    employee = frappe.db.get_value("Employee", {"user_id": user}, ["school"], as_dict=True)
+    if not _can_view_clinic_metrics(user):
+        frappe.throw(_("You do not have access to clinic volume."), frappe.PermissionError)
 
-    # Default to user's school, or global if no school assigned
-    school_filter = {}
-    if employee and employee.school:
-        school_filter = {"school": employee.school}
+    scope = _resolve_clinic_scope()
+    if scope["error"]:
+        frappe.throw(scope["error"], frappe.PermissionError)
 
-    end_date = today()
-    start_date = add_days(end_date, -30)  # Default 1M
-
-    if time_range == "3M":
-        start_date = add_days(end_date, -90)
-    elif time_range == "6M":
-        start_date = add_days(end_date, -180)
-    elif time_range == "YTD":
-        academic_year = frappe.db.get_value("Academic Year", {"current": 1}, "year_start_date")
-        if academic_year:
-            start_date = academic_year
-        else:
-            import datetime
-
-            start_date = f"{datetime.date.today().year}-01-01"
-
-    school_condition = "AND school = %(school)s" if school_filter else ""
-
-    sql = f"""
-		SELECT date, COUNT(*) as count
-		FROM `tabStudent Patient Visit`
-		WHERE docstatus = 1
-		AND date BETWEEN %(start_date)s AND %(end_date)s
-		{school_condition}
-		GROUP BY date
-		ORDER BY date ASC
-	"""
-
-    visits = frappe.db.sql(
-        sql,
-        {
-            "school": school_filter.get("school"),
-            "start_date": start_date,
-            "end_date": end_date,
-        },
-        as_dict=True,
-    )
-
-    data_map = {getdate(v.date): v.count for v in visits}
+    end_date = getdate(today())
+    start_date = _resolve_clinic_trend_start_date(time_range, end_date)
+    calendar_context = _load_clinic_calendar_context(scope["school_scope"], start_date, end_date)
+    count_map = _build_clinic_count_map(_query_clinic_visit_counts(scope["school_scope"], start_date, end_date))
     final_data = []
 
-    curr = getdate(start_date)
-    end = getdate(end_date)
+    if time_range == CLINIC_SUMMARY_RANGE_BUSINESS_DAYS:
+        trend_dates = list(
+            reversed(_collect_recent_business_dates(calendar_context, scope["school_scope"], end_date, 3))
+        )
+    else:
+        trend_dates = []
+        curr = getdate(start_date)
+        end = getdate(end_date)
+        while curr <= end:
+            if _is_scope_business_day(calendar_context, scope["school_scope"], curr):
+                trend_dates.append(curr)
+            curr = add_days(curr, 1)
 
-    while curr <= end:
-        d_str = formatdate(curr, "yyyy-mm-dd")
-        final_data.append({"date": d_str, "count": data_map.get(curr, 0)})
-        curr = add_days(curr, 1)
+    for day_value in trend_dates:
+        final_data.append(
+            {
+                "date": formatdate(day_value, "yyyy-mm-dd"),
+                "count": _sum_clinic_counts_for_day(count_map, calendar_context, scope["school_scope"], day_value),
+            }
+        )
 
     return {
         "data": final_data,
-        "school": employee.school if employee else "All Schools",
+        "school": scope["scope_label"],
         "range": time_range,
     }

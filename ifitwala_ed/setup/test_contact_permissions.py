@@ -97,7 +97,7 @@ class TestContactPermissions(FrappeTestCase):
                 "role": ["in", list(CONTACT_ROLE_MATRIX)],
             },
             fields=["role", "read", "write", "create", "delete", "email", "comment", "assign"],
-            limit_page_length=len(CONTACT_ROLE_MATRIX),
+            limit=len(CONTACT_ROLE_MATRIX),
         )
         by_role = {row.role: row for row in rows}
 

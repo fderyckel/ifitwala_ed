@@ -33,7 +33,7 @@ def search_tasks(filters=None, query=None, limit=20, start=0):
         "Task",
         filters=filters,
         fields=["name", "title", "task_type", "default_course", "is_template", "is_archived"],
-        limit_page_length=limit,
+        limit=limit,
         start=start,
         order_by="modified desc",
     )

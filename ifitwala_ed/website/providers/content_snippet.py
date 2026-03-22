@@ -12,7 +12,7 @@ def _find_snippet_name(filters: dict) -> str | None:
         filters=filters,
         fields=["name"],
         order_by="modified desc",
-        limit_page_length=2,
+        limit=2,
     )
     if len(rows) > 1:
         frappe.log_error(

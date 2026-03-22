@@ -148,7 +148,7 @@ def get_submitted_credit_note_total(invoice_name: str) -> float:
             "docstatus": 1,
         },
         fields=["grand_total"],
-        limit_page_length=2000,
+        limit=2000,
     )
     return money(sum(abs(flt(row.get("grand_total") or 0)) for row in rows))
 
@@ -206,7 +206,7 @@ def sync_dunning_notices_for_invoice(invoice_name: str) -> None:
         "Dunning Notice Item",
         filters={"sales_invoice": invoice_name},
         fields=["parent"],
-        limit_page_length=2000,
+        limit=2000,
     )
     for row in parents:
         name = (row.get("parent") or "").strip()

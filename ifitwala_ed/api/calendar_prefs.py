@@ -139,7 +139,7 @@ def get_portal_calendar_prefs(from_datetime: Optional[str] = None, to_datetime: 
                     "portal_calendar_start_time",
                     "portal_calendar_end_time",
                 ],
-                limit_page_length=max(len(lineage), 1),
+                limit=max(len(lineage), 1),
             )
             if lineage
             else []

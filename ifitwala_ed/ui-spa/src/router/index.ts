@@ -91,6 +91,7 @@ const routes: RouteRecordRaw[] = [
   // Staff
   { path: '/staff', name: 'staff-home', component: () => import('@/pages/staff/StaffHome.vue'), meta: { layout: 'staff' } },
   { path: '/staff/portfolio', name: 'staff-portfolio', component: () => import('@/pages/staff/StaffPortfolioFeed.vue'), meta: { layout: 'staff', portal: 'Staff' } },
+  { path: '/staff/professional-development', name: 'staff-professional-development', component: () => import('@/pages/staff/ProfessionalDevelopment.vue'), meta: { layout: 'staff' } },
   { path: '/staff/organization-chart', name: 'staff-organization-chart', component: () => import('@/pages/staff/organization_chart/OrganizationChart.vue'), meta: { layout: 'staff' } },
   { path: '/staff/class/:studentGroup', name: 'ClassHub', component: () => import('@/pages/staff/ClassHub.vue'), meta: { layout: 'staff' } },
 
@@ -104,6 +105,7 @@ const routes: RouteRecordRaw[] = [
 	{ path: '/staff/analytics/attendance', name: 'staff-attendance-analytics', component: () => import('@/pages/staff/analytics/AttendanceAnalytics.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/attendance-ledger', name: 'staff-attendance-ledger', component: () => import('@/pages/staff/analytics/AttendanceLedger.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/enrollment', name: 'StaffEnrollmentAnalytics', component: () => import('@/pages/staff/analytics/EnrollmentAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/academic-load', name: 'staff-academic-load', component: () => import('@/pages/staff/analytics/AcademicLoad.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/policy-signatures', name: 'staff-policy-signature-analytics', component: () => import('@/pages/staff/analytics/PolicySignatureAnalytics.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/policies', name: 'staff-policies', component: () => import('@/pages/staff/StaffPolicies.vue'), meta: { layout: 'staff' } },
   { path: '/staff/announcements', name: 'staff-announcements', component: () => import('@/pages/staff/OrgCommunicationArchive.vue'), meta: { layout: 'staff' } },

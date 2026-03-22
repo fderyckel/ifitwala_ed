@@ -10,6 +10,9 @@ from frappe.contacts.address_and_contact import load_address_and_contact
 from frappe.utils import flt
 from frappe.utils.nestedset import NestedSet
 
+from ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy import (
+    ensure_default_policy_for_school,
+)
 from ifitwala_ed.utilities.organization_media import (
     ensure_organization_media_files_visible_to_school,
 )
@@ -113,6 +116,9 @@ class School(NestedSet):
     def after_save(self):
         if self.has_value_changed("is_published") or self.has_value_changed("website_slug"):
             self.sync_website_page_publication()
+
+    def after_insert(self):
+        ensure_default_policy_for_school(self.name, ignore_permissions=True)
 
     def on_trash(self):
         NestedSet.validate_if_child_exists(self)

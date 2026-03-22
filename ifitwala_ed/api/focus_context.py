@@ -107,7 +107,7 @@ def get_focus_context(
             filters={"student_log": reference_name},
             fields=["name", "date", "follow_up_author", "follow_up", "docstatus"],
             order_by="modified desc",
-            limit_page_length=20,
+            limit=20,
         )
 
         follow_ups = [
@@ -265,7 +265,7 @@ def get_focus_context(
                 },
                 fields=["file_url", "file_name", "creation"],
                 order_by="creation desc",
-                limit_page_length=1,
+                limit=1,
             )
             file_row = file_rows[0] if file_rows else {}
             raw_file_url = (file_row.get("file_url") or "").strip()
@@ -335,7 +335,7 @@ def get_focus_context(
             },
             fields=["name", "assigned_to_user", "assigned_to_role", "decision", "notes", "decided_by", "decided_on"],
             order_by="decided_on desc, modified desc",
-            limit_page_length=10,
+            limit=10,
         )
         user_name_map = _get_user_full_names(
             [row.get("assigned_to_user") for row in previous_rows if (row.get("assigned_to_user") or "").strip()]

@@ -55,6 +55,8 @@ import AnalyticsExpandOverlay from '@/overlays/analytics/AnalyticsExpandOverlay.
 import OrganizationChartPersonOverlay from '@/overlays/staff/OrganizationChartPersonOverlay.vue';
 import StaffPolicyInformOverlay from '@/overlays/staff/StaffPolicyInformOverlay.vue';
 import StaffPolicyCampaignOverlay from '@/overlays/staff/StaffPolicyCampaignOverlay.vue';
+import ProfessionalDevelopmentRequestOverlay from '@/overlays/staff/ProfessionalDevelopmentRequestOverlay.vue';
+import ProfessionalDevelopmentCompletionOverlay from '@/overlays/staff/ProfessionalDevelopmentCompletionOverlay.vue';
 import StudentContextOverlay from '@/components/overlays/class-hub/StudentContextOverlay.vue';
 import QuickEvidenceOverlay from '@/components/overlays/class-hub/QuickEvidenceOverlay.vue';
 import QuickCFUOverlay from '@/components/overlays/class-hub/QuickCFUOverlay.vue';
@@ -64,6 +66,7 @@ import ApplicantDocumentUploadOverlay from '@/overlays/admissions/ApplicantDocum
 import ApplicantPolicyAcknowledgeOverlay from '@/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue';
 import ApplicantSubmitOverlay from '@/overlays/admissions/ApplicantSubmitOverlay.vue';
 import AdmissionsWorkspaceOverlay from '@/overlays/admissions/AdmissionsWorkspaceOverlay.vue';
+import CriticalIncidentsListOverlay from '@/overlays/morning_brief/CriticalIncidentsListOverlay.vue';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
@@ -195,6 +198,10 @@ function resolveComponent(type: OverlayType) {
 			return StaffPolicyInformOverlay;
 		case 'staff-policy-signature-campaign':
 			return StaffPolicyCampaignOverlay;
+		case 'staff-professional-development-request':
+			return ProfessionalDevelopmentRequestOverlay;
+		case 'staff-professional-development-completion':
+			return ProfessionalDevelopmentCompletionOverlay;
 		case 'focus-router':
 			return FocusRouterOverlay;
 		case 'class-hub-student-context':
@@ -215,6 +222,8 @@ function resolveComponent(type: OverlayType) {
 			return ApplicantSubmitOverlay;
 		case 'admissions-workspace':
 			return AdmissionsWorkspaceOverlay;
+		case 'critical-incidents-list':
+			return CriticalIncidentsListOverlay;
 		default:
 			return CreateTaskDeliveryOverlay;
 	}

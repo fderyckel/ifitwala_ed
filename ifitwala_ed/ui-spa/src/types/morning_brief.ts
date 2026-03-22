@@ -90,8 +90,15 @@ export interface StaffBirthday {
 }
 
 export interface ClinicVolumePoint {
-	date: string
+	label: string
 	count: number
+}
+
+export interface ClinicVolumeSummary {
+	default_view: '3D' | '3W'
+	school: string
+	views: Record<'3D' | '3W', ClinicVolumePoint[]>
+	error?: string | null
 }
 
 export interface AdmissionsPulseBreakdown {
@@ -151,7 +158,7 @@ export interface AbsentStudent {
 export interface WidgetsPayload {
 	announcements: Announcement[]
 	staff_birthdays?: StaffBirthday[]
-	clinic_volume?: ClinicVolumePoint[]
+	clinic_volume?: ClinicVolumeSummary
 	admissions_pulse?: AdmissionsPulse
 	critical_incidents?: number
 	today_label: string

@@ -146,10 +146,12 @@
 															{{ row.log_type }}
 														</div>
 													</td>
-													<td class="px-3 py-3 align-top" :title="stripHtml(row.content || '')">
-														<div class="analytics-expand__log-snippet">
-															{{ truncate(stripHtml(row.content || ''), 220) }}
-														</div>
+													<td class="px-3 py-3 align-top">
+														<AnalyticsTextPreview
+															class="analytics-expand__log-snippet"
+															:text="stripHtml(row.content || '')"
+															:lines="3"
+														/>
 													</td>
 													<td class="px-3 py-3 align-top font-medium">
 														<div class="analytics-expand__cell-truncate" :title="row.author">
@@ -182,12 +184,13 @@
 																		{{ formatRespondedAt(followUp.responded_at) }}
 																	</span>
 																</div>
-																<p
+																<AnalyticsTextPreview
 																	v-if="followUp.comment_text"
 																	class="analytics-expand__followup-comment"
-																>
-																	{{ truncate(followUp.comment_text, 180) }}
-																</p>
+																	:text="followUp.comment_text"
+																	:lines="2"
+																	:preview-width="520"
+																/>
 															</div>
 														</div>
 														<div v-else class="analytics-expand__followup-empty">
@@ -203,8 +206,12 @@
 													<td class="px-3 py-3 align-top whitespace-nowrap">
 														{{ row.log_type }}
 													</td>
-													<td class="px-3 py-3 align-top" :title="stripHtml(row.content || '')">
-														{{ truncate(stripHtml(row.content || ''), 200) }}
+													<td class="px-3 py-3 align-top">
+														<AnalyticsTextPreview
+															class="analytics-expand__log-snippet analytics-expand__log-snippet--selected"
+															:text="stripHtml(row.content || '')"
+															:lines="3"
+														/>
 													</td>
 													<td class="px-3 py-3 align-top whitespace-nowrap font-medium">
 														{{ row.author }}
@@ -235,12 +242,13 @@
 																		{{ formatRespondedAt(followUp.responded_at) }}
 																	</span>
 																</div>
-																<p
+																<AnalyticsTextPreview
 																	v-if="followUp.comment_text"
 																	class="analytics-expand__followup-comment"
-																>
-																	{{ truncate(followUp.comment_text, 220) }}
-																</p>
+																	:text="followUp.comment_text"
+																	:lines="2"
+																	:preview-width="520"
+																/>
 															</div>
 														</div>
 														<div v-else class="analytics-expand__followup-empty">
@@ -273,6 +281,7 @@ import {
 import { FeatherIcon } from 'frappe-ui';
 
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
+import AnalyticsTextPreview from '@/components/analytics/AnalyticsTextPreview.vue';
 import { formatLocalizedDateTime } from '@/lib/datetime';
 import type {
 	StudentLogFollowUpSummary,
@@ -348,11 +357,6 @@ function stripHtml(html: string) {
 		.trim();
 }
 
-function truncate(text: string, max = 140) {
-	if (!text) return '';
-	return text.length > max ? `${text.slice(0, max)}...` : text;
-}
-
 function followUpEmptyLabel(row: TableRow) {
 	return row.requires_follow_up ? 'Awaiting submitted follow-up' : 'No follow-up recorded';
 }
@@ -378,8 +382,13 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 }
 
 .analytics-expand__log-snippet {
-	word-break: break-word;
+	font-size: 1rem;
 	line-height: 1.7rem;
+	color: rgb(30 41 59);
+}
+
+.analytics-expand__log-snippet--selected {
+	word-break: break-word;
 }
 
 .analytics-expand__followups {

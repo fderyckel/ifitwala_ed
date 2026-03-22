@@ -67,7 +67,7 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
             "organization",
             "school",
         ],
-        limit_page_length=10000,
+        limit=10000,
     )
 
     scope_cache: dict[tuple[str, str], tuple[set[str], set[str]]] = {}
@@ -138,7 +138,7 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
             "modified",
         ],
         order_by="modified desc",
-        limit_page_length=10000,
+        limit=10000,
     )
 
     document_rows_by_applicant: dict[str, list[dict]] = {name: [] for name in applicant_names}

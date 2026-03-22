@@ -112,7 +112,9 @@ For docs under `ifitwala_ed/docs/docs_md/`:
   - `version`
   - `last_change_date`
 - update both on every change
+- `## Related Docs` should appear immediately before `## Technical Notes (IT)` when that section exists
 - `## Technical Notes (IT)` must be the final top-level section
+- `## Technical Notes (IT)` is reserved for administrator and system-admin implementation detail, not general product guidance
 - preserve figure tags exactly
 
 Do not break the existing docs pipeline conventions.
@@ -146,3 +148,20 @@ Before finalizing a docs change, verify:
 - status is honest
 - obsolete sections are retired or deprecated cleanly
 - formatting/front matter/section-order rules remain valid
+
+---
+
+## 9. High Concurrency Documentation Rule
+
+For any hot-path, dashboard, workspace, or SPA-supporting feature doc, the canonical concurrency note is:
+
+- `ifitwala_ed/docs/high_concurrency_contract.md`
+
+Docs must not describe request-heavy, cache-unsafe, or client-waterfall designs as acceptable if they conflict with that note.
+
+When documenting Drive or file-related UX in Ifitwala_Ed, explicitly state:
+
+- whether the surface is context-first or browse-first
+- whether the endpoint is bootstrap, read-model, or mutation
+- how many foundational calls the SPA is expected to make
+- whether preview/download uses Drive grants instead of raw URLs

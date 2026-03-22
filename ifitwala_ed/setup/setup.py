@@ -6,9 +6,10 @@ import os
 
 import frappe
 from frappe import _
-from frappe.utils import get_files_path
+from frappe.utils import cstr, get_files_path
 
 from ifitwala_ed.admission.access import ADMISSIONS_FAMILY_ROLE
+from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
 from ifitwala_ed.routing.policy import canonical_path_for_section
 from ifitwala_ed.school_site.doctype.website_theme_profile.website_theme_profile import (
     ensure_theme_profile_presets,
@@ -39,6 +40,7 @@ def setup_education():
     setup_website_theme_profiles()
     setup_default_website_pages()
     grant_core_crm_permissions()
+    ensure_policy_audience_records()
 
 
 def ensure_initial_setup_flag():
@@ -88,6 +90,7 @@ def create_roles_with_homepage():
         {"role_name": "Guardian", "desk_access": 0, "home_page": canonical_path_for_section("guardian")},
         {"role_name": "Admissions Applicant", "desk_access": 0, "home_page": "/admissions"},
         {"role_name": ADMISSIONS_FAMILY_ROLE, "desk_access": 0, "home_page": "/admissions"},
+        {"role_name": "Academic Staff", "desk_access": 1, "home_page": canonical_path_for_section("staff")},
         {"role_name": "Nurse", "desk_access": 1, "home_page": "/desk/health"},
         {"role_name": "Academic Admin", "desk_access": 1, "home_page": "/desk/admin"},
         {"role_name": "Admission Officer", "desk_access": 1, "home_page": "/desk/admission"},
@@ -147,59 +150,81 @@ def ensure_hr_settings():
 
 
 def create_designations():
+    organization = _resolve_designation_seed_organization()
+    if not organization:
+        return
+
     data = [
         {
             "doctype": "Designation",
             "designation_name": "Director",
+            "organization": organization,
             "default_role_profile": "Academic Admin",
             "default_workspace": "Admin",
         },
         {
             "doctype": "Designation",
             "designation_name": "Principal",
+            "organization": organization,
             "default_role_profile": "Academic Admin",
             "default_workspace": "Admin",
         },
         {
             "doctype": "Designation",
             "designation_name": "Academic Assistant",
+            "organization": organization,
             "default_role_profile": "Academic Assistant",
             "default_workspace": "Admin",
         },
-        {"doctype": "Designation", "designation_name": "Assistant Principal"},
+        {"doctype": "Designation", "designation_name": "Assistant Principal", "organization": organization},
         {
             "doctype": "Designation",
             "designation_name": "Nurse",
+            "organization": organization,
             "default_role_profile": "Nurse",
             "default_workspace": "Health",
         },
         {
             "doctype": "Designation",
             "designation_name": "Teacher",
+            "organization": organization,
             "default_role_profile": "Academic Staff",
             "default_workspace": "Academics",
         },
-        {"doctype": "Designation", "designation_name": "Teacher Assistant"},
+        {"doctype": "Designation", "designation_name": "Teacher Assistant", "organization": organization},
         {
             "doctype": "Designation",
             "designation_name": "Counsellor",
+            "organization": organization,
             "default_role_profile": "Counsellor",
             "default_workspace": "Counseling",
         },
         {
             "doctype": "Designation",
             "designation_name": "Curriculum Coordinator",
+            "organization": organization,
             "default_role_profile": "Curriculum Coordinator",
             "default_workspace": "Curriculum",
         },
         {
             "doctype": "Designation",
             "designation_name": "HR Director",
+            "organization": organization,
             "default_role_profile": "HR Manager",
             "default_workspace": "HR",
         },
     ]
     insert_record(data)
+
+
+def _resolve_designation_seed_organization():
+    organization = frappe.db.get_value(
+        "Organization",
+        {"name": ["!=", "All Organizations"]},
+        "name",
+        order_by="lft asc",
+    )
+    return cstr(organization).strip() or None
 
 
 def create_log_type():

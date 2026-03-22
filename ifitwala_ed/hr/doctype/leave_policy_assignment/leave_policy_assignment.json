@@ -123,13 +123,37 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-12 07:37:21.990110",
+ "modified": "2026-03-16 20:28:06.101735",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Leave Policy Assignment",
  "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
   {
    "cancel": 1,
    "create": 1,
@@ -159,20 +183,6 @@
    "write": 1
   },
   {
-   "cancel": 1,
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
    "email": 1,
    "export": 1,
    "print": 1,
@@ -180,6 +190,11 @@
    "report": 1,
    "role": "Academic Admin",
    "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
   }
  ],
  "row_format": "Dynamic",

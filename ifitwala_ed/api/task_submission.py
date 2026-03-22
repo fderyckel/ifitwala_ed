@@ -33,7 +33,7 @@ def get_latest_submission(outcome_id=None):
         filters={"task_outcome": outcome_id},
         fields=["name", "version", "submitted_on", "text_content", "link_url"],
         order_by="version desc",
-        limit_page_length=1,
+        limit=1,
     )
     if not rows:
         return None
@@ -48,7 +48,7 @@ def get_latest_submission(outcome_id=None):
         },
         fields=["file", "external_url", "description", "public", "file_name", "file_size"],
         order_by="idx asc",
-        limit_page_length=0,
+        limit=0,
     )
 
     file_rows = frappe.get_all(
@@ -59,7 +59,7 @@ def get_latest_submission(outcome_id=None):
         },
         fields=["name", "file_url", "creation"],
         order_by="creation desc",
-        limit_page_length=0,
+        limit=0,
     )
     file_name_by_url: dict[str, str] = {}
     for row in file_rows:

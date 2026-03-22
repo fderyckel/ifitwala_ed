@@ -2,6 +2,7 @@
 
 export type Request = {
   student_applicant?: string
+  guardian_row_name: string
   file_name: string
   content: string
 }

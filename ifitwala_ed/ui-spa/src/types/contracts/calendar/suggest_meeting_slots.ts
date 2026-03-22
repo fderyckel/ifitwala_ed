@@ -9,6 +9,8 @@ export type Request = {
 	date_to: string
 	day_start_time: string
 	day_end_time: string
+	school?: string | null
+	require_room?: boolean | null
 }
 
 export type Response = {

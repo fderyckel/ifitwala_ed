@@ -11,6 +11,7 @@ from ifitwala_ed.api.focus import (
     list_focus_items,
 )
 from ifitwala_ed.api.policy_signature import launch_staff_policy_campaign
+from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
 from ifitwala_ed.tests.factories.organization import make_organization
 from ifitwala_ed.tests.factories.users import make_user
 
@@ -18,6 +19,7 @@ from ifitwala_ed.tests.factories.users import make_user
 class TestFocusPolicySignature(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
+        ensure_policy_audience_records()
         self.created: list[tuple[str, str]] = []
 
         self.organization = make_organization(prefix="FPS Org")
@@ -50,7 +52,7 @@ class TestFocusPolicySignature(FrappeTestCase):
                 "policy_key": f"focus_staff_policy_{frappe.generate_hash(length=8)}",
                 "policy_title": "Staff Cybersecurity",
                 "policy_category": "Employment",
-                "applies_to": "Staff",
+                "applies_to": [{"policy_audience": "Staff"}],
                 "organization": self.organization.name,
                 "is_active": 1,
             }

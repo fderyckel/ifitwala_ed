@@ -32,7 +32,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Booking Type",
-   "options": "Teaching\nMeeting\nDuty\nOther",
+   "options": "Teaching\nMeeting\nDuty\nProfessional Development\nOther",
    "reqd": 1
   },
   {
@@ -90,7 +90,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-03 17:20:54.841215",
+ "modified": "2026-03-20 09:46:37.000000",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee Booking",

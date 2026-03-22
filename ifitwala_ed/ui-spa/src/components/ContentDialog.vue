@@ -1,130 +1,161 @@
 <!-- ifitwala_ed/ui-spa/src/components/ContentDialog.vue -->
-<!--
-  ContentDialog.vue
-  A generic, high-z-index dialog for displaying rich HTML content (e.g., announcements, messages)
-  directly via Teleport to body, often bypassing the standard OverlayHost stack.
-
-  Used by:
-  - MorningBriefing.vue (pages/staff/morning_brief)
--->
 <template>
-	<teleport to="body">
-		<transition name="content-dialog-fade">
-			<div
-				v-if="isOpen"
-				class="fixed inset-0 z-[60] flex items-center justify-center bg-[color:rgb(var(--ink-rgb)/0.45)] backdrop-blur-sm"
-				@click.self="isOpen = false"
+	<Teleport to="body">
+		<TransitionRoot as="template" :show="isOpen">
+			<Dialog
+				as="div"
+				class="if-overlay if-overlay--morning-brief-content"
+				:initialFocus="closeButtonRef"
+				@close="onDialogClose"
 			>
-				<!-- SINGLE visible box -->
-				<div
-					class="content-card relative flex max-h-[80vh] w-full max-w-3xl flex-col gap-4 overflow-y-auto rounded-2xl bg-surface-soft p-4 text-ink shadow-strong ring-1 ring-border/60 sm:p-5"
+				<TransitionChild
+					as="template"
+					enter="if-overlay__fade-enter"
+					enter-from="if-overlay__fade-from"
+					enter-to="if-overlay__fade-to"
+					leave="if-overlay__fade-leave"
+					leave-from="if-overlay__fade-to"
+					leave-to="if-overlay__fade-from"
 				>
-					<button
-						@click="isOpen = false"
-						class="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/80 bg-surface-soft text-slate-token/70 transition hover:border-jacaranda/40 hover:text-jacaranda focus:outline-none focus-visible:ring-2 focus-visible:ring-jacaranda/40"
-						aria-label="Close"
+					<div class="if-overlay__backdrop" @click="closeDialog" />
+				</TransitionChild>
+
+				<div class="if-overlay__wrap content-dialog__wrap" @click.self="closeDialog">
+					<TransitionChild
+						as="template"
+						enter="if-overlay__panel-enter"
+						enter-from="if-overlay__panel-from"
+						enter-to="if-overlay__panel-to"
+						leave="if-overlay__panel-leave"
+						leave-from="if-overlay__panel-to"
+						leave-to="if-overlay__panel-from"
 					>
-						<FeatherIcon name="x" class="h-4 w-4" />
-					</button>
+						<DialogPanel class="if-overlay__panel content-dialog__panel">
+							<header class="content-dialog__hero">
+								<div class="content-dialog__hero-copy">
+									<p class="type-overline content-dialog__eyebrow">
+										{{ showInteractions ? __('Announcement') : __('Student Log') }}
+									</p>
+									<DialogTitle class="type-h2 text-ink mt-2">
+										{{ title || __('Detail') }}
+									</DialogTitle>
+									<p v-if="subtitle" class="type-caption mt-2 text-ink/65">
+										{{ subtitle }}
+									</p>
+									<div v-if="badge" class="mt-4">
+										<span class="content-dialog__badge">
+											{{ badge }}
+										</span>
+									</div>
+								</div>
 
-					<!-- HEADER -->
-					<div
-						v-if="hasHeaderContent"
-						class="flex items-start gap-3 border-b border-line-soft bg-surface-soft/70 pb-3 pr-8"
-					>
-						<div
-							v-if="image || imageFallback"
-							class="flex h-12 w-12 items-center justify-center rounded-xl border border-border/70 bg-surface-soft text-sm font-semibold text-slate-token/75 shadow-inner"
-						>
-							<img
-								v-if="image"
-								:src="image"
-								class="h-full w-full object-cover"
-								alt="Context image"
-							/>
-							<span v-else>
-								{{ imageFallback }}
-							</span>
-						</div>
+								<div class="content-dialog__hero-meta">
+									<div
+										v-if="image || imageFallback"
+										class="content-dialog__avatar"
+										:class="{ 'content-dialog__avatar--image': !!image }"
+									>
+										<img v-if="image" :src="image" class="h-full w-full object-cover" alt="" />
+										<span v-else>{{ imageFallback }}</span>
+									</div>
 
-						<div class="flex flex-col gap-1">
-							<p v-if="title" class="type-h2 text-ink">
-								{{ title }}
-							</p>
-							<p v-if="subtitle" class="type-meta text-jacaranda">
-								{{ subtitle }}
-							</p>
+									<button
+										ref="closeButtonRef"
+										type="button"
+										class="if-overlay__icon-button"
+										aria-label="Close"
+										@click="closeDialog"
+									>
+										<FeatherIcon name="x" class="h-4 w-4" />
+									</button>
+								</div>
+							</header>
 
-							<div class="flex items-center gap-2">
-								<span v-if="badge" class="chip">
-									{{ badge }}
-								</span>
-							</div>
-						</div>
-					</div>
+							<section class="if-overlay__body content-dialog__body custom-scrollbar">
+								<div class="content-dialog__content-card">
+									<div class="prose prose-sm max-w-none text-slate-token/90">
+										<div ref="contentRootEl" v-html="contentHtml" @click="onContentClick"></div>
+									</div>
+								</div>
 
-					<!-- BODY CONTENT: respects HTML from Org Communication.message -->
-					<div class="rounded-2xl border border-line-soft bg-white/85 p-5 shadow-soft">
-						<div class="prose prose-sm max-w-none text-slate-token/90">
-							<div ref="contentRootEl" v-html="contentHtml" @click="onContentClick"></div>
-						</div>
-					</div>
+								<section v-if="showInteractions" class="content-dialog__interaction-panel">
+									<div class="content-dialog__interaction-header">
+										<div>
+											<p class="text-sm font-semibold text-ink">
+												{{ __('Team Responses') }}
+											</p>
+											<p class="mt-1 text-xs text-slate-token/75">
+												{{
+													__(
+														'Acknowledge, react, or continue the discussion without leaving the briefing.'
+													)
+												}}
+											</p>
+										</div>
+										<div
+											v-if="interaction.self"
+											class="rounded-full border border-jacaranda/20 bg-jacaranda/5 px-3 py-1 text-[11px] font-semibold text-jacaranda"
+										>
+											{{ __('You responded') }}
+										</div>
+									</div>
 
-					<!-- INTERACTIONS -->
-					<div
-						v-if="showInteractions"
-						class="flex flex-col gap-2 border-t border-border/60 pt-3 text-[11px] text-slate-token/70"
-					>
-						<!-- Action buttons -->
-						<div class="flex items-center gap-3">
-							<button
-								type="button"
-								class="inline-flex items-center gap-1 rounded-full bg-surface-soft px-2 py-1 hover:bg-surface-soft/80"
-								@click="$emit('acknowledge')"
-							>
-								<FeatherIcon name="thumbs-up" class="h-3 w-3 text-canopy" />
-								<span>Acknowledge</span>
-							</button>
+									<div class="content-dialog__interaction-actions">
+										<button
+											type="button"
+											class="content-dialog__action-button"
+											@click="$emit('acknowledge')"
+										>
+											<FeatherIcon name="thumbs-up" class="h-4 w-4 text-canopy" />
+											<span>{{ __('Acknowledge') }}</span>
+										</button>
 
-							<button
-								type="button"
-								class="inline-flex items-center gap-1 rounded-full px-2 py-1 hover:bg-surface-soft"
-								@click="$emit('open-comments')"
-							>
-								<FeatherIcon name="message-circle" class="h-3 w-3" />
-								<span>Comments</span>
-								<span class="text-[10px] text-slate-token/60"> ({{ commentCount }}) </span>
-							</button>
-						</div>
+										<button
+											type="button"
+											class="content-dialog__action-button"
+											@click="$emit('open-comments')"
+										>
+											<FeatherIcon name="message-circle" class="h-4 w-4 text-jacaranda" />
+											<span>{{ __('Comments') }}</span>
+											<span class="text-[11px] text-slate-token/60"> ({{ commentCount }}) </span>
+										</button>
+									</div>
 
-						<!-- Self status -->
-						<div v-if="interaction.self" class="hidden text-[10px] text-jacaranda md:block">
-							You responded: {{ interaction.self.intent_type || 'Commented' }}
-						</div>
+									<div class="content-dialog__chips-row">
+										<InteractionEmojiChips
+											v-if="interaction"
+											:interaction="interaction"
+											:readonly="false"
+											:on-react="code => $emit('react', code)"
+										/>
+									</div>
+								</section>
+							</section>
 
-						<!-- Reaction summary row: shared component -->
-						<div class="mt-1">
-							<InteractionEmojiChips
-								v-if="interaction"
-								:interaction="interaction"
-								:readonly="false"
-								:on-react="code => $emit('react', code)"
-							/>
-						</div>
-					</div>
-
-					<div class="flex justify-end border-t border-border/70 pt-3">
-						<Button variant="solid" label="Close" @click="isOpen = false" />
-					</div>
+							<footer class="if-overlay__footer">
+								<button type="button" class="content-dialog__footer-button" @click="closeDialog">
+									{{ __('Close') }}
+								</button>
+							</footer>
+						</DialogPanel>
+					</TransitionChild>
 				</div>
-			</div>
-		</transition>
-	</teleport>
+			</Dialog>
+		</TransitionRoot>
+	</Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
-import { Button, FeatherIcon } from 'frappe-ui';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import {
+	Dialog,
+	DialogPanel,
+	DialogTitle,
+	TransitionChild,
+	TransitionRoot,
+} from '@headlessui/vue';
+import { FeatherIcon } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 import { getInteractionStats } from '@/utils/interactionStats';
 import {
 	extractPolicyInformLinkFromClickEvent,
@@ -159,14 +190,12 @@ const emit = defineEmits<{
 	'policy-inform': [PolicyInformLinkPayload];
 }>();
 
-const hasHeaderContent = computed(
-	() => !!(props.title || props.subtitle || props.image || props.imageFallback || props.badge)
-);
-
 const isOpen = computed({
 	get: () => props.modelValue,
 	set: (value: boolean) => emit('update:modelValue', value),
 });
+
+const closeButtonRef = ref<HTMLButtonElement | null>(null);
 const contentRootEl = ref<HTMLElement | null>(null);
 
 const interaction = computed<InteractionSummary>(() => ({
@@ -179,12 +208,16 @@ const interaction = computed<InteractionSummary>(() => ({
 }));
 
 const stats = computed(() => getInteractionStats(interaction.value));
-
-// HTML straight-through from Org Communication.message
 const contentHtml = computed(() => props.content || '');
-
-// Comment count = thread entries (Comment + Question)
 const commentCount = computed(() => stats.value.comments_total ?? 0);
+
+function closeDialog() {
+	isOpen.value = false;
+}
+
+function onDialogClose(_payload: unknown) {
+	// A+ rule: ignore framework close payloads and close explicitly only.
+}
 
 function onContentClick(event: MouseEvent) {
 	const payload = extractPolicyInformLinkFromClickEvent(event);
@@ -287,10 +320,10 @@ function decoratePolicyActionLinks() {
 	}
 
 	const row = document.createElement('div');
-	row.className = 'if-policy-action-row not-prose mt-3 flex flex-wrap justify-end gap-2';
+	row.className = 'if-policy-action-row not-prose mt-4 flex flex-wrap justify-end gap-2';
 
-	const morningBriefJacarandaButton =
-		'rounded-full border px-3 py-1 text-xs font-semibold transition-all border-jacaranda bg-jacaranda/5 text-jacaranda shadow-sm hover:bg-jacaranda/10';
+	const actionButtonClass =
+		'inline-flex items-center rounded-full border border-jacaranda/20 bg-jacaranda/5 px-3 py-1.5 text-xs font-semibold text-jacaranda transition-colors hover:bg-jacaranda/10';
 
 	const readPolicy = document.createElement('a');
 	readPolicy.textContent = 'Read Policy';
@@ -301,7 +334,7 @@ function decoratePolicyActionLinks() {
 	readPolicy.setAttribute('data-policy-inform', '1');
 	readPolicy.setAttribute('data-policy-version', policyVersion);
 	if (orgCommunication) readPolicy.setAttribute('data-org-communication', orgCommunication);
-	readPolicy.className = morningBriefJacarandaButton;
+	readPolicy.className = actionButtonClass;
 
 	const openDesk = document.createElement('a');
 	openDesk.textContent = 'Open Policy in Desk';
@@ -310,20 +343,218 @@ function decoratePolicyActionLinks() {
 	openDesk.setAttribute('data-policy-version', policyVersion);
 	openDesk.setAttribute('target', '_blank');
 	openDesk.setAttribute('rel', 'noopener');
-	openDesk.className = morningBriefJacarandaButton;
+	openDesk.className = actionButtonClass;
 
 	row.appendChild(readPolicy);
 	row.appendChild(openDesk);
 	root.appendChild(row);
 }
 
+function onKeydown(event: KeyboardEvent) {
+	if (!isOpen.value) return;
+	if (event.key === 'Escape') closeDialog();
+}
+
 watch(
-	() => [props.modelValue, contentHtml.value],
-	async ([open]) => {
-		if (!open) return;
+	() => [contentRootEl.value, props.modelValue, contentHtml.value],
+	async ([root, open]) => {
+		if (!open || !root) return;
 		await nextTick();
 		decoratePolicyActionLinks();
 	},
 	{ immediate: true }
 );
+
+onMounted(() => {
+	document.addEventListener('keydown', onKeydown, true);
+});
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true);
+});
 </script>
+
+<style scoped>
+.content-dialog__wrap {
+	align-items: center;
+}
+
+.content-dialog__panel {
+	max-width: min(72rem, calc(100vw - 1.5rem));
+}
+
+.content-dialog__hero {
+	display: flex;
+	gap: 1rem;
+	justify-content: space-between;
+	padding: 1.5rem;
+	border-bottom: 1px solid rgb(var(--border-rgb) / 0.65);
+	background:
+		radial-gradient(circle at top left, rgb(var(--jacaranda-rgb) / 0.12), transparent 32%),
+		radial-gradient(circle at top right, rgb(var(--sky-rgb) / 0.18), transparent 38%),
+		linear-gradient(180deg, rgb(var(--surface-rgb) / 0.98), rgb(var(--surface-strong-rgb) / 1));
+}
+
+.content-dialog__hero-copy {
+	min-width: 0;
+	flex: 1;
+}
+
+.content-dialog__hero-meta {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.75rem;
+}
+
+.content-dialog__eyebrow {
+	color: rgb(var(--slate-rgb) / 0.75);
+}
+
+.content-dialog__badge {
+	display: inline-flex;
+	align-items: center;
+	border-radius: 9999px;
+	padding: 0.4rem 0.8rem;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	border: 1px solid rgb(var(--jacaranda-rgb) / 0.18);
+	background: rgb(var(--jacaranda-rgb) / 0.08);
+	color: rgb(var(--jacaranda-rgb) / 0.95);
+}
+
+.content-dialog__avatar {
+	display: inline-flex;
+	height: 3.5rem;
+	width: 3.5rem;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	border-radius: 1rem;
+	border: 1px solid rgb(var(--border-rgb) / 0.8);
+	background: rgb(var(--surface-strong-rgb) / 1);
+	box-shadow: var(--shadow-soft);
+	color: rgb(var(--slate-rgb) / 0.75);
+	font-size: 0.9rem;
+	font-weight: 700;
+}
+
+.content-dialog__avatar--image {
+	padding: 0;
+}
+
+.content-dialog__body {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	padding: 1.5rem;
+}
+
+.content-dialog__content-card {
+	border-radius: 1.5rem;
+	border: 1px solid rgb(var(--border-rgb) / 0.72);
+	background:
+		radial-gradient(circle at top left, rgb(var(--sand-rgb) / 0.28), transparent 32%),
+		rgb(var(--surface-strong-rgb) / 0.98);
+	padding: 1.35rem;
+	box-shadow: var(--shadow-soft);
+}
+
+.content-dialog__interaction-panel {
+	border-radius: 1.35rem;
+	border: 1px solid rgb(var(--border-rgb) / 0.72);
+	background: rgb(var(--surface-rgb) / 0.92);
+	padding: 1rem;
+	box-shadow: var(--shadow-soft);
+}
+
+.content-dialog__interaction-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.content-dialog__interaction-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	margin-top: 1rem;
+}
+
+.content-dialog__action-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	border-radius: 9999px;
+	border: 1px solid rgb(var(--border-rgb) / 0.8);
+	background: rgb(var(--surface-strong-rgb) / 0.95);
+	padding: 0.55rem 0.95rem;
+	font-size: 0.82rem;
+	font-weight: 600;
+	color: rgb(var(--ink-rgb) / 0.92);
+	transition:
+		border-color 120ms ease,
+		transform 120ms ease,
+		background 120ms ease;
+}
+
+.content-dialog__action-button:hover {
+	border-color: rgb(var(--jacaranda-rgb) / 0.35);
+	background: rgb(var(--surface-strong-rgb) / 1);
+	transform: translateY(-1px);
+}
+
+.content-dialog__chips-row {
+	margin-top: 1rem;
+}
+
+.content-dialog__footer-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 9999px;
+	border: 1px solid rgb(var(--border-rgb) / 0.85);
+	background: rgb(var(--surface-strong-rgb) / 1);
+	padding: 0.6rem 1.05rem;
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: rgb(var(--ink-rgb) / 0.9);
+	transition:
+		border-color 120ms ease,
+		color 120ms ease,
+		transform 120ms ease;
+}
+
+.content-dialog__footer-button:hover {
+	border-color: rgb(var(--jacaranda-rgb) / 0.35);
+	color: rgb(var(--jacaranda-rgb) / 0.95);
+	transform: translateY(-1px);
+}
+
+@media (max-width: 767px) {
+	.content-dialog__panel {
+		max-width: calc(100vw - 1rem);
+		max-height: calc(100vh - 1rem);
+	}
+
+	.content-dialog__hero {
+		flex-direction: column;
+		padding: 1.1rem;
+	}
+
+	.content-dialog__hero-meta {
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.content-dialog__body {
+		padding: 1rem;
+	}
+
+	.content-dialog__interaction-header {
+		flex-direction: column;
+	}
+}
+</style>

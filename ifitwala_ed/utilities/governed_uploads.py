@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 from typing import Tuple
@@ -14,12 +15,7 @@ from frappe import _
 
 from ifitwala_ed.utilities import file_dispatcher
 from ifitwala_ed.utilities.organization_media import (
-    build_organization_logo_slot,
-    build_organization_media_classification,
-    build_organization_media_context,
     build_organization_media_slot,
-    build_school_gallery_slot,
-    build_school_logo_slot,
 )
 
 
@@ -106,6 +102,20 @@ def _response_payload(file_doc):
     }
 
 
+def _append_attached_document_row(doc, *, fieldname: str, file_doc, title: str | None = None):
+    doc.append(
+        fieldname,
+        {
+            "section_break_sbex": title or file_doc.file_name,
+            "file": file_doc.file_url,
+            "file_name": file_doc.file_name,
+            "file_size": file_doc.file_size,
+            "public": 0,
+        },
+    )
+    doc.save(ignore_permissions=True)
+
+
 def _ensure_file_on_disk(file_doc):
     if not file_doc or not file_doc.file_url:
         frappe.throw(_("File URL missing after upload."))
@@ -138,35 +148,40 @@ def _file_url_exists_on_disk(file_url: str | None, is_private: int | None = 0) -
     return os.path.exists(abs_path)
 
 
-def _upload_organization_media_file(
-    *,
-    organization: str,
-    slot: str,
-    school: str | None = None,
-    filename: str,
-    content: bytes,
-    upload_source: str = "Desk",
-):
-    return file_dispatcher.create_and_classify_file(
-        file_kwargs={
-            "attached_to_doctype": "Organization",
-            "attached_to_name": organization,
-            "file_name": filename,
-            "content": content,
-            "is_private": 0,
-        },
-        classification=build_organization_media_classification(
-            organization=organization,
-            school=school,
-            slot=slot,
-            upload_source=upload_source,
-        ),
-        context_override=build_organization_media_context(
-            organization=organization,
-            school=school,
-            slot=slot,
-        ),
+def _load_drive_module(module_name: str):
+    try:
+        return importlib.import_module(module_name)
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+
+
+def _drive_upload_and_finalize(*, create_session_callable, payload: dict, content: bytes):
+    drive_uploads_api = _load_drive_module("ifitwala_drive.api.uploads")
+    storage_base = _load_drive_module("ifitwala_drive.services.storage.base")
+
+    session_response = create_session_callable(**payload)
+    upload_session_id = session_response.get("upload_session_id")
+    if not upload_session_id:
+        frappe.throw(_("Drive did not return an upload_session_id."))
+
+    session_doc = frappe.get_doc("Drive Upload Session", upload_session_id)
+    storage = storage_base.get_storage_backend(getattr(session_doc, "storage_backend", None))
+    storage.write_temporary_object(object_key=session_doc.tmp_object_key, content=content)
+
+    session_doc.status = "uploaded"
+    session_doc.received_size_bytes = len(content)
+    session_doc.error_log = None
+    session_doc.save(ignore_permissions=True)
+
+    finalize_response = drive_uploads_api.finalize_upload_session(
+        upload_session_id=upload_session_id,
+        received_size_bytes=len(content),
     )
+    file_name = finalize_response.get("file_id")
+    if not file_name:
+        frappe.throw(_("Drive finalize did not return a file_id."))
+
+    return session_response, finalize_response, frappe.get_doc("File", file_name)
 
 
 def _derive_generic_media_key(*, filename: str, media_key: str | None = None) -> str:
@@ -187,27 +202,18 @@ def upload_employee_image(employee: str | None = None, **_kwargs):
         frappe.throw(_("Organization is required for file classification."))
 
     filename, content = _get_uploaded_file()
+    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
 
-    file_doc = file_dispatcher.create_and_classify_file(
-        file_kwargs={
-            "attached_to_doctype": "Employee",
-            "attached_to_name": doc.name,
-            "attached_to_field": "employee_image",
-            "file_name": filename,
-            "content": content,
-            "is_private": 0,
-        },
-        classification={
-            "primary_subject_type": "Employee",
-            "primary_subject_id": doc.name,
-            "data_class": "identity_image",
-            "purpose": "employee_profile_display",
-            "retention_policy": "employment_duration_plus_grace",
-            "slot": "profile_image",
-            "organization": doc.organization,
-            "school": doc.school,
+    _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_media_api.upload_employee_image,
+        payload={
+            "employee": doc.name,
+            "filename_original": filename,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
             "upload_source": "Desk",
         },
+        content=content,
     )
     _ensure_file_on_disk(file_doc)
 
@@ -222,29 +228,19 @@ def upload_student_image(student: str | None = None, **_kwargs):
     if not doc.anchor_school:
         frappe.throw(_("Anchor School is required before uploading a student image."))
 
-    organization = _get_org_from_school(doc.anchor_school)
     filename, content = _get_uploaded_file()
+    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
 
-    file_doc = file_dispatcher.create_and_classify_file(
-        file_kwargs={
-            "attached_to_doctype": "Student",
-            "attached_to_name": doc.name,
-            "attached_to_field": "student_image",
-            "file_name": filename,
-            "content": content,
-            "is_private": 0,
-        },
-        classification={
-            "primary_subject_type": "Student",
-            "primary_subject_id": doc.name,
-            "data_class": "identity_image",
-            "purpose": "student_profile_display",
-            "retention_policy": "until_school_exit_plus_6m",
-            "slot": "profile_image",
-            "organization": organization,
-            "school": doc.anchor_school,
+    _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_media_api.upload_student_image,
+        payload={
+            "student": doc.name,
+            "filename_original": filename,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
             "upload_source": "Desk",
         },
+        content=content,
     )
     _ensure_file_on_disk(file_doc)
 
@@ -297,44 +293,53 @@ def upload_task_submission_attachment(task_submission: str | None = None, **_kwa
     if not doc.school or not doc.student:
         frappe.throw(_("Student and School are required for file classification."))
 
-    organization = _get_org_from_school(doc.school)
     filename, content = _get_uploaded_file()
+    drive_submissions_api = _load_drive_module("ifitwala_drive.api.submissions")
 
-    file_doc = file_dispatcher.create_and_classify_file(
-        file_kwargs={
-            "attached_to_doctype": "Task Submission",
-            "attached_to_name": doc.name,
-            "file_name": filename,
-            "content": content,
-            "is_private": 1,
-        },
-        classification={
-            "primary_subject_type": "Student",
-            "primary_subject_id": doc.student,
-            "data_class": "academic",
-            "purpose": "assessment_submission",
-            "retention_policy": "until_program_end_plus_1y",
-            "slot": "submission",
-            "organization": organization,
-            "school": doc.school,
+    _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_submissions_api.upload_task_submission_artifact,
+        payload={
+            "task_submission": doc.name,
+            "filename_original": filename,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
             "upload_source": "Desk",
         },
+        content=content,
     )
     _ensure_file_on_disk(file_doc)
 
-    doc.append(
-        "attachments",
-        {
-            "section_break_sbex": file_doc.file_name,
-            "file": file_doc.file_url,
-            "file_name": file_doc.file_name,
-            "file_size": file_doc.file_size,
-            "public": 0,
-        },
-    )
-    doc.save(ignore_permissions=True)
+    _append_attached_document_row(doc, fieldname="attachments", file_doc=file_doc)
 
     return _response_payload(file_doc)
+
+
+@frappe.whitelist()
+def upload_task_resource(task: str | None = None, row_name: str | None = None, **_kwargs):
+    task = task or _get_form_arg("task") or frappe.form_dict.get("docname")
+    row_name = row_name or _get_form_arg("row_name")
+    doc = _require_clean_saved_doc(_require_doc("Task", task), action_label=_("Upload Task Resource"))
+
+    filename, content = _get_uploaded_file()
+    drive_resources_api = _load_drive_module("ifitwala_drive.api.resources")
+
+    session_response, finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_resources_api.upload_task_resource,
+        payload={
+            "task": doc.name,
+            "row_name": row_name,
+            "filename_original": filename,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
+            "upload_source": "Desk",
+        },
+        content=content,
+    )
+    _ensure_file_on_disk(file_doc)
+
+    payload = _response_payload(file_doc)
+    payload["row_name"] = finalize_response.get("row_name") or session_response.get("row_name")
+    return payload
 
 
 @frappe.whitelist()
@@ -345,12 +350,16 @@ def upload_school_logo(school: str | None = None, **_kwargs):
         frappe.throw(_("Organization is required before uploading a school logo."))
 
     filename, content = _get_uploaded_file()
-    slot = build_school_logo_slot(school=doc.name)
-    file_doc = _upload_organization_media_file(
-        organization=doc.organization,
-        school=doc.name,
-        slot=slot,
-        filename=filename,
+    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
+    _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_media_api.upload_school_logo,
+        payload={
+            "school": doc.name,
+            "filename_original": filename,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
+            "upload_source": "Desk",
+        },
         content=content,
     )
     _ensure_file_on_disk(file_doc)
@@ -379,42 +388,27 @@ def upload_school_gallery_image(school: str | None = None, row_name: str | None 
         frappe.throw(_("Organization is required before uploading a gallery image."))
 
     filename, content = _get_uploaded_file()
+    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
 
-    target_row = None
-    if row_name:
-        for row in doc.gallery_image or []:
-            if row.name == row_name:
-                target_row = row
-                break
-        if not target_row:
-            frappe.throw(_("Gallery row '{0}' was not found on School '{1}'.").format(row_name, doc.name))
-    else:
-        target_row = doc.append("gallery_image", {})
-        if not target_row.name:
-            target_row.name = frappe.generate_hash(length=10)
-        if caption:
-            target_row.caption = caption
-
-    slot = build_school_gallery_slot(row_name=target_row.name)
-    file_doc = _upload_organization_media_file(
-        organization=doc.organization,
-        school=doc.name,
-        slot=slot,
-        filename=filename,
+    session_response, finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_media_api.upload_school_gallery_image,
+        payload={
+            "school": doc.name,
+            "row_name": row_name,
+            "caption": caption,
+            "filename_original": filename,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
+            "upload_source": "Desk",
+        },
         content=content,
     )
     _ensure_file_on_disk(file_doc)
 
-    target_row.governed_file = file_doc.name
-    target_row.school_image = file_doc.file_url
-    if caption:
-        target_row.caption = caption
-    doc.save(ignore_permissions=True)
-
     payload = _response_payload(file_doc)
     payload["school"] = doc.name
-    payload["row_name"] = target_row.name
-    payload["caption"] = target_row.caption
+    payload["row_name"] = finalize_response.get("row_name") or session_response.get("row_name")
+    payload["caption"] = session_response.get("caption") or caption or None
     return payload
 
 
@@ -456,11 +450,19 @@ def upload_organization_media_asset(
     slot = build_organization_media_slot(
         media_key=_derive_generic_media_key(filename=filename, media_key=media_key),
     )
-    file_doc = _upload_organization_media_file(
-        organization=organization,
-        school=school,
-        slot=slot,
-        filename=filename,
+    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
+    _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_media_api.upload_organization_media_asset,
+        payload={
+            "organization": organization,
+            "school": school,
+            "scope": scope,
+            "media_key": media_key,
+            "filename_original": filename,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
+            "upload_source": "Desk",
+        },
         content=content,
     )
     _ensure_file_on_disk(file_doc)
@@ -482,12 +484,16 @@ def upload_organization_logo(organization: str | None = None, **_kwargs):
     )
 
     filename, content = _get_uploaded_file()
-    slot = build_organization_logo_slot(organization=doc.name)
-    file_doc = _upload_organization_media_file(
-        organization=doc.name,
-        school=None,
-        slot=slot,
-        filename=filename,
+    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
+    _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_media_api.upload_organization_logo,
+        payload={
+            "organization": doc.name,
+            "filename_original": filename,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
+            "upload_source": "Desk",
+        },
         content=content,
     )
     _ensure_file_on_disk(file_doc)

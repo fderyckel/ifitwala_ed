@@ -15,6 +15,10 @@ class TestStudentApplicant(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self._created = []
+        self._auto_hydrate_setting_before = frappe.db.get_single_value(
+            "Admission Settings", "auto_hydrate_enrollment_request_after_promotion"
+        )
+        frappe.db.set_single_value("Admission Settings", "auto_hydrate_enrollment_request_after_promotion", 1)
         self._ensure_role("Admissions Applicant")
         self._ensure_role("Student")
         self._ensure_role("Guardian")
@@ -42,6 +46,11 @@ class TestStudentApplicant(FrappeTestCase):
 
     def tearDown(self):
         frappe.set_user("Administrator")
+        frappe.db.set_single_value(
+            "Admission Settings",
+            "auto_hydrate_enrollment_request_after_promotion",
+            0 if self._auto_hydrate_setting_before in (None, "") else self._auto_hydrate_setting_before,
+        )
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
@@ -1295,8 +1304,8 @@ class TestStudentApplicant(FrappeTestCase):
         first_student = frappe.get_doc("Student", first_student_name)
         second_student = frappe.get_doc("Student", second_student_name)
 
-        self.assertIn(second_student_name, [row.sibling for row in (first_student.get("siblings") or [])])
-        self.assertIn(first_student_name, [row.sibling for row in (second_student.get("siblings") or [])])
+        self.assertIn(second_student_name, [row.student for row in (first_student.get("siblings") or [])])
+        self.assertIn(first_student_name, [row.student for row in (second_student.get("siblings") or [])])
 
     def test_promote_blocks_when_latest_enrollment_plan_is_not_accepted(self):
         offer_context = self._create_offer_context()
@@ -1396,6 +1405,7 @@ class TestStudentApplicant(FrappeTestCase):
         self._created.append(("Student", student_name))
 
         plan.reload()
+        self.assertTrue(bool(plan.program_enrollment_request))
         request = frappe.get_doc("Program Enrollment Request", plan.program_enrollment_request)
         self._created.append(("Program Enrollment Request", request.name))
 
@@ -1466,11 +1476,14 @@ class TestStudentApplicant(FrappeTestCase):
         return doc.name
 
     def _create_academic_year(self, school, academic_year_name, archived=0, visible=1):
+        start_year, end_year = academic_year_name.split("-", 1)
         doc = frappe.get_doc(
             {
                 "doctype": "Academic Year",
                 "academic_year_name": academic_year_name,
                 "school": school,
+                "year_start_date": f"{start_year}-08-01",
+                "year_end_date": f"{end_year}-06-30",
                 "archived": archived,
                 "visible_to_admission": visible,
             }

@@ -172,7 +172,7 @@ def _get_invoice_rows(scope: dict[str, Any]) -> list[dict[str, Any]]:
             "remarks",
         ],
         order_by="posting_date desc, due_date desc, modified desc",
-        limit_page_length=200,
+        limit=200,
     )
     invoice_names = [row.get("name") for row in invoice_rows if row.get("name")]
     invoice_item_rows = frappe.get_all(
@@ -185,7 +185,7 @@ def _get_invoice_rows(scope: dict[str, Any]) -> list[dict[str, Any]]:
         else {"parent": ["in", [""]]},
         fields=["parent", "student", "description"],
         order_by="parent asc, idx asc",
-        limit_page_length=1000,
+        limit=1000,
     )
     student_name_map = {row.get("student"): row.get("full_name") for row in scope["children"] if row.get("student")}
     students_by_invoice: dict[str, list[dict[str, str]]] = defaultdict(list)
@@ -249,7 +249,7 @@ def _get_payment_rows(scope: dict[str, Any]) -> list[dict[str, Any]]:
             "remarks",
         ],
         order_by="posting_date desc, modified desc",
-        limit_page_length=200,
+        limit=200,
     )
     payment_names = [row.get("name") for row in payment_rows if row.get("name")]
     ref_rows = frappe.get_all(
@@ -262,7 +262,7 @@ def _get_payment_rows(scope: dict[str, Any]) -> list[dict[str, Any]]:
         else {"parent": ["in", [""]]},
         fields=["parent", "reference_name", "allocated_amount"],
         order_by="parent asc, idx asc",
-        limit_page_length=1000,
+        limit=1000,
     )
     refs_by_payment: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in ref_rows:

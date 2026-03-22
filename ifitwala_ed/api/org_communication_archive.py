@@ -289,9 +289,13 @@ def get_org_communication_item(name=None):
     roles = frappe.get_roles(user)
 
     # Only what we actually need here (no department)
+    # Keep detail visibility aligned with the feed endpoint. The feed already scopes
+    # the visible list using the user-linked Employee record without an extra status
+    # filter, so the detail endpoint must resolve the same context or users can see a
+    # row in the archive list but silently lose the full body in the detail pane.
     employee = frappe.db.get_value(
         "Employee",
-        {"user_id": user, "employment_status": "Active"},
+        {"user_id": user},
         ["name", "school", "organization"],
         as_dict=True,
     )
@@ -324,7 +328,7 @@ def get_org_communication_feed(
     start: int | None = None,
     page_length: int | None = None,
     limit_start: int = 0,
-    limit_page_length: int = 30,
+    limit: int = 30,
     # Legacy params (kept to avoid breaking older callers)
     search_text: str | None = None,
     status: str | None = None,
@@ -417,7 +421,7 @@ def get_org_communication_feed(
 
     # Pagination params (start/page_length preferred over legacy limit_start/page_length)
     offset = int(start if start is not None else limit_start or 0)
-    page_len = int(page_length if page_length is not None else limit_page_length or 30)
+    page_len = int(page_length if page_length is not None else limit or 30)
 
     base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
 
@@ -662,7 +666,7 @@ def get_org_communication_feed(
         "items": paged_items,
         "total_count": total_count,
         "limit_start": offset,
-        "limit_page_length": page_len,
+        "limit": page_len,
         "start": offset,
         "page_length": page_len,
         "has_more": (offset + page_len) < total_count,

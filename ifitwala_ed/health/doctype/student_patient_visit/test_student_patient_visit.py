@@ -1,6 +1,8 @@
 # Copyright (c) 2025, François de Ryckel and Contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
@@ -44,6 +46,37 @@ class TestStudentPatientVisit(FrappeTestCase):
 
         self.assertEqual(visit.docstatus, 1)
         self.assertEqual(frappe.db.count("Student Log", {"student": student.name}), logs_before)
+
+    def test_visit_insert_joins_student_group_for_parent_fields(self):
+        student = _make_student("Visit Group Join")
+        patient = _make_student_patient(student.name)
+        original_sql = frappe.db.sql
+        saw_group_lookup = {"value": False}
+
+        def guarded_sql(query, values=None, *args, **kwargs):
+            if "FROM `tabStudent Group Student` sgs" in query and "INNER JOIN `tabStudent Group` sg" in query:
+                saw_group_lookup["value"] = True
+                self.assertIn("sg.academic_year", query)
+                self.assertIn("sg.school", query)
+                self.assertIn("sg.school_schedule", query)
+                self.assertIn("IFNULL(sgs.active, 1) = 1", query)
+                self.assertIn("IFNULL(sg.status, 'Active') = 'Active'", query)
+                return []
+            return original_sql(query, values, *args, **kwargs)
+
+        with patch.object(frappe.db, "sql", side_effect=guarded_sql), patch.object(frappe, "log_error") as log_error:
+            visit = frappe.get_doc(
+                {
+                    "doctype": "Student Patient Visit",
+                    "date": nowdate(),
+                    "student_patient": patient.name,
+                    "note": "Student visited the nurse while assigned to a class.",
+                }
+            ).insert()
+
+        self.assertTrue(visit.name)
+        self.assertTrue(saw_group_lookup["value"])
+        log_error.assert_not_called()
 
 
 def _make_student(prefix):

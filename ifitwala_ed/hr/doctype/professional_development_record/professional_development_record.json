@@ -1,0 +1,276 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:PDR-{YYYY}-{####}",
+ "creation": "2026-03-20 09:59:26.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_scope",
+  "professional_development_request",
+  "employee",
+  "organization",
+  "school",
+  "academic_year",
+  "professional_development_budget",
+  "professional_development_theme",
+  "section_break_details",
+  "title",
+  "professional_development_type",
+  "provider_name",
+  "location",
+  "start_datetime",
+  "end_datetime",
+  "status",
+  "section_break_finance",
+  "estimated_total",
+  "actual_total",
+  "professional_development_encumbrance",
+  "section_break_links",
+  "employee_booking",
+  "professional_development_outcome"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_scope",
+   "fieldtype": "Section Break",
+   "label": "Scope"
+  },
+  {
+   "fieldname": "professional_development_request",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Professional Development Request",
+   "options": "Professional Development Request",
+   "reqd": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "professional_development_budget",
+   "fieldtype": "Link",
+   "label": "Professional Development Budget",
+   "options": "Professional Development Budget",
+   "reqd": 1
+  },
+  {
+   "fieldname": "professional_development_theme",
+   "fieldtype": "Link",
+   "label": "Professional Development Theme",
+   "options": "Professional Development Theme"
+  },
+  {
+   "fieldname": "section_break_details",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "professional_development_type",
+   "fieldtype": "Select",
+   "label": "Professional Development Type",
+   "options": "Conference\nWorkshop\nCertification\nOnline Course\nCoaching\nInternal Training\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "provider_name",
+   "fieldtype": "Data",
+   "label": "Provider Name"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "label": "Location"
+  },
+  {
+   "fieldname": "start_datetime",
+   "fieldtype": "Datetime",
+   "label": "Start Datetime",
+   "reqd": 1
+  },
+  {
+   "fieldname": "end_datetime",
+   "fieldtype": "Datetime",
+   "label": "End Datetime",
+   "reqd": 1
+  },
+  {
+   "default": "Planned",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Planned\nAttended\nCompleted\nCancelled\nLiquidated"
+  },
+  {
+   "fieldname": "section_break_finance",
+   "fieldtype": "Section Break",
+   "label": "Finance"
+  },
+  {
+   "default": "0",
+   "fieldname": "estimated_total",
+   "fieldtype": "Currency",
+   "label": "Estimated Total",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "actual_total",
+   "fieldtype": "Currency",
+   "label": "Actual Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "professional_development_encumbrance",
+   "fieldtype": "Link",
+   "label": "Professional Development Encumbrance",
+   "options": "Professional Development Encumbrance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_links",
+   "fieldtype": "Section Break",
+   "label": "Linked Documents"
+  },
+  {
+   "fieldname": "employee_booking",
+   "fieldtype": "Link",
+   "label": "Employee Booking",
+   "options": "Employee Booking",
+   "read_only": 1
+  },
+  {
+   "fieldname": "professional_development_outcome",
+   "fieldtype": "Link",
+   "label": "Professional Development Outcome",
+   "options": "Professional Development Outcome",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-20 10:37:48.000000",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "Professional Development Record",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

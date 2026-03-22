@@ -669,7 +669,7 @@ def get_active_applicant_enrollment_plan_name(
         filters={"student_applicant": student_applicant},
         fields=["name", "status"],
         order_by="creation desc",
-        limit_page_length=20,
+        limit=20,
     )
     for row in rows:
         status = (row.get("status") or "").strip()

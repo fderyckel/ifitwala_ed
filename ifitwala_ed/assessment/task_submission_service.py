@@ -368,7 +368,7 @@ def ensure_evidence_stub_submission(outcome_id, origin="Teacher Observation", no
         filters={"task_outcome": outcome_id, "is_stub": ["!=", 1]},
         fields=["name", "version", "is_stub", "submission_origin"],
         order_by="version desc",
-        limit_page_length=1,
+        limit=1,
     )
     if latest_real:
         return latest_real[0]["name"]
@@ -378,7 +378,7 @@ def ensure_evidence_stub_submission(outcome_id, origin="Teacher Observation", no
         filters={"task_outcome": outcome_id, "is_stub": 1},
         fields=["name", "version", "is_stub", "submission_origin"],
         order_by="version desc",
-        limit_page_length=1,
+        limit=1,
     )
     if latest_stub:
         return latest_stub[0]["name"]

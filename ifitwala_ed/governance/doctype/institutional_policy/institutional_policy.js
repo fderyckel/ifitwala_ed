@@ -77,7 +77,7 @@ async function getBaseVersion(institutionalPolicy) {
 			},
 			fields: ["name", "version_label", "policy_text", "is_active"],
 			order_by: "modified desc",
-			limit_page_length: 1,
+			limit: 1,
 		},
 	});
 
@@ -93,7 +93,7 @@ async function getBaseVersion(institutionalPolicy) {
 			},
 			fields: ["name", "version_label", "policy_text", "is_active"],
 			order_by: "modified desc",
-			limit_page_length: 1,
+			limit: 1,
 		},
 	});
 	const latestRows = latestResponse?.message || [];

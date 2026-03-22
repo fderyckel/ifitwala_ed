@@ -67,7 +67,7 @@ class TestApplicantInterview(FrappeTestCase):
             },
             fields=["content"],
             order_by="creation desc",
-            limit_page_length=10,
+            limit=10,
         )
         payload = "\n".join(row.get("content") or "" for row in comments)
         self.assertIn(interview.name, payload)
@@ -265,8 +265,8 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertFalse(
             frappe.has_permission("Applicant Interview", ptype="write", doc=interview.name, user=outsider.name)
         )
-        with self.assertRaises(frappe.PermissionError):
-            frappe.get_list("Applicant Interview", fields=["name"], filters={"name": interview.name})
+        rows = frappe.get_list("Applicant Interview", fields=["name"], filters={"name": interview.name})
+        self.assertEqual(rows, [])
 
     def test_workspace_returns_guardians_for_assigned_interviewer(self):
         interviewer = self._create_user("workspace")
@@ -717,6 +717,121 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertEqual(frappe.local.response.get("filename"), file_doc.file_name)
         self.assertEqual(frappe.local.response.get("filecontent"), b"overall-review-file")
 
+    def test_assigned_health_reviewer_can_read_applicant_workspace_and_download_files(self):
+        reviewer = self._create_user("health_review_delegate", roles=["Academic Assistant"])
+        frappe.clear_cache(user=reviewer.name)
+
+        frappe.set_user("Administrator")
+        health_profile = frappe.get_doc(
+            {
+                "doctype": "Applicant Health Profile",
+                "student_applicant": self.applicant.name,
+                "review_status": "Pending",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Health Profile", health_profile.name))
+
+        doc_type = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Type",
+                "code": f"health_review_doc_{frappe.generate_hash(length=6)}",
+                "document_type_name": "Health Review Packet",
+                "organization": self.organization,
+                "school": self.school,
+                "is_active": 1,
+                "is_required": 1,
+                "classification_slot": "admissions_workspace_doc",
+                "classification_data_class": "administrative",
+                "classification_purpose": "administrative",
+                "classification_retention_policy": "until_program_end_plus_1y",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Type", doc_type.name))
+
+        applicant_document = frappe.get_doc(
+            {
+                "doctype": "Applicant Document",
+                "student_applicant": self.applicant.name,
+                "document_type": doc_type.name,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document", applicant_document.name))
+
+        item = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Item",
+                "applicant_document": applicant_document.name,
+                "item_key": "health_packet",
+                "item_label": "Health packet",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Item", item.name))
+
+        file_doc = frappe.get_doc(
+            {
+                "doctype": "File",
+                "attached_to_doctype": "Applicant Document Item",
+                "attached_to_name": item.name,
+                "file_name": "health-review.txt",
+                "is_private": 1,
+                "content": b"health-review-file",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("File", file_doc.name))
+
+        assignment = frappe.get_doc(
+            {
+                "doctype": "Applicant Review Assignment",
+                "target_type": "Applicant Health Profile",
+                "target_name": health_profile.name,
+                "student_applicant": self.applicant.name,
+                "assigned_to_user": reviewer.name,
+                "status": "Open",
+                "source_event": "health_declared_complete",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Review Assignment", assignment.name))
+
+        frappe.set_user(reviewer.name)
+        payload = get_applicant_workspace(student_applicant=self.applicant.name)
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("applicant", {}).get("name"), self.applicant.name)
+        self.assertFalse(payload.get("document_review", {}).get("can_review_submissions"))
+        self.assertTrue(
+            frappe.has_permission("Student Applicant", ptype="read", doc=self.applicant.name, user=reviewer.name)
+        )
+        self.assertTrue(
+            frappe.has_permission(
+                "Applicant Health Profile",
+                ptype="read",
+                doc=health_profile.name,
+                user=reviewer.name,
+            )
+        )
+
+        uploaded_rows = payload.get("document_review", {}).get("uploaded_rows") or []
+        self.assertTrue(uploaded_rows)
+        secure_url = (uploaded_rows[0].get("file_url") or "").strip()
+        self.assertTrue(secure_url)
+
+        parsed = urlparse(secure_url)
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_admissions_file")
+        query = parse_qs(parsed.query)
+        self.assertEqual((query.get("file") or [None])[0], file_doc.name)
+        self.assertEqual((query.get("context_doctype") or [None])[0], "Student Applicant")
+        self.assertEqual((query.get("context_name") or [None])[0], self.applicant.name)
+
+        frappe.local.response = {}
+        download_admissions_file(
+            file=file_doc.name,
+            context_doctype="Student Applicant",
+            context_name=self.applicant.name,
+        )
+        self.assertEqual(frappe.local.response.get("type"), "download")
+        self.assertEqual(frappe.local.response.get("filename"), file_doc.file_name)
+        self.assertEqual(frappe.local.response.get("filecontent"), b"health-review-file")
+
     def test_assigned_overall_reviewer_can_read_interview_workspace_and_download_files(self):
         reviewer = self._create_user("overall_review_interview_delegate")
 
@@ -924,6 +1039,122 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertEqual(len(answers), 1)
         self.assertEqual((answers[0] or {}).get("display_value"), "Strong and consistent performance.")
 
+    def test_assigned_health_reviewer_can_open_recommendation_review_payload(self):
+        if not self._recommendation_feature_tables_ready():
+            self.skipTest("Recommendation intake DocTypes are not migrated on this site.")
+
+        admissions_user = self._create_user("health_review_staff", roles=["Admission Manager"])
+        self._create_employee(admissions_user, first_name="Health", last_name="Staff")
+        reviewer = self._create_user("health_review_recommendation_delegate", roles=["Academic Assistant"])
+        frappe.clear_cache(user=reviewer.name)
+
+        frappe.set_user("Administrator")
+        health_profile = frappe.get_doc(
+            {
+                "doctype": "Applicant Health Profile",
+                "student_applicant": self.applicant.name,
+                "review_status": "Pending",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Health Profile", health_profile.name))
+
+        document_type = frappe.get_doc(
+            {
+                "doctype": "Applicant Document Type",
+                "code": f"health_review_recommendation_{frappe.generate_hash(length=6)}",
+                "document_type_name": "Recommendation Letter",
+                "organization": self.organization,
+                "school": self.school,
+                "is_active": 1,
+                "is_required": 0,
+                "is_repeatable": 1,
+                "min_items_required": 1,
+                "classification_slot": "recommendation_letter",
+                "classification_data_class": "academic",
+                "classification_purpose": "academic_report",
+                "classification_retention_policy": "until_program_end_plus_1y",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Document Type", document_type.name))
+
+        template = frappe.get_doc(
+            {
+                "doctype": "Recommendation Template",
+                "template_name": f"Health Review Recommendation {frappe.generate_hash(length=5)}",
+                "is_active": 1,
+                "organization": self.organization,
+                "school": self.school,
+                "target_document_type": document_type.name,
+                "minimum_required": 1,
+                "maximum_allowed": 2,
+                "allow_file_upload": 0,
+                "file_upload_required": 0,
+                "otp_enforced": 0,
+                "applicant_can_view_status": 1,
+                "template_fields": [
+                    {
+                        "field_key": "recommendation_summary",
+                        "label": "Recommendation Summary",
+                        "field_type": "Long Text",
+                        "is_required": 1,
+                    }
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Recommendation Template", template.name))
+
+        assignment = frappe.get_doc(
+            {
+                "doctype": "Applicant Review Assignment",
+                "target_type": "Applicant Health Profile",
+                "target_name": health_profile.name,
+                "student_applicant": self.applicant.name,
+                "assigned_to_user": reviewer.name,
+                "status": "Open",
+                "source_event": "health_declared_complete",
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Review Assignment", assignment.name))
+
+        frappe.set_user(admissions_user.name)
+        created = create_recommendation_request(
+            student_applicant=self.applicant.name,
+            recommendation_template=template.name,
+            recommender_name="Ms Health Mentor",
+            recommender_email=f"health-mentor-{frappe.generate_hash(length=6)}@example.com",
+            recommender_relationship="Teacher",
+            send_email=0,
+            client_request_id=f"health-review-{frappe.generate_hash(length=6)}",
+        )
+        recommendation_request = created.get("recommendation_request")
+        self.assertTrue(bool(recommendation_request))
+
+        frappe.set_user("Guest")
+        submit_recommendation(
+            token=self._token_from_intake_url(created.get("intake_url")),
+            answers={"recommendation_summary": "Health reviewer can inspect this full applicant file."},
+            attestation_confirmed=1,
+            client_request_id=f"health-review-submit-{frappe.generate_hash(length=6)}",
+        )
+
+        frappe.set_user(reviewer.name)
+        payload = get_recommendation_review_payload(
+            student_applicant=self.applicant.name,
+            recommendation_request=recommendation_request,
+        )
+
+        self.assertTrue(payload.get("ok"))
+        recommendation = payload.get("recommendation") or {}
+        self.assertEqual(recommendation.get("recommendation_request"), recommendation_request)
+        self.assertEqual(recommendation.get("student_applicant"), self.applicant.name)
+        self.assertEqual(recommendation.get("review_status"), "Pending")
+        answers = recommendation.get("answers") or []
+        self.assertEqual(len(answers), 1)
+        self.assertEqual(
+            (answers[0] or {}).get("display_value"),
+            "Health reviewer can inspect this full applicant file.",
+        )
+
     def _comments_for_interview(self, interview_name: str):
         comments = frappe.get_all(
             "Comment",
@@ -933,7 +1164,7 @@ class TestApplicantInterview(FrappeTestCase):
             },
             fields=["content"],
             order_by="creation asc",
-            limit_page_length=50,
+            limit=50,
         )
         marker = f"/desk/applicant-interview/{interview_name}"
         return [row for row in comments if marker in (row.get("content") or "")]
@@ -948,7 +1179,7 @@ class TestApplicantInterview(FrappeTestCase):
             "Applicant Interviewer",
             filters={"parent": interview_name},
             fields=["name", "interviewer"],
-            limit_page_length=20,
+            limit=20,
         )
         if not rows:
             interview = frappe.get_doc("Applicant Interview", interview_name)
@@ -958,7 +1189,7 @@ class TestApplicantInterview(FrappeTestCase):
                 "Applicant Interviewer",
                 filters={"parent": interview_name},
                 fields=["name", "interviewer"],
-                limit_page_length=20,
+                limit=20,
             )
 
         for row in rows:

@@ -164,8 +164,7 @@ class PolicyAcknowledgement(Document):
 
     def _resolve_context_organizations(self) -> list[str]:
         if self.context_doctype == "Student Applicant":
-            org = frappe.db.get_value("Student Applicant", self.context_name, "organization")
-            return [org] if org else []
+            return self._organizations_for_student_applicants([self.context_name])
 
         if self.context_doctype == "Employee":
             org = frappe.db.get_value("Employee", self.context_name, "organization")
@@ -175,16 +174,47 @@ class PolicyAcknowledgement(Document):
             return self._organizations_for_students([self.context_name])
 
         if self.context_doctype == "Guardian":
+            orgs: list[str] = []
+            seen = set()
+
             student_names = frappe.get_all(
                 "Student Guardian",
                 filters={"guardian": self.context_name},
                 pluck="parent",
             )
-            if not student_names:
-                return []
-            return self._organizations_for_students(student_names)
+            for org in self._organizations_for_students(student_names):
+                if org and org not in seen:
+                    seen.add(org)
+                    orgs.append(org)
+
+            applicant_names = frappe.get_all(
+                "Student Applicant Guardian",
+                filters={
+                    "guardian": self.context_name,
+                    "parenttype": "Student Applicant",
+                    "parentfield": "guardians",
+                },
+                pluck="parent",
+            )
+            for org in self._organizations_for_student_applicants(applicant_names):
+                if org and org not in seen:
+                    seen.add(org)
+                    orgs.append(org)
+
+            return orgs
 
         return []
+
+    def _organizations_for_student_applicants(self, student_applicant_names: list[str]) -> list[str]:
+        if not student_applicant_names:
+            return []
+
+        orgs = frappe.get_all(
+            "Student Applicant",
+            filters={"name": ["in", student_applicant_names]},
+            pluck="organization",
+        )
+        return [org for org in orgs if org]
 
     def _organizations_for_students(self, student_names: list[str]) -> list[str]:
         if not student_names:

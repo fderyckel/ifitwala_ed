@@ -15,7 +15,7 @@ from ifitwala_ed.admission.access import (
     user_can_access_student_applicant,
 )
 from ifitwala_ed.admission.admission_utils import (
-    has_open_overall_application_review_access,
+    has_open_applicant_review_access,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
@@ -221,7 +221,7 @@ def _assert_can_access_student_applicant(*, user: str, student_applicant: str) -
     ):
         return
 
-    if has_open_overall_application_review_access(user=user, student_applicant=student_applicant):
+    if has_open_applicant_review_access(user=user, student_applicant=student_applicant):
         return
 
     frappe.throw(_("You do not have permission to access this applicant file."), frappe.PermissionError)
@@ -279,7 +279,7 @@ def _assert_context_permission(
             user=user, student_applicant=file_student_applicant
         ):
             return
-        if has_open_overall_application_review_access(user=user, student_applicant=file_student_applicant):
+        if has_open_applicant_review_access(user=user, student_applicant=file_student_applicant):
             return
         if _is_interviewer_on_interview(user=user, interview_name=resolved_name):
             return

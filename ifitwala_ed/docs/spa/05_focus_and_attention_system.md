@@ -292,15 +292,15 @@ Author review items can auto-resolve after a timeout.
 
 Source of truth:
 
-* `Student Log Next Step.auto_close_after_days` (synced onto `Student Log.auto_close_after_days` on follow-up submit)
+* `School.default_follow_up_due_in_days`
 
 Behavior:
 
-* If the log has been in review-needed state and no further activity occurs for `auto_close_after_days`, the system:
+* If the log has been in review-needed state and no further activity occurs for the school-configured follow-up due window, the system:
 
   1. sets `Student Log.follow_up_status = "Completed"`
   2. closes any open assignment ToDos (if any remain)
-  3. writes one audit timeline comment: `"Auto-completed after N days with no further action."`
+  3. writes one audit timeline comment: `"Auto-completed after N days of inactivity."`
 
 **Rule**
 

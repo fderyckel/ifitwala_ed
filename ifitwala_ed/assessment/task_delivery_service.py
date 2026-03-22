@@ -43,7 +43,7 @@ def get_eligible_students(student_group):
             "active": 1,
         },
         pluck="student",
-        limit_page_length=0,
+        limit=0,
     )
 
 
@@ -55,7 +55,7 @@ def bulk_create_outcomes(delivery, students, context=None):
         "Task Outcome",
         filters={"task_delivery": delivery.name},
         pluck="student",
-        limit_page_length=0,
+        limit=0,
     )
     existing_students = {student for student in existing if student}
     new_students = [student for student in students if student not in existing_students]

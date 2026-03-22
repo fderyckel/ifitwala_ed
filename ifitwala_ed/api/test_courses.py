@@ -11,9 +11,11 @@ from ifitwala_ed.api import courses as courses_api
 
 class TestCoursesApi(TestCase):
     def test_get_student_hub_home_prefers_today_class_for_next_step(self):
+        anchor = datetime(2026, 3, 12, 8, 45, 0)
         with (
             patch("ifitwala_ed.api.courses._require_student_name_for_session_user", return_value="STU-001"),
             patch("ifitwala_ed.api.courses._build_student_course_scope", return_value={"COURSE-1": {}}),
+            patch("ifitwala_ed.api.courses.now_datetime", return_value=anchor),
             patch(
                 "ifitwala_ed.api.courses.portal_api.get_student_portal_identity",
                 return_value={"display_name": "Amina", "student": "STU-001", "user": "student@example.com"},
@@ -27,6 +29,13 @@ class TestCoursesApi(TestCase):
                         {
                             "course": "COURSE-1",
                             "course_name": "Biology",
+                            "time_slots": [
+                                {
+                                    "from_time": "10:00",
+                                    "to_time": "11:00",
+                                    "time_range": "10:00 - 11:00",
+                                }
+                            ],
                             "href": {"name": "student-course-detail", "params": {"course_id": "COURSE-1"}},
                         }
                     ],

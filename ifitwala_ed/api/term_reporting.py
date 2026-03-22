@@ -75,7 +75,7 @@ def get_course_term_results(reporting_cycle, course=None, student=None, program=
             "internal_note",
         ],
         limit_start=start,
-        limit_page_length=limit,
+        limit=limit,
         order_by="student asc, course asc",
     )
 

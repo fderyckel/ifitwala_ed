@@ -796,7 +796,7 @@ async function loadThread(card: CockpitCard, markRead: boolean = true) {
 			context_doctype: 'Student Applicant',
 			context_name: card.name,
 			limit_start: 0,
-			limit_page_length: 200,
+			limit: 200,
 		});
 		threadMessages.value = payload.messages || [];
 		if (markRead) {

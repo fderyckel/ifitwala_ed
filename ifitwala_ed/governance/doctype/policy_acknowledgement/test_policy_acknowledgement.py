@@ -2,10 +2,14 @@
 # See license.txt
 # ifitwala_ed/governance/doctype/policy_acknowledgement/test_policy_acknowledgement.py
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
 
+from ifitwala_ed.governance.doctype.policy_acknowledgement import policy_acknowledgement as policy_ack_controller
+from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
 from ifitwala_ed.tests.factories.organization import make_organization, make_school
 from ifitwala_ed.tests.factories.users import make_user
 
@@ -13,6 +17,7 @@ from ifitwala_ed.tests.factories.users import make_user
 class TestPolicyAcknowledgement(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
+        ensure_policy_audience_records()
         self.created: list[tuple[str, str]] = []
 
         self.organization = make_organization(prefix="PA Org")
@@ -30,7 +35,7 @@ class TestPolicyAcknowledgement(FrappeTestCase):
                 "policy_key": f"policy_ack_{frappe.generate_hash(length=8)}",
                 "policy_title": "Policy Acknowledgement Lifecycle",
                 "policy_category": "Employment",
-                "applies_to": "Staff",
+                "applies_to": [{"policy_audience": "Staff"}],
                 "organization": self.organization.name,
                 "is_active": 1,
             }
@@ -130,3 +135,28 @@ class TestPolicyAcknowledgement(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             duplicate.insert(ignore_permissions=True)
         frappe.set_user("Administrator")
+
+    def test_guardian_context_organizations_include_student_applicant_links(self):
+        doc = policy_ack_controller.PolicyAcknowledgement.__new__(policy_ack_controller.PolicyAcknowledgement)
+        doc.context_doctype = "Guardian"
+        doc.context_name = "GUARD-1"
+
+        def fake_get_all(doctype, **kwargs):
+            if doctype == "Student Guardian":
+                return []
+            if doctype == "Student Applicant Guardian":
+                return ["APPL-1", "APPL-2"]
+            if doctype == "Student Applicant":
+                return ["ORG-1", "ORG-1", "ORG-2"]
+            raise AssertionError(f"Unexpected get_all doctype: {doctype}")
+
+        with (
+            patch.object(doc, "_organizations_for_students", return_value=[]),
+            patch(
+                "ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement.frappe.get_all",
+                side_effect=fake_get_all,
+            ),
+        ):
+            orgs = doc._resolve_context_organizations()
+
+        self.assertEqual(orgs, ["ORG-1", "ORG-2"])

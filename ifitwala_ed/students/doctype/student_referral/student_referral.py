@@ -619,14 +619,15 @@ def on_doctype_update():
     frappe.db.add_index("Student Referral", ["sla_due"])
 
 
-# Define which roles can see all referrals
-PRIV_ROLES = {"Counselor"}
+# Define which roles can see all referrals.
+# Keep both counselor spellings because the repo currently uses both.
+PRIV_ROLES = {"Academic Admin", "Counselor", "Counsellor", "Pastoral Lead", "System Manager"}
 
 
 def get_permission_query_conditions(user: str | None = None) -> str | None:
     """
     Return SQL fragment to restrict list queries on Student Referral.
-    - Counselors/Admins see all referrals.
+    - Privileged wellbeing/admin roles see all referrals.
     - Others see only referrals they created and never see self-referrals.
     """
     user = user or frappe.session.user
@@ -647,7 +648,7 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
 def has_permission(doc, ptype: str = "read", user: str | None = None) -> bool:
     """
     Decide if a user may read/write this specific referral.
-    - Counselors/Admins can read/write all.
+    - Privileged wellbeing/admin roles can read/write all.
     - Students may not read any referral.
     - Others may read/write only if they own the document and it's not a self-referral.
     """

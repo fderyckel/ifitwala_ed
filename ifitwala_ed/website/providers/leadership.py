@@ -21,7 +21,7 @@ def _get_leaders(school: str, roles: tuple[str, ...], limit: int):
         filters=filters,
         fields=["employee_full_name", "employee_image", "designation", "small_bio"],
         order_by="modified desc",
-        limit_page_length=limit,
+        limit=limit,
     )
 
     items = []

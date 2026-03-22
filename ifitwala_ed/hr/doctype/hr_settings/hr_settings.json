@@ -10,6 +10,13 @@
   "role_allowed_to_create_backdated_leave_application",
   "send_leave_notification",
   "show_leaves_of_all_department_members_in_calendar",
+  "professional_development_section",
+  "pd_budget_mode",
+  "pd_approval_routing",
+  "pd_auto_approve_threshold",
+  "pd_require_completion_evidence",
+  "pd_require_liquidation_reflection",
+  "pd_year_close_policy",
   "scheduler_section",
   "enable_earned_leave_scheduler",
   "enable_leave_expiry_scheduler",
@@ -61,6 +68,50 @@
    "label": "Show Department Member Leaves in Calendar"
   },
   {
+   "fieldname": "professional_development_section",
+   "fieldtype": "Section Break",
+   "label": "Professional Development"
+  },
+  {
+   "default": "Hybrid",
+   "fieldname": "pd_budget_mode",
+   "fieldtype": "Select",
+   "label": "PD Budget Mode",
+   "options": "School Pool\nEmployee Allowance\nDepartment Pool\nProgram Pool\nHybrid"
+  },
+  {
+   "default": "Department Head to HR to Finance",
+   "fieldname": "pd_approval_routing",
+   "fieldtype": "Select",
+   "label": "PD Approval Routing",
+   "options": "Line Manager\nDepartment Head to HR to Finance\nAuto Approve Within Budget\nCentral Review Committee"
+  },
+  {
+   "default": "0",
+   "fieldname": "pd_auto_approve_threshold",
+   "fieldtype": "Currency",
+   "label": "PD Auto Approve Threshold"
+  },
+  {
+   "default": "1",
+   "fieldname": "pd_require_completion_evidence",
+   "fieldtype": "Check",
+   "label": "PD Completion Requires Evidence"
+  },
+  {
+   "default": "1",
+   "fieldname": "pd_require_liquidation_reflection",
+   "fieldtype": "Check",
+   "label": "PD Liquidation Requires Reflection"
+  },
+  {
+   "default": "Require Manual Carry Forward",
+   "fieldname": "pd_year_close_policy",
+   "fieldtype": "Select",
+   "label": "PD Year Close Policy",
+   "options": "Cancel Open Requests\nRequire Manual Carry Forward"
+  },
+  {
    "fieldname": "scheduler_section",
    "fieldtype": "Section Break",
    "label": "Schedulers"
@@ -99,6 +150,7 @@
  "icon": "fa fa-cog",
  "issingle": 1,
  "links": [],
+ "modified": "2026-03-20 09:46:37.000000",
  "module": "HR",
  "name": "HR Settings",
  "permissions": [

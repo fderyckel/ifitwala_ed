@@ -143,8 +143,8 @@ Permission hardening implemented with this contract:
 - scoped staff access is enforced on item reads/writes
 - `Applicant Review Assignment` now has canonical doctype scope hooks
 - raw doctype access no longer depends only on Focus or portal endpoints
-- delegated overall-application reviewers get read-only access to applicant workspace payloads, governed file links, and recommendation review payloads for applicants with an open `Student Applicant` review assignment
-- this does not widen Desk `Student Applicant` or admissions cockpit permissions for non-admissions staff
+- delegated reviewers with an open `Applicant Review Assignment` get read-only access to the applicant folder, governed file links, and recommendation/interview review payloads for that applicant
+- this widens Desk and workspace read access only for the matched reviewer while the assignment remains open; mutation stays in the controlled review workflow
 
 ## 8. Legacy Retirement
 

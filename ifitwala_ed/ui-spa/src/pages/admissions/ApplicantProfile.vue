@@ -907,6 +907,11 @@ async function uploadGuardianImage(index: number) {
 		actionError.value = __('Guardian row is no longer available. Please retry.');
 		return;
 	}
+	const guardianRowName = String(guardians.value[index]?.name || '').trim();
+	if (!guardianRowName) {
+		actionError.value = __('Save this guardian row before uploading an image.');
+		return;
+	}
 
 	uploadingGuardianImageIndex.value = index;
 	actionError.value = '';
@@ -914,6 +919,7 @@ async function uploadGuardianImage(index: number) {
 		const content = await readAsBase64(file);
 		const payload = await service.uploadApplicantGuardianImage({
 			student_applicant: currentApplicantName.value,
+			guardian_row_name: guardianRowName,
 			file_name: file.name,
 			content,
 		});

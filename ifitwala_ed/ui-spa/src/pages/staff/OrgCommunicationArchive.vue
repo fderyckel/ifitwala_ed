@@ -254,10 +254,27 @@
 						>
 							<div v-if="fullContentLoading" class="py-10 text-center"><LoadingIndicator /></div>
 							<div
-								v-else
-								v-html="fullContent?.message || selectedComm.snippet"
+								v-else-if="detailLoadError"
+								class="not-prose rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+							>
+								<p class="font-medium">Unable to load the full announcement.</p>
+								<p class="mt-1 text-amber-800/80">{{ detailLoadError }}</p>
+								<Button
+									variant="subtle"
+									class="mt-3"
+									@click="selectedComm && selectItem(selectedComm)"
+								>
+									Retry
+								</Button>
+							</div>
+							<div
+								v-else-if="detailMessageHtml"
+								v-html="detailMessageHtml"
 								@click="onDetailContentClick"
 							></div>
+							<div v-else class="text-slate-token/60">
+								No full announcement content is available for this item.
+							</div>
 						</div>
 					</div>
 
@@ -376,6 +393,7 @@ const hasMore = ref(false);
 const interactionSummaries = ref<Record<string, InteractionSummary>>({});
 const fullContent = ref<OrgCommunicationItemResponse | null>(null);
 const threadRows = ref<InteractionThreadRow[]>([]);
+const detailLoadError = ref<string | null>(null);
 
 const contextLoading = ref(false);
 const feedLoading = ref(false);
@@ -386,6 +404,11 @@ const interactionActionLoading = ref(false);
 const selectedStats = computed(() => {
 	if (!selectedComm.value) return null;
 	return buildInteractionStats(getInteractionFor(selectedComm.value));
+});
+
+const detailMessageHtml = computed(() => {
+	if (!fullContent.value || typeof fullContent.value.message !== 'string') return '';
+	return fullContent.value.message.trim();
 });
 
 // User Context for Filters
@@ -518,6 +541,7 @@ watch(
 		if (!initialized.value) return;
 		selectedComm.value = null;
 		fullContent.value = null;
+		detailLoadError.value = null;
 		queueReload();
 	},
 	{ deep: true }
@@ -634,6 +658,7 @@ async function loadFeed(reset = false) {
 		interactionSummaries.value = {};
 		selectedComm.value = null;
 		fullContent.value = null;
+		detailLoadError.value = null;
 		threadRows.value = [];
 		showThreadDrawer.value = false;
 	}
@@ -698,15 +723,18 @@ async function selectItem(item: OrgCommunicationListItem, opts?: { silent?: bool
 
 	selectedComm.value = item;
 	fullContent.value = null;
+	detailLoadError.value = null;
 	fullContentLoading.value = true;
 
 	try {
 		fullContent.value = await archiveService.getOrgCommunicationItem({ name: item.name });
 	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Please try again.';
+		detailLoadError.value = message || 'Please try again.';
 		if (!opts?.silent) {
 			toast({
 				title: 'Unable to load announcement',
-				text: 'Please try again.',
+				text: detailLoadError.value,
 				icon: 'alert-circle',
 				appearance: 'danger',
 			});

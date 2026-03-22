@@ -3,6 +3,8 @@
 
 # ifitwala_ed/api/test_users.py
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
@@ -73,11 +75,13 @@ class TestUserRedirect(FrappeTestCase):
                 args={"redirect-to": "/desk/eca"},
             )
             frappe.form_dict = frappe._dict({"redirect_to": "/desk/eca"})
-            with self.assertRaises(RequestRedirect) as ctx:
-                sanitize_login_redirect_param()
+            with patch("frappe.log_error") as log_error:
+                with self.assertRaises(RequestRedirect) as ctx:
+                    sanitize_login_redirect_param()
             self.assertEqual(getattr(ctx.exception, "new_url", None), "/login?foo=bar")
             self.assertEqual(frappe.form_dict.get("redirect_to"), "")
             self.assertEqual(frappe.form_dict.get("redirect-to"), "")
+            log_error.assert_not_called()
         finally:
             if original_request is None:
                 if hasattr(frappe.local, "request"):
@@ -216,7 +220,6 @@ class TestUserRedirect(FrappeTestCase):
 
     def test_admissions_applicant_redirects_to_admissions(self):
         """Admissions Applicants with a linked applicant should be redirected to /admissions."""
-        # Create test user with Admissions Applicant role
         user = frappe.new_doc("User")
         user.email = "test_admissions_applicant@example.com"
         user.first_name = "Test"
@@ -225,43 +228,16 @@ class TestUserRedirect(FrappeTestCase):
         _append_role(user, "Admissions Applicant")
         user.insert(ignore_permissions=True)
 
-        school = frappe.get_doc(
-            {
-                "doctype": "School",
-                "school_name": f"Redirect Applicant School {frappe.generate_hash(length=6)}",
-                "abbr": f"RA{frappe.generate_hash(length=3)}",
-                "organization": _ensure_test_organization(),
-            }
-        ).insert(ignore_permissions=True)
-
-        applicant = frappe.get_doc(
-            {
-                "doctype": "Student Applicant",
-                "first_name": "Test",
-                "last_name": "Admissions Applicant",
-                "organization": school.organization,
-                "school": school.name,
-                "application_status": "Invited",
-                "applicant_user": user.email,
-            }
-        ).insert(ignore_permissions=True)
-
         try:
-            # Simulate login
             frappe.set_user(user.email)
             frappe.local.response = {}
+            with patch("ifitwala_ed.routing.policy.has_open_admissions_portal_access", return_value=True):
+                redirect_user_to_entry_portal()
 
-            # Call redirect function
-            redirect_user_to_entry_portal()
-
-            # Assert redirect to /admissions (separate admissions portal)
             self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
             self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
         finally:
-            # Cleanup
             frappe.set_user("Administrator")
-            frappe.delete_doc("Student Applicant", applicant.name, force=True)
-            frappe.delete_doc("School", school.name, force=True)
             frappe.delete_doc("User", user.email, force=True)
 
     def test_staff_and_admissions_roles_redirect_to_staff(self):
@@ -373,6 +349,54 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("Employee", employee.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
+    def test_login_redirect_trace_does_not_write_error_log(self):
+        user = frappe.new_doc("User")
+        user.email = f"test_redirect_trace_logging_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Trace"
+        user.last_name = "Logging"
+        user.enabled = 1
+        _append_role(user, "Employee")
+        user.insert(ignore_permissions=True)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Trace"
+        employee.employee_last_name = "Logging"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        employee.insert(ignore_permissions=True)
+
+        original_request = getattr(frappe.local, "request", None)
+        original_form_dict = getattr(frappe, "form_dict", None)
+        try:
+            frappe.set_user(user.email)
+            frappe.local.response = {}
+            frappe.local.request = frappe._dict(path="/login", method="POST")
+            frappe.form_dict = frappe._dict({"cmd": "login", "redirect_to": "/hub/staff"})
+
+            with patch("frappe.log_error") as log_error:
+                redirect_user_to_entry_portal()
+
+            self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
+            self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+            log_error.assert_not_called()
+        finally:
+            if original_form_dict is None:
+                if hasattr(frappe, "form_dict"):
+                    delattr(frappe, "form_dict")
+            else:
+                frappe.form_dict = original_form_dict
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
+            frappe.set_user("Administrator")
+            frappe.delete_doc("Employee", employee.name, force=True)
+            frappe.delete_doc("User", user.email, force=True)
+
     def test_guardian_redirects_to_guardian_portal(self):
         """Guardians should be redirected to /hub/guardian."""
         # Create test user with Guardian role
@@ -423,55 +447,14 @@ class TestUserRedirect(FrappeTestCase):
         _append_role(user, "Admissions Family")
         user.insert(ignore_permissions=True)
 
-        guardian = frappe.new_doc("Guardian")
-        guardian.guardian_first_name = "Family"
-        guardian.guardian_last_name = "Admissions"
-        guardian.guardian_email = user.email
-        guardian.guardian_mobile_phone = "+14155550141"
-        guardian.user = user.email
-        guardian.save(ignore_permissions=True)
-
-        school = frappe.get_doc(
-            {
-                "doctype": "School",
-                "school_name": f"Redirect Family School {frappe.generate_hash(length=6)}",
-                "abbr": f"RF{frappe.generate_hash(length=3)}",
-                "organization": _ensure_test_organization(),
-            }
-        ).insert(ignore_permissions=True)
-
-        applicant = frappe.get_doc(
-            {
-                "doctype": "Student Applicant",
-                "first_name": "Family",
-                "last_name": "Applicant",
-                "organization": school.organization,
-                "school": school.name,
-                "application_status": "Invited",
-                "guardians": [
-                    {
-                        "guardian": guardian.name,
-                        "user": user.email,
-                        "relationship": "Mother",
-                        "can_consent": 1,
-                        "is_primary": 1,
-                        "guardian_first_name": "Family",
-                        "guardian_last_name": "Admissions",
-                        "guardian_email": user.email,
-                        "guardian_mobile_phone": "+14155550141",
-                        "guardian_image": "/private/files/family-admissions.png",
-                    }
-                ],
-            }
-        ).insert(ignore_permissions=True)
-
         try:
             frappe.db.set_single_value("Admission Settings", "admissions_access_mode", "Family Workspace")
 
             frappe.set_user(user.email)
             frappe.local.response = {}
 
-            redirect_user_to_entry_portal()
+            with patch("ifitwala_ed.routing.policy.has_open_admissions_portal_access", return_value=True):
+                redirect_user_to_entry_portal()
 
             self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
             self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
@@ -482,9 +465,6 @@ class TestUserRedirect(FrappeTestCase):
                 "admissions_access_mode",
                 previous_mode or "Single Applicant Workspace",
             )
-            frappe.delete_doc("Student Applicant", applicant.name, force=True)
-            frappe.delete_doc("School", school.name, force=True)
-            frappe.delete_doc("Guardian", guardian.name, force=True)
             frappe.delete_doc("User", user.email, force=True)
 
     def test_student_redirects_to_student_portal(self):
@@ -752,7 +732,7 @@ class TestUserRedirect(FrappeTestCase):
         frappe.set_user("Administrator")
 
     def test_get_website_user_home_page_uses_canonical_policy(self):
-        """Website home hook should resolve to canonical portal/staff for active staff users."""
+        """Website home hook should resolve to canonical hub/staff for active staff users."""
         user = frappe.new_doc("User")
         user.email = "test_website_home_policy@example.com"
         user.first_name = "Web"

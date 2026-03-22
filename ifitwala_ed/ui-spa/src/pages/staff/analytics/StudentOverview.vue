@@ -40,6 +40,28 @@ type StudentGroup = {
 	attendance_scope?: string | null;
 };
 
+type WellbeingTimelineItem = {
+	type: 'student_log' | 'referral' | 'nurse_visit';
+	doctype: string;
+	name: string;
+	date: string;
+	academic_year?: string | null;
+	title: string;
+	summary?: string | null;
+	status?: string | null;
+	severity?: string | null;
+	is_sensitive?: boolean;
+};
+
+type WellbeingHealthNote = {
+	doctype: string;
+	name: string;
+	title: string;
+	summary?: string | null;
+	updated_on?: string | null;
+	is_sensitive?: boolean;
+};
+
 type Snapshot = {
 	meta: {
 		student: string;
@@ -191,17 +213,8 @@ type Snapshot = {
 		}[];
 	};
 	wellbeing: {
-		timeline: {
-			type: 'student_log' | 'referral' | 'nurse_visit' | 'attendance_incident';
-			doctype: string;
-			name: string;
-			date: string;
-			title: string;
-			summary?: string;
-			status?: string;
-			severity?: string | null;
-			is_sensitive?: boolean;
-		}[];
+		timeline: WellbeingTimelineItem[];
+		health_note?: WellbeingHealthNote | null;
 		metrics: {
 			student_logs?: { total?: number; open_followups?: number; recent_30_days?: number };
 			referrals?: { total?: number; active?: number };
@@ -443,6 +456,7 @@ const emptySnapshot: Snapshot = {
 	},
 	wellbeing: {
 		timeline: [],
+		health_note: null,
 		metrics: {},
 	},
 	history: {
@@ -495,9 +509,7 @@ const taskYearScope = ref<'current' | 'previous' | 'all'>('current');
 const attendanceView = ref<'all_day' | 'by_course'>('all_day');
 const attendanceScope = ref<'current' | 'last' | 'all'>('current');
 const wellbeingScope = ref<'current' | 'last' | 'all'>('current');
-const wellbeingFilter = ref<
-	'all' | 'student_log' | 'referral' | 'nurse_visit' | 'attendance_incident'
->('all');
+const wellbeingFilter = ref<'all' | 'student_log' | 'referral' | 'nurse_visit'>('all');
 const historyScope = ref<'current' | 'previous' | 'two_years' | 'all'>('all');
 const attendanceKpiSource = ref<'all_day' | 'by_course'>('all_day');
 watch(
@@ -509,6 +521,19 @@ watch(
 
 const permissions = computed<PermissionFlags>(() => snapshot.value.meta.permissions);
 const displayViewMode = computed<ViewMode>(() => snapshot.value.meta.view_mode || viewMode.value);
+
+watch(
+	() => [permissions.value.can_view_referrals, permissions.value.can_view_nurse_details],
+	([canViewReferrals, canViewNurse]) => {
+		if (wellbeingFilter.value === 'referral' && !canViewReferrals) {
+			wellbeingFilter.value = 'all';
+		}
+		if (wellbeingFilter.value === 'nurse_visit' && !canViewNurse) {
+			wellbeingFilter.value = 'all';
+		}
+	},
+	{ immediate: true }
+);
 
 function formatPct(value: number | null | undefined, digits = 0) {
 	if (value == null || Number.isNaN(value)) return '0%';
@@ -970,6 +995,14 @@ const wellbeingTimeline = computed(() => {
 	});
 });
 
+const wellbeingHealthNote = computed(() => {
+	const note = snapshot.value.wellbeing.health_note || null;
+	if (!note) return null;
+	return wellbeingFilter.value === 'all' || wellbeingFilter.value === 'nurse_visit' ? note : null;
+});
+
+const wellbeingTimelineNeedsScroll = computed(() => wellbeingTimeline.value.length > 5);
+
 const kpiTiles = computed(() => [
 	{
 		label: 'Attendance',
@@ -1107,6 +1140,30 @@ const reflectionFlags = computed(() => {
 				: flag.message_staff || flag.message_student,
 	}));
 });
+
+function deskRouteSlug(doctype: string) {
+	return String(doctype || '')
+		.trim()
+		.toLowerCase()
+		.replace(/\s+/g, '-');
+}
+
+function openDeskDoc(doctype?: string | null, name?: string | null) {
+	const safeDoctype = String(doctype || '').trim();
+	const safeName = String(name || '').trim();
+	if (!safeDoctype || !safeName || typeof window === 'undefined') return;
+	window.open(
+		`/desk/${encodeURIComponent(deskRouteSlug(safeDoctype))}/${encodeURIComponent(safeName)}`,
+		'_blank',
+		'noopener'
+	);
+}
+
+function wellbeingTypeLabel(type: WellbeingTimelineItem['type']) {
+	if (type === 'student_log') return 'Student log';
+	if (type === 'referral') return 'Referral';
+	return 'Nurse visit';
+}
 </script>
 
 <template>
@@ -1614,7 +1671,9 @@ const reflectionFlags = computed(() => {
 					</section>
 
 					<!-- Band 4: Wellbeing & Support -->
-					<section class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+					<section
+						class="grid grid-cols-1 gap-6 lg:items-start lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
+					>
 						<div
 							class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm"
 						>
@@ -1622,7 +1681,7 @@ const reflectionFlags = computed(() => {
 								<div>
 									<h3 class="text-sm font-semibold text-slate-800">Wellbeing timeline</h3>
 									<p class="text-[11px] text-slate-500">
-										Logs, referrals, nurse visits, and key attendance incidents.
+										Logs, referrals, nurse visits, and the staff health note.
 									</p>
 								</div>
 								<div class="flex items-center gap-2">
@@ -1632,9 +1691,12 @@ const reflectionFlags = computed(() => {
 									>
 										<option value="all">All</option>
 										<option value="student_log">Logs</option>
-										<option value="referral">Referrals</option>
-										<option value="nurse_visit">Nurse</option>
-										<option value="attendance_incident">Attendance</option>
+										<option v-if="permissions.can_view_referrals" value="referral">
+											Referrals
+										</option>
+										<option v-if="permissions.can_view_nurse_details" value="nurse_visit">
+											Nurse
+										</option>
 									</select>
 									<select
 										v-model="wellbeingScope"
@@ -1646,45 +1708,97 @@ const reflectionFlags = computed(() => {
 									</select>
 								</div>
 							</header>
-							<div class="space-y-3">
+							<div>
 								<div
-									v-for="item in wellbeingTimeline"
-									:key="item.name"
-									class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2"
+									v-if="wellbeingHealthNote"
+									class="mb-3 rounded-xl border border-sky-200 bg-sky-50/70 px-3 py-3"
 								>
-									<div
-										class="mt-1 h-2.5 w-2.5 rounded-full"
-										:class="{
-											'bg-emerald-500': item.type === 'student_log',
-											'bg-amber-500': item.type === 'referral',
-											'bg-sky-500': item.type === 'nurse_visit',
-											'bg-rose-500': item.type === 'attendance_incident',
-										}"
-									></div>
-									<div class="flex-1 text-sm text-slate-700">
-										<div class="flex items-center justify-between">
-											<div class="font-semibold text-slate-900">{{ item.title }}</div>
-											<span class="text-[11px] text-slate-500">{{ formatDate(item.date) }}</span>
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0 flex-1">
+											<div class="flex flex-wrap items-center gap-2">
+												<h4 class="text-sm font-semibold text-slate-900">
+													{{ wellbeingHealthNote.title }}
+												</h4>
+												<span
+													class="rounded-full bg-white px-2 py-0.5 text-[11px] text-slate-500 shadow-sm"
+												>
+													Student Patient
+												</span>
+												<span
+													v-if="wellbeingHealthNote.updated_on"
+													class="text-[11px] text-slate-500"
+												>
+													Updated {{ formatDate(wellbeingHealthNote.updated_on) }}
+												</span>
+											</div>
+											<p class="mt-1 text-xs text-slate-600">
+												{{ wellbeingHealthNote.summary }}
+											</p>
 										</div>
-										<p class="text-xs text-slate-500">{{ item.summary }}</p>
-										<div class="mt-1 flex items-center gap-2 text-[11px] text-slate-500">
-											<span class="rounded-full bg-white px-2 py-0.5 shadow-sm">
-												{{ item.type }}
-											</span>
-											<span v-if="item.status" class="rounded-full bg-white px-2 py-0.5 shadow-sm">
-												{{ item.status }}
-											</span>
-										</div>
+										<button
+											type="button"
+											class="rounded-full bg-white px-3 py-1 text-[11px] text-slate-600 shadow-sm"
+											@click="openDeskDoc(wellbeingHealthNote.doctype, wellbeingHealthNote.name)"
+										>
+											Open
+										</button>
 									</div>
 								</div>
-								<div v-if="!wellbeingTimeline.length" class="text-xs text-slate-400">
-									No wellbeing items for this scope.
+								<p v-if="wellbeingTimelineNeedsScroll" class="mb-2 text-[11px] text-slate-500">
+									Showing the latest items first. Scroll for older wellbeing activity.
+								</p>
+								<div class="max-h-[32rem] space-y-3 overflow-y-auto pr-1">
+									<div
+										v-for="item in wellbeingTimeline"
+										:key="item.name"
+										class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2"
+									>
+										<div
+											class="mt-1 h-2.5 w-2.5 rounded-full"
+											:class="{
+												'bg-emerald-500': item.type === 'student_log',
+												'bg-amber-500': item.type === 'referral',
+												'bg-sky-500': item.type === 'nurse_visit',
+											}"
+										></div>
+										<div class="flex-1 text-sm text-slate-700">
+											<div class="flex items-center justify-between">
+												<div class="font-semibold text-slate-900">{{ item.title }}</div>
+												<span class="text-[11px] text-slate-500">{{ formatDate(item.date) }}</span>
+											</div>
+											<p v-if="item.summary" class="text-xs text-slate-500">{{ item.summary }}</p>
+											<div class="mt-1 flex items-center gap-2 text-[11px] text-slate-500">
+												<span class="rounded-full bg-white px-2 py-0.5 shadow-sm">
+													{{ wellbeingTypeLabel(item.type) }}
+												</span>
+												<span
+													v-if="item.status"
+													class="rounded-full bg-white px-2 py-0.5 shadow-sm"
+												>
+													{{ item.status }}
+												</span>
+												<button
+													type="button"
+													class="rounded-full bg-white px-2 py-0.5 shadow-sm"
+													@click="openDeskDoc(item.doctype, item.name)"
+												>
+													Open
+												</button>
+											</div>
+										</div>
+									</div>
+									<div
+										v-if="!wellbeingTimeline.length && !wellbeingHealthNote"
+										class="text-xs text-slate-400"
+									>
+										No wellbeing items for this scope.
+									</div>
 								</div>
 							</div>
 						</div>
 
 						<div
-							class="rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm"
+							class="self-start rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm"
 						>
 							<header class="mb-3 flex items-center justify-between">
 								<h3 class="text-sm font-semibold text-slate-800">Support metrics & patterns</h3>
@@ -1713,7 +1827,7 @@ const reflectionFlags = computed(() => {
 								</div>
 								<div class="rounded-lg bg-slate-50/70 px-3 py-2">
 									<p class="text-[11px] uppercase tracking-wide text-slate-500">
-										Nurse visits (this term)
+										Visible nurse visits
 									</p>
 									<p class="text-base font-semibold text-slate-900">
 										{{ formatCount(snapshot.wellbeing.metrics.nurse_visits?.this_term || 0) }}

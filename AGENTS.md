@@ -70,6 +70,7 @@ Before implementing workflow/UI changes, ask:
 
 - Runtime baseline is **Frappe Framework v16**.
 - Any workflow, setup, patch, or instruction that pins framework version must target **`version-16`**.
+- For Frappe list/query pagination in Python, JS, and typed contracts, use `limit`, never `limit_page_length`.
 
 ---
 
@@ -218,6 +219,53 @@ Rules:
   - parameterized SQL
 - Never interpolate SQL strings manually.
 - Never use broad queries when indexed scoped queries are available.
+
+---
+
+## 5.3 High Concurrency Contract (Non-Negotiable)
+
+The canonical repo-wide concurrency and caching note is:
+
+- `ifitwala_ed/docs/high_concurrency_contract.md`
+
+Agents must treat that note as binding for:
+
+- request sizing
+- cache ownership and invalidation
+- async vs synchronous boundaries
+- nested-scope reuse
+- refresh fan-out control
+- read-model vs mutation-path separation
+
+When implementing new surfaces, especially SPA surfaces and file-heavy workflows:
+
+- prefer one bounded bootstrap/read endpoint over request waterfalls
+- do not move correctness-critical work to async just to hide latency
+- do not add client-driven polling or refresh loops without explicit ownership
+- do not introduce cache layers without invalidation ownership
+
+If a change conflicts with `high_concurrency_contract.md`, that note wins.
+
+---
+
+## 5.4 Ifitwala Drive Integration Rule
+
+Ifitwala_drive is the governed file authority.
+
+When Ifitwala_Ed integrates file browsing, upload, preview, or download:
+
+- do not guess raw file URLs
+- do not treat storage paths as product truth
+- do not recreate file governance inside Ifitwala_Ed
+- use Drive APIs and canonical references as the integration boundary
+- keep Ifitwala_Ed context-first and Drive as the file authority
+
+SPA and backend work must preserve:
+
+- context-first retrieval
+- bounded request counts
+- permission-safe file access
+- reuse of Drive browse and grant APIs instead of duplicate file transport logic
 
 ### 5.3 Caching Rules
 

@@ -202,7 +202,7 @@ async function openThread(item: OrgCommunicationListItem) {
 		threadRows.value = await interactionService.getCommunicationThread({
 			org_communication: item.name,
 			limit_start: 0,
-			limit_page_length: 200,
+			limit: 200,
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
@@ -246,7 +246,7 @@ async function submitComment() {
 		threadRows.value = await interactionService.getCommunicationThread({
 			org_communication: comm.name,
 			limit_start: 0,
-			limit_page_length: 200,
+			limit: 200,
 		});
 		await loadSummaries(feedItems.value);
 		toast.success('Comment posted.');

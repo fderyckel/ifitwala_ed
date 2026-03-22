@@ -114,42 +114,7 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
 
         self.assertEqual(filtered, [children[0]])
 
-    def test_query_policy_candidates_accepts_multi_audience_guardian_rows(self):
-        candidate_rows = [
-            {
-                "policy_name": "POL-1",
-                "policy_key": "family_handbook",
-                "policy_title": "Family Handbook",
-                "policy_category": "Handbooks",
-                "applies_to": "Guardian\nStudent",
-                "description": "",
-                "policy_organization": "ORG-1",
-                "policy_school": "SCHOOL-1",
-                "policy_version": "VER-1",
-                "version_label": "v1",
-                "policy_text": "<p>Policy</p>",
-                "effective_from": None,
-                "effective_to": None,
-                "approved_on": None,
-            },
-            {
-                "policy_name": "POL-2",
-                "policy_key": "student_only",
-                "policy_title": "Student Only",
-                "policy_category": "Academic",
-                "applies_to": "Student",
-                "description": "",
-                "policy_organization": "ORG-1",
-                "policy_school": "SCHOOL-1",
-                "policy_version": "VER-2",
-                "version_label": "v1",
-                "policy_text": "<p>Policy</p>",
-                "effective_from": None,
-                "effective_to": None,
-                "approved_on": None,
-            },
-        ]
-
+    def test_query_policy_candidates_filters_guardian_rows_in_sql(self):
         with (
             patch(
                 "ifitwala_ed.api.guardian_policy.get_organization_ancestors_including_self",
@@ -159,7 +124,26 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
                 "ifitwala_ed.api.guardian_policy.get_school_ancestors_including_self",
                 return_value=["SCHOOL-1"],
             ),
-            patch("ifitwala_ed.api.guardian_policy.frappe.db.sql", return_value=candidate_rows),
+            patch(
+                "ifitwala_ed.api.guardian_policy.frappe.db.sql",
+                return_value=[
+                    {
+                        "policy_name": "POL-1",
+                        "policy_key": "family_handbook",
+                        "policy_title": "Family Handbook",
+                        "policy_category": "Handbooks",
+                        "description": "",
+                        "policy_organization": "ORG-1",
+                        "policy_school": "SCHOOL-1",
+                        "policy_version": "VER-1",
+                        "version_label": "v1",
+                        "policy_text": "<p>Policy</p>",
+                        "effective_from": None,
+                        "effective_to": None,
+                        "approved_on": None,
+                    }
+                ],
+            ) as sql_mock,
             patch(
                 "ifitwala_ed.api.guardian_policy.select_nearest_policy_rows_by_key",
                 side_effect=lambda **kwargs: kwargs["rows"],
@@ -168,13 +152,15 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
             rows = _query_policy_candidates_for_context(organization="ORG-1", school="SCHOOL-1")
 
         self.assertEqual([row["policy_name"] for row in rows], ["POL-1"])
+        self.assertIn("tabInstitutional Policy Audience", sql_mock.call_args.args[0])
+        self.assertEqual(sql_mock.call_args.args[1][-1], "Guardian")
 
 
 class TestGuardianFinancePhase2(FrappeTestCase):
     def test_finance_scope_authorizes_account_holder_by_email_match(self):
         children = [{"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"}]
 
-        def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit_page_length=None):
+        def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=None):
             if doctype == "Student":
                 return [
                     {

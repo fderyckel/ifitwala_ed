@@ -9,6 +9,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.query_builder import DocType
 
+from ifitwala_ed.hr.professional_development_utils import handle_academic_year_close_for_professional_development
 from ifitwala_ed.utilities.school_tree import get_descendant_schools, is_leaf_school
 
 ADMIN_ROLE = "Academic Admin"
@@ -69,9 +70,15 @@ class EndofYearChecklist(Document):
         if not ay_names:
             return {"processed": 0}
 
+        pd_result = handle_academic_year_close_for_professional_development(ay_names, scope.get("scope") or [])
+
         AY = DocType("Academic Year")
         frappe.qb.update(AY).set(AY.archived, 1).set(AY.visible_to_admission, 0).where(AY.name.isin(ay_names)).run()
-        return {"processed": len(ay_names)}
+        return {
+            "processed": len(ay_names),
+            "pd_requests_cancelled": pd_result.get("requests_cancelled", 0),
+            "pd_records_cancelled": pd_result.get("records_cancelled", 0),
+        }
 
     @frappe.whitelist()
     def archive_terms(self):

@@ -95,6 +95,13 @@ def _raise_request_redirect(target: str) -> None:
     raise RequestRedirect(target)
 
 
+def _log_redirect_event(*, title: str, payload: dict[str, object], level: str = "info") -> None:
+    """Record expected redirect diagnostics without polluting Error Log."""
+    logger = frappe.logger("ifitwala.redirect", allow_site=True)
+    log_fn = getattr(logger, level, logger.info)
+    log_fn(f"{title}: {frappe.as_json(payload)}")
+
+
 def sanitize_login_redirect_param() -> None:
     """
     Guard against sticky Desk redirects (?redirect-to=/desk or legacy /app) on /login.
@@ -126,16 +133,14 @@ def sanitize_login_redirect_param() -> None:
         target = _strip_redirect_query(full_path or "/login")
         if target in {"/login?", "login?"}:
             target = "/login"
-        frappe.log_error(
+        _log_redirect_event(
             title="LOGIN REDIRECT SANITIZED",
-            message=frappe.as_json(
-                {
-                    "path": path,
-                    "method": method,
-                    "incoming_redirect_to": incoming,
-                    "redirect_to": target,
-                }
-            ),
+            payload={
+                "path": path,
+                "method": method,
+                "incoming_redirect_to": incoming,
+                "redirect_to": target,
+            },
         )
         _raise_request_redirect(target)
 
@@ -227,10 +232,7 @@ def _emit_login_redirect_trace(*, user: str, roles: set[str], path: str, stage: 
         "incoming_redirect_to": _incoming_redirect_target(),
         "channels": _redirect_channel_snapshot(login_manager=login_manager),
     }
-    frappe.log_error(
-        title="LOGIN REDIRECT TRACE",
-        message=frappe.as_json(payload),
-    )
+    _log_redirect_event(title="LOGIN REDIRECT TRACE", payload=payload)
 
 
 def _set_login_redirect_state(*, path: str, login_manager=None) -> None:
@@ -284,7 +286,7 @@ def _self_heal_employee_user_link(*, user: str, roles: set[str]) -> None:
             "employee_professional_email": login_email,
         },
         fields=["name", "user_id"],
-        limit_page_length=2,
+        limit=2,
     )
     if len(matches) != 1:
         return
@@ -418,7 +420,7 @@ def get_users_with_role(doctype, txt, searchfield, start, page_len, filters):
                 "Has Role",
                 filters={"role": role, "parenttype": "User"},
                 pluck="parent",
-                limit_page_length=5000,
+                limit=5000,
             )
             if parent
         }

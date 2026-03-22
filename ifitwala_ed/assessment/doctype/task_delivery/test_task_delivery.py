@@ -97,6 +97,8 @@ class TestTaskDelivery(TestCase):
         delivery.require_grading = 0
         delivery.requires_submission = 1
         delivery.grading_mode = None
+        delivery.grade_scale = None
+        delivery.task = None
         delivery.rubric_version = "RUBRIC-1"
         delivery.rubric_scoring_strategy = "Separate Criteria"
         delivery._is_quiz_task = Mock(return_value=True)

@@ -424,7 +424,7 @@ def get_admissions_case_thread(
     context_doctype: str | None = None,
     context_name: str | None = None,
     limit_start: int | None = 0,
-    limit_page_length: int | None = 60,
+    limit: int | None = 60,
 ):
     context_doctype, context_name = _normalize_context(context_doctype, context_name)
     actor_ctx = _require_actor_context(context_doctype=context_doctype, context_name=context_name)
@@ -434,7 +434,7 @@ def get_admissions_case_thread(
         return {"thread_name": None, "messages": [], "unread_count": 0}
 
     start = max(0, cint(limit_start or 0))
-    page_length = cint(limit_page_length or 60)
+    page_length = cint(limit or 60)
     page_length = 200 if page_length > 200 else page_length
     page_length = 1 if page_length < 1 else page_length
 
@@ -556,7 +556,7 @@ def get_admissions_thread_summaries_for_applicants(*, applicant_rows: list[dict]
         },
         fields=["name", "admission_context_name"],
         order_by="creation asc",
-        limit_page_length=10000,
+        limit=10000,
     )
 
     thread_by_applicant: dict[str, str] = {}
@@ -584,7 +584,7 @@ def get_admissions_thread_summaries_for_applicants(*, applicant_rows: list[dict]
             "reference_name": ["in", thread_names],
         },
         fields=["reference_name", "read_at"],
-        limit_page_length=10000,
+        limit=10000,
     )
     read_at_by_thread = {
         _to_text(row.get("reference_name")): _safe_datetime(row.get("read_at"))

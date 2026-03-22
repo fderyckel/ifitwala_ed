@@ -9,8 +9,20 @@ from frappe.utils.nestedset import get_ancestors_of
 
 from ifitwala_ed.utilities.employee_utils import get_user_base_org, get_user_base_school
 from ifitwala_ed.utilities.school_tree import get_school_lineage
+from ifitwala_ed.utilities.tree_utils import get_descendants_inclusive
 
 CACHE_TTL = 600  # seconds
+
+
+def _get_user_base_org_and_school(user: str | None = None) -> tuple[str | None, str | None]:
+    """Return user's base (organization, school) from Employee or defaults."""
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return None, None
+
+    org = (get_user_base_org(user) or "").strip() or (_get_user_default_value(user, "organization") or "")
+    school = (get_user_base_school(user) or "").strip() or (_get_user_default_value(user, "school") or "")
+    return org or None, school or None
 
 
 def _cache_key(kind: str, organization: str) -> str:
@@ -59,22 +71,29 @@ def is_policy_within_user_scope(
 ) -> bool:
     """
     True if the policy is visible for user scope:
-    - organization must be in user's org ancestors
-    - school-scoped policy additionally requires policy school in user's school ancestors
+    - user's org must be within policy's org scope (policy org or its descendants)
+    - school-scoped policy additionally requires user's school within policy's school scope
     """
     policy_organization = (policy_organization or "").strip()
     policy_school = (policy_school or "").strip()
     if not policy_organization:
         return False
 
-    organization_scope, school_scope = get_user_policy_scope(user)
-    if policy_organization not in set(organization_scope):
+    user_org, user_school = _get_user_base_org_and_school(user)
+    if not user_org:
+        return False
+
+    # Check if user's org is within policy's org scope (policy org and descendants)
+    policy_org_scope = get_organization_descendants_including_self(policy_organization)
+    if user_org not in set(policy_org_scope):
         return False
 
     if not policy_school:
         return True
 
-    return policy_school in set(school_scope)
+    # Check if user's school is within policy's school scope (policy school and descendants)
+    policy_school_scope = get_school_descendants_including_self(policy_school)
+    return user_school in set(policy_school_scope)
 
 
 def get_organization_ancestors_including_self(organization: str | None) -> list[str]:
@@ -155,6 +174,66 @@ def get_school_ancestors_including_self(school: str | None) -> list[str]:
 
     cache.set_value(key, frappe.as_json(ordered_chain), expires_in_sec=CACHE_TTL)
     return ordered_chain
+
+
+def get_organization_descendants_including_self(organization: str | None) -> list[str]:
+    """
+    Return [organization, child, ..., leaf] using Organization NestedSet descendants.
+    """
+    organization = (organization or "").strip()
+    if not organization:
+        return []
+
+    cache = frappe.cache()
+    key = _cache_key("descendants", organization)
+    cached = cache.get_value(key)
+    if cached is not None:
+        try:
+            parsed = frappe.parse_json(cached)
+            if isinstance(parsed, list):
+                return parsed
+        except Exception:
+            if isinstance(cached, (list, tuple)):
+                return list(cached)
+        return []
+
+    if not frappe.db.exists("Organization", organization):
+        cache.set_value(key, "[]", expires_in_sec=CACHE_TTL)
+        return []
+
+    descendants = get_descendants_inclusive("Organization", organization, cache_ttl=CACHE_TTL)
+    cache.set_value(key, frappe.as_json(descendants), expires_in_sec=CACHE_TTL)
+    return descendants
+
+
+def get_school_descendants_including_self(school: str | None) -> list[str]:
+    """
+    Return [school, child, ..., leaf] using School NestedSet descendants.
+    """
+    school = (school or "").strip()
+    if not school:
+        return []
+
+    cache = frappe.cache()
+    key = _school_cache_key("descendants", school)
+    cached = cache.get_value(key)
+    if cached is not None:
+        try:
+            parsed = frappe.parse_json(cached)
+            if isinstance(parsed, list):
+                return parsed
+        except Exception:
+            if isinstance(cached, (list, tuple)):
+                return list(cached)
+        return []
+
+    if not frappe.db.exists("School", school):
+        cache.set_value(key, "[]", expires_in_sec=CACHE_TTL)
+        return []
+
+    descendants = get_descendants_inclusive("School", school, cache_ttl=CACHE_TTL)
+    cache.set_value(key, frappe.as_json(descendants), expires_in_sec=CACHE_TTL)
+    return descendants
 
 
 def is_policy_organization_applicable_to_context(

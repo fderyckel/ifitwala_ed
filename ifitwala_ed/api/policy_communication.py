@@ -16,7 +16,11 @@ from ifitwala_ed.api.policy_signature import (
     launch_staff_policy_campaign,
 )
 from ifitwala_ed.governance.policy_scope_utils import is_policy_within_user_scope
-from ifitwala_ed.governance.policy_utils import ensure_policy_admin, get_policy_applies_to_tokens
+from ifitwala_ed.governance.policy_utils import (
+    ensure_policy_admin,
+    get_policy_applies_to_tokens,
+    get_policy_applies_to_tokens_for_policy,
+)
 
 SCOPE_ORGANIZATION_ALL_SCHOOLS = "organization_all_schools"
 SCOPE_SCHOOL = "school"
@@ -53,7 +57,7 @@ def _parse_change_stats(raw_stats) -> dict[str, int]:
     }
 
 
-def _default_recipient_flags(applies_to: str | None) -> dict[str, int]:
+def _default_recipient_flags(applies_to) -> dict[str, int]:
     tokens = set(get_policy_applies_to_tokens(applies_to))
     flags = {"to_staff": 1, "to_students": 0, "to_guardians": 0, "to_community": 0}
     if "Applicant" in tokens:
@@ -80,7 +84,6 @@ def _policy_row(policy_version: str) -> dict:
             ip.name AS institutional_policy,
             ip.policy_key,
             ip.policy_title,
-            ip.applies_to,
             ip.organization AS policy_organization,
             ip.school AS policy_school
         FROM `tabPolicy Version` pv
@@ -94,7 +97,9 @@ def _policy_row(policy_version: str) -> dict:
     )
     if not row:
         frappe.throw(_("Policy Version was not found."))
-    return row[0]
+    row_out = row[0]
+    row_out["applies_to_tokens"] = list(get_policy_applies_to_tokens_for_policy(row_out.get("institutional_policy")))
+    return row_out
 
 
 def _resolve_org_root_school(organization: str) -> str:
@@ -103,7 +108,7 @@ def _resolve_org_root_school(organization: str) -> str:
         filters={"organization": organization},
         fields=["name", "lft", "rgt"],
         order_by="lft asc",
-        limit_page_length=0,
+        limit=0,
     )
     if not schools:
         frappe.throw(_("No schools were found for this organization."))
@@ -131,7 +136,7 @@ def _get_organization_schools(organization: str) -> list[str]:
         filters={"organization": organization},
         fields=["name"],
         order_by="lft asc, name asc",
-        limit_page_length=0,
+        limit=0,
     )
     return [(row.get("name") or "").strip() for row in schools if (row.get("name") or "").strip()]
 
@@ -245,7 +250,7 @@ def create_policy_amendment_communication(
             "to_community": 1 if frappe.utils.cint(to_community) else 0,
         }
     else:
-        recipient_flags = _default_recipient_flags(row.get("applies_to"))
+        recipient_flags = _default_recipient_flags(row.get("applies_to_tokens"))
     if not any(recipient_flags.values()):
         frappe.throw(_("Select at least one recipient type."))
 

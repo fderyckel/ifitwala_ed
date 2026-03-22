@@ -145,6 +145,7 @@ def _build_program_tool_context():
         },
     )
     source_enrollment.save()
+    source_enrollment.db_set("archived", 1, update_modified=False)
 
     return {
         "student": student,
@@ -198,12 +199,14 @@ def _make_offering(program, school, academic_year, required_course, optional_cou
                     "required": 1,
                     "start_academic_year": academic_year,
                     "end_academic_year": academic_year,
+                    "capacity": 30,
                 },
                 {
                     "course": optional_course,
                     "required": 0,
                     "start_academic_year": academic_year,
                     "end_academic_year": academic_year,
+                    "capacity": 30,
                 },
             ],
             "offering_course_basket_groups": [{"course": optional_course, "basket_group": basket_group}],

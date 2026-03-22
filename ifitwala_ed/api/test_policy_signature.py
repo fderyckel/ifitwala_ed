@@ -9,6 +9,7 @@ from ifitwala_ed.api.policy_signature import (
     get_staff_policy_signature_dashboard,
     launch_staff_policy_campaign,
 )
+from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
 from ifitwala_ed.tests.factories.organization import make_organization, make_school
 from ifitwala_ed.tests.factories.users import make_user
 
@@ -16,6 +17,7 @@ from ifitwala_ed.tests.factories.users import make_user
 class TestPolicySignature(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
+        ensure_policy_audience_records()
         self.created: list[tuple[str, str]] = []
 
         self.organization = make_organization(prefix="PS Org")
@@ -44,7 +46,7 @@ class TestPolicySignature(FrappeTestCase):
                 "policy_key": f"staff_policy_{frappe.generate_hash(length=8)}",
                 "policy_title": "Staff Data Handling",
                 "policy_category": "Employment",
-                "applies_to": "Staff",
+                "applies_to": [{"policy_audience": "Staff"}],
                 "organization": self.organization.name,
                 "is_active": 1,
             }
@@ -159,7 +161,7 @@ class TestPolicySignature(FrappeTestCase):
                 "policy_key": f"staff_info_{frappe.generate_hash(length=8)}",
                 "policy_title": "Staff Handbook Overview",
                 "policy_category": "Handbooks",
-                "applies_to": "Staff",
+                "applies_to": [{"policy_audience": "Staff"}],
                 "organization": self.organization.name,
                 "is_active": 1,
             }
@@ -246,7 +248,7 @@ class TestPolicySignature(FrappeTestCase):
                 "policy_key": f"staff_parent_scope_{frappe.generate_hash(length=8)}",
                 "policy_title": "Parent School Staff Policy",
                 "policy_category": "Employment",
-                "applies_to": "Staff",
+                "applies_to": [{"policy_audience": "Staff"}],
                 "organization": self.organization.name,
                 "school": parent_school.name,
                 "is_active": 1,

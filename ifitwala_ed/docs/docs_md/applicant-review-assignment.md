@@ -3,8 +3,8 @@ title: "Applicant Review Assignment: Materialized Review Work Item"
 slug: applicant-review-assignment
 category: Admission
 doc_order: 9
-version: "1.2.1"
-last_change_date: "2026-03-09"
+version: "1.2.2"
+last_change_date: "2026-03-19"
 summary: "System-generated admissions review work items for evidence submissions, health, and overall application decisions."
 seo_title: "Applicant Review Assignment: Materialized Review Work Item"
 seo_description: "System-generated admissions review work items for evidence submissions, health, and overall application decisions."
@@ -74,6 +74,7 @@ Assignments are primarily consumed through Focus.
 Current surface split:
 
 - Focus shows open assignments and supports claim / reassign / submit for non-admissions reviewers, and for Health / Overall Application review work
+- any reviewer with an open assignment gets read-only access to the applicant folder in Admissions Workspace and Desk so they can inspect health, evidence, recommendations, and interview context before deciding
 - admissions roles do not use Focus for `Applicant Document Item` evidence review; they work from applicant context instead
 - admissions cockpit applicant workspace and Desk `Student Applicant.documents_summary` are the canonical admissions-staff evidence review surfaces
 - Desk `Student Applicant.review_assignments_summary` renders completed Health and Overall Application decisions
@@ -88,5 +89,6 @@ Test refs: `ifitwala_ed/admission/doctype/applicant_review_assignment/test_appli
 - Schema supports the three runtime target types listed above.
 - Scope fields (`organization`, `school`, `program_offering`) are synced from the linked `Student Applicant`.
 - Rule materialization is handled in `applicant_review_workflow.py`, not in the doctype controller.
+- Open assignments grant the matched reviewer read-only applicant-folder access across `Student Applicant`, `Applicant Health Profile`, `Applicant Document`, `Applicant Document Item`, `Recommendation Submission`, interview workspace payloads, and governed file downloads for that applicant.
 - Document-item assignment decisions resync parent document state through `sync_applicant_document_review_from_items(...)`.
 - Admissions-workspace users are intentionally blocked from `Applicant Document Item` Focus actions so admissions evidence review stays in applicant context.

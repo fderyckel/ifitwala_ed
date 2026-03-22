@@ -1,6 +1,6 @@
 <!-- ifitwala_ed/ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue -->
 <template>
-	<div class="min-h-screen bg-transparent p-4 sm:p-6 space-y-8">
+	<div class="staff-shell min-w-0 space-y-8">
 		<!-- HEADER -->
 		<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 			<div>
@@ -8,7 +8,7 @@
 				<p class="type-meta mt-1 text-slate-token/80">Daily Operational &amp; Academic Pulse</p>
 			</div>
 
-			<div class="flex items-center gap-3">
+			<div class="flex items-center gap-3 self-start sm:self-auto">
 				<div class="text-right">
 					<span class="section-header block mb-0.5">Today</span>
 					<span class="type-h3 text-ink">
@@ -28,7 +28,7 @@
 		<!-- SKELETON STATE -->
 		<div v-if="widgets.loading" class="space-y-6 animate-pulse">
 			<div class="h-32 w-full rounded-2xl bg-surface-soft"></div>
-			<div class="grid grid-cols-2 gap-6">
+			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 				<div class="h-64 rounded-2xl bg-surface-soft"></div>
 				<div class="h-64 rounded-2xl bg-surface-soft"></div>
 			</div>
@@ -49,7 +49,7 @@
 						</span>
 					</div>
 
-					<div class="flex items-center gap-2">
+					<div class="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
 						<button
 							v-for="mode in viewModes"
 							:key="mode.value"
@@ -82,7 +82,7 @@
 					v-if="spotlightAnnouncements.length"
 					class="relative overflow-hidden rounded-2xl bg-surface-soft/80 p-5 ring-1 ring-border/60"
 				>
-					<div class="flex items-start justify-between gap-4">
+					<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 						<div v-if="currentSpotlight" class="flex-1">
 							<div class="mb-2 flex flex-wrap items-center gap-2">
 								<span
@@ -124,9 +124,9 @@
 							<!-- Interaction strip for spotlight (staff comments mode only) -->
 							<div
 								v-if="canShowInteractions(currentSpotlight)"
-								class="mt-3 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-slate-token/70"
+								class="mt-3 flex flex-col gap-2 border-t border-border/40 pt-2 text-[11px] text-slate-token/70 sm:flex-row sm:items-center sm:justify-between"
 							>
-								<div class="flex items-center gap-3">
+								<div class="flex flex-wrap items-center gap-2 sm:gap-3">
 									<button
 										type="button"
 										class="inline-flex items-center gap-1 rounded-full bg-surface-soft px-2 py-1 hover:bg-surface-soft/80"
@@ -164,14 +164,17 @@
 							</div>
 						</div>
 
-						<div v-if="spotlightAnnouncements.length > 1" class="flex flex-col items-center gap-2">
+						<div
+							v-if="spotlightAnnouncements.length > 1"
+							class="flex flex-row items-center justify-start gap-3 lg:flex-col"
+						>
 							<button
 								class="rounded-full p-1 text-slate-token/60 transition-colors hover:bg-surface-soft hover:text-ink"
 								@click="prevSpotlight"
 							>
 								<FeatherIcon name="chevron-up" class="h-4 w-4" />
 							</button>
-							<div class="flex flex-col gap-1">
+							<div class="flex flex-row gap-1 lg:flex-col">
 								<span
 									v-for="(a, idx) in spotlightAnnouncements"
 									:key="idx"
@@ -191,7 +194,9 @@
 
 				<!-- Compact list -->
 				<div class="paper-card mt-3">
-					<div class="flex items-center justify-between border-b border-border/60 px-4 py-2">
+					<div
+						class="flex flex-col gap-2 border-b border-border/60 px-4 py-2 sm:flex-row sm:items-center sm:justify-between"
+					>
 						<p class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
 							All announcements
 						</p>
@@ -223,7 +228,7 @@
 							></div>
 
 							<div class="min-w-0 flex-1">
-								<div class="flex items-center justify-between gap-2">
+								<div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
 									<p class="truncate text-sm font-semibold text-ink">
 										{{ item.title }}
 									</p>
@@ -239,9 +244,9 @@
 								<!-- Interaction summary for each announcement (staff comments only) -->
 								<div
 									v-if="canShowInteractions(item)"
-									class="mt-2 flex items-center justify-between text-[10px] text-slate-token/65"
+									class="mt-2 flex flex-col gap-2 text-[10px] text-slate-token/65 sm:flex-row sm:items-center sm:justify-between"
 								>
-									<div class="flex items-center gap-2">
+									<div class="flex flex-wrap items-center gap-2">
 										<button
 											type="button"
 											class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 hover:bg-surface-soft"
@@ -275,15 +280,15 @@
 				</div>
 			</section>
 
-			<div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+			<div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
 				<!-- LEFT COLUMN -->
 				<div class="space-y-6">
 					<div
-						v-if="hasArrayData('clinic_volume') || widgets.data?.critical_incidents !== undefined"
-						class="grid grid-cols-2 gap-6"
+						v-if="hasClinicVolumeCard || widgets.data?.critical_incidents !== undefined"
+						class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6"
 					>
 						<!-- Attendance Trend (Admin) -->
-						<div v-if="hasArrayData('attendance_trend')" class="col-span-2">
+						<div v-if="hasArrayData('attendance_trend')" class="sm:col-span-2">
 							<AttendanceTrend :data="widgets.data.attendance_trend" />
 						</div>
 
@@ -291,7 +296,7 @@
 						<div
 							v-if="widgets.data?.critical_incidents !== undefined"
 							class="paper-card cursor-pointer border-l-4 border-l-flame p-5 transition-shadow hover:shadow-md"
-							@click="openCriticalIncidents"
+							@click="openCriticalIncidentsOverlay"
 						>
 							<h3 class="section-header mb-1 text-flame/80">Critical Incidents</h3>
 							<div class="text-3xl font-bold text-ink">
@@ -305,41 +310,66 @@
 
 						<!-- Clinic Volume -->
 						<div
-							v-if="hasArrayData('clinic_volume')"
-							class="paper-card cursor-pointer p-5 transition-shadow hover:shadow-md"
-							@click="showClinicHistory = true"
+							v-if="hasClinicVolumeCard"
+							class="paper-card p-5 transition-shadow"
+							:class="clinicVolumeIsInteractive ? 'cursor-pointer hover:shadow-md' : ''"
+							@click="openClinicHistory"
 						>
-							<div class="mb-3 flex items-center gap-2">
-								<div
-									class="flex h-8 w-8 items-center justify-center rounded-full bg-sky/15 text-sky"
-								>
-									<FeatherIcon name="thermometer" class="h-4 w-4" />
+							<div class="mb-3 flex items-start justify-between gap-3">
+								<div class="flex items-center gap-2">
+									<div
+										class="flex h-8 w-8 items-center justify-center rounded-full bg-sky/15 text-sky"
+									>
+										<FeatherIcon name="thermometer" class="h-4 w-4" />
+									</div>
+									<div>
+										<h3 class="text-sm font-semibold text-canopy">Clinic Volume</h3>
+										<p class="mt-0.5 text-[11px] text-slate-token/70">
+											{{ clinicVolume?.school || 'School context' }}
+										</p>
+									</div>
 								</div>
-								<h3 class="text-sm font-semibold text-canopy">Clinic Volume</h3>
+								<DateRangePills
+									v-if="!clinicVolume?.error"
+									v-model="clinicVolumeView"
+									:items="clinicVolumeViewOptions"
+									size="sm"
+									wrap-class="bg-white/70"
+									@click.stop
+								/>
 							</div>
-							<div class="space-y-2">
+							<p
+								v-if="clinicVolume?.error"
+								class="rounded-xl border border-dashed border-border/70 bg-surface-soft px-3 py-2 text-xs text-slate-token/82"
+							>
+								{{ clinicVolume.error }}
+							</p>
+							<div v-else-if="clinicVolumePoints.length" class="space-y-2">
 								<div
-									v-for="day in widgets.data.clinic_volume"
-									:key="day.date"
+									v-for="point in clinicVolumePoints"
+									:key="point.label"
 									class="flex items-center justify-between text-sm"
 								>
 									<span class="text-slate-token/80">
-										{{ day.date }}
+										{{ point.label }}
 									</span>
 									<span
 										class="font-mono font-medium"
-										:class="day.count > 10 ? 'text-flame' : 'text-ink'"
+										:class="point.count > 10 ? 'text-flame' : 'text-ink'"
 									>
-										{{ day.count }}
+										{{ point.count }}
 									</span>
 								</div>
 							</div>
+							<p v-else class="text-xs text-slate-token/75">
+								No clinic visits in this business window.
+							</p>
 						</div>
 					</div>
 
 					<!-- Admissions pulse -->
 					<div v-if="widgets.data?.admissions_pulse" class="paper-card p-5">
-						<div class="mb-3 flex items-center justify-between">
+						<div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 							<div class="flex items-center gap-2">
 								<div
 									class="flex h-8 w-8 items-center justify-center rounded-full bg-jacaranda/10 text-jacaranda"
@@ -378,12 +408,14 @@
 						</h2>
 					</div>
 
-					<div class="paper-card relative flex h-[600px] flex-col">
+					<div
+						class="paper-card relative flex min-h-[24rem] max-h-[65vh] flex-col md:h-[600px] md:max-h-none"
+					>
 						<div class="custom-scrollbar flex-1 overflow-y-auto p-0">
 							<div
 								v-for="(log, i) in widgets.data.student_logs"
 								:key="log.name"
-								class="group border-b border-border/50 p-5 last:border-0 transition-colors hover:bg-surface-soft"
+								class="group border-b border-border/50 p-4 last:border-0 transition-colors hover:bg-surface-soft sm:p-5"
 							>
 								<div class="flex gap-4">
 									<div class="relative flex-shrink-0">
@@ -407,7 +439,7 @@
 									</div>
 
 									<div class="min-w-0 flex-1">
-										<div class="flex items-start justify-between">
+										<div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
 											<h4 class="text-sm font-bold text-ink">
 												{{ log.student_name }}
 											</h4>
@@ -467,7 +499,7 @@
 						<div class="grid gap-6 md:grid-cols-2">
 							<!-- Staff birthdays -->
 							<div v-if="hasArrayData('staff_birthdays')" class="space-y-3">
-								<div class="flex items-center justify-between">
+								<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 									<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
 										Staff Birthdays
 									</h3>
@@ -509,7 +541,7 @@
 
 							<!-- Student birthdays (my groups) -->
 							<div v-if="hasArrayData('my_student_birthdays')" class="space-y-3">
-								<div class="flex items-center justify-between">
+								<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 									<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-token/70">
 										Student Birthdays (My Groups)
 									</h3>
@@ -636,62 +668,14 @@
 			</template>
 		</GenericListDialog>
 
-		<!-- CRITICAL INCIDENTS DIALOG -->
-		<GenericListDialog
-			v-model="showCriticalIncidents"
-			title="Critical Incidents"
-			subtitle="Open logs requiring follow-up"
-			:items="criticalIncidentsList.data || []"
-			:loading="criticalIncidentsList.loading"
-		>
-			<template #item="{ item }">
-				<div class="flex gap-4 p-4">
-					<div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-surface-soft">
-						<img
-							v-if="item.student_image"
-							:src="item.student_image"
-							class="h-full w-full object-cover"
-						/>
-						<div
-							v-else
-							class="flex h-full w-full items-center justify-center text-xs font-bold text-slate-token/65"
-						>
-							{{ item.student_name.substring(0, 2) }}
-						</div>
-					</div>
-					<div class="min-w-0 flex-1">
-						<div class="flex items-start justify-between">
-							<h4 class="text-sm font-bold text-ink">
-								{{ item.student_name }}
-							</h4>
-							<span class="text-xs text-slate-token/80">
-								{{ item.date_display }}
-							</span>
-						</div>
-						<span
-							class="mt-1 mb-2 inline-block rounded bg-surface-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-token/80"
-						>
-							{{ item.log_type }}
-						</span>
-						<p class="text-sm text-slate-token/90 line-clamp-2">
-							{{ item.snippet }}
-						</p>
-						<button
-							@click="openLog(item)"
-							class="mt-2 text-xs font-medium text-jacaranda hover:text-jacaranda/80"
-						>
-							View Full Log
-						</button>
-					</div>
-				</div>
-			</template>
-		</GenericListDialog>
-
 		<!-- CLINIC HISTORY DIALOG -->
 		<HistoryDialog
 			v-model="showClinicHistory"
+			title="Clinic Volume"
 			subtitle="Student patient visits over time"
 			method="ifitwala_ed.api.morning_brief.get_clinic_visits_trend"
+			:range-options="clinicHistoryRangeOptions"
+			:default-range="clinicVolumeView"
 		/>
 
 		<CommentThreadDrawer
@@ -710,21 +694,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { createResource, FeatherIcon, toast } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { formatLocalizedDateTime } from '@/lib/datetime';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
+import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import ContentDialog from '@/components/ContentDialog.vue';
 import GenericListDialog from '@/components/analytics/GenericListDialog.vue';
 import HistoryDialog from '@/components/analytics/HistoryDialog.vue';
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
+import DateRangePills from '@/components/filters/DateRangePills.vue';
 import AttendanceTrend from './components/AttendanceTrend.vue';
 import AbsentStudentList from './components/AbsentStudentList.vue';
 import {
 	ORG_SURFACES,
 	type Announcement,
+	type ClinicVolumeSummary,
 	type InteractionSummaryMap,
 	type InteractionThreadRow,
 	type WidgetsPayload,
@@ -750,7 +737,6 @@ interface DialogContent {
 type ArrayWidgetKey =
 	| 'announcements'
 	| 'staff_birthdays'
-	| 'clinic_volume'
 	| 'my_student_birthdays'
 	| 'student_logs'
 	| 'attendance_trend'
@@ -770,7 +756,6 @@ const dialogContent = ref<DialogContent>({
 
 // State for new dialogs
 const showAnnouncementCenter = ref<boolean>(false);
-const showCriticalIncidents = ref<boolean>(false);
 const showClinicHistory = ref<boolean>(false);
 const showInteractionDrawer = ref<boolean>(false);
 const activeCommunication = ref<Announcement | null>(null);
@@ -780,6 +765,7 @@ const interactionService = createCommunicationInteractionService();
 const interactionSummaryData = ref<InteractionSummaryMap>({});
 const interactionThreadRows = ref<InteractionThreadRow[]>([]);
 const interactionThreadLoading = ref(false);
+let disposeOrgCommunicationInvalidate: (() => void) | null = null;
 
 const criticalIncidentsList = createResource<StudentLogDetail[]>({
 	url: 'ifitwala_ed.api.morning_brief.get_critical_incidents_details',
@@ -790,6 +776,19 @@ const widgets = createResource<WidgetsPayload>({
 	url: 'ifitwala_ed.api.morning_brief.get_briefing_widgets',
 	auto: true,
 });
+const clinicVolumeViewOptions = [
+	{ label: '3 days', value: '3D' },
+	{ label: '3 weeks', value: '3W' },
+] as const;
+const clinicHistoryRangeOptions = [
+	...clinicVolumeViewOptions,
+	{ label: '1M', value: '1M' },
+	{ label: '3M', value: '3M' },
+	{ label: '6M', value: '6M' },
+	{ label: 'YTD', value: 'YTD' },
+] as const;
+type ClinicVolumeView = (typeof clinicVolumeViewOptions)[number]['value'];
+const clinicVolumeView = ref<ClinicVolumeView>('3D');
 
 const viewModes = [
 	{ value: 'focus', label: 'Focus' },
@@ -821,6 +820,29 @@ const criticalCount = computed(
 );
 const highCount = computed(
 	() => (widgets.data?.announcements || []).filter(a => a.priority === 'High').length
+);
+const clinicVolume = computed<ClinicVolumeSummary | null>(
+	() => widgets.data?.clinic_volume || null
+);
+const clinicVolumePoints = computed(() => {
+	const volume = clinicVolume.value;
+	if (!volume) return [];
+	return volume.views?.[clinicVolumeView.value] || [];
+});
+const hasClinicVolumeCard = computed(() => clinicVolume.value !== null);
+const clinicVolumeIsInteractive = computed(
+	() => !!clinicVolume.value && !clinicVolume.value.error && clinicVolumePoints.value.length > 0
+);
+
+watch(
+	clinicVolume,
+	volume => {
+		const defaultView = volume?.default_view;
+		if (defaultView === '3D' || defaultView === '3W') {
+			clinicVolumeView.value = defaultView;
+		}
+	},
+	{ immediate: true }
 );
 
 const filteredAnnouncements = computed<Announcement[]>(() => {
@@ -860,39 +882,72 @@ watch(
 );
 
 async function refreshInteractionSummary(commNames: string[]) {
-	if (!commNames.length) {
+	const names = commNames.filter(name => typeof name === 'string' && !!name.trim());
+	if (!names.length) {
 		interactionSummaryData.value = {};
 		return;
 	}
 
 	try {
-		interactionSummaryData.value = await interactionService.getOrgCommInteractionSummary({
-			comm_names: commNames,
+		const nextSummary = await interactionService.getOrgCommInteractionSummary({
+			comm_names: names,
 		});
+		interactionSummaryData.value = {
+			...interactionSummaryData.value,
+			...nextSummary,
+		};
 	} catch {
-		interactionSummaryData.value = {};
+		if (!interactionSummaryData.value || !Object.keys(interactionSummaryData.value).length) {
+			interactionSummaryData.value = {};
+		}
 	}
 }
 
-async function refreshInteractionThread(orgCommunication: string) {
+async function refreshInteractionThread(orgCommunication: string, opts?: { silent?: boolean }) {
 	interactionThreadLoading.value = true;
 	try {
 		interactionThreadRows.value = await interactionService.getCommunicationThread({
 			org_communication: orgCommunication,
 			limit_start: 0,
-			limit_page_length: 30,
+			limit: 30,
 		});
 	} catch (err) {
 		interactionThreadRows.value = [];
-		const message = err instanceof Error ? err.message : 'Unable to load announcement comments.';
-		toast({
-			title: 'Unable to load comments',
-			text: message,
-			icon: 'alert-circle',
-			appearance: 'danger',
-		});
+		if (!opts?.silent) {
+			const message = err instanceof Error ? err.message : 'Unable to load announcement comments.';
+			toast({
+				title: 'Unable to load comments',
+				text: message,
+				icon: 'alert-circle',
+				appearance: 'danger',
+			});
+		}
 	} finally {
 		interactionThreadLoading.value = false;
+	}
+}
+
+function getAnnouncementNames(): string[] {
+	return (widgets.data?.announcements || []).map(item => item.name).filter(Boolean);
+}
+
+function onOrgCommunicationInvalidated(payload?: { names?: string[] }) {
+	const currentNames = getAnnouncementNames();
+	if (!currentNames.length) {
+		interactionSummaryData.value = {};
+		return;
+	}
+
+	const invalidatedNames = (payload?.names || [])
+		.filter(name => typeof name === 'string' && !!name.trim())
+		.filter(name => currentNames.includes(name));
+	const namesToRefresh = invalidatedNames.length ? invalidatedNames : currentNames;
+
+	void refreshInteractionSummary(namesToRefresh);
+
+	const activeName = activeCommunication.value?.name || null;
+	if (showInteractionDrawer.value && activeName && namesToRefresh.includes(activeName)) {
+		void refreshInteractionThread(activeName, { silent: true });
 	}
 }
 
@@ -911,6 +966,13 @@ function prevSpotlight(): void {
 function hasArrayData(key: ArrayWidgetKey): boolean {
 	const list = widgets.data?.[key];
 	return Array.isArray(list) && list.length > 0;
+}
+
+function openClinicHistory(): void {
+	if (!clinicVolumeIsInteractive.value) {
+		return;
+	}
+	showClinicHistory.value = true;
 }
 
 function openLog(log: StudentLogItem): void {
@@ -1006,11 +1068,6 @@ async function acknowledgeAnnouncement(item: Announcement): Promise<void> {
 			reaction_code: 'like',
 			surface: ORG_SURFACES.MORNING_BRIEF,
 		});
-		const list = widgets.data?.announcements || [];
-		const commNames = list.map(a => a.name).filter(Boolean);
-		if (commNames.length) {
-			await refreshInteractionSummary(commNames);
-		}
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Unable to save acknowledgement.';
 		toast({
@@ -1057,13 +1114,6 @@ async function submitComment(): Promise<void> {
 			surface: ORG_SURFACES.MORNING_BRIEF,
 		});
 		newComment.value = '';
-		await refreshInteractionThread(activeCommunication.value.name);
-
-		const list = widgets.data?.announcements || [];
-		const commNames = list.map(a => a.name).filter(Boolean);
-		if (commNames.length) {
-			await refreshInteractionSummary(commNames);
-		}
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Unable to post comment.';
 		toast({
@@ -1105,11 +1155,6 @@ async function reactToAnnouncement(item: Announcement, reaction: ReactionCode): 
 			reaction_code: reaction,
 			surface: ORG_SURFACES.MORNING_BRIEF,
 		});
-		const list = widgets.data?.announcements || [];
-		const commNames = list.map(a => a.name).filter(Boolean);
-		if (commNames.length) {
-			await refreshInteractionSummary(commNames);
-		}
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Unable to save reaction.';
 		toast({
@@ -1139,9 +1184,16 @@ function openPolicyInformOverlay(payload: PolicyInformLinkPayload): void {
 	});
 }
 
-function openCriticalIncidents(): void {
-	showCriticalIncidents.value = true;
-	criticalIncidentsList.fetch();
+function openCriticalIncidentsOverlay(): void {
+	// Fetch data if not already loaded
+	if (!criticalIncidentsList.data && !criticalIncidentsList.loading) {
+		criticalIncidentsList.fetch();
+	}
+
+	overlay.open('critical-incidents-list', {
+		items: criticalIncidentsList.data || [],
+		loading: criticalIncidentsList.loading,
+	});
 }
 
 const formattedDate = computed<string>(() => widgets.data?.today_label ?? '');
@@ -1185,4 +1237,15 @@ function formatBirthday(dateStr: string | null | undefined): string {
 
 	return `${day}${suffix(day)} ${month}`;
 }
+
+onMounted(() => {
+	disposeOrgCommunicationInvalidate = uiSignals.subscribe(
+		SIGNAL_ORG_COMMUNICATION_INVALIDATE,
+		onOrgCommunicationInvalidated
+	);
+});
+
+onBeforeUnmount(() => {
+	if (disposeOrgCommunicationInvalidate) disposeOrgCommunicationInvalidate();
+});
 </script>

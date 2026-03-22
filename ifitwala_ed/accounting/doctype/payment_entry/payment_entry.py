@@ -92,7 +92,7 @@ class PaymentEntry(Document):
             },
             fields=["term_name", "due_date"],
             order_by="due_date asc, idx asc",
-            limit_page_length=1,
+            limit=1,
         )
         if not row:
             return None
@@ -112,7 +112,7 @@ class PaymentEntry(Document):
             "Sales Invoice",
             filters={"name": ["in", [ref.reference_name for ref in self.references if ref.reference_name]]},
             fields=["name", "school", "program"],
-            limit_page_length=max(50, len(self.references) + 10),
+            limit=max(50, len(self.references) + 10),
         )
         schools = {row.get("school") for row in rows if row.get("school")}
         programs = {row.get("program") for row in rows if row.get("program")}
