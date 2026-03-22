@@ -68,23 +68,31 @@ def _dedupe_has_role_rows(role_name: str) -> None:
 
 
 def _dedupe_permission_rows(doctype: str) -> None:
+    if not frappe.db.table_exists(doctype):
+        return
+
+    dedupe_fields = [
+        fieldname
+        for fieldname in ("parent", "parenttype", "parentfield", "role", "permlevel")
+        if frappe.db.has_column(doctype, fieldname)
+    ]
+    if not dedupe_fields:
+        return
+
     rows = frappe.get_all(
         doctype,
-        fields=["name", "parent", "parenttype", "parentfield", "role", "permlevel"],
+        fields=["name", *dedupe_fields],
         order_by="creation asc, name asc",
         limit=100000,
     )
 
-    seen: set[tuple[str, str, str, str, int]] = set()
+    seen: set[tuple[object, ...]] = set()
     duplicates: list[str] = []
 
     for row in rows:
-        key = (
-            (row.get("parent") or "").strip(),
-            (row.get("parenttype") or "").strip(),
-            (row.get("parentfield") or "").strip(),
-            (row.get("role") or "").strip(),
-            int(row.get("permlevel") or 0),
+        key = tuple(
+            int(row.get(fieldname) or 0) if fieldname == "permlevel" else (row.get(fieldname) or "").strip()
+            for fieldname in dedupe_fields
         )
         if key in seen:
             duplicates.append(row.get("name"))
