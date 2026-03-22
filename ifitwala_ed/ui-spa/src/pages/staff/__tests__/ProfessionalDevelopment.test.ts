@@ -8,6 +8,8 @@ const {
 	cancelRequestMock,
 	decideRequestMock,
 	liquidateRecordMock,
+	toastSuccessMock,
+	toastErrorMock,
 } = vi.hoisted(() => ({
 	getBoardMock: vi.fn(),
 	getHeaderMock: vi.fn(),
@@ -15,6 +17,8 @@ const {
 	cancelRequestMock: vi.fn(),
 	decideRequestMock: vi.fn(),
 	liquidateRecordMock: vi.fn(),
+	toastSuccessMock: vi.fn(),
+	toastErrorMock: vi.fn(),
 }))
 
 vi.mock('@/lib/services/professionalDevelopment/professionalDevelopmentService', () => ({
@@ -32,6 +36,13 @@ vi.mock('@/composables/useOverlayStack', () => ({
 	useOverlayStack: () => ({
 		open: overlayOpenMock,
 	}),
+}))
+
+vi.mock('frappe-ui', () => ({
+	toast: {
+		success: toastSuccessMock,
+		error: toastErrorMock,
+	},
 }))
 
 vi.mock('vue-router', () => ({
@@ -81,6 +92,8 @@ afterEach(() => {
 	cancelRequestMock.mockReset()
 	decideRequestMock.mockReset()
 	liquidateRecordMock.mockReset()
+	toastSuccessMock.mockReset()
+	toastErrorMock.mockReset()
 	while (cleanupFns.length) cleanupFns.pop()?.()
 	document.body.innerHTML = ''
 })
