@@ -5,7 +5,7 @@
 		:class="{ 'analytics-text-preview--interactive': isOverflowing }"
 		:tabindex="isOverflowing ? 0 : undefined"
 		:role="isOverflowing ? 'button' : undefined"
-		:aria-expanded="isOverflowing ? String(isOpen) : undefined"
+		:aria-expanded="isOverflowing ? isOpen : undefined"
 		aria-haspopup="dialog"
 		@click="onTriggerClick"
 		@mouseenter="openPreview"

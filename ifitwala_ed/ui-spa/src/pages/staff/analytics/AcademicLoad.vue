@@ -596,13 +596,23 @@ type CoverResponse = {
 	}>;
 };
 
-const tabs = [
+type AnalyticsTab = 'overview' | 'fairness' | 'assignment';
+type DrawerTab =
+	| 'overview'
+	| 'teaching'
+	| 'activities'
+	| 'meetings'
+	| 'events'
+	| 'timeline'
+	| 'notes';
+
+const tabs: Array<{ value: AnalyticsTab; label: string }> = [
 	{ value: 'overview', label: 'Overview' },
 	{ value: 'fairness', label: 'Fairness' },
 	{ value: 'assignment', label: 'Assignment Support' },
 ];
 
-const drawerTabs = [
+const drawerTabs: Array<{ value: DrawerTab; label: string }> = [
 	{ value: 'overview', label: 'Overview' },
 	{ value: 'teaching', label: 'Teaching' },
 	{ value: 'activities', label: 'Activities' },
@@ -642,10 +652,8 @@ const coverLoading = ref(false);
 const metaReady = ref(false);
 const syncingMeta = ref(false);
 
-const activeTab = ref<'overview' | 'fairness' | 'assignment'>('overview');
-const drawerTab = ref<
-	'overview' | 'teaching' | 'activities' | 'meetings' | 'events' | 'timeline' | 'notes'
->('overview');
+const activeTab = ref<AnalyticsTab>('overview');
+const drawerTab = ref<DrawerTab>('overview');
 const drawerOpen = ref(false);
 const selectedEmployee = ref('');
 
