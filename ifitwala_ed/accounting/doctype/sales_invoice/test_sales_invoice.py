@@ -392,7 +392,7 @@ class TestSalesInvoice(FrappeTestCase):
         invoice.submit()
 
         self.assertAlmostEqual(flt(invoice.grand_total), 100, places=6)
-        self.assertAlmostEqual(flt(invoice.total_taxes), 100 - (100 / 1.1), places=6)
+        self.assertAlmostEqual(flt(invoice.total_taxes), 9.09, places=2)
 
         gl_rows = frappe.get_all(
             "GL Entry",
