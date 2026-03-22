@@ -75,7 +75,7 @@ class CommunicationInteractionEntry(Document):
             self.audience_type = "Guardian"
         elif "Student" in roles:
             self.audience_type = "Student"
-        elif roles & {"Employee", "Academic Staff", "Academic Admin", "System Manager", "Assistant Admin"}:
+        elif roles & {"Employee", "Academic Staff", "Academic Admin", "System Manager", "Academic Assistant"}:
             self.audience_type = "Staff"
         else:
             self.audience_type = "Community"

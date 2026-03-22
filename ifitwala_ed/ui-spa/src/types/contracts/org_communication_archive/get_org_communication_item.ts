@@ -9,7 +9,7 @@ export type Request = {
 export type Response = {
   name: string
   title: string
-  message: string | null
+  message_html: string | null
   communication_type: CommunicationType
   priority: Priority
   publish_from: string | null

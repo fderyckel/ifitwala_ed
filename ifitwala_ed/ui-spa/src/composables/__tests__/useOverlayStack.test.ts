@@ -1,5 +1,6 @@
 // ifitwala_ed/ui-spa/src/composables/__tests__/useOverlayStack.test.ts
 
+import { nextTick, reactive } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 
 async function loadOverlayStack() {
@@ -44,5 +45,25 @@ describe('useOverlayStack', () => {
 
 		overlay.forceRemove(first)
 		expect(overlay.stack.value.find((entry) => entry.id === first)).toBeUndefined()
+	})
+
+	it('retains reactive overlay props after opening', async () => {
+		const { useOverlayStack } = await loadOverlayStack()
+		const overlay = useOverlayStack()
+		const props = reactive({
+			items: [] as string[],
+			loading: true,
+		})
+
+		const overlayId = overlay.open('critical-incidents-list', props)
+		expect(overlay.stack.value.find((entry) => entry.id === overlayId)?.props.loading).toBe(true)
+
+		props.items = ['SLOG-1']
+		props.loading = false
+		await nextTick()
+
+		const updated = overlay.stack.value.find((entry) => entry.id === overlayId)
+		expect(updated?.props.items).toEqual(['SLOG-1'])
+		expect(updated?.props.loading).toBe(false)
 	})
 })

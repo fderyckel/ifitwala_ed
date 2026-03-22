@@ -18,13 +18,13 @@ ADMIN_ROLES_FULL = {"System Manager", "Academic Admin"}
 
 # Elevated audience rights: can target School Scope audiences with
 # Staff or Community recipients, and can choose Issuing School within their nested scope.
-ELEVATED_WIDE_AUDIENCE_ROLES = {"System Manager", "Academic Admin", "Assistant Admin"}
+ELEVATED_WIDE_AUDIENCE_ROLES = {"System Manager", "Academic Admin", "Academic Assistant"}
 # Allowed to target/publish School Scope audiences that include Staff or Community.
 # Kept separate from issuing-school elevation to avoid widening school-selection privileges.
 WIDE_AUDIENCE_RECIPIENT_ROLES = {
     "System Manager",
     "Academic Admin",
-    "Assistant Admin",
+    "Academic Assistant",
     "HR Manager",
     "Accounts Manager",
 }
@@ -463,7 +463,7 @@ class OrgCommunication(Document):
                 frappe.throw(
                     _(
                         "You are not allowed to target Staff or Community at School Scope. "
-                        "Only Academic Admin, Assistant Admin, HR Manager, Accounts Manager, or System Manager may do this."
+                        "Only Academic Admin, Academic Assistant, HR Manager, Accounts Manager, or System Manager may do this."
                     ),
                     title=_("Audience Not Allowed"),
                 )
@@ -568,7 +568,7 @@ class OrgCommunication(Document):
         """
         user = frappe.session.user
         if not _user_has_any_role(user, ADMIN_ROLES_FULL):
-            # Assistant Admin is intentionally excluded here: they can manage content
+            # Academic Assistant is intentionally excluded here: they can manage content
             # but should not hard-delete the record.
             frappe.throw(
                 _("You are not allowed to delete communications. Please archive instead."),
@@ -760,7 +760,7 @@ def get_org_communication_context() -> dict:
     - allowed_schools:
       * default_school node + descendants when default_school exists
       * org-scope schools when no default_school for non-privileged users
-    - is_privileged: can choose Issuing School (Academic Admin, Assistant Admin, System Manager)
+    - is_privileged: can choose Issuing School (Academic Admin, Academic Assistant, System Manager)
     """
     user = frappe.session.user
     default_school, school_tree = _get_school_scope_tree(user)
@@ -804,7 +804,7 @@ def get_org_communication_context() -> dict:
 def get_permission_query_conditions(user: str | None = None) -> str | None:
     """Limit Org Communication list by school/org for non-admin users.
 
-    Admins (System Manager, Academic Admin, Assistant Admin) see all.
+    Admins (System Manager, Academic Admin, Academic Assistant) see all.
     Others see communications for their effective school scope:
     - default_school + descendants when available
     - otherwise, schools under their authorized organization scope
@@ -857,7 +857,7 @@ def has_permission(doc: "OrgCommunication", user: str = None, ptype: str = None)
     # Admin roles: defer to role-based permissions except for delete, which we tighten.
     if _user_has_any_role(user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES):
         if ptype == "delete":
-            # Assistant Admin is not in ADMIN_ROLES_FULL, so only System Manager
+            # Academic Assistant is not in ADMIN_ROLES_FULL, so only System Manager
             # and Academic Admin get delete = True here.
             return _user_has_any_role(user, ADMIN_ROLES_FULL)
         return True

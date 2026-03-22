@@ -620,8 +620,7 @@ def on_doctype_update():
 
 
 # Define which roles can see all referrals.
-# Keep both counselor spellings because the repo currently uses both.
-PRIV_ROLES = {"Academic Admin", "Counselor", "Counsellor", "Pastoral Lead", "System Manager"}
+PRIV_ROLES = {"Academic Admin", "Counselor", "Pastoral Lead", "System Manager"}
 
 
 def get_permission_query_conditions(user: str | None = None) -> str | None:

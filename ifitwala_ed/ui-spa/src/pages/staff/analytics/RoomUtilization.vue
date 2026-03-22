@@ -105,6 +105,19 @@
 								class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-leaf focus:ring-leaf/20"
 							/>
 						</div>
+
+						<div class="flex flex-col gap-1.5">
+							<label class="type-label">Room Type</label>
+							<select
+								v-model="selectedLocationType"
+								class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-leaf focus:ring-leaf/20"
+							>
+								<option value="">All schedulable rooms</option>
+								<option v-for="option in locationTypes" :key="option.value" :value="option.value">
+									{{ option.label }}
+								</option>
+							</select>
+						</div>
 					</div>
 				</div>
 
@@ -173,6 +186,7 @@
 									</div>
 									<div class="text-xs text-slate-500 mt-0.5">
 										{{ room.building || 'Main Building' }}
+										<span v-if="room.location_type_name"> · {{ room.location_type_name }}</span>
 									</div>
 								</div>
 								<div
@@ -280,7 +294,13 @@
 								<td
 									class="px-3 py-2.5 font-medium text-ink group-hover:text-jacaranda transition-colors"
 								>
-									{{ room.room_name }}
+									<div class="leading-tight">{{ room.room_name }}</div>
+									<div
+										v-if="room.location_type_name"
+										class="text-[11px] font-normal text-slate-400"
+									>
+										{{ room.location_type_name }}
+									</div>
 								</td>
 								<td class="px-3 py-2.5 text-right text-slate-600 font-mono text-xs">
 									{{ minutesToHours(room.booked_minutes) }}
@@ -375,6 +395,12 @@
 									class="px-3 py-2.5 font-medium text-ink group-hover:text-flame transition-colors"
 								>
 									<div class="leading-tight">{{ room.room_name }}</div>
+									<div
+										v-if="room.location_type_name"
+										class="text-[11px] font-normal text-slate-400"
+									>
+										{{ room.location_type_name }}
+									</div>
 								</td>
 								<td class="px-3 py-2.5 text-center text-slate-400 text-xs">
 									{{ room.max_capacity ?? '—' }}
@@ -401,6 +427,171 @@
 				</div>
 			</section>
 		</div>
+
+		<section class="analytics-card mt-6">
+			<div
+				class="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-5"
+			>
+				<div>
+					<h3 class="analytics-card__title text-canopy">Location Calendar</h3>
+					<p class="analytics-card__meta mt-1 max-w-2xl">
+						Read-only timeline of everything booked into a shared room or building, including
+						teaching, meetings, and school events.
+					</p>
+				</div>
+				<div class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600">
+					{{ locationCalendarSummary }}
+				</div>
+			</div>
+
+			<div class="grid gap-6 lg:grid-cols-[300px_1fr]">
+				<div class="h-fit rounded-xl border border-slate-200/60 bg-slate-50 p-4">
+					<div class="space-y-4">
+						<div class="flex flex-col gap-1.5">
+							<label class="type-label">School Context</label>
+							<select
+								v-model="selectedSchool"
+								class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-canopy focus:ring-canopy/20"
+							>
+								<option value="">Select School</option>
+								<option v-for="s in schools" :key="s.name" :value="s.name">{{ s.label }}</option>
+							</select>
+						</div>
+
+						<div class="grid grid-cols-2 gap-3">
+							<div class="flex flex-col gap-1.5">
+								<label class="type-label">From</label>
+								<input
+									type="date"
+									v-model="locationCalendarFilters.from_date"
+									class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-canopy focus:ring-canopy/20"
+								/>
+							</div>
+							<div class="flex flex-col gap-1.5">
+								<label class="type-label">To</label>
+								<input
+									type="date"
+									v-model="locationCalendarFilters.to_date"
+									class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-canopy focus:ring-canopy/20"
+								/>
+							</div>
+						</div>
+
+						<div class="flex flex-col gap-1.5">
+							<label class="type-label">Location or Building</label>
+							<select
+								v-model="locationCalendarFilters.location"
+								class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-canopy focus:ring-canopy/20"
+							>
+								<option value="">Select Location</option>
+								<option
+									v-for="option in locationCalendarLocationOptions"
+									:key="option.value"
+									:value="option.value"
+								>
+									{{ option.label }}
+								</option>
+							</select>
+						</div>
+
+						<p class="text-xs leading-5 text-slate-500">
+							{{ locationCalendarNote }}
+						</p>
+					</div>
+				</div>
+
+				<div class="relative min-h-[240px]">
+					<div
+						v-if="locationCalendarLoading"
+						class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/70 backdrop-blur-sm"
+					>
+						<div class="flex flex-col items-center gap-2">
+							<div
+								class="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-canopy"
+							></div>
+							<span class="text-sm font-medium text-slate-500">Loading location calendar...</span>
+						</div>
+					</div>
+
+					<div
+						v-if="!selectedSchool"
+						class="flex h-full min-h-[240px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-sm text-slate-500"
+					>
+						Select a school to load shared facilities and their booking timeline.
+					</div>
+
+					<div
+						v-else-if="!locationCalendarFilters.location"
+						class="flex h-full min-h-[240px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-sm text-slate-500"
+					>
+						{{ locationCalendarNote }}
+					</div>
+
+					<div
+						v-else-if="!locationCalendarEvents.length"
+						class="flex h-full min-h-[240px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-sm text-slate-500"
+					>
+						No bookings were found for {{ selectedLocationCalendarLabel || 'this selection' }} in
+						the chosen date range.
+					</div>
+
+					<div v-else class="space-y-5">
+						<div class="rounded-xl border border-slate-200/70 bg-slate-50 px-4 py-3">
+							<p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+								Current Selection
+							</p>
+							<p class="mt-1 text-base font-semibold text-ink">
+								{{ selectedLocationCalendarLabel }}
+							</p>
+						</div>
+
+						<div
+							v-for="day in groupedLocationCalendarEvents"
+							:key="day.date"
+							class="rounded-xl border border-slate-200/70 bg-white p-4"
+						>
+							<div class="mb-3 flex items-center justify-between gap-3">
+								<h4 class="text-sm font-semibold text-ink">{{ day.label }}</h4>
+								<span class="text-xs text-slate-400">
+									{{ day.events.length }} booking{{ day.events.length === 1 ? '' : 's' }}
+								</span>
+							</div>
+
+							<div class="space-y-3">
+								<article
+									v-for="event in day.events"
+									:key="event.id"
+									class="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3"
+								>
+									<div
+										class="mt-0.5 h-12 w-1.5 flex-none rounded-full"
+										:style="{ backgroundColor: event.color || '#475569' }"
+									></div>
+									<div class="min-w-0 flex-1">
+										<div class="flex flex-wrap items-start justify-between gap-3">
+											<div class="min-w-0">
+												<p class="text-sm font-semibold text-ink">{{ event.title }}</p>
+												<p class="mt-1 text-xs text-slate-500">
+													{{ eventTimeLabel(event.start, event.end) }}
+												</p>
+											</div>
+											<span
+												class="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500"
+											>
+												{{ event.meta?.occupancy_type || 'Busy' }}
+											</span>
+										</div>
+										<p v-if="event.meta?.location_label" class="mt-2 text-xs text-slate-500">
+											{{ event.meta.location_label }}
+										</p>
+									</div>
+								</article>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
 	</div>
 </template>
 
@@ -412,17 +603,22 @@ import StatsTile from '@/components/analytics/StatsTile.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 
 type SchoolOption = { name: string; label: string };
+type LocationTypeOption = { value: string; label: string };
 
 type FreeRoom = {
 	room: string;
 	room_name: string;
 	building?: string;
-	max_capacity?: number;
+	location_type?: string | null;
+	location_type_name?: string | null;
+	max_capacity?: number | null;
 };
 
 type TimeRoom = {
 	room: string;
 	room_name: string;
+	location_type?: string | null;
+	location_type_name?: string | null;
 	booked_minutes: number;
 	available_minutes: number;
 	utilization_pct: number;
@@ -431,6 +627,8 @@ type TimeRoom = {
 type CapacityRoom = {
 	room: string;
 	room_name: string;
+	location_type?: string | null;
+	location_type_name?: string | null;
 	max_capacity?: number | null;
 	meetings: number;
 	avg_attendees: number;
@@ -440,8 +638,64 @@ type CapacityRoom = {
 	over_capacity_count: number;
 };
 
+type CalendarLocationOption = {
+	value: string;
+	label: string;
+	is_group?: number;
+	parent_location?: string | null;
+	location_type?: string | null;
+	location_type_name?: string | null;
+};
+
+type LocationCalendarEvent = {
+	id: string;
+	title: string;
+	start: string;
+	end: string;
+	allDay: boolean;
+	color?: string | null;
+	meta?: {
+		occupancy_type?: string | null;
+		location?: string | null;
+		location_label?: string | null;
+	};
+};
+
 const today = new Date().toISOString().slice(0, 10);
+
+function addDaysIso(baseDate: string, days: number) {
+	const base = new Date(`${baseDate}T00:00:00`);
+	if (Number.isNaN(base.getTime())) return baseDate;
+	base.setDate(base.getDate() + days);
+	return base.toISOString().slice(0, 10);
+}
+
+function normalizeDateTime(value: string | null | undefined) {
+	return String(value || '').replace(' ', 'T');
+}
+
+function extractDateKey(value: string | null | undefined) {
+	return normalizeDateTime(value).slice(0, 10);
+}
+
+function extractTimeValue(value: string | null | undefined) {
+	const normalized = normalizeDateTime(value);
+	return normalized.length >= 16 ? normalized.slice(11, 16) : '—';
+}
+
+function formatDateKeyLabel(dateKey: string) {
+	if (!dateKey) return 'Unknown day';
+	const date = new Date(`${dateKey}T00:00:00`);
+	if (Number.isNaN(date.getTime())) return dateKey;
+	return date.toLocaleDateString(undefined, {
+		weekday: 'short',
+		month: 'short',
+		day: 'numeric',
+	});
+}
+
 const selectedSchool = ref('');
+const selectedLocationType = ref('');
 
 const availabilityFilters = ref({
 	date: today,
@@ -462,6 +716,12 @@ const capacityFilters = ref({
 	to_date: today,
 });
 
+const locationCalendarFilters = ref({
+	from_date: today,
+	to_date: addDaysIso(today, 6),
+	location: '',
+});
+
 const filterMetaResource = createResource({
 	url: 'ifitwala_ed.api.room_utilization.get_room_utilization_filter_meta',
 	method: 'GET',
@@ -470,6 +730,7 @@ const filterMetaResource = createResource({
 
 const filterMeta = computed(() => (filterMetaResource.data as any) || {});
 const schools = computed<SchoolOption[]>(() => filterMeta.value.schools || []);
+const locationTypes = computed<LocationTypeOption[]>(() => filterMeta.value.location_types || []);
 
 watch(
 	filterMeta,
@@ -508,13 +769,26 @@ const capacityResource = createResource({
 	auto: false,
 });
 
+const locationCalendarResource = createResource({
+	url: 'ifitwala_ed.api.room_utilization.get_location_calendar',
+	method: 'POST',
+	auto: false,
+});
+
 const freeRooms = computed<FreeRoom[]>(() => freeRoomsResource.data?.rooms || []);
 const timeRooms = computed<TimeRoom[]>(() => timeUtilResource.data?.rooms || []);
 const capacityRooms = computed<CapacityRoom[]>(() => capacityResource.data?.rooms || []);
+const locationCalendarLocations = computed<CalendarLocationOption[]>(
+	() => locationCalendarResource.data?.locations || []
+);
+const locationCalendarEvents = computed<LocationCalendarEvent[]>(
+	() => locationCalendarResource.data?.events || []
+);
 
 const freeRoomsLoading = computed(() => freeRoomsResource.loading);
 const timeUtilLoading = computed(() => timeUtilResource.loading);
 const capacityLoading = computed(() => capacityResource.loading);
+const locationCalendarLoading = computed(() => locationCalendarResource.loading);
 
 const freeWindowLabel = computed(() => {
 	if (
@@ -536,6 +810,46 @@ const avgUtilizationLabel = computed(() => {
 const overCapRooms = computed(() => {
 	if (!capacityRooms.value.length) return 0;
 	return capacityRooms.value.filter(room => room.over_capacity_count > 0).length;
+});
+
+const locationCalendarLocationOptions = computed<CalendarLocationOption[]>(
+	() => locationCalendarLocations.value
+);
+
+const selectedLocationCalendarLabel = computed(
+	() => locationCalendarResource.data?.selected_location_label || ''
+);
+
+const locationCalendarNote = computed(
+	() =>
+		locationCalendarResource.data?.note || 'Select a location or building to load its calendar.'
+);
+
+const locationCalendarSummary = computed(() => {
+	if (!selectedSchool.value) return 'Select a school';
+	if (!locationCalendarFilters.value.location) {
+		return `${locationCalendarLocationOptions.value.length} locations in scope`;
+	}
+	return `${locationCalendarEvents.value.length} booking${locationCalendarEvents.value.length === 1 ? '' : 's'}`;
+});
+
+const groupedLocationCalendarEvents = computed(() => {
+	const groups = new Map<string, LocationCalendarEvent[]>();
+
+	for (const event of locationCalendarEvents.value) {
+		const dateKey = extractDateKey(event.start);
+		const bucket = groups.get(dateKey) || [];
+		bucket.push(event);
+		groups.set(dateKey, bucket);
+	}
+
+	return Array.from(groups.entries())
+		.sort(([left], [right]) => left.localeCompare(right))
+		.map(([dateKey, events]) => ({
+			date: dateKey,
+			label: formatDateKeyLabel(dateKey),
+			events: [...events].sort((left, right) => left.start.localeCompare(right.start)),
+		}));
 });
 
 const kpiItems = computed(() => [
@@ -588,6 +902,10 @@ function overCapBadge(count: number) {
 	return 'bg-[rgb(var(--canopy-rgb)/0.08)] text-[rgb(var(--canopy-rgb))]';
 }
 
+function eventTimeLabel(start: string, end: string) {
+	return `${extractTimeValue(start)} - ${extractTimeValue(end)}`;
+}
+
 async function loadFreeRooms() {
 	await freeRoomsResource.submit({
 		filters: {
@@ -595,6 +913,7 @@ async function loadFreeRooms() {
 			date: availabilityFilters.value.date,
 			start_time: availabilityFilters.value.start_time,
 			end_time: availabilityFilters.value.end_time,
+			location_type: selectedLocationType.value || null,
 			capacity_needed: availabilityFilters.value.capacity_needed,
 		},
 	});
@@ -611,6 +930,7 @@ async function loadTimeUtil() {
 			to_date: timeUtilFilters.value.to_date,
 			day_start_time: timeUtilFilters.value.day_start_time,
 			day_end_time: timeUtilFilters.value.day_end_time,
+			location_type: selectedLocationType.value || null,
 		},
 	});
 }
@@ -624,12 +944,14 @@ async function loadCapacityUtil() {
 			school: selectedSchool.value,
 			from_date: capacityFilters.value.from_date,
 			to_date: capacityFilters.value.to_date,
+			location_type: selectedLocationType.value || null,
 		},
 	});
 }
 
 let timeDebounce: number | undefined;
 let capacityDebounce: number | undefined;
+let locationCalendarDebounce: number | undefined;
 
 function debounceTimeUtil() {
 	if (!canViewAnalytics.value) return;
@@ -647,9 +969,30 @@ function debounceCapacityUtil() {
 	}, 400);
 }
 
+async function loadLocationCalendar() {
+	if (!selectedSchool.value) return;
+	if (!locationCalendarFilters.value.from_date || !locationCalendarFilters.value.to_date) return;
+	await locationCalendarResource.submit({
+		filters: {
+			school: selectedSchool.value,
+			from_date: locationCalendarFilters.value.from_date,
+			to_date: locationCalendarFilters.value.to_date,
+			location: locationCalendarFilters.value.location || null,
+		},
+	});
+}
+
+function debounceLocationCalendar() {
+	window.clearTimeout(locationCalendarDebounce);
+	locationCalendarDebounce = window.setTimeout(() => {
+		void loadLocationCalendar();
+	}, 350);
+}
+
 watch(
 	() => [
 		selectedSchool.value,
+		selectedLocationType.value,
 		timeUtilFilters.value.from_date,
 		timeUtilFilters.value.to_date,
 		timeUtilFilters.value.day_start_time,
@@ -662,7 +1005,12 @@ watch(
 );
 
 watch(
-	() => [selectedSchool.value, capacityFilters.value.from_date, capacityFilters.value.to_date],
+	() => [
+		selectedSchool.value,
+		selectedLocationType.value,
+		capacityFilters.value.from_date,
+		capacityFilters.value.to_date,
+	],
 	() => {
 		if (!canViewAnalytics.value) return;
 		debounceCapacityUtil();
@@ -676,6 +1024,42 @@ watch(
 		capacityFilters.value.to_date = toDate;
 	},
 	{ immediate: true }
+);
+
+watch(
+	() => [
+		selectedSchool.value,
+		locationCalendarFilters.value.from_date,
+		locationCalendarFilters.value.to_date,
+		locationCalendarFilters.value.location,
+	],
+	() => {
+		if (!selectedSchool.value) return;
+		debounceLocationCalendar();
+	},
+	{ immediate: true }
+);
+
+watch(
+	() => selectedSchool.value,
+	(nextSchool, previousSchool) => {
+		if (nextSchool === previousSchool) return;
+		locationCalendarFilters.value.location = '';
+	}
+);
+
+watch(
+	() => locationCalendarLocationOptions.value,
+	optionsList => {
+		const allowed = new Set(optionsList.map(option => option.value));
+		if (
+			locationCalendarFilters.value.location &&
+			!allowed.has(locationCalendarFilters.value.location)
+		) {
+			locationCalendarFilters.value.location = '';
+		}
+	},
+	{ deep: true }
 );
 
 function refreshMetrics() {

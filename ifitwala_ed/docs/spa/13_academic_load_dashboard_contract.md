@@ -49,7 +49,7 @@ Test refs:
 
 Rules:
 
-1. Dashboard access is restricted to `Academic Admin`, `Academic Assistant`, `Assistant Admin`, `Curriculum Coordinator`, `System Manager`, and `Administrator`.
+1. Dashboard access is restricted to `Academic Admin`, `Academic Assistant`, `Curriculum Coordinator`, `System Manager`, and `Administrator`.
 2. `Instructor` and `Academic Staff` do not receive page access or Staff Home discoverability for this dashboard.
 3. Selected school scope must be intersected with `get_authorized_schools(user)` before aggregation.
 4. Parent-school selection includes descendants server-side only.

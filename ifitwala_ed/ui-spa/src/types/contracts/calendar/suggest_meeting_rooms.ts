@@ -7,6 +7,7 @@ export type Request = {
 	date: string
 	start_time: string
 	end_time: string
+	location_type?: string | null
 	capacity_needed?: number | null
 	limit?: number | null
 }

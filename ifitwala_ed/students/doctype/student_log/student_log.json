@@ -228,7 +228,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-16 11:49:01.231113",
+ "modified": "2026-03-22 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",
@@ -282,7 +282,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Counsellor",
+   "role": "Counselor",
    "share": 1,
    "submit": 1,
    "write": 1

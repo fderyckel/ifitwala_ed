@@ -189,7 +189,7 @@
  "image_field": "guardian_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-15 14:48:06.217463",
+ "modified": "2026-03-22 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Guardian",
@@ -288,7 +288,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Counsellor",
+   "role": "Counselor",
    "share": 1
   },
   {

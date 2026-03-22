@@ -42,6 +42,7 @@ class Location(Document):
         # 2) Governance constraints
         self._validate_org_against_parent()
         self._validate_school_organization_membership()
+        self._validate_shared_visibility_requires_school()
 
         # 3) Operational constraints
         self.validate_capacity_against_groups()
@@ -436,6 +437,24 @@ class Location(Document):
                 ),
                 title=_("Stock Location Without School"),
                 indicator="orange",
+            )
+
+    def _validate_shared_visibility_requires_school(self):
+        """
+        Shared descendant-school visibility is only well-defined for school-owned Locations.
+
+        If a Location is shared downward, its School becomes the root of that shared scope.
+        Without a School anchor we cannot safely determine which descendant schools may see it.
+        """
+        if not cint(getattr(self, "shared_with_descendant_schools", 0)):
+            return
+
+        if not self.school:
+            frappe.throw(
+                _(
+                    "Locations shared with descendant schools must have a School set so the shared visibility scope can be resolved."
+                ),
+                title=_("Missing School For Shared Location"),
             )
 
 

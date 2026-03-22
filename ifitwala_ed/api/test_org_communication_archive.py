@@ -64,6 +64,6 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
             ["Academic Staff"],
             {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"},
         )
-        self.assertEqual(result["message"], "<p><strong>Full body</strong></p>")
+        self.assertEqual(result["message_html"], "<p><strong>Full body</strong></p>")
         self.assertEqual(result["audience_label"], "Staff · ISS")
         self.assertEqual(result["audience_summary"], audience_summary)

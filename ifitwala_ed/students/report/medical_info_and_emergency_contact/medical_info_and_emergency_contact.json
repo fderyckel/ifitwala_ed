@@ -10,7 +10,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2025-11-12 07:15:32.540074",
+ "modified": "2026-03-22 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Medical Info And Emergency Contact",
@@ -39,7 +39,7 @@
    "role": "Instructor"
   },
   {
-   "role": "Counsellor"
+   "role": "Counselor"
   },
   {
    "role": "Accreditation Visitor"

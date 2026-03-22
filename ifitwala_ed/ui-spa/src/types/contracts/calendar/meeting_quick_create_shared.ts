@@ -32,5 +32,7 @@ export type MeetingRoomSuggestion = {
 	value: string
 	label: string
 	building?: string | null
+	location_type?: string | null
+	location_type_name?: string | null
 	max_capacity?: number | null
 }

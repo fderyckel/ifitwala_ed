@@ -1,4 +1,5 @@
 # removed most stuff
+ifitwala_ed.patches.canonicalize_role_names
 ifitwala_ed.patches.create_default_academic_load_policies
 ifitwala_ed.patches.normalize_staff_role_home_pages
 ifitwala_ed.patches.backfill_instructor_logs_from_student_groups

@@ -8,7 +8,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.setup.initial_setup import complete_initial_setup
-from ifitwala_ed.setup.setup import create_designations, create_roles_with_homepage
+from ifitwala_ed.setup.setup import create_designations, create_roles_with_homepage, ensure_canonical_role_records
 
 
 class _DummyDoc:
@@ -40,6 +40,16 @@ class TestSetupRoles(FrappeTestCase):
         role.reload()
         self.assertEqual(role.home_page, "/hub/staff")
         self.assertEqual(int(role.desk_access or 0), 1)
+
+    def test_ensure_canonical_role_records_creates_canonical_roles(self):
+        for role_name in ("Academic Assistant", "Counselor"):
+            if frappe.db.exists("Role", role_name):
+                frappe.delete_doc("Role", role_name, force=1, ignore_permissions=True)
+
+        ensure_canonical_role_records()
+
+        self.assertTrue(frappe.db.exists("Role", "Academic Assistant"))
+        self.assertTrue(frappe.db.exists("Role", "Counselor"))
 
     def test_create_designations_skips_without_real_organization(self):
         with (

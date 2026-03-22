@@ -13,12 +13,12 @@ class TestApplicantInterviewFeedback(FrappeTestCase):
         self.school = self._create_school(self.organization)
         self.applicant = self._create_applicant(self.organization, self.school)
 
-        self._ensure_role("Counsellor")
+        self._ensure_role("Counselor")
 
-        self.interviewer = self._create_user("feedback-interviewer", roles=["Counsellor"])
+        self.interviewer = self._create_user("feedback-interviewer", roles=["Counselor"])
         self._create_employee(self.interviewer, first_name="Panel", last_name="Interviewer")
 
-        self.outsider = self._create_user("feedback-outsider", roles=["Counsellor"])
+        self.outsider = self._create_user("feedback-outsider", roles=["Counselor"])
         self._create_employee(self.outsider, first_name="Panel", last_name="Outsider")
 
         self.interview = frappe.get_doc(

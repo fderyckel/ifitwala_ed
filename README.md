@@ -1,6 +1,6 @@
-# 🌱 Ifitwala_Ed
+# 🌱 Ifitwala Ed
 
-### A Unified Institutional Operating System for Education
+## A Unified Institutional Operating System for Education
 
 **Ifitwala_Ed** is an open-source **Institutional Operating System** that replaces fragmented SaaS tools with **one coherent data model, one permission system, and one analytics surface**.
 

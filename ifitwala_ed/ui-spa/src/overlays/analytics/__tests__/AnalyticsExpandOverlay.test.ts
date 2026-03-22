@@ -117,7 +117,7 @@ describe('AnalyticsExpandOverlay', () => {
 						next_step: 'Refer to Counselor',
 						responded_in_label: '3h 30m',
 						responded_at: '2026-03-10 11:30:00',
-						follow_up_author: 'Counsellor Jane',
+						follow_up_author: 'Counselor Jane',
 						comment_text: 'Met student and guardian.',
 					},
 					{

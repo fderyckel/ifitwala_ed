@@ -21,7 +21,7 @@ from ifitwala_ed.api.calendar_core import (
 )
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
-from ifitwala_ed.utilities.location_utils import find_room_conflicts
+from ifitwala_ed.utilities.location_utils import find_room_conflicts, get_visible_location_rows_for_school
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
 QUICK_CREATE_IDEMPOTENCY_TTL_SECONDS = 900
@@ -295,22 +295,110 @@ def _student_group_options_for_scope(user: str, school_scope: list[str]) -> list
     return [{"value": row.name, "label": row.student_group_name or row.name} for row in rows]
 
 
-def _location_options_for_scope(school_scope: list[str], is_admin_like: bool) -> list[dict]:
-    if school_scope:
-        filters = {"school": ["in", school_scope], "is_group": 0}
-    elif is_admin_like:
-        filters = {"is_group": 0}
-    else:
+def _location_options_for_scope(selected_school: str | None, is_admin_like: bool) -> list[dict]:
+    if selected_school:
+        rows = get_visible_location_rows_for_school(
+            selected_school,
+            include_groups=False,
+            only_schedulable=True,
+            fields=[
+                "name",
+                "location_name",
+                "parent_location",
+                "location_type",
+                "maximum_capacity",
+                "is_group",
+            ],
+            order_by="location_name asc",
+            limit=800,
+        )
+        return [
+            {
+                "value": row.get("name"),
+                "label": row.get("location_name") or row.get("name"),
+                "parent_location": row.get("parent_location"),
+                "location_type": row.get("location_type"),
+                "location_type_name": row.get("location_type_name"),
+                "max_capacity": cint(row.get("maximum_capacity"))
+                if row.get("maximum_capacity") not in (None, "")
+                else None,
+            }
+            for row in rows
+        ]
+
+    if not is_admin_like:
         return []
 
     rows = frappe.get_all(
         "Location",
-        filters=filters,
-        fields=["name", "location_name"],
+        filters={"is_group": 0},
+        fields=["name", "location_name", "parent_location"],
         order_by="location_name asc",
         limit=500,
     )
-    return [{"value": row.name, "label": row.location_name or row.name} for row in rows]
+    return [
+        {
+            "value": row.name,
+            "label": row.location_name or row.name,
+            "parent_location": row.parent_location,
+        }
+        for row in rows
+    ]
+
+
+def _location_options_map_for_schools(school_values: list[str], is_admin_like: bool) -> dict[str, list[dict]]:
+    payload: dict[str, list[dict]] = {}
+    for school_value in school_values or []:
+        school_name = _safe_text(school_value)
+        if not school_name:
+            continue
+        payload[school_name] = _location_options_for_scope(school_name, is_admin_like)
+    return payload
+
+
+def _location_type_options_for_scope(selected_school: str | None, is_admin_like: bool) -> list[dict]:
+    if selected_school:
+        rows = get_visible_location_rows_for_school(
+            selected_school,
+            include_groups=False,
+            only_schedulable=True,
+            fields=["name", "location_type", "maximum_capacity", "is_group"],
+            order_by="location_name asc",
+            limit=800,
+        )
+        options = []
+        seen = set()
+        for row in rows:
+            location_type = _safe_text(row.get("location_type"))
+            location_type_label = _safe_text(row.get("location_type_name"))
+            if not location_type or location_type in seen:
+                continue
+            seen.add(location_type)
+            options.append({"value": location_type, "label": location_type_label or location_type})
+        options.sort(key=lambda item: (item.get("label") or "").lower())
+        return options
+
+    if not is_admin_like:
+        return []
+
+    rows = frappe.get_all(
+        "Location Type",
+        filters={"is_schedulable": 1},
+        fields=["name", "location_type_name"],
+        order_by="location_type_name asc",
+        limit=200,
+    )
+    return [{"value": row.name, "label": row.location_type_name or row.name} for row in rows]
+
+
+def _location_type_options_map_for_schools(school_values: list[str], is_admin_like: bool) -> dict[str, list[dict]]:
+    payload: dict[str, list[dict]] = {}
+    for school_value in school_values or []:
+        school_name = _safe_text(school_value)
+        if not school_name:
+            continue
+        payload[school_name] = _location_type_options_for_scope(school_name, is_admin_like)
+    return payload
 
 
 def _cached_select_options(doctype: str, fieldname: str) -> list[str]:
@@ -400,6 +488,69 @@ def _ensure_allowed_school(user: str, school: str | None) -> str | None:
             frappe.PermissionError,
         )
     return school_value
+
+
+def _ensure_allowed_location(user: str, school: str | None, location: str | None) -> str | None:
+    location_value = _safe_text(location) or None
+    if not location_value:
+        return None
+
+    school_value = _safe_text(school) or None
+    scope = _get_quick_create_scope(user)
+    candidate_schools = [school_value] if school_value else []
+    if not candidate_schools and scope.get("base_school"):
+        candidate_schools = [_safe_text(scope.get("base_school"))]
+
+    allowed_locations: set[str] = set()
+    for school_name in candidate_schools:
+        rows = get_visible_location_rows_for_school(
+            school_name,
+            include_groups=False,
+            only_schedulable=True,
+            fields=["name", "location_name", "location_type", "maximum_capacity", "is_group"],
+            order_by="location_name asc",
+            limit=800,
+        )
+        allowed_locations.update(row.get("name") for row in rows if row.get("name"))
+
+    if not candidate_schools and bool(scope.get("is_admin_like")):
+        admin_rows = frappe.get_all(
+            "Location",
+            filters={"is_group": 0},
+            fields=["name"],
+            limit=800,
+        )
+        allowed_locations.update(row.name for row in admin_rows if row.name)
+
+    if location_value not in allowed_locations:
+        frappe.throw(
+            _("You are not allowed to use location {0} for the selected host school.").format(location_value),
+            frappe.PermissionError,
+        )
+
+    return location_value
+
+
+def _ensure_allowed_location_type(user: str, school: str | None, location_type: str | None) -> str | None:
+    location_type_value = _safe_text(location_type) or None
+    if not location_type_value:
+        return None
+
+    school_value = _safe_text(school) or None
+    scope = _get_quick_create_scope(user)
+    selected_school = school_value or _safe_text(scope.get("base_school")) or None
+    type_options = _location_type_options_for_scope(selected_school, bool(scope.get("is_admin_like")))
+    allowed = {row.get("value") for row in type_options if row.get("value")}
+
+    if location_type_value not in allowed:
+        frappe.throw(
+            _("You are not allowed to filter by location type {0} for the selected host school.").format(
+                location_type_value
+            ),
+            frappe.PermissionError,
+        )
+
+    return location_type_value
 
 
 def _ensure_allowed_team(user: str, team: str | None) -> str | None:
@@ -1061,16 +1212,21 @@ def _build_slot_payload(
     return payload
 
 
-def _room_rows_for_school_scope(school: str, capacity_needed: int) -> list[dict]:
-    school_scope = get_descendant_schools(school) or [school]
-    filters = {"school": ["in", school_scope], "is_group": 0}
-    if capacity_needed > 0:
-        filters["maximum_capacity"] = [">=", capacity_needed]
-
-    return frappe.get_all(
-        "Location",
-        filters=filters,
-        fields=["name", "location_name", "parent_location", "maximum_capacity"],
+def _room_rows_for_school_scope(school: str, capacity_needed: int, *, location_type: str | None = None) -> list[dict]:
+    return get_visible_location_rows_for_school(
+        school,
+        include_groups=False,
+        only_schedulable=True,
+        location_types=[location_type] if location_type else None,
+        capacity_needed=capacity_needed if capacity_needed > 0 else None,
+        fields=[
+            "name",
+            "location_name",
+            "parent_location",
+            "maximum_capacity",
+            "location_type",
+            "is_group",
+        ],
         order_by="location_name asc",
         limit=300,
     )
@@ -1091,6 +1247,8 @@ def _rank_room_suggestions(room_rows: list[dict], *, capacity_needed: int) -> li
                 "value": room_name,
                 "label": row.get("location_name") or room_name,
                 "building": row.get("parent_location"),
+                "location_type": row.get("location_type"),
+                "location_type_name": row.get("location_type_name"),
                 "max_capacity": max_capacity,
                 "_capacity_delta": capacity_delta,
             }
@@ -1109,6 +1267,8 @@ def _rank_room_suggestions(room_rows: list[dict], *, capacity_needed: int) -> li
             "value": row["value"],
             "label": row["label"],
             "building": row.get("building"),
+            "location_type": row.get("location_type"),
+            "location_type_name": row.get("location_type_name"),
             "max_capacity": row.get("max_capacity"),
         }
         for row in ranked
@@ -1197,6 +1357,21 @@ def get_event_quick_create_options():
     elif school_options:
         default_school = school_options[0].get("value")
 
+    school_values = [row.get("value") for row in school_options if row.get("value")]
+    is_admin_like = bool(scope.get("is_admin_like"))
+    locations_by_school = _location_options_map_for_schools(school_values, is_admin_like)
+    location_types_by_school = _location_type_options_map_for_schools(school_values, is_admin_like)
+    default_locations = (
+        locations_by_school.get(default_school or "", [])
+        if default_school
+        else _location_options_for_scope(None, is_admin_like)
+    )
+    default_location_types = (
+        location_types_by_school.get(default_school or "", [])
+        if default_school
+        else _location_type_options_for_scope(None, is_admin_like)
+    )
+
     payload = {
         "can_create_meeting": can_create_meeting,
         "can_create_school_event": can_create_school_event,
@@ -1206,7 +1381,10 @@ def get_event_quick_create_options():
         "schools": school_options,
         "teams": _team_options_for_scope(user, scope.get("school_scope") or [], bool(scope.get("is_admin_like"))),
         "student_groups": _student_group_options_for_scope(user, scope.get("school_scope") or []),
-        "locations": _location_options_for_scope(scope.get("school_scope") or [], bool(scope.get("is_admin_like"))),
+        "locations": default_locations,
+        "locations_by_school": locations_by_school,
+        "location_types": default_location_types,
+        "location_types_by_school": location_types_by_school,
         "attendee_kinds": [
             {"value": "employee", "label": "Employees"},
             {"value": "student", "label": "Students"},
@@ -1345,6 +1523,7 @@ def suggest_meeting_slots(
     day_start_time: str | None = None,
     day_end_time: str | None = None,
     school: str | None = None,
+    location_type: str | None = None,
     require_room: object | None = None,
 ):
     user = frappe.session.user
@@ -1378,10 +1557,12 @@ def suggest_meeting_slots(
 
     require_room_value = _coerce_flag(require_room)
     school_value = None
+    location_type_value = None
     if require_room_value:
         school_value = _ensure_allowed_school(user, school)
         if not school_value:
             frappe.throw(_("Host school is required before room-aware common times can be ranked."))
+        location_type_value = _ensure_allowed_location_type(user, school_value, location_type)
 
     cache_key = _json_cache_key(
         "ifitwala_ed:event_quick_create:slot_suggestions",
@@ -1394,6 +1575,7 @@ def suggest_meeting_slots(
             "day_start_time": str(day_start),
             "day_end_time": str(day_end),
             "school": school_value,
+            "location_type": location_type_value,
             "require_room": require_room_value,
         },
     )
@@ -1420,7 +1602,11 @@ def suggest_meeting_slots(
     room_capacity_target = attendee_count + 1
     if require_room_value and school_value:
         ranked_room_candidates = _rank_room_suggestions(
-            _room_rows_for_school_scope(school_value, room_capacity_target),
+            _room_rows_for_school_scope(
+                school_value,
+                room_capacity_target,
+                location_type=location_type_value,
+            ),
             capacity_needed=room_capacity_target,
         )
         busy_by_room = _collect_room_busy_windows(ranked_room_candidates, window_start, window_end)
@@ -1482,6 +1668,8 @@ def suggest_meeting_slots(
             notes.append(_("Exact matches already include at least one free room in the selected school scope."))
         else:
             notes.append(_("No rooms are configured for the selected school scope."))
+        if location_type_value:
+            notes.append(_("Room ranking is limited to location type {0}.").format(location_type_value))
         if room_blocked_exact_slots:
             notes.append(
                 _(
@@ -1514,6 +1702,7 @@ def suggest_meeting_rooms(
     date: str | None = None,
     start_time: str | None = None,
     end_time: str | None = None,
+    location_type: str | None = None,
     capacity_needed: int | None = None,
     limit: int | None = None,
 ):
@@ -1523,6 +1712,7 @@ def suggest_meeting_rooms(
     school_value = _ensure_allowed_school(user, school)
     if not school_value:
         frappe.throw(_("Host school is required before suggesting rooms."))
+    location_type_value = _ensure_allowed_location_type(user, school_value, location_type)
 
     target_date = _coerce_date_required(date, _("Meeting date"))
     start_value = _coerce_time_required(start_time, _("Start time"))
@@ -1547,6 +1737,7 @@ def suggest_meeting_rooms(
             "date": target_date.isoformat(),
             "start": str(start_value),
             "end": str(end_value),
+            "location_type": location_type_value,
             "capacity": cap_needed,
             "limit": room_limit,
         },
@@ -1558,7 +1749,11 @@ def suggest_meeting_rooms(
         if isinstance(parsed, dict):
             return parsed
 
-    rows = _room_rows_for_school_scope(school_value, cap_needed)
+    rows = _room_rows_for_school_scope(
+        school_value,
+        cap_needed,
+        location_type=location_type_value,
+    )
     if not rows:
         payload = {
             "rooms": [],
@@ -1582,7 +1777,11 @@ def suggest_meeting_rooms(
 
     payload = {
         "rooms": available_rooms[:room_limit],
-        "notes": [],
+        "notes": (
+            [_("Room suggestions are limited to location type {0}.").format(location_type_value)]
+            if location_type_value
+            else []
+        ),
     }
     cache.set_value(cache_key, frappe.as_json(payload), expires_in_sec=ROOM_SUGGESTION_CACHE_TTL_SECONDS)
     return payload
@@ -1674,6 +1873,7 @@ def create_meeting_quick(
     end_value = _safe_text(end_time)
     team_value = _ensure_allowed_team(user, team)
     school_value = _ensure_allowed_school(user, school)
+    location_value = _ensure_allowed_location(user, school_value, location)
     request_id = _safe_text(client_request_id)
 
     if not request_id:
@@ -1717,8 +1917,8 @@ def create_meeting_quick(
             if fallback_school:
                 payload["school"] = fallback_school
 
-        if _safe_text(location):
-            payload["location"] = _safe_text(location)
+        if location_value:
+            payload["location"] = location_value
         if _safe_text(meeting_category):
             payload["meeting_category"] = _safe_text(meeting_category)
         if _safe_text(virtual_meeting_link):
@@ -1816,6 +2016,8 @@ def create_school_event_quick(
     if audience_value == "Students in Student Group" and not student_group_value:
         frappe.throw(_("Student Group is required for 'Students in Student Group' audience."), frappe.ValidationError)
 
+    school_value = _ensure_allowed_school(user, school_value)
+    location_value = _ensure_allowed_location(user, school_value, location)
     participants = _parse_user_list(custom_participants)
     if audience_value == "Custom Users" and not participants:
         participants = [user]
@@ -1841,8 +2043,8 @@ def create_school_event_quick(
             "all_day": cint(all_day),
             "audience": [audience_row],
         }
-        if _safe_text(location):
-            payload["location"] = _safe_text(location)
+        if location_value:
+            payload["location"] = location_value
         if _safe_text(description):
             payload["description"] = description
         if reference_type_value:

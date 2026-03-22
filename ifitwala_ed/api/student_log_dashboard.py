@@ -18,7 +18,7 @@ from ifitwala_ed.students.doctype.student_log.student_log import (
 ALLOWED_ANALYTICS_ROLES = {
     "Academic Admin",
     "Pastoral Lead",
-    "Counsellor",
+    "Counselor",
     "Learning Support",
     "Curriculum Coordinator",
     "Accreditation Visitor",

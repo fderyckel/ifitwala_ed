@@ -24,7 +24,6 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_school
 ALLOWED_ANALYTICS_ROLES = {
     "Academic Admin",
     "Academic Assistant",
-    "Assistant Admin",
     "Curriculum Coordinator",
     "System Manager",
     "Administrator",
@@ -33,7 +32,6 @@ ALLOWED_ANALYTICS_ROLES = {
 ACADEMIC_ROLE_OPTIONS = [
     "Academic Admin",
     "Academic Assistant",
-    "Assistant Admin",
     "Curriculum Coordinator",
     "Academic Staff",
     "Instructor",

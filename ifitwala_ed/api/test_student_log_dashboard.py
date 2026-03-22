@@ -107,7 +107,7 @@ class TestStudentLogDashboard(TestCase):
                         "name": "SLFU-0001",
                         "student_log": "SLOG-0001",
                         "date": "2026-03-10",
-                        "follow_up_author": "Counsellor Jane",
+                        "follow_up_author": "Counselor Jane",
                         "follow_up": "<p>Met student and guardian.</p>",
                         "responded_at": "2026-03-10 11:30:00",
                     }

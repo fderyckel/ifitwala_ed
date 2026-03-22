@@ -27,6 +27,7 @@ def setup_education():
     ensure_initial_setup_flag()
     ensure_root_organization()
     create_roles_with_homepage()
+    ensure_canonical_role_records()
     ensure_leave_roles()
     grant_role_read_select_to_hr()
     create_designations()
@@ -116,6 +117,25 @@ def create_roles_with_homepage():
             frappe.get_doc({"doctype": "Role", **role}).insert(ignore_permissions=True)
 
 
+def ensure_canonical_role_records():
+    """Ensure role records exist for canonical role names used in seed data."""
+    roles = [
+        {"role_name": "Academic Assistant", "desk_access": 1},
+        {"role_name": "Counselor", "desk_access": 1},
+    ]
+
+    for role in roles:
+        existing = frappe.db.exists("Role", role["role_name"])
+        if existing:
+            doc = frappe.get_doc("Role", role["role_name"])
+            if int(doc.desk_access or 0) != int(role["desk_access"]):
+                doc.desk_access = role["desk_access"]
+                doc.save(ignore_permissions=True)
+            continue
+
+        frappe.get_doc({"doctype": "Role", **role}).insert(ignore_permissions=True)
+
+
 def ensure_leave_roles():
     for role_name in ["Leave Approver"]:
         if not frappe.db.exists("Role", role_name):
@@ -196,7 +216,7 @@ def create_designations():
             "doctype": "Designation",
             "designation_name": "Counsellor",
             "organization": organization,
-            "default_role_profile": "Counsellor",
+            "default_role_profile": "Counselor",
             "default_workspace": "Counseling",
         },
         {
@@ -274,7 +294,7 @@ def add_other_records(country=None):
             "associated_role": "Curriculum Coordinator",
         },
         {"doctype": "Student Log Next Step", "next_step": "Refer to Patoral Lead"},
-        {"doctype": "Student Log Next Step", "next_step": "Refer to counseling", "associated_role": "Counsellor"},
+        {"doctype": "Student Log Next Step", "next_step": "Refer to counseling", "associated_role": "Counselor"},
         {
             "doctype": "Student Log Next Step",
             "next_step": "Refer to academic admin",
@@ -440,7 +460,6 @@ def grant_core_crm_permissions():
             "Admission Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Academic Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Academic Assistant": ["read", "write", "create", "delete", "email", "comment", "assign"],
-            "Assistant Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Accounts User": ["read", "write", "create", "email", "comment", "assign"],
             "Accounts Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
         },
