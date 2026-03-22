@@ -142,7 +142,7 @@ async function loadMessages() {
 			context_doctype: 'Student Applicant',
 			context_name: applicantName.value,
 			limit_start: 0,
-			limit_page_length: 120,
+			limit: 120,
 		});
 		messages.value = payload.messages || [];
 		const unread = Number(payload.unread_count || 0);

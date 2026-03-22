@@ -92,7 +92,7 @@ class AccountingTestMixin:
             "Fiscal Year Organization",
             filters={"organization": organization},
             fields=["parent"],
-            limit_page_length=100,
+            limit=100,
         )
         for row in existing:
             fiscal_year = frappe.get_doc("Fiscal Year", row.parent)

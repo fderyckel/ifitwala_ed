@@ -178,7 +178,7 @@ async function validatePreviewSeoRules(frm) {
 		definitionRows = await frappe.db.get_list("Website Block Definition", {
 			fields: ["block_type", "seo_role"],
 			filters: { block_type: ["in", blockTypes] },
-			limit_page_length: blockTypes.length
+			limit: blockTypes.length
 		});
 	} catch (err) {
 		frappe.msgprint(__("Unable to validate block SEO rules before preview."));

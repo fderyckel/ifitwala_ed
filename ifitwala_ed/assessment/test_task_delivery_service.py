@@ -34,6 +34,6 @@ class TestTaskDeliveryService(TestCase):
                     "active": 1,
                 },
                 "pluck": "student",
-                "limit_page_length": 0,
+                "limit": 0,
             },
         )

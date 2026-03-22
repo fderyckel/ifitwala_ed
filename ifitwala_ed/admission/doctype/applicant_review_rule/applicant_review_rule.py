@@ -101,6 +101,6 @@ def get_reviewer_role_options(doctype, txt, searchfield, start, page_len, filter
         fields=["name"],
         order_by="name asc",
         limit_start=start,
-        limit_page_length=page_len,
+        limit=page_len,
         as_list=True,
     )

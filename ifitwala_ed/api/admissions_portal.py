@@ -746,7 +746,7 @@ def _resolve_guardian_image_file(*, applicant_name: str, guardian_image: str | N
         filters={"file_url": image_value},
         fields=["name", "file_url", "attached_to_doctype", "attached_to_name", "attached_to_field"],
         order_by="creation desc",
-        limit_page_length=5,
+        limit=5,
     )
     for row in file_rows:
         if _file_is_scoped_to_applicant(file_row=row, applicant_name=applicant_name):
@@ -1252,7 +1252,7 @@ def _get_applicant_rows_for_user(
         "Student Applicant",
         filters={"name": ["in", applicant_names]},
         fields=selected_fields,
-        limit_page_length=limit,
+        limit=limit,
         order_by="creation asc",
     )
 
@@ -1352,7 +1352,7 @@ def _resolve_family_guardian_context(*, student_applicant: str, user: str) -> st
             "can_consent": 1,
         },
         fields=["guardian"],
-        limit_page_length=5,
+        limit=5,
         order_by="is_primary desc, idx asc",
     )
     for row in direct_rows:
@@ -1372,7 +1372,7 @@ def _resolve_family_guardian_context(*, student_applicant: str, user: str) -> st
                 "can_consent": 1,
             },
             fields=["guardian"],
-            limit_page_length=5,
+            limit=5,
             order_by="is_primary desc, idx asc",
         )
         for row in linked_rows:
@@ -2624,7 +2624,7 @@ def get_applicant_policies(student_applicant: str | None = None):
         "Policy Version",
         filters={"name": ["in", versions]},
         fields=["name", "policy_text"],
-        limit_page_length=max(20, len(versions)),
+        limit=max(20, len(versions)),
     )
     policy_text_by_version = {
         (row_version.get("name") or "").strip(): row_version.get("policy_text") or ""

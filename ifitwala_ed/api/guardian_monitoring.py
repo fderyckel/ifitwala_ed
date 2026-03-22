@@ -77,7 +77,7 @@ def _get_monitoring_logs(*, user: str, student_names: list[str], days: int) -> l
         },
         fields=["name", "student", "student_name", "date", "time", "follow_up_status", "log"],
         order_by="date desc, time desc, modified desc",
-        limit_page_length=200,
+        limit=200,
     )
     unread_names = set(
         _get_unread_reference_names(user, "Student Log", [row.get("name") for row in rows if row.get("name")])
@@ -126,7 +126,7 @@ def _get_monitoring_results(*, student_names: list[str], days: int) -> list[dict
             "official_feedback",
         ],
         order_by="published_on desc, modified desc",
-        limit_page_length=200,
+        limit=200,
     )
     task_names = sorted({(row.get("task") or "").strip() for row in rows if (row.get("task") or "").strip()})
     task_rows = frappe.get_all(

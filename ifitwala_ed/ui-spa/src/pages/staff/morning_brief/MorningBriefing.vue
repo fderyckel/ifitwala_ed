@@ -909,7 +909,7 @@ async function refreshInteractionThread(orgCommunication: string, opts?: { silen
 		interactionThreadRows.value = await interactionService.getCommunicationThread({
 			org_communication: orgCommunication,
 			limit_start: 0,
-			limit_page_length: 30,
+			limit: 30,
 		});
 	} catch (err) {
 		interactionThreadRows.value = [];

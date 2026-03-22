@@ -67,7 +67,7 @@ class TestApplicantInterview(FrappeTestCase):
             },
             fields=["content"],
             order_by="creation desc",
-            limit_page_length=10,
+            limit=10,
         )
         payload = "\n".join(row.get("content") or "" for row in comments)
         self.assertIn(interview.name, payload)
@@ -1164,7 +1164,7 @@ class TestApplicantInterview(FrappeTestCase):
             },
             fields=["content"],
             order_by="creation asc",
-            limit_page_length=50,
+            limit=50,
         )
         marker = f"/desk/applicant-interview/{interview_name}"
         return [row for row in comments if marker in (row.get("content") or "")]
@@ -1179,7 +1179,7 @@ class TestApplicantInterview(FrappeTestCase):
             "Applicant Interviewer",
             filters={"parent": interview_name},
             fields=["name", "interviewer"],
-            limit_page_length=20,
+            limit=20,
         )
         if not rows:
             interview = frappe.get_doc("Applicant Interview", interview_name)
@@ -1189,7 +1189,7 @@ class TestApplicantInterview(FrappeTestCase):
                 "Applicant Interviewer",
                 filters={"parent": interview_name},
                 fields=["name", "interviewer"],
-                limit_page_length=20,
+                limit=20,
             )
 
         for row in rows:

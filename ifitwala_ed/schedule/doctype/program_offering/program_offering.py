@@ -518,7 +518,7 @@ class ProgramOffering(Document):
                 "student_group_name",
                 "student_group_abbreviation",
             ],
-            limit_page_length=max(200, len(group_names) + 20),
+            limit=max(200, len(group_names) + 20),
         )
         group_map = {g.get("name"): g for g in group_rows}
 
@@ -572,7 +572,7 @@ class ProgramOffering(Document):
             "Academic Year",
             filters={"name": ["in", ay_names]},
             fields=["name", "year_start_date", "year_end_date"],
-            limit_page_length=max(200, len(ay_names) + 20),
+            limit=max(200, len(ay_names) + 20),
         )
         dates = []
         for row in ay_rows:
@@ -706,7 +706,7 @@ class ProgramOffering(Document):
                     "instructor",
                     "employee",
                 ],
-                limit_page_length=5000,
+                limit=5000,
             )
             if not schedule_rows:
                 section_payload["errors"].append(_("Student Group has no schedule rows."))
@@ -748,7 +748,7 @@ class ProgramOffering(Document):
                     "Instructor",
                     filters={"name": ["in", sorted(instructor_names)]},
                     fields=["name", "employee"],
-                    limit_page_length=max(200, len(instructor_names) + 20),
+                    limit=max(200, len(instructor_names) + 20),
                 )
                 for irow in rows_i:
                     instructor_cache[irow.get("name")] = (irow.get("employee") or "").strip()

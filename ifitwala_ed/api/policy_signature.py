@@ -258,7 +258,7 @@ def get_policy_version_history_rows(institutional_policy: str | None) -> list[di
             "modified",
         ],
         order_by="creation desc, modified desc",
-        limit_page_length=0,
+        limit=0,
     )
     out = []
     for row in rows:
@@ -527,7 +527,7 @@ def find_open_staff_policy_todos(*, user: str, policy_version: str) -> list[dict
         },
         fields=["name", "date", "description", "assigned_by", "assigned_by_full_name"],
         order_by="modified desc",
-        limit_page_length=200,
+        limit=200,
     )
 
 
@@ -609,7 +609,7 @@ def _target_employees(*, organization: str, school: str | None, employee_group: 
         filters=filters,
         fields=["name", "employee_full_name", "organization", "school", "employee_group", "user_id"],
         order_by="name asc",
-        limit_page_length=0,
+        limit=0,
     )
 
     out = []
@@ -635,7 +635,7 @@ def _acknowledged_employee_names(policy_version: str, employee_names: list[str])
             "context_name": ["in", tuple(names)],
         },
         fields=["context_name"],
-        limit_page_length=0,
+        limit=0,
     )
     return {(row.get("context_name") or "").strip() for row in rows if (row.get("context_name") or "").strip()}
 
@@ -654,7 +654,7 @@ def _open_todo_users(policy_version: str, users: list[str]) -> set[str]:
             "status": "Open",
         },
         fields=["allocated_to"],
-        limit_page_length=0,
+        limit=0,
     )
     return {(row.get("allocated_to") or "").strip() for row in rows if (row.get("allocated_to") or "").strip()}
 
@@ -757,7 +757,7 @@ def get_staff_policy_campaign_options(
             "School",
             filters={"organization": ["in", tuple(org_scope)]},
             fields=["name"],
-            limit_page_length=0,
+            limit=0,
         )
         school_options = sorted(
             {(row.get("name") or "").strip() for row in school_rows if (row.get("name") or "").strip()}
@@ -1149,7 +1149,7 @@ def get_staff_policy_signature_dashboard(
             },
             fields=["context_name", "acknowledged_at", "acknowledged_by"],
             order_by="acknowledged_at desc",
-            limit_page_length=0,
+            limit=0,
         )
         if employee_names
         else []

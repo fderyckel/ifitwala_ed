@@ -51,7 +51,7 @@ export type AdmissionsCaseThreadRequest = {
   context_doctype: 'Student Applicant'
   context_name: string
   limit_start?: number
-  limit_page_length?: number
+  limit?: number
 }
 
 export type AdmissionsCaseMessage = {

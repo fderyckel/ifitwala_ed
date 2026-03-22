@@ -15,5 +15,5 @@ export type Response = {
   start: number
   page_length: number
   limit_start?: number
-  limit_page_length?: number
+  limit?: number
 }

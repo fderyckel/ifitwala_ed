@@ -57,7 +57,7 @@ def _latest_assignment_file_row(assignment_doc) -> dict | None:
         },
         fields=["name", "file_url", "file_name", "is_private", "creation"],
         order_by="creation desc",
-        limit_page_length=1,
+        limit=1,
     )
     return rows[0] if rows else None
 

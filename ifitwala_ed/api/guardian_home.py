@@ -424,7 +424,7 @@ def _build_task_bundle(
             "official_feedback",
         ],
         order_by="published_on desc, modified desc",
-        limit_page_length=50,
+        limit=50,
     )
 
     recent_task_results: List[Dict[str, Any]] = []
@@ -844,7 +844,7 @@ def _build_student_log_bundle(anchor: date, student_names: List[str]) -> Dict[st
         },
         fields=["name", "student", "date", "time", "follow_up_status", "log"],
         order_by="date desc, time desc, modified desc",
-        limit_page_length=200,
+        limit=200,
     )
     if not rows:
         return {"attention_items": [], "recent_activity_items": [], "unread_count": 0}
@@ -912,7 +912,7 @@ def _build_attendance_attention(anchor: date, student_names: List[str]) -> List[
         filters={"student": ["in", student_names], "attendance_date": ["between", [window_start, anchor]]},
         fields=["student", "attendance_date", "attendance_time", "attendance_code", "whole_day"],
         order_by="attendance_date desc, attendance_time desc, modified desc",
-        limit_page_length=200,
+        limit=200,
     )
     if not rows:
         return []

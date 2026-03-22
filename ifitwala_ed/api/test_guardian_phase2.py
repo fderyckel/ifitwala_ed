@@ -160,7 +160,7 @@ class TestGuardianFinancePhase2(FrappeTestCase):
     def test_finance_scope_authorizes_account_holder_by_email_match(self):
         children = [{"student": "STU-1", "full_name": "Amina Example", "school": "SCHOOL-1"}]
 
-        def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit_page_length=None):
+        def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=None):
             if doctype == "Student":
                 return [
                     {

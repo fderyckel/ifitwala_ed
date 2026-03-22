@@ -154,7 +154,7 @@ def get_assignable_roles(doctype, txt, searchfield, start, page_len, filters):
         fields=["name"],
         order_by="name asc",
         limit_start=start,
-        limit_page_length=page_len,
+        limit=page_len,
         as_list=True,  # return list-of-lists for link queries
     )
 

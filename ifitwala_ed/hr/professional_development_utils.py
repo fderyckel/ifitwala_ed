@@ -70,7 +70,7 @@ def get_current_academic_year_for_school(school: str) -> str | None:
         filters={"school": school, "archived": 0},
         fields=["name", "year_start_date", "year_end_date"],
         order_by="year_start_date ASC",
-        limit_page_length=200,
+        limit=200,
     )
     if not rows:
         return None
@@ -1239,7 +1239,7 @@ def build_my_growth_board(user: str | None = None) -> dict[str, Any]:
             "requires_override",
         ],
         order_by="start_datetime DESC",
-        limit_page_length=50,
+        limit=50,
     )
     record_rows = frappe.get_all(
         "Professional Development Record",
@@ -1257,7 +1257,7 @@ def build_my_growth_board(user: str | None = None) -> dict[str, Any]:
             "professional_development_outcome",
         ],
         order_by="start_datetime DESC",
-        limit_page_length=50,
+        limit=50,
     )
     budget_rows = context["options"]["budgets"]
 
@@ -1320,7 +1320,7 @@ def handle_academic_year_close_for_professional_development(
             "status": ["in", ["Draft", "Submitted", "Under Review", "Approved"]],
         },
         fields=["name", "status"],
-        limit_page_length=500,
+        limit=500,
     )
     open_records = frappe.get_all(
         "Professional Development Record",
@@ -1330,7 +1330,7 @@ def handle_academic_year_close_for_professional_development(
             "status": ["in", ["Planned", "Attended", "Completed"]],
         },
         fields=["name", "status"],
-        limit_page_length=500,
+        limit=500,
     )
 
     if settings.get("pd_year_close_policy") == "Require Manual Carry Forward" and (open_requests or open_records):

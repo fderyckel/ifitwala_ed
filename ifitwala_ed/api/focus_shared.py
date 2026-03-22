@@ -159,7 +159,7 @@ def _can_read_student_log(name: str) -> bool:
             STUDENT_LOG_DOCTYPE,
             filters={"name": name},
             fields=["name"],
-            limit_page_length=1,
+            limit=1,
         )
         return bool(rows)
     except Exception:
@@ -175,7 +175,7 @@ def _can_read_inquiry(name: str) -> bool:
             INQUIRY_DOCTYPE,
             filters={"name": name},
             fields=["name"],
-            limit_page_length=1,
+            limit=1,
         )
         return bool(rows)
     except Exception:

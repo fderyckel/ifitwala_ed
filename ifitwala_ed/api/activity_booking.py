@@ -145,7 +145,7 @@ def _sales_invoice_outstanding_map(invoice_names: list[str]) -> dict[str, float]
         "Sales Invoice",
         filters={"name": ["in", names]},
         fields=["name", "outstanding_amount"],
-        limit_page_length=max(50, len(names) + 10),
+        limit=max(50, len(names) + 10),
     )
     return {row.get("name"): flt(row.get("outstanding_amount") or 0) for row in rows}
 
@@ -208,7 +208,7 @@ def _activity_sections(program_offering: str) -> list[dict]:
             "allow_waitlist",
         ],
         order_by="priority_tier asc, idx asc",
-        limit_page_length=2000,
+        limit=2000,
     )
     return rows or []
 
@@ -371,7 +371,7 @@ def _student_overlap_for_section(
             "allocated_student_group": ["is", "set"],
         },
         fields=["name", "allocated_student_group", "program_offering", "status"],
-        limit_page_length=2000,
+        limit=2000,
     )
 
     for row in existing_rows:
@@ -749,7 +749,7 @@ def allocate_activity_bookings(program_offering: str, dry_run: int = 0):
         },
         fields=["name", "student", "choices_json", "status"],
         order_by="creation asc",
-        limit_page_length=5000,
+        limit=5000,
     )
     if not pending:
         return {"ok": True, "allocated": 0, "waitlisted": 0, "total": 0}
@@ -1079,7 +1079,7 @@ def get_activity_booking_logistics(student: str, program_offering: str | None = 
             "sales_invoice",
         ],
         order_by="modified desc",
-        limit_page_length=200,
+        limit=200,
     )
     invoice_outstanding = _sales_invoice_outstanding_map([row.get("sales_invoice") for row in rows])
 
@@ -1155,7 +1155,7 @@ def get_student_activity_bookings(student: str, program_offering: str | None = N
             "choices_json",
         ],
         order_by="modified desc",
-        limit_page_length=200,
+        limit=200,
     )
     invoice_outstanding = _sales_invoice_outstanding_map([row.get("sales_invoice") for row in rows])
 
@@ -1214,7 +1214,7 @@ def _student_rows(student_names: list[str]) -> list[dict]:
             "anchor_school",
             "enabled",
         ],
-        limit_page_length=max(100, len(names) + 20),
+        limit=max(100, len(names) + 20),
     )
     row_map = {row.get("name"): row for row in rows if cint(row.get("enabled") or 0) == 1}
     out = []
@@ -1398,7 +1398,7 @@ def get_activity_portal_board(students=None, include_inactive: int = 0):
                 "choices_json",
             ],
             order_by="modified desc",
-            limit_page_length=2000,
+            limit=2000,
         )
     invoice_outstanding = _sales_invoice_outstanding_map([row.get("sales_invoice") for row in booking_rows])
     bookings_by_student = {student: [] for student in student_names}
@@ -1462,7 +1462,7 @@ def get_activity_portal_board(students=None, include_inactive: int = 0):
             "activity_billable_offering",
         ],
         order_by="modified desc",
-        limit_page_length=2000,
+        limit=2000,
     )
 
     program_names = [row.get("program") for row in offering_rows if row.get("program")]
@@ -1471,13 +1471,13 @@ def get_activity_portal_board(students=None, include_inactive: int = 0):
         "Program",
         filters={"name": ["in", sorted(set(program_names))]} if program_names else {"name": ["in", [""]]},
         fields=["name", "program_name", "program_abbreviation"],
-        limit_page_length=max(100, len(set(program_names)) + 20),
+        limit=max(100, len(set(program_names)) + 20),
     )
     school_rows = frappe.get_all(
         "School",
         filters={"name": ["in", sorted(set(school_names))]} if school_names else {"name": ["in", [""]]},
         fields=["name", "school_name", "abbr"],
-        limit_page_length=max(100, len(set(school_names)) + 20),
+        limit=max(100, len(set(school_names)) + 20),
     )
     program_map = {row.get("name"): row for row in program_rows}
     school_map = {row.get("name"): row for row in school_rows}
@@ -1507,7 +1507,7 @@ def get_activity_portal_board(students=None, include_inactive: int = 0):
             "Student Group",
             filters={"name": ["in", section_names]} if section_names else {"name": ["in", [""]]},
             fields=["name", "student_group_name", "maximum_size"],
-            limit_page_length=max(100, len(section_names) + 20),
+            limit=max(100, len(section_names) + 20),
         )
         sg_map = {sg.get("name"): sg for sg in sg_rows}
         reserved_rows = frappe.db.sql(

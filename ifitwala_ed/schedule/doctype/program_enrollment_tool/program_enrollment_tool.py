@@ -435,7 +435,7 @@ class ProgramEnrollmentTool(Document):
             },
             fields=["name", "student", "status", "validation_status", "requires_override", "modified"],
             order_by="modified desc",
-            limit_page_length=5000,
+            limit=5000,
         )
         output = {}
         for row in rows:
@@ -457,7 +457,7 @@ class ProgramEnrollmentTool(Document):
             },
             fields=["name", "student"],
             order_by="modified desc",
-            limit_page_length=5000,
+            limit=5000,
         )
         output = {}
         parent_to_student = {}
@@ -478,7 +478,7 @@ class ProgramEnrollmentTool(Document):
             },
             fields=["parent", "course", "status", "credited_basket_group"],
             order_by="idx asc",
-            limit_page_length=5000,
+            limit=5000,
         )
         for row in course_rows:
             student = parent_to_student.get(row.parent)

@@ -108,7 +108,7 @@ def _resolve_org_root_school(organization: str) -> str:
         filters={"organization": organization},
         fields=["name", "lft", "rgt"],
         order_by="lft asc",
-        limit_page_length=0,
+        limit=0,
     )
     if not schools:
         frappe.throw(_("No schools were found for this organization."))
@@ -136,7 +136,7 @@ def _get_organization_schools(organization: str) -> list[str]:
         filters={"organization": organization},
         fields=["name"],
         order_by="lft asc, name asc",
-        limit_page_length=0,
+        limit=0,
     )
     return [(row.get("name") or "").strip() for row in schools if (row.get("name") or "").strip()]
 

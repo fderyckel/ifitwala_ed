@@ -328,7 +328,7 @@ def get_org_communication_feed(
     start: int | None = None,
     page_length: int | None = None,
     limit_start: int = 0,
-    limit_page_length: int = 30,
+    limit: int = 30,
     # Legacy params (kept to avoid breaking older callers)
     search_text: str | None = None,
     status: str | None = None,
@@ -421,7 +421,7 @@ def get_org_communication_feed(
 
     # Pagination params (start/page_length preferred over legacy limit_start/page_length)
     offset = int(start if start is not None else limit_start or 0)
-    page_len = int(page_length if page_length is not None else limit_page_length or 30)
+    page_len = int(page_length if page_length is not None else limit or 30)
 
     base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
 
@@ -666,7 +666,7 @@ def get_org_communication_feed(
         "items": paged_items,
         "total_count": total_count,
         "limit_start": offset,
-        "limit_page_length": page_len,
+        "limit": page_len,
         "start": offset,
         "page_length": page_len,
         "has_more": (offset + page_len) < total_count,

@@ -70,6 +70,7 @@ Before implementing workflow/UI changes, ask:
 
 - Runtime baseline is **Frappe Framework v16**.
 - Any workflow, setup, patch, or instruction that pins framework version must target **`version-16`**.
+- For Frappe list/query pagination in Python, JS, and typed contracts, use `limit`, never `limit_page_length`.
 
 ---
 

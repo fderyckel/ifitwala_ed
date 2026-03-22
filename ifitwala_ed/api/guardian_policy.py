@@ -193,7 +193,7 @@ def _children_with_signer_authority(*, guardian_name: str, children: list[dict[s
             "can_consent": 1,
         },
         fields=["parent"],
-        limit_page_length=0,
+        limit=0,
     )
     allowed_students = {(row.get("parent") or "").strip() for row in allowed_rows if (row.get("parent") or "").strip()}
     if not allowed_students:

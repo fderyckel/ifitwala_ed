@@ -342,7 +342,7 @@ def _serialize_media_rows(rows: list[dict]) -> list[dict]:
     return items
 
 
-def _filter_serialized_media_items(items: list[dict], query: str | None, *, limit_page_length: int) -> list[dict]:
+def _filter_serialized_media_items(items: list[dict], query: str | None, *, limit: int) -> list[dict]:
     needle = _normalize(query).lower()
     if needle:
         items = [
@@ -353,8 +353,8 @@ def _filter_serialized_media_items(items: list[dict], query: str | None, *, limi
             or needle in _normalize(item.get("slot")).lower()
             or needle in _normalize(item.get("organization_label")).lower()
         ]
-    if limit_page_length > 0:
-        items = items[:limit_page_length]
+    if limit > 0:
+        items = items[:limit]
     return items
 
 
@@ -373,7 +373,7 @@ def ensure_organization_media_files_visible_to_school(*, school: str, file_names
 
 
 @frappe.whitelist()
-def list_visible_media_for_school(school: str, query: str | None = None, limit_page_length: int = 50) -> dict:
+def list_visible_media_for_school(school: str, query: str | None = None, limit: int = 50) -> dict:
     if not school:
         frappe.throw(_("School is required."))
     school_doc = frappe.get_doc("School", school)
@@ -385,7 +385,7 @@ def list_visible_media_for_school(school: str, query: str | None = None, limit_p
         "items": _filter_serialized_media_items(
             items,
             query,
-            limit_page_length=max(frappe.utils.cint(limit_page_length), 0),
+            limit=max(frappe.utils.cint(limit), 0),
         ),
     }
 
@@ -395,7 +395,7 @@ def list_owned_media_for_organization(
     organization: str,
     school: str | None = None,
     query: str | None = None,
-    limit_page_length: int = 50,
+    limit: int = 50,
 ) -> dict:
     if not organization:
         frappe.throw(_("Organization is required."))
@@ -423,7 +423,7 @@ def list_owned_media_for_organization(
         "items": _filter_serialized_media_items(
             items,
             query,
-            limit_page_length=max(frappe.utils.cint(limit_page_length), 0),
+            limit=max(frappe.utils.cint(limit), 0),
         ),
         "schools": [{"name": row["name"], "label": row.get("school_name") or row["name"]} for row in schools],
     }

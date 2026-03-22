@@ -198,7 +198,7 @@ class TestOrganizationMedia(FrappeTestCase):
             file_name="shared-card.png",
         )
 
-        payload = list_visible_media_for_school(self.leaf_school, limit_page_length=10)
+        payload = list_visible_media_for_school(self.leaf_school, limit=10)
 
         self.assertEqual(payload["organization"], self.child_org)
         self.assertEqual([item["file"] for item in payload["items"]], [exact_school_file.name, shared_org_file.name])
@@ -221,7 +221,7 @@ class TestOrganizationMedia(FrappeTestCase):
             file_name="shared-banner.png",
         )
 
-        payload = list_owned_media_for_organization(self.child_org, limit_page_length=10)
+        payload = list_owned_media_for_organization(self.child_org, limit=10)
 
         self.assertEqual(payload["organization"], self.child_org)
         self.assertEqual({item["file"] for item in payload["items"]}, {school_file.name, org_file.name})

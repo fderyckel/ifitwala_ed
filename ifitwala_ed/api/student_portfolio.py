@@ -95,7 +95,7 @@ def _staff_scope_students(user: str, school_scope: list[str] | None = None) -> l
         "Program Enrollment",
         filters=filters,
         fields=["student"],
-        limit_page_length=0,
+        limit=0,
     )
     return sorted({row.get("student") for row in rows if row.get("student")})
 
@@ -231,7 +231,7 @@ def _resolve_moderation_policy_for_school(school: str) -> Dict[str, Any]:
                 "parentfield": "moderation_roles",
             },
             fields=["role", "can_moderate_showcase", "can_moderate_reflection"],
-            limit_page_length=0,
+            limit=0,
         )
         showcase_roles = {
             row.get("role") for row in role_rows if row.get("role") and int(row.get("can_moderate_showcase") or 0) == 1
@@ -656,7 +656,7 @@ def create_reflection_entry(payload=None, **kwargs):
             filters={"student": student, "archived": 0},
             fields=["academic_year"],
             order_by="enrollment_date desc, modified desc",
-            limit_page_length=1,
+            limit=1,
         )
         academic_year = (latest_pe[0] or {}).get("academic_year") if latest_pe else None
     if not school:

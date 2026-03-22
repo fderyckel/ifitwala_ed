@@ -24,7 +24,7 @@ def list_question_banks(course: str | None = None):
         filters=filters,
         fields=["name", "bank_title", "course"],
         order_by="bank_title asc, name asc",
-        limit_page_length=200,
+        limit=200,
     )
 
 

@@ -30,7 +30,7 @@ def get_program_course_basket_group_map(program: str) -> dict[str, list[str]]:
         filters={"parent": program, "parenttype": "Program"},
         fields=["course", "basket_group"],
         order_by="idx asc",
-        limit_page_length=5000,
+        limit=5000,
     )
     return _normalize_group_rows(rows)
 
@@ -44,7 +44,7 @@ def get_offering_course_basket_group_map(program_offering: str) -> dict[str, lis
         filters={"parent": program_offering, "parenttype": "Program Offering"},
         fields=["course", "basket_group"],
         order_by="idx asc",
-        limit_page_length=5000,
+        limit=5000,
     )
     return _normalize_group_rows(rows)
 
@@ -58,7 +58,7 @@ def get_program_course_semantics(program: str) -> dict[str, dict]:
         filters={"parent": program, "parenttype": "Program"},
         fields=["course", "required", "repeatable", "max_attempts", "level"],
         order_by="idx asc",
-        limit_page_length=5000,
+        limit=5000,
     )
     basket_groups = get_program_course_basket_group_map(program)
 
@@ -97,7 +97,7 @@ def get_offering_course_semantics(program_offering: str) -> dict[str, dict]:
             "grade_scale",
         ],
         order_by="idx asc",
-        limit_page_length=5000,
+        limit=5000,
     )
     basket_groups = get_offering_course_basket_group_map(program_offering)
 

@@ -298,7 +298,7 @@
 	async function fetchVisibleForSchool({ school, query }) {
 		const res = await frappe.call({
 			method: LIST_VISIBLE_METHOD,
-			args: { school, query, limit_page_length: 100 },
+			args: { school, query, limit: 100 },
 		});
 		return res && res.message ? res.message : { organization: null, items: [] };
 	}
@@ -306,7 +306,7 @@
 	async function fetchOwnedForOrganization({ organization, school, query }) {
 		const res = await frappe.call({
 			method: LIST_OWNED_METHOD,
-			args: { organization, school, query, limit_page_length: 100 },
+			args: { organization, school, query, limit: 100 },
 		});
 		return res && res.message ? res.message : { organization, items: [], schools: [] };
 	}

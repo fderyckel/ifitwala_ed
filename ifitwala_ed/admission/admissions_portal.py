@@ -359,7 +359,7 @@ def _resolve_applicant_document_item(
             filters={"applicant_document": applicant_document.name},
             fields=["name", "item_label"],
             order_by="modified desc",
-            limit_page_length=1,
+            limit=1,
         )
         if existing:
             item_doc = frappe.get_doc("Applicant Document Item", existing[0].get("name"))

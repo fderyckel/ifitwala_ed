@@ -1216,7 +1216,7 @@ class StudentApplicant(Document):
                 "parentfield": "guardians",
             },
             fields=["parent"],
-            limit_page_length=max(20, len(guardian_names) * 8),
+            limit=max(20, len(guardian_names) * 8),
         )
         sibling_names = sorted(
             {
@@ -1849,7 +1849,7 @@ class StudentApplicant(Document):
                 "interview_type",
             ],
             order_by="modified desc",
-            limit_page_length=20,
+            limit=20,
         )
         rows.sort(
             key=lambda row: (
@@ -1887,7 +1887,7 @@ class StudentApplicant(Document):
                     "feedback_status": "Submitted",
                 },
                 fields=["applicant_interview", "interviewer_user"],
-                limit_page_length=max(20, len(interview_names) * 4),
+                limit=max(20, len(interview_names) * 4),
             )
 
         interviewer_ids = sorted(

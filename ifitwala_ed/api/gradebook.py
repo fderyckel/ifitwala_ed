@@ -66,7 +66,7 @@ def get_grid(filters=None, **kwargs):
             "due_date",
         ],
         order_by="due_date asc, name asc",
-        limit_page_length=0,
+        limit=0,
     )
     if not deliveries:
         return {"deliveries": [], "students": [], "cells": []}
@@ -104,7 +104,7 @@ def get_grid(filters=None, **kwargs):
             "official_grade_value",
         ],
         order_by="student asc, task_delivery asc",
-        limit_page_length=0,
+        limit=0,
     )
 
     student_ids = [row.get("student") for row in outcomes if row.get("student")]
@@ -197,7 +197,7 @@ def get_drawer(outcome_id: str):
             "attachments",
         ],
         order_by="version desc",
-        limit_page_length=20,
+        limit=20,
     )
 
     contributions = frappe.get_all(
@@ -219,7 +219,7 @@ def get_drawer(outcome_id: str):
             "modified",
         ],
         order_by="submitted_on desc, modified desc",
-        limit_page_length=100,
+        limit=100,
     )
 
     my_contribution = _select_my_contribution(contributions)
@@ -407,7 +407,7 @@ def fetch_groups(
             "academic_year",
         ],
         order_by="student_group_name asc, name asc",
-        limit_page_length=0,
+        limit=0,
     )
 
     if search:
@@ -468,7 +468,7 @@ def fetch_group_tasks(student_group: str):
             "rubric_scoring_strategy",
         ],
         order_by="due_date desc, modified desc",
-        limit_page_length=0,
+        limit=0,
     )
 
     task_ids = [row.get("task") for row in deliveries if row.get("task")]
@@ -478,7 +478,7 @@ def fetch_group_tasks(student_group: str):
             "Task",
             filters={"name": ["in", task_ids]},
             fields=["name", "title", "task_type"],
-            limit_page_length=0,
+            limit=0,
         )
         task_map = {row.get("name"): row for row in task_rows if row.get("name")}
 
@@ -542,7 +542,7 @@ def get_task_gradebook(task: str):
             "modified",
         ],
         order_by="student asc",
-        limit_page_length=0,
+        limit=0,
     )
     outcome_ids = [row.get("name") for row in outcomes if row.get("name")]
     outcome_criteria = _get_outcome_criteria_rows(outcome_ids)
@@ -864,7 +864,7 @@ def _resolve_gradebook_scope(school, academic_year, course):
         "Student Group",
         filters=group_filters,
         fields=["name", "course"],
-        limit_page_length=0,
+        limit=0,
     )
     if not groups:
         frappe.throw(_("No student groups found for the provided filters."))
@@ -918,7 +918,7 @@ def _get_task_titles(task_ids):
         "Task",
         filters={"name": ["in", task_ids]},
         fields=["name", "title"],
-        limit_page_length=0,
+        limit=0,
     )
     return {row.get("name"): row.get("title") for row in rows}
 
@@ -949,7 +949,7 @@ def _get_outcome_criteria_map(outcome_ids):
         },
         fields=["parent", "assessment_criteria", "level", "level_points"],
         order_by="idx asc",
-        limit_page_length=0,
+        limit=0,
     )
     criteria_map = {}
     for row in rows:
@@ -994,7 +994,7 @@ def _get_contribution_criteria(contribution_id):
         },
         fields=["assessment_criteria", "level", "level_points"],
         order_by="idx asc",
-        limit_page_length=0,
+        limit=0,
     )
     return [
         {
@@ -1071,7 +1071,7 @@ def _get_student_display_map(student_ids):
         "Student",
         filters={"name": ["in", list(set(student_ids))]},
         fields=fields,
-        limit_page_length=0,
+        limit=0,
     )
 
     out = {}
@@ -1125,7 +1125,7 @@ def _get_existing_submission_id(outcome_id, payload):
         filters={"task_outcome": outcome_id},
         fields=["name", "version", "is_stub"],
         order_by="version desc",
-        limit_page_length=1,
+        limit=1,
     )
     if latest:
         return latest[0]["name"]
@@ -1198,7 +1198,7 @@ def _build_delivery_criteria_payload(delivery):
         },
         fields=["assessment_criteria", "criteria_name", "criteria_weighting"],
         order_by="idx asc",
-        limit_page_length=0,
+        limit=0,
     )
     criteria_ids = [row.get("assessment_criteria") for row in rows if row.get("assessment_criteria")]
     levels_map = _get_assessment_levels_map(criteria_ids)
@@ -1233,7 +1233,7 @@ def _get_assessment_levels_map(criteria_ids):
         },
         fields=["parent", "achievement_level"],
         order_by="idx asc",
-        limit_page_length=0,
+        limit=0,
     )
     levels = {}
     for row in rows:
@@ -1259,7 +1259,7 @@ def _get_outcome_criteria_rows(outcome_ids):
         },
         fields=["parent", "assessment_criteria", "level", "level_points", "feedback"],
         order_by="idx asc",
-        limit_page_length=0,
+        limit=0,
     )
     out = {}
     for row in rows:
@@ -1290,7 +1290,7 @@ def _get_student_meta_map(student_ids):
         "Student",
         filters={"name": ["in", ids]},
         fields=fields,
-        limit_page_length=0,
+        limit=0,
     )
     return {row.get("name"): row for row in rows if row.get("name")}
 
@@ -1305,7 +1305,7 @@ def _build_rubric_scores_from_outcome(outcome_id):
         },
         fields=["assessment_criteria", "level", "level_points", "feedback"],
         order_by="idx asc",
-        limit_page_length=0,
+        limit=0,
     )
     scores = []
     for row in rows:

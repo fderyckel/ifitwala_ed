@@ -660,7 +660,7 @@ def has_open_applicant_review_access(
         "Applicant Review Assignment",
         filters=assignment_filters,
         fields=["assigned_to_user", "assigned_to_role"],
-        limit_page_length=200,
+        limit=200,
     )
     for row in rows:
         assigned_user = (row.get("assigned_to_user") or "").strip()
@@ -830,7 +830,7 @@ def _get_effective_student_schools(*, student: str | None, applicant_school: str
             "archived": 0,
         },
         fields=["school"],
-        limit_page_length=1000,
+        limit=1000,
     )
     for row in enrollment_rows:
         row_school = (row.get("school") or "").strip()
@@ -1447,7 +1447,7 @@ def school_by_organization_scope_query(doctype=None, txt=None, searchfield=None,
         pluck="name",
         order_by="lft asc, name asc",
         limit_start=int(start or 0),
-        limit_page_length=int(page_len or 20),
+        limit=int(page_len or 20),
     )
     return [(school,) for school in schools]
 

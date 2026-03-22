@@ -122,7 +122,7 @@ export function createStudentAttendanceService() {
 			fields: ['name', 'year_start_date', 'year_end_date', 'school'],
 			filters,
 			order_by: 'year_start_date desc, name desc',
-			limit_page_length: 500,
+			limit: 500,
 		})
 		return normalizeListPayload<FetchPortalAcademicYearsResponse[number]>(raw)
 	}
@@ -138,7 +138,7 @@ export function createStudentAttendanceService() {
 			fields: ['name', 'academic_year', 'school', 'term_start_date', 'term_end_date'],
 			filters,
 			order_by: 'term_start_date desc, name desc',
-			limit_page_length: 500,
+			limit: 500,
 		})
 		return normalizeListPayload<FetchPortalTermsResponse[number]>(raw)
 	}

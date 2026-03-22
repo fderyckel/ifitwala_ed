@@ -929,7 +929,7 @@ def _load_applicant_timeline(student_applicant: str) -> list[dict]:
         },
         fields=["name", "creation", "comment_by", "comment_email", "comment_type", "content"],
         order_by="creation desc",
-        limit_page_length=INTERVIEW_TIMELINE_LIMIT,
+        limit=INTERVIEW_TIMELINE_LIMIT,
         ignore_permissions=True,
     )
     return [
@@ -964,7 +964,7 @@ def _load_applicant_documents_for_workspace(
             "modified",
         ],
         order_by="modified desc",
-        limit_page_length=INTERVIEW_WORKSPACE_DOC_LIMIT,
+        limit=INTERVIEW_WORKSPACE_DOC_LIMIT,
         ignore_permissions=True,
     )
     if not doc_rows:
@@ -985,7 +985,7 @@ def _load_applicant_documents_for_workspace(
             "modified",
         ],
         order_by="modified desc",
-        limit_page_length=max(1, INTERVIEW_WORKSPACE_DOC_LIMIT * 3),
+        limit=max(1, INTERVIEW_WORKSPACE_DOC_LIMIT * 3),
         ignore_permissions=True,
     )
     item_names = [row.get("name") for row in item_rows if row.get("name")]
@@ -1000,7 +1000,7 @@ def _load_applicant_documents_for_workspace(
             },
             fields=["name", "attached_to_name", "file_name", "file_url", "creation"],
             order_by="creation desc",
-            limit_page_length=0,
+            limit=0,
             ignore_permissions=True,
         )
         for row in item_file_rows:
@@ -1122,7 +1122,7 @@ def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[
             "modified",
         ],
         order_by="interview_start desc, modified desc",
-        limit_page_length=INTERVIEW_WORKSPACE_INTERVIEW_LIMIT,
+        limit=INTERVIEW_WORKSPACE_INTERVIEW_LIMIT,
         ignore_permissions=True,
     )
     if not rows:
@@ -1141,7 +1141,7 @@ def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[
         },
         fields=["parent", "interviewer", "idx"],
         order_by="parent asc, idx asc",
-        limit_page_length=max(50, INTERVIEW_WORKSPACE_INTERVIEW_LIMIT * 4),
+        limit=max(50, INTERVIEW_WORKSPACE_INTERVIEW_LIMIT * 4),
         ignore_permissions=True,
     )
     users = [row.get("interviewer") for row in interviewer_rows if row.get("interviewer")]
@@ -1164,7 +1164,7 @@ def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[
                 "feedback_status": "Submitted",
             },
             fields=["applicant_interview", "interviewer_user"],
-            limit_page_length=max(50, INTERVIEW_WORKSPACE_INTERVIEW_LIMIT * 4),
+            limit=max(50, INTERVIEW_WORKSPACE_INTERVIEW_LIMIT * 4),
             ignore_permissions=True,
         )
         for row in feedback_rows:
@@ -1250,7 +1250,7 @@ def _load_feedback_panel_for_workspace(*, interview_name: str) -> dict:
                 "modified",
             ],
             order_by="modified desc",
-            limit_page_length=max(20, len(interviewer_users) + 5),
+            limit=max(20, len(interviewer_users) + 5),
             ignore_permissions=True,
         )
 
@@ -1308,7 +1308,7 @@ def _user_display_map(users: Sequence[str]) -> dict[str, str]:
         "User",
         filters={"name": ["in", list(sorted(set(user_list)))]},
         fields=["name", "full_name"],
-        limit_page_length=0,
+        limit=0,
         ignore_permissions=True,
     )
     return {row.get("name"): (row.get("full_name") or row.get("name")) for row in rows if row.get("name")}

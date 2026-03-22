@@ -595,7 +595,7 @@ def _applicant_for_user(user: str) -> dict:
         "Student Applicant",
         filters={"applicant_user": user},
         fields=["name", "organization", "school"],
-        limit_page_length=2,
+        limit=2,
     )
     if not rows:
         frappe.throw(_("Admissions access is not linked to any Applicant."), frappe.PermissionError)
@@ -755,7 +755,7 @@ def get_recommendation_status_batch_for_applicants(
         RECOMMENDATION_TEMPLATE_DOCTYPE,
         filters={"is_active": 1},
         fields=template_query_fields,
-        limit_page_length=10000,
+        limit=10000,
     )
 
     scope_cache: dict[tuple[str, str], tuple[set[str], set[str]]] = {}
@@ -798,7 +798,7 @@ def get_recommendation_status_batch_for_applicants(
                 "recommendation_template": ["in", sorted(active_template_names)],
             },
             fields=["student_applicant", "recommendation_template", "request_status"],
-            limit_page_length=10000,
+            limit=10000,
         )
 
     grouped_statuses_by_applicant: dict[str, dict[str, list[str]]] = {
@@ -852,7 +852,7 @@ def get_recommendation_status_batch_for_applicants(
                 "submission",
             ],
             order_by="consumed_on desc, modified desc",
-            limit_page_length=10000,
+            limit=10000,
         )
 
         review_template_names = sorted(
@@ -870,7 +870,7 @@ def get_recommendation_status_batch_for_applicants(
                     RECOMMENDATION_TEMPLATE_DOCTYPE,
                     filters={"name": ["in", review_template_names]},
                     fields=["name", "template_name"],
-                    limit_page_length=len(review_template_names),
+                    limit=len(review_template_names),
                 )
                 if (row.get("name") or "").strip()
             }
@@ -894,7 +894,7 @@ def get_recommendation_status_batch_for_applicants(
                     "has_file",
                     "attestation_confirmed",
                 ],
-                limit_page_length=len(set(submission_names)),
+                limit=len(set(submission_names)),
             )
             submission_by_request = {
                 (row.get("recommendation_request") or "").strip(): row
@@ -919,7 +919,7 @@ def get_recommendation_status_batch_for_applicants(
                 "Applicant Document Item",
                 filters={"name": ["in", applicant_document_item_names]},
                 fields=["name", "review_status", "reviewed_by", "reviewed_on"],
-                limit_page_length=len(applicant_document_item_names),
+                limit=len(applicant_document_item_names),
             )
             item_map = {(row.get("name") or "").strip(): row for row in item_rows if (row.get("name") or "").strip()}
 
@@ -933,7 +933,7 @@ def get_recommendation_status_batch_for_applicants(
                 },
                 fields=["name", "attached_to_name", "file_name", "file_url", "creation"],
                 order_by="creation desc",
-                limit_page_length=10000,
+                limit=10000,
             )
             for file_row in file_rows:
                 attached_to_name = (file_row.get("attached_to_name") or "").strip()
@@ -1666,7 +1666,7 @@ def get_recommendation_review_payload(
             },
             fields=["name", "file_name", "file_url", "creation"],
             order_by="creation desc",
-            limit_page_length=1,
+            limit=1,
         )
         latest_file = latest_file_rows[0] if latest_file_rows else {}
 

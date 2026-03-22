@@ -37,7 +37,7 @@ def load_account_holders(name: str) -> str:
         filters=filters,
         fields=["account_holder", "posting_date", "due_date", "outstanding_amount"],
         order_by="account_holder asc, posting_date asc",
-        limit_page_length=5000,
+        limit=5000,
     )
 
     grouped = {}

@@ -315,7 +315,7 @@ def get_seen_org_communication_names(*, user: str, communication_names: list[str
             "reference_name": ["in", names],
         },
         fields=["reference_name"],
-        limit_page_length=10000,
+        limit=10000,
     )
     seen_names = {_to_text(row.get("reference_name")) for row in seen_rows if _to_text(row.get("reference_name"))}
 
@@ -323,7 +323,7 @@ def get_seen_org_communication_names(*, user: str, communication_names: list[str
         ENTRY_DOCTYPE,
         filters={"user": user, "org_communication": ["in", names]},
         fields=["org_communication"],
-        limit_page_length=10000,
+        limit=10000,
     )
     for row in interaction_rows:
         comm_name = _to_text(row.get("org_communication"))
@@ -455,16 +455,16 @@ def get_org_communication_interaction_summary(comm_names=None):
 
 
 @frappe.whitelist()
-def get_org_communication_thread(org_communication: str, limit_start: int = 0, limit_page_length: int = 20):
+def get_org_communication_thread(org_communication: str, limit_start: int = 0, limit: int = 20):
     user, roles, employee = _actor_context()
     _ensure_visible_org_communication(org_communication, user=user, roles=roles, employee=employee)
 
     try:
         limit_start = int(limit_start or 0)
-        limit_page_length = int(limit_page_length or 20)
+        limit = int(limit or 20)
     except ValueError:
         limit_start = 0
-        limit_page_length = 20
+        limit = 20
 
     parent = frappe.get_cached_doc("Org Communication", org_communication)
     mode = (parent.interaction_mode or "None").strip() or "None"
@@ -484,7 +484,7 @@ def get_org_communication_thread(org_communication: str, limit_start: int = 0, l
         "comm": org_communication,
         "user": user,
         "limit_start": limit_start,
-        "limit_page_length": limit_page_length,
+        "limit": limit,
         "ts_fmt": "%Y-%m-%d %H:%i:%s",
     }
 
@@ -522,7 +522,7 @@ def get_org_communication_thread(org_communication: str, limit_start: int = 0, l
             LEFT JOIN `tabUser` u ON u.name = i.user
             WHERE {where_clause}
             ORDER BY i.is_pinned DESC, i.creation ASC
-            LIMIT %(limit_start)s, %(limit_page_length)s
+            LIMIT %(limit_start)s, %(limit)s
             """,
             params,
             as_dict=True,

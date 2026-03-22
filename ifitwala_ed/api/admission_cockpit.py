@@ -307,7 +307,7 @@ def _build_health_state(applicant_names: list[str]) -> dict[str, dict]:
             "modified",
         ],
         order_by="modified desc",
-        limit_page_length=10000,
+        limit=10000,
     )
 
     latest_by_applicant: dict[str, dict] = {}
@@ -688,7 +688,7 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
             },
             fields=["context_name", "policy_version", "acknowledged_by", "acknowledged_at"],
             order_by="acknowledged_at desc",
-            limit_page_length=10000,
+            limit=10000,
         )
 
         for row_ack in acknowledgement_rows:
@@ -760,7 +760,7 @@ def _build_health_requirement_by_school(applicant_rows: list[dict]) -> dict[str,
         "School",
         filters={"name": ["in", school_names]},
         fields=["name", "require_health_profile_for_approval"],
-        limit_page_length=len(school_names),
+        limit=len(school_names),
     )
 
     out: dict[str, bool] = {}
@@ -1241,7 +1241,7 @@ def get_admissions_cockpit_data(filters=None):
             "applicant_user",
         ],
         order_by="modified desc",
-        limit_page_length=fetch_limit,
+        limit=fetch_limit,
     )
 
     if not applicant_rows:
@@ -1266,7 +1266,7 @@ def get_admissions_cockpit_data(filters=None):
             "modified",
         ],
         order_by="modified desc",
-        limit_page_length=10000,
+        limit=10000,
     )
 
     assignment_summary = {name: {"open_total": 0, "open_for_me": 0} for name in applicant_names}

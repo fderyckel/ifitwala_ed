@@ -51,7 +51,7 @@ def _get_overdue_rows(doc) -> list[dict]:
         filters=invoice_filters,
         fields=["name", "account_holder", "due_date", "outstanding_amount"],
         order_by="due_date asc, posting_date asc",
-        limit_page_length=5000,
+        limit=5000,
     )
 
     out = []

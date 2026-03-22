@@ -251,7 +251,7 @@ def get_policy_applies_to_token_map(policy_names: list[str] | tuple[str, ...] | 
         },
         fields=["parent", POLICY_APPLIES_TO_LINK_FIELD, "idx"],
         order_by="parent asc, idx asc",
-        limit_page_length=0,
+        limit=0,
     )
     out: dict[str, list[str]] = {}
     for row in rows:
@@ -337,7 +337,7 @@ def _expected_family_signer_name(*, student_applicant: str, user: str) -> str:
                 "can_consent": 1,
             },
             fields=["guardian", "guardian_full_name", "guardian_first_name", "guardian_last_name"],
-            limit_page_length=5,
+            limit=5,
             order_by="is_primary desc, idx asc",
         )
         for row in rows:

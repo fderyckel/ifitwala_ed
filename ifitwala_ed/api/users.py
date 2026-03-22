@@ -286,7 +286,7 @@ def _self_heal_employee_user_link(*, user: str, roles: set[str]) -> None:
             "employee_professional_email": login_email,
         },
         fields=["name", "user_id"],
-        limit_page_length=2,
+        limit=2,
     )
     if len(matches) != 1:
         return
@@ -420,7 +420,7 @@ def get_users_with_role(doctype, txt, searchfield, start, page_len, filters):
                 "Has Role",
                 filters={"role": role, "parenttype": "User"},
                 pluck="parent",
-                limit_page_length=5000,
+                limit=5000,
             )
             if parent
         }

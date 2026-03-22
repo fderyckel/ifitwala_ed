@@ -310,7 +310,7 @@ def materialize_review_assignments(
                     },
                     fields=["name"],
                     order_by="modified desc",
-                    limit_page_length=1,
+                    limit=1,
                 )
                 done_name = done_rows[0].get("name") if done_rows else None
                 if done_name:
@@ -470,7 +470,7 @@ def cancel_open_assignments_for_target(
         filters=filters,
         fields=["name"],
         order_by="modified desc",
-        limit_page_length=1000,
+        limit=1000,
     )
     if not rows:
         return []

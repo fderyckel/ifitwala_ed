@@ -357,7 +357,7 @@ class OrgCommunication(Document):
                 "School",
                 filters={"name": ["in", tuple(school_scope_names)]},
                 fields=["name", "organization"],
-                limit_page_length=0,
+                limit=0,
             )
             school_org_map = {
                 (row.get("name") or "").strip(): (row.get("organization") or "").strip() for row in school_meta

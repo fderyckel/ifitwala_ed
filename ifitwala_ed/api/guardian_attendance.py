@@ -103,7 +103,7 @@ def _build_attendance_students(
             "remark",
         ],
         order_by="student asc, attendance_date asc, whole_day desc, attendance_time asc, modified desc",
-        limit_page_length=10000,
+        limit=10000,
     )
 
     code_names = sorted({row.get("attendance_code") for row in rows if row.get("attendance_code")})
@@ -111,7 +111,7 @@ def _build_attendance_students(
         "Student Attendance Code",
         filters={"name": ["in", code_names]} if code_names else {"name": ["in", [""]]},
         fields=["name", "attendance_code", "attendance_code_name", "count_as_present"],
-        limit_page_length=1000,
+        limit=1000,
     )
     code_map = _attendance_code_map(code_rows)
 
@@ -120,7 +120,7 @@ def _build_attendance_students(
         "Course",
         filters={"name": ["in", course_names]} if course_names else {"name": ["in", [""]]},
         fields=["name", "course_name"],
-        limit_page_length=1000,
+        limit=1000,
     )
     course_name_map = {row.get("name"): row.get("course_name") for row in course_rows if row.get("name")}
 

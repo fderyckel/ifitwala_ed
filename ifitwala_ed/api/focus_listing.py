@@ -126,7 +126,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
             "Student Log Next Step",
             filters={"name": ["in", next_step_names]},
             fields=["name", "next_step"],
-            limit_page_length=1000,
+            limit=1000,
             ignore_permissions=True,
         )
         next_step_title_by_name = {x["name"]: x.get("next_step") for x in ns}

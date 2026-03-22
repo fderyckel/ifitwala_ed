@@ -35,7 +35,7 @@ class StudentLogFollowUp(Document):
                 "status": "Open",
             },
             fields=["name", "allocated_to"],
-            limit_page_length=50,
+            limit=50,
         )
 
         for t in open_todos:
