@@ -28,7 +28,7 @@ STAFF_ROLES = {
     "Academic Admin",
     "Academic Staff",
     "Administrator",
-    "Assistant Admin",
+    "Academic Assistant",
     "Employee",
     "Instructor",
     "System Manager",

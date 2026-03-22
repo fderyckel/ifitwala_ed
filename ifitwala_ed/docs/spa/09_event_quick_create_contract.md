@@ -66,12 +66,13 @@ Rules:
    - `ifitwala_ed.api.calendar.create_meeting_quick`
    - `ifitwala_ed.api.calendar.create_school_event_quick`
 2. SPA POST payloads are sent as the JSON body directly, not wrapped inside a nested `payload` object.
-3. `get_event_quick_create_options()` is the canonical source for meeting categories, school-event categories, audience types, selectable schools, selectable teams, selectable student groups, selectable locations, attendee kinds, and default scheduling times.
+3. `get_event_quick_create_options()` is the canonical source for meeting categories, school-event categories, audience types, selectable schools, selectable teams, selectable student groups, school-keyed selectable locations, school-keyed selectable room types, attendee kinds, and default scheduling times.
 4. `search_meeting_attendees(...)` returns a mixed attendee list with `kind`, `label`, `meta`, and `availability_mode`.
-5. `suggest_meeting_slots(...)` returns ranked exact matches plus fallback slots, server-owned availability notes, and when room-aware ranking is requested, suggested-room metadata on each slot.
-6. `suggest_meeting_rooms(...)` returns ranked room suggestions plus room-scope notes.
+5. `suggest_meeting_slots(...)` returns ranked exact matches plus fallback slots, server-owned availability notes, and when room-aware ranking is requested, suggested-room metadata on each slot; the request may also constrain ranking by `location_type`.
+6. `suggest_meeting_rooms(...)` returns ranked room suggestions plus room-scope notes and may constrain ranking by `location_type`.
 7. `create_meeting_quick(...)` accepts explicit attendees, optional team context, optional host school, and an idempotency key via `client_request_id`.
-8. `create_school_event_quick(...)` remains the canonical quick-create path for school events and continues to use the same overlay shell.
+8. `create_meeting_quick(...)` and `create_school_event_quick(...)` must validate manual location choices through the same shared-location resolver used by room suggestions and Room Utilization.
+9. `create_school_event_quick(...)` remains the canonical quick-create path for school events and continues to use the same overlay shell.
 
 ## 3. Meeting Workflow Contract
 
@@ -126,9 +127,10 @@ Rules:
 7. Guardian availability is limited to known school-side meetings and school events and must be surfaced with an explicit note.
 8. For in-person and hybrid meeting quick create, exact common-time matches are room-aware: a slot only remains in the exact-match list when the selected host-school scope has at least one free room for that time.
 9. Room availability is authoritative from `Location Booking` via `find_room_conflicts(...)`.
-10. Room ranking is filtered by host-school descendant scope and attendee-capacity threshold, then sorted to prefer the smallest adequate room before larger rooms.
-11. When room-aware ranking is requested, each slot payload may include `suggested_room` and `available_room_count` so the overlay can prefill the best room without extra per-slot requests.
-12. None of these quick-create workflows enqueue background jobs today because the request path is bounded and aggregated; if the search bounds expand materially, the concurrency docs above must be revisited before widening them.
+10. Room ranking is filtered by host-school descendant scope, ancestor-shared locations, optional `location_type`, and attendee-capacity threshold, then sorted to prefer the smallest adequate room before larger rooms.
+11. Manual location pickers in the overlay must switch with the selected host school and must not present sibling-school rooms outside the canonical shared-location scope.
+12. When room-aware ranking is requested, each slot payload may include `suggested_room` and `available_room_count` so the overlay can prefill the best room without extra per-slot requests.
+13. None of these quick-create workflows enqueue background jobs today because the request path is bounded and aggregated; if the search bounds expand materially, the concurrency docs above must be revisited before widening them.
 
 ## 5. School Event Workflow Contract
 

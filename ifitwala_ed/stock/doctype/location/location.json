@@ -11,6 +11,7 @@
   "section_break_anhn",
   "location_name",
   "school",
+  "shared_with_descendant_schools",
   "organization",
   "column_break_t7gw",
   "parent_location",
@@ -73,6 +74,13 @@
    "options": "School"
   },
   {
+   "default": "0",
+   "description": "Descendant schools of this Location's School can view/select this Location in rooming workflows. On group nodes, this also exposes descendant spaces.",
+   "fieldname": "shared_with_descendant_schools",
+   "fieldtype": "Check",
+   "label": "Shared With Descendant Schools"
+  },
+  {
    "fieldname": "organization",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -118,7 +126,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-03-22 12:50:44.476076",
+ "modified": "2026-03-22 13:58:42.000000",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Location",

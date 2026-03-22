@@ -160,8 +160,28 @@ def _can_view_clinic_metrics(user: str) -> bool:
     return bool(frappe.has_permission("Student Patient Visit", ptype="read", user=user))
 
 
-def _resolve_clinic_scope() -> dict:
+def _get_clinic_default_school() -> str | None:
     base_school = get_user_default_school()
+    if base_school:
+        return base_school
+
+    user = frappe.session.user
+    if not user or user == "Guest":
+        return None
+
+    fields = ["name", "school"]
+    if frappe.db.has_column("Employee", "default_school"):
+        fields.insert(1, "default_school")
+
+    employee = frappe.db.get_value("Employee", {"user_id": user}, fields, as_dict=True)
+    if not employee:
+        return None
+
+    return employee.get("default_school") or employee.get("school")
+
+
+def _resolve_clinic_scope() -> dict:
+    base_school = _get_clinic_default_school()
     if not base_school:
         return {
             "base_school": None,
@@ -396,12 +416,43 @@ def _build_clinic_business_week_summary(
     return points
 
 
-def _resolve_clinic_trend_start_date(time_range: str, end_date):
+def _resolve_clinic_scope_academic_year_start(school_scope: list[str], end_date):
+    if not school_scope:
+        return None
+
+    end_value = getdate(end_date)
+    rows = frappe.get_all(
+        "Academic Year",
+        filters={
+            "school": ["in", school_scope],
+            "archived": 0,
+            "year_start_date": ["<=", end_value],
+            "year_end_date": [">=", end_value],
+        },
+        fields=["year_start_date"],
+        order_by="year_start_date asc",
+        limit=50,
+    )
+
+    matching_starts = []
+    for row in rows:
+        year_start = row.get("year_start_date")
+        if not year_start:
+            continue
+        matching_starts.append(getdate(year_start))
+
+    if matching_starts:
+        return min(matching_starts)
+
+    return None
+
+
+def _resolve_clinic_trend_start_date(time_range: str, end_date, school_scope: list[str] | None = None):
     end_value = getdate(end_date)
     if time_range == "YTD":
-        academic_year = frappe.db.get_value("Academic Year", {"current": 1}, "year_start_date")
-        if academic_year:
-            return getdate(academic_year)
+        academic_year_start = _resolve_clinic_scope_academic_year_start(school_scope or [], end_value)
+        if academic_year_start:
+            return academic_year_start
         return getdate(f"{end_value.year}-01-01")
 
     if time_range == CLINIC_SUMMARY_RANGE_BUSINESS_WEEKS:
@@ -832,7 +883,7 @@ def get_clinic_visits_trend(time_range="1M"):
         frappe.throw(scope["error"], frappe.PermissionError)
 
     end_date = getdate(today())
-    start_date = _resolve_clinic_trend_start_date(time_range, end_date)
+    start_date = _resolve_clinic_trend_start_date(time_range, end_date, scope["school_scope"])
     calendar_context = _load_clinic_calendar_context(scope["school_scope"], start_date, end_date)
     count_map = _build_clinic_count_map(_query_clinic_visit_counts(scope["school_scope"], start_date, end_date))
     final_data = []

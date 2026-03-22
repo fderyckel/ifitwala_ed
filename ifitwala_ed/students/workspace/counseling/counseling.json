@@ -162,7 +162,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-02-25 15:48:41.113654",
+ "modified": "2026-03-22 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Counseling",
@@ -176,7 +176,7 @@
    "role": "Academic Admin"
   },
   {
-   "role": "Counsellor"
+   "role": "Counselor"
   }
  ],
  "sequence_id": 3.0,

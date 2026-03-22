@@ -20,7 +20,7 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools
 ALLOWED_ANALYTICS_ROLES = {
     "Academic Admin",
     "Pastoral Lead",
-    "Counsellor",
+    "Counselor",
     "Curriculum Coordinator",
     "Admissions Officer",
     "Admissions Manager",

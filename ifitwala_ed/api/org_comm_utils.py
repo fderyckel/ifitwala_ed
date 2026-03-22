@@ -59,7 +59,7 @@ def check_audience_match(
             "Instructor",
             "Employee",
             "Academic Admin",
-            "Assistant Admin",
+            "Academic Assistant",
             "System Manager",
         }
         if set(roles or []) & staff_roles:

@@ -112,7 +112,6 @@ def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> 
             & {
                 "Academic Admin",
                 "Academic Assistant",
-                "Assistant Admin",
                 "Curriculum Coordinator",
                 "System Manager",
                 "Administrator",

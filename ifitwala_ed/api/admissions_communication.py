@@ -25,7 +25,7 @@ ALLOWED_STAFF_ROLES = ADMISSIONS_ROLES | {
     "Academic Admin",
     "Academic Staff",
     "Administrator",
-    "Assistant Admin",
+    "Academic Assistant",
     "Employee",
     "System Manager",
 }

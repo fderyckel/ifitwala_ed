@@ -34,7 +34,7 @@ ROLE_CLASS_COUNSELOR = "counselor"
 ROLE_CLASS_ADMIN = "admin"
 
 ADMIN_ROLES = {"Academic Admin", "Academic Assistant", "Administrator", "System Manager"}
-COUNSELOR_ROLES = {"Counsellor", "Counselor", "Pastoral Lead", "Learning Support"}
+COUNSELOR_ROLES = {"Counselor", "Pastoral Lead", "Learning Support"}
 INSTRUCTOR_ROLES = {"Instructor", "Academic Staff"}
 
 LATE_SQL = "(LOWER(COALESCE(c.attendance_code_name, '')) LIKE '%%late%%' OR c.attendance_code = 'L')"

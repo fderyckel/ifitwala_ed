@@ -181,6 +181,17 @@ Utilization queries Location Booking only.
 
 If you need “people count” later, join against domain docs (Meeting participants, Student Group size), but do not count employee rows.
 
+### 6.4 Location calendar
+
+The staff-facing Location Calendar also reads Location Booking only.
+
+Rules:
+
+* it may show occupancy labels such as `Teaching`, `Meeting`, or `School Event`
+* it must not rely on Meeting / School Event titles as room-truth inputs
+* when a building/container is selected, the read model may append the concrete room label for operational clarity
+* privacy-sensitive detail remains owned by the source-doc permission contract, not by the room calendar itself
+
 ---
 
 ## 7. Permissions and privacy

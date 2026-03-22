@@ -3,8 +3,8 @@ title: "Program Enrollment: Committed Academic Enrollment Truth"
 slug: program-enrollment
 category: Enrollment
 doc_order: 5
-version: "1.2.1"
-last_change_date: "2026-03-13"
+version: "1.2.2"
+last_change_date: "2026-03-22"
 summary: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions including required and credited basket-group snapshots."
 seo_title: "Program Enrollment: Committed Academic Enrollment Truth"
 seo_description: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions."
@@ -138,5 +138,5 @@ seo_description: "Store one committed enrollment per student/offering/year with 
 | `Curriculum Coordinator` | Yes | Yes | Yes | No |
 | `Admission Officer` | Yes | Yes | Yes | No |
 | `Admission Manager` | Yes | Yes | Yes | Yes |
-| `Counsellor` | Yes | No | No | No |
+| `Counselor` | Yes | No | No | No |
 | `Academic Staff` | Yes | No | No | No |

@@ -60,6 +60,7 @@ Rules:
 1. Clients must use named workflow endpoints only.
 2. Clients must not assemble messaging behavior from generic CRUD calls.
 3. Admissions endpoints remain context-specific wrappers over the same canonical entry/read-state model.
+4. `get_org_communication_item` must expose full-body HTML as `message_html`, not `message`, so the SPA transport envelope unwrapping cannot collide with the domain payload.
 
 ## 3. Surface Matrix
 

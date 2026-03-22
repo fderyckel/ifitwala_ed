@@ -1112,7 +1112,7 @@ def _user_is_pastoral_lead_for_student(user: str, student: str) -> bool:
 
 
 ADMIN_ROLES = {"System Manager", "Administrator"}
-SCHOOL_OVERSIGHT_ROLES = {"Academic Admin", "Counsellor", "Learning Support"}
+SCHOOL_OVERSIGHT_ROLES = {"Academic Admin", "Counselor", "Learning Support"}
 ACADEMIC_STAFF_ROLE = "Academic Staff"
 PASTORAL_LEAD_ROLE = "Pastoral Lead"
 CURRICULUM_COORDINATOR_ROLE = "Curriculum Coordinator"

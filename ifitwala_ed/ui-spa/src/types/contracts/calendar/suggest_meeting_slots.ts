@@ -10,6 +10,7 @@ export type Request = {
 	day_start_time: string
 	day_end_time: string
 	school?: string | null
+	location_type?: string | null
 	require_room?: boolean | null
 }
 

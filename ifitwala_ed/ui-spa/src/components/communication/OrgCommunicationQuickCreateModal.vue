@@ -455,7 +455,8 @@
 																class="type-caption text-amber-700"
 															>
 																School-scope Staff and Community rows require Academic Admin,
-																Assistant Admin, HR Manager, Accounts Manager, or System Manager.
+																Academic Assistant, HR Manager, Accounts Manager, or System
+																Manager.
 															</p>
 														</div>
 													</div>

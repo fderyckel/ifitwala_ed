@@ -47,15 +47,6 @@ CONTACT_ROLE_MATRIX = {
         "comment": 1,
         "assign": 1,
     },
-    "Assistant Admin": {
-        "read": 1,
-        "write": 1,
-        "create": 1,
-        "delete": 1,
-        "email": 1,
-        "comment": 1,
-        "assign": 1,
-    },
     "Accounts User": {
         "read": 1,
         "write": 1,
@@ -79,12 +70,12 @@ CONTACT_ROLE_MATRIX = {
 
 class TestContactPermissions(FrappeTestCase):
     def test_grant_core_crm_permissions_creates_missing_roles_before_docperm_seed(self):
-        if frappe.db.exists("Role", "Assistant Admin"):
-            frappe.delete_doc("Role", "Assistant Admin", force=1, ignore_permissions=True)
+        if frappe.db.exists("Role", "Academic Assistant"):
+            frappe.delete_doc("Role", "Academic Assistant", force=1, ignore_permissions=True)
 
         grant_core_crm_permissions()
 
-        self.assertTrue(frappe.db.exists("Role", "Assistant Admin"))
+        self.assertTrue(frappe.db.exists("Role", "Academic Assistant"))
 
     def test_grant_core_crm_permissions_seeds_contact_rows_for_editor_roles(self):
         grant_core_crm_permissions()

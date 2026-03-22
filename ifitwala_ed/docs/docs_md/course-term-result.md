@@ -3,8 +3,8 @@ title: "Course Term Result: The Frozen Record of Term Performance"
 slug: course-term-result
 category: Assessment
 doc_order: 11
-version: "1.0.0"
-last_change_date: "2026-02-25"
+version: "1.0.1"
+last_change_date: "2026-03-22"
 summary: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."
 seo_title: "Course Term Result: The Frozen Record of Term Performance"
 seo_description: "Store one immutable term-grade record per student-course-cycle, including calculated values, overrides, and audit-safe context fields."
@@ -79,7 +79,7 @@ Course Term Result intentionally duplicates context fields (student, course, pro
 | `Academic Admin` | Yes | Yes | Yes | Yes |
 | `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
 | `Instructor` | Yes | Yes | Yes | Yes |
-| `Counsellor` | Yes | No | No | No |
+| `Counselor` | Yes | No | No | No |
 
 ## Related Docs
 

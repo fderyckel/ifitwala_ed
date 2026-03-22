@@ -44,7 +44,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-14 07:20:19.839566",
+ "modified": "2026-03-22 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Next Step",
@@ -94,7 +94,7 @@
   },
   {
    "read": 1,
-   "role": "Counsellor"
+   "role": "Counselor"
   },
   {
    "read": 1,
