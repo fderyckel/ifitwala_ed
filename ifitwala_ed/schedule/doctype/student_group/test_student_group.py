@@ -9,6 +9,7 @@ from unittest.mock import patch
 from ifitwala_ed.schedule.doctype.student_group.student_group import (
     build_in_clause_placeholders,
     descendants_inclusive,
+    instructor_log_sync_context,
     is_same_or_descendant,
 )
 
@@ -34,3 +35,69 @@ class TestStudentGroup(TestCase):
 
         self.assertTrue(is_same_or_descendant("ROOT", "CHILD"))
         self.assertFalse(is_same_or_descendant("ROOT", "SIBLING"))
+
+    def test_instructor_log_sync_context_detects_designation_changes(self):
+        previous = type(
+            "Doc",
+            (),
+            {
+                "school": "Ifitwala Secondary School",
+                "program_offering": "IB DP Class of 2027",
+                "program": "Diploma Program",
+                "academic_year": "IIS 2025-2026",
+                "term": "",
+                "course": "",
+                "instructors": [type("Row", (), {"instructor": "Cedric Villani", "designation": "Teacher"})()],
+            },
+        )()
+        current = type(
+            "Doc",
+            (),
+            {
+                "school": "Ifitwala Secondary School",
+                "program_offering": "IB DP Class of 2027",
+                "program": "Diploma Program",
+                "academic_year": "IIS 2025-2026",
+                "term": "",
+                "course": "",
+                "instructors": [type("Row", (), {"instructor": "Cedric Villani", "designation": "Advisor"})()],
+            },
+        )()
+
+        should_sync, targets = instructor_log_sync_context(previous, current)
+
+        self.assertTrue(should_sync)
+        self.assertEqual(targets, {"Cedric Villani"})
+
+    def test_instructor_log_sync_context_includes_removed_instructors(self):
+        previous = type(
+            "Doc",
+            (),
+            {
+                "school": "Ifitwala Secondary School",
+                "program_offering": "IB DP Class of 2027",
+                "program": "Diploma Program",
+                "academic_year": "IIS 2025-2026",
+                "term": "",
+                "course": "",
+                "instructors": [type("Row", (), {"instructor": "Cedric Villani", "designation": "Teacher"})()],
+            },
+        )()
+        current = type(
+            "Doc",
+            (),
+            {
+                "school": "Ifitwala Secondary School",
+                "program_offering": "IB DP Class of 2027",
+                "program": "Diploma Program",
+                "academic_year": "IIS 2025-2026",
+                "term": "",
+                "course": "",
+                "instructors": [],
+            },
+        )()
+
+        should_sync, targets = instructor_log_sync_context(previous, current)
+
+        self.assertTrue(should_sync)
+        self.assertEqual(targets, {"Cedric Villani"})

@@ -272,6 +272,9 @@
 								v-html="detailMessageHtml"
 								@click="onDetailContentClick"
 							></div>
+							<p v-else-if="detailSnippetFallback" class="whitespace-pre-line text-slate-token/80">
+								{{ detailSnippetFallback }}
+							</p>
 							<div v-else class="text-slate-token/60">
 								No full announcement content is available for this item.
 							</div>
@@ -409,6 +412,13 @@ const selectedStats = computed(() => {
 const detailMessageHtml = computed(() => {
 	if (!fullContent.value || typeof fullContent.value.message !== 'string') return '';
 	return fullContent.value.message.trim();
+});
+
+const detailSnippetFallback = computed(() => {
+	if (detailMessageHtml.value) return '';
+	const snippet =
+		typeof selectedComm.value?.snippet === 'string' ? selectedComm.value.snippet : '';
+	return snippet.trim();
 });
 
 // User Context for Filters

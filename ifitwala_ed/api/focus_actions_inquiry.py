@@ -115,3 +115,73 @@ def mark_inquiry_contacted(
             "inquiry_name": inquiry_name,
             "result": result,
         }
+
+
+def create_inquiry_contact(
+    focus_item_id: str,
+):
+    user = _require_login()
+
+    focus_item_id = (focus_item_id or "").strip()
+    if not focus_item_id:
+        frappe.throw(_("Missing focus_item_id."))
+
+    parsed = _parse_focus_item_id(focus_item_id)
+
+    if parsed.get("user") != user:
+        frappe.throw(_("Invalid focus item id (user mismatch)."), frappe.PermissionError)
+
+    if parsed.get("reference_doctype") != INQUIRY_DOCTYPE:
+        frappe.throw(_("Invalid focus item reference."), frappe.ValidationError)
+
+    action_type = parsed.get("action_type")
+    if action_type != ACTION_INQUIRY_FIRST_CONTACT:
+        frappe.throw(_("This focus item is not an inquiry follow-up action."), frappe.PermissionError)
+
+    inquiry_name = parsed.get("reference_name")
+    if not inquiry_name:
+        frappe.throw(_("Invalid focus item reference name."), frappe.ValidationError)
+
+    inquiry_doc = frappe.get_doc(INQUIRY_DOCTYPE, inquiry_name)
+
+    if not frappe.has_permission(INQUIRY_DOCTYPE, ptype="read", doc=inquiry_doc):
+        frappe.throw(_("You are not permitted to view this inquiry."), frappe.PermissionError)
+
+    if (inquiry_doc.assigned_to or "").strip() != user:
+        frappe.throw(
+            _("Only the assigned user can create or link a contact from this inquiry."), frappe.PermissionError
+        )
+
+    existing_contact = (inquiry_doc.contact or "").strip()
+    if existing_contact:
+        return {
+            "ok": True,
+            "status": "already_linked",
+            "inquiry_name": inquiry_name,
+            "contact_name": existing_contact,
+        }
+
+    cache = _cache()
+    lock_name = _lock_key(user, focus_item_id, "inquiry_create_contact")
+    with cache.lock(lock_name, timeout=10):
+        inquiry_doc.reload()
+        existing_contact = (inquiry_doc.contact or "").strip()
+        if existing_contact:
+            return {
+                "ok": True,
+                "status": "already_linked",
+                "inquiry_name": inquiry_name,
+                "contact_name": existing_contact,
+            }
+
+        inquiry_doc.create_contact_from_inquiry()
+        contact_name = (inquiry_doc.contact or "").strip()
+        if not contact_name:
+            frappe.throw(_("Contact could not be created for this inquiry."))
+
+        return {
+            "ok": True,
+            "status": "processed",
+            "inquiry_name": inquiry_name,
+            "contact_name": contact_name,
+        }

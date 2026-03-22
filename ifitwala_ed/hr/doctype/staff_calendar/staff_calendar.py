@@ -3,12 +3,34 @@
 
 # ifitwala_ed.hr.doctype.staff_calendar.staff_calendar
 
+import importlib
 from datetime import date
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import date_diff, formatdate, getdate
+
+
+def _missing_holidays_dependency_message() -> str:
+    return _(
+        "Local holiday lookup is unavailable because the server dependency 'holidays' is not installed. "
+        "Install the app Python dependencies, restart the bench, and reload this form."
+    )
+
+
+def _load_holidays_api(*, raise_on_missing: bool):
+    try:
+        holidays_module = importlib.import_module("holidays")
+        holidays_utils = importlib.import_module("holidays.utils")
+    except ModuleNotFoundError as exc:
+        if exc.name not in {"holidays", "holidays.utils"}:
+            raise
+        if raise_on_missing:
+            frappe.throw(_missing_holidays_dependency_message())
+        return None, None
+
+    return holidays_module.country_holidays, holidays_utils.list_supported_countries
 
 
 class StaffCalendar(Document):
@@ -174,11 +196,10 @@ class StaffCalendar(Document):
     def get_country_holidays(self):
         self._ensure_saved()
 
-        from holidays import country_holidays
-
         if not self.country:
             frappe.throw(_("Please select the country first."))
 
+        country_holidays, _list_supported_countries = _load_holidays_api(raise_on_missing=True)
         existing = self.get_holidays()
         from_date = getdate(self.from_date)
         to_date = getdate(self.to_date)
@@ -213,11 +234,19 @@ class StaffCalendar(Document):
 
     @frappe.whitelist()
     def get_supported_countries(self):
-        from holidays.utils import list_supported_countries
+        _, list_supported_countries = _load_holidays_api(raise_on_missing=False)
+        if not list_supported_countries:
+            return {
+                "available": False,
+                "countries": [],
+                "subdivisions_by_country": {},
+                "message": _missing_holidays_dependency_message(),
+            }
 
         subdivisions_by_country = list_supported_countries()
         countries = [{"value": code, "label": code} for code in sorted(subdivisions_by_country.keys())]
         return {
+            "available": True,
             "countries": countries,
             "subdivisions_by_country": subdivisions_by_country,
         }

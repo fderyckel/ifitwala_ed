@@ -22,12 +22,24 @@ frappe.ui.form.on("Staff Calendar", {
 			frm.call("get_supported_countries").then((r) => {
 				if (!r || !r.message) return;
 
+				const localHolidayLookupAvailable = r.message.available !== false;
 				frm.subdivisions_by_country = r.message.subdivisions_by_country || {};
 				frm.fields_dict.country.set_data(
 					(r.message.countries || []).sort((a, b) =>
 						a.label.localeCompare(b.label)
 					)
 				);
+
+				if (!localHolidayLookupAvailable && !frm.localHolidayLookupAlertShown) {
+					frappe.show_alert(
+						{
+							message: r.message.message,
+							indicator: "orange",
+						},
+						10
+					);
+					frm.localHolidayLookupAlertShown = true;
+				}
 
 				if (frm.doc.country) {
 					frm.trigger("set_subdivisions");

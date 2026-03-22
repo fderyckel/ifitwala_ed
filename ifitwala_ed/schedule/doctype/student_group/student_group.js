@@ -26,6 +26,12 @@ function get_student_filters(frm) {
 	};
 }
 
+function get_selected_instructor_names(frm, exclude_row_name = null) {
+	return (frm.doc.instructors || [])
+		.filter(row => row.name !== exclude_row_name && !!row.instructor)
+		.map(row => row.instructor);
+}
+
 // Keep the toggle in sync
 ["academic_year", "program_offering", "group_based_on"].forEach(f =>
 	frappe.ui.form.on("Student Group", f, frm => toggle_school_schedule_field(frm))
@@ -78,6 +84,19 @@ frappe.ui.form.on("Student Group", {
 			query: "ifitwala_ed.schedule.doctype.student_group.student_group.schedule_picker_query",
 			filters: { academic_year: frm.doc.academic_year }
 		}));
+
+		frm.set_query("instructor", "instructors", (doc, cdt, cdn) => {
+			const row = locals[cdt]?.[cdn];
+			const selected = get_selected_instructor_names(frm, row?.name);
+			if (!selected.length) {
+				return {};
+			}
+			return {
+				filters: {
+					name: ["not in", selected]
+				}
+			};
+		});
 
 		// Instructor constraint on schedule rows
 		// FIX: add guard so we don’t reset query every refresh
@@ -236,19 +255,6 @@ frappe.ui.form.on("Student Group", {
 		});
 	},
 
-});
-
-frappe.ui.form.on("Student Group Instructor", {
-	instructors_add: function (frm) {
-		frm.fields_dict["instructors"].grid.get_field("instructor").get_query =
-			function (doc) {
-				let instructor_list = [];
-				$.each(doc.instructors, function (idx, val) {
-					instructor_list.push(val.instructor);
-				});
-				return { filters: [["Instructor", "name", "not in", instructor_list]] };
-			};
-	},
 });
 
 

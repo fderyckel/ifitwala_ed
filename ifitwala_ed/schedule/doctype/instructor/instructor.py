@@ -160,6 +160,19 @@ def _remove_instructor_role(user_id: str):
         user.remove_roles("Instructor")
 
 
+def sync_instructor_logs(instructor_names) -> None:
+    """Rebuild and persist Instructor Log rows for the provided Instructor ids."""
+    names = sorted({(name or "").strip() for name in (instructor_names or []) if (name or "").strip()})
+    for instructor_name in names:
+        if not frappe.db.exists("Instructor", instructor_name):
+            continue
+
+        instructor_doc = frappe.get_doc("Instructor", instructor_name)
+        instructor_doc.flags.ignore_version = True
+        instructor_doc.rebuild_instructor_log()
+        instructor_doc.save(ignore_permissions=True)
+
+
 @frappe.whitelist()
 def get_instructor_log(instructor: str):
     if not instructor:

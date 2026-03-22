@@ -26,6 +26,10 @@ import type {
 	Response as MarkInquiryContactedResponse,
 } from '@/types/contracts/focus/mark_inquiry_contacted'
 import type {
+	Request as CreateInquiryContactRequest,
+	Response as CreateInquiryContactResponse,
+} from '@/types/contracts/focus/create_inquiry_contact'
+import type {
 	Request as SubmitApplicantReviewAssignmentRequest,
 	Response as SubmitApplicantReviewAssignmentResponse,
 } from '@/types/contracts/focus/submit_applicant_review_assignment'
@@ -78,6 +82,12 @@ export function createFocusService() {
 
 	const markInquiryContactedResource = createResource<MarkInquiryContactedResponse>({
 		url: 'ifitwala_ed.api.focus.mark_inquiry_contacted',
+		method: 'POST',
+		auto: false,
+	})
+
+	const createInquiryContactResource = createResource<CreateInquiryContactResponse>({
+		url: 'ifitwala_ed.api.focus.create_inquiry_contact',
 		method: 'POST',
 		auto: false,
 	})
@@ -159,6 +169,12 @@ export function createFocusService() {
 		return response
 	}
 
+	async function createInquiryContact(
+		payload: CreateInquiryContactRequest
+	): Promise<CreateInquiryContactResponse> {
+		return createInquiryContactResource.submit(payload)
+	}
+
 	async function submitApplicantReviewAssignment(
 		payload: SubmitApplicantReviewAssignmentRequest
 	): Promise<SubmitApplicantReviewAssignmentResponse> {
@@ -212,6 +228,7 @@ export function createFocusService() {
 		submitStudentLogFollowUp,
 		reviewStudentLogOutcome,
 		markInquiryContacted,
+		createInquiryContact,
 		submitApplicantReviewAssignment,
 		claimApplicantReviewAssignment,
 		reassignApplicantReviewAssignment,

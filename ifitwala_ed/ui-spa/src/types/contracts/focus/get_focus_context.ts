@@ -36,6 +36,8 @@ export type Response = {
     last_name?: string | null
     email?: string | null
     phone_number?: string | null
+    message?: string | null
+    contact?: string | null
     school?: string | null
     organization?: string | null
     type_of_inquiry?: string | null

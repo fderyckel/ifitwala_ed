@@ -178,6 +178,8 @@ def get_focus_context(
                 "last_name": inquiry_doc.last_name,
                 "email": inquiry_doc.email,
                 "phone_number": inquiry_doc.phone_number,
+                "message": inquiry_doc.message,
+                "contact": inquiry_doc.contact,
                 "school": inquiry_doc.school,
                 "organization": inquiry_doc.organization,
                 "type_of_inquiry": inquiry_doc.type_of_inquiry,

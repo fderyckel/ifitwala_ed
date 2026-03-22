@@ -9,6 +9,7 @@ from frappe.model.document import Document
 from frappe.utils import cint, format_datetime, get_datetime, get_link_to_form
 
 from ifitwala_ed.schedule.attendance_utils import invalidate_meeting_dates
+from ifitwala_ed.schedule.doctype.instructor.instructor import sync_instructor_logs
 from ifitwala_ed.schedule.schedule_utils import get_conflict_rule, get_rotation_dates
 from ifitwala_ed.schedule.student_group_employee_booking import (
     rebuild_employee_bookings_for_student_group,
@@ -22,6 +23,43 @@ class OverlapError(frappe.ValidationError):
     """Raised when a scheduling conflict violates the hard rule."""
 
     pass
+
+
+INSTRUCTOR_LOG_GROUP_FIELDS = ("school", "program_offering", "program", "academic_year", "term", "course")
+
+
+def _student_group_instructor_names(doc) -> set[str]:
+    return {
+        (getattr(row, "instructor", "") or "").strip()
+        for row in getattr(doc, "instructors", []) or []
+        if (getattr(row, "instructor", "") or "").strip()
+    }
+
+
+def _student_group_instructor_log_state(doc):
+    group_fields = tuple((getattr(doc, field, "") or "").strip() for field in INSTRUCTOR_LOG_GROUP_FIELDS)
+    instructor_rows = sorted(
+        (
+            (getattr(row, "instructor", "") or "").strip(),
+            (getattr(row, "designation", "") or "").strip(),
+        )
+        for row in (getattr(doc, "instructors", []) or [])
+        if (getattr(row, "instructor", "") or "").strip()
+    )
+    return group_fields, tuple(instructor_rows)
+
+
+def instructor_log_sync_context(previous_doc, current_doc):
+    previous_names = _student_group_instructor_names(previous_doc) if previous_doc else set()
+    current_names = _student_group_instructor_names(current_doc)
+    targets = previous_names | current_names
+
+    if previous_doc is None:
+        return bool(current_names), targets
+
+    return _student_group_instructor_log_state(previous_doc) != _student_group_instructor_log_state(
+        current_doc
+    ), targets
 
 
 class StudentGroup(Document):
@@ -96,6 +134,9 @@ class StudentGroup(Document):
             self.flags._sg_students_added = set()
             self.flags._sg_students_removed = set()
             self.flags._sg_instructors_changed = False
+            self.flags._sg_instructor_log_sync_needed, self.flags._sg_instructors_to_sync = instructor_log_sync_context(
+                None, self
+            )
             # meeting dates: nothing cached yet on first save
             self.flags._sg_meeting_dates_changed = False
             self.flags._sg_schedule_changed = bool(self.student_group_schedule)
@@ -133,6 +174,9 @@ class StudentGroup(Document):
         prev_instr = instructor_keys(old)
         curr_instr = instructor_keys(self)
         self.flags._sg_instructors_changed = prev_instr != curr_instr
+        self.flags._sg_instructor_log_sync_needed, self.flags._sg_instructors_to_sync = instructor_log_sync_context(
+            old, self
+        )
 
         # ----- schedule rows (rotation/day/block/location/instructor/employee) -----
         def schedule_keys(doc):
@@ -179,6 +223,8 @@ class StudentGroup(Document):
         removed = getattr(self.flags, "_sg_students_removed", set()) or set()
         instr_changed = bool(getattr(self.flags, "_sg_instructors_changed", False))
         sched_changed = bool(getattr(self.flags, "_sg_schedule_changed", False))  # noqa: F841
+        log_sync_needed = bool(getattr(self.flags, "_sg_instructor_log_sync_needed", False))
+        instructor_names_to_sync = getattr(self.flags, "_sg_instructors_to_sync", set()) or set()
 
         if not added and not removed and not instr_changed:
             pass
@@ -196,6 +242,9 @@ class StudentGroup(Document):
                         if getattr(r, "student", None) and cint(getattr(r, "active", 1)):
                             _sync_ssg_access_for((r.student or "").strip(), ay, reason="sgi-changed")
 
+        if log_sync_needed and instructor_names_to_sync:
+            sync_instructor_logs(instructor_names_to_sync)
+
         # ----- MEETING-DATES invalidation -----
         if bool(getattr(self.flags, "_sg_meeting_dates_changed", False)):
             invalidate_meeting_dates(self.name)
@@ -204,6 +253,8 @@ class StudentGroup(Document):
         self.flags._sg_students_added = set()
         self.flags._sg_students_removed = set()
         self.flags._sg_instructors_changed = False
+        self.flags._sg_instructor_log_sync_needed = False
+        self.flags._sg_instructors_to_sync = set()
         self.flags._sg_meeting_dates_changed = False
         self.flags._sg_schedule_changed = False
 
@@ -220,6 +271,15 @@ class StudentGroup(Document):
             return
 
         rebuild_employee_bookings_for_student_group(self.name)
+
+    def on_trash(self):
+        self.flags._sg_instructors_to_sync = _student_group_instructor_names(self)
+
+    def after_delete(self):
+        instructor_names_to_sync = getattr(self.flags, "_sg_instructors_to_sync", set()) or set()
+        if instructor_names_to_sync:
+            sync_instructor_logs(instructor_names_to_sync)
+        self.flags._sg_instructors_to_sync = set()
 
     ##################### VALIDATONS #########################
 

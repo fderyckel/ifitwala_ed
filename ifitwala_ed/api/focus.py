@@ -17,6 +17,7 @@ from ifitwala_ed.api.focus_actions_applicant_review import (
 from ifitwala_ed.api.focus_actions_applicant_review import (
     submit_applicant_review_assignment as _submit_applicant_review_assignment,
 )
+from ifitwala_ed.api.focus_actions_inquiry import create_inquiry_contact as _create_inquiry_contact
 from ifitwala_ed.api.focus_actions_inquiry import mark_inquiry_contacted as _mark_inquiry_contacted
 from ifitwala_ed.api.focus_actions_policy import acknowledge_staff_policy as _acknowledge_staff_policy
 from ifitwala_ed.api.focus_actions_student_log import review_student_log_outcome as _review_student_log_outcome
@@ -44,6 +45,7 @@ __all__ = [
     "submit_student_log_follow_up",
     "review_student_log_outcome",
     "mark_inquiry_contacted",
+    "create_inquiry_contact",
     "acknowledge_staff_policy",
     "claim_applicant_review_assignment",
     "download_applicant_review_file",
@@ -110,6 +112,15 @@ def mark_inquiry_contacted(
         focus_item_id=focus_item_id,
         complete_todo=complete_todo,
         client_request_id=client_request_id,
+    )
+
+
+@frappe.whitelist()
+def create_inquiry_contact(
+    focus_item_id: str,
+):
+    return _create_inquiry_contact(
+        focus_item_id=focus_item_id,
     )
 
 
