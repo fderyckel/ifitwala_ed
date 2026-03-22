@@ -6,7 +6,7 @@ import os
 
 import frappe
 from frappe import _
-from frappe.utils import get_files_path
+from frappe.utils import cstr, get_files_path
 
 from ifitwala_ed.admission.access import ADMISSIONS_FAMILY_ROLE
 from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
@@ -150,59 +150,81 @@ def ensure_hr_settings():
 
 
 def create_designations():
+    organization = _resolve_designation_seed_organization()
+    if not organization:
+        return
+
     data = [
         {
             "doctype": "Designation",
             "designation_name": "Director",
+            "organization": organization,
             "default_role_profile": "Academic Admin",
             "default_workspace": "Admin",
         },
         {
             "doctype": "Designation",
             "designation_name": "Principal",
+            "organization": organization,
             "default_role_profile": "Academic Admin",
             "default_workspace": "Admin",
         },
         {
             "doctype": "Designation",
             "designation_name": "Academic Assistant",
+            "organization": organization,
             "default_role_profile": "Academic Assistant",
             "default_workspace": "Admin",
         },
-        {"doctype": "Designation", "designation_name": "Assistant Principal"},
+        {"doctype": "Designation", "designation_name": "Assistant Principal", "organization": organization},
         {
             "doctype": "Designation",
             "designation_name": "Nurse",
+            "organization": organization,
             "default_role_profile": "Nurse",
             "default_workspace": "Health",
         },
         {
             "doctype": "Designation",
             "designation_name": "Teacher",
+            "organization": organization,
             "default_role_profile": "Academic Staff",
             "default_workspace": "Academics",
         },
-        {"doctype": "Designation", "designation_name": "Teacher Assistant"},
+        {"doctype": "Designation", "designation_name": "Teacher Assistant", "organization": organization},
         {
             "doctype": "Designation",
             "designation_name": "Counsellor",
+            "organization": organization,
             "default_role_profile": "Counsellor",
             "default_workspace": "Counseling",
         },
         {
             "doctype": "Designation",
             "designation_name": "Curriculum Coordinator",
+            "organization": organization,
             "default_role_profile": "Curriculum Coordinator",
             "default_workspace": "Curriculum",
         },
         {
             "doctype": "Designation",
             "designation_name": "HR Director",
+            "organization": organization,
             "default_role_profile": "HR Manager",
             "default_workspace": "HR",
         },
     ]
     insert_record(data)
+
+
+def _resolve_designation_seed_organization():
+    organization = frappe.db.get_value(
+        "Organization",
+        {"name": ["!=", "All Organizations"]},
+        "name",
+        order_by="lft asc",
+    )
+    return cstr(organization).strip() or None
 
 
 def create_log_type():

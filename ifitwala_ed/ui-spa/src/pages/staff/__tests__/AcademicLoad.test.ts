@@ -17,16 +17,27 @@ const {
 	toastErrorMock: vi.fn(),
 }));
 
-vi.mock('frappe-ui', () => ({
-	createResource: ({ url }: { url: string }) => {
-		if (url.includes('get_academic_load_filter_meta')) return { submit: filterMetaSubmitMock };
-		if (url.includes('get_academic_load_dashboard')) return { submit: dashboardSubmitMock };
-		if (url.includes('get_academic_load_staff_detail')) return { submit: detailSubmitMock };
-		if (url.includes('get_academic_load_cover_candidates')) return { submit: coverSubmitMock };
-		return { submit: vi.fn() };
-	},
-	toast: { error: toastErrorMock },
-}));
+vi.mock('frappe-ui', async () => {
+	const { defineComponent, h } = await import('vue');
+
+	return {
+		createResource: ({ url }: { url: string }) => {
+			if (url.includes('get_academic_load_filter_meta')) return { submit: filterMetaSubmitMock };
+			if (url.includes('get_academic_load_dashboard')) return { submit: dashboardSubmitMock };
+			if (url.includes('get_academic_load_staff_detail')) return { submit: detailSubmitMock };
+			if (url.includes('get_academic_load_cover_candidates')) return { submit: coverSubmitMock };
+			return { submit: vi.fn() };
+		},
+		FeatherIcon: defineComponent({
+			name: 'FeatherIconStub',
+			props: { name: { type: String, required: false, default: '' } },
+			setup(props) {
+				return () => h('span', { 'data-feather-icon': props.name });
+			},
+		}),
+		toast: { error: toastErrorMock },
+	};
+});
 
 vi.mock('@/components/filters/FiltersBar.vue', () => ({
 	default: defineComponent({

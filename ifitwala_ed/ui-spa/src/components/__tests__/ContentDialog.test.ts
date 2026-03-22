@@ -21,6 +21,41 @@ vi.mock('frappe-ui', async () => {
 	};
 });
 
+vi.mock('@headlessui/vue', async () => {
+	const { defineComponent, h } = await import('vue');
+
+	const passthrough = (name: string) =>
+		defineComponent({
+			name,
+			props: {
+				as: {
+					type: [String, Object],
+					required: false,
+					default: 'div',
+				},
+				show: {
+					type: Boolean,
+					required: false,
+					default: true,
+				},
+			},
+			setup(props, { slots, attrs }) {
+				return () =>
+					props.show === false
+						? null
+						: h(typeof props.as === 'string' ? props.as : 'div', attrs, slots.default?.());
+			},
+		});
+
+	return {
+		Dialog: passthrough('DialogStub'),
+		DialogPanel: passthrough('DialogPanelStub'),
+		DialogTitle: passthrough('DialogTitleStub'),
+		TransitionChild: passthrough('TransitionChildStub'),
+		TransitionRoot: passthrough('TransitionRootStub'),
+	};
+});
+
 vi.mock('@/components/InteractionEmojiChips.vue', () => ({
 	default: defineComponent({
 		name: 'InteractionEmojiChipsStub',
@@ -33,6 +68,11 @@ vi.mock('@/components/InteractionEmojiChips.vue', () => ({
 import ContentDialog from '@/components/ContentDialog.vue';
 
 const cleanupFns: Array<() => void> = [];
+
+async function flushUi() {
+	await nextTick();
+	await nextTick();
+}
 
 function mountDialog(content = '<p>Hello world</p>') {
 	const host = document.createElement('div');
@@ -81,7 +121,7 @@ describe('ContentDialog', () => {
 	it('closes explicitly when the A+ backdrop is clicked', async () => {
 		const { onUpdateModelValue } = mountDialog();
 
-		await nextTick();
+		await flushUi();
 
 		const backdrop = document.body.querySelector('.if-overlay__backdrop');
 		expect(backdrop).not.toBeNull();
@@ -94,8 +134,7 @@ describe('ContentDialog', () => {
 	it('replaces policy links with the morning-brief action row', async () => {
 		mountDialog('<p><a href="/app/policy-version/POL-0001">Open policy</a></p>');
 
-		await nextTick();
-		await nextTick();
+		await flushUi();
 
 		const policyRow = document.body.querySelector('.if-policy-action-row');
 		expect(policyRow).not.toBeNull();

@@ -351,11 +351,15 @@ function onDialogClose(_payload: unknown) {
 	// Explicit close paths only.
 }
 
-watch(show, isOpen => {
-	if (isOpen) {
-		resource.fetch();
-	}
-});
+watch(
+	show,
+	isOpen => {
+		if (isOpen) {
+			resource.fetch();
+		}
+	},
+	{ immediate: true }
+);
 
 watch(selectedRange, () => {
 	if (show.value) {

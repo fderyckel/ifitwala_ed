@@ -4,6 +4,8 @@
 import frappe
 from frappe import _
 
+from ifitwala_ed.setup.setup import create_designations
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -65,6 +67,9 @@ def complete_initial_setup(org_name=None, org_abbr=None, school_name=None, schoo
         ).insert(ignore_permissions=True)
     else:
         org = None
+
+    if org:
+        create_designations()
 
     if school_name and school_abbr:
         school = frappe.get_doc(

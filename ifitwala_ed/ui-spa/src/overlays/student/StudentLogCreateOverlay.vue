@@ -763,6 +763,13 @@ function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
 	return maybeWindow.SpeechRecognition || maybeWindow.webkitSpeechRecognition || null;
 }
 
+/* Voice to Text */
+const isListening = ref(false);
+const speechAvailability = ref<SpeechAvailability>('unknown');
+const speechHint = ref('');
+const hasSpeechSupport = computed(() => speechAvailability.value !== 'unsupported');
+let recognition: SpeechRecognitionLike | null = null;
+
 function stopSpeechRecognition() {
 	if (!recognition) {
 		isListening.value = false;
@@ -1092,13 +1099,6 @@ function onStudentSelected(studentId: string) {
 
 	loadFormOptions(studentId);
 }
-
-/* Voice to Text */
-const isListening = ref(false);
-const speechAvailability = ref<SpeechAvailability>('unknown');
-const speechHint = ref('');
-const hasSpeechSupport = computed(() => speechAvailability.value !== 'unsupported');
-let recognition: SpeechRecognitionLike | null = null;
 
 async function toggleSpeech() {
 	if (!hasSpeechSupport.value) return;

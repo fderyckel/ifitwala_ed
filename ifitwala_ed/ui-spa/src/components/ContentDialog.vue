@@ -367,6 +367,9 @@ watch(
 
 onMounted(() => {
 	document.addEventListener('keydown', onKeydown, true);
+	void nextTick().then(() => {
+		decoratePolicyActionLinks();
+	});
 });
 
 onBeforeUnmount(() => {
