@@ -146,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
 	Dialog,
 	DialogPanel,
@@ -356,9 +356,9 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 watch(
-	() => [props.modelValue, contentHtml.value],
-	async ([open]) => {
-		if (!open) return;
+	() => [contentRootEl.value, props.modelValue, contentHtml.value],
+	async ([root, open]) => {
+		if (!open || !root) return;
 		await nextTick();
 		decoratePolicyActionLinks();
 	},
@@ -367,15 +367,6 @@ watch(
 
 onMounted(() => {
 	document.addEventListener('keydown', onKeydown, true);
-	void nextTick().then(() => {
-		decoratePolicyActionLinks();
-	});
-});
-
-onUpdated(() => {
-	if (isOpen.value) {
-		decoratePolicyActionLinks();
-	}
 });
 
 onBeforeUnmount(() => {
