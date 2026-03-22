@@ -10,7 +10,7 @@
   "section_break_h5wd",
   "location_type_name",
   "location_description",
-	"column_break_caps",
+  "column_break_caps",
   "is_container",
   "is_schedulable",
   "can_hold_stock"
@@ -39,29 +39,32 @@
   },
   {
    "default": "0",
+   "description": "Campus / Building / Floor / Wing. Always a grouping node.",
    "fieldname": "is_container",
    "fieldtype": "Check",
-   "label": "Structural Container",
-   "description": "Campus / Building / Floor / Wing. Always a grouping node."
+   "in_list_view": 1,
+   "label": "Structural Container"
   },
   {
    "default": "0",
+   "description": "Can be scheduled (classroom, lab, meeting room).",
    "fieldname": "is_schedulable",
    "fieldtype": "Check",
-   "label": "Schedulable Space",
-   "description": "Can be scheduled (classroom, lab, meeting room)."
+   "in_list_view": 1,
+   "label": "Schedulable Space"
   },
   {
    "default": "0",
+   "description": "Can hold inventory or assets (storage, cabinets).",
    "fieldname": "can_hold_stock",
    "fieldtype": "Check",
-   "label": "Can Hold Stock",
-   "description": "Can hold inventory or assets (storage, cabinets)."
+   "in_list_view": 1,
+   "label": "Can Hold Stock"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-22 09:30:43",
+ "modified": "2026-03-22 12:59:42.445032",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Location Type",

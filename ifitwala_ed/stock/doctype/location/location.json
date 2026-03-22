@@ -60,18 +60,23 @@
    "fieldname": "parent_location",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
+   "in_list_view": 1,
    "label": "Parent Location",
    "options": "Location"
   },
   {
    "fieldname": "school",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "School",
    "options": "School"
   },
   {
    "fieldname": "organization",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Organization",
    "options": "Organization"
   },
@@ -97,6 +102,7 @@
   {
    "fieldname": "maximum_capacity",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Maximum Capacity"
   },
   {
@@ -112,7 +118,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-10-22 12:19:44.311059",
+ "modified": "2026-03-22 12:50:44.476076",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Location",
