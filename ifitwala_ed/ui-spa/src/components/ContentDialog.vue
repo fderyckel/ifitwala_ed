@@ -146,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
 import {
 	Dialog,
 	DialogPanel,
@@ -370,6 +370,12 @@ onMounted(() => {
 	void nextTick().then(() => {
 		decoratePolicyActionLinks();
 	});
+});
+
+onUpdated(() => {
+	if (isOpen.value) {
+		decoratePolicyActionLinks();
+	}
 });
 
 onBeforeUnmount(() => {
