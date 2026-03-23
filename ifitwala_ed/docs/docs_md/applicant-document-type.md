@@ -3,8 +3,8 @@ title: "Applicant Document Type: Authoritative Admissions Evidence Catalog"
 slug: applicant-document-type
 category: Admission
 doc_order: 5
-version: "1.3.4"
-last_change_date: "2026-03-09"
+version: "1.3.5"
+last_change_date: "2026-03-23"
 summary: "Define canonical admissions document types and codes that drive portal options, readiness checks, and deterministic file-classification slots."
 seo_title: "Applicant Document Type: Authoritative Admissions Evidence Catalog"
 seo_description: "Define canonical admissions document types and codes that drive portal options, readiness checks, and deterministic file-classification slots."
@@ -46,6 +46,7 @@ seo_description: "Define canonical admissions document types and codes that driv
   - `upload_applicant_document` pre-validation for activity and scope
 - Governed upload routing:
   - source: explicit classification fields, or deterministic fallback from canonical `code`
+  - admissions upload runtime resolves parent/item context in `ifitwala_ed`, then delegates the binary upload/finalize path to `ifitwala_drive.api.admissions.upload_applicant_document`
   - active types without complete classification and without mapped code are rejected by admissions upload service
 
 <Callout type="warning" title="Scope and classification are infrastructure">
@@ -117,6 +118,7 @@ Changing `code`, scope anchors, or classification fields is not cosmetic. It aff
   - list endpoint: `ifitwala_ed/api/admissions_portal.py::list_applicant_document_types`
   - upload pre-validation path: `ifitwala_ed/api/admissions_portal.py::upload_applicant_document`
   - governed upload implementation: `ifitwala_ed/admission/admissions_portal.py::upload_applicant_document`
+  - Drive finalize wrapper used by that implementation: `ifitwala_drive.api.admissions.upload_applicant_document`
   - SPA consumer: `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
 - **Downstream gating use**:
   - required-document readiness in `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py::has_required_documents`

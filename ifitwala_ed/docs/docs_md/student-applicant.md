@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.20.0"
-last_change_date: "2026-03-17"
+version: "1.20.1"
+last_change_date: "2026-03-23"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
@@ -76,6 +76,7 @@ This is where admissions correctness is enforced. Client UX helps, but status tr
 - **Paperless edge**: policy acknowledgement is handled in-portal with a permanent `Policy Acknowledgement` record (`acknowledged_by`, `acknowledged_at`, `policy_version`, context binding).
 - **Speed edge**: inquiry invite flow pre-fills applicant identity and intent fields, then admissions staff focus on review and decision instead of retyping.
 - **Compliance edge**: admissions files are routed through governed records (`Applicant Document`) instead of random direct attachments on the applicant.
+- **File-governance boundary**: portal document/profile/guardian/health uploads stay in applicant workflow context inside `ifitwala_ed`, but the upload-session/finalize path now runs through `ifitwala_drive` wrappers for those flows.
 - **Operations edge**: applicant timeline now records document upload/replace events and applicant-document review/edit events for fast audit trace.
 
 <Callout type="note" title="Digital signature scope">
@@ -216,11 +217,12 @@ If email delivery fails, portal linkage still succeeds (`User` + role + applican
 
 - After login, applicant uses the admissions SPA documents page.
 - Upload goes through `ifitwala_ed/api/admissions_portal.py::upload_applicant_document`.
+- The API wrapper resolves applicant/session guards in `ifitwala_ed`, then `ifitwala_ed/admission/admissions_portal.py` delegates the actual upload session and finalize path to `ifitwala_drive.api.admissions.upload_applicant_document`.
 - Edits/uploads are allowed only when applicant status is one of:
   - `Invited`
   - `In Progress`
   - `Missing Info`
-- Upload creates/updates governed `Applicant Document` records and routes files through classification/governance services.
+- Upload creates/updates governed `Applicant Document` records in `ifitwala_ed`, then Drive finalizes the governed `File` and classification payload before the applicant workflow response is returned.
 
 ## Child Table (Included in Parent)
 
@@ -259,9 +261,14 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
 - **File governance**:
   - direct attachments blocked except `applicant_image`
   - governed upload endpoint: `ifitwala_ed.utilities.governed_uploads.upload_applicant_image`
+  - Desk `applicant_image` upload still uses local dispatcher finalization in `ifitwala_ed.utilities.file_dispatcher.create_and_classify_file(...)`
   - admissions portal self-upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_profile_image`
+  - applicant profile image runtime delegate: `ifitwala_ed.admission.admissions_portal.upload_applicant_profile_image` -> `ifitwala_drive.api.admissions.upload_applicant_profile_image`
   - admissions portal guardian photo upload endpoint: `ifitwala_ed.api.admissions_portal.upload_applicant_guardian_image`
-  - admissions portal applicant/guardian photo uploads accept only `JPG`/`JPEG`/`PNG`, reject `HEIC`/`HEIF`, rewrite accepted uploads to server-owned stripped `JPEG`, and enforce `10 MB` / `25 megapixel` limits before file dispatcher storage
+  - guardian image runtime delegate: `ifitwala_ed.admission.admissions_portal.upload_applicant_guardian_image` -> `ifitwala_drive.api.admissions.upload_applicant_guardian_image`
+  - admissions portal applicant/guardian photo uploads accept only `JPG`/`JPEG`/`PNG`, reject `HEIC`/`HEIF`, rewrite accepted uploads to server-owned stripped `JPEG`, and enforce `10 MB` / `25 megapixel` limits before governed finalize/storage
+  - applicant document uploads runtime delegate: `ifitwala_ed.admission.admissions_portal.upload_applicant_document` -> `ifitwala_drive.api.admissions.upload_applicant_document`
+  - applicant health vaccination proof runtime delegate: `ifitwala_ed.admission.admissions_portal.upload_applicant_health_vaccination_proof` -> `ifitwala_drive.api.admissions.upload_applicant_health_vaccination_proof`
   - all other admissions docs routed via `Applicant Document` + file classification
 - **Recommendation intake (runtime)**:
   - external recommender submissions use a separate intake surface (`/admissions/recommendation/<token>`) and do not use applicant portal authentication

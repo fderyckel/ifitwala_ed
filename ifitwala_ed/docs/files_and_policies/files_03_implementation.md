@@ -32,6 +32,29 @@ Current implementation gap:
 * a generic organization media management surface now exists from `Organization` and `School` Desk forms
 * legacy URL-only school/organization public media is no longer accepted and must be relinked or re-uploaded through governed organization media
 
+## Runtime boundary with Ifitwala Drive
+
+The file-governance architecture is not fully local to `ifitwala_ed`.
+Current runtime is split deliberately:
+
+* `ifitwala_ed` owns workflow context, permission checks, tenant scope, subject resolution, and which business record a file belongs to.
+* `ifitwala_drive` owns Drive upload sessions, temporary object handling, finalize flow, and the governed storage boundary for the Drive-backed upload paths.
+
+Current Drive-backed paths in production code include:
+
+* admissions document and portal image uploads via `ifitwala_ed/admission/admissions_portal.py` -> `ifitwala_drive.api.admissions.*`
+* task submission attachments via `ifitwala_ed/utilities/governed_uploads.py::upload_task_submission_attachment` -> `ifitwala_drive.api.submissions.upload_task_submission_artifact`
+* task resource uploads via `ifitwala_ed/utilities/governed_uploads.py::upload_task_resource` -> `ifitwala_drive.api.resources.upload_task_resource`
+* employee/student/school/organization media flows via `ifitwala_ed/utilities/governed_uploads.py` -> `ifitwala_drive.api.media.*`
+
+Current direct-dispatcher path still present in production code:
+
+* Desk applicant profile image upload via `ifitwala_ed/utilities/governed_uploads.py::upload_applicant_image` -> `ifitwala_ed.utilities.file_dispatcher.create_and_classify_file(...)`
+
+Implication:
+
+* `ifitwala_drive` is now an application dependency of `ifitwala_ed`, not an optional companion app, because multiple live upload paths import Drive modules directly and fail closed when Drive is missing.
+
 Therefore:
 
 * do **not** add new direct `Attach`-based media workflows for school/website imagery
