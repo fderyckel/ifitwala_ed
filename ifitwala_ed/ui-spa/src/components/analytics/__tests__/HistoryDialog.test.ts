@@ -140,6 +140,25 @@ afterEach(() => {
 });
 
 describe('HistoryDialog', () => {
+	it('unwraps frappe method responses nested under message', async () => {
+		mocks.resourceState.data = {
+			message: {
+				school: 'Ifitwala Secondary School + 2 schools',
+				data: [
+					{ date: '2026-03-09', count: 1 },
+					{ date: '2026-03-10', count: 0 },
+				],
+			},
+		};
+
+		mountDialog();
+		await nextTick();
+
+		expect(document.body.textContent).toContain('Ifitwala Secondary School + 2 schools');
+		expect(document.body.textContent).not.toContain('Loading...');
+		expect(document.body.querySelector('[data-analytics-chart="1"]')).not.toBeNull();
+	});
+
 	it('shows an actionable error when the history fetch fails', async () => {
 		mocks.resourceState.error = new Error(
 			'Assign a default school or Employee.school before opening clinic volume.'

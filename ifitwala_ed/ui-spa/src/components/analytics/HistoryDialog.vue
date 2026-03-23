@@ -307,6 +307,13 @@ const resource = createResource({
 });
 
 const loading = computed(() => resource.loading);
+const payload = computed(() => {
+	const data = resource.data as any;
+	if (data && typeof data === 'object' && 'message' in data) {
+		return data.message || null;
+	}
+	return data || null;
+});
 const errorMessage = computed(() => {
 	const err = resource.error;
 	if (!err) return '';
@@ -320,11 +327,11 @@ const errorMessage = computed(() => {
 });
 const schoolName = computed(() => {
 	if (errorMessage.value) return __('Unavailable');
-	return resource.data?.school || __('Loading...');
+	return payload.value?.school || __('Loading...');
 });
-const totalPoints = computed(() => resource.data?.data?.length || 0);
+const totalPoints = computed(() => payload.value?.data?.length || 0);
 const totalCount = computed(() => {
-	const data = resource.data?.data || [];
+	const data = payload.value?.data || [];
 	return data.reduce((sum: number, entry: any) => sum + Number(entry.count || 0), 0);
 });
 const averageCount = computed(() => {
@@ -397,7 +404,7 @@ onBeforeUnmount(() => {
 });
 
 const chartOption = computed(() => {
-	const data = resource.data?.data || [];
+	const data = payload.value?.data || [];
 	const dates = data.map((d: any) => d.date);
 	const counts = data.map((d: any) => d.count);
 
