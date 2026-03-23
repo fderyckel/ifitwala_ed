@@ -7,6 +7,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.curriculum.doctype.program import program as program_module
+from ifitwala_ed.tests.factories.organization import make_organization, make_school
 
 
 class TestProgram(FrappeTestCase):
@@ -257,6 +258,53 @@ class TestProgram(FrappeTestCase):
         self.assertEqual(source_program, "PROG-CHILD")
         self.assertEqual(rows[0].assessment_category, "CAT-LOCAL")
 
+    def test_publishing_program_prepares_school_profiles_for_offered_schools(self):
+        organization = make_organization(prefix="Program Org")
+        school = make_school(organization.name, prefix="Program School")
+        school.is_published = 1
+        school.save(ignore_permissions=True)
+
+        academic_year = _make_academic_year(school.name)
+        program = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Website Program {frappe.generate_hash(length=6)}",
+                "program_image": "/files/program-hero.jpg",
+                "program_overview": "<p>Program overview for families.</p>",
+            }
+        ).insert(ignore_permissions=True)
+
+        _make_program_offering(program.name, school.name, academic_year)
+
+        program.reload()
+        program.is_published = 1
+        program.save(ignore_permissions=True)
+
+        program.reload()
+        self.assertTrue(bool((program.program_slug or "").strip()))
+
+        profile_name = frappe.db.get_value(
+            "Program Website Profile",
+            {"program": program.name, "school": school.name},
+            "name",
+        )
+        self.assertTrue(profile_name)
+
+        profile = frappe.get_doc("Program Website Profile", profile_name)
+        self.assertEqual(profile.workflow_state, "Draft")
+        self.assertEqual(profile.status, "Draft")
+        self.assertEqual(profile.hero_image, program.program_image)
+        self.assertIn("Program overview for families", profile.intro_text)
+        self.assertEqual([row.block_type for row in profile.blocks], ["program_intro", "cta"])
+        self.assertTrue(bool((profile.seo_profile or "").strip()))
+
+        seo_profile = frappe.get_doc("Website SEO Profile", profile.seo_profile)
+        self.assertEqual(seo_profile.meta_title, program.program_name)
+        self.assertEqual(
+            seo_profile.canonical_url,
+            frappe.utils.get_url(f"/schools/{school.website_slug}/programs/{program.program_slug}"),
+        )
+
 
 def _make_grade_scale():
     grade_scale = frappe.get_doc(
@@ -283,6 +331,36 @@ def _make_course(label):
     )
     course.insert(ignore_permissions=True)
     return course
+
+
+def _make_academic_year(school_name):
+    academic_year = frappe.get_doc(
+        {
+            "doctype": "Academic Year",
+            "academic_year_name": f"AY {frappe.generate_hash(length=6)}",
+            "school": school_name,
+            "year_start_date": "2025-08-01",
+            "year_end_date": "2026-06-30",
+            "archived": 0,
+            "visible_to_admission": 1,
+        }
+    )
+    academic_year.insert(ignore_permissions=True)
+    return academic_year.name
+
+
+def _make_program_offering(program_name, school_name, academic_year_name):
+    offering = frappe.get_doc(
+        {
+            "doctype": "Program Offering",
+            "program": program_name,
+            "school": school_name,
+            "status": "Planned",
+            "offering_academic_years": [{"academic_year": academic_year_name}],
+        }
+    )
+    offering.insert(ignore_permissions=True)
+    return offering
 
 
 def _get_or_create_program_root():

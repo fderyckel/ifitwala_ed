@@ -30,6 +30,23 @@ class Program(NestedSet):
         self._apply_default_colors_for_assessment_categories()
         self._validate_program_assessment_categories()
 
+    def after_insert(self):
+        self._sync_default_website_profiles()
+
+    def on_update(self):
+        if any(
+            self.has_value_changed(fieldname)
+            for fieldname in (
+                "is_published",
+                "program_slug",
+                "program_image",
+                "description",
+                "program_overview",
+                "program_aims",
+            )
+        ):
+            self._sync_default_website_profiles()
+
     def _validate_root_program_constraints(self):
         if self.name != PROGRAM_TREE_ROOT:
             return
@@ -112,10 +129,20 @@ class Program(NestedSet):
                 frappe.ValidationError,
             )
         if not (self.program_slug or "").strip():
-            frappe.throw(
-                _("Program slug is required before publishing."),
-                frappe.ValidationError,
+            from ifitwala_ed.website.bootstrap import _next_available_program_slug
+
+            self.program_slug = _next_available_program_slug(
+                self.program_name or self.name,
+                program_name=self.name or self.program_name,
             )
+
+    def _sync_default_website_profiles(self):
+        if cint(self.is_published) != 1 or cint(self.archive) == 1:
+            return
+
+        from ifitwala_ed.website.bootstrap import ensure_default_program_website_profiles
+
+        ensure_default_program_website_profiles(program_name=self.name)
 
     def _validate_course_basket_groups(self):
         valid_courses = {(row.course or "").strip() for row in (self.courses or []) if (row.course or "").strip()}

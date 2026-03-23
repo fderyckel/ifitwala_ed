@@ -3,8 +3,8 @@ title: "School: Academic Scope and Hierarchy Node"
 slug: school
 category: School Settings
 doc_order: 1
-version: "1.1.1"
-last_change_date: "2026-03-11"
+version: "1.2.0"
+last_change_date: "2026-03-23"
 summary: "Define schools as a NestedSet hierarchy anchored to an Organization for admissions, academics, calendars, policy scope, and admissions health-readiness policy."
 seo_title: "School: Academic Scope and Hierarchy Node"
 seo_description: "Define schools as a NestedSet hierarchy anchored to an Organization for admissions, academics, calendars, policy scope, and admissions health-readiness policy."
@@ -23,6 +23,10 @@ seo_description: "Define schools as a NestedSet hierarchy anchored to an Organiz
 - Attendance thresholds are validated and parent defaults can be inherited on new child schools.
 - Publishing requires a `website_slug`.
 - Public school website routes are served under `/schools/{website_slug}/...` via `School Website Page` records.
+- First-time school publication now auto-prepares missing website defaults:
+  - generates `website_slug` when blank
+  - seeds canonical school pages (`/`, `about`, `admissions`, `programs`) when missing
+  - links default `Website SEO Profile` records on school pages when missing
 
 ## Where It Is Used Across the ERP
 
@@ -51,6 +55,7 @@ seo_description: "Define schools as a NestedSet hierarchy anchored to an Organiz
 - **Website publication contract**:
   - `website_slug` identifies the school under `/schools/{website_slug}/...`
   - published navigation comes from `School Website Page.show_in_navigation`, not `Website Settings.top_bar_items`
+  - first publish fills missing website slug and ensures default school website pages + SEO profiles without overwriting existing authored content
 - **Controller hooks**:
   - `validate`, `on_update`, `after_save`, `on_trash`, `after_rename`
 - **Whitelisted methods**:

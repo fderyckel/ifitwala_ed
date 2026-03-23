@@ -4,6 +4,7 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils.nestedset import get_descendants_of
 
 _STEP = 10
 
@@ -105,3 +106,13 @@ def reorder_learning_units(course: str, unit_names):
     )
 
     return {"updated": len(values), "order_step": _STEP}
+
+
+@frappe.whitelist()
+def get_program_subtree_scope(program: str):
+    program = (program or "").strip()
+    if not program:
+        frappe.throw("program is required.", frappe.ValidationError)
+
+    descendants = get_descendants_of("Program", program) or []
+    return [program, *descendants]

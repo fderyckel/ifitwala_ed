@@ -132,12 +132,15 @@ frappe.ui.form.on("Program", {
 
 		if (frm.doc.is_published && !frm.doc.archive) {
 			const profiles = await frappe.db.get_list("Program Website Profile", {
-				filters: { program: frm.doc.name, status: "Published" },
-				fields: ["name"],
-				limit: 1
+				filters: { program: frm.doc.name },
+				fields: ["name", "status"],
+				limit: 20
 			});
+			const publishedProfiles = (profiles || []).filter((row) => row.status === "Published");
 			if (!profiles || profiles.length === 0) {
-				warnings.push(__("Program is published but has no published Website Profile."));
+				warnings.push(__("Program is published but no Website Profile has been prepared yet."));
+			} else if (publishedProfiles.length === 0) {
+				warnings.push(__("Program website profiles are prepared, but none are published yet."));
 			}
 		}
 

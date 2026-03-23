@@ -116,6 +116,13 @@ class School(NestedSet):
     def after_save(self):
         if self.has_value_changed("is_published") or self.has_value_changed("website_slug"):
             self.sync_website_page_publication()
+            if int(self.is_published or 0) == 1 and (self.website_slug or "").strip():
+                from ifitwala_ed.website.bootstrap import ensure_default_school_website
+
+                ensure_default_school_website(
+                    school_name=self.name,
+                    set_default_organization=True,
+                )
 
     def after_insert(self):
         ensure_default_policy_for_school(self.name, ignore_permissions=True)
@@ -245,9 +252,11 @@ class School(NestedSet):
         if not getattr(self, "is_published", 0):
             return
         if not (self.website_slug or "").strip():
-            frappe.throw(
-                _("Website slug is required before publishing a School."),
-                frappe.ValidationError,
+            from ifitwala_ed.website.bootstrap import _next_available_school_slug
+
+            self.website_slug = _next_available_school_slug(
+                self.abbr or self.school_name or self.name,
+                school_name=self.name or self.school_name,
             )
 
     def apply_parent_attendance_threshold_defaults(self):

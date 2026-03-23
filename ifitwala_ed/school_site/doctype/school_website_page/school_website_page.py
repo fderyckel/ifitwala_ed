@@ -203,17 +203,26 @@ class SchoolWebsitePage(Document):
 
         steps_props = {
             "steps": [
-                {"key": "inquire", "title": "Inquire", "description": "", "icon": "mail"},
-                {"key": "visit", "title": "Visit", "description": "", "icon": "map"},
-                {"key": "apply", "title": "Apply", "description": "", "icon": "file-text"},
+                {
+                    "key": "inquire",
+                    "title": "Inquire",
+                    "description": "Start the conversation.",
+                    "icon": "mail",
+                },
+                {
+                    "key": "visit",
+                    "title": "Visit",
+                    "description": "Experience our campus.",
+                    "icon": "map",
+                },
+                {
+                    "key": "apply",
+                    "title": "Apply",
+                    "description": "Begin the application.",
+                    "icon": "file-text",
+                },
             ],
             "layout": "horizontal",
-        }
-
-        faq_props = {
-            "items": [{"question": "", "answer_html": ""}],
-            "enable_schema": False,
-            "collapsed_by_default": True,
         }
 
         self.append(
@@ -221,7 +230,13 @@ class SchoolWebsitePage(Document):
             {
                 "block_type": "admissions_overview",
                 "order": 1,
-                "props": json.dumps({"heading": "Admissions", "content_html": "", "max_width": "normal"}),
+                "props": json.dumps(
+                    {
+                        "heading": "Admissions",
+                        "content_html": "<p>We welcome families who value curiosity, care, and growth.</p>",
+                        "max_width": "normal",
+                    }
+                ),
                 "is_enabled": 1,
             },
         )
@@ -258,15 +273,6 @@ class SchoolWebsitePage(Document):
                 "block_type": "admission_cta",
                 "order": 5,
                 "props": json.dumps({"intent": "apply", "style": "outline"}),
-                "is_enabled": 1,
-            },
-        )
-        self.append(
-            "blocks",
-            {
-                "block_type": "faq",
-                "order": 6,
-                "props": json.dumps(faq_props),
                 "is_enabled": 1,
             },
         )

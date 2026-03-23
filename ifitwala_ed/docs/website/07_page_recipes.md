@@ -12,6 +12,7 @@
 * One H1 owner block must be first (`hero`, `admissions_overview`, or `program_intro`).
 * Route input for `School Website Page` is school-relative (`/`, `about`, `admissions`, `about/team`).
 * Publication is workflow-driven (`Draft -> In Review -> Approved -> Published`).
+* First-time School/Program publication now prepares starter website/SEO defaults when those records are missing, but it does not bypass the page/profile review workflow.
 * Allowed blocks depend on context:
   * `School Website Page` (Standard): `hero`, `rich_text`, `section_carousel`, `program_list`, `leadership`, `cta`, `faq`, `content_snippet`
   * `School Website Page` (Admissions): Standard + `admissions_overview`, `admissions_steps`, `admission_cta`

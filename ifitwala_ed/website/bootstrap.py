@@ -6,7 +6,7 @@ import re
 import frappe
 from frappe.utils import strip_html
 
-from ifitwala_ed.website.utils import normalize_route
+from ifitwala_ed.website.utils import build_program_profile_url, normalize_route
 
 
 def _slugify_for_route(value: str | None) -> str:
@@ -19,6 +19,16 @@ def _next_available_school_slug(base_slug: str, *, school_name: str) -> str:
     candidate = base
     index = 2
     while frappe.db.exists("School", {"website_slug": candidate, "name": ["!=", school_name]}):
+        candidate = f"{base}-{index}"
+        index += 1
+    return candidate
+
+
+def _next_available_program_slug(base_slug: str, *, program_name: str) -> str:
+    base = _slugify_for_route(base_slug)
+    candidate = base
+    index = 2
+    while frappe.db.exists("Program", {"program_slug": candidate, "name": ["!=", program_name]}):
         candidate = f"{base}-{index}"
         index += 1
     return candidate
@@ -42,6 +52,172 @@ def _school_page_url(*, school_slug: str, route: str) -> str:
     if route == "/":
         return normalize_route(f"/schools/{school_slug}")
     return normalize_route(f"/schools/{school_slug}/{route}")
+
+
+def _full_url(route: str | None) -> str | None:
+    route = normalize_route(route or "")
+    if not route:
+        return None
+    return frappe.utils.get_url(route)
+
+
+def _derive_page_title(*, page, school) -> str:
+    title = (getattr(page, "title", None) or "").strip()
+    if title:
+        return title
+
+    route = (getattr(page, "route", None) or "").strip()
+    if route == "/":
+        return (getattr(school, "school_name", None) or getattr(school, "name", None) or "").strip()
+
+    last_segment = route.split("/")[-1] if route else ""
+    if not last_segment:
+        return (getattr(school, "school_name", None) or getattr(school, "name", None) or "").strip()
+    return last_segment.replace("-", " ").replace("_", " ").title()
+
+
+def _ensure_website_seo_profile(
+    *,
+    profile_name: str | None,
+    meta_title: str | None,
+    meta_description: str | None,
+    og_image: str | None,
+    canonical_url: str | None,
+) -> tuple[str, bool]:
+    if profile_name:
+        profile = frappe.get_doc("Website SEO Profile", profile_name)
+        is_new = False
+    else:
+        profile = frappe.new_doc("Website SEO Profile")
+        is_new = True
+
+    changed = False
+    normalized_meta_title = (meta_title or "").strip()
+    normalized_meta_description = (meta_description or "").strip()
+    normalized_og_image = (og_image or "").strip()
+    normalized_canonical_url = (canonical_url or "").strip()
+
+    defaults = {
+        "meta_title": normalized_meta_title,
+        "meta_description": normalized_meta_description,
+        "og_title": normalized_meta_title,
+        "og_description": normalized_meta_description,
+        "og_image": normalized_og_image,
+        "canonical_url": normalized_canonical_url,
+    }
+
+    for fieldname, value in defaults.items():
+        if not value:
+            continue
+        if not (getattr(profile, fieldname, None) or "").strip():
+            setattr(profile, fieldname, value)
+            changed = True
+
+    if is_new:
+        profile.noindex = 0
+        profile.insert(ignore_permissions=True)
+    elif changed:
+        profile.save(ignore_permissions=True)
+
+    return profile.name, bool(is_new or changed)
+
+
+def _ensure_school_page_seo_profile(*, page, school) -> tuple[str | None, bool]:
+    route = (getattr(page, "full_route", None) or "").strip()
+    if not route and getattr(school, "website_slug", None):
+        route = _school_page_url(
+            school_slug=school.website_slug,
+            route=getattr(page, "route", None) or "/",
+        )
+
+    profile_name, profile_changed = _ensure_website_seo_profile(
+        profile_name=getattr(page, "seo_profile", None),
+        meta_title=_derive_page_title(page=page, school=school),
+        meta_description=(getattr(page, "meta_description", None) or "").strip(),
+        og_image=(getattr(school, "school_logo", None) or "").strip(),
+        canonical_url=_full_url(route),
+    )
+
+    page_changed = False
+    if getattr(page, "seo_profile", None) != profile_name:
+        frappe.db.set_value("School Website Page", page.name, "seo_profile", profile_name, update_modified=False)
+        page.seo_profile = profile_name
+        page_changed = True
+    return profile_name, bool(profile_changed or page_changed)
+
+
+def _default_program_intro_text(program) -> str:
+    for value in (program.program_overview, program.program_aims, program.description):
+        text = (value or "").strip()
+        if text:
+            return text
+    return f"<p>Explore the learning journey offered through {program.program_name or program.name}.</p>"
+
+
+def _build_program_profile_blocks(*, school, program) -> list[dict]:
+    blocks = [
+        {
+            "block_type": "program_intro",
+            "order": 1,
+            "props": {
+                "heading": program.program_name or program.name,
+                "cta_intent": "apply",
+            },
+        }
+    ]
+
+    aims_html = (program.program_aims or "").strip()
+    overview_html = (program.program_overview or "").strip()
+    if aims_html and aims_html != overview_html:
+        blocks.append(
+            {
+                "block_type": "rich_text",
+                "order": 2,
+                "props": {
+                    "content_html": aims_html,
+                    "max_width": "wide",
+                },
+            }
+        )
+
+    blocks.append(
+        {
+            "block_type": "cta",
+            "order": len(blocks) + 1,
+            "props": {
+                "title": "Interested in this program?",
+                "text": "Start the admissions conversation with our team.",
+                "button_label": (school.label_cta_inquiry or "").strip() or "Inquire",
+                "button_link": _safe_link(school.admissions_inquiry_route, fallback="/apply/inquiry"),
+            },
+        }
+    )
+    return blocks
+
+
+def _ensure_program_profile_seo_profile(*, profile, school, program) -> tuple[str | None, bool]:
+    if not (school.website_slug or "").strip() or not (program.program_slug or "").strip():
+        return None, False
+
+    description = _trim_meta_text(profile.intro_text or _default_program_intro_text(program))
+    profile_name, profile_changed = _ensure_website_seo_profile(
+        profile_name=getattr(profile, "seo_profile", None),
+        meta_title=(program.program_name or program.name or "").strip(),
+        meta_description=description,
+        og_image=(profile.hero_image or program.program_image or "").strip(),
+        canonical_url=_full_url(
+            build_program_profile_url(
+                school_slug=school.website_slug,
+                program_slug=program.program_slug,
+            )
+        ),
+    )
+
+    linked_changed = False
+    if getattr(profile, "seo_profile", None) != profile_name:
+        profile.seo_profile = profile_name
+        linked_changed = True
+    return profile_name, bool(profile_changed or linked_changed)
 
 
 def _build_home_blocks(*, school) -> list[dict]:
@@ -157,54 +333,69 @@ def _build_about_blocks(*, school) -> list[dict]:
 
 
 def _build_admissions_blocks(*, school) -> list[dict]:
-    apply_link = _safe_link(school.admissions_apply_route, fallback="/admissions")
-    inquiry_link = _safe_link(school.admissions_inquiry_route, fallback="/apply/inquiry")
-
     return [
         {
-            "block_type": "hero",
+            "block_type": "admissions_overview",
             "order": 1,
             "props": {
-                "title": "Admissions",
-                "subtitle": "A clear, supportive application process.",
-                "images": [],
-                "cta_label": "Start Application",
-                "cta_link": apply_link,
+                "heading": "Admissions",
+                "content_html": (
+                    f"<p>{school.school_name} welcomes families who value curiosity, care, and growth.</p>"
+                ),
+                "max_width": "normal",
             },
         },
         {
-            "block_type": "rich_text",
+            "block_type": "admissions_steps",
             "order": 2,
             "props": {
-                "content_html": (
-                    "<ol>"
-                    "<li>Submit an inquiry</li>"
-                    "<li>Schedule a visit</li>"
-                    "<li>Complete application steps</li>"
-                    "<li>Receive admission decision</li>"
-                    "</ol>"
-                ),
-                "max_width": "narrow",
+                "steps": [
+                    {
+                        "key": "inquire",
+                        "title": "Inquire",
+                        "description": "Start the conversation.",
+                        "icon": "mail",
+                    },
+                    {
+                        "key": "visit",
+                        "title": "Visit",
+                        "description": "Experience our campus.",
+                        "icon": "map",
+                    },
+                    {
+                        "key": "apply",
+                        "title": "Apply",
+                        "description": "Begin the application.",
+                        "icon": "file-text",
+                    },
+                ],
+                "layout": "horizontal",
             },
         },
         {
-            "block_type": "program_list",
+            "block_type": "admission_cta",
             "order": 3,
             "props": {
-                "school_scope": "current",
-                "show_intro": False,
-                "card_style": "standard",
-                "limit": 6,
+                "intent": "inquire",
+                "style": "primary",
+                "label_override": (school.label_cta_inquiry or "").strip() or "Inquire",
             },
         },
         {
-            "block_type": "cta",
+            "block_type": "admission_cta",
             "order": 4,
             "props": {
-                "title": "Need help deciding?",
-                "text": "Speak with our admissions team and ask any question.",
-                "button_label": "Contact Admissions",
-                "button_link": inquiry_link,
+                "intent": "visit",
+                "style": "secondary",
+                "label_override": (school.label_cta_roi or "").strip() or "Visit",
+            },
+        },
+        {
+            "block_type": "admission_cta",
+            "order": 5,
+            "props": {
+                "intent": "apply",
+                "style": "outline",
             },
         },
     ]
@@ -259,6 +450,7 @@ def _default_page_specs(*, school) -> list[dict]:
         },
         {
             "route": "admissions",
+            "page_type": "Admissions",
             "title": "Admissions",
             "meta_description": admissions_meta,
             "show_in_navigation": 1,
@@ -301,13 +493,15 @@ def _create_page_if_missing(*, school_name: str, spec: dict) -> str | None:
     page = frappe.new_doc("School Website Page")
     page.school = school_name
     page.route = spec["route"]
-    page.page_type = "Standard"
+    page.page_type = spec.get("page_type") or "Standard"
     page.title = spec["title"]
     page.meta_description = spec["meta_description"]
     page.show_in_navigation = int(spec.get("show_in_navigation") or 0)
     page.navigation_order = spec.get("navigation_order")
     _append_blocks(page, spec["blocks"])
     page.insert(ignore_permissions=True)
+    school = frappe.get_doc("School", school_name)
+    _ensure_school_page_seo_profile(page=page, school=school)
     return page.name
 
 
@@ -445,8 +639,123 @@ def ensure_default_school_website(*, school_name: str, set_default_organization:
         if created:
             created_pages.append(created)
 
+    page_names = frappe.get_all(
+        "School Website Page",
+        filters={"school": school.name},
+        pluck="name",
+    )
+    linked_seo_profiles = []
+    for page_name in page_names:
+        page = frappe.get_doc("School Website Page", page_name)
+        profile_name, _profile_changed = _ensure_school_page_seo_profile(page=page, school=school)
+        if profile_name:
+            linked_seo_profiles.append(profile_name)
+
+    program_names = frappe.get_all(
+        "Program Offering",
+        filters={"school": school.name},
+        pluck="program",
+        distinct=True,
+    )
+    for program_name in program_names:
+        if not frappe.db.get_value("Program", program_name, "is_published"):
+            continue
+        ensure_default_program_website_profiles(program_name=program_name)
+
     return {
         "school": school.name,
         "website_slug": school.website_slug,
         "created_pages": created_pages,
+        "seo_profiles": linked_seo_profiles,
+    }
+
+
+def ensure_default_program_website_profiles(*, program_name: str) -> dict:
+    """
+    Ensure every offered school gets a draft-ready Program Website Profile with
+    starter content and SEO defaults. Existing content is preserved.
+    """
+    program = frappe.get_doc("Program", program_name)
+
+    updates = {}
+    if not (program.program_slug or "").strip():
+        updates["program_slug"] = _next_available_program_slug(
+            program.program_name or program.name,
+            program_name=program.name,
+        )
+
+    if updates:
+        frappe.db.set_value("Program", program.name, updates, update_modified=False)
+        program.reload()
+
+    school_names = frappe.get_all(
+        "Program Offering",
+        filters={"program": program.name},
+        pluck="school",
+        distinct=True,
+    )
+
+    created_profiles = []
+    touched_profiles = []
+    for school_name in school_names:
+        school = frappe.get_doc("School", school_name)
+        profile_name = frappe.db.get_value(
+            "Program Website Profile",
+            {"program": program.name, "school": school.name},
+            "name",
+        )
+
+        created = False
+        if profile_name:
+            profile = frappe.get_doc("Program Website Profile", profile_name)
+        else:
+            profile = frappe.new_doc("Program Website Profile")
+            profile.school = school.name
+            profile.program = program.name
+            created = True
+
+        changed = False
+
+        if not (profile.hero_image or "").strip() and (program.program_image or "").strip():
+            profile.hero_image = program.program_image
+            changed = True
+
+        if not (profile.intro_text or "").strip():
+            profile.intro_text = _default_program_intro_text(program)
+            changed = True
+
+        if not profile.blocks:
+            for row in _build_program_profile_blocks(school=school, program=program):
+                profile.append(
+                    "blocks",
+                    {
+                        "block_type": row["block_type"],
+                        "order": row["order"],
+                        "props": json.dumps(row["props"]),
+                        "is_enabled": 1,
+                    },
+                )
+            changed = True
+
+        _profile_name, seo_changed = _ensure_program_profile_seo_profile(
+            profile=profile,
+            school=school,
+            program=program,
+        )
+        if seo_changed:
+            changed = True
+
+        if created:
+            profile.insert(ignore_permissions=True)
+            created_profiles.append(profile.name)
+        elif changed:
+            profile.save(ignore_permissions=True)
+
+        touched_profiles.append(profile.name)
+
+    return {
+        "program": program.name,
+        "program_slug": program.program_slug,
+        "profiles": touched_profiles,
+        "created_profiles": created_profiles,
     }
