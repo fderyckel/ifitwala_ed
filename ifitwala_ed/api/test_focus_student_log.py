@@ -2,6 +2,7 @@
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from frappe.utils import cint
 
 from ifitwala_ed.api.focus import get_focus_context
 
@@ -15,6 +16,10 @@ class TestFocusStudentLog(FrappeTestCase):
         frappe.set_user("Administrator")
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
+                if doctype == "Student Log":
+                    docstatus = cint(frappe.db.get_value(doctype, name, "docstatus") or 0)
+                    if docstatus == 1:
+                        frappe.get_doc(doctype, name).cancel()
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
         super().tearDown()
 

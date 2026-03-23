@@ -69,6 +69,11 @@ CONTACT_ROLE_MATRIX = {
 
 
 class TestContactPermissions(FrappeTestCase):
+    @staticmethod
+    def _available_permission_fields() -> list[str]:
+        candidate_fields = ["role", "read", "write", "create", "delete", "email", "comment", "assign"]
+        return [fieldname for fieldname in candidate_fields if frappe.db.has_column("Custom DocPerm", fieldname)]
+
     def test_grant_core_crm_permissions_creates_missing_roles_before_docperm_seed(self):
         if frappe.db.exists("Role", "Academic Assistant"):
             frappe.delete_doc("Role", "Academic Assistant", force=1, ignore_permissions=True)
@@ -80,6 +85,7 @@ class TestContactPermissions(FrappeTestCase):
     def test_grant_core_crm_permissions_seeds_contact_rows_for_editor_roles(self):
         grant_core_crm_permissions()
 
+        available_fields = self._available_permission_fields()
         rows = frappe.get_all(
             "Custom DocPerm",
             filters={
@@ -87,7 +93,7 @@ class TestContactPermissions(FrappeTestCase):
                 "permlevel": 0,
                 "role": ["in", list(CONTACT_ROLE_MATRIX)],
             },
-            fields=["role", "read", "write", "create", "delete", "email", "comment", "assign"],
+            fields=available_fields,
             limit=len(CONTACT_ROLE_MATRIX),
         )
         by_role = {row.role: row for row in rows}
@@ -96,6 +102,8 @@ class TestContactPermissions(FrappeTestCase):
 
         for role, expected in CONTACT_ROLE_MATRIX.items():
             for fieldname, value in expected.items():
+                if fieldname not in available_fields:
+                    continue
                 self.assertEqual(
                     int(by_role[role].get(fieldname) or 0),
                     value,

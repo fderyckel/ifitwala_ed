@@ -412,7 +412,7 @@ class TestPolicyVersionAmendments(FrappeTestCase):
             {
                 "doctype": "Institutional Policy",
                 "policy_key": f"{policy_key_prefix}_{frappe.generate_hash(length=8)}",
-                "policy_title": "Staff Policy",
+                "policy_title": f"Staff Policy {frappe.generate_hash(length=4)}",
                 "policy_category": "Operations",
                 "applies_to": [{"policy_audience": "Staff"}],
                 "organization": organization,

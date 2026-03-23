@@ -33,8 +33,19 @@ class StudentPatientVisit(Document):
 
             # Get student info for notification
             student_doc = frappe.get_doc("Student", student)
-            student_name = student_doc.student_full_name
-            student_image = student_doc.student_image
+            student_name = (
+                getattr(student_doc, "student_full_name", None)
+                or " ".join(
+                    part
+                    for part in [
+                        getattr(student_doc, "student_first_name", None),
+                        getattr(student_doc, "student_last_name", None),
+                    ]
+                    if part
+                )
+                or student
+            )
+            student_image = getattr(student_doc, "student_image", None)
 
             today_date = getdate(self.date) if self.date else getdate()
             current_time = get_time(self.time_of_arrival or frappe.utils.now_time())

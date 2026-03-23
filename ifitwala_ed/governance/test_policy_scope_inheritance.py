@@ -229,7 +229,7 @@ class TestPolicyScopeInheritance(FrappeTestCase):
             {
                 "doctype": "Institutional Policy",
                 "policy_key": policy_key,
-                "policy_title": f"Policy {policy_key}",
+                "policy_title": f"Policy {policy_key} {frappe.generate_hash(length=4)}",
                 "policy_category": "Admissions",
                 "applies_to": [{"policy_audience": "Applicant"}],
                 "organization": organization,

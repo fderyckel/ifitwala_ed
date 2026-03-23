@@ -71,6 +71,7 @@ class TestRecommendationIntake(FrappeTestCase):
             send_email=0,
             client_request_id="create-1",
         )
+        self._track_recommendation_artifacts(created.get("recommendation_request"))
 
         self.assertTrue(bool(created.get("ok")))
         self.assertEqual(created.get("status"), "processed")
@@ -120,6 +121,7 @@ class TestRecommendationIntake(FrappeTestCase):
         )
         self.assertEqual(request_row.get("request_status"), "Submitted")
         self.assertTrue(bool(request_row.get("submission")))
+        self._track_recommendation_artifacts(request_name)
 
         status_payload = get_recommendation_status_for_applicant(
             student_applicant=self.applicant.name, include_confidential=True
@@ -138,6 +140,7 @@ class TestRecommendationIntake(FrappeTestCase):
             send_email=0,
             client_request_id="max-1",
         )
+        self._track_recommendation_artifacts(first.get("recommendation_request"))
         second = create_recommendation_request(
             student_applicant=self.applicant.name,
             recommendation_template=self.template.name,
@@ -146,6 +149,7 @@ class TestRecommendationIntake(FrappeTestCase):
             send_email=0,
             client_request_id="max-2",
         )
+        self._track_recommendation_artifacts(second.get("recommendation_request"))
 
         self.assertNotEqual(first.get("item_key"), second.get("item_key"))
 
@@ -168,6 +172,17 @@ class TestRecommendationIntake(FrappeTestCase):
             recommender_email=f"hidden-{frappe.generate_hash(length=6)}@example.com",
             send_email=0,
             client_request_id="hidden-1",
+        )
+        self._track_recommendation_artifacts(
+            frappe.db.get_value(
+                "Recommendation Request",
+                {
+                    "student_applicant": self.applicant.name,
+                    "recommendation_template": self.template.name,
+                    "recommender_name": "Identity Hidden",
+                },
+                "name",
+            )
         )
 
         frappe.set_user(self.applicant_user.name)
@@ -528,6 +543,7 @@ class TestRecommendationIntake(FrappeTestCase):
 
         recommendation_request = created.get("recommendation_request")
         self.assertTrue(bool(recommendation_request))
+        self._track_recommendation_artifacts(recommendation_request)
         token = self._token_from_intake_url(created.get("intake_url"))
 
         frappe.set_user("Guest")
@@ -547,8 +563,40 @@ class TestRecommendationIntake(FrappeTestCase):
         )
         self.assertTrue(bool(request_row.get("submission")))
         self.assertTrue(bool(request_row.get("applicant_document_item")))
+        self._track_recommendation_artifacts(recommendation_request)
         return {
             "recommendation_request": recommendation_request,
             "recommendation_submission": request_row.get("submission"),
             "applicant_document_item": request_row.get("applicant_document_item"),
         }
+
+    def _track_recommendation_artifacts(self, recommendation_request: str | None):
+        def _append_once(doctype: str, name: str | None):
+            docname = str(name or "").strip()
+            if not docname:
+                return
+            key = (doctype, docname)
+            if key not in self._created:
+                self._created.append(key)
+
+        request_name = str(recommendation_request or "").strip()
+        if not request_name:
+            return
+
+        request_row = frappe.db.get_value(
+            "Recommendation Request",
+            request_name,
+            ["name", "submission", "applicant_document", "applicant_document_item"],
+            as_dict=True,
+        )
+        if not request_row:
+            return
+
+        applicant_document = request_row.get("applicant_document")
+        applicant_document_item = request_row.get("applicant_document_item")
+        submission = request_row.get("submission")
+
+        _append_once("Applicant Document", applicant_document)
+        _append_once("Applicant Document Item", applicant_document_item)
+        _append_once("Recommendation Request", request_name)
+        _append_once("Recommendation Submission", submission)

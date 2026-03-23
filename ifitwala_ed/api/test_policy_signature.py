@@ -207,7 +207,10 @@ class TestPolicySignature(FrappeTestCase):
                 "policy_text": "<p>Read and sign this policy update.</p>",
                 "is_active": 1,
             }
-        ).insert(ignore_permissions=True)
+        )
+        self.policy_version.is_active = 0
+        self.policy_version.save(ignore_permissions=True)
+        amendment = amendment.insert(ignore_permissions=True)
         self.created.append(("Policy Version", amendment.name))
 
         frappe.set_user(self.user_one.name)
@@ -231,7 +234,7 @@ class TestPolicySignature(FrappeTestCase):
             {
                 "doctype": "School",
                 "school_name": f"PS Child School {frappe.generate_hash(length=6)}",
-                "abbr": f"PSC{frappe.generate_hash(length=4)}",
+                "abbr": f"PC{frappe.generate_hash(length=3)}",
                 "organization": self.organization.name,
                 "parent_school": parent_school.name,
             }

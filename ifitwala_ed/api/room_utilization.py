@@ -450,7 +450,7 @@ def get_room_capacity_utilization(filters=None):
     filters = _parse_filters(filters)
     _require_scope(filters)
 
-    from_date, to_date, _ = _validate_date_range(filters.get("from_date"), filters.get("to_date"))
+    from_date, to_date, _range_days = _validate_date_range(filters.get("from_date"), filters.get("to_date"))
 
     rooms = _get_candidate_rooms(filters)
     if not rooms:
@@ -622,7 +622,7 @@ def get_location_calendar(filters=None):
         if row.get("name")
     ]
 
-    from_date, to_date, _ = _validate_date_range(filters.get("from_date"), filters.get("to_date"))
+    from_date, to_date, _range_days = _validate_date_range(filters.get("from_date"), filters.get("to_date"))
     selected_location = str(filters.get("location") or "").strip() or None
     if not selected_location:
         return {

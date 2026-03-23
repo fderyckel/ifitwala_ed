@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import frappe
+from frappe.utils import cint
 
 ROLE_RENAMES = (
     ("Assistant Admin", "Academic Assistant"),
@@ -36,7 +37,15 @@ def _update_link_fields(*, old_role: str, new_role: str) -> None:
     for row in rows:
         doctype = row.get("parent")
         fieldname = row.get("fieldname")
-        if not doctype or not fieldname or not frappe.db.table_exists(doctype):
+        if not doctype or not fieldname:
+            continue
+        is_single = cint(frappe.db.get_value("DocType", doctype, "issingle") or 0)
+        if is_single:
+            current_value = frappe.db.get_single_value(doctype, fieldname)
+            if (current_value or "").strip() == old_role:
+                frappe.db.set_single_value(doctype, fieldname, new_role, update_modified=False)
+            continue
+        if not frappe.db.table_exists(doctype):
             continue
         frappe.db.sql(
             f"UPDATE `tab{doctype}` SET `{fieldname}` = %s WHERE `{fieldname}` = %s",

@@ -358,12 +358,17 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
                     }
                 )
             elif requirement_status not in {"Approved", "Waived", "Exception Approved"}:
+                focus_item = (
+                    pending_items[0]
+                    if pending_items
+                    else (rejected_items[0] if rejected_items else latest_uploaded_item)
+                )
                 unapproved_rows.append(
                     {
                         "document_type": document_type,
                         "label": label,
                         "applicant_document": _to_text(document_row.get("name")) or None,
-                        "applicant_document_item": _to_text((pending_items[0] or {}).get("name")) or None,
+                        "applicant_document_item": _to_text((focus_item or {}).get("name")) or None,
                         "review_status": requirement_status,
                     }
                 )

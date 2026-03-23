@@ -615,7 +615,7 @@ class ProgramEnrollmentTool(Document):
                 message += '<br><a href="{0}" target="_blank">{1}</a>'.format(
                     summary["details_link"], _("Download details CSV")
                 )
-            frappe.msgprint({"title": summary["title"], "message": message, "indicator": "green"})
+            frappe.msgprint(message, title=summary["title"], indicator="green")
 
         return summary
 

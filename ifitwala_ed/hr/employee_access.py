@@ -99,7 +99,12 @@ def _row_is_current(h) -> bool:
 
 def _active_history_rows(emp) -> list[dict]:
     rows = []
-    for h in emp.employee_history or []:
+    history_rows = []
+    if hasattr(emp, "get"):
+        history_rows = emp.get("employee_history") or []
+    else:
+        history_rows = getattr(emp, "employee_history", None) or []
+    for h in history_rows:
         if not h.get("designation"):
             continue
         if not _row_is_current(h):

@@ -186,7 +186,10 @@ def ensure_policy_applies_to_storage(*, throw: bool = False, caller: str | None 
         else False,
         "link_doctype_exists": frappe.db.table_exists(POLICY_AUDIENCE_DOCTYPE),
     }
-    frappe.log_error(message=frappe.as_json(debug_payload), title="Policy schema mismatch")
+    try:
+        frappe.log_error(message=frappe.as_json(debug_payload), title="Policy schema mismatch")
+    except Exception:
+        pass
 
     message = _("Institutional Policy applies_to storage is not configured. Run migrations or reload the DocTypes.")
     if throw:
