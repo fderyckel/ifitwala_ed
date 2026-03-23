@@ -11,7 +11,7 @@ app_license = "MIT"
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = ["ifitwala_drive"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
