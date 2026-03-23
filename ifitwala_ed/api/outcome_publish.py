@@ -44,21 +44,38 @@ def unpublish_outcomes(payload=None, **kwargs):
 
 
 def _bulk_update_publish(outcome_ids, values):
-    frappe.db.sql(
-        """
-		UPDATE `tabTask Outcome`
-		SET is_published = %(is_published)s,
-			published_on = %(published_on)s,
-			published_by = %(published_by)s
-		WHERE name IN %(outcomes)s
-		""",
-        {
-            "is_published": values.get("is_published"),
-            "published_on": values.get("published_on"),
-            "published_by": values.get("published_by"),
-            "outcomes": tuple(outcome_ids),
-        },
+    ordered_ids = []
+    seen = set()
+    for outcome_id in outcome_ids or []:
+        if not outcome_id or outcome_id in seen:
+            continue
+        seen.add(outcome_id)
+        ordered_ids.append(outcome_id)
+
+    if not ordered_ids:
+        return
+
+    existing_ids = set(
+        frappe.get_all(
+            "Task Outcome",
+            filters={"name": ["in", ordered_ids]},
+            pluck="name",
+            ignore_permissions=True,
+        )
+        or []
     )
+
+    # Publish state is business state on Task Outcome, so updates must flow
+    # through the document lifecycle rather than a table-level UPDATE.
+    for outcome_id in ordered_ids:
+        if outcome_id not in existing_ids:
+            continue
+
+        outcome_doc = frappe.get_doc("Task Outcome", outcome_id)
+        outcome_doc.is_published = values.get("is_published")
+        outcome_doc.published_on = values.get("published_on")
+        outcome_doc.published_by = values.get("published_by")
+        outcome_doc.save(ignore_permissions=True)
 
 
 def _get_publish_summaries(outcome_ids):

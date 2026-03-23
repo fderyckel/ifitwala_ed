@@ -13,6 +13,125 @@ class TestProgram(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
 
+    def test_all_programs_root_cannot_have_parent(self):
+        root = _get_or_create_program_root()
+        other_parent = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Other Parent {frappe.generate_hash(length=6)}",
+                "is_group": 1,
+            }
+        ).insert(ignore_permissions=True)
+
+        root.reload()
+        root.parent_program = other_parent.name
+
+        with self.assertRaisesRegex(frappe.ValidationError, "cannot have a Parent Program"):
+            root.save(ignore_permissions=True)
+
+    def test_all_programs_root_cannot_be_archived(self):
+        root = _get_or_create_program_root()
+        root.reload()
+        root.archive = 1
+
+        with self.assertRaisesRegex(frappe.ValidationError, "cannot be archived"):
+            root.save(ignore_permissions=True)
+
+    def test_all_programs_root_must_remain_group(self):
+        root = _get_or_create_program_root()
+        root.reload()
+        root.is_group = 0
+
+        with self.assertRaisesRegex(frappe.ValidationError, "must remain marked as Group"):
+            root.save(ignore_permissions=True)
+
+    def test_parent_program_must_be_group(self):
+        parent = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Parent Program {frappe.generate_hash(length=6)}",
+                "is_group": 0,
+            }
+        ).insert(ignore_permissions=True)
+
+        child = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Child Program {frappe.generate_hash(length=6)}",
+                "parent_program": parent.name,
+            }
+        )
+
+        with self.assertRaisesRegex(frappe.ValidationError, "Parent Program .* must be marked as Group"):
+            child.insert(ignore_permissions=True)
+
+    def test_make_program_group_promotes_parent(self):
+        parent = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Parent Program {frappe.generate_hash(length=6)}",
+                "is_group": 0,
+            }
+        ).insert(ignore_permissions=True)
+
+        result = program_module.make_program_group(parent.name)
+
+        self.assertTrue(result["changed"])
+        self.assertEqual(frappe.db.get_value("Program", parent.name, "is_group"), 1)
+
+    def test_program_with_children_must_remain_group(self):
+        parent = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Parent Program {frappe.generate_hash(length=6)}",
+                "is_group": 1,
+            }
+        ).insert(ignore_permissions=True)
+
+        frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Child Program {frappe.generate_hash(length=6)}",
+                "parent_program": parent.name,
+            }
+        ).insert(ignore_permissions=True)
+
+        parent.reload()
+        parent.is_group = 0
+
+        with self.assertRaisesRegex(frappe.ValidationError, "must remain marked as Group"):
+            parent.save(ignore_permissions=True)
+
+    def test_program_parent_query_excludes_current_subtree(self):
+        parent = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Query Parent {frappe.generate_hash(length=6)}",
+                "is_group": 1,
+            }
+        ).insert(ignore_permissions=True)
+        child = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Query Child {frappe.generate_hash(length=6)}",
+                "parent_program": parent.name,
+            }
+        ).insert(ignore_permissions=True)
+        unrelated = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Query Unrelated {frappe.generate_hash(length=6)}",
+                "is_group": 1,
+            }
+        ).insert(ignore_permissions=True)
+
+        rows = program_module.program_parent_query("Program", "", "name", 0, 50, {"current_program": parent.name})
+        names = {row[0] for row in rows}
+
+        self.assertNotIn(parent.name, names)
+        self.assertNotIn(child.name, names)
+        self.assertIn(unrelated.name, names)
+
     def test_prereq_resolves_min_numeric_score(self):
         grade_scale = _make_grade_scale()
         required_course = _make_course("Required")
@@ -164,3 +283,17 @@ def _make_course(label):
     )
     course.insert(ignore_permissions=True)
     return course
+
+
+def _get_or_create_program_root():
+    if frappe.db.exists("Program", "All Programs"):
+        return frappe.get_doc("Program", "All Programs")
+
+    return frappe.get_doc(
+        {
+            "doctype": "Program",
+            "name": "All Programs",
+            "program_name": "All Programs",
+            "is_group": 1,
+        }
+    ).insert(ignore_permissions=True)

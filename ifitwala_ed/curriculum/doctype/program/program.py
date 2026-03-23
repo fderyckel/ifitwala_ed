@@ -9,12 +9,17 @@ from frappe.utils import cint
 from frappe.utils.nestedset import NestedSet
 
 FLOAT_EPS = 1e-6
+PROGRAM_TREE_ROOT = "All Programs"
 
 
 class Program(NestedSet):
     nsm_parent_field = "parent_program"
 
     def validate(self):
+        self._validate_root_program_constraints()
+        self._validate_parent_program_is_group()
+        self._validate_group_nodes_keep_group_flag()
+
         # Keep existing validations
         self._validate_duplicate_course()
         self._validate_active_courses()
@@ -24,6 +29,51 @@ class Program(NestedSet):
         # New/updated validations for assessment model
         self._apply_default_colors_for_assessment_categories()
         self._validate_program_assessment_categories()
+
+    def _validate_root_program_constraints(self):
+        if self.name != PROGRAM_TREE_ROOT:
+            return
+
+        if (self.parent_program or "").strip():
+            frappe.throw(_("The root Program {0} cannot have a Parent Program.").format(PROGRAM_TREE_ROOT))
+
+        if cint(self.archive) == 1:
+            frappe.throw(_("The root Program {0} cannot be archived.").format(PROGRAM_TREE_ROOT))
+
+        if cint(self.is_group) != 1:
+            frappe.throw(_("The root Program {0} must remain marked as Group.").format(PROGRAM_TREE_ROOT))
+
+    def _validate_parent_program_is_group(self):
+        parent_program = (self.parent_program or "").strip()
+        if not parent_program:
+            return
+
+        if self.name and parent_program == self.name:
+            frappe.throw(_("A Program cannot be its own Parent Program."))
+
+        parent_is_group = frappe.db.get_value("Program", parent_program, "is_group")
+        if parent_is_group is None:
+            frappe.throw(_("Parent Program {0} was not found.").format(parent_program))
+
+        if cint(parent_is_group) != 1:
+            frappe.throw(
+                _(
+                    "Parent Program {0} must be marked as Group before it can own child programs. "
+                    "Use Make Parent a Group or enable Group on that Program."
+                ).format(parent_program),
+                frappe.ValidationError,
+            )
+
+    def _validate_group_nodes_keep_group_flag(self):
+        if cint(self.is_group) == 1 or not self.name:
+            return
+
+        has_children = frappe.db.exists("Program", {"parent_program": self.name})
+        if has_children:
+            frappe.throw(
+                _("Program {0} has child programs and must remain marked as Group.").format(self.name),
+                frappe.ValidationError,
+            )
 
     def _validate_duplicate_course(self):
         seen = set()
@@ -304,3 +354,59 @@ def inherit_assessment_categories(program: str, overwrite: int = 1):
     doc.save(ignore_permissions=False)
 
     return {"parent": parent.name, "added": len(clean_rows), "total": len(doc.get("assessment_categories") or [])}
+
+
+@frappe.whitelist()
+def make_program_group(program: str):
+    if not program:
+        frappe.throw(_("Program is required."))
+
+    doc = frappe.get_doc("Program", program)
+    doc.check_permission("write")
+
+    if cint(doc.is_group) == 1:
+        return {"program": doc.name, "changed": False}
+
+    doc.is_group = 1
+    doc.save()
+    return {"program": doc.name, "changed": True}
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def program_parent_query(doctype, txt, searchfield, start, page_len, filters):
+    raw_filters = filters or {}
+    if isinstance(raw_filters, str):
+        try:
+            raw_filters = frappe.parse_json(raw_filters) or {}
+        except Exception:
+            raw_filters = {}
+    if not isinstance(raw_filters, dict):
+        raw_filters = {}
+
+    current_program = ((raw_filters or {}).get("current_program") or "").strip()
+    conditions = []
+    params = []
+
+    search_txt = (txt or "").strip()
+    if search_txt:
+        like_txt = f"%{search_txt}%"
+        conditions.append("(name like %s or program_name like %s)")
+        params.extend([like_txt, like_txt])
+
+    if current_program:
+        bounds = frappe.db.get_value("Program", current_program, ["lft", "rgt"], as_dict=True)
+        if bounds and bounds.get("lft") is not None and bounds.get("rgt") is not None:
+            conditions.append("not (lft >= %s and rgt <= %s)")
+            params.extend([bounds["lft"], bounds["rgt"]])
+
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    sql = f"""
+        SELECT name, program_name
+        FROM `tabProgram`
+        {where_clause}
+        ORDER BY lft ASC, program_name ASC, name ASC
+        LIMIT %s, %s
+    """
+    params.extend([int(start or 0), int(page_len or 20)])
+    return frappe.db.sql(sql, params)
