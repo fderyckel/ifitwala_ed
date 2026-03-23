@@ -247,29 +247,86 @@ def _as_text(value) -> str:
     return str(value)
 
 
+def _has_bound_value(value) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    return True
+
+
+def _parse_request_payload(value) -> dict | None:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, (bytes, bytearray)):
+        try:
+            value = value.decode()
+        except Exception:
+            return None
+    if isinstance(value, str):
+        try:
+            value = frappe.parse_json(value)
+        except Exception:
+            return None
+        if isinstance(value, dict):
+            return value
+    return None
+
+
+def _request_json_payload() -> dict:
+    request = getattr(frappe, "request", None)
+    if not request:
+        return {}
+
+    get_json = getattr(request, "get_json", None)
+    if callable(get_json):
+        try:
+            payload = get_json(silent=True)
+        except TypeError:
+            try:
+                payload = get_json()
+            except Exception:
+                payload = None
+        except Exception:
+            payload = None
+        parsed_payload = _parse_request_payload(payload)
+        if isinstance(parsed_payload, dict):
+            return parsed_payload
+
+    parsed_payload = _parse_request_payload(getattr(request, "data", None))
+    if isinstance(parsed_payload, dict):
+        return parsed_payload
+    return {}
+
+
 def _request_form_value(key: str, current_value=None):
-    if current_value is not None:
+    if _has_bound_value(current_value):
         return current_value
 
     form_dict = getattr(frappe, "form_dict", None)
-    if not form_dict or not hasattr(form_dict, "get"):
-        return None
+    if form_dict and hasattr(form_dict, "get"):
+        value = form_dict.get(key)
+        if _has_bound_value(value):
+            return value
 
-    value = form_dict.get(key)
-    if value is not None:
+        args = _parse_request_payload(form_dict.get("args"))
+        if isinstance(args, dict):
+            value = args.get(key)
+            if _has_bound_value(value):
+                return value
+
+    request_payload = _request_json_payload()
+    value = request_payload.get(key)
+    if _has_bound_value(value):
         return value
 
-    args = form_dict.get("args")
-    if not args:
-        return None
-    if isinstance(args, str):
-        try:
-            args = frappe.parse_json(args)
-        except Exception:
-            return None
+    args = _parse_request_payload(request_payload.get("args"))
     if isinstance(args, dict):
-        return args.get(key)
-    return None
+        value = args.get(key)
+        if _has_bound_value(value):
+            return value
+
+    return current_value
 
 
 def _session_user() -> str:
@@ -1893,6 +1950,9 @@ def upload_applicant_profile_image(
     file_name: str | None = None,
     content: str | None = None,
 ):
+    student_applicant = _request_form_value("student_applicant", student_applicant)
+    file_name = _request_form_value("file_name", file_name)
+    content = _request_form_value("content", content)
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
 
@@ -1944,6 +2004,9 @@ def upload_applicant_guardian_image(
     file_name: str | None = None,
     content: str | None = None,
 ):
+    student_applicant = _request_form_value("student_applicant", student_applicant)
+    file_name = _request_form_value("file_name", file_name)
+    content = _request_form_value("content", content)
     user = _require_admissions_applicant()
     row = _ensure_applicant_match(student_applicant, user)
 

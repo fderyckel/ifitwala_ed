@@ -297,16 +297,24 @@ def _is_scope_business_day(calendar_context: dict[str, list[dict]], school_scope
 
 
 def _query_clinic_visit_counts(school_scope: list[str], start_date, end_date) -> list[dict]:
-    school_condition = "AND school IN %(schools)s" if school_scope else ""
+    school_expr = "COALESCE(NULLIF(spv.school, ''), st.anchor_school)"
+    school_condition = f"AND {school_expr} IN %(schools)s" if school_scope else ""
     return frappe.db.sql(
         f"""
-        SELECT school, date, COUNT(*) AS count
-        FROM `tabStudent Patient Visit`
-        WHERE docstatus = 1
-          AND date BETWEEN %(start_date)s AND %(end_date)s
+        SELECT
+            {school_expr} AS school,
+            spv.date AS date,
+            COUNT(*) AS count
+        FROM `tabStudent Patient Visit` spv
+        LEFT JOIN `tabStudent Patient` sp
+            ON sp.name = spv.student_patient
+        LEFT JOIN `tabStudent` st
+            ON st.name = sp.student
+        WHERE spv.docstatus = 1
+          AND spv.date BETWEEN %(start_date)s AND %(end_date)s
           {school_condition}
-        GROUP BY school, date
-        ORDER BY date ASC
+        GROUP BY {school_expr}, spv.date
+        ORDER BY spv.date ASC
         """,
         {
             "schools": tuple(school_scope),

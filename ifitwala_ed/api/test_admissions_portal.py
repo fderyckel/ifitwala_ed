@@ -3,6 +3,7 @@
 # See license.txt
 
 import base64
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import frappe
@@ -1313,6 +1314,54 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertTrue(captured["file_name"].endswith(".jpg"))
         self.assertTrue(captured["content"].startswith(b"\xff\xd8\xff"))
 
+    def test_upload_applicant_profile_image_reads_json_request_payload_when_bound_kwargs_are_blank_strings(self):
+        captured: dict = {}
+        request_payload = {
+            "student_applicant": self.applicant.name,
+            "file_name": "student.png",
+            "content": self._tiny_png_base64(),
+        }
+
+        def _capture_drive_upload(**kwargs):
+            captured.update(kwargs)
+            return {
+                "file": f"FILE-{frappe.generate_hash(length=8)}",
+                "file_url": f"/private/files/applicant-{frappe.generate_hash(length=6)}.jpg",
+                "classification": f"FC-{frappe.generate_hash(length=6)}",
+                "student_applicant": kwargs.get("student_applicant"),
+            }
+
+        frappe.set_user(self.applicant_user)
+        with (
+            patch.object(frappe, "form_dict", frappe._dict(), create=True),
+            patch.object(
+                frappe,
+                "request",
+                SimpleNamespace(
+                    get_json=lambda silent=True: request_payload,
+                    data=frappe.as_json(request_payload),
+                    files=None,
+                    mimetype="application/json",
+                ),
+                create=True,
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_profile_image",
+                side_effect=_capture_drive_upload,
+            ),
+        ):
+            payload = upload_applicant_profile_image(
+                student_applicant="",
+                file_name="",
+                content="",
+            )
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(captured["student_applicant"], self.applicant.name)
+        self.assertEqual(captured["upload_source"], "SPA")
+        self.assertTrue(captured["file_name"].startswith("applicant_profile_image_"))
+        self.assertTrue(captured["content"].startswith(b"\xff\xd8\xff"))
+
     def test_upload_applicant_profile_image_rejects_heic_extension(self):
         frappe.set_user(self.applicant_user)
         with self.assertRaises(frappe.ValidationError) as error_context:
@@ -1407,6 +1456,71 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(captured["upload_source"], "SPA")
         self.assertTrue(captured["file_name"].startswith("guardian_profile_image_"))
         self.assertTrue(captured["file_name"].endswith(".jpg"))
+        self.assertTrue(captured["content"].startswith(b"\xff\xd8\xff"))
+
+    def test_upload_applicant_guardian_image_reads_json_request_payload_when_bound_kwargs_are_blank_strings(self):
+        guardian_row = self.applicant.append(
+            "guardians",
+            {
+                "relationship": "Mother",
+                "guardian_first_name": "Mina",
+                "guardian_last_name": "Guardian",
+                "guardian_email": f"guardian-{frappe.generate_hash(length=6)}@example.com",
+                "guardian_mobile_phone": "+14155550121",
+            },
+        )
+        self.applicant.save(ignore_permissions=True)
+        guardian_row_name = guardian_row.name
+
+        captured: dict = {}
+        request_payload = {
+            "student_applicant": self.applicant.name,
+            "guardian_row_name": guardian_row_name,
+            "file_name": "guardian.png",
+            "content": self._tiny_png_base64(),
+        }
+
+        def _capture_drive_upload(**kwargs):
+            captured.update(kwargs)
+            return {
+                "file": f"FILE-{frappe.generate_hash(length=8)}",
+                "file_url": f"/private/files/guardian-{frappe.generate_hash(length=6)}.jpg",
+                "classification": f"FC-{frappe.generate_hash(length=6)}",
+                "student_applicant": kwargs.get("student_applicant"),
+                "guardian_row_name": kwargs.get("guardian_row_name"),
+            }
+
+        frappe.set_user(self.applicant_user)
+        with (
+            patch.object(frappe, "form_dict", frappe._dict(), create=True),
+            patch.object(
+                frappe,
+                "request",
+                SimpleNamespace(
+                    get_json=lambda silent=True: request_payload,
+                    data=frappe.as_json(request_payload),
+                    files=None,
+                    mimetype="application/json",
+                ),
+                create=True,
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_guardian_image",
+                side_effect=_capture_drive_upload,
+            ),
+        ):
+            payload = upload_applicant_guardian_image(
+                student_applicant="",
+                guardian_row_name="",
+                file_name="",
+                content="",
+            )
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(captured["student_applicant"], self.applicant.name)
+        self.assertEqual(captured["guardian_row_name"], guardian_row_name)
+        self.assertEqual(captured["upload_source"], "SPA")
+        self.assertTrue(captured["file_name"].startswith("guardian_profile_image_"))
         self.assertTrue(captured["content"].startswith(b"\xff\xd8\xff"))
 
     def test_update_applicant_profile_rejects_changing_admission_date(self):

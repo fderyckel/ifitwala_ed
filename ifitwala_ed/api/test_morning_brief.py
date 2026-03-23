@@ -11,6 +11,30 @@ from ifitwala_ed.tests.base import IfitwalaFrappeTestCase
 
 
 class TestMorningBrief(IfitwalaFrappeTestCase):
+    def test_query_clinic_visit_counts_falls_back_to_student_anchor_school(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return []
+
+        with patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql):
+            rows = morning_brief._query_clinic_visit_counts(
+                ["SCH-PARENT", "SCH-CHILD"],
+                date(2025, 11, 1),
+                date(2025, 11, 30),
+            )
+
+        self.assertEqual(rows, [])
+        self.assertTrue(captured["as_dict"])
+        self.assertIn("COALESCE(NULLIF(spv.school, ''), st.anchor_school) AS school", captured["query"])
+        self.assertIn("LEFT JOIN `tabStudent Patient` sp", captured["query"])
+        self.assertIn("LEFT JOIN `tabStudent` st", captured["query"])
+        self.assertIn("COALESCE(NULLIF(spv.school, ''), st.anchor_school) IN %(schools)s", captured["query"])
+        self.assertEqual(captured["values"]["schools"], ("SCH-PARENT", "SCH-CHILD"))
+
     def test_resolve_clinic_scope_falls_back_to_employee_default_school(self):
         def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False, **kwargs):
             if doctype == "Employee":
@@ -158,6 +182,12 @@ class TestMorningBrief(IfitwalaFrappeTestCase):
             ],
         )
         self.assertEqual(payload["school"], "Upper School")
+
+    def test_resolve_clinic_trend_start_date_uses_calendar_year_for_ytd(self):
+        self.assertEqual(
+            morning_brief._resolve_clinic_trend_start_date("YTD", date(2026, 3, 22)),
+            date(2026, 1, 1),
+        )
 
     def test_resolve_clinic_trend_start_date_ytd_uses_scoped_academic_year_window(self):
         rows = [
