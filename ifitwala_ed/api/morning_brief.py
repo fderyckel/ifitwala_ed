@@ -707,7 +707,7 @@ def get_staff_birthdays():
 		FROM
 			`tabEmployee`
 		WHERE
-			status = 'Active'
+			employment_status = 'Active'
 			AND employee_date_of_birth IS NOT NULL
 			AND {condition}
 		ORDER BY

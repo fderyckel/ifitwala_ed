@@ -11,6 +11,28 @@ from ifitwala_ed.tests.base import IfitwalaFrappeTestCase
 
 
 class TestMorningBrief(IfitwalaFrappeTestCase):
+    def test_get_staff_birthdays_filters_active_employees_with_birthdays_only(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return []
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-03-23"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+        ):
+            rows = morning_brief.get_staff_birthdays()
+
+        self.assertEqual(rows, [])
+        self.assertTrue(captured["as_dict"])
+        self.assertEqual(captured["values"], ("03-19", "03-27"))
+        self.assertIn("employment_status = 'Active'", captured["query"])
+        self.assertIn("employee_date_of_birth IS NOT NULL", captured["query"])
+        self.assertNotRegex(captured["query"], r"(?<!employment_)status = 'Active'")
+
     def test_query_clinic_visit_counts_falls_back_to_student_anchor_school(self):
         captured = {}
 
