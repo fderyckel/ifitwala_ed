@@ -94,8 +94,8 @@ These correspond to actual routes.
 
 **Used by**
 
-* `/`
-* `/home`
+* historical note only; current root behavior is handled by the root-school resolver at `/`
+* organization discovery now lives at `/schools`
 
 **Consumes**
 
@@ -123,8 +123,8 @@ These correspond to actual routes.
 
 **Notes**
 
-* No hard-coded school logic
-* School resolution happens here, not in blocks
+* This document section is legacy context only.
+* Current implemented root behavior is doc-owned in `01_architecture_notes.md` and `05_school_slug_vs_page_route.md`.
 
 ---
 

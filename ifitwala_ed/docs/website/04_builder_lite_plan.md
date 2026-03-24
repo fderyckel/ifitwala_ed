@@ -5,7 +5,8 @@
 
 | Namespace | Owner | Purpose |
 | --- | --- | --- |
-| `/` | Organization landing renderer | Public multi-school landing |
+| `/` | Root resolver | Redirect to default published school; fallback to `/schools` |
+| `/schools` | Organization landing renderer | Public multi-school landing |
 | `/schools/*` | Custom website renderer | School marketing pages |
 | `/apply/*` | Native Frappe Web Forms | Public forms |
 | `/admissions/*` | Vue SPA (`www/admissions`) | Authenticated applicant portal |
@@ -16,14 +17,14 @@
 ## Non-Negotiable Routing Rules
 
 1. No root catch-all (no `"/<path:route>" -> "website"`).
-2. No default-school redirect from `/`.
+2. `/` resolves to the default published school when available and otherwise falls back to `/schools`.
 3. No root-level school marketing slugs.
 4. No exception-driven route ownership for webforms.
 5. Legacy `/inquiry` redirects to canonical `/apply/inquiry`.
 
 ## Implementation Notes
 
-1. `ifitwala_ed/www/index.py` renders organization landing directly.
+1. `ifitwala_ed/www/index.py` handles root-school resolution for `/` and renders organization landing for `/schools`.
 2. `ifitwala_ed/website/utils.py::resolve_school_from_route` only accepts `/schools/{slug}/...`.
 3. `ifitwala_ed/www/admissions/index.py` remains auth-guarded SPA entrypoint under `/admissions`.
 4. Public form route is defined in Web Form JSON as `apply/inquiry`.

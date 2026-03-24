@@ -14,7 +14,8 @@
 
 | Path | Owner | Purpose |
 | --- | --- | --- |
-| `/` | Organization Landing | Top-level marketing page |
+| `/` | Root resolver | Redirect to default published school; fallback to `/schools` |
+| `/schools` | Organization Landing | School discovery page |
 | `/schools/<school_slug>/...` | Custom website renderer | School marketing pages |
 | `/apply/...` | Native Frappe Web Forms | Public admissions entry forms |
 | `/inquiry` | Legacy redirect | `301` to `/apply/inquiry` |
@@ -25,7 +26,8 @@
 
 Rules:
 * No root catch-all.
-* No default-school redirect at `/`.
+* `/` resolves to the configured default published school when available.
+* If no valid default school is available, `/` falls back to `/schools`.
 * No root-level school marketing pages.
 * No exception-based router ownership for webforms.
 * Web Form branding must be delivered by static assets via `webform_include_css` / `webform_include_js` (app `public/...` paths), not route or controller overrides.

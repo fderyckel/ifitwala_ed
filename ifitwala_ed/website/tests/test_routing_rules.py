@@ -58,6 +58,12 @@ class TestRoutingRules(FrappeTestCase):
         self.assertNotIn("/registration-of-interest", from_routes)
         self.assertNotIn("/<path:route>", from_routes)
 
+    def test_root_and_school_discovery_routes_share_same_owner(self):
+        rules = hooks.website_route_rules
+        pairs = {(rule.get("from_route"), rule.get("to_route")) for rule in rules if isinstance(rule, dict)}
+        self.assertIn(("/", "index"), pairs)
+        self.assertIn(("/schools", "index"), pairs)
+
     def test_public_web_forms_are_namespaced_under_apply(self):
         app_path = frappe.get_app_path("ifitwala_ed")
         configs = [

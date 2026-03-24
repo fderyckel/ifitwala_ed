@@ -269,7 +269,7 @@ def _build_site_shell_context(*, school, route: str) -> dict:
         "is_guest_user": is_guest_user,
         "login_url": "/login",
         "portal_login_url": "/hub",
-        "other_organizations_url": "/",
+        "other_organizations_url": "/schools",
         "inquiry_url": inquiry_url,
         "apply_url": apply_url,
     }
@@ -686,7 +686,7 @@ def _resolve_landing_organization():
             "name": ["!=", "All Organizations"],
             "parent_organization": ["in", ["All Organizations", "", None]],
         },
-        ["name", "organization_name", "organization_logo", "lft", "rgt"],
+        ["name", "organization_name", "organization_logo", "default_website_school", "lft", "rgt"],
         as_dict=True,
         order_by="lft asc",
     )
@@ -696,7 +696,7 @@ def _resolve_landing_organization():
     org = frappe.db.get_value(
         "Organization",
         {"archived": 0, "name": ["!=", "All Organizations"]},
-        ["name", "organization_name", "organization_logo", "lft", "rgt"],
+        ["name", "organization_name", "organization_logo", "default_website_school", "lft", "rgt"],
         as_dict=True,
         order_by="lft asc",
     )
@@ -706,7 +706,7 @@ def _resolve_landing_organization():
     return frappe.db.get_value(
         "Organization",
         {"name": "All Organizations"},
-        ["name", "organization_name", "organization_logo", "lft", "rgt"],
+        ["name", "organization_name", "organization_logo", "default_website_school", "lft", "rgt"],
         as_dict=True,
     )
 
@@ -800,17 +800,62 @@ def _build_organization_landing_context(*, route: str):
     }
 
 
+def _resolve_root_redirect_url() -> str:
+    organization = _resolve_landing_organization() or {}
+    organization_names = _get_descendant_organization_names(organization)
+
+    default_school = (organization.get("default_website_school") or "").strip()
+    if default_school:
+        row = frappe.db.get_value(
+            "School",
+            default_school,
+            ["name", "website_slug", "is_published", "organization"],
+            as_dict=True,
+        )
+        if (
+            row
+            and row.website_slug
+            and int(row.is_published or 0) == 1
+            and (not organization_names or row.organization in organization_names)
+        ):
+            return normalize_route(f"/{SCHOOL_ROUTE_PREFIX}/{row.website_slug}")
+
+    if organization_names:
+        school = frappe.db.get_value(
+            "School",
+            {
+                "organization": ["in", organization_names],
+                "is_published": 1,
+                "website_slug": ["!=", ""],
+            },
+            ["name", "website_slug"],
+            as_dict=True,
+            order_by="lft asc, school_name asc",
+        )
+        if school and school.website_slug:
+            return normalize_route(f"/{SCHOOL_ROUTE_PREFIX}/{school.website_slug}")
+
+    return "/schools"
+
+
 def build_render_context(*, route: str, preview: bool = False):
     route = normalize_route(route)
     if route in ROOT_ROUTE_ALIASES:
         route = "/"
 
     if route == "/":
-        return _build_organization_landing_context(route=route)
+        return {
+            "redirect_location": _resolve_root_redirect_url(),
+        }
 
     segments = [seg for seg in route.split("/") if seg]
     if not segments:
-        return _build_organization_landing_context(route="/")
+        return {
+            "redirect_location": _resolve_root_redirect_url(),
+        }
+
+    if route == "/schools":
+        return _build_organization_landing_context(route=route)
 
     if segments[0] != SCHOOL_ROUTE_PREFIX:
         frappe.throw(
@@ -819,7 +864,7 @@ def build_render_context(*, route: str, preview: bool = False):
         )
 
     if len(segments) < 2:
-        return _build_organization_landing_context(route="/")
+        return _build_organization_landing_context(route="/schools")
 
     school = resolve_school_from_route(route)
     if not preview and not is_school_public(school):
@@ -869,5 +914,9 @@ def build_render_context(*, route: str, preview: bool = False):
 
 def render_page(*, route: str, preview: bool = False) -> str:
     context = build_render_context(route=route, preview=preview)
+    redirect_location = (context or {}).pop("redirect_location", None)
+    if redirect_location:
+        frappe.local.flags.redirect_location = redirect_location
+        raise frappe.Redirect
     template = context.pop("template", "ifitwala_ed/website/templates/page.html")
     return frappe.render_template(template, context)
