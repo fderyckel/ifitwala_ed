@@ -3,8 +3,8 @@ title: "Course: Catalog Unit for Program and Enrollment Design"
 slug: course
 category: Curriculum
 doc_order: 2
-version: "1.1.1"
-last_change_date: "2026-03-13"
+version: "1.2.0"
+last_change_date: "2026-03-23"
 summary: "Define a reusable catalog course with grade-scale context, assessment categories/criteria, and status used by Program and Program Offering enrollment flows."
 seo_title: "Course: Catalog Unit for Program and Enrollment Design"
 seo_description: "Define a reusable catalog course with grade-scale context, assessment categories/criteria, and status used by Program and Program Offering enrollment flows."
@@ -15,6 +15,8 @@ seo_description: "Define a reusable catalog course with grade-scale context, ass
 `Course` is the catalog-level learning unit that programs and offerings reference. Enrollment logic validates against course identity plus program/offering policies.
 
 In staff forms, the taxonomy field is labeled `Course Group (Catalog)` to distinguish it from enrollment basket terminology.
+
+Public course marketing is a separate planned website concern. `Course` remains academic/catalog truth; any future public course pages must use a website-owned publication layer rather than exposing raw instructional records directly.
 
 ## Before You Start (Prerequisites)
 
@@ -39,6 +41,8 @@ If `assessment_criteria` rows are used, their `criteria_weighting` total must be
 - [**Program Offering**](/docs/en/program-offering/) -> `Program Offering Course.course`
 - [**Program Enrollment**](/docs/en/program-enrollment/) -> `Program Enrollment Course.course`
 - [**Task**](/docs/en/task/) -> `default_course`
+- planned public website course catalog / course detail contract:
+  - `ifitwala_ed/docs/website/08_course_catalog_contract.md`
 - Enrollment validation and tooling:
   - request validation course basket
   - course add-to-many enrollment tool
