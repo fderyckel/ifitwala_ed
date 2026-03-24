@@ -73,7 +73,7 @@ Current create flow:
 - create `User`, link back to `Employee.user_id`, save employee
 
 Role handling now follows managed sync:
-- on employee save, `sync_user_access_from_employee` computes effective roles/workspace from employee history + designation defaults.
+- on employee save, `sync_user_access_from_employee` computes effective roles/workspace from employee history + designation defaults, and always includes the baseline `Employee` role for active staff users.
 - when the access-sync trigger path adds new managed roles to the linked user, the Employee save flow shows an HR-facing dialog listing the roles that were added.
 - on employee save, linked user defaults are always aligned with Employee context:
   - `organization` default from `Employee.organization`
@@ -81,10 +81,10 @@ Role handling now follows managed sync:
 - on employee save, linked `User.enabled` is enforced from `Employee.employment_status`:
   - `Active` -> `enabled = 1`
   - any other status (`Temporary Leave`, `Suspended`, `Left`, or blank) -> `enabled = 0`
-- role rows are preserved; status gating is enforced via user enable/disable state (no role stripping for non-active employees).
+- when `Employee.employment_status` is not `Active`, the linked `User` is disabled and all assigned role rows are removed.
 - routing policy resolves active employee status using `Employee.user_id` first, then an unambiguous active match on `employee_professional_email` to avoid false-negative staff routing when legacy user links are missing.
 - at login, if a staff user has no active `Employee.user_id` link but exactly one active `Employee` row matches `employee_professional_email`, the system self-heals `user_id` and re-runs access sync.
-- `Employee._apply_designation_role()` reruns managed access sync whenever effective access changes, including first-time user linkage (`user_id` newly set), secondary `Employee History` rows, and active/inactive access state changes.
+- `Employee._apply_designation_role()` reruns managed access sync on every Employee update for linked users so imported or drifted accounts are repaired even when the Employee document itself did not change effective access fields.
 - role-management authorization includes `HR User`, `HR Manager`, `System Manager`, and `Administrator`.
 
 ## 4) Employee picture behavior (form + backend)
@@ -126,7 +126,7 @@ Impact: pre-join users get baseline role access; workspace is deferred until cur
 
 [2026-02-18] Decision:
 We decided that employee account access is strictly controlled by `Employee.employment_status`, and only `Active` keeps the linked `User` enabled.
-Reason: non-active employees must not access either Desk or Portal while retaining historical role assignments.
+Reason: non-active employees must not access either Desk or Portal.
 Impact: the employee sync hook now toggles `User.enabled` automatically and blocks login/access for non-active employee statuses.
 
 [2026-02-18] Decision:
@@ -196,3 +196,8 @@ Impact: designation change and first-time user-link flows now surface the exact 
 We decided Employee save must rerun managed user-access sync when effective access changes from `Employee History`, not only when the primary designation changes.
 Reason: staff can hold multiple simultaneous designations, and secondary history rows can add server-owned roles and permissions.
 Impact: adding or editing a current secondary designation row now updates the linked user's managed roles during the same Employee save flow.
+
+[2026-03-24] Decision:
+We decided active linked staff users must always carry the baseline `Employee` role in addition to current designation/history-managed roles, and non-active linked users must lose all roles.
+Reason: imported or drifted staff accounts were missing the base `Employee` role, while non-active employees must not retain confidential-system access through stale roles.
+Impact: every Employee save now reconciles the linked user role set; active users regain `Employee` plus current designation/history roles, and HR sees a save-time notice when non-active status strips the linked user's roles.

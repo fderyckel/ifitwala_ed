@@ -4,9 +4,13 @@ import json
 import re
 
 import frappe
-from frappe.utils import strip_html
+from frappe.utils import escape_html, strip_html
 
-from ifitwala_ed.website.utils import build_program_profile_url, normalize_route
+from ifitwala_ed.website.utils import (
+    build_course_profile_url,
+    build_program_profile_url,
+    normalize_route,
+)
 
 
 def _slugify_for_route(value: str | None) -> str:
@@ -31,6 +35,22 @@ def _next_available_program_slug(base_slug: str, *, program_name: str) -> str:
     while frappe.db.exists("Program", {"program_slug": candidate, "name": ["!=", program_name]}):
         candidate = f"{base}-{index}"
         index += 1
+    return candidate
+
+
+def _next_available_course_slug(base_slug: str, *, school_name: str, profile_name: str | None = None) -> str:
+    base = _slugify_for_route(base_slug)
+    candidate = base
+    index = 2
+    filters = {"school": school_name, "course_slug": candidate}
+    if profile_name:
+        filters["name"] = ["!=", profile_name]
+    while frappe.db.exists("Course Website Profile", filters):
+        candidate = f"{base}-{index}"
+        index += 1
+        filters = {"school": school_name, "course_slug": candidate}
+        if profile_name:
+            filters["name"] = ["!=", profile_name]
     return candidate
 
 
@@ -209,6 +229,123 @@ def _ensure_program_profile_seo_profile(*, profile, school, program) -> tuple[st
             build_program_profile_url(
                 school_slug=school.website_slug,
                 program_slug=program.program_slug,
+            )
+        ),
+    )
+
+    linked_changed = False
+    if getattr(profile, "seo_profile", None) != profile_name:
+        profile.seo_profile = profile_name
+        linked_changed = True
+    return profile_name, bool(profile_changed or linked_changed)
+
+
+def _default_course_intro_text(course) -> str:
+    description = (course.description or "").strip()
+    if description:
+        return f"<p>{escape_html(description)}</p>"
+    return f"<p>Discover what students experience in {escape_html(course.course_name or course.name)}.</p>"
+
+
+def _default_course_overview_html(course) -> str:
+    description = (course.description or "").strip()
+    if description:
+        return f"<p>{escape_html(description)}</p>"
+    return ""
+
+
+def _default_course_assessment_summary_html(course) -> str:
+    cadence = "across the academic year" if int(course.term_long or 0) == 1 else "across the term"
+    return (
+        "<p>"
+        f"Assessment in this course is designed to support growth {cadence}, "
+        "with a balance of feedback, practice, and demonstration of learning."
+        "</p>"
+    )
+
+
+def _seed_course_learning_highlights(*, profile, course) -> bool:
+    if profile.learning_highlights:
+        return False
+
+    rows = frappe.get_all(
+        "Learning Unit",
+        filters={"course": course.name, "is_published": 1, "unit_status": "Active"},
+        fields=["unit_name", "unit_order", "unit_overview", "essential_understanding"],
+        order_by="unit_order asc, unit_name asc",
+        limit=6,
+    )
+    if not rows:
+        return False
+
+    for row in rows:
+        title = (row.unit_name or "").strip()
+        if not title:
+            continue
+        summary_source = row.unit_overview or row.essential_understanding or ""
+        profile.append(
+            "learning_highlights",
+            {
+                "title": title,
+                "summary": _trim_meta_text(summary_source, limit=220),
+                "display_order": row.unit_order,
+            },
+        )
+    return bool(profile.learning_highlights)
+
+
+def _build_course_profile_blocks(*, school, course, include_highlights: bool) -> list[dict]:
+    blocks = [
+        {
+            "block_type": "course_intro",
+            "order": 1,
+            "props": {
+                "heading": course.course_name or course.name,
+                "cta_intent": "inquire",
+            },
+        }
+    ]
+
+    if include_highlights:
+        blocks.append(
+            {
+                "block_type": "learning_highlights",
+                "order": 2,
+                "props": {
+                    "heading": "Learning Highlights",
+                },
+            }
+        )
+
+    blocks.append(
+        {
+            "block_type": "cta",
+            "order": len(blocks) + 1,
+            "props": {
+                "title": "Questions about this course?",
+                "text": "Talk with our admissions team about fit, pathways, and next steps.",
+                "button_label": (school.label_cta_inquiry or "").strip() or "Inquire",
+                "button_link": _safe_link(school.admissions_inquiry_route, fallback="/apply/inquiry"),
+            },
+        }
+    )
+    return blocks
+
+
+def _ensure_course_profile_seo_profile(*, profile, school, course) -> tuple[str | None, bool]:
+    if not (school.website_slug or "").strip() or not (profile.course_slug or "").strip():
+        return None, False
+
+    description = _trim_meta_text(profile.intro_text or _default_course_intro_text(course))
+    profile_name, profile_changed = _ensure_website_seo_profile(
+        profile_name=getattr(profile, "seo_profile", None),
+        meta_title=(course.course_name or course.name or "").strip(),
+        meta_description=description,
+        og_image=(profile.hero_image or course.course_image or "").strip(),
+        canonical_url=_full_url(
+            build_course_profile_url(
+                school_slug=school.website_slug,
+                course_slug=profile.course_slug,
             )
         ),
     )
@@ -425,6 +562,31 @@ def _build_programs_blocks(*, school) -> list[dict]:
     ]
 
 
+def _build_courses_blocks(*, school) -> list[dict]:
+    return [
+        {
+            "block_type": "hero",
+            "order": 1,
+            "props": {
+                "title": "Courses",
+                "subtitle": f"Explore signature courses and learning experiences at {school.school_name}.",
+                "images": [],
+            },
+        },
+        {
+            "block_type": "course_catalog",
+            "order": 2,
+            "props": {
+                "show_intro": True,
+                "show_course_group": True,
+                "show_related_programs": True,
+                "card_style": "standard",
+                "limit": 24,
+            },
+        },
+    ]
+
+
 def _default_page_specs(*, school) -> list[dict]:
     home_meta = _trim_meta_text(school.about_snippet or school.more_info)
     about_meta = _trim_meta_text(school.more_info or school.about_snippet)
@@ -590,6 +752,92 @@ def ensure_programs_index_page(*, school_name: str) -> dict:
     }
 
 
+def ensure_courses_index_page(*, school_name: str) -> dict:
+    """
+    Guarantee a school-scoped Courses page that is visible in navigation and
+    renders course cards via the course_catalog block.
+    """
+    school = frappe.get_doc("School", school_name)
+    page_name = frappe.db.get_value(
+        "School Website Page",
+        {"school": school.name, "route": "courses"},
+        "name",
+    )
+
+    created = False
+    updated = False
+    if not page_name:
+        spec = {
+            "route": "courses",
+            "title": "Courses",
+            "meta_description": "Explore featured courses, descriptions, and learning highlights.",
+            "show_in_navigation": 1,
+            "navigation_order": 5,
+            "blocks": _build_courses_blocks(school=school),
+        }
+        page_name = _create_page_if_missing(school_name=school.name, spec=spec)
+        if not page_name:
+            page_name = frappe.db.get_value(
+                "School Website Page",
+                {"school": school.name, "route": "courses"},
+                "name",
+            )
+        if not page_name:
+            frappe.throw(
+                f"Unable to resolve Courses page for school {school.name}.",
+                frappe.ValidationError,
+            )
+        created = bool(page_name)
+        page = frappe.get_doc("School Website Page", page_name)
+    else:
+        page = frappe.get_doc("School Website Page", page_name)
+
+    if not page.title:
+        page.title = "Courses"
+        updated = True
+
+    if int(page.show_in_navigation or 0) != 1:
+        page.show_in_navigation = 1
+        updated = True
+
+    if page.navigation_order in (None, "", "Null"):
+        page.navigation_order = 5
+        updated = True
+
+    has_course_catalog = any((row.block_type == "course_catalog") for row in (page.blocks or []))
+    if not has_course_catalog:
+        next_order = max([int(row.order or row.idx or 0) for row in (page.blocks or [])] or [0]) + 1
+        page.append(
+            "blocks",
+            {
+                "block_type": "course_catalog",
+                "order": next_order,
+                "props": json.dumps(
+                    {
+                        "show_intro": True,
+                        "show_course_group": True,
+                        "show_related_programs": True,
+                        "card_style": "standard",
+                        "limit": 24,
+                    }
+                ),
+                "is_enabled": 1,
+            },
+        )
+        updated = True
+
+    if updated:
+        page.save(ignore_permissions=True)
+
+    return {
+        "school": school.name,
+        "page": page.name,
+        "full_route": page.full_route,
+        "created": created,
+        "updated": updated,
+    }
+
+
 def _ensure_default_school_for_organization(*, school):
     organization = (school.organization or "").strip()
     if not organization:
@@ -661,6 +909,14 @@ def ensure_default_school_website(*, school_name: str, set_default_organization:
         if not frappe.db.get_value("Program", program_name, "is_published"):
             continue
         ensure_default_program_website_profiles(program_name=program_name)
+
+    course_names = frappe.get_all(
+        "Course",
+        filters={"school": school.name, "is_published": 1},
+        pluck="name",
+    )
+    for course_name in course_names:
+        ensure_default_course_website_profile(course_name=course_name)
 
     return {
         "school": school.name,
@@ -758,4 +1014,106 @@ def ensure_default_program_website_profiles(*, program_name: str) -> dict:
         "program_slug": program.program_slug,
         "profiles": touched_profiles,
         "created_profiles": created_profiles,
+    }
+
+
+def ensure_default_course_website_profile(*, course_name: str) -> dict:
+    """
+    Ensure a published Course gets a draft-ready Course Website Profile with
+    starter content, curated highlights, and SEO defaults. Existing content is preserved.
+    """
+    course = frappe.get_doc("Course", course_name)
+    school_name = (course.school or "").strip()
+    if not school_name or int(course.is_published or 0) != 1:
+        return {
+            "course": course.name,
+            "course_slug": None,
+            "profile": None,
+            "created": False,
+        }
+
+    school = frappe.get_doc("School", school_name)
+    profile_name = frappe.db.get_value(
+        "Course Website Profile",
+        {"course": course.name, "school": school.name},
+        "name",
+    )
+
+    created = False
+    if profile_name:
+        profile = frappe.get_doc("Course Website Profile", profile_name)
+    else:
+        profile = frappe.new_doc("Course Website Profile")
+        profile.school = school.name
+        profile.course = course.name
+        created = True
+
+    changed = False
+
+    if not (profile.course_slug or "").strip():
+        profile.course_slug = _next_available_course_slug(
+            course.course_name or course.name,
+            school_name=school.name,
+            profile_name=profile.name,
+        )
+        changed = True
+
+    if not (profile.hero_image or "").strip() and (course.course_image or "").strip():
+        profile.hero_image = course.course_image
+        changed = True
+
+    if not (profile.intro_text or "").strip():
+        profile.intro_text = _default_course_intro_text(course)
+        changed = True
+
+    if not (profile.overview_html or "").strip():
+        overview_html = _default_course_overview_html(course)
+        if overview_html:
+            profile.overview_html = overview_html
+            changed = True
+
+    if not (profile.assessment_summary_html or "").strip():
+        profile.assessment_summary_html = _default_course_assessment_summary_html(course)
+        changed = True
+
+    if _seed_course_learning_highlights(profile=profile, course=course):
+        changed = True
+
+    if not profile.blocks:
+        for row in _build_course_profile_blocks(
+            school=school,
+            course=course,
+            include_highlights=bool(profile.learning_highlights),
+        ):
+            profile.append(
+                "blocks",
+                {
+                    "block_type": row["block_type"],
+                    "order": row["order"],
+                    "props": json.dumps(row["props"]),
+                    "is_enabled": 1,
+                },
+            )
+        changed = True
+
+    _profile_name, seo_changed = _ensure_course_profile_seo_profile(
+        profile=profile,
+        school=school,
+        course=course,
+    )
+    if seo_changed:
+        changed = True
+
+    if created:
+        profile.insert(ignore_permissions=True)
+    elif changed:
+        profile.save(ignore_permissions=True)
+
+    ensure_courses_index_page(school_name=school.name)
+
+    return {
+        "course": course.name,
+        "course_slug": profile.course_slug,
+        "profile": profile.name,
+        "created": created,
     }

@@ -258,6 +258,14 @@ def build_program_profile_url(*, school_slug: str, program_slug: str) -> str:
     return normalize_route(f"/schools/{school_slug}/programs/{program_slug}")
 
 
+def build_courses_index_url(*, school_slug: str) -> str:
+    return normalize_route(f"/schools/{school_slug}/courses")
+
+
+def build_course_profile_url(*, school_slug: str, course_slug: str) -> str:
+    return normalize_route(f"/schools/{school_slug}/courses/{course_slug}")
+
+
 def build_story_url(*, school_slug: str, story_slug: str) -> str:
     return normalize_route(f"/schools/{school_slug}/stories/{story_slug}")
 

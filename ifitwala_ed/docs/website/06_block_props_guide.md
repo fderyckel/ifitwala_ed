@@ -5,7 +5,7 @@
 **Scope:** Builder‑lite v1 + Phase‑02 blocks
 **Goal:** Exact props, types, rules, and examples for every block
 **Canonical implementation source:** `ifitwala_ed/website/block_registry.py`
-**Status (March 11, 2026):** Synced with implemented Builder-lite blocks including organization-media-backed image pickers for school-context forms
+**Status (March 24, 2026):** Synced with implemented Builder-lite blocks including organization-media-backed image pickers for school-context forms and course catalog/detail blocks
 
 ---
 
@@ -43,7 +43,7 @@ Disallowed:
 
 ### 0.5 Desk image picker behavior
 
-On school-bound Desk forms (`School Website Page`, `Program Website Profile`, `Website Story`):
+On school-bound Desk forms (`School Website Page`, `Program Website Profile`, `Course Website Profile`, `Website Story`):
 
 * image props in the builder use the governed `Organization Media` picker
 * the picker can reuse visible organization/school media or upload a new governed image
@@ -55,9 +55,10 @@ Block availability is enforced by parent DocType context (Desk picker + save-tim
 
 | context | allowed block types |
 | --- | --- |
-| `School Website Page` + `page_type = Standard` | `hero`, `rich_text`, `section_carousel`, `program_list`, `leadership`, `cta`, `faq`, `content_snippet` |
+| `School Website Page` + `page_type = Standard` | `hero`, `rich_text`, `section_carousel`, `program_list`, `course_catalog`, `leadership`, `cta`, `faq`, `content_snippet` |
 | `School Website Page` + `page_type = Admissions` | all Standard blocks + `admissions_overview`, `admissions_steps`, `admission_cta` |
 | `Program Website Profile` | all Standard blocks + `program_intro` |
+| `Course Website Profile` | all Standard blocks + `course_intro`, `learning_highlights` |
 | `Website Story` | Standard blocks only |
 
 If a block type is outside the allowed set for the current context, save is blocked with a validation error.
@@ -456,5 +457,90 @@ Snippet resolution order is deterministic:
   "text": "Start your admissions journey today.",
   "button_label": "Apply Now",
   "button_link": "https://apply.school.edu"
+}
+```
+
+---
+
+## 13) Course Intro
+
+### Purpose
+
+* Course detail hero + intro
+* Owns the page `<h1>` on course pages
+* Renders overview, aims, and assessment summary from the `Course Website Profile` fields
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `heading` | string | yes | — | Rendered as `<h1>` |
+| `content_html` | string | no | — | Optional override for `intro_text` |
+| `hero_image` | string \| null | no | — | Optional override for profile hero image |
+| `overview_heading` | string | no | `"Overview"` | Section label |
+| `aims_heading` | string | no | `"What Students Will Develop"` | Section label |
+| `assessment_heading` | string | no | `"Assessment Approach"` | Section label |
+| `cta_intent` | string \| null | no | — | `inquire`, `visit`, `apply`, or `null` |
+
+### Example
+```json
+{
+  "heading": "Biology HL",
+  "cta_intent": "inquire"
+}
+```
+
+---
+
+## 14) Learning Highlights
+
+### Purpose
+
+* Render curated, website-owned learning highlights for a course
+* Preserve the public/private boundary by avoiding raw `Learning Unit` tree output
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `heading` | string | no | `"Learning Highlights"` | Section title |
+| `limit` | integer \| null | no | all rows | Optional cap |
+
+### Example
+```json
+{
+  "heading": "Learning Highlights",
+  "limit": 6
+}
+```
+
+---
+
+## 15) Course Catalog
+
+### Purpose
+
+* Display published public course pages as discoverable school-scoped cards
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `show_intro` | boolean | no | `true` | Show course intro text |
+| `show_course_group` | boolean | no | `true` | Show course group label |
+| `show_related_programs` | boolean | no | `true` | Show related published program labels |
+| `card_style` | string | no | `"standard"` | `standard` or `compact` |
+| `limit` | integer \| null | no | `24` | Max courses to show |
+| `empty_state_title` | string | no | `"Course catalog coming soon."` | Empty-state heading |
+| `empty_state_text` | string | no | implementation default | Empty-state text |
+
+### Example
+```json
+{
+  "show_intro": true,
+  "show_course_group": true,
+  "show_related_programs": true,
+  "card_style": "standard",
+  "limit": 24
 }
 ```

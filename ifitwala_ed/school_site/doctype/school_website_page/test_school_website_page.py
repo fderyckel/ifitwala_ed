@@ -248,6 +248,44 @@ class TestSchoolWebsitePage(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             validate_page_blocks(page)
 
+    def test_validate_page_blocks_allows_course_blocks_for_course_profile(self):
+        page = frappe._dict(
+            {
+                "doctype": "Course Website Profile",
+                "blocks": [
+                    _row(
+                        block_type="course_intro",
+                        props={"heading": "Course"},
+                        order=1,
+                    ),
+                    _row(
+                        block_type="learning_highlights",
+                        props={"heading": "Highlights"},
+                        order=2,
+                    ),
+                ],
+            }
+        )
+        validate_page_blocks(page)
+
+    def test_validate_page_blocks_rejects_course_intro_for_standard_school_page(self):
+        page = frappe._dict(
+            {
+                "doctype": "School Website Page",
+                "page_type": "Standard",
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Home"}, order=1),
+                    _row(
+                        block_type="course_intro",
+                        props={"heading": "Course"},
+                        order=2,
+                    ),
+                ],
+            }
+        )
+        with self.assertRaises(frappe.ValidationError):
+            validate_page_blocks(page)
+
     def test_seo_assistant_reports_missing_admissions_cta(self):
         report = build_seo_assistant_report(
             parent_doctype="School Website Page",
@@ -331,3 +369,23 @@ class TestSchoolWebsitePage(FrappeTestCase):
         )
         codes = {row["code"] for row in report["checks"]}
         self.assertNotIn("cta_missing_program", codes)
+
+    def test_seo_assistant_course_cta_present_clears_course_warning(self):
+        report = build_seo_assistant_report(
+            parent_doctype="Course Website Profile",
+            doc_payload={
+                "course": "Course",
+                "intro_text": "Course intro",
+                "blocks": [
+                    {
+                        "block_type": "course_intro",
+                        "order": 1,
+                        "idx": 1,
+                        "is_enabled": 1,
+                        "props": json.dumps({"heading": "Course", "cta_intent": "inquire"}),
+                    }
+                ],
+            },
+        )
+        codes = {row["code"] for row in report["checks"]}
+        self.assertNotIn("cta_missing_course", codes)

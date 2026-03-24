@@ -500,6 +500,38 @@ def _fetch_program_profile(school, program_slug: str, preview: bool):
     return profile, program
 
 
+def _fetch_course_profile(school, course_slug: str, preview: bool):
+    filters = {"school": school.name, "course_slug": course_slug}
+    if not preview:
+        filters["status"] = "Published"
+
+    profile_name = frappe.db.get_value("Course Website Profile", filters, "name")
+    if not profile_name:
+        frappe.throw(
+            _("Course page not found for {0}.").format(course_slug),
+            frappe.DoesNotExistError,
+        )
+
+    profile = frappe.get_doc("Course Website Profile", profile_name)
+    course = frappe.get_doc("Course", profile.course)
+
+    if not preview:
+        if int(getattr(course, "is_published", 0) or 0) != 1:
+            frappe.throw(
+                _("Course not published."),
+                frappe.DoesNotExistError,
+            )
+        if (getattr(course, "school", None) or "") != school.name:
+            frappe.throw(
+                _("Course not offered by this school."),
+                frappe.DoesNotExistError,
+            )
+
+    if preview and profile.status != "Published" and not _preview_allowed(profile):
+        frappe.throw(_("Preview not permitted."), frappe.PermissionError)
+    return profile, course
+
+
 def _fetch_story(school, story_slug: str, preview: bool):
     filters = {"school": school.name, "slug": story_slug}
     if not preview:
@@ -556,6 +588,31 @@ def _build_program_context(*, route: str, school, program_slug: str, preview: bo
         "page": profile,
         "school": school,
         "program": program,
+        "blocks": blocks,
+        "block_scripts": scripts,
+        "seo": seo,
+        "theme": theme,
+        "site_shell": _build_site_shell_context(school=school, route=route),
+        "template": "ifitwala_ed/website/templates/page.html",
+    }
+
+
+def _build_course_context(*, route: str, school, course_slug: str, preview: bool):
+    profile, course = _fetch_course_profile(school, course_slug, preview)
+    blocks, scripts = _build_blocks(page=profile, school=school)
+    seo_profile = _get_seo_profile(profile)
+    description = truncate_text(profile.intro_text or "", 160) if profile.intro_text else None
+    seo = _build_seo_context(
+        route=route,
+        fallback_title=course.course_name or course.name,
+        fallback_description=description,
+        seo_profile=seo_profile,
+    )
+    theme = _build_theme_context(school=school)
+    return {
+        "page": profile,
+        "school": school,
+        "course": course,
         "blocks": blocks,
         "block_scripts": scripts,
         "seo": seo,
@@ -783,6 +840,14 @@ def build_render_context(*, route: str, preview: bool = False):
             route=route,
             school=school,
             program_slug=segments[3],
+            preview=preview,
+        )
+
+    if len(segments) >= 4 and segments[2] == "courses":
+        return _build_course_context(
+            route=route,
+            school=school,
+            course_slug=segments[3],
             preview=preview,
         )
 

@@ -13,6 +13,22 @@ class Course(Document):
         self.validate_criteria_weighting()
         self.validate_duplicate_criteria()
 
+    def after_insert(self):
+        self._sync_default_website_profile()
+
+    def on_update(self):
+        if any(
+            self.has_value_changed(fieldname)
+            for fieldname in (
+                "is_published",
+                "school",
+                "course_image",
+                "description",
+                "term_long",
+            )
+        ):
+            self._sync_default_website_profile()
+
     def validate_duplicate_criteria(self):
         """Ensure no Assessment Criteria appears more than once on this course."""
         seen = set()
@@ -52,6 +68,14 @@ class Course(Document):
                 lu_data.append(unit_doc)
         # lu_data = lu_data.sort(key=lambda x: x.start_date)
         return lu_data
+
+    def _sync_default_website_profile(self):
+        if int(self.is_published or 0) != 1 or not (self.school or "").strip():
+            return
+
+        from ifitwala_ed.website.bootstrap import ensure_default_course_website_profile
+
+        ensure_default_course_website_profile(course_name=self.name)
 
 
 @frappe.whitelist()

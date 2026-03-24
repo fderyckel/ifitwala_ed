@@ -545,8 +545,8 @@ class Employee(NestedSet):
         user = frappe.get_doc("User", self.user_id)
         user.flags.ignore_permissions = True
 
-        # Ensure base role
-        if "Employee" not in {r.role for r in user.roles}:
+        # Keep the base role for active staff only; non-active users are role-stripped by access sync.
+        if self.employment_status == "Active" and "Employee" not in {r.role for r in user.roles}:
             user.append("roles", {"role": "Employee"})
 
         user.first_name = self.employee_first_name
@@ -732,13 +732,8 @@ class Employee(NestedSet):
         if not self._can_manage_user_roles():
             return
 
-        prev = self.get_doc_before_save()
-        user_changed = (not prev) or ((prev.user_id or "") != (self.user_id or ""))
-        if not user_changed and self._access_sync_signature(prev) == self._access_sync_signature():
-            return
-
         # Keep designation-driven roles aligned with the managed sync model,
-        # including secondary Employee History changes that alter effective access.
+        # including baseline Employee role repair and non-active role stripping.
         from ifitwala_ed.hr.employee_access import sync_user_access_from_employee
 
         sync_user_access_from_employee(self, notify_role_additions=True)

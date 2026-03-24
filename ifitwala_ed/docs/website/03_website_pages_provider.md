@@ -280,13 +280,44 @@ StaffProfile[] = {
 
 ---
 
-### 4.4 `get_school_staff`
+### 4.4 `get_school_courses`
+
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+CourseCard[] = {
+  "title": string,
+  "url": string,
+  "intro": string,
+  "image": ImageRef,
+  "course_group": string | null,
+  "program_labels": string[]
+}
+```
+
+**Rules**
+
+* Only courses with `Course Website Profile.status = "Published"`
+* Course must satisfy `is_published = 1` and belong to the current school
+* Related program labels are limited to published, non-archived programs offered by the same school
+* Intro text is truncated server-side
+* Discoverability is school-scoped: navigation exposes a `Courses` page (`School Website Page.route = "courses"`), and that page renders `course_catalog` cards that link to each course detail route
+
+---
+
+### 4.5 `get_school_staff`
 
 Same shape as leadership, different filter.
 
 ---
 
-### 4.5 `get_school_hero_images`
+### 4.6 `get_school_hero_images`
 
 **Returns**
 

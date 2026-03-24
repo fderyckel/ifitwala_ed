@@ -2,7 +2,7 @@
 # Page Recipes (Current Baseline)
 
 **Audience:** Marketing, admissions, and website managers
-**Status (February 25, 2026):** Synced with implemented website editor and renderer behavior, including utility links, floating inquiry CTA, and `section_carousel`
+**Status (March 24, 2026):** Synced with implemented website editor and renderer behavior, including utility links, floating inquiry CTA, `section_carousel`, and public course catalog/detail surfaces
 **Goal:** Low-friction page composition using currently supported blocks
 
 ---
@@ -12,11 +12,12 @@
 * One H1 owner block must be first (`hero`, `admissions_overview`, or `program_intro`).
 * Route input for `School Website Page` is school-relative (`/`, `about`, `admissions`, `about/team`).
 * Publication is workflow-driven (`Draft -> In Review -> Approved -> Published`).
-* First-time School/Program publication now prepares starter website/SEO defaults when those records are missing, but it does not bypass the page/profile review workflow.
+* First-time School/Program/Course publication now prepares starter website/SEO defaults when those records are missing, but it does not bypass the page/profile review workflow.
 * Allowed blocks depend on context:
-  * `School Website Page` (Standard): `hero`, `rich_text`, `section_carousel`, `program_list`, `leadership`, `cta`, `faq`, `content_snippet`
+  * `School Website Page` (Standard): `hero`, `rich_text`, `section_carousel`, `program_list`, `course_catalog`, `leadership`, `cta`, `faq`, `content_snippet`
   * `School Website Page` (Admissions): Standard + `admissions_overview`, `admissions_steps`, `admission_cta`
   * `Program Website Profile`: Standard + `program_intro`
+  * `Course Website Profile`: Standard + `course_intro`, `learning_highlights`
   * `Website Story`: Standard blocks only
 * Website shell utility actions are now first-class:
   * `Other Organizations` link
@@ -189,7 +190,58 @@ Notes:
 
 ---
 
-## 6) Long-Scroll Feature Page Recipe (`route = experience` or `route = school-life`)
+## 6) Course Catalog Recipe (`route = courses`)
+
+Suggested block order:
+
+1. `hero`
+2. `course_catalog`
+
+Example `course_catalog` props:
+
+```json
+{
+  "show_intro": true,
+  "show_course_group": true,
+  "show_related_programs": true,
+  "card_style": "standard",
+  "limit": 24
+}
+```
+
+Notes:
+
+* The route stays school-scoped: `/schools/{school_slug}/courses`.
+* The page is system-seeded when the first published course profile is prepared for a school.
+
+---
+
+## 7) Course Profile Recipe (`Course Website Profile`)
+
+Suggested block order:
+
+1. `course_intro` (H1 owner)
+2. `learning_highlights` (optional when curated rows exist)
+3. `cta`
+
+Example `course_intro` props:
+
+```json
+{
+  "heading": "Biology HL",
+  "cta_intent": "inquire"
+}
+```
+
+Notes:
+
+* `course_intro` renders the profile hero, intro, overview, aims, and assessment summary from the website profile fields.
+* `learning_highlights` renders curated website-owned highlights, not a raw `Learning Unit` tree.
+* Course page route is system-generated: `/schools/{school_slug}/courses/{course_slug}`.
+
+---
+
+## 8) Long-Scroll Feature Page Recipe (`route = experience` or `route = school-life`)
 
 Suggested block order:
 
@@ -208,7 +260,7 @@ Notes:
 
 ---
 
-## 7) Editor Workflow Recipe
+## 9) Editor Workflow Recipe
 
 For marketing collaboration:
 
@@ -221,12 +273,12 @@ Minimum pre-publish checklist:
 
 * one valid H1 owner block in first position
 * meta title/description set
-* at least one CTA for admissions and program intent pages
+* at least one CTA for admissions, program, and course intent pages
 * blocks valid for the current page context
 
 ---
 
-## 8) Theme and Motion Recipe (D1/D2)
+## 10) Theme and Motion Recipe (D1/D2)
 
 * Theme tokens are managed in `Website Theme Profile` (scope: School -> Organization -> Global).
 * Motion enhancements are optional and non-critical:

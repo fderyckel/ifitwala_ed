@@ -46,7 +46,7 @@ class TestEmployee(FrappeTestCase):
         ):
             roles, workspace = employee_access.compute_effective_access_from_employee(emp)
 
-        self.assertEqual(roles, {"Academic Staff", "School Data Analyst"})
+        self.assertEqual(roles, {"Academic Staff", "Employee", "School Data Analyst"})
         self.assertEqual(workspace, "Academics")
 
     def test_compute_effective_access_prejoin_assigns_baseline_role_only(self):
@@ -66,7 +66,7 @@ class TestEmployee(FrappeTestCase):
         ):
             roles, workspace = employee_access.compute_effective_access_from_employee(emp)
 
-        self.assertEqual(roles, {"Academic Staff"})
+        self.assertEqual(roles, {"Academic Staff", "Employee"})
         self.assertIsNone(workspace)
 
     def test_compute_effective_access_no_active_rows_returns_empty_for_started_employee(self):
@@ -80,7 +80,7 @@ class TestEmployee(FrappeTestCase):
             roles, workspace = employee_access.compute_effective_access_from_employee(emp)
 
         designation_defaults.assert_not_called()
-        self.assertEqual(roles, set())
+        self.assertEqual(roles, {"Employee"})
         self.assertIsNone(workspace)
 
     def test_compute_effective_access_uses_date_window_when_is_current_flags_are_stale(self):
@@ -119,16 +119,18 @@ class TestEmployee(FrappeTestCase):
         with patch("ifitwala_ed.hr.employee_access._designation_defaults", side_effect=designation_defaults):
             roles, workspace = employee_access.compute_effective_access_from_employee(emp)
 
-        self.assertEqual(roles, {"Academic Admin"})
+        self.assertEqual(roles, {"Academic Admin", "Employee"})
         self.assertEqual(workspace, "Admin")
 
-    def test_sync_user_access_disables_non_active_employee_user(self):
+    def test_sync_user_access_strips_roles_for_non_active_employee_user(self):
         emp = frappe._dict(
             user_id="nonactive.employee@example.com",
             employment_status="Temporary Leave",
             employee_history=[],
         )
-        user_doc = frappe._dict(default_workspace=None, user_type="System User", enabled=1)
+        role_rows = [frappe._dict(role="Employee"), frappe._dict(role="Academic Staff")]
+        user_doc = frappe._dict(default_workspace=None, user_type="System User", enabled=1, roles=role_rows)
+        user_doc.remove = Mock(side_effect=lambda row: role_rows.remove(row))
         user_doc.save = Mock()
 
         with (
@@ -144,6 +146,7 @@ class TestEmployee(FrappeTestCase):
         compute_access.assert_not_called()
         diff_roles.assert_not_called()
         self.assertEqual(user_doc.enabled, 0)
+        self.assertEqual(role_rows, [])
         user_doc.save.assert_called_once_with(ignore_permissions=True)
 
     def test_sync_user_access_enables_active_employee_user(self):
@@ -158,7 +161,7 @@ class TestEmployee(FrappeTestCase):
         with (
             patch(
                 "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
-                return_value=(set(), None),
+                return_value=({"Employee"}, None),
             ) as compute_access,
             patch("ifitwala_ed.hr.employee_access._diff_user_roles", return_value=(set(), [])),
             patch("ifitwala_ed.hr.employee_access.frappe.get_doc", return_value=user_doc),
@@ -182,11 +185,11 @@ class TestEmployee(FrappeTestCase):
         with (
             patch(
                 "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
-                return_value=({"Academic Admin", "Leave Approver"}, None),
+                return_value=({"Academic Admin", "Employee", "Leave Approver"}, None),
             ),
             patch(
                 "ifitwala_ed.hr.employee_access._diff_user_roles",
-                return_value=({"Academic Admin", "Leave Approver"}, []),
+                return_value=({"Academic Admin", "Employee", "Leave Approver"}, []),
             ),
             patch("ifitwala_ed.hr.employee_access.frappe.get_doc", return_value=user_doc),
             patch("ifitwala_ed.hr.employee_access.frappe.msgprint") as msgprint,
@@ -196,9 +199,34 @@ class TestEmployee(FrappeTestCase):
 
         msgprint.assert_called_once_with(
             "Added default role(s) to <b>active.employee@example.com</b>: "
-            "<b>Academic Admin</b>, <b>Leave Approver</b>.",
+            "<b>Academic Admin</b>, <b>Employee</b>, <b>Leave Approver</b>.",
             title="Employee Access Updated",
             indicator="green",
+        )
+
+    def test_sync_user_access_notifies_when_roles_are_removed_for_non_active_employee(self):
+        emp = frappe._dict(
+            user_id="nonactive.employee@example.com",
+            employment_status="Suspended",
+            employee_history=[],
+        )
+        role_rows = [frappe._dict(role="Employee"), frappe._dict(role="Academic Admin")]
+        user_doc = frappe._dict(default_workspace=None, user_type="System User", enabled=1, roles=role_rows)
+        user_doc.remove = Mock(side_effect=lambda row: role_rows.remove(row))
+        user_doc.save = Mock()
+
+        with (
+            patch("ifitwala_ed.hr.employee_access.frappe.get_doc", return_value=user_doc),
+            patch("ifitwala_ed.hr.employee_access.frappe.msgprint") as msgprint,
+            patch("ifitwala_ed.hr.employee_access.frappe.bold", side_effect=lambda value: f"<b>{value}</b>"),
+        ):
+            employee_access.sync_user_access_from_employee(emp, notify_role_additions=True)
+
+        msgprint.assert_called_once_with(
+            "Removed all user roles from <b>nonactive.employee@example.com</b> because the employee is not active: "
+            "<b>Academic Admin</b>, <b>Employee</b>.",
+            title="Employee Access Updated",
+            indicator="orange",
         )
 
     def test_apply_designation_role_requests_role_addition_notification(self):
@@ -250,30 +278,19 @@ class TestEmployee(FrappeTestCase):
 
         sync_access.assert_called_once_with(emp, notify_role_additions=True)
 
-    def test_apply_designation_role_skips_when_effective_access_is_unchanged(self):
+    def test_apply_designation_role_reconciles_even_when_effective_access_is_unchanged(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)
         emp.user_id = "staff@example.com"
         emp.employment_status = "Active"
         emp.employee_history = [frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None})]
 
-        previous = frappe._dict(
-            user_id="staff@example.com",
-            employment_status="Active",
-            employee_history=[frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None})],
-        )
-
         with (
             patch.object(emp, "_can_manage_user_roles", return_value=True),
-            patch.object(emp, "get_doc_before_save", return_value=previous),
-            patch(
-                "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
-                return_value=({"Academic Staff"}, "Academics"),
-            ),
             patch("ifitwala_ed.hr.employee_access.sync_user_access_from_employee") as sync_access,
         ):
             emp._apply_designation_role()
 
-        sync_access.assert_not_called()
+        sync_access.assert_called_once_with(emp, notify_role_additions=True)
 
     def test_apply_designation_role_syncs_when_employment_status_changes(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)

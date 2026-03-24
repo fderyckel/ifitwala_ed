@@ -3,7 +3,7 @@
 
 **Audience:** Product, marketing, admissions, website implementers
 **Scope:** Public school website only
-**Status (March 23, 2026):** Planned, approved product direction; not implemented
+**Status (March 24, 2026):** Implemented baseline contract for public school-scoped course catalog/detail pages; advanced filtering and faculty-rich variants remain future work
 **Authority:** Subordinate to
 * `ifitwala_ed/docs/website/01_architecture_notes.md`
 * `ifitwala_ed/docs/high_concurrency_contract.md`
@@ -95,14 +95,14 @@ It must not behave like a portal syllabus, lesson map, or LMS module tree.
 
 ---
 
-## 3. Route Ownership (Planned)
+## 3. Route Ownership (Implemented Baseline)
 
 Planned routes:
 
 | Route | Owner | Purpose | Status |
 | --- | --- | --- | --- |
-| `/schools/{school_slug}/courses` | custom website renderer | school-scoped course catalog | Planned |
-| `/schools/{school_slug}/courses/{course_slug}` | custom website renderer | school-scoped public course detail page | Planned |
+| `/schools/{school_slug}/courses` | `School Website Page` + renderer | school-scoped course catalog | Implemented |
+| `/schools/{school_slug}/courses/{course_slug}` | custom website renderer | school-scoped public course detail page | Implemented |
 
 Rules:
 
@@ -114,9 +114,9 @@ Rules:
 
 ## 4. Data Model Direction (Planned)
 
-### 4.1 New public presentation record
+### 4.1 Public presentation record
 
-Introduce a new public publishing DocType:
+Implemented public publishing DocType:
 
 * `Course Website Profile`
 
@@ -125,7 +125,7 @@ Purpose:
 * keep `Course` as academic/catalog truth
 * keep public storytelling, workflow, and SEO on a dedicated website-owned record
 
-### 4.2 Proposed minimal fields
+### 4.2 Implemented baseline fields
 
 `Course Website Profile`
 
@@ -164,7 +164,7 @@ No business logic belongs in the child table.
 
 ---
 
-## 5. Workflow Contract (Planned)
+## 5. Workflow Contract (Implemented)
 
 Workflow mirrors the rest of the website system:
 
@@ -187,18 +187,19 @@ This preserves the locked product split:
 
 ---
 
-## 6. Defaulting / Friction-Reduction Contract (Planned)
+## 6. Defaulting / Friction-Reduction Contract (Implemented Baseline)
 
 First-time course publication should auto-fill missing defaults only.
 
-The system may prepare, when blank:
+The system prepares, when blank:
 
 * `course_slug` from `course_name`
 * `hero_image` from `Course.course_image`
 * `intro_text` from `Course.description`
-* `overview_html` from curated website fields if later introduced
+* `overview_html` from `Course.description`
 * `seo_profile`
 * starter blocks for the detail page
+* curated `learning_highlights` seed rows from published `Learning Unit` summaries when available
 
 The system must not overwrite authored website content.
 
@@ -239,9 +240,9 @@ Each card/list item should support:
 * optional related program labels
 * detail URL
 
-### 7.3 Planned filtering
+### 7.3 Filtering status
 
-Recommended public filters:
+Recommended future public filters:
 
 * `Course Group (Catalog)`
 * related program
@@ -262,16 +263,15 @@ This preserves:
 
 ---
 
-## 8. Course Detail Page Contract (Planned)
+## 8. Course Detail Page Contract (Implemented Baseline)
 
 ### 8.1 Recommended baseline sections
 
-Minimum recommended structure:
+Implemented default structure:
 
 1. `course_intro` block (owns H1)
-2. `rich_text` overview / aims
-3. `learning_highlights` block
-4. `cta` block
+2. `learning_highlights` block when curated rows exist
+3. `cta` block
 
 Optional later sections:
 
@@ -292,15 +292,15 @@ It should not read like a live syllabus or LMS dashboard.
 
 ---
 
-## 9. Provider And Block Direction (Planned)
+## 9. Provider And Block Direction (Implemented Baseline)
 
 ### 9.1 Providers
 
-Planned shared/page providers:
+Implemented shared/page providers:
 
-* `get_school_courses`
-* `get_course_catalog_page_context`
-* `get_course_page_context`
+* `ifitwala_ed.website.providers.course_catalog.get_context`
+* `ifitwala_ed.website.providers.course_intro.get_context`
+* `ifitwala_ed.website.providers.learning_highlights.get_context`
 
 Provider rules remain unchanged:
 
@@ -311,7 +311,7 @@ Provider rules remain unchanged:
 
 ### 9.2 Proposed blocks
 
-Planned new blocks:
+Implemented new blocks:
 
 * `course_catalog`
 * `course_intro`
@@ -388,6 +388,8 @@ This split is intentional and should remain canonical.
 
 ### Phase 1
 
+Implemented:
+
 * `Course Website Profile`
 * school-scoped course routes
 * course catalog page
@@ -397,8 +399,13 @@ This split is intentional and should remain canonical.
 
 ### Phase 2
 
+Partially implemented:
+
 * curated `learning_highlights`
 * related program display
+
+Still future:
+
 * optional faculty snapshot
 
 ### Phase 3
@@ -414,27 +421,30 @@ This split is intentional and should remain canonical.
 ### Status
 
 * Product direction: Approved
-* Documentation status: Canonical planned contract
-* Implementation status: Not started
+* Documentation status: Canonical implemented baseline contract
+* Implementation status: In production codebase baseline
 
 ### Code refs
 
-Current related implementation surfaces only:
+Implemented surfaces:
 
-* `ifitwala_ed/docs/website/01_architecture_notes.md`
-* `ifitwala_ed/website/renderer.py`
+* `ifitwala_ed/school_site/doctype/course_website_profile/*`
+* `ifitwala_ed/school_site/doctype/course_website_highlight/*`
+* `ifitwala_ed/website/bootstrap.py`
 * `ifitwala_ed/website/block_registry.py`
-* `ifitwala_ed/school_site/doctype/school_website_page/*`
-* `ifitwala_ed/school_site/doctype/program_website_profile/*`
+* `ifitwala_ed/website/renderer.py`
+* `ifitwala_ed/website/providers/course_catalog.py`
+* `ifitwala_ed/website/providers/course_intro.py`
+* `ifitwala_ed/website/providers/learning_highlights.py`
+* `ifitwala_ed/curriculum/doctype/course/course.py`
+* `ifitwala_ed/curriculum/doctype/course/course.js`
 * `ifitwala_ed/docs/docs_md/course.md`
-
-No `Course Website Profile`, course catalog route, or public course-detail implementation exists yet.
 
 ### Test refs
 
-None yet.
-
-Tests must be added only when implementation starts.
+* `ifitwala_ed/curriculum/doctype/course/test_course.py`
+* `ifitwala_ed/school_site/doctype/course_website_profile/test_course_website_profile.py`
+* `ifitwala_ed/school_site/doctype/school_website_page/test_school_website_page.py`
 
 ---
 

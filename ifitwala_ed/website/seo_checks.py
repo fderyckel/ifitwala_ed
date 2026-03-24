@@ -14,6 +14,7 @@ SEO_DESCRIPTION_MAX = 160
 ALLOWED_PARENT_DOCTYPES = {
     "School Website Page",
     "Program Website Profile",
+    "Course Website Profile",
     "Website Story",
 }
 
@@ -117,6 +118,14 @@ def _get_program_title(program_name: str | None) -> str | None:
     return (value or "").strip() or program_name
 
 
+def _get_course_title(course_name: str | None) -> str | None:
+    course_name = (course_name or "").strip()
+    if not course_name:
+        return None
+    value = frappe.db.get_value("Course", course_name, "course_name")
+    return (value or "").strip() or course_name
+
+
 def _resolve_meta_fields(*, parent_doctype: str, payload: dict, seo_profile: dict) -> dict:
     meta_title = (seo_profile.get("meta_title") or "").strip()
     meta_description = (seo_profile.get("meta_description") or "").strip()
@@ -127,6 +136,8 @@ def _resolve_meta_fields(*, parent_doctype: str, payload: dict, seo_profile: dic
             meta_title = (payload.get("title") or "").strip()
         elif parent_doctype == "Program Website Profile":
             meta_title = _get_program_title(payload.get("program")) or ""
+        elif parent_doctype == "Course Website Profile":
+            meta_title = _get_course_title(payload.get("course")) or ""
         elif parent_doctype == "Website Story":
             meta_title = (payload.get("title") or "").strip()
 
@@ -134,6 +145,8 @@ def _resolve_meta_fields(*, parent_doctype: str, payload: dict, seo_profile: dic
         if parent_doctype == "School Website Page":
             meta_description = (payload.get("meta_description") or "").strip()
         elif parent_doctype == "Program Website Profile":
+            meta_description = strip_html(payload.get("intro_text") or "").strip()
+        elif parent_doctype == "Course Website Profile":
             meta_description = strip_html(payload.get("intro_text") or "").strip()
 
     return {
@@ -212,6 +225,8 @@ def _has_cta(*, enabled_blocks: list[dict]) -> bool:
             return True
         if block_type == "program_intro" and (props.get("cta_intent") or "").strip():
             return True
+        if block_type == "course_intro" and (props.get("cta_intent") or "").strip():
+            return True
     return False
 
 
@@ -233,6 +248,14 @@ def _check_missing_cta(*, checks: list[dict], parent_doctype: str, payload: dict
                 code="cta_missing_program",
                 severity="warning",
                 message=_("Program pages should include at least one CTA."),
+            )
+    elif parent_doctype == "Course Website Profile":
+        if not has_cta:
+            _add_check(
+                checks,
+                code="cta_missing_course",
+                severity="warning",
+                message=_("Course pages should include at least one CTA."),
             )
 
 

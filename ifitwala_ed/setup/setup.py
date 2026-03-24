@@ -214,7 +214,7 @@ def create_designations():
         {"doctype": "Designation", "designation_name": "Teacher Assistant", "organization": organization},
         {
             "doctype": "Designation",
-            "designation_name": "Counsellor",
+            "designation_name": "Counselor",
             "organization": organization,
             "default_role_profile": "Counselor",
             "default_workspace": "Counseling",
