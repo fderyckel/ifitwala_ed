@@ -3,8 +3,8 @@ title: "Policy Version: Legal Text Snapshot and Activation Gate"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.3.0"
-last_change_date: "2026-02-28"
+version: "1.4.0"
+last_change_date: "2026-03-25"
 summary: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version becomes active or acknowledged."
 seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
 seo_description: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version is active or acknowledged."
@@ -34,6 +34,7 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
 - `approved_by` (when set) must be an enabled system user with `Policy Version` write access and in policy scope:
   - school-scoped policy: approver must belong to the same school or an ancestor/parent school
   - organization-scoped policy: approver must belong to the same organization or an ancestor/parent organization
+- Policy admins may create, read, and edit versions for policies rooted in their base organization or descendant organizations.
 - Runtime visibility is scope-enforced server-side through parent policy scope:
   - parent policy organization must be in user organization lineage (`self + parents`)
   - if parent policy is school-scoped, policy school must be in user school lineage (`self + parents`)
@@ -138,7 +139,7 @@ Runtime controller rules:
 - `approved_by` options are filtered by a server link query so only write-capable users in valid policy scope are selectable.
 - `policy_text` becomes append-only once version is active or acknowledged; edits then require creating a new version.
 - Amended versions are first-class artifacts with human `change_summary` and stored paragraph diff (`diff_html` + `change_stats`).
-- Read/list visibility is enforced by `permission_query_conditions` + `has_permission` hooks via parent institutional policy scope.
+- Policy admins may manage versions for parent policies rooted in their organization or descendant organizations; non-admin read/list visibility remains enforced through parent policy scope.
 
 ## Related Docs
 

@@ -3,8 +3,8 @@ title: "Institutional Policy: Policy Identity and Scope Anchor"
 slug: institutional-policy
 category: Governance
 doc_order: 1
-version: "1.4.0"
-last_change_date: "2026-03-18"
+version: "1.5.0"
+last_change_date: "2026-03-25"
 summary: "Define policy identity, organization/school scope, target audience, and lifecycle rules so admissions, guardian, staff, and governance workflows resolve the correct active policy versions and acknowledgements."
 seo_title: "Institutional Policy: Policy Identity and Scope Anchor"
 seo_description: "Define policy identity, organization/school scope, and target audience so admissions, guardian, staff, and governance workflows resolve the correct active policy versions and acknowledgements."
@@ -71,6 +71,9 @@ There is no separate "policy key catalog" DocType in the current model. Existing
 - `admissions_acknowledgement_mode` affects admissions-stage acknowledgement routing only; guardian and staff self-service use their own context-specific acknowledgement paths.
 - `school` must be inside policy organization scope (organization descendants allowed).
 - Deletion is blocked; policy should be deactivated instead (`is_active = 0`).
+- Policy admin management scope is descendant-owned:
+  - policy admins may create, read, and edit policies for their base organization and descendant organizations
+  - management scope for policy admins is broader than end-user applicability visibility
 - Runtime visibility is scope-enforced server-side:
   - `organization` must be in user organization lineage (`self + parents`)
   - if policy is school-scoped, `school` must be in user school lineage (`self + parents`)
@@ -215,4 +218,5 @@ Treat this record as long-lived identity. Version the legal text in [**Policy Ve
 Runtime controller rule:
 - Policy management is restricted to policy admins (`System Manager`, `Organization Admin`, `Accounts Manager`, `Admission Manager`, `Academic Admin`, `HR Manager`), regardless of Desk form visibility.
 - Controller role pass is necessary but not sufficient: user must also have DocType create/write permission for `Institutional Policy`.
-- Read/list visibility is enforced by `permission_query_conditions` + `has_permission` hooks, not client filtering.
+- Policy admins may manage policies rooted in their organization or descendant organizations; this is the authoring scope used for create/write and management list visibility.
+- Read/list visibility for non-admin readers is enforced by `permission_query_conditions` + `has_permission` hooks, not client filtering.

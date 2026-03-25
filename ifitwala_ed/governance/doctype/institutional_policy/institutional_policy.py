@@ -5,7 +5,9 @@ from frappe import _
 from frappe.model.document import Document
 
 from ifitwala_ed.governance.policy_scope_utils import (
+    get_user_policy_management_scope,
     get_user_policy_scope,
+    is_policy_manageable_by_user,
     is_policy_within_user_scope,
     is_school_within_policy_organization_scope,
 )
@@ -16,6 +18,7 @@ from ifitwala_ed.governance.policy_utils import (
     POLICY_CATEGORIES,
     ensure_policy_admin,
     get_policy_applies_to_tokens,
+    is_policy_admin,
     is_system_manager,
 )
 
@@ -131,20 +134,55 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
         return None
 
     organization_scope, school_scope = get_user_policy_scope(user)
+    management_scope = get_user_policy_management_scope(user) if is_policy_admin(user) else []
     organizations_sql = _escaped_in(organization_scope)
-    if not organizations_sql:
+    management_sql = _escaped_in(management_scope)
+
+    clauses: list[str] = []
+    if organizations_sql:
+        school_sql = _escaped_in(school_scope)
+        if school_sql:
+            school_condition = (
+                "(ifnull(`tabInstitutional Policy`.`school`, '') = '' "
+                f"OR `tabInstitutional Policy`.`school` in ({school_sql}))"
+            )
+        else:
+            school_condition = "ifnull(`tabInstitutional Policy`.`school`, '') = ''"
+        clauses.append(f"(`tabInstitutional Policy`.`organization` in ({organizations_sql}) AND {school_condition})")
+
+    if management_sql:
+        clauses.append(f"`tabInstitutional Policy`.`organization` in ({management_sql})")
+
+    if not clauses:
         return "1=0"
 
-    school_sql = _escaped_in(school_scope)
-    if school_sql:
-        school_condition = (
-            "(ifnull(`tabInstitutional Policy`.`school`, '') = '' "
-            f"OR `tabInstitutional Policy`.`school` in ({school_sql}))"
-        )
-    else:
-        school_condition = "ifnull(`tabInstitutional Policy`.`school`, '') = ''"
+    return " OR ".join(clauses)
 
-    return f"`tabInstitutional Policy`.`organization` in ({organizations_sql}) AND {school_condition}"
+
+def _raise_organization_transfer_permission_error(previous_organization: str, next_organization: str) -> None:
+    frappe.throw(
+        _(
+            "Organization cannot be changed after creation. This policy is currently scoped to '{0}'. "
+            "To move it under '{1}', create a new Institutional Policy for that organization and "
+            "deactivate this one if needed."
+        ).format(previous_organization, next_organization),
+        frappe.PermissionError,
+    )
+
+
+def _raise_policy_management_scope_permission_error(policy_organization: str, *, ptype: str | None = None) -> None:
+    action = "manage"
+    if ptype == "create":
+        action = "create"
+    elif ptype == "write":
+        action = "edit"
+    frappe.throw(
+        _(
+            "You can {0} policies only for your organization or its descendants. "
+            "Organization '{1}' is outside your policy admin scope."
+        ).format(action, policy_organization),
+        frappe.PermissionError,
+    )
 
 
 def has_permission(doc: "InstitutionalPolicy", user: str | None = None, ptype: str | None = None) -> bool:
@@ -169,6 +207,22 @@ def has_permission(doc: "InstitutionalPolicy", user: str | None = None, ptype: s
     else:
         policy_organization = (getattr(doc, "organization", None) or "").strip()
         policy_school = (getattr(doc, "school", None) or "").strip()
+        if ptype == "write" and getattr(doc, "name", None):
+            existing = frappe.db.get_value(
+                "Institutional Policy",
+                doc.name,
+                ["organization"],
+                as_dict=True,
+            )
+            existing_organization = (existing.get("organization") or "").strip() if existing else ""
+            if existing_organization and existing_organization != policy_organization:
+                _raise_organization_transfer_permission_error(existing_organization, policy_organization)
+
+    if is_policy_admin(user):
+        if is_policy_manageable_by_user(policy_organization=policy_organization, user=user):
+            return True
+        if ptype in {"create", "write"} and policy_organization:
+            _raise_policy_management_scope_permission_error(policy_organization, ptype=ptype)
 
     return is_policy_within_user_scope(
         policy_organization=policy_organization,

@@ -63,6 +63,16 @@ def get_user_policy_scope(user: str | None = None) -> tuple[list[str], list[str]
     return organization_scope, school_scope
 
 
+def get_user_policy_management_scope(user: str | None = None) -> list[str]:
+    """
+    Return the organizations a policy admin may manage:
+    - user's base organization
+    - all descendant organizations
+    """
+    user_org, _user_school = _get_user_base_org_and_school(user)
+    return get_organization_descendants_including_self(user_org)
+
+
 def is_policy_within_user_scope(
     *,
     policy_organization: str | None,
@@ -94,6 +104,21 @@ def is_policy_within_user_scope(
     # Check if user's school is within policy's school scope (policy school and descendants)
     policy_school_scope = get_school_descendants_including_self(policy_school)
     return user_school in set(policy_school_scope)
+
+
+def is_policy_manageable_by_user(
+    *,
+    policy_organization: str | None,
+    user: str | None = None,
+) -> bool:
+    """
+    True when the user may administratively manage a policy rooted at policy_organization.
+    Policy admins manage their base organization and descendant organizations.
+    """
+    policy_organization = (policy_organization or "").strip()
+    if not policy_organization:
+        return False
+    return policy_organization in set(get_user_policy_management_scope(user))
 
 
 def get_organization_ancestors_including_self(organization: str | None) -> list[str]:
