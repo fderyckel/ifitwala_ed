@@ -9,7 +9,7 @@ from frappe.model.document import Document
 from frappe.utils import get_link_to_form, getdate, nowdate
 from frappe.utils.nestedset import get_ancestors_of
 
-from ifitwala_ed.utilities.school_tree import ParentRuleViolation, get_descendant_schools, is_leaf_school
+from ifitwala_ed.utilities.school_tree import ParentRuleViolation, get_descendant_schools
 
 
 class Term(Document):
@@ -286,21 +286,8 @@ def get_permission_query_conditions(user):
     if not user_school:
         return "1=0"
 
-    if is_leaf_school(user_school):
-        pairs = get_schools_per_academic_year_for_terms(user_school)
-        if not pairs:
-            return "1=0"
-        # Build SQL for pairs
-        conditions = [
-            "(`tabTerm`.`school` = '{0}' AND `tabTerm`.`academic_year` = '{1}')".format(sch, ay) for sch, ay in pairs
-        ]
-        return " OR ".join(conditions)
-    else:
-        schools = get_descendant_schools(user_school)
-        if not schools:
-            return "1=0"
-        schools_list = "', '".join(schools)
-        return f"`tabTerm`.`school` IN ('{schools_list}')"
+    schools, pairs = _get_term_visibility_scope(user_school)
+    return _build_term_permission_query_conditions(schools, pairs)
 
 
 def has_permission(doc, ptype=None, user=None):
@@ -330,9 +317,42 @@ def has_permission(doc, ptype=None, user=None):
     if not user_school:
         return False
 
-    if is_leaf_school(user_school):
-        pairs = get_schools_per_academic_year_for_terms(user_school)
-        return (doc.school, doc.academic_year) in pairs
-    else:
-        schools = get_descendant_schools(user_school)
-        return doc.school in schools
+    schools, pairs = _get_term_visibility_scope(user_school)
+    if doc.school in schools:
+        return True
+    return (doc.school, doc.academic_year) in pairs
+
+
+def _get_term_visibility_scope(user_school: str) -> tuple[list[str], list[tuple[str, str]]]:
+    schools = list(dict.fromkeys(get_descendant_schools(user_school) or [user_school]))
+    pairs = []
+
+    # Keep nearest-ancestor term fallback visible for the user's branch even when the
+    # default school is not a leaf node. Local and descendant schools remain primary.
+    descendant_scope = set(schools)
+    for school, academic_year in get_schools_per_academic_year_for_terms(user_school):
+        if school in descendant_scope:
+            continue
+        pairs.append((school, academic_year))
+
+    return schools, pairs
+
+
+def _build_term_permission_query_conditions(schools: list[str], pairs: list[tuple[str, str]]) -> str:
+    conditions = []
+
+    if schools:
+        school_list = ", ".join(frappe.db.escape(school) for school in schools)
+        conditions.append(f"`tabTerm`.`school` IN ({school_list})")
+
+    if pairs:
+        pair_conditions = [
+            "(`tabTerm`.`school` = {0} AND `tabTerm`.`academic_year` = {1})".format(
+                frappe.db.escape(school),
+                frappe.db.escape(academic_year),
+            )
+            for school, academic_year in pairs
+        ]
+        conditions.append(f"({' OR '.join(pair_conditions)})")
+
+    return " OR ".join(conditions) if conditions else "1=0"

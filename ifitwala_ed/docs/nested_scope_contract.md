@@ -12,6 +12,7 @@ Code refs:
 - `ifitwala_ed/utilities/tree_utils.py`
 - `ifitwala_ed/utilities/school_tree.py`
 - `ifitwala_ed/school_settings/school_settings_utils.py`
+- `ifitwala_ed/school_settings/doctype/term/term.py`
 - `ifitwala_ed/students/report/attendance_report/attendance_report.py`
 - `ifitwala_ed/schedule/report/enrollment_trend_report/enrollment_trend_report.py`
 - `ifitwala_ed/schedule/report/enrollment_report/enrollment_report.py`
@@ -33,6 +34,7 @@ Test refs:
 - `ifitwala_ed/schedule/report/enrollment_trend_report/test_enrollment_trend_report.py`
 - `ifitwala_ed/schedule/report/enrollment_report/test_enrollment_report.py`
 - `ifitwala_ed/school_settings/test_school_settings_utils.py`
+- `ifitwala_ed/school_settings/doctype/term/test_term.py`
 - `ifitwala_ed/api/test_room_utilization.py`
 - `ifitwala_ed/stock/doctype/location/test_location.py`
 - `ifitwala_ed/curriculum/doctype/program/test_program.py`
@@ -120,6 +122,7 @@ Test refs:
 | Attendance Report parent-school inheritance | Implemented | Keep descendant-aware SQL filter | P0 complete | `students/report/attendance_report/attendance_report.py` | `students/report/attendance_report/test_attendance_report.py` |
 | Enrollment Trend Report parent-school inheritance | Implemented | Keep descendant-aware SQL filter | P0 complete | `schedule/report/enrollment_trend_report/enrollment_trend_report.py` | `schedule/report/enrollment_trend_report/test_enrollment_trend_report.py` |
 | Enrollment Report helper parity | Implemented | Keep descendant-aware helper intersection contract | P0 complete | `school_settings/school_settings_utils.py`, `schedule/report/enrollment_report/enrollment_report.py` | `school_settings/test_school_settings_utils.py`, `schedule/report/enrollment_report/test_enrollment_report.py` |
+| Term DocType parent-school visibility | Implemented | Scripted permissions keep descendant subtree visibility and nearest-ancestor academic-year fallback for the user's branch | P1 complete | `school_settings/doctype/term/term.py` | `school_settings/doctype/term/test_term.py` |
 | Ancestor-shared location visibility | Implemented | Allow ancestor-school facilities only through explicit location-level sharing while preserving sibling isolation | P0 complete | `utilities/location_utils.py`, `api/room_utilization.py`, `api/calendar_quick_create.py` | `stock/doctype/location/test_location.py`, `api/test_room_utilization.py` |
 | Remaining report exact-match sweep | Planned | Review each report against owner docs before changing semantics | P1 | `students/report/case_entries_activity_log/case_entries_activity_log.py`, `accounting/report/trial_balance/trial_balance.py`, `accounting/report/aged_receivables/aged_receivables.py`, `accounting/report/student_attribution/student_attribution.py` | None |
 | Location descendant-capacity enforcement | Implemented | Parent locations now validate capacity against their descendant booking scope | P1 complete | `stock/doctype/location/location.py`, `utilities/location_utils.py` | `stock/doctype/location/test_location.py` |
@@ -166,6 +169,7 @@ Test refs:
 | --- | --- | --- | --- |
 | Schema / DocType | NestedSet-backed `School`, `Organization`, `Location`, and `Program` | `utilities/tree_utils.py`, `utilities/school_tree.py`, `utilities/location_utils.py`, `stock/doctype/location/location.py`, `curriculum/doctype/program/program.py` | `utilities/test_school_tree.py`, `utilities/test_tree_utils.py`, `curriculum/doctype/program/test_program.py` |
 | Controller / workflow logic | Shared scope helpers, Program ancestor fallback, and Location capacity enforcement | `school_settings/school_settings_utils.py`, `curriculum/doctype/program/program.py`, `stock/doctype/location/location.py` | `school_settings/test_school_settings_utils.py`, `curriculum/doctype/program/test_program.py`, `stock/doctype/location/test_location.py` |
+| DocType scripted permissions | Term visibility keeps descendant subtree access plus nearest-ancestor fallback per academic year for the user's branch | `school_settings/doctype/term/term.py` | `school_settings/doctype/term/test_term.py` |
 | API endpoints | Analytics and rooming endpoints that honor descendant scope plus explicit ancestor-sharing | `api/enrollment_analytics.py`, `api/student_overview_dashboard.py`, `api/room_utilization.py`, `api/calendar_quick_create.py` | `api/test_room_utilization.py` plus existing endpoint tests outside this contract |
 | SPA / UI surfaces | Tree-aware analytics/report entry points plus default-school prefill and inherited Program assessment-category hinting | `docs/spa/06_analytics_pages.md`, `curriculum/doctype/program/program.js`, `curriculum/doctype/course/course.js`, `school_settings/doctype/term/term.js`, `schedule/doctype/program_enrollment/program_enrollment.js` | None |
 | Reports / dashboards / briefings | Attendance, Enrollment Trend, Enrollment Report implemented; remaining reports under contract review | `students/report/attendance_report/attendance_report.py`, `schedule/report/enrollment_trend_report/enrollment_trend_report.py`, `schedule/report/enrollment_report/enrollment_report.py`, review set listed in §3 | Report tests listed above |
@@ -196,6 +200,7 @@ Test refs:
 - School subtree resolution should prefer existing helpers over bespoke direct traversal inside reports.
 - Generic tree traversal now lives in `utilities/tree_utils.py`; doctype-specific helpers remain as compatibility wrappers so callers do not drift all at once.
 - Scope caches must always be keyed by permission scope and selected filter context; stale shared caches are a data-leak risk.
+- Term Desk visibility now keeps descendant subtree access and only widens to the nearest ancestor term source per academic year for the user's own branch; sibling terms remain hidden.
 - Report fixes should continue to favor SQL `IN %(scope)s` predicates over Python-side filtering for both correctness and concurrency.
 - Shared ancestor-school facilities must be opt-in on the Location row itself; broad parent-school visibility remains a multi-tenant defect.
 - Location capacity validation now uses descendant location scope in one grouped query so parent-room capacity checks stay concurrency-safe.
