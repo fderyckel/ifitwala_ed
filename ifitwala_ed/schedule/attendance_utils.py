@@ -32,6 +32,7 @@ from frappe.utils import getdate, now_datetime, nowdate
 from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
 from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
 from ifitwala_ed.school_settings.doctype.term.term import get_current_term
+from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
 
 ATT_CODE_FIELD = "attendance_code"
 ATT_CODE_DOCTYPE = "Student Attendance Code"
@@ -62,7 +63,7 @@ def get_student_group_students(
     extra_select = ", MAX(sp.medical_info) AS medical_info" if with_medical else ""
     extra_join = "LEFT JOIN `tabStudent Patient` sp ON sp.student = s.name" if with_medical else ""
 
-    return frappe.db.sql(
+    rows = frappe.db.sql(
         f"""
         SELECT
             s.name                              AS student,
@@ -82,6 +83,7 @@ def get_student_group_students(
         {"sg": student_group, "limit": page_length, "offset": start},
         as_dict=True,
     )
+    return apply_preferred_student_images(rows, student_field="student", image_field="student_image")
 
 
 @frappe.whitelist()

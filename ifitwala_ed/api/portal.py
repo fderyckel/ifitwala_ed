@@ -21,6 +21,7 @@ from ifitwala_ed.api.student_demographics_dashboard import (
 )
 from ifitwala_ed.api.student_log_dashboard import ALLOWED_ANALYTICS_ROLES as WELLBEING_ANALYTICS_ROLES
 from ifitwala_ed.api.users import STAFF_ROLES
+from ifitwala_ed.utilities.image_utils import get_preferred_student_image_url
 
 CACHE_TTL_SECONDS = 3600
 HR_ROLES = frozenset({"HR User", "HR Manager"})
@@ -148,10 +149,14 @@ def _resolve_student_row_for_user(user: str):
         as_dict=True,
     )
     if student:
+        student["student_image"] = get_preferred_student_image_url(
+            student.get("name"),
+            original_url=student.get("student_image"),
+        )
         return student
 
     user_email = frappe.db.get_value("User", user, "email") or user
-    return frappe.db.get_value(
+    student = frappe.db.get_value(
         "Student",
         {"student_email": user_email},
         [
@@ -163,6 +168,12 @@ def _resolve_student_row_for_user(user: str):
         ],
         as_dict=True,
     )
+    if student:
+        student["student_image"] = get_preferred_student_image_url(
+            student.get("name"),
+            original_url=student.get("student_image"),
+        )
+    return student
 
 
 def _resolve_student_display_name(student_row, user_first_name: str | None, user_full_name: str | None) -> str:
@@ -230,7 +241,7 @@ def get_student_portal_identity():
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
 
     cache = frappe.cache()
-    cache_key = f"student_portal:identity:v1:{user}"
+    cache_key = f"student_portal:identity:v2:{user}"
     cached = cache.get_value(cache_key)
     if cached:
         try:

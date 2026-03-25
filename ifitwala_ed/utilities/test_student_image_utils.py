@@ -1,0 +1,99 @@
+# Copyright (c) 2026, François de Ryckel and contributors
+# For license information, please see license.txt
+
+import os
+import shutil
+from unittest.mock import patch
+
+import frappe
+from frappe.tests.utils import FrappeTestCase
+from PIL import Image
+
+from ifitwala_ed.utilities import image_utils
+
+
+class TestStudentImageUtils(FrappeTestCase):
+    def tearDown(self):
+        drive_root = frappe.utils.get_site_path("private", "files", "ifitwala_drive", "files", "bb")
+        if os.path.isdir(drive_root):
+            shutil.rmtree(drive_root, ignore_errors=True)
+
+    def test_generate_student_derivatives_from_drive_private_file_url(self):
+        relative_url = "/private/files/ifitwala_drive/files/bb/cc/student-source.png"
+        absolute_path = frappe.utils.get_site_path(relative_url.lstrip("/"))
+        os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
+        Image.new("RGB", (1200, 1200), color=(60, 90, 140)).save(absolute_path, "PNG")
+
+        file_doc = frappe._dict(
+            {
+                "name": "FILE-STU-0001",
+                "attached_to_doctype": "Student",
+                "attached_to_name": "STU-0001",
+                "attached_to_field": "student_image",
+                "file_url": relative_url,
+                "file_name": "student-source.png",
+                "is_private": 0,
+            }
+        )
+        classification = frappe._dict(
+            {
+                "primary_subject_type": "Student",
+                "primary_subject_id": "STU-0001",
+                "data_class": "identity_image",
+                "purpose": "student_profile_display",
+                "retention_policy": "until_school_exit_plus_6m",
+                "slot": "profile_image",
+                "organization": "ORG-0001",
+                "school": "SCH-0001",
+                "upload_source": "Desk",
+                "secondary_subjects": [],
+            }
+        )
+
+        with (
+            patch("ifitwala_ed.utilities.image_utils._get_file_classification", return_value=classification),
+            patch("ifitwala_ed.utilities.image_utils._governed_derivative_exists", return_value=False),
+            patch("ifitwala_ed.utilities.file_dispatcher.create_and_classify_file") as create_and_classify,
+        ):
+            image_utils._generate_student_derivatives(file_doc)
+
+        self.assertEqual(create_and_classify.call_count, 3)
+        created_slots = {call.kwargs["classification"]["slot"] for call in create_and_classify.call_args_list}
+        self.assertEqual(
+            created_slots,
+            {"profile_image_thumb", "profile_image_card", "profile_image_medium"},
+        )
+        created_names = {call.kwargs["file_kwargs"]["file_name"] for call in create_and_classify.call_args_list}
+        self.assertEqual(
+            created_names,
+            {"thumb_student_source.webp", "card_student_source.webp", "medium_student_source.webp"},
+        )
+
+    def test_get_preferred_student_image_url_prefers_thumb_variant(self):
+        classification_rows = [
+            {
+                "primary_subject_id": "STU-0001",
+                "slot": "profile_image_medium",
+                "file": "FILE-MEDIUM",
+            },
+            {
+                "primary_subject_id": "STU-0001",
+                "slot": "profile_image_thumb",
+                "file": "FILE-THUMB",
+            },
+        ]
+        file_rows = [
+            {"name": "FILE-MEDIUM", "file_url": "/files/student/medium_student.webp", "is_private": 0},
+            {"name": "FILE-THUMB", "file_url": "/files/student/thumb_student.webp", "is_private": 0},
+        ]
+
+        with (
+            patch("ifitwala_ed.utilities.image_utils.frappe.get_all", side_effect=[classification_rows, file_rows]),
+            patch("ifitwala_ed.utilities.image_utils.file_url_exists_on_disk", return_value=True),
+        ):
+            image_url = image_utils.get_preferred_student_image_url(
+                "STU-0001",
+                original_url="/files/student/original_student.png",
+            )
+
+        self.assertEqual(image_url, "/files/student/thumb_student.webp")

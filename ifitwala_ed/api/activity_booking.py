@@ -24,6 +24,7 @@ from ifitwala_ed.schedule.doctype.program_offering.program_offering import (
     preview_activity_booking_readiness,
 )
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
+from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
 
 ACTIVE_BOOKING_STATUSES = {"Submitted", "Waitlisted", "Offered", "Confirmed"}
 RESERVED_SEAT_STATUSES = {"Offered", "Confirmed"}
@@ -1216,6 +1217,7 @@ def _student_rows(student_names: list[str]) -> list[dict]:
         ],
         limit=max(100, len(names) + 20),
     )
+    apply_preferred_student_images(rows, student_field="name", image_field="student_image")
     row_map = {row.get("name"): row for row in rows if cint(row.get("enabled") or 0) == 1}
     out = []
     for name in names:

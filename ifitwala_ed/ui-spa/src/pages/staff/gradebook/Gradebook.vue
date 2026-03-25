@@ -387,7 +387,7 @@
 								>
 									<div class="flex items-center gap-4">
 										<img
-											:src="thumb(student.student_image)"
+											:src="student.student_image || DEFAULT_STUDENT_IMAGE"
 											alt=""
 											class="h-12 w-12 rounded-full border border-white bg-white object-cover shadow-sm"
 											loading="lazy"
@@ -1203,22 +1203,6 @@ function currentRouteStudentGroup(): string | null {
 }
 
 const pendingRouteGroup = ref<string | null>(currentRouteStudentGroup());
-
-function slugifyFilename(filename: string) {
-	return filename
-		.replace(/\.[^.]+$/, '')
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '_')
-		.replace(/^_+|_+$/g, '');
-}
-
-function thumb(originalUrl?: string | null) {
-	if (!originalUrl) return DEFAULT_STUDENT_IMAGE;
-	if (originalUrl.startsWith('/files/gallery_resized/student/')) return originalUrl;
-	if (!originalUrl.startsWith('/files/student/')) return DEFAULT_STUDENT_IMAGE;
-	const base = slugifyFilename(originalUrl.split('/').pop() || '');
-	return `/files/gallery_resized/student/thumb_${base}.webp`;
-}
 
 function applyRouteGroupFromQuery() {
 	const target = pendingRouteGroup.value;

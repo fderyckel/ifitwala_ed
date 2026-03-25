@@ -92,11 +92,11 @@
 				>
 					<a :href="`/desk/student/${stu.student}`" target="_blank" rel="noopener" class="block">
 						<img
-							:src="thumb(stu.student_image)"
+							:src="stu.student_image || DEFAULT_IMG"
 							:alt="`Photo of ${stu.student_name}`"
 							loading="lazy"
 							class="h-32 w-full rounded-xl object-cover"
-							@error="onImgError($event, stu.student_image)"
+							@error="onImgError"
 						/>
 						<div class="mt-2 text-sm font-semibold leading-tight flex items-center gap-2">
 							<span class="truncate">{{ stu.student_name }}</span>
@@ -422,23 +422,6 @@ function resetStudentsData() {
 }
 
 const DEFAULT_IMG = '/assets/ifitwala_ed/images/default_student_image.png';
-
-function slugify(filename: string) {
-	return filename
-		.replace(/\.[^.]+$/, '')
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '_')
-		.replace(/^_+|_+$/g, '');
-}
-
-function thumb(original_url?: string) {
-	if (!original_url) return DEFAULT_IMG;
-	if (original_url.startsWith('/files/gallery_resized/student/')) return original_url;
-	if (!original_url.startsWith('/files/student/')) return DEFAULT_IMG;
-	const base = slugify(original_url.split('/').pop() || '');
-	return `/files/gallery_resized/student/thumb_${base}.webp`;
-}
-
 function onImgError(e: Event, fallback?: string) {
 	const el = e.target as HTMLImageElement;
 	el.onerror = null;

@@ -15,14 +15,20 @@ import frappe
 from frappe import _
 from PIL import Image
 
-EMPLOYEE_VARIANT_SLOTS = (
+PROFILE_IMAGE_VARIANT_SLOTS = (
     "profile_image_thumb",
     "profile_image_card",
     "profile_image_medium",
     "profile_image",
 )
+PROFILE_IMAGE_VARIANT_PRIORITY = PROFILE_IMAGE_VARIANT_SLOTS
+PROFILE_IMAGE_VARIANT_SIZES = {"thumb": 160, "card": 400, "medium": 960}
+
+EMPLOYEE_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
 
 EMPLOYEE_VARIANT_PRIORITY = EMPLOYEE_VARIANT_SLOTS
+STUDENT_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
+STUDENT_VARIANT_PRIORITY = STUDENT_VARIANT_SLOTS
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -116,7 +122,7 @@ def file_url_exists_on_disk(file_url: str | None, is_private: int | None = 0) ->
     return bool(abs_path and os.path.exists(abs_path))
 
 
-def _build_employee_derivative_classification(fc_doc, slot_suffix, source_file):
+def _build_governed_derivative_classification(fc_doc, slot_suffix, source_file):
     return {
         "primary_subject_type": fc_doc.primary_subject_type,
         "primary_subject_id": fc_doc.primary_subject_id,
@@ -131,7 +137,11 @@ def _build_employee_derivative_classification(fc_doc, slot_suffix, source_file):
     }
 
 
-def _employee_derivative_exists(source_file, slot_base, slot_suffix):
+def _build_employee_derivative_classification(fc_doc, slot_suffix, source_file):
+    return _build_governed_derivative_classification(fc_doc, slot_suffix, source_file)
+
+
+def _governed_derivative_exists(source_file, slot_base, slot_suffix):
     slot = f"{slot_base}_{slot_suffix}"
     return frappe.db.exists(
         "File Classification",
@@ -139,7 +149,11 @@ def _employee_derivative_exists(source_file, slot_base, slot_suffix):
     )
 
 
-def _resolve_employee_drive_local_path(file_doc) -> str | None:
+def _employee_derivative_exists(source_file, slot_base, slot_suffix):
+    return _governed_derivative_exists(source_file, slot_base, slot_suffix)
+
+
+def _resolve_drive_local_path(file_doc) -> str | None:
     if not file_doc:
         return None
 
@@ -171,7 +185,11 @@ def _resolve_employee_drive_local_path(file_doc) -> str | None:
     return None
 
 
-def _download_employee_drive_original(file_doc) -> bytes | None:
+def _resolve_employee_drive_local_path(file_doc) -> str | None:
+    return _resolve_drive_local_path(file_doc)
+
+
+def _download_drive_original(file_doc, *, log_title: str) -> bytes | None:
     if not file_doc:
         return None
 
@@ -206,11 +224,15 @@ def _download_employee_drive_original(file_doc) -> bytes | None:
     except (ImportError, URLError, OSError):
         return None
     except Exception:
-        frappe.log_error(frappe.get_traceback(), "Employee Image Download Failed")
+        frappe.log_error(frappe.get_traceback(), log_title)
         return None
 
 
-def _resolve_employee_original_path(file_doc) -> str | None:
+def _download_employee_drive_original(file_doc) -> bytes | None:
+    return _download_drive_original(file_doc, log_title="Employee Image Download Failed")
+
+
+def _resolve_governed_original_path(file_doc) -> str | None:
     if not file_doc:
         return None
 
@@ -218,15 +240,20 @@ def _resolve_employee_original_path(file_doc) -> str | None:
     if candidate and os.path.exists(candidate):
         return candidate
 
-    return _resolve_employee_drive_local_path(file_doc)
+    return _resolve_drive_local_path(file_doc)
 
 
-def get_employee_image_variants_map(
-    employee_names: Sequence[str] | Iterable[str],
+def _resolve_employee_original_path(file_doc) -> str | None:
+    return _resolve_governed_original_path(file_doc)
+
+
+def _get_governed_image_variants_map(
+    primary_subject_type: str,
+    subject_names: Sequence[str] | Iterable[str],
     *,
-    slots: Sequence[str] = EMPLOYEE_VARIANT_SLOTS,
+    slots: Sequence[str],
 ) -> dict[str, dict[str, str]]:
-    names = [str(name or "").strip() for name in (employee_names or [])]
+    names = [str(name or "").strip() for name in (subject_names or [])]
     names = [name for name in names if name]
     if not names:
         return {}
@@ -234,7 +261,7 @@ def get_employee_image_variants_map(
     rows = frappe.get_all(
         "File Classification",
         filters={
-            "primary_subject_type": "Employee",
+            "primary_subject_type": primary_subject_type,
             "primary_subject_id": ("in", names),
             "slot": ("in", list(slots)),
             "is_current_version": 1,
@@ -257,10 +284,10 @@ def get_employee_image_variants_map(
 
     variants: dict[str, dict[str, str]] = {}
     for row in rows:
-        employee_name = row.get("primary_subject_id")
+        subject_name = row.get("primary_subject_id")
         slot = row.get("slot")
         file_name = row.get("file")
-        if not (employee_name and slot and file_name):
+        if not (subject_name and slot and file_name):
             continue
 
         file_row = file_map.get(file_name)
@@ -273,22 +300,23 @@ def get_employee_image_variants_map(
         if not file_url_exists_on_disk(file_url, file_row.get("is_private")):
             continue
 
-        variants.setdefault(employee_name, {})[slot] = file_url
+        variants.setdefault(subject_name, {})[slot] = file_url
 
     return variants
 
 
-def get_preferred_employee_image_url(
-    employee_name: str | None,
+def _get_preferred_governed_image_url(
+    primary_subject_type: str,
+    subject_name: str | None,
     *,
     original_url: str | None = None,
-    slots: Sequence[str] = EMPLOYEE_VARIANT_PRIORITY,
+    slots: Sequence[str],
 ) -> str | None:
-    employee_name = str(employee_name or "").strip()
-    if not employee_name:
+    subject_name = str(subject_name or "").strip()
+    if not subject_name:
         return original_url if file_url_exists_on_disk(original_url) else None
 
-    variants = get_employee_image_variants_map([employee_name], slots=slots).get(employee_name, {})
+    variants = _get_governed_image_variants_map(primary_subject_type, [subject_name], slots=slots).get(subject_name, {})
     for slot in slots:
         file_url = variants.get(slot)
         if file_url:
@@ -297,9 +325,19 @@ def get_preferred_employee_image_url(
     return original_url if file_url_exists_on_disk(original_url) else None
 
 
-def build_employee_image_variants(employee_name: str | None, original_url: str | None = None) -> dict[str, str | None]:
-    employee_name = str(employee_name or "").strip()
-    variants = get_employee_image_variants_map([employee_name]).get(employee_name, {}) if employee_name else {}
+def _build_governed_image_variants(
+    primary_subject_type: str,
+    subject_name: str | None,
+    *,
+    original_url: str | None = None,
+    slots: Sequence[str],
+) -> dict[str, str | None]:
+    subject_name = str(subject_name or "").strip()
+    variants = (
+        _get_governed_image_variants_map(primary_subject_type, [subject_name], slots=slots).get(subject_name, {})
+        if subject_name
+        else {}
+    )
     original_fallback = variants.get("profile_image") or (
         original_url if file_url_exists_on_disk(original_url) else None
     )
@@ -315,28 +353,29 @@ def build_employee_image_variants(employee_name: str | None, original_url: str |
     }
 
 
-def apply_preferred_employee_images(
+def _apply_preferred_governed_images(
     rows: list[dict],
     *,
-    employee_field: str = "id",
-    image_field: str = "image",
-    slots: Sequence[str] = EMPLOYEE_VARIANT_PRIORITY,
+    primary_subject_type: str,
+    subject_field: str,
+    image_field: str,
+    slots: Sequence[str],
 ) -> list[dict]:
     if not rows:
         return rows
 
-    employee_names = [row.get(employee_field) for row in rows if row.get(employee_field)]
-    variants = get_employee_image_variants_map(employee_names, slots=slots)
+    subject_names = [row.get(subject_field) for row in rows if row.get(subject_field)]
+    variants = _get_governed_image_variants_map(primary_subject_type, subject_names, slots=slots)
 
     for row in rows:
-        employee_name = row.get(employee_field)
-        if not employee_name:
+        subject_name = row.get(subject_field)
+        if not subject_name:
             continue
 
         original_url = row.get(image_field)
         preferred_url = None
         for slot in slots:
-            preferred_url = variants.get(employee_name, {}).get(slot)
+            preferred_url = variants.get(subject_name, {}).get(slot)
             if preferred_url:
                 break
 
@@ -348,11 +387,105 @@ def apply_preferred_employee_images(
     return rows
 
 
-def _generate_employee_derivatives(file_doc):
-    if not file_doc or file_doc.attached_to_doctype != "Employee":
+def get_employee_image_variants_map(
+    employee_names: Sequence[str] | Iterable[str],
+    *,
+    slots: Sequence[str] = EMPLOYEE_VARIANT_SLOTS,
+) -> dict[str, dict[str, str]]:
+    return _get_governed_image_variants_map("Employee", employee_names, slots=slots)
+
+
+def get_preferred_employee_image_url(
+    employee_name: str | None,
+    *,
+    original_url: str | None = None,
+    slots: Sequence[str] = EMPLOYEE_VARIANT_PRIORITY,
+) -> str | None:
+    return _get_preferred_governed_image_url(
+        "Employee",
+        employee_name,
+        original_url=original_url,
+        slots=slots,
+    )
+
+
+def build_employee_image_variants(employee_name: str | None, original_url: str | None = None) -> dict[str, str | None]:
+    return _build_governed_image_variants(
+        "Employee",
+        employee_name,
+        original_url=original_url,
+        slots=EMPLOYEE_VARIANT_SLOTS,
+    )
+
+
+def apply_preferred_employee_images(
+    rows: list[dict],
+    *,
+    employee_field: str = "id",
+    image_field: str = "image",
+    slots: Sequence[str] = EMPLOYEE_VARIANT_PRIORITY,
+) -> list[dict]:
+    return _apply_preferred_governed_images(
+        rows,
+        primary_subject_type="Employee",
+        subject_field=employee_field,
+        image_field=image_field,
+        slots=slots,
+    )
+
+
+def get_student_image_variants_map(
+    student_names: Sequence[str] | Iterable[str],
+    *,
+    slots: Sequence[str] = STUDENT_VARIANT_SLOTS,
+) -> dict[str, dict[str, str]]:
+    return _get_governed_image_variants_map("Student", student_names, slots=slots)
+
+
+def get_preferred_student_image_url(
+    student_name: str | None,
+    *,
+    original_url: str | None = None,
+    slots: Sequence[str] = STUDENT_VARIANT_PRIORITY,
+) -> str | None:
+    return _get_preferred_governed_image_url(
+        "Student",
+        student_name,
+        original_url=original_url,
+        slots=slots,
+    )
+
+
+def build_student_image_variants(student_name: str | None, original_url: str | None = None) -> dict[str, str | None]:
+    return _build_governed_image_variants(
+        "Student",
+        student_name,
+        original_url=original_url,
+        slots=STUDENT_VARIANT_SLOTS,
+    )
+
+
+def apply_preferred_student_images(
+    rows: list[dict],
+    *,
+    student_field: str = "student",
+    image_field: str = "student_image",
+    slots: Sequence[str] = STUDENT_VARIANT_PRIORITY,
+) -> list[dict]:
+    return _apply_preferred_governed_images(
+        rows,
+        primary_subject_type="Student",
+        subject_field=student_field,
+        image_field=image_field,
+        slots=slots,
+    )
+
+
+def _generate_governed_profile_derivatives(file_doc, *, doctype: str, fieldname: str, log_label: str):
+    if not file_doc or file_doc.attached_to_doctype != doctype:
         return
 
-    if file_doc.attached_to_field and file_doc.attached_to_field != "employee_image":
+    if file_doc.attached_to_field and file_doc.attached_to_field != fieldname:
         return
 
     filename = os.path.basename(file_doc.file_url or file_doc.file_name or "")
@@ -366,14 +499,14 @@ def _generate_employee_derivatives(file_doc):
     if not file_doc.file_url:
         return
 
-    original_path = _resolve_employee_original_path(file_doc)
+    original_path = _resolve_governed_original_path(file_doc)
     original_content = None
     if not original_path or not os.path.exists(original_path):
-        original_content = _download_employee_drive_original(file_doc)
+        original_content = _download_drive_original(file_doc, log_title=f"{log_label} Image Download Failed")
     if (not original_path or not os.path.exists(original_path)) and not original_content:
         frappe.log_error(
-            f"Employee image missing on disk for file {file_doc.name}: {file_doc.file_url}",
-            "Employee Image Resize",
+            f"{log_label} image missing on disk for file {file_doc.name}: {file_doc.file_url}",
+            f"{log_label} Image Resize",
         )
         return
 
@@ -384,11 +517,10 @@ def _generate_employee_derivatives(file_doc):
 
     from ifitwala_ed.utilities import file_dispatcher
 
-    sizes = {"thumb": 160, "card": 400, "medium": 960}
     secondary_subjects = _get_secondary_subjects(fc_doc)
 
-    for size_label, width in sizes.items():
-        if _employee_derivative_exists(file_doc.name, fc_doc.slot, size_label):
+    for size_label, width in PROFILE_IMAGE_VARIANT_SIZES.items():
+        if _governed_derivative_exists(file_doc.name, fc_doc.slot, size_label):
             continue
 
         if original_path and os.path.exists(original_path):
@@ -398,7 +530,7 @@ def _generate_employee_derivatives(file_doc):
         if not content:
             continue
 
-        classification = _build_employee_derivative_classification(
+        classification = _build_governed_derivative_classification(
             fc_doc,
             size_label,
             file_doc.name,
@@ -416,6 +548,24 @@ def _generate_employee_derivatives(file_doc):
             classification=classification,
             secondary_subjects=secondary_subjects,
         )
+
+
+def _generate_employee_derivatives(file_doc):
+    _generate_governed_profile_derivatives(
+        file_doc,
+        doctype="Employee",
+        fieldname="employee_image",
+        log_label="Employee",
+    )
+
+
+def _generate_student_derivatives(file_doc):
+    _generate_governed_profile_derivatives(
+        file_doc,
+        doctype="Student",
+        fieldname="student_image",
+        log_label="Student",
+    )
 
 
 def resize_and_save(
@@ -507,10 +657,15 @@ def handle_file_after_insert(doc, method=None):
         _generate_employee_derivatives(doc)
         return
 
-    # Defer Student images until after rename_student_image() puts them
-    # into /files/student/ with secure suffix.
-    if doc.attached_to_doctype == "Student" and not doc.file_url.startswith("/files/student/"):
-        return
+    if doc.attached_to_doctype == "Student":
+        if frappe.db.exists("File Classification", {"file": doc.name}):
+            _generate_student_derivatives(doc)
+            return
+
+        # Defer legacy Student images until after rename_student_image()
+        # puts them into /files/student/ with secure suffix.
+        if not doc.file_url or not doc.file_url.startswith("/files/student/"):
+            return
 
     if not (doc.file_url and doc.attached_to_doctype):
         return
@@ -554,9 +709,11 @@ def handle_governed_file_after_classification(file_doc):
     """Run derivative generation after governance is established."""
     if not file_doc:
         return
-    if file_doc.attached_to_doctype != "Employee":
+    if file_doc.attached_to_doctype == "Employee":
+        _generate_employee_derivatives(file_doc)
         return
-    _generate_employee_derivatives(file_doc)
+    if file_doc.attached_to_doctype == "Student":
+        _generate_student_derivatives(file_doc)
 
 
 # ────────────────────────────────────────────────────────────────────────────

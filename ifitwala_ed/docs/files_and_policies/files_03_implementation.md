@@ -568,6 +568,13 @@ Public exposure is allowed **only** when the applicant has acknowledged the medi
 Promotion may **copy** `Student Applicant.applicant_image` into `Student.student_image`
 as a new File record. The public version (if consented) must use a randomized suffix.
 
+When Student profile images are governed uploads, derivative generation follows the same
+post-classification rule as Employee profile images:
+
+* canonical derivative slots: `profile_image_thumb`, `profile_image_card`, `profile_image_medium`
+* derivatives are generated from the current governed original after classification
+* Student list/avatar consumers must resolve these governed variants canonically and must not guess legacy `gallery_resized/student` URLs
+
 **Operational activation**
 
 1) Create an **Institutional Policy** with `policy_key = media_consent`

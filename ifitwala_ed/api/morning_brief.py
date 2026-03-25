@@ -13,7 +13,7 @@ from ifitwala_ed.api.org_comm_utils import check_audience_match
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
-from ifitwala_ed.utilities.image_utils import apply_preferred_employee_images
+from ifitwala_ed.utilities.image_utils import apply_preferred_employee_images, apply_preferred_student_images
 from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_user_default_school
 
 CLINIC_SUMMARY_RANGE_BUSINESS_DAYS = "3D"
@@ -630,6 +630,7 @@ def get_recent_student_logs(user):
         f"""
         SELECT
             sl.name,
+            sl.student,
             sl.student_name,
             sl.student_image,
             sl.log_type,
@@ -651,6 +652,8 @@ def get_recent_student_logs(user):
         },
         as_dict=True,
     )
+
+    apply_preferred_student_images(logs, student_field="student", image_field="student_image")
 
     formatted_logs = []
     for log in logs:
@@ -741,6 +744,7 @@ def get_my_student_birthdays(group_names):
 
     sql = f"""
 		SELECT DISTINCT
+			s.name AS student,
 			s.student_first_name AS first_name,
 			s.student_last_name AS last_name,
 			s.student_image AS image,
@@ -754,7 +758,8 @@ def get_my_student_birthdays(group_names):
 		ORDER BY DATE_FORMAT(s.student_date_of_birth, '%%%%m-%%%%d') ASC
 	"""
 
-    return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+    rows = frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+    return apply_preferred_student_images(rows, student_field="student", image_field="image")
 
 
 # ==============================================================================

@@ -3,12 +3,12 @@
 
 # ifitwala_ed/api/student_log.py
 
-import os
-
 import frappe
 from frappe import _
 from frappe.utils import cint, now_datetime, nowdate, nowtime, strip_html
 from frappe.utils.nestedset import get_descendants_of
+
+from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
 
 LOG_DOCTYPE = "Student Log"
 PAGE_LENGTH_DEFAULT = 20
@@ -378,27 +378,6 @@ def _is_follow_up_person_allowed(next_step: str, student: str, user_id: str) -> 
     return True
 
 
-def _thumb_url(original_url: str | None) -> str | None:
-    """
-    Return thumb_* variant url when it exists, else original.
-    image_utils generates: /files/<doctype_folder>/thumb_<base>.webp
-    For Student: doctype_folder = 'student'
-    """
-    if not original_url:
-        return None
-    filename = os.path.basename(original_url)
-    base, _ext = os.path.splitext(filename)
-
-    # If already a generated variant, keep it
-    if filename.startswith(("hero_", "medium_", "card_", "thumb_")):
-        return original_url
-
-    variant = f"/files/student/thumb_{base}.webp"
-    if frappe.db.get_value("File", {"file_url": variant}, "name"):
-        return variant
-    return original_url
-
-
 @frappe.whitelist()
 def search_students(**payload):
     _validate_keys(payload, ALLOWED_SEARCH_STUDENT_KEYS)
@@ -429,6 +408,7 @@ def search_students(**payload):
         ],
         limit=limit,
     )
+    apply_preferred_student_images(rows, student_field="name", image_field="student_image")
 
     out = []
     for r in rows:
@@ -439,7 +419,7 @@ def search_students(**payload):
                 "student": r.get("name"),
                 "label": label or r.get("name"),
                 "meta": meta,
-                "image": _thumb_url(r.get("student_image")),
+                "image": r.get("student_image"),
             }
         )
     return out

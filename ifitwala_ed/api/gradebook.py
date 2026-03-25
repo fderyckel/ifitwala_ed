@@ -19,6 +19,7 @@ from frappe import _
 from frappe.utils import now_datetime
 
 from ifitwala_ed.assessment import task_contribution_service, task_outcome_service, task_submission_service
+from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
 
 # ---------------------------
 # Public endpoints (UI)
@@ -1292,6 +1293,7 @@ def _get_student_meta_map(student_ids):
         fields=fields,
         limit=0,
     )
+    apply_preferred_student_images(rows, student_field="name", image_field="student_image")
     return {row.get("name"): row for row in rows if row.get("name")}
 
 
