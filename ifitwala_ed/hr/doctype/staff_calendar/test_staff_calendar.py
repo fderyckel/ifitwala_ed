@@ -57,11 +57,35 @@ class TestStaffCalendar(FrappeTestCase):
 
         self.assertIn("Install the app Python dependencies", str(exc.exception))
 
-    def test_get_events_requires_explicit_scope(self):
-        with self.assertRaises(frappe.ValidationError) as exc:
-            get_events("2026-03-01", "2026-03-31", "[]")
+    def test_get_events_without_filters_uses_visible_date_window(self):
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_all",
+                return_value=["SC-2026"],
+            ) as get_all,
+            patch(
+                "ifitwala_ed.hr.doctype.staff_calendar.staff_calendar.frappe.get_list",
+                return_value=[
+                    frappe._dict(
+                        name="HOL-0",
+                        staff_calendar="SC-2026",
+                        holiday_date="2026-03-05",
+                        description="Holiday",
+                        color="#ccc",
+                    )
+                ],
+            ),
+        ):
+            events = get_events("2026-03-01", "2026-03-31", "[]")
 
-        self.assertIn("Select a Staff Calendar or filter by both School and Employee Group", str(exc.exception))
+        self.assertEqual(
+            get_all.call_args.kwargs["filters"],
+            {
+                "to_date": [">=", frappe.utils.getdate("2026-03-01")],
+                "from_date": ["<=", frappe.utils.getdate("2026-03-31")],
+            },
+        )
+        self.assertEqual(events[0]["title"], "Holiday")
 
     def test_get_events_parses_calendar_filter_rows(self):
         filters = json.dumps(

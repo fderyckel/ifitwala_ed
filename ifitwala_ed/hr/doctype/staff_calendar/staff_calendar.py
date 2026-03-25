@@ -75,13 +75,11 @@ def get_events(start, end, filters=None):
     if staff_calendar:
         calendar_names = [staff_calendar]
     else:
-        if not school or not employee_group:
-            frappe.throw(_("Select a Staff Calendar or filter by both School and Employee Group."))
-
-        calendar_filters = {
-            "school": school,
-            "employee_group": employee_group,
-        }
+        calendar_filters = {}
+        if school:
+            calendar_filters["school"] = school
+        if employee_group:
+            calendar_filters["employee_group"] = employee_group
         if academic_year:
             calendar_filters["academic_year"] = academic_year
         if start:
