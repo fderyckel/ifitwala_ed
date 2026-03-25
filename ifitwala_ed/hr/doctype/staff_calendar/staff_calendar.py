@@ -33,6 +33,102 @@ def _load_holidays_api(*, raise_on_missing: bool):
     return holidays_module.country_holidays, holidays_utils.list_supported_countries
 
 
+def _normalize_calendar_filters(filters) -> dict:
+    parsed = frappe.parse_json(filters) if isinstance(filters, str) else (filters or {})
+    if isinstance(parsed, dict):
+        return {key: value for key, value in parsed.items() if value not in (None, "", [])}
+
+    normalized = {}
+    for entry in parsed or []:
+        fieldname = None
+        value = None
+
+        if isinstance(entry, dict):
+            fieldname = entry.get("fieldname") or entry.get("name")
+            value = entry.get("value")
+        elif isinstance(entry, (list, tuple)):
+            if len(entry) >= 4:
+                fieldname = entry[1]
+                value = entry[3]
+            elif len(entry) >= 3:
+                fieldname = entry[0]
+                value = entry[2]
+            elif len(entry) >= 2:
+                fieldname = entry[0]
+                value = entry[1]
+
+        if fieldname and value not in (None, "", []):
+            normalized[fieldname] = value
+
+    return normalized
+
+
+@frappe.whitelist()
+def get_events(start, end, filters=None):
+    filters = _normalize_calendar_filters(filters)
+
+    staff_calendar = filters.get("staff_calendar")
+    school = filters.get("school")
+    employee_group = filters.get("employee_group")
+    academic_year = filters.get("academic_year")
+
+    if staff_calendar:
+        calendar_names = [staff_calendar]
+    else:
+        if not school or not employee_group:
+            frappe.throw(_("Select a Staff Calendar or filter by both School and Employee Group."))
+
+        calendar_filters = {
+            "school": school,
+            "employee_group": employee_group,
+        }
+        if academic_year:
+            calendar_filters["academic_year"] = academic_year
+        if start:
+            calendar_filters["to_date"] = [">=", getdate(start)]
+        if end:
+            calendar_filters["from_date"] = ["<=", getdate(end)]
+
+        calendar_names = frappe.get_all("Staff Calendar", filters=calendar_filters, pluck="name")
+
+    if not calendar_names:
+        return []
+
+    event_filters = [
+        ["Staff Calendar Holidays", "parent", "in", calendar_names],
+    ]
+    if start:
+        event_filters.append(["Staff Calendar Holidays", "holiday_date", ">=", getdate(start)])
+    if end:
+        event_filters.append(["Staff Calendar Holidays", "holiday_date", "<=", getdate(end)])
+
+    events = frappe.get_list(
+        "Staff Calendar Holidays",
+        fields=[
+            "name",
+            "parent as staff_calendar",
+            "holiday_date",
+            "description",
+            "color",
+        ],
+        filters=event_filters,
+        order_by="holiday_date asc",
+    )
+
+    show_calendar_name = len(calendar_names) > 1 and not staff_calendar
+    for event in events:
+        title = event.get("description") or _("Holiday")
+        if show_calendar_name:
+            title = _("{0}: {1}").format(event.get("staff_calendar"), title)
+        event["description"] = title
+        event["title"] = title
+        event["start"] = event.get("holiday_date")
+        event["end"] = event.get("holiday_date")
+        event["allDay"] = 1
+
+    return events
+
+
 class StaffCalendar(Document):
     def validate(self):
         self._validate_period()
