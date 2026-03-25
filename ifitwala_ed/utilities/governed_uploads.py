@@ -14,6 +14,11 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.utilities import file_dispatcher
+from ifitwala_ed.utilities.image_utils import (
+    EMPLOYEE_VARIANT_PRIORITY,
+    get_employee_image_variants_map,
+    get_preferred_employee_image_url,
+)
 from ifitwala_ed.utilities.organization_media import (
     build_organization_media_slot,
 )
@@ -131,21 +136,30 @@ def _ensure_file_on_disk(file_doc):
         frappe.throw(_("File could not be finalized on disk. Please retry the upload."))
 
 
-def _file_url_exists_on_disk(file_url: str | None, is_private: int | None = 0) -> bool:
-    if not file_url:
-        return False
+def _sync_linked_employee_user_image(employee_name: str, *, original_url: str | None = None) -> None:
+    employee_name = (employee_name or "").strip()
+    if not employee_name:
+        return
 
-    if file_url.startswith("http"):
-        return True
+    user_id = frappe.db.get_value("Employee", employee_name, "user_id")
+    if not user_id:
+        return
 
-    rel_path = file_url.lstrip("/")
-    if rel_path.startswith("private/") or rel_path.startswith("public/"):
-        abs_path = frappe.utils.get_site_path(rel_path)
-    else:
-        base = "private" if is_private else "public"
-        abs_path = frappe.utils.get_site_path(base, rel_path)
+    avatar_url = get_preferred_employee_image_url(
+        employee_name,
+        original_url=original_url,
+        slots=EMPLOYEE_VARIANT_PRIORITY,
+    )
+    if not avatar_url:
+        return
 
-    return os.path.exists(abs_path)
+    user_doc = frappe.get_doc("User", user_id)
+    user_doc.flags.ignore_permissions = True
+    if getattr(user_doc, "user_image", None) == avatar_url:
+        return
+
+    user_doc.user_image = avatar_url
+    user_doc.save(ignore_permissions=True)
 
 
 def _load_drive_module(module_name: str):
@@ -218,6 +232,7 @@ def upload_employee_image(employee: str | None = None, **_kwargs):
     _ensure_file_on_disk(file_doc)
 
     frappe.db.set_value("Employee", doc.name, "employee_image", file_doc.file_url, update_modified=False)
+    _sync_linked_employee_user_image(doc.name, original_url=file_doc.file_url)
     return _response_payload(file_doc)
 
 
@@ -548,55 +563,49 @@ def get_employee_image_variants(employee: str):
     doc = frappe.get_doc("Employee", employee)
     doc.check_permission("read")
 
-    slots = [
-        "profile_image_thumb",
-        "profile_image_card",
-        "profile_image_medium",
-        "profile_image",
-    ]
+    variants = get_employee_image_variants_map([doc.name]).get(doc.name, {})
+    if doc.employee_image and "profile_image" not in variants:
+        variants["profile_image"] = doc.employee_image
+    return variants
+
+
+@frappe.whitelist()
+def get_employee_image_display_map(employees):
+    payload = employees
+    if isinstance(payload, str):
+        try:
+            payload = json.loads(payload)
+        except Exception:
+            payload = [payload]
+
+    if not isinstance(payload, list):
+        frappe.throw(_("employees must be a list of Employee names."))
+
+    employee_names = []
+    for employee_name in payload:
+        clean_name = (str(employee_name or "")).strip()
+        if not clean_name:
+            continue
+        employee_doc = frappe.get_doc("Employee", clean_name)
+        employee_doc.check_permission("read")
+        employee_names.append(clean_name)
+
+    if not employee_names:
+        return {}
 
     rows = frappe.get_all(
-        "File Classification",
-        filters={
-            "primary_subject_type": "Employee",
-            "primary_subject_id": doc.name,
-            "slot": ("in", slots),
-            "is_current_version": 1,
-        },
-        fields=["slot", "file"],
+        "Employee",
+        filters={"name": ("in", employee_names)},
+        fields=["name", "employee_image"],
     )
-    if not rows:
-        return {}
+    image_rows = {row["name"]: row.get("employee_image") for row in rows}
 
-    file_names = [row["file"] for row in rows if row.get("file")]
-    if not file_names:
-        return {}
-
-    files = frappe.get_all(
-        "File",
-        filters={"name": ("in", file_names)},
-        fields=["name", "file_url", "is_private"],
-    )
-    file_map = {row["name"]: row for row in files}
-
-    variants = {}
-    for row in rows:
-        slot = row.get("slot")
-        file_name = row.get("file")
-        if not (slot and file_name):
-            continue
-
-        file_row = file_map.get(file_name)
-        if not file_row:
-            continue
-
-        file_url = (file_row.get("file_url") or "").strip()
-        if not file_url:
-            continue
-
-        if not _file_url_exists_on_disk(file_url, file_row.get("is_private")):
-            continue
-
-        variants[slot] = file_url
-
-    return variants
+    return {
+        employee_name: get_preferred_employee_image_url(
+            employee_name,
+            original_url=image_rows.get(employee_name),
+            slots=EMPLOYEE_VARIANT_PRIORITY,
+        )
+        or ""
+        for employee_name in employee_names
+    }

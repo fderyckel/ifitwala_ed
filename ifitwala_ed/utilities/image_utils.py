@@ -6,17 +6,30 @@
 import io
 import os
 import re
+from collections.abc import Iterable, Sequence
+from datetime import timedelta
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 import frappe
 from frappe import _
 from PIL import Image
+
+EMPLOYEE_VARIANT_SLOTS = (
+    "profile_image_thumb",
+    "profile_image_card",
+    "profile_image_medium",
+    "profile_image",
+)
+
+EMPLOYEE_VARIANT_PRIORITY = EMPLOYEE_VARIANT_SLOTS
 
 
 # ────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ────────────────────────────────────────────────────────────────────────────
 def slugify(text):
-    """lowercase, replace non‑alphanums with '_', strip extra."""
+    """lowercase, replace non-alphanums with '_', strip extra."""
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
 
 
@@ -55,8 +68,52 @@ def _render_resized_bytes(original_path, width, quality=75):
             img.save(buffer, "WEBP", optimize=True, quality=quality)
             return buffer.getvalue()
     except Exception as e:
-        frappe.log_error(f"Error resizing image bytes: {e}", "File Auto‑Resize")
+        frappe.log_error(f"Error resizing image bytes: {e}", "File Auto-Resize")
         return None
+
+
+def _render_resized_content(original_content: bytes, width, quality=75):
+    if not original_content:
+        return None
+
+    try:
+        with Image.open(io.BytesIO(original_content)) as img:
+            if img.width <= width:
+                return None
+            img.thumbnail((width, width))
+            buffer = io.BytesIO()
+            img.save(buffer, "WEBP", optimize=True, quality=quality)
+            return buffer.getvalue()
+    except Exception as e:
+        frappe.log_error(f"Error resizing image content: {e}", "File Auto-Resize")
+        return None
+
+
+def resolve_file_absolute_path(file_url: str | None, is_private: int | None = 0) -> str | None:
+    """Resolve a Frappe-managed file_url to a local absolute path when possible."""
+    if not file_url:
+        return None
+
+    if file_url.startswith("http"):
+        return None
+
+    rel_path = file_url.lstrip("/")
+    if rel_path.startswith("private/") or rel_path.startswith("public/"):
+        return frappe.utils.get_site_path(rel_path)
+
+    base = "private" if is_private else "public"
+    return frappe.utils.get_site_path(base, rel_path)
+
+
+def file_url_exists_on_disk(file_url: str | None, is_private: int | None = 0) -> bool:
+    if not file_url:
+        return False
+
+    if file_url.startswith("http"):
+        return True
+
+    abs_path = resolve_file_absolute_path(file_url, is_private=is_private)
+    return bool(abs_path and os.path.exists(abs_path))
 
 
 def _build_employee_derivative_classification(fc_doc, slot_suffix, source_file):
@@ -82,6 +139,215 @@ def _employee_derivative_exists(source_file, slot_base, slot_suffix):
     )
 
 
+def _resolve_employee_drive_local_path(file_doc) -> str | None:
+    if not file_doc:
+        return None
+
+    drive_file = frappe.db.get_value(
+        "Drive File",
+        {"file": file_doc.name},
+        ["storage_backend", "storage_object_key"],
+        as_dict=True,
+    )
+    if not drive_file:
+        return None
+    if drive_file.get("storage_backend") != "local" or not drive_file.get("storage_object_key"):
+        return None
+
+    try:
+        from ifitwala_drive.services.storage.base import get_storage_backend
+
+        storage = get_storage_backend(drive_file.get("storage_backend"))
+    except Exception:
+        return None
+
+    absolute_path = getattr(storage, "_absolute_path", None)
+    if not callable(absolute_path):
+        return None
+
+    candidate = absolute_path(drive_file.get("storage_object_key"))
+    if candidate and os.path.exists(candidate):
+        return candidate
+    return None
+
+
+def _download_employee_drive_original(file_doc) -> bytes | None:
+    if not file_doc:
+        return None
+
+    drive_file = frappe.db.get_value(
+        "Drive File",
+        {"file": file_doc.name},
+        ["storage_backend", "storage_object_key"],
+        as_dict=True,
+    )
+    if not drive_file or not drive_file.get("storage_object_key"):
+        return None
+
+    try:
+        from ifitwala_drive.services.storage.base import get_storage_backend
+
+        storage = get_storage_backend(drive_file.get("storage_backend"))
+        expires_on = frappe.utils.now_datetime() + timedelta(minutes=10)
+        grant = storage.issue_download_grant(
+            object_key=drive_file.get("storage_object_key"),
+            file_url=file_doc.file_url,
+            expires_on=expires_on,
+        )
+        download_url = (grant or {}).get("url")
+        if not download_url:
+            return None
+        if download_url.startswith("/"):
+            download_url = frappe.utils.get_url(download_url)
+
+        request = Request(download_url, method="GET")
+        with urlopen(request, timeout=30) as response:
+            return response.read()
+    except (ImportError, URLError, OSError):
+        return None
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Employee Image Download Failed")
+        return None
+
+
+def _resolve_employee_original_path(file_doc) -> str | None:
+    if not file_doc:
+        return None
+
+    candidate = resolve_file_absolute_path(file_doc.file_url, is_private=getattr(file_doc, "is_private", 0))
+    if candidate and os.path.exists(candidate):
+        return candidate
+
+    return _resolve_employee_drive_local_path(file_doc)
+
+
+def get_employee_image_variants_map(
+    employee_names: Sequence[str] | Iterable[str],
+    *,
+    slots: Sequence[str] = EMPLOYEE_VARIANT_SLOTS,
+) -> dict[str, dict[str, str]]:
+    names = [str(name or "").strip() for name in (employee_names or [])]
+    names = [name for name in names if name]
+    if not names:
+        return {}
+
+    rows = frappe.get_all(
+        "File Classification",
+        filters={
+            "primary_subject_type": "Employee",
+            "primary_subject_id": ("in", names),
+            "slot": ("in", list(slots)),
+            "is_current_version": 1,
+        },
+        fields=["primary_subject_id", "slot", "file"],
+    )
+    if not rows:
+        return {}
+
+    file_names = [row["file"] for row in rows if row.get("file")]
+    if not file_names:
+        return {}
+
+    files = frappe.get_all(
+        "File",
+        filters={"name": ("in", file_names)},
+        fields=["name", "file_url", "is_private"],
+    )
+    file_map = {row["name"]: row for row in files}
+
+    variants: dict[str, dict[str, str]] = {}
+    for row in rows:
+        employee_name = row.get("primary_subject_id")
+        slot = row.get("slot")
+        file_name = row.get("file")
+        if not (employee_name and slot and file_name):
+            continue
+
+        file_row = file_map.get(file_name)
+        if not file_row:
+            continue
+
+        file_url = (file_row.get("file_url") or "").strip()
+        if not file_url:
+            continue
+        if not file_url_exists_on_disk(file_url, file_row.get("is_private")):
+            continue
+
+        variants.setdefault(employee_name, {})[slot] = file_url
+
+    return variants
+
+
+def get_preferred_employee_image_url(
+    employee_name: str | None,
+    *,
+    original_url: str | None = None,
+    slots: Sequence[str] = EMPLOYEE_VARIANT_PRIORITY,
+) -> str | None:
+    employee_name = str(employee_name or "").strip()
+    if not employee_name:
+        return original_url if file_url_exists_on_disk(original_url) else None
+
+    variants = get_employee_image_variants_map([employee_name], slots=slots).get(employee_name, {})
+    for slot in slots:
+        file_url = variants.get(slot)
+        if file_url:
+            return file_url
+
+    return original_url if file_url_exists_on_disk(original_url) else None
+
+
+def build_employee_image_variants(employee_name: str | None, original_url: str | None = None) -> dict[str, str | None]:
+    employee_name = str(employee_name or "").strip()
+    variants = get_employee_image_variants_map([employee_name]).get(employee_name, {}) if employee_name else {}
+    original_fallback = variants.get("profile_image") or (
+        original_url if file_url_exists_on_disk(original_url) else None
+    )
+
+    return {
+        "original": original_fallback,
+        "medium": variants.get("profile_image_medium") or original_fallback,
+        "card": variants.get("profile_image_card") or variants.get("profile_image_medium") or original_fallback,
+        "thumb": variants.get("profile_image_thumb")
+        or variants.get("profile_image_card")
+        or variants.get("profile_image_medium")
+        or original_fallback,
+    }
+
+
+def apply_preferred_employee_images(
+    rows: list[dict],
+    *,
+    employee_field: str = "id",
+    image_field: str = "image",
+    slots: Sequence[str] = EMPLOYEE_VARIANT_PRIORITY,
+) -> list[dict]:
+    if not rows:
+        return rows
+
+    employee_names = [row.get(employee_field) for row in rows if row.get(employee_field)]
+    variants = get_employee_image_variants_map(employee_names, slots=slots)
+
+    for row in rows:
+        employee_name = row.get(employee_field)
+        if not employee_name:
+            continue
+
+        original_url = row.get(image_field)
+        preferred_url = None
+        for slot in slots:
+            preferred_url = variants.get(employee_name, {}).get(slot)
+            if preferred_url:
+                break
+
+        if preferred_url:
+            row[image_field] = preferred_url
+        elif file_url_exists_on_disk(original_url):
+            row[image_field] = original_url
+
+    return rows
+
+
 def _generate_employee_derivatives(file_doc):
     if not file_doc or file_doc.attached_to_doctype != "Employee":
         return
@@ -97,13 +363,16 @@ def _generate_employee_derivatives(file_doc):
     if not fc_doc or fc_doc.slot != "profile_image":
         return
 
-    if not file_doc.file_url or file_doc.file_url.startswith("http"):
+    if not file_doc.file_url:
         return
 
-    original_path = frappe.utils.get_site_path("public", file_doc.file_url.lstrip("/"))
-    if not os.path.exists(original_path):
+    original_path = _resolve_employee_original_path(file_doc)
+    original_content = None
+    if not original_path or not os.path.exists(original_path):
+        original_content = _download_employee_drive_original(file_doc)
+    if (not original_path or not os.path.exists(original_path)) and not original_content:
         frappe.log_error(
-            f"Employee image missing on disk: {original_path}",
+            f"Employee image missing on disk for file {file_doc.name}: {file_doc.file_url}",
             "Employee Image Resize",
         )
         return
@@ -122,7 +391,10 @@ def _generate_employee_derivatives(file_doc):
         if _employee_derivative_exists(file_doc.name, fc_doc.slot, size_label):
             continue
 
-        content = _render_resized_bytes(original_path, width)
+        if original_path and os.path.exists(original_path):
+            content = _render_resized_bytes(original_path, width)
+        else:
+            content = _render_resized_content(original_content or b"", width)
         if not content:
             continue
 
@@ -155,7 +427,7 @@ def resize_and_save(
     width,
     quality=75,
 ):
-    """Create a single WebP variant if it doesn’t already exist."""
+    """Create a single WebP variant if it doesn't already exist."""
     slug_base = slugify(base_filename)
     resized_filename = f"{size_label}_{slug_base}.webp"
     resized_rel = f"files/gallery_resized/{doctype_folder}/{resized_filename}"
@@ -173,7 +445,7 @@ def resize_and_save(
             os.makedirs(os.path.dirname(resized_path), exist_ok=True)
             img.save(resized_path, "WEBP", optimize=True, quality=quality)
     except Exception as e:
-        frappe.log_error(f"Error resizing image: {e}", "File Auto‑Resize")
+        frappe.log_error(f"Error resizing image: {e}", "File Auto-Resize")
         return
 
     # ── Register new File row if not present ───────────────────────────────

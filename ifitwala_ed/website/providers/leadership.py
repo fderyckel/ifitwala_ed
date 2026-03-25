@@ -4,7 +4,7 @@ import frappe
 from frappe.utils import cint
 from frappe.utils.caching import redis_cache
 
-from ifitwala_ed.website.utils import build_image_variants
+from ifitwala_ed.utilities.image_utils import build_employee_image_variants
 
 
 @redis_cache(ttl=3600)
@@ -19,7 +19,7 @@ def _get_leaders(school: str, roles: tuple[str, ...], limit: int):
     leaders = frappe.get_all(
         "Employee",
         filters=filters,
-        fields=["employee_full_name", "employee_image", "designation", "small_bio"],
+        fields=["name", "employee_full_name", "employee_image", "designation", "small_bio"],
         order_by="modified desc",
         limit=limit,
     )
@@ -31,7 +31,10 @@ def _get_leaders(school: str, roles: tuple[str, ...], limit: int):
                 "name": leader.get("employee_full_name"),
                 "title": leader.get("designation"),
                 "bio": leader.get("small_bio"),
-                "photo": build_image_variants(leader.get("employee_image"), "employee"),
+                "photo": build_employee_image_variants(
+                    leader.get("name"),
+                    original_url=leader.get("employee_image"),
+                ),
             }
         )
     return items

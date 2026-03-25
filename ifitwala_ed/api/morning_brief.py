@@ -13,6 +13,7 @@ from ifitwala_ed.api.org_comm_utils import check_audience_match
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
+from ifitwala_ed.utilities.image_utils import apply_preferred_employee_images
 from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_user_default_school
 
 CLINIC_SUMMARY_RANGE_BUSINESS_DAYS = "3D"
@@ -700,20 +701,22 @@ def get_staff_birthdays():
         )
 
     sql = f"""
-		SELECT
-			employee_full_name as name,
-			employee_image as image,
-			employee_date_of_birth as date_of_birth
-		FROM
-			`tabEmployee`
-		WHERE
-			employment_status = 'Active'
-			AND employee_date_of_birth IS NOT NULL
-			AND {condition}
-		ORDER BY
-			DATE_FORMAT(employee_date_of_birth, '%%%%m-%%%%d') ASC
-	"""
-    return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+        SELECT
+            name as employee,
+            employee_full_name as name,
+            employee_image as image,
+            employee_date_of_birth as date_of_birth
+        FROM
+            `tabEmployee`
+        WHERE
+            employment_status = 'Active'
+            AND employee_date_of_birth IS NOT NULL
+            AND {condition}
+        ORDER BY
+            DATE_FORMAT(employee_date_of_birth, '%%%%m-%%%%d') ASC
+    """
+    rows = frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+    return apply_preferred_employee_images(rows, employee_field="employee", image_field="image")
 
 
 def get_my_student_birthdays(group_names):

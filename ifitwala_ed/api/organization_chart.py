@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import Iterable
 
 import frappe
@@ -15,7 +14,7 @@ from ifitwala_ed.utilities.employee_utils import (
     get_descendant_organizations,
     get_user_base_org,
 )
-from ifitwala_ed.utilities.image_utils import slugify
+from ifitwala_ed.utilities.image_utils import apply_preferred_employee_images
 
 EXPAND_MAX_NODES = 260
 EXPAND_MAX_DEPTH = 6
@@ -69,39 +68,13 @@ def _resolve_org_scope(requested_org: str | None, allowed_scope: list[str] | Non
     return get_descendant_organizations(requested_org)
 
 
-def _list_employee_thumbs() -> set[str]:
-    thumb_dir = frappe.get_site_path("public", "files", "gallery_resized", "employee")
-    if not os.path.isdir(thumb_dir):
-        return set()
-    return {name for name in os.listdir(thumb_dir) if name.startswith("thumb_")}
-
-
-def _resolve_employee_image(file_url: str | None, thumb_names: set[str]) -> str:
-    if not file_url:
-        return ""
-
-    filename = os.path.basename(file_url)
-    if filename.startswith(("hero_", "medium_", "card_", "thumb_")):
-        return file_url
-
-    if not file_url.startswith("/files/"):
-        return file_url
-
-    base_name, _ext = os.path.splitext(filename)
-    thumb_filename = f"thumb_{slugify(base_name)}.webp"
-    if thumb_filename in thumb_names:
-        return f"/files/gallery_resized/employee/{thumb_filename}"
-
-    return file_url
-
-
 def _connections_from_nestedset(lft: int | None, rgt: int | None) -> int:
     if not lft or not rgt:
         return 0
     return max(0, (rgt - lft - 1) // 2)
 
 
-def _serialize_employees(rows: Iterable[dict], thumb_names: set[str]) -> list[dict]:
+def _serialize_employees(rows: Iterable[dict]) -> list[dict]:
     school_abbr_cache: dict[str, str] = {}
     org_abbr_cache: dict[str, str] = {}
     payload: list[dict] = []
@@ -138,7 +111,7 @@ def _serialize_employees(rows: Iterable[dict], thumb_names: set[str]) -> list[di
                 "school_abbr": school_abbr,
                 "organization": row.get("organization"),
                 "organization_abbr": org_abbr,
-                "image": _resolve_employee_image(row.get("image"), thumb_names),
+                "image": row.get("image"),
                 "professional_email": row.get("professional_email"),
                 "phone_ext": row.get("phone_ext"),
                 "date_of_joining": row.get("date_of_joining"),
@@ -148,7 +121,7 @@ def _serialize_employees(rows: Iterable[dict], thumb_names: set[str]) -> list[di
                 "parent_id": row.get("reports_to") or None,
             }
         )
-    return payload
+    return apply_preferred_employee_images(payload, employee_field="id", image_field="image")
 
 
 def _employee_fields() -> list[str]:
@@ -268,8 +241,7 @@ def get_org_chart_children(parent: str | None = None, organization: str | None =
         ignore_permissions=True,
     )
 
-    thumb_names = _list_employee_thumbs()
-    return _serialize_employees(rows, thumb_names)
+    return _serialize_employees(rows)
 
 
 @frappe.whitelist()
@@ -316,8 +288,7 @@ def get_org_chart_tree(organization: str | None = None):
         ignore_permissions=True,
     )
 
-    thumb_names = _list_employee_thumbs()
-    nodes = _serialize_employees(rows, thumb_names)
+    nodes = _serialize_employees(rows)
 
     id_set = {node["id"] for node in nodes}
     children_by_parent: dict[str, list[str]] = {}

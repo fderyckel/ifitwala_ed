@@ -317,6 +317,38 @@ class TestEmployee(FrappeTestCase):
 
         sync_access.assert_called_once_with(emp, notify_role_additions=True)
 
+    def test_update_user_prefers_thumb_variant_for_user_avatar(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.employment_status = "Active"
+        emp.employee_first_name = "Test"
+        emp.employee_last_name = "Staff"
+        emp.employee_full_name = "Test Staff"
+        emp.employee_date_of_birth = None
+        emp.employee_image = "/files/original.png"
+        emp.name = "EMP-0001"
+
+        user_doc = frappe._dict(
+            roles=[],
+            user_image="/files/original.png",
+        )
+        user_doc.append = Mock()
+        user_doc.save = Mock()
+        user_doc.flags = frappe._dict()
+
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc", return_value=user_doc),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.get_preferred_employee_image_url",
+                return_value="/files/thumb.webp",
+            ) as preferred_image,
+        ):
+            emp.update_user()
+
+        preferred_image.assert_called_once_with("EMP-0001", original_url="/files/original.png")
+        self.assertEqual(user_doc.user_image, "/files/thumb.webp")
+        user_doc.save.assert_called_once_with(ignore_permissions=True)
+
     def test_employee_pqc_hr_user_is_org_scoped_and_includes_unassigned(self):
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles", return_value=["HR User"]),

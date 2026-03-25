@@ -3,8 +3,6 @@
 
 # ifitwala_ed.hr.doctype.employee.employee
 
-import os
-
 import frappe
 from frappe import _, scrub
 from frappe.contacts.address_and_contact import load_address_and_contact
@@ -16,6 +14,7 @@ from ifitwala_ed.utilities.employee_utils import (
     get_descendant_organizations,
     get_user_base_org,
 )
+from ifitwala_ed.utilities.image_utils import get_preferred_employee_image_url
 from ifitwala_ed.utilities.transaction_base import delete_events
 
 
@@ -557,18 +556,9 @@ class Employee(NestedSet):
             user.birth_date = self.employee_date_of_birth
 
         # ---- image sync -------------------------------------------------------
-        img_path = self.employee_image
-        if img_path:
-            abs_path = frappe.utils.get_site_path("public", img_path.lstrip("/"))
-            if not os.path.exists(abs_path):
-                frappe.log_error(
-                    title=_("Missing file on disk during update_user"),
-                    message=f"{abs_path} does not exist for Employee {self.name}",
-                )
-                img_path = None
-
-        if img_path and user.user_image != img_path:
-            user.user_image = img_path
+        avatar_url = get_preferred_employee_image_url(self.name, original_url=self.employee_image)
+        if avatar_url and user.user_image != avatar_url:
+            user.user_image = avatar_url
 
         user.save(ignore_permissions=True)
 

@@ -93,12 +93,25 @@ Frontend form logic:
 - file: `ifitwala_ed/hr/doctype/employee/employee.js`
 - image field is read-only and uses governed upload action.
 - upload uses method `ifitwala_ed.utilities.governed_uploads.upload_employee_image`.
-- after upload, form reloads and applies preferred image variants.
+- after upload, form reloads and applies preferred image variants from classified slots.
 
 Backend linkage:
 - file: `ifitwala_ed/hr/doctype/employee/employee.py`
-- `update_user()` syncs profile fields to `User`, including `user_image` when applicable.
-- missing file-on-disk situations are logged with structured error logging.
+- `ifitwala_ed.utilities.image_utils` owns canonical Employee image variant resolution and Drive-aware derivative generation.
+- governed Employee uploads create classified WebP derivatives with slots:
+  - `profile_image_thumb`
+  - `profile_image_card`
+  - `profile_image_medium`
+- `Employee.employee_image` remains the latest canonical Employee image reference.
+- consumers that need a smaller image must resolve the classified variants instead of guessing file paths.
+- `update_user()` syncs linked `User.user_image` from the preferred Employee variant (`thumb` first, then `card`, `medium`, original).
+
+Current read consumers using canonical variant resolution:
+- Employee form avatar (`employee.js`)
+- Employee list refresh (`employee_list.js`)
+- organization chart API (`ifitwala_ed/api/organization_chart.py`)
+- morning brief staff birthdays (`ifitwala_ed/api/morning_brief.py`)
+- website leadership provider (`ifitwala_ed/website/providers/leadership.py`)
 
 This keeps Employee image governance and User avatar synchronization aligned.
 
