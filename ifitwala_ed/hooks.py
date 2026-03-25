@@ -208,7 +208,6 @@ has_permission = {
     "Academic Year": "ifitwala_ed.school_settings.doctype.academic_year.academic_year.has_permission",
     "Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.has_permission",
     "Employee": "ifitwala_ed.hr.doctype.employee.employee.employee_has_permission",
-    "Designation": "ifitwala_ed.hr.doctype.designation.designation.has_permission",
     "Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.has_permission",
     "Academic Load Policy": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.has_permission",
     "Activity Booking": "ifitwala_ed.eca.doctype.activity_booking.activity_booking.has_permission",

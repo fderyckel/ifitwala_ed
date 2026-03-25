@@ -10,8 +10,6 @@ from frappe.utils.nestedset import get_ancestors_of
 from ifitwala_ed.utilities.employee_utils import get_user_base_org, get_user_base_school
 from ifitwala_ed.utilities.tree_utils import get_ancestors_inclusive, get_descendants_inclusive
 
-READ_LIKE_PERMS = {"read", "report", "export", "print"}
-SCOPED_DOC_PERMS = READ_LIKE_PERMS | {"write", "delete", "submit", "cancel", "amend"}
 ALL_ORGANIZATIONS = "All Organizations"
 OPERATOR_SCOPE_ROLES = {"HR Manager", "HR User"}
 DESIGNATION_EMPLOYEE_LOOKUP_ROLES = OPERATOR_SCOPE_ROLES | {"System Manager"}
@@ -19,9 +17,13 @@ DESIGNATION_EMPLOYEE_LOOKUP_ROLES = OPERATOR_SCOPE_ROLES | {"System Manager"}
 
 class Designation(Document):
     def validate(self):
+        self._assert_mutation_scope_allowed(action="save")
         self.validate_organization_scope()
         self.validate_reports_to_hierarchy()
         self.validate_default_role()
+
+    def on_trash(self):
+        self._assert_mutation_scope_allowed(action="delete")
 
     def validate_organization_scope(self):
         organization = cstr(self.organization).strip()
@@ -96,6 +98,39 @@ class Designation(Document):
         if self.default_role_profile in disallowed:
             frappe.throw(_("This role cannot be assigned via Designation."))
 
+    def _assert_mutation_scope_allowed(self, action: str, user: str | None = None) -> None:
+        user = user or frappe.session.user
+        if not user or user == "Guest":
+            frappe.throw(
+                _("You do not have permission to {0} this designation.").format(action), frappe.PermissionError
+            )
+
+        roles = set(frappe.get_roles(user))
+        if user == "Administrator" or "System Manager" in roles:
+            return
+
+        if not roles & OPERATOR_SCOPE_ROLES:
+            frappe.throw(_("Only HR can {0} designations.").format(action), frappe.PermissionError)
+
+        designation_org = cstr(self.organization).strip()
+        visible_orgs = set(_resolve_designation_operator_org_scope(user))
+        if not designation_org or designation_org not in visible_orgs:
+            frappe.throw(
+                _("You can only {0} designations within your organization scope.").format(action),
+                frappe.PermissionError,
+            )
+
+        designation_school = cstr(self.school).strip()
+        if not designation_school:
+            return
+
+        school_scope = set(_resolve_designation_operator_school_write_scope(user, org_scope=sorted(visible_orgs)))
+        if designation_school not in school_scope:
+            frappe.throw(
+                _("You can only {0} school-scoped designations within your school scope.").format(action),
+                frappe.PermissionError,
+            )
+
     def _check_indirect_loop(self, start_designation, target_designation):
         """
         Recursively check if assigning the target_designation as a supervisor
@@ -168,23 +203,14 @@ def get_permission_query_conditions(user=None):
     if user == "Administrator" or "System Manager" in roles:
         return None
 
-    if roles & OPERATOR_SCOPE_ROLES:
-        visible_orgs = _resolve_designation_operator_org_scope(user)
-        if not visible_orgs:
-            return "1=0"
-
-        escaped_orgs = ", ".join(frappe.db.escape(org) for org in visible_orgs)
-        org_condition = f"`tabDesignation`.`organization` IN ({escaped_orgs})"
-        return f"({org_condition} AND 1=1)"
-
-    visible_orgs = _resolve_designation_applicable_org_scope(user)
+    visible_orgs = _resolve_designation_read_org_scope(user, roles=roles)
     if not visible_orgs:
         return "1=0"
 
     escaped_orgs = ", ".join(frappe.db.escape(org) for org in visible_orgs)
     org_condition = f"`tabDesignation`.`organization` IN ({escaped_orgs})"
 
-    visible_schools = _resolve_designation_school_scope(user)
+    visible_schools = _resolve_designation_read_school_scope(user, roles=roles, org_scope=visible_orgs)
     if visible_schools is None:
         school_condition = "1=1"
     elif not visible_schools:
@@ -198,8 +224,7 @@ def get_permission_query_conditions(user=None):
     return f"({org_condition} AND {school_condition})"
 
 
-def has_permission(doc, ptype=None, user=None):
-    user = user or frappe.session.user
+def _can_user_read_designation(doc, user: str) -> bool:
     if not user or user == "Guest":
         return False
 
@@ -207,22 +232,11 @@ def has_permission(doc, ptype=None, user=None):
     if user == "Administrator" or "System Manager" in roles:
         return True
 
-    ptype = ptype or "read"
-    if ptype not in SCOPED_DOC_PERMS:
-        return None
-
     designation_org = cstr(getattr(doc, "organization", "")).strip()
     if not designation_org:
         return False
 
-    if roles & OPERATOR_SCOPE_ROLES:
-        visible_orgs = set(_resolve_designation_operator_org_scope(user))
-        return designation_org in visible_orgs
-
-    if ptype not in READ_LIKE_PERMS:
-        return False
-
-    visible_orgs = set(_resolve_designation_applicable_org_scope(user))
+    visible_orgs = set(_resolve_designation_read_org_scope(user, roles=roles))
     if designation_org not in visible_orgs:
         return False
 
@@ -230,11 +244,45 @@ def has_permission(doc, ptype=None, user=None):
     if not designation_school:
         return True
 
-    resolved_school_scope = _resolve_designation_school_scope(user)
-    if resolved_school_scope is None:
+    visible_schools = _resolve_designation_read_school_scope(user, roles=roles, org_scope=sorted(visible_orgs))
+    if visible_schools is None:
         return True
-    visible_schools = set(resolved_school_scope)
-    return designation_school in visible_schools
+    return designation_school in set(visible_schools)
+
+
+def _resolve_designation_read_org_scope(user: str, *, roles: set[str] | None = None) -> list[str]:
+    roles = roles or set(frappe.get_roles(user))
+    visible_orgs: set[str] = set()
+
+    for org in _get_effective_user_organizations(user):
+        visible_orgs.update(item for item in _get_ancestor_organizations_uncached(org) if item != ALL_ORGANIZATIONS)
+        if roles & OPERATOR_SCOPE_ROLES:
+            visible_orgs.update(item for item in _get_descendant_organizations_uncached(org) if item)
+
+    if roles & OPERATOR_SCOPE_ROLES and frappe.db.exists("Organization", ALL_ORGANIZATIONS):
+        visible_orgs.add(ALL_ORGANIZATIONS)
+
+    return sorted(visible_orgs)
+
+
+def _resolve_designation_read_school_scope(
+    user: str,
+    *,
+    roles: set[str] | None = None,
+    org_scope: list[str] | None = None,
+) -> list[str] | None:
+    roles = roles or set(frappe.get_roles(user))
+    school = _resolve_user_base_school(user)
+    if not school:
+        if roles & OPERATOR_SCOPE_ROLES:
+            scoped_orgs = [item for item in (org_scope or []) if item and item != ALL_ORGANIZATIONS]
+            return _get_schools_for_organizations(scoped_orgs)
+        return None
+
+    visible_schools = set(_get_ancestor_schools_uncached(school))
+    if roles & OPERATOR_SCOPE_ROLES:
+        visible_schools.update(_get_descendant_schools_uncached(school))
+    return sorted(visible_schools)
 
 
 def _resolve_designation_applicable_org_scope(user: str) -> list[str]:
@@ -263,6 +311,14 @@ def _resolve_designation_school_scope(user: str) -> list[str] | None:
     if not school:
         return None
     return _get_ancestor_schools_uncached(school)
+
+
+def _resolve_designation_operator_school_write_scope(user: str, *, org_scope: list[str]) -> list[str]:
+    school = _resolve_user_base_school(user)
+    if school:
+        return _get_descendant_schools_uncached(school)
+    scoped_orgs = [item for item in org_scope if item and item != ALL_ORGANIZATIONS]
+    return _get_schools_for_organizations(scoped_orgs)
 
 
 def _get_effective_user_organizations(user: str) -> list[str]:
@@ -387,7 +443,7 @@ def _assert_designation_employee_lookup_allowed(designation_doc, user: str) -> N
             frappe.PermissionError,
         )
 
-    if not has_permission(designation_doc, ptype="read", user=user):
+    if not _can_user_read_designation(designation_doc, user):
         frappe.throw(
             _("You do not have access to this designation."),
             frappe.PermissionError,

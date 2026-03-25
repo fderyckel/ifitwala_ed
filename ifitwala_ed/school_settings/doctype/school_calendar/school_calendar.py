@@ -4,6 +4,7 @@
 # ifitwala_ed/school_settings/doctype/school_calendar/school_calendar.py
 
 import json
+from datetime import date
 
 import frappe
 from frappe import _
@@ -56,6 +57,7 @@ class SchoolCalendar(Document):
     def validate(self):
         self._sync_school_with_ay()
         self._validate_uniqueness()
+        self._sort_holidays_by_date()
         self._populate_term_table()
 
         self.validate_dates()
@@ -157,6 +159,25 @@ class SchoolCalendar(Document):
                     "number_of_instructional_days": (total_days - non_instructional_days),
                 },
             )
+
+    # ----------------------------------------------------------------
+    def _sort_holidays_by_date(self):
+        holidays = list(self.get("holidays") or [])
+        if not holidays:
+            return
+
+        holidays.sort(
+            key=lambda holiday: (
+                1 if not holiday.holiday_date else 0,
+                getdate(holiday.holiday_date) if holiday.holiday_date else date.max,
+                cint(holiday.idx),
+            )
+        )
+
+        for idx, holiday in enumerate(holidays, start=1):
+            holiday.idx = idx
+
+        self.set("holidays", holidays)
 
     # ----------------------------------------------------------------
     def validate_holiday_uniqueness(self):
