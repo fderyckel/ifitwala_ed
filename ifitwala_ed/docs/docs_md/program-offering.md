@@ -3,8 +3,8 @@ title: "Program Offering: Operational Enrollment Contract"
 slug: program-offering
 category: Enrollment
 doc_order: 2
-version: "1.1.1"
-last_change_date: "2026-03-11"
+version: "1.1.2"
+last_change_date: "2026-03-26"
 summary: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, and activity-booking readiness gates."
 seo_title: "Program Offering: Operational Enrollment Contract"
 seo_description: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, and activity-booking readiness gates."
@@ -32,6 +32,8 @@ seo_description: "Define where and when a program is delivered, including AY spa
 Program Offering must be anchored on a leaf (child) school. Ancestor-aware validation is applied for AY and term references.
 </Callout>
 
+For `offering_academic_years`, the Desk picker follows the same rule: when the offering is anchored on a leaf school, Academic Year options may come from that leaf school or any ancestor in its school lineage. Exact-match leaf-only filtering is a bug because it hides valid inherited AY context.
+
 ## Where It Is Used Across the ERP
 
 - [**Program Enrollment Request**](/docs/en/program-enrollment-request/) target (`program_offering`).
@@ -44,7 +46,7 @@ Program Offering must be anchored on a leaf (child) school. Ancestor-aware valid
 - Desk tooling and APIs:
   - catalog/non-catalog hydration helpers
   - catalog rows default `required` and `basket_groups` from `Program` metadata
-  - AY-scoped link queries
+  - AY-scoped link queries aligned with ancestor-school validation for leaf offerings
   - activity readiness preview API
 
 ## Lifecycle and Linked Documents
@@ -110,6 +112,7 @@ A course not present in Program catalog can appear in offering only when the row
   - `hydrate_catalog_rows(program, course_names)`
   - `hydrate_non_catalog_rows(course_names, exception_reason)`
   - `academic_year_link_query(...)`
+    returns Academic Years from the selected offering school's ancestor chain, ordered by most recent first
   - `create_draft_tuition_invoice(program_offering, account_holder, posting_date, items)`
 
 - **DocType**: `Program Offering` (`ifitwala_ed/schedule/doctype/program_offering/`)

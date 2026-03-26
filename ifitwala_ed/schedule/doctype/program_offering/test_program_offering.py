@@ -6,6 +6,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.schedule.doctype.program_offering.program_offering import (
+    academic_year_link_query,
     hydrate_catalog_rows,
     program_course_link_query,
     program_course_options,
@@ -155,6 +156,24 @@ class TestProgramOffering(FrappeTestCase):
         )
         self.assertEqual(rows[0]["required"], 1)
 
+    def test_academic_year_link_query_includes_ancestor_school_years_for_leaf_offering(self):
+        organization = _make_organization()
+        iis = _make_school(organization, prefix="IIS")
+        iss = _make_school(organization, prefix="ISS", parent_school=iis.name)
+        ims = _make_school(organization, prefix="IMS", parent_school=iss.name)
+        academic_year = _make_academic_year(iis)
+
+        rows = academic_year_link_query(
+            "Academic Year",
+            "",
+            "name",
+            0,
+            20,
+            {"school": ims.name},
+        )
+
+        self.assertIn([academic_year.name, academic_year.academic_year_name], rows)
+
 
 def _make_grade_scale(prefix):
     grade_scale = frappe.get_doc(
@@ -183,13 +202,14 @@ def _make_organization():
     return organization
 
 
-def _make_school(organization):
+def _make_school(organization, prefix="School", parent_school=None):
     school = frappe.get_doc(
         {
             "doctype": "School",
-            "school_name": f"School {frappe.generate_hash(length=6)}",
+            "school_name": f"{prefix} {frappe.generate_hash(length=6)}",
             "abbr": f"S{frappe.generate_hash(length=4)}",
             "organization": organization.name,
+            "parent_school": parent_school,
         }
     )
     school.insert()

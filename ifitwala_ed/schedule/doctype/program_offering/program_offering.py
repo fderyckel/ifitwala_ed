@@ -1108,7 +1108,7 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
 
     db_filters = {}
     if school:
-        db_filters["school"] = school
+        db_filters["school"] = ["in", get_ancestor_schools(school) or [school]]
 
     or_filters = None
     if search_txt:
