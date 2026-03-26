@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import get_link_to_form, getdate
+from frappe.utils import cint, get_link_to_form, getdate
 from frappe.utils.nestedset import get_ancestors_of
 
 from ifitwala_ed.utilities.school_tree import ParentRuleViolation
@@ -24,6 +24,13 @@ class SchoolSchedule(Document):
         self._enforce_single_schedule()
         self._resolve_fallbacks()
         self._validate_block_time_overlaps()
+        rotation_days = cint(self.rotation_days or 0)
+
+        if rotation_days <= 0:
+            frappe.throw(
+                _("Please set Number of Rotation days to a value greater than 0 before saving this schedule."),
+                title=_("Missing Rotation Days"),
+            )
 
         # Get in-memory school_schedule_day
         schedule_days = self.get("school_schedule_day")
@@ -34,30 +41,30 @@ class SchoolSchedule(Document):
 
         rotation_day_count = len(schedule_days)
 
-        if rotation_day_count > self.rotation_days:
+        if rotation_day_count > rotation_days:
             frappe.throw(
                 _(
                     f"You have defined {rotation_day_count} rotation days, "
-                    f"but the schedule allows only {self.rotation_days}. "
+                    f"but the schedule allows only {rotation_days}. "
                     "Please remove the excess rotation days."
                 )
             )
 
-        if rotation_day_count < self.rotation_days:
+        if rotation_day_count < rotation_days:
             frappe.throw(
                 _(
                     f"You have defined only {rotation_day_count} rotation days, "
-                    f"but the schedule requires {self.rotation_days}. "
+                    f"but the schedule requires {rotation_days}. "
                     "Please add the missing rotation days."
                 )
             )
 
         if self.first_day_rotation_day:
-            if not 1 <= self.first_day_rotation_day <= self.rotation_days:
+            if not 1 <= self.first_day_rotation_day <= rotation_days:
                 frappe.throw(
                     _(
                         f"The chosen rotation day ({self.first_day_rotation_day}) for the first academic day "
-                        f"is out of range. You must choose a value between 1 and {self.rotation_days}."
+                        f"is out of range. You must choose a value between 1 and {rotation_days}."
                     )
                 )
 
