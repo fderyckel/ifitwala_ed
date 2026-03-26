@@ -3,7 +3,7 @@
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "format:PER-{YYYY}-{####}",
- "creation": "2026-01-01 00:00:00.000000",
+ "creation": "2026-01-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -45,6 +45,7 @@
   {
    "fieldname": "student",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Student",
    "options": "Student",
    "reqd": 1
@@ -52,6 +53,7 @@
   {
    "fieldname": "program_offering",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Program Offering",
    "options": "Program Offering",
    "reqd": 1
@@ -73,6 +75,8 @@
    "fetch_from": "program_offering.program",
    "fieldname": "program",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Program",
    "options": "Program",
    "read_only": 1
@@ -81,6 +85,7 @@
    "fetch_from": "program_offering.school",
    "fieldname": "school",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "School",
    "options": "School",
    "read_only": 1
@@ -88,6 +93,8 @@
   {
    "fieldname": "academic_year",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Academic Year",
    "options": "Academic Year"
   },
@@ -95,6 +102,7 @@
    "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Status",
    "options": "Draft\nSubmitted\nUnder Review\nApproved\nRejected\nCancelled"
   },
@@ -212,10 +220,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-26 12:05:00.000000",
+ "modified": "2026-03-26 20:54:44.871959",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Request",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
