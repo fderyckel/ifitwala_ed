@@ -177,6 +177,7 @@ def _get_drive_media_callable(attribute: str):
 
     # Long-running app processes may still hold a pre-change Drive module object.
     # Reload the integration and API modules once before failing.
+    drive_media_integration = None
     try:
         drive_media_integration = importlib.import_module("ifitwala_drive.services.integration.ifitwala_ed_media")
         importlib.reload(drive_media_integration)
@@ -188,9 +189,18 @@ def _get_drive_media_callable(attribute: str):
     if create_session_callable:
         return create_session_callable
 
+    service_attribute = f"{attribute}_service"
+    if drive_media_integration and hasattr(drive_media_integration, service_attribute):
+        service_callable = getattr(drive_media_integration, service_attribute)
+
+        def _wrapped_service_callable(**kwargs):
+            return service_callable(kwargs)
+
+        return _wrapped_service_callable
+
     frappe.throw(
         _(
-            "Ifitwala Drive is missing media method '{0}'. Reload the app processes so the updated Drive module is imported."
+            "Ifitwala Drive is missing media method '{0}'. Deploy or restart the Drive app so the updated media API is available."
         ).format(attribute)
     )
 
