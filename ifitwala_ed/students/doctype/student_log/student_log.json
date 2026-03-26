@@ -228,7 +228,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-22 14:00:00.000000",
+ "modified": "2026-03-26 20:00:56.703796",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log",
@@ -265,19 +265,6 @@
    "amend": 1,
    "cancel": 1,
    "create": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Academic Staff",
-   "select": 1,
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "amend": 1,
-   "cancel": 1,
-   "create": 1,
    "delete": 1,
    "print": 1,
    "read": 1,
@@ -288,11 +275,7 @@
    "write": 1
   },
   {
-   "read": 1,
-   "report": 1,
-   "role": "Accreditation Visitor"
-  },
-  {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -304,6 +287,39 @@
    "share": 1,
    "submit": 1,
    "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
   }
  ],
  "row_format": "Dynamic",

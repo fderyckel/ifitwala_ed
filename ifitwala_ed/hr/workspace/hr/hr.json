@@ -1,6 +1,7 @@
 {
+ "app": "ifitwala_ed",
  "charts": [],
- "content": "[{\"id\":\"2ZEKCIFXhC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Staff Calendar\",\"col\":3}},{\"id\":\"jWVGn2pXes\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Employee\",\"col\":3}},{\"id\":\"N5HOjIizuz\",\"type\":\"header\",\"data\":{\"text\":\"<br>\",\"col\":12}},{\"id\":\"2RtsIQZnHc\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}},{\"id\":\"TWmZIg6AHQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Professional Growth Plan\",\"col\":4}},{\"id\":\"PDc0m8dP1A\",\"type\":\"card\",\"data\":{\"card_name\":\"Professional Development\",\"col\":4}},{\"id\":\"Yp4LCkAfaM\",\"type\":\"card\",\"data\":{\"card_name\":\"Communication\",\"col\":4}},{\"id\":\"JL5e-ow9vG\",\"type\":\"card\",\"data\":{\"card_name\":\"Leave\",\"col\":4}},{\"id\":\"cQh43EktlU\",\"type\":\"card\",\"data\":{\"card_name\":\"HR Settings\",\"col\":4}}]",
+ "content": "[{\"id\":\"2ZEKCIFXhC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Staff Calendar\",\"col\":3}},{\"id\":\"jWVGn2pXes\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Employee\",\"col\":3}},{\"id\":\"N5HOjIizuz\",\"type\":\"header\",\"data\":{\"text\":\"<br>\",\"col\":12}},{\"id\":\"2RtsIQZnHc\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}},{\"id\":\"TWmZIg6AHQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Professional Growth Plan\",\"col\":4}},{\"id\":\"PDc0m8dP1A\",\"type\":\"card\",\"data\":{\"card_name\":\"Professional Development\",\"col\":4}},{\"id\":\"Yp4LCkAfaM\",\"type\":\"card\",\"data\":{\"card_name\":\"Communication\",\"col\":4}},{\"id\":\"JL5e-ow9vG\",\"type\":\"card\",\"data\":{\"card_name\":\"Leave\",\"col\":4}},{\"id\":\"cQh43EktlU\",\"type\":\"card\",\"data\":{\"card_name\":\"HR Settings\",\"col\":4}},{\"id\":\"c4W7Uwim7B\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Rq6QpjHsXb\",\"type\":\"card\",\"data\":{\"card_name\":\"Governance\",\"col\":4}}]",
  "creation": "2025-04-22 08:21:35.205048",
  "custom_blocks": [],
  "docstatus": 0,
@@ -306,9 +307,48 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Governance",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Institutional Policy",
+   "link_count": 0,
+   "link_to": "Institutional Policy",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Policy Version",
+   "link_count": 0,
+   "link_to": "Policy Version",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Policy Acknowledgement",
+   "link_count": 0,
+   "link_to": "Policy Acknowledgement",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-03-20 10:37:48",
+ "modified": "2026-03-25 15:32:31.010299",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",
@@ -350,5 +390,6 @@
    "type": "DocType"
   }
  ],
- "title": "HR"
+ "title": "HR",
+ "type": "Workspace"
 }

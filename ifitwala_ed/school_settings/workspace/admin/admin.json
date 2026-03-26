@@ -9,7 +9,7 @@
  "for_user": "",
  "hide_custom": 0,
  "icon": "setting-gear",
- "idx": 45,
+ "idx": 46,
  "indicator_color": "",
  "is_hidden": 0,
  "label": "Admin",
@@ -544,7 +544,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-03 13:20:00.174175",
+ "modified": "2026-03-26 20:13:36.040726",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Admin",
@@ -568,6 +568,9 @@
   },
   {
    "role": "Academic Assistant"
+  },
+  {
+   "role": "Accreditation Visitor"
   }
  ],
  "sequence_id": 7.0,

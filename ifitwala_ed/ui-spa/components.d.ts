@@ -55,6 +55,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     ScheduleCalendar: typeof import('./src/components/calendar/ScheduleCalendar.vue')['default']
     SchoolEventModal: typeof import('./src/components/calendar/SchoolEventModal.vue')['default']
+    SelfEnrollmentEditor: typeof import('./src/components/self_enrollment/SelfEnrollmentEditor.vue')['default']
     SideDrawerList: typeof import('./src/components/analytics/SideDrawerList.vue')['default']
     StackedBarChart: typeof import('./src/components/analytics/StackedBarChart.vue')['default']
     StaffPolicyAcknowledgeAction: typeof import('./src/components/focus/StaffPolicyAcknowledgeAction.vue')['default']

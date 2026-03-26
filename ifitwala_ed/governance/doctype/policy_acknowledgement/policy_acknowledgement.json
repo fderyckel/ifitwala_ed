@@ -72,7 +72,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-16 20:22:05.713770",
+ "modified": "2026-03-25 15:42:02.001586",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Policy Acknowledgement",
@@ -131,6 +131,35 @@
    "create": 1,
    "read": 1,
    "role": "Admissions Applicant"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
   }
  ],
  "row_format": "Dynamic",

@@ -9,8 +9,8 @@
  "filters": [],
  "idx": 0,
  "is_standard": "Yes",
- "letterhead": null,
- "modified": "2026-03-22 14:00:00.000000",
+ "letter_head": null,
+ "modified": "2026-03-26 20:09:00.952328",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Medical Info And Emergency Contact",
@@ -27,13 +27,13 @@
    "role": "Academic Admin"
   },
   {
+   "role": "Curriculum Coordinator"
+  },
+  {
    "role": "Academic Assistant"
   },
   {
    "role": "Admission Officer"
-  },
-  {
-   "role": "Academic Staff"
   },
   {
    "role": "Instructor"

@@ -9,15 +9,15 @@
  "filters": [],
  "idx": 0,
  "is_standard": "Yes",
- "letterhead": null,
- "modified": "2025-09-12 14:10:34.463103",
+ "letter_head": null,
+ "modified": "2026-03-26 20:09:32.677365",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Logs",
  "owner": "Administrator",
  "prepared_report": 0,
  "ref_doctype": "Student Log",
- "report_name": "Student Log & Follow-up",
+ "report_name": "Student Logs",
  "report_type": "Script Report",
  "roles": [
   {
@@ -27,10 +27,19 @@
    "role": "Academic Admin"
   },
   {
-   "role": "Academic Staff"
+   "role": "Academic Assistant"
   },
   {
    "role": "Counselor"
+  },
+  {
+   "role": "Curriculum Coordinator"
+  },
+  {
+   "role": "Instructor"
+  },
+  {
+   "role": "Accreditation Visitor"
   }
  ],
  "timeout": 0

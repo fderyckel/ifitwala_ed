@@ -12,7 +12,7 @@
  "link_to": "Admin",
  "link_type": "Workspace Sidebar",
  "logo_url": "/assets/ifitwala_ed/icons/icon_desktop_admin.png",
- "modified": "2026-03-20 14:57:29.971219",
+ "modified": "2026-03-26 20:12:57.978617",
  "modified_by": "Administrator",
  "name": "Admin",
  "owner": "Administrator",
@@ -29,6 +29,9 @@
   },
   {
    "role": "Administrator"
+  },
+  {
+   "role": "Curriculum Coordinator"
   }
  ],
  "sidebar": "Admin",

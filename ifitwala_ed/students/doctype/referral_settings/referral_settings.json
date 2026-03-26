@@ -104,7 +104,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-09-09 20:23:54.215344",
+ "modified": "2026-03-26 20:12:11.546578",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Referral Settings",
@@ -133,6 +133,26 @@
    "print": 1,
    "read": 1,
    "role": "Counselor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Accreditation Visitor"
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Curriculum Coordinator",
    "share": 1,
    "write": 1
   }

@@ -39,9 +39,21 @@
    "link_type": "DocType",
    "show_arrow": 0,
    "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "command",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Student",
+   "link_to": "Student",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-02-27 21:24:47.501521",
+ "modified": "2026-03-26 12:42:03.141837",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",
