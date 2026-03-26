@@ -122,6 +122,47 @@ def file_url_exists_on_disk(file_url: str | None, is_private: int | None = 0) ->
     return bool(abs_path and os.path.exists(abs_path))
 
 
+def file_url_is_accessible(
+    file_url: str | None,
+    *,
+    file_name: str | None = None,
+    is_private: int | None = 0,
+) -> bool:
+    if file_url_exists_on_disk(file_url, is_private=is_private):
+        return True
+
+    clean_file_name = str(file_name or "").strip()
+    if not clean_file_name:
+        return False
+
+    drive_file = frappe.db.get_value(
+        "Drive File",
+        {"file": clean_file_name},
+        ["storage_backend", "storage_object_key"],
+        as_dict=True,
+    )
+    if not drive_file or not drive_file.get("storage_object_key"):
+        return False
+
+    storage_backend = (drive_file.get("storage_backend") or "").strip()
+    if storage_backend and storage_backend != "local":
+        return True
+
+    try:
+        from ifitwala_drive.services.storage.base import get_storage_backend
+
+        storage = get_storage_backend(storage_backend or None)
+    except Exception:
+        return False
+
+    absolute_path = getattr(storage, "_absolute_path", None)
+    if not callable(absolute_path):
+        return False
+
+    candidate = absolute_path(drive_file.get("storage_object_key"))
+    return bool(candidate and os.path.exists(candidate))
+
+
 def _build_governed_derivative_classification(fc_doc, slot_suffix, source_file):
     return {
         "primary_subject_type": fc_doc.primary_subject_type,
@@ -297,7 +338,11 @@ def _get_governed_image_variants_map(
         file_url = (file_row.get("file_url") or "").strip()
         if not file_url:
             continue
-        if not file_url_exists_on_disk(file_url, file_row.get("is_private")):
+        if not file_url_is_accessible(
+            file_url,
+            file_name=file_name,
+            is_private=file_row.get("is_private"),
+        ):
             continue
 
         variants.setdefault(subject_name, {})[slot] = file_url

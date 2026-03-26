@@ -97,3 +97,40 @@ class TestEmployeeImageUtils(FrappeTestCase):
             )
 
         self.assertEqual(image_url, "/files/employee/thumb_employee.webp")
+
+    def test_get_preferred_employee_image_url_accepts_drive_backed_thumb_variant(self):
+        thumb_url = "/private/files/ifitwala_drive/files/aa/bb/thumb_employee.webp"
+        classification_rows = [
+            {
+                "primary_subject_id": "EMP-0001",
+                "slot": "profile_image_thumb",
+                "file": "FILE-THUMB",
+            },
+        ]
+        file_rows = [
+            {"name": "FILE-THUMB", "file_url": thumb_url, "is_private": 1},
+        ]
+
+        def fake_get_value(doctype, filters, fieldname, as_dict=False):
+            self.assertEqual(doctype, "Drive File")
+            self.assertEqual(filters, {"file": "FILE-THUMB"})
+            self.assertEqual(fieldname, ["storage_backend", "storage_object_key"])
+            self.assertTrue(as_dict)
+            return frappe._dict(
+                {
+                    "storage_backend": "gcs",
+                    "storage_object_key": "files/aa/bb/thumb_employee.webp",
+                }
+            )
+
+        with (
+            patch("ifitwala_ed.utilities.image_utils.frappe.get_all", side_effect=[classification_rows, file_rows]),
+            patch("ifitwala_ed.utilities.image_utils.file_url_exists_on_disk", return_value=False),
+            patch("ifitwala_ed.utilities.image_utils.frappe.db.get_value", side_effect=fake_get_value),
+        ):
+            image_url = image_utils.get_preferred_employee_image_url(
+                "EMP-0001",
+                original_url="/files/employee/original_employee.png",
+            )
+
+        self.assertEqual(image_url, thumb_url)
