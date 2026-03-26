@@ -616,6 +616,27 @@ class Employee(NestedSet):
             frappe.cache().hdel("employees_with_number", cell_number)
             frappe.cache().hdel("employees_with_number", prev_number)
 
+    def _resolve_primary_contact_name(self) -> str | None:
+        if not self.user_id:
+            return None
+
+        contact_name = frappe.db.get_value(
+            "Dynamic Link",
+            {
+                "link_doctype": "User",
+                "link_name": self.user_id,
+                "parenttype": "Contact",
+            },
+            "parent",
+        )
+        if contact_name:
+            return contact_name
+
+        if self.empl_primary_contact and frappe.db.exists("Contact", self.empl_primary_contact):
+            return self.empl_primary_contact
+
+        return None
+
     def _ensure_primary_contact(self):
         """
         NOTE:
@@ -630,16 +651,7 @@ class Employee(NestedSet):
         if not self.user_id:
             return
 
-        contact_name = frappe.db.get_value(
-            "Dynamic Link",
-            {
-                "link_doctype": "User",
-                "link_name": self.user_id,
-                "parenttype": "Contact",
-            },
-            "parent",
-        )
-
+        contact_name = self._resolve_primary_contact_name()
         if not contact_name:
             frappe.log_error(
                 title="Employee Contact Link Missing",
@@ -669,7 +681,7 @@ class Employee(NestedSet):
                 }
             ).insert(ignore_permissions=True)
 
-        if not self.empl_primary_contact:
+        if self.empl_primary_contact != contact_name:
             self.db_set("empl_primary_contact", contact_name, update_modified=False)
 
     def _can_sync_user_profile(self) -> bool:
@@ -818,6 +830,7 @@ def create_user(employee, user=None, email=None):
 
     emp.user_id = user_doc.name
     emp.save(ignore_permissions=True)
+    emp._ensure_primary_contact()
 
     return user_doc.name
 

@@ -560,3 +560,110 @@ class TestEmployee(FrappeTestCase):
         update_user.assert_not_called()
         update_org.assert_called_once()
         update_school.assert_called_once()
+
+    def test_ensure_primary_contact_adds_employee_link_and_updates_primary_contact(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.name = "EMP-0001"
+        emp.empl_primary_contact = None
+        emp.db_set = Mock()
+
+        link_doc = Mock()
+
+        def db_exists(doctype, filters=None):
+            if doctype == "Dynamic Link":
+                return False
+            if doctype == "Contact":
+                return True
+            return False
+
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value",
+                return_value="CONTACT-0001",
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.exists",
+                side_effect=db_exists,
+            ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc", return_value=link_doc) as get_doc,
+        ):
+            emp._ensure_primary_contact()
+
+        get_doc.assert_called_once_with(
+            {
+                "doctype": "Dynamic Link",
+                "parenttype": "Contact",
+                "parentfield": "links",
+                "parent": "CONTACT-0001",
+                "link_doctype": "Employee",
+                "link_name": "EMP-0001",
+            }
+        )
+        link_doc.insert.assert_called_once_with(ignore_permissions=True)
+        emp.db_set.assert_called_once_with("empl_primary_contact", "CONTACT-0001", update_modified=False)
+
+    def test_ensure_primary_contact_repairs_link_from_existing_primary_contact(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.name = "EMP-0001"
+        emp.empl_primary_contact = "CONTACT-0009"
+        emp.db_set = Mock()
+
+        link_doc = Mock()
+
+        def db_exists(doctype, filters=None):
+            if doctype == "Contact":
+                return filters == "CONTACT-0009"
+            if doctype == "Dynamic Link":
+                return False
+            return False
+
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value", return_value=None),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.exists", side_effect=db_exists),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc", return_value=link_doc),
+        ):
+            emp._ensure_primary_contact()
+
+        link_doc.insert.assert_called_once_with(ignore_permissions=True)
+        emp.db_set.assert_not_called()
+
+    def test_create_user_repairs_primary_contact_link_after_save(self):
+        emp = frappe._dict(
+            user_id=None,
+            employee_professional_email="staff@example.com",
+            employee_first_name="Staff",
+            employee_middle_name=None,
+            employee_last_name="Member",
+            employee_gender="Female",
+            employee_date_of_birth=None,
+            employee_mobile_phone=None,
+        )
+        emp.save = Mock()
+        emp._ensure_primary_contact = Mock()
+
+        user_doc = frappe._dict(name="staff@example.com")
+        user_doc.flags = frappe._dict()
+        user_doc.update = Mock()
+        user_doc.insert = Mock()
+
+        privacy = frappe._dict(dob_to_user=0, mobile_to_user=0)
+
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.session.user", "administrator@example.com"),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles",
+                return_value={"System Manager"},
+            ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc", return_value=emp),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.new_doc", return_value=user_doc),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_single", return_value=privacy),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.exists", return_value=False),
+        ):
+            result = employee_controller.create_user("EMP-0001")
+
+        self.assertEqual(result, "staff@example.com")
+        user_doc.insert.assert_called_once_with(ignore_permissions=True)
+        emp.save.assert_called_once_with(ignore_permissions=True)
+        emp._ensure_primary_contact.assert_called_once_with()

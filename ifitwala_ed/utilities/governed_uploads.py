@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 import os
@@ -13,7 +14,6 @@ from typing import Tuple
 import frappe
 from frappe import _
 
-from ifitwala_ed.utilities import file_dispatcher
 from ifitwala_ed.utilities.image_utils import (
     EMPLOYEE_VARIANT_PRIORITY,
     get_employee_image_variants_map,
@@ -173,6 +173,12 @@ def _drive_upload_and_finalize(*, create_session_callable, payload: dict, conten
     drive_uploads_api = _load_drive_module("ifitwala_drive.api.uploads")
     storage_base = _load_drive_module("ifitwala_drive.services.storage.base")
 
+    if "idempotency_key" not in payload:
+        payload = {
+            **payload,
+            "idempotency_key": _build_drive_idempotency_key(payload=payload, content=content),
+        }
+
     session_response = create_session_callable(**payload)
     upload_session_id = session_response.get("upload_session_id")
     if not upload_session_id:
@@ -196,6 +202,28 @@ def _drive_upload_and_finalize(*, create_session_callable, payload: dict, conten
         frappe.throw(_("Drive finalize did not return a file_id."))
 
     return session_response, finalize_response, frappe.get_doc("File", file_name)
+
+
+def _build_drive_idempotency_key(*, payload: dict, content: bytes) -> str:
+    content_hash = hashlib.sha256(content or b"").hexdigest()
+    seed_parts = [
+        str(payload.get("task_submission") or "").strip(),
+        str(payload.get("task") or "").strip(),
+        str(payload.get("student_applicant") or "").strip(),
+        str(payload.get("applicant_health_profile") or "").strip(),
+        str(payload.get("employee") or "").strip(),
+        str(payload.get("student") or "").strip(),
+        str(payload.get("organization") or "").strip(),
+        str(payload.get("school") or "").strip(),
+        str(payload.get("row_name") or "").strip(),
+        str(payload.get("guardian_row_name") or "").strip(),
+        str(payload.get("document_type") or "").strip(),
+        str(payload.get("item_key") or "").strip(),
+        str(payload.get("filename_original") or "").strip(),
+        content_hash,
+    ]
+    seed = "|".join(seed_parts)
+    return hashlib.sha256(seed.encode("utf-8")).hexdigest()
 
 
 def _derive_generic_media_key(*, filename: str, media_key: str | None = None) -> str:
@@ -273,27 +301,17 @@ def upload_applicant_image(student_applicant: str | None = None, **_kwargs):
         frappe.throw(_("Organization and School are required for file classification."))
 
     filename, content = _get_uploaded_file()
-
-    file_doc = file_dispatcher.create_and_classify_file(
-        file_kwargs={
-            "attached_to_doctype": "Student Applicant",
-            "attached_to_name": doc.name,
-            "attached_to_field": "applicant_image",
-            "file_name": filename,
-            "content": content,
-            "is_private": 1,
-        },
-        classification={
-            "primary_subject_type": "Student Applicant",
-            "primary_subject_id": doc.name,
-            "data_class": "identity_image",
-            "purpose": "applicant_profile_display",
-            "retention_policy": "until_school_exit_plus_6m",
-            "slot": "profile_image",
-            "organization": doc.organization,
-            "school": doc.school,
+    drive_admissions_api = _load_drive_module("ifitwala_drive.api.admissions")
+    _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_admissions_api.upload_applicant_profile_image,
+        payload={
+            "student_applicant": doc.name,
+            "filename_original": filename,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
             "upload_source": "Desk",
         },
+        content=content,
     )
     _ensure_file_on_disk(file_doc)
 

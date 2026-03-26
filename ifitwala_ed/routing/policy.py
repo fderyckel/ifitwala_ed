@@ -154,12 +154,15 @@ def has_staff_portal_access(*, user: str, roles: set[str]) -> bool:
     if user == "Administrator":
         return True
 
-    # Explicit staff roles must stay authoritative even if a linked Employee
-    # profile exists with a non-active status.
+    has_employee, status = _linked_employee_status(user=user)
+    # A linked non-active employee must not retain staff portal access through
+    # stale role rows; employee access sync is expected to strip them.
+    if has_employee and status != "active":
+        return False
+
     if roles & STAFF_PORTAL_ROLES:
         return True
 
-    has_employee, status = _linked_employee_status(user=user)
     return has_employee and status == "active"
 
 
@@ -184,7 +187,11 @@ def resolve_default_portal_section(*, allowed_sections: set[str], requested_sect
 
 
 def resolve_login_redirect_path(*, user: str, roles: set[str]) -> str:
-    # Staff access always wins to avoid Desk lockouts for mixed-role users.
+    has_employee, status = _linked_employee_status(user=user)
+    if has_employee and status != "active":
+        return "/login"
+
+    # Staff access wins for active or role-only staff users.
     if has_staff_portal_access(user=user, roles=roles):
         return canonical_path_for_section("staff")
 

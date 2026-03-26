@@ -259,5 +259,19 @@ class Task(Document):
                 },
                 "name",
             )
-            if not binding_name:
-                frappe.throw(_("Task resource rows must reference an active governed Drive binding."))
+            if binding_name:
+                continue
+
+            drive_file_name = frappe.db.get_value(
+                "Drive File",
+                {
+                    "owner_doctype": "Task",
+                    "owner_name": self.name,
+                    "slot": f"supporting_material__{row_name}",
+                    "file": file_name,
+                    "status": ["in", ["active", "processing", "blocked"]],
+                },
+                "name",
+            )
+            if not drive_file_name:
+                frappe.throw(_("Task resource rows must resolve to an active governed Drive file or binding."))
