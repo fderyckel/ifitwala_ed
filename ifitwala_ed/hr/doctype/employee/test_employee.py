@@ -603,6 +603,20 @@ class TestEmployee(FrappeTestCase):
         link_doc.insert.assert_called_once_with(ignore_permissions=True)
         emp.db_set.assert_called_once_with("empl_primary_contact", "CONTACT-0001", update_modified=False)
 
+    def test_resolve_primary_contact_name_prefers_contact_user(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.empl_primary_contact = None
+
+        with patch(
+            "ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value",
+            side_effect=["CONTACT-0007"],
+        ) as get_value:
+            contact_name = emp._resolve_primary_contact_name()
+
+        self.assertEqual(contact_name, "CONTACT-0007")
+        get_value.assert_called_once_with("Contact", {"user": "staff@example.com"}, "name")
+
     def test_ensure_primary_contact_repairs_link_from_existing_primary_contact(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)
         emp.user_id = "staff@example.com"
@@ -628,6 +642,48 @@ class TestEmployee(FrappeTestCase):
 
         link_doc.insert.assert_called_once_with(ignore_permissions=True)
         emp.db_set.assert_not_called()
+
+    def test_ensure_primary_contact_creates_contact_when_missing(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.name = "EMP-0001"
+        emp.employee_first_name = "Staff"
+        emp.employee_last_name = "Member"
+        emp.employee_full_name = "Staff Member"
+        emp.employee_gender = "Female"
+        emp.employee_professional_email = "staff@example.com"
+        emp.employee_mobile_phone = "+660000000"
+        emp.empl_primary_contact = None
+        emp.db_set = Mock()
+
+        contact_doc = Mock()
+        contact_doc.name = "CONTACT-NEW"
+        contact_doc.append = Mock()
+        contact_doc.insert = Mock()
+        link_doc = Mock()
+
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value",
+                side_effect=[None, None],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.exists",
+                side_effect=lambda doctype, filters=None: doctype == "Gender",
+            ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.new_doc", return_value=contact_doc),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc",
+                return_value=link_doc,
+            ),
+        ):
+            emp._ensure_primary_contact()
+
+        contact_doc.append.assert_any_call("email_ids", {"email_id": "staff@example.com", "is_primary": 1})
+        contact_doc.append.assert_any_call("phone_nos", {"phone": "+660000000", "is_primary_mobile_no": 1})
+        contact_doc.insert.assert_called_once_with(ignore_permissions=True)
+        link_doc.insert.assert_called_once_with(ignore_permissions=True)
+        emp.db_set.assert_called_once_with("empl_primary_contact", "CONTACT-NEW", update_modified=False)
 
     def test_create_user_repairs_primary_contact_link_after_save(self):
         emp = frappe._dict(

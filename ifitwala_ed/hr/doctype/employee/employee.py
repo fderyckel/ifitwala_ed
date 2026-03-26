@@ -620,6 +620,10 @@ class Employee(NestedSet):
         if not self.user_id:
             return None
 
+        contact_name = frappe.db.get_value("Contact", {"user": self.user_id}, "name")
+        if contact_name:
+            return contact_name
+
         contact_name = frappe.db.get_value(
             "Dynamic Link",
             {
@@ -637,6 +641,40 @@ class Employee(NestedSet):
 
         return None
 
+    def _get_or_create_primary_contact(self) -> str | None:
+        contact_name = self._resolve_primary_contact_name()
+        if contact_name:
+            return contact_name
+
+        if not self.user_id:
+            return None
+
+        contact = frappe.new_doc("Contact")
+        contact.user = self.user_id
+        contact.first_name = self.employee_first_name or self.employee_full_name or self.name
+        contact.last_name = self.employee_last_name or ""
+
+        if cstr(self.employee_gender).strip() and frappe.db.exists("Gender", self.employee_gender):
+            contact.gender = self.employee_gender
+
+        email = cstr(self.employee_professional_email).strip()
+        if email:
+            contact.append("email_ids", {"email_id": email, "is_primary": 1})
+
+        mobile = cstr(self.employee_mobile_phone).strip()
+        if mobile:
+            contact.mobile_no = mobile
+            contact.append("phone_nos", {"phone": mobile, "is_primary_mobile_no": 1})
+
+        try:
+            contact.insert(ignore_permissions=True)
+            return contact.name
+        except Exception:
+            contact_name = self._resolve_primary_contact_name()
+            if contact_name:
+                return contact_name
+            raise
+
     def _ensure_primary_contact(self):
         """
         NOTE:
@@ -651,7 +689,7 @@ class Employee(NestedSet):
         if not self.user_id:
             return
 
-        contact_name = self._resolve_primary_contact_name()
+        contact_name = self._get_or_create_primary_contact()
         if not contact_name:
             frappe.log_error(
                 title="Employee Contact Link Missing",

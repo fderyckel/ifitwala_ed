@@ -72,6 +72,7 @@ Current create flow:
 - professional email required and uniqueness checks
 - create `User`, link back to `Employee.user_id`, save employee
 - immediately repair the contact graph so the user-linked `Contact` also carries an `Employee` dynamic link and `Employee.empl_primary_contact` points at that contact
+- employee contact resolution prefers `Contact.user = Employee.user_id`; if no contact exists yet, the save flow creates a minimal contact from employee identity data and then adds the `Employee` dynamic link
 
 Role handling now follows managed sync:
 - on employee save, `sync_user_access_from_employee` computes effective roles/workspace from employee history + designation defaults, and always includes the baseline `Employee` role for active staff users.
@@ -83,6 +84,10 @@ Role handling now follows managed sync:
   - `Active` -> `enabled = 1`
   - any other status (`Temporary Leave`, `Suspended`, `Left`, or blank) -> `enabled = 0`
 - on employee save, `_ensure_primary_contact()` self-heals the contact graph: if the user-linked contact exists but is missing a `Contact.links` row to the current `Employee`, the link is inserted; if the employee already has `empl_primary_contact`, that contact is reused as a repair target.
+- contact visibility for employee-linked contacts is server-scoped through `Contact.links -> Employee`:
+  - `HR Manager` / `HR User`: read employee contacts in their organization scope
+  - `Academic Admin` / `Academic Assistant`: read employee contacts in their default school + descendant-school scope
+  - `Employee`: read only the contact linked to their own employee record
 - when `Employee.employment_status` is not `Active`, the linked `User` is disabled and all assigned role rows are removed.
 - routing policy resolves active employee status using `Employee.user_id` first, then an unambiguous active match on `employee_professional_email` to avoid false-negative staff routing when legacy user links are missing.
 - at login, if a staff user has no active `Employee.user_id` link but exactly one active `Employee` row matches `employee_professional_email`, the system self-heals `user_id` and re-runs access sync.
