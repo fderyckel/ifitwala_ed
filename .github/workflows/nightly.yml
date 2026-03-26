@@ -55,6 +55,7 @@ jobs:
         run: |
           bench init --frappe-branch version-16 frappe-bench
           cd frappe-bench
+          bench get-app --branch main ifitwala_drive https://github.com/fderyckel/ifitwala_drive.git
           bench get-app ifitwala_ed "$GITHUB_WORKSPACE"
 
       - name: Create ci-staging site
@@ -111,6 +112,7 @@ jobs:
         run: |
           bench init --frappe-branch version-16 frappe-bench
           cd frappe-bench
+          bench get-app --branch main ifitwala_drive https://github.com/fderyckel/ifitwala_drive.git
           bench get-app ifitwala_ed "$GITHUB_WORKSPACE"
 
       - name: Create ci-staging site

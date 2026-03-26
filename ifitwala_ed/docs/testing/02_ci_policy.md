@@ -34,6 +34,8 @@ All PRs targeting `main` must pass:
 ## 2.1 Framework baseline
 
 CI benches are initialized against **Frappe `version-16`**.
+CI bootstrap must also fetch repo-required companion apps before site creation.
+Temporary exception: CI currently fetches `ifitwala_drive` from `main` because that dependency repo does not yet publish a `version-16` branch.
 
 ## 3. Nightly policy
 
