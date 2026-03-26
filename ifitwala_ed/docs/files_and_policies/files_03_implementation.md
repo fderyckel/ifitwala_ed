@@ -499,6 +499,7 @@ Instead, each doctype exposes a **named, whitelisted upload method** that:
 Current governed Desk endpoints:
 
 * `upload_employee_image(employee)`
+* `upload_guardian_image(guardian)`
 * `upload_student_image(student)`
 * `upload_applicant_image(student_applicant)`
 * `upload_task_resource(task)`
@@ -506,6 +507,7 @@ Current governed Desk endpoints:
 
 These are the only allowed upload entry points for:
 
+* Guardian `guardian_image`
 * Employee `employee_image`
 * Student `student_image`
 * Student Applicant `applicant_image`

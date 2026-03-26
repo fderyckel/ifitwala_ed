@@ -141,6 +141,7 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
     # Hard gate: governed doctypes must use dispatcher uploads.
     if doc.attached_to_doctype in {
         "Employee",
+        "Guardian",
         "Student",
         "Student Applicant",
         "Task Submission",
@@ -150,6 +151,7 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
     }:
         action_map = {
             ("Employee", "employee_image"): _("Upload Employee Image"),
+            ("Guardian", "guardian_image"): _("Upload Guardian Photo"),
             ("Student", "student_image"): _("Upload Student Image"),
             ("Student Applicant", "applicant_image"): _("Upload Applicant Image"),
             ("Task", None): _("Upload Task Resource"),

@@ -294,6 +294,40 @@ def upload_student_image(student: str | None = None, **_kwargs):
 
 
 @frappe.whitelist()
+def upload_guardian_image(guardian: str | None = None, **_kwargs):
+    guardian = guardian or _get_form_arg("guardian") or frappe.form_dict.get("docname")
+    doc = _require_doc("Guardian", guardian)
+
+    filename, content = _get_uploaded_file()
+    organization = doc.resolve_profile_image_organization()
+    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
+
+    _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_media_api.upload_guardian_image,
+        payload={
+            "guardian": doc.name,
+            "filename_original": filename,
+            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "expected_size_bytes": len(content),
+            "upload_source": "Desk",
+        },
+        content=content,
+    )
+    _ensure_file_on_disk(file_doc)
+
+    frappe.db.set_value(
+        "Guardian",
+        doc.name,
+        {
+            "guardian_image": file_doc.file_url,
+            "organization": organization,
+        },
+        update_modified=False,
+    )
+    return _response_payload(file_doc)
+
+
+@frappe.whitelist()
 def upload_applicant_image(student_applicant: str | None = None, **_kwargs):
     student_applicant = student_applicant or _get_form_arg("student_applicant") or frappe.form_dict.get("docname")
     doc = _require_doc("Student Applicant", student_applicant)

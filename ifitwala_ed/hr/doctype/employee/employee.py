@@ -675,6 +675,27 @@ class Employee(NestedSet):
                 return contact_name
             raise
 
+    def _ensure_contact_employee_link(self, contact_name: str):
+        if not contact_name:
+            return
+
+        exists = frappe.db.exists(
+            "Dynamic Link",
+            {
+                "parenttype": "Contact",
+                "parentfield": "links",
+                "parent": contact_name,
+                "link_doctype": "Employee",
+                "link_name": self.name,
+            },
+        )
+        if exists:
+            return
+
+        contact = frappe.get_doc("Contact", contact_name)
+        contact.append("links", {"link_doctype": "Employee", "link_name": self.name})
+        contact.save(ignore_permissions=True)
+
     def _ensure_primary_contact(self):
         """
         NOTE:
@@ -697,29 +718,10 @@ class Employee(NestedSet):
             )
             return
 
-        exists = frappe.db.exists(
-            "Dynamic Link",
-            {
-                "parenttype": "Contact",
-                "parent": contact_name,
-                "link_doctype": "Employee",
-                "link_name": self.name,
-            },
-        )
-
-        if not exists:
-            frappe.get_doc(
-                {
-                    "doctype": "Dynamic Link",
-                    "parenttype": "Contact",
-                    "parentfield": "links",
-                    "parent": contact_name,
-                    "link_doctype": "Employee",
-                    "link_name": self.name,
-                }
-            ).insert(ignore_permissions=True)
+        self._ensure_contact_employee_link(contact_name)
 
         if self.empl_primary_contact != contact_name:
+            self.empl_primary_contact = contact_name
             self.db_set("empl_primary_contact", contact_name, update_modified=False)
 
     def _can_sync_user_profile(self) -> bool:

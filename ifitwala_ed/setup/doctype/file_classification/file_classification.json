@@ -78,7 +78,7 @@
    "fieldname": "purpose",
    "fieldtype": "Select",
    "label": "Purpose",
-   "options": "text\nidentification_document\ncontract\nassessment_submission\nassessment_feedback\nsafeguarding_evidence\nmedical_record\nvisa_document\npolicy_acknowledgement\nbackground_check\nacademic_report\nemployee_profile_display\nstudent_profile_display\napplicant_profile_display\norganization_public_media\nportfolio_evidence\njournal_attachment\nportfolio_export\njournal_export\nadministrative\nother",
+   "options": "text\nidentification_document\ncontract\nassessment_submission\nassessment_feedback\nsafeguarding_evidence\nmedical_record\nvisa_document\npolicy_acknowledgement\nbackground_check\nacademic_report\nemployee_profile_display\nguardian_profile_display\nstudent_profile_display\napplicant_profile_display\norganization_public_media\nportfolio_evidence\njournal_attachment\nportfolio_export\njournal_export\nadministrative\nother",
    "reqd": 1
   },
   {
@@ -168,7 +168,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-11 16:45:00.000000",
+ "modified": "2026-03-26 22:38:00.000000",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "File Classification",

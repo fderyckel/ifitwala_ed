@@ -9,6 +9,7 @@ from frappe.contacts.address_and_contact import load_address_and_contact
 from frappe.model.document import Document
 from frappe.utils import get_link_to_form
 
+from ifitwala_ed.accounting.account_holder_utils import get_school_organization
 from ifitwala_ed.routing.policy import has_staff_portal_access
 
 
@@ -180,6 +181,90 @@ class Guardian(Document):
         )
         for r in rows:
             self.append("students", r)
+
+    def get_linked_student_names(self) -> list[str]:
+        student_guardian_rows = frappe.get_all(
+            "Student Guardian",
+            filters={"guardian": self.name, "parenttype": "Student"},
+            fields=["parent"],
+            limit=0,
+        )
+        guardian_student_rows = frappe.get_all(
+            "Guardian Student",
+            filters={"parent": self.name, "parenttype": "Guardian"},
+            fields=["student"],
+            limit=0,
+        )
+        return sorted(
+            {(row.get("parent") or "").strip() for row in student_guardian_rows if (row.get("parent") or "").strip()}
+            | {
+                (row.get("student") or "").strip()
+                for row in guardian_student_rows
+                if (row.get("student") or "").strip()
+            }
+        )
+
+    def get_linked_student_organizations(self) -> list[str]:
+        student_names = self.get_linked_student_names()
+        if not student_names:
+            return []
+
+        student_rows = frappe.get_all(
+            "Student",
+            filters={"name": ["in", tuple(student_names)]},
+            fields=["anchor_school"],
+            limit=0,
+        )
+        school_names = sorted(
+            {
+                (row.get("anchor_school") or "").strip()
+                for row in student_rows
+                if (row.get("anchor_school") or "").strip()
+            }
+        )
+        if not school_names:
+            return []
+
+        organizations: list[str] = []
+        seen: set[str] = set()
+        for school_name in school_names:
+            organization = (get_school_organization(school_name) or "").strip()
+            if organization and organization not in seen:
+                seen.add(organization)
+                organizations.append(organization)
+        return organizations
+
+    def resolve_profile_image_organization(self) -> str:
+        explicit_organization = (getattr(self, "organization", None) or "").strip()
+        linked_organizations = self.get_linked_student_organizations()
+
+        if explicit_organization:
+            if linked_organizations and any(org != explicit_organization for org in linked_organizations):
+                frappe.throw(
+                    _(
+                        "Guardian organization {0} does not match the organizations of linked students. "
+                        "Update the Guardian organization or family links before uploading a photo."
+                    ).format(explicit_organization)
+                )
+            return explicit_organization
+
+        if len(linked_organizations) == 1:
+            return linked_organizations[0]
+
+        if len(linked_organizations) > 1:
+            frappe.throw(
+                _(
+                    "Guardian photo upload is blocked because linked students belong to multiple organizations. "
+                    "Set a single Guardian organization or split the guardian record before uploading."
+                )
+            )
+
+        frappe.throw(
+            _(
+                "Guardian organization is required before uploading a photo. "
+                "Set Guardian.organization or link this guardian to a student in one organization."
+            )
+        )
 
     def create_guardian_user(self):
         if not self.guardian_email:

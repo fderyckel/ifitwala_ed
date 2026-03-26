@@ -13,12 +13,18 @@ def _governed_uploads_module():
     file_dispatcher = ModuleType("ifitwala_ed.utilities.file_dispatcher")
     file_dispatcher.create_and_classify_file = lambda **kwargs: None
 
+    image_utils = ModuleType("ifitwala_ed.utilities.image_utils")
+    image_utils.EMPLOYEE_VARIANT_PRIORITY = []
+    image_utils.get_employee_image_variants_map = lambda employee_names: {}
+    image_utils.get_preferred_employee_image_url = lambda employee_name, original_url=None, slots=None: original_url
+
     organization_media = ModuleType("ifitwala_ed.utilities.organization_media")
     organization_media.build_organization_media_slot = lambda **kwargs: "organization_media__test"
 
     with stubbed_frappe(
         extra_modules={
             "ifitwala_ed.utilities.file_dispatcher": file_dispatcher,
+            "ifitwala_ed.utilities.image_utils": image_utils,
             "ifitwala_ed.utilities.organization_media": organization_media,
         }
     ) as frappe:
@@ -48,6 +54,46 @@ class _FakeDoc:
 
 
 class TestGovernedUploadTaskFlows(TestCase):
+    def test_upload_guardian_image_uses_drive_wrapper_and_persists_org_anchor(self):
+        doc = _FakeDoc(name="GRD-0001", organization="", guardian_image="")
+        doc.resolve_profile_image_organization = lambda: "ORG-0001"
+        fake_drive_api = SimpleNamespace(upload_guardian_image=object())
+        file_doc = SimpleNamespace(
+            name="FILE-0009",
+            file_url="/private/files/guardian-photo.png",
+            file_name="guardian-photo.png",
+            file_size=321,
+        )
+
+        with _governed_uploads_module() as governed_uploads:
+            with (
+                patch.object(governed_uploads, "_require_doc", return_value=doc),
+                patch.object(governed_uploads, "_get_uploaded_file", return_value=("guardian-photo.png", b"content")),
+                patch.object(governed_uploads, "_load_drive_module", return_value=fake_drive_api),
+                patch.object(governed_uploads, "_ensure_file_on_disk"),
+                patch.object(
+                    governed_uploads,
+                    "_drive_upload_and_finalize",
+                    return_value=({"upload_session_id": "DUS-9"}, {"file_id": "FILE-0009"}, file_doc),
+                ) as bridge,
+                patch.object(governed_uploads.frappe.db, "set_value") as set_value,
+            ):
+                payload = governed_uploads.upload_guardian_image(guardian="GRD-0001")
+
+        bridge.assert_called_once()
+        self.assertIs(bridge.call_args.kwargs["create_session_callable"], fake_drive_api.upload_guardian_image)
+        self.assertEqual(bridge.call_args.kwargs["payload"]["guardian"], "GRD-0001")
+        set_value.assert_called_once_with(
+            "Guardian",
+            "GRD-0001",
+            {
+                "guardian_image": "/private/files/guardian-photo.png",
+                "organization": "ORG-0001",
+            },
+            update_modified=False,
+        )
+        self.assertEqual(payload["file"], "FILE-0009")
+
     def test_upload_task_submission_attachment_uses_drive_wrapper(self):
         doc = _FakeDoc(name="TSUB-0001", school="SCH-0001", student="STU-0001")
         fake_drive_api = SimpleNamespace(upload_task_submission_artifact=object())
