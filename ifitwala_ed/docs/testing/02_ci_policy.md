@@ -14,7 +14,7 @@ All PRs targeting `main` must pass:
 
 1. `backend-smoke`
 - Fast confidence suite for critical backend invariants.
-- Includes merge-gating portal routing, file-access, analytics-permission, admissions portal, and focus workflow contract tests.
+- Includes merge-gating portal routing, workspace sidebar contract integrity, file-access, analytics-permission, self-enrollment, staff policy signature, admissions portal, and focus workflow contract tests.
 
 2. `backend-domain`
 - Runs module-level backend tests scoped to changed Python domains.

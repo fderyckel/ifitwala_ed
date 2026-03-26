@@ -94,14 +94,18 @@ jobs:
           modules=(
             "ifitwala_ed.schedule.test_enrollment_engine"
             "ifitwala_ed.schedule.doctype.program_enrollment_request.test_program_enrollment_request"
+            "ifitwala_ed.tests.test_workspace_sidebar_contract"
             "ifitwala_ed.api.test_guardian_home"
             "ifitwala_ed.api.test_users"
             "ifitwala_ed.api.test_calendar"
             "ifitwala_ed.api.test_file_access"
             "ifitwala_ed.api.test_analytics_permissions"
+            "ifitwala_ed.api.test_self_enrollment"
+            "ifitwala_ed.api.test_policy_signature"
             "ifitwala_ed.api.test_focus_applicant_review"
             "ifitwala_ed.api.test_admissions_portal"
             "ifitwala_ed.hr.test_leave_permissions"
+            "ifitwala_ed.website.tests.test_root_route_resolution"
             "ifitwala_ed.website.tests.test_portal_route"
           )
 
