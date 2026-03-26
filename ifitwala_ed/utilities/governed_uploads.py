@@ -169,6 +169,32 @@ def _load_drive_module(module_name: str):
         frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
 
 
+def _get_drive_media_callable(attribute: str):
+    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
+    create_session_callable = getattr(drive_media_api, attribute, None)
+    if create_session_callable:
+        return create_session_callable
+
+    # Long-running app processes may still hold a pre-change Drive module object.
+    # Reload the integration and API modules once before failing.
+    try:
+        drive_media_integration = importlib.import_module("ifitwala_drive.services.integration.ifitwala_ed_media")
+        importlib.reload(drive_media_integration)
+        drive_media_api = importlib.reload(drive_media_api)
+    except Exception:
+        drive_media_api = _load_drive_module("ifitwala_drive.api.media")
+
+    create_session_callable = getattr(drive_media_api, attribute, None)
+    if create_session_callable:
+        return create_session_callable
+
+    frappe.throw(
+        _(
+            "Ifitwala Drive is missing media method '{0}'. Reload the app processes so the updated Drive module is imported."
+        ).format(attribute)
+    )
+
+
 def _drive_upload_and_finalize(*, create_session_callable, payload: dict, content: bytes):
     drive_uploads_api = _load_drive_module("ifitwala_drive.api.uploads")
     storage_base = _load_drive_module("ifitwala_drive.services.storage.base")
@@ -244,10 +270,8 @@ def upload_employee_image(employee: str | None = None, **_kwargs):
         frappe.throw(_("Organization is required for file classification."))
 
     filename, content = _get_uploaded_file()
-    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
-
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
-        create_session_callable=drive_media_api.upload_employee_image,
+        create_session_callable=_get_drive_media_callable("upload_employee_image"),
         payload={
             "employee": doc.name,
             "filename_original": filename,
@@ -272,10 +296,8 @@ def upload_student_image(student: str | None = None, **_kwargs):
         frappe.throw(_("Anchor School is required before uploading a student image."))
 
     filename, content = _get_uploaded_file()
-    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
-
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
-        create_session_callable=drive_media_api.upload_student_image,
+        create_session_callable=_get_drive_media_callable("upload_student_image"),
         payload={
             "student": doc.name,
             "filename_original": filename,
@@ -300,10 +322,8 @@ def upload_guardian_image(guardian: str | None = None, **_kwargs):
 
     filename, content = _get_uploaded_file()
     organization = doc.resolve_profile_image_organization()
-    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
-
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
-        create_session_callable=drive_media_api.upload_guardian_image,
+        create_session_callable=_get_drive_media_callable("upload_guardian_image"),
         payload={
             "guardian": doc.name,
             "filename_original": filename,
@@ -417,9 +437,8 @@ def upload_school_logo(school: str | None = None, **_kwargs):
         frappe.throw(_("Organization is required before uploading a school logo."))
 
     filename, content = _get_uploaded_file()
-    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
-        create_session_callable=drive_media_api.upload_school_logo,
+        create_session_callable=_get_drive_media_callable("upload_school_logo"),
         payload={
             "school": doc.name,
             "filename_original": filename,
@@ -551,9 +570,8 @@ def upload_organization_logo(organization: str | None = None, **_kwargs):
     )
 
     filename, content = _get_uploaded_file()
-    drive_media_api = _load_drive_module("ifitwala_drive.api.media")
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
-        create_session_callable=drive_media_api.upload_organization_logo,
+        create_session_callable=_get_drive_media_callable("upload_organization_logo"),
         payload={
             "organization": doc.name,
             "filename_original": filename,
