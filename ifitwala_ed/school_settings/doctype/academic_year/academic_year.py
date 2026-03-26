@@ -8,7 +8,24 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr, get_link_to_form, getdate
 
-from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_first_ancestor_with_doc, is_leaf_school
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
+
+
+def _get_branch_school_scope(user_school) -> list[str]:
+    """
+    Return the caller's school branch only:
+    - the user's school and descendants
+    - the user's school and ancestors
+
+    This keeps sibling isolation intact while allowing users to see ancestor-school
+    Academic Years needed by descendant-school operational surfaces.
+    """
+    if not user_school:
+        return []
+
+    descendants = get_descendant_schools(user_school) or [user_school]
+    ancestors = get_ancestor_schools(user_school) or [user_school]
+    return list(dict.fromkeys([*descendants, *ancestors]))
 
 
 class AcademicYear(Document):
@@ -196,11 +213,7 @@ def get_permission_query_conditions(user):
     if not user_school:
         return "1=0"
 
-    if is_leaf_school(user_school):
-        schools = get_first_ancestor_with_doc("Academic Year", user_school)
-    else:
-        schools = get_descendant_schools(user_school)
-
+    schools = _get_branch_school_scope(user_school)
     if not schools:
         return "1=0"
     schools_list = "', '".join(schools)
@@ -218,9 +231,5 @@ def has_permission(doc, ptype=None, user=None):
     if not user_school:
         return False
 
-    if is_leaf_school(user_school):
-        schools = get_first_ancestor_with_doc("Academic Year", user_school)
-    else:
-        schools = get_descendant_schools(user_school)
-
+    schools = _get_branch_school_scope(user_school)
     return doc.school in schools

@@ -151,6 +151,20 @@ Where:
 
 The underlying school-tree resolution must use the existing utilities patterns (ancestor/descendant) to avoid bespoke logic.
 
+### 4.3 Desk visibility for branch users
+
+For school-scoped operational surfaces outside admissions, users working inside one school branch must be able to read Academic Year rows from their own branch lineage when the operational contract depends on ancestor-hosted calendar context.
+
+This means Academic Year Desk visibility may include:
+
+* the user's school
+* descendant schools in that branch
+* ancestor schools in that same branch
+
+Sibling branches remain hidden.
+
+This visibility is required for leaf-school workflows such as `Program Offering` when the valid Academic Year is maintained on an ancestor school node.
+
 ---
 
 ## 5) End of Year Checklist (future authority)
