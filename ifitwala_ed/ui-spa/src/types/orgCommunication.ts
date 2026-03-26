@@ -44,6 +44,7 @@ export type AudienceSummary = {
 
 export const AUDIENCE_TARGET_MODES = [
 	'School Scope',
+	'Organization',
 	'Team',
 	'Student Group',
 ] as const

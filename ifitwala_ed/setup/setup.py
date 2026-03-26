@@ -333,14 +333,36 @@ def add_other_records(country=None):
         frappe.db.commit()
 
 
+def _get_doctype_editor_roles(doctype: str) -> list[str]:
+    """Return roles that can create or edit the given DocType at permlevel 0."""
+    meta = frappe.get_meta(doctype)
+    roles: list[str] = []
+
+    for perm in meta.permissions or []:
+        role = cstr(perm.get("role")).strip()
+        if not role:
+            continue
+        if int(perm.get("write") or 0) or int(perm.get("create") or 0):
+            roles.append(role)
+
+    return list(dict.fromkeys(roles))
+
+
 def grant_role_read_select_to_hr():
-    """Allow HR Manager / HR User to link to Role from Designation (and read role names).
-    This must be done at setup time because Frappe validates Link fields via validate_link,
-    which requires Read or Select on the target doctype (Role).
+    """Allow staff who manage Role-linked setup doctypes to resolve Role links safely.
+
+    Frappe validates Link fields via validate_link, which requires Read or Select on
+    the target doctype (Role). Student Log Next Step editors need the same access as
+    Designation editors so they can set the associated role for a next step.
     """
     target_doctype = "Role"
-    # Roles that can edit Designation should be able to resolve Role links.
-    target_roles = ["HR Manager", "HR User", "Academic Admin"]
+    target_roles = [
+        "HR Manager",
+        "HR User",
+        "Academic Admin",
+        *_get_doctype_editor_roles("Student Log Next Step"),
+    ]
+    target_roles = list(dict.fromkeys(role for role in target_roles if cstr(role).strip()))
 
     # Custom permissions are stored as Custom DocPerm (safe to add; survives updates).
     # We only grant read + select at permlevel 0.

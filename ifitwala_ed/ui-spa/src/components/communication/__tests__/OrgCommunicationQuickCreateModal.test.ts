@@ -211,6 +211,26 @@ const quickCreateOptions = {
 	},
 };
 
+const wideAudienceQuickCreateOptions = {
+	...quickCreateOptions,
+	fields: {
+		...quickCreateOptions.fields,
+		audience_target_modes: ['School Scope', 'Organization', 'Team', 'Student Group'],
+	},
+	recipient_rules: {
+		...quickCreateOptions.recipient_rules,
+		Organization: {
+			allowed_fields: ['to_staff'],
+			allowed_labels: ['Staff'],
+			default_fields: ['to_staff'],
+		},
+	},
+	permissions: {
+		can_create: true,
+		can_target_wide_school_scope: true,
+	},
+};
+
 async function flushUi() {
 	await Promise.resolve();
 	await nextTick();
@@ -387,5 +407,34 @@ describe('OrgCommunicationQuickCreateModal', () => {
 		const readyCheckCard = document.querySelector('.if-org-communication-ready-check');
 		expect(readyCheckCard).toBeTruthy();
 		expect(readyCheckCard?.getAttribute('class') || '').toContain('bg-canopy');
+	});
+
+	it('submits organization staff rows as staff-only audiences', async () => {
+		getOptionsMock.mockResolvedValue(wideAudienceQuickCreateOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-0005',
+			title: 'Weekly staff update',
+		});
+
+		mountModal();
+		await flushUi();
+
+		clickButton('Organization');
+		await flushUi();
+		clickButton('Publish');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(createOrgCommunicationQuickMock.mock.calls[0][0].audiences).toEqual([
+			expect.objectContaining({
+				target_mode: 'Organization',
+				to_staff: 1,
+				to_students: 0,
+				to_guardians: 0,
+				to_community: 0,
+			}),
+		]);
 	});
 });

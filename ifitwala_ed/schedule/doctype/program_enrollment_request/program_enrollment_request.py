@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import get_link_to_form
 
 from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
 from ifitwala_ed.schedule.enrollment_request_utils import (
@@ -30,6 +31,7 @@ class ProgramEnrollmentRequest(Document):
         if request_kind == "Activity" and not self.activity_booking:
             frappe.throw(_("Activity Request Kind requires Activity Booking reference."))
 
+        self._apply_offering_spine()
         self._sync_course_semantics_from_offering()
         self._validate_course_rows()
 
@@ -159,6 +161,48 @@ class ProgramEnrollmentRequest(Document):
                     ).format(idx, course)
                 )
 
+    def _apply_offering_spine(self):
+        if not self.program_offering:
+            return
+
+        offering = frappe.db.get_value(
+            "Program Offering",
+            self.program_offering,
+            ["program", "school"],
+            as_dict=True,
+        )
+        if not offering:
+            frappe.throw(
+                _("Invalid Program Offering {0}.").format(get_link_to_form("Program Offering", self.program_offering))
+            )
+
+        self.program = offering.get("program")
+        self.school = offering.get("school")
+
+        ay_names = _offering_ay_names(self.program_offering)
+        if not ay_names:
+            frappe.throw(
+                _("Program Offering {0} must define at least one Academic Year before requests can be saved.").format(
+                    get_link_to_form("Program Offering", self.program_offering)
+                )
+            )
+
+        if self.academic_year:
+            if self.academic_year not in ay_names:
+                frappe.throw(
+                    _("Academic Year {0} is not part of Program Offering {1}.").format(
+                        get_link_to_form("Academic Year", self.academic_year),
+                        get_link_to_form("Program Offering", self.program_offering),
+                    )
+                )
+            return
+
+        if len(ay_names) == 1:
+            self.academic_year = ay_names[0]
+            return
+
+        frappe.throw(_("Please choose an Academic Year from this Program Offering: {0}.").format(", ".join(ay_names)))
+
 
 def _normalize_request_rows(rows):
     normalized = []
@@ -185,6 +229,20 @@ def _normalize_request_rows(rows):
         )
     )
     return normalized
+
+
+def _offering_ay_names(offering: str) -> list[str]:
+    if not offering:
+        return []
+    return (
+        frappe.get_all(
+            "Program Offering Academic Year",
+            filters={"parent": offering, "parenttype": "Program Offering"},
+            pluck="academic_year",
+            order_by="idx asc",
+        )
+        or []
+    )
 
 
 @frappe.whitelist()

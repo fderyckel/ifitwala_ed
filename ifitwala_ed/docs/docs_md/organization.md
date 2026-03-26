@@ -3,8 +3,8 @@ title: "Organization: Legal Entity and Hierarchy Root"
 slug: organization
 category: Setup
 doc_order: 1
-version: "1.0.5"
-last_change_date: "2026-03-24"
+version: "1.0.6"
+last_change_date: "2026-03-26"
 summary: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, website-school ownership, and root website default-school resolution."
 seo_title: "Organization: Legal Entity and Hierarchy Root"
 seo_description: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, and website-school ownership."
@@ -39,6 +39,7 @@ seo_description: "Define legal entities as a NestedSet hierarchy and anchor scho
   - organization is required and defaults from the user organization scope (default organization, fallback employee organization)
   - issuing school is optional; when set, it must belong to the selected organization or its descendants
   - org-level communications (blank issuing school) are visible only inside authorized organization scope
+  - `Organization` audience rows are staff-only and match active `Employee.organization`, including descendant organizations when the communication organization is an ancestor
 
 ## Technical Notes (IT)
 

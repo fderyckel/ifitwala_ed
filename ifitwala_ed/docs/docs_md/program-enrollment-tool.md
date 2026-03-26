@@ -3,9 +3,9 @@ title: "Program Enrollment Tool: Batch Request Preparation and Materialization"
 slug: program-enrollment-tool
 category: Enrollment
 doc_order: 6
-version: "2.0.0"
-last_change_date: "2026-03-11"
-summary: "Use one in-product tool to prepare, validate, approve, and materialize Program Enrollment Requests for cohort rollover and low-friction year-end promotion."
+version: "2.1.0"
+last_change_date: "2026-03-26"
+summary: "Use one in-product tool to prepare, validate, approve, and materialize Program Enrollment Requests for cohort rollover and low-friction year-end promotion, using the same request-seeding rules as portal self-enrollment windows."
 seo_title: "Program Enrollment Tool: Batch Request Preparation and Materialization"
 seo_description: "Prepare Program Enrollment Requests in batch for cohorts or existing enrollment populations, then validate, approve, and materialize them into Program Enrollments."
 ---
@@ -30,6 +30,7 @@ It no longer writes `Program Enrollment` directly as the first step. Its canonic
 - Preserves the locked request-first architecture while keeping the older batch-tool workflow staff rely on.
 - Handles large year-end rollover work without per-student navigation.
 - Lets staff process straightforward cohorts in one surface, while still stopping on requests that need review.
+- Shares the same request-seeding engine used by [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/), so staff launch and portal launch do not drift.
 
 <Callout type="info" title="Request-first contract">
 The tool prepares `Program Enrollment Request` rows first, then offers batch actions to validate, approve, and materialize them. This keeps override and audit rules intact.
@@ -83,6 +84,7 @@ If a choice still needs staff judgment, the tool creates the draft request and r
 - [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
 - [**Program Enrollment**](/docs/en/program-enrollment/)
 - [**Course Enrollment Tool**](/docs/en/course-enrollment-tool/)
+- [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/)
 - [**Student Enrollment Playbook**](/docs/en/student-enrollment-playbook/)
 
 ## Technical Notes (IT)

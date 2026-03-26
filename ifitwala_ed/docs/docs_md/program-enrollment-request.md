@@ -3,9 +3,9 @@ title: "Program Enrollment Request: Transactional Staging for Enrollment"
 slug: program-enrollment-request
 category: Enrollment
 doc_order: 4
-version: "1.3.0"
-last_change_date: "2026-03-11"
-summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including basket-group snapshots and requests hydrated from admissions."
+version: "1.4.0"
+last_change_date: "2026-03-26"
+summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including basket-group snapshots, admissions hydration, and portal self-enrollment provenance."
 seo_title: "Program Enrollment Request: Transactional Staging for Enrollment"
 seo_description: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment."
 ---
@@ -36,6 +36,9 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 - [**Program Enrollment**](/docs/en/program-enrollment/) request-source linkage (`program_enrollment_request`)
 - Batch staff tooling:
   - [**Program Enrollment Tool**](/docs/en/program-enrollment-tool/) prepares, validates, approves, and materializes requests for cohort rollover
+- Self-enrollment portal workflow:
+  - [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/) pre-creates draft requests and links them to student/guardian portal editing
+  - `ifitwala_ed.api.self_enrollment.*` saves and submits portal choices onto the linked request
 - Admissions bridge:
   - `hydrate_program_enrollment_request_from_applicant_plan(applicant_enrollment_plan)`
   - read-only provenance from `Student Applicant` / `Applicant Enrollment Plan`
@@ -43,12 +46,15 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 ## Lifecycle and Linked Documents
 
 1. Create request (`Draft`) with student, offering, and course basket.
-2. Request rows sync `required` from the offering.
-3. Optional rows may carry `applied_basket_group` and `choice_rank`.
-4. Move to `Submitted` / `Under Review`; server runs or refreshes the snapshot when needed.
-5. Review `validation_status`, `requires_override`, and reasons in payload.
-6. Approve only when request is valid, or when override is approved with traceability.
-7. Materialize approved request into one [**Program Enrollment**](/docs/en/program-enrollment/).
+   This may happen directly by staff, through [**Program Enrollment Tool**](/docs/en/program-enrollment-tool/), through admissions hydration, or through [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/) launch.
+2. `program`, `school`, and `academic_year` are resolved from the offering context; if the offering has exactly one academic year, the request auto-fills it.
+3. Request rows sync `required` from the offering.
+4. Optional rows may carry `applied_basket_group` and `choice_rank`.
+5. If request came from portal self-enrollment, `selection_window` records the campaign provenance.
+6. Move to `Submitted` / `Under Review`; server runs or refreshes the snapshot when needed.
+7. Review `validation_status`, `requires_override`, and reasons in payload.
+8. Approve only when request is valid, or when override is approved with traceability.
+9. Materialize approved request into one [**Program Enrollment**](/docs/en/program-enrollment/).
 
 ### Status and Validation Fields
 
@@ -82,6 +88,13 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 3. Server hydrates a draft request with the promoted student, program offering, academic year, and seeded course basket.
 4. Academic review still happens on the real request before approval and materialization.
 
+### Example 4: Guardian Portal Selection
+
+1. Staff opens a [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/) for `Guardian`.
+2. Server prepares one draft request per child with all required rows already present.
+3. Guardian opens the portal, chooses the optional language course, and submits.
+4. Request stays canonical: `status = Submitted`, `selection_window = ...`, `submitted_by = guardian user`.
+
 ## Related Docs
 
 - [**Program Offering**](/docs/en/program-offering/)
@@ -108,6 +121,7 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 - **DocType**: `Program Enrollment Request` (`ifitwala_ed/schedule/doctype/program_enrollment_request/`)
 - **Autoname**: `format:PER-{YYYY}-{####}`
 - **Admissions provenance fields**:
+  - `selection_window` (`Link`, read-only)
   - `source_student_applicant` (`Link`, read-only)
   - `source_applicant_enrollment_plan` (`Link`, read-only)
 - **Request course snapshot fields**:
@@ -115,8 +129,13 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
   - `applied_basket_group`
   - `choice_rank`
 - **Controller validation guarantees**:
+  - sync `program` and `school` from the selected offering on save
+  - require `academic_year` to belong to the selected offering
+  - auto-fill `academic_year` when the offering exposes exactly one academic year
+  - require explicit `academic_year` selection when the offering spans multiple academic years
   - request-kind enforcement (`Academic` or `Activity`)
   - activity requests require `activity_booking`
+  - portal self-enrollment provenance through `selection_window`
   - request rows sync `required` from offering semantics
   - duplicate course rows are blocked
   - invalid basket-group choices are blocked

@@ -5,7 +5,6 @@
 
 import csv
 import io
-from collections import defaultdict
 
 import frappe
 from frappe import _
@@ -18,10 +17,15 @@ from ifitwala_ed.schedule.enrollment_request_utils import (
     materialize_program_enrollment_request,
     validate_program_enrollment_request,
 )
+from ifitwala_ed.schedule.program_enrollment_request_seed import (
+    build_request_rows_for_student,
+    create_draft_request,
+    get_source_enrollment_map,
+    get_target_request_map,
+    target_courses_by_group,
+)
 
 QUEUE_THRESHOLD = 100
-NON_TERMINAL_REQUEST_STATUSES = {"Draft", "Submitted", "Under Review", "Approved"}
-
 ACTION_META = {
     "prepare_requests": {
         "label": _("Preparing requests"),
@@ -164,17 +168,12 @@ class ProgramEnrollmentTool(Document):
                 continue
 
             try:
-                request = frappe.get_doc(
-                    {
-                        "doctype": "Program Enrollment Request",
-                        "student": student,
-                        "program_offering": self.new_program_offering,
-                        "academic_year": self.new_target_academic_year,
-                        "status": "Draft",
-                        "courses": request_rows,
-                    }
+                create_draft_request(
+                    student=student,
+                    program_offering=self.new_program_offering,
+                    academic_year=self.new_target_academic_year,
+                    request_rows=request_rows,
                 )
-                request.insert(ignore_permissions=True)
                 counts["created_requests"] += 1
 
                 if review_notes:
@@ -423,151 +422,30 @@ class ProgramEnrollmentTool(Document):
         )
 
     def _get_target_request_map(self, student_ids: list[str]) -> dict[str, dict]:
-        if not student_ids:
-            return {}
-        rows = frappe.get_all(
-            "Program Enrollment Request",
-            filters={
-                "student": ["in", student_ids],
-                "program_offering": self.new_program_offering,
-                "academic_year": self.new_target_academic_year,
-                "status": ["in", list(NON_TERMINAL_REQUEST_STATUSES)],
-            },
-            fields=["name", "student", "status", "validation_status", "requires_override", "modified"],
-            order_by="modified desc",
-            limit=5000,
+        return get_target_request_map(
+            student_ids=student_ids,
+            program_offering=self.new_program_offering,
+            academic_year=self.new_target_academic_year,
         )
-        output = {}
-        for row in rows:
-            if row.student in output:
-                continue
-            output[row.student] = row
-        return output
 
     def _get_source_enrollment_map(self, student_ids: list[str]) -> dict[str, dict]:
         if self.get_students_from != "Program Enrollment" or not student_ids:
             return {}
-
-        source_rows = frappe.get_all(
-            "Program Enrollment",
-            filters={
-                "student": ["in", student_ids],
-                "program_offering": self.program_offering,
-                "academic_year": self.target_academic_year,
-            },
-            fields=["name", "student"],
-            order_by="modified desc",
-            limit=5000,
+        return get_source_enrollment_map(
+            student_ids=student_ids,
+            program_offering=self.program_offering,
+            academic_year=self.target_academic_year,
         )
-        output = {}
-        parent_to_student = {}
-        for row in source_rows:
-            if row.student in output:
-                continue
-            output[row.student] = {"name": row.name, "courses": []}
-            parent_to_student[row.name] = row.student
-
-        if not parent_to_student:
-            return output
-
-        course_rows = frappe.get_all(
-            "Program Enrollment Course",
-            filters={
-                "parent": ["in", list(parent_to_student.keys())],
-                "parenttype": "Program Enrollment",
-            },
-            fields=["parent", "course", "status", "credited_basket_group"],
-            order_by="idx asc",
-            limit=5000,
-        )
-        for row in course_rows:
-            student = parent_to_student.get(row.parent)
-            if not student:
-                continue
-            output.setdefault(student, {"name": row.parent, "courses": []})["courses"].append(row)
-
-        return output
 
     def _target_courses_by_group(self, target_semantics: dict[str, dict]) -> dict[str, list[str]]:
-        output: dict[str, list[str]] = defaultdict(list)
-        for course, semantics in target_semantics.items():
-            if cint(semantics.get("required")):
-                continue
-            for basket_group in semantics.get("basket_groups") or []:
-                output[basket_group].append(course)
-        return output
+        return target_courses_by_group(target_semantics)
 
     def _build_request_rows_for_student(self, *, source_enrollment, target_semantics, target_courses_by_group):
-        rows = []
-        seen = set()
-        review_notes = []
-
-        for course, semantics in target_semantics.items():
-            if not cint(semantics.get("required")):
-                continue
-            rows.append(
-                {
-                    "course": course,
-                    "required": 1,
-                    "applied_basket_group": "",
-                    "choice_rank": None,
-                }
-            )
-            seen.add(course)
-
-        for source_row in (source_enrollment or {}).get("courses") or []:
-            source_course = (source_row.course or "").strip()
-            status = (source_row.status or "").strip()
-            source_group = (source_row.credited_basket_group or "").strip()
-            if not source_course or status == "Dropped":
-                continue
-
-            target_course = None
-            applied_group = ""
-            allowed_groups = []
-
-            if source_course in target_semantics:
-                target_course = source_course
-                allowed_groups = list((target_semantics.get(target_course) or {}).get("basket_groups") or [])
-                applied_group = self._resolve_applied_basket_group(
-                    allowed_groups=allowed_groups,
-                    source_group=source_group,
-                    allow_blank=True,
-                )
-                if len(allowed_groups) > 1 and not applied_group:
-                    review_notes.append(_("Request needs a basket-group choice for course {0}.").format(source_course))
-            elif source_group and len(target_courses_by_group.get(source_group) or []) == 1:
-                target_course = target_courses_by_group[source_group][0]
-                allowed_groups = list((target_semantics.get(target_course) or {}).get("basket_groups") or [])
-                applied_group = source_group if source_group in allowed_groups else ""
-
-            if not target_course or target_course in seen:
-                continue
-
-            semantics = target_semantics.get(target_course) or {}
-            if cint(semantics.get("required")):
-                continue
-
-            rows.append(
-                {
-                    "course": target_course,
-                    "required": 0,
-                    "applied_basket_group": applied_group,
-                    "choice_rank": None,
-                }
-            )
-            seen.add(target_course)
-
-        return rows, review_notes
-
-    def _resolve_applied_basket_group(self, *, allowed_groups: list[str], source_group: str, allow_blank: bool):
-        if not allowed_groups:
-            return ""
-        if len(allowed_groups) == 1:
-            return allowed_groups[0]
-        if source_group and source_group in allowed_groups:
-            return source_group
-        return "" if allow_blank else None
+        return build_request_rows_for_student(
+            source_enrollment=source_enrollment,
+            target_semantics=target_semantics,
+            target_courses_by_group_map=target_courses_by_group,
+        )
 
     def _publish_progress(self, *, action: str, position: int, total: int, batch_mode: bool):
         if batch_mode:

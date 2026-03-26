@@ -622,6 +622,7 @@ const props = defineProps<{
 	student_group?: OverlayStudentGroup | null;
 	context_school?: string | null;
 	sourceLabel?: string | null;
+	initial_log_text?: string | null;
 	overlayId?: string | null;
 }>();
 
@@ -890,6 +891,7 @@ function initializeForOpen() {
 	stopSpeechRecognition();
 	setSpeechState('unknown');
 	void refreshSpeechAvailability();
+	form.log = (props.initial_log_text || '').trim();
 
 	if (mode.value === 'attendance') {
 		hydrateFromAttendanceProps();

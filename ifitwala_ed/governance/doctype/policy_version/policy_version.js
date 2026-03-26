@@ -142,10 +142,6 @@ function defaultRecipients(policyMeta) {
 	return { to_staff: 1, to_students: 0, to_guardians: 0, to_community: 0 };
 }
 
-function defaultTargetScope(policyMeta) {
-	return policyMeta.policy_school ? "School" : "Organization (All Schools)";
-}
-
 async function getInstitutionalPolicyMeta(policyName) {
 	const response = await frappe.call({
 		method: "frappe.client.get",
@@ -168,6 +164,62 @@ function getPolicyAudienceTokens(policyMeta) {
 	return (policyMeta?.applies_to || [])
 		.map((row) => String(row?.policy_audience || "").trim())
 		.filter(Boolean);
+}
+
+const TARGET_SCOPE_ORGANIZATION_STAFF = "Organization Staff";
+const TARGET_SCOPE_SCHOOLS_IN_ORGANIZATION = "Schools in Organization";
+const TARGET_SCOPE_SCHOOL = "School";
+const TARGET_SCOPE_TEAM = "Team";
+const NON_STAFF_POLICY_AUDIENCES = new Set(["Applicant", "Student", "Guardian", "Community"]);
+
+function getPolicyScopeSchool(policyMeta) {
+	return String(policyMeta.school || "").trim();
+}
+
+function isStaffOnlyPolicy(policyMeta) {
+	const tokens = getPolicyAudienceTokens(policyMeta);
+	return tokens.includes("Staff") && !tokens.some(token => NON_STAFF_POLICY_AUDIENCES.has(token));
+}
+
+function getTargetScopeOptions(policyMeta) {
+	const options = [];
+	const policySchool = getPolicyScopeSchool(policyMeta);
+
+	if (!policySchool && isStaffOnlyPolicy(policyMeta)) {
+		options.push(TARGET_SCOPE_ORGANIZATION_STAFF);
+	}
+	if (!policySchool) {
+		options.push(TARGET_SCOPE_SCHOOLS_IN_ORGANIZATION);
+	}
+	options.push(TARGET_SCOPE_SCHOOL, TARGET_SCOPE_TEAM);
+	return options.join("\n");
+}
+
+function defaultTargetScope(policyMeta) {
+	const policySchool = getPolicyScopeSchool(policyMeta);
+	if (policySchool) return TARGET_SCOPE_SCHOOL;
+	return isStaffOnlyPolicy(policyMeta)
+		? TARGET_SCOPE_ORGANIZATION_STAFF
+		: TARGET_SCOPE_SCHOOLS_IN_ORGANIZATION;
+}
+
+function getTargetScopeHelpHtml(policyMeta, scope) {
+	const policySchool = getPolicyScopeSchool(policyMeta);
+	const descriptions = {
+		[TARGET_SCOPE_ORGANIZATION_STAFF]: __(
+			"Reach all active employees in this organization, including staff without a School."
+		),
+		[TARGET_SCOPE_SCHOOLS_IN_ORGANIZATION]: __(
+			"Create one school audience per school in this organization. Use this for school-linked recipients."
+		),
+		[TARGET_SCOPE_SCHOOL]: policySchool
+			? __("Stay within the parent policy school scope.")
+			: __("Target one school only."),
+		[TARGET_SCOPE_TEAM]: __("Target one team only. Team communications are Staff-only."),
+	};
+	const label = frappe.utils.escape_html(String(scope || "").trim() || TARGET_SCOPE_SCHOOL);
+	const message = frappe.utils.escape_html(descriptions[scope] || descriptions[TARGET_SCOPE_SCHOOL]);
+	return `<div class="text-muted"><p><strong>${label}</strong>: ${message}</p></div>`;
 }
 
 async function openSharePolicyDialog(frm) {
@@ -195,6 +247,7 @@ async function openSharePolicyDialog(frm) {
 		? `${policyLabel} - Version ${versionLabel} update`
 		: `${policyLabel} update`;
 	const recipientDefaults = defaultRecipients(policyMeta);
+	const policyScopeSchool = getPolicyScopeSchool(policyMeta);
 	const isStaffPolicy = getPolicyAudienceTokens(policyMeta).includes("Staff");
 
 	let d = null;
@@ -207,11 +260,11 @@ async function openSharePolicyDialog(frm) {
 			frappe.msgprint(__("Communication Content is required."));
 			return;
 		}
-		if (values.target_scope === "School" && !values.target_school) {
+		if (values.target_scope === TARGET_SCOPE_SCHOOL && !values.target_school) {
 			frappe.msgprint(__("School is required for School scope."));
 			return;
 		}
-		if (values.target_scope === "Team" && !values.target_team) {
+		if (values.target_scope === TARGET_SCOPE_TEAM && !values.target_team) {
 			frappe.msgprint(__("Team is required for Team scope."));
 			return;
 		}
@@ -219,8 +272,18 @@ async function openSharePolicyDialog(frm) {
 			frappe.msgprint(__("Select at least one recipient type."));
 			return;
 		}
-		if (values.target_scope === "Team" && (values.to_students || values.to_guardians || values.to_community)) {
+		if (
+			values.target_scope === TARGET_SCOPE_TEAM &&
+			(values.to_students || values.to_guardians || values.to_community)
+		) {
 			frappe.msgprint(__("Team scope supports Staff recipients only."));
+			return;
+		}
+		if (
+			values.target_scope === TARGET_SCOPE_ORGANIZATION_STAFF &&
+			(!values.to_staff || values.to_students || values.to_guardians || values.to_community)
+		) {
+			frappe.msgprint(__("Organization Staff scope supports Staff recipients only."));
 			return;
 		}
 		if (values.create_signature_campaign && !isStaffPolicy) {
@@ -284,6 +347,9 @@ async function openSharePolicyDialog(frm) {
 				options: `<div class="text-muted">
 					<p><strong>${__("Policy Version")}</strong>: ${frappe.utils.escape_html(String(frm.doc.name || ""))}</p>
 					<p><strong>${__("Institutional Policy")}</strong>: ${frappe.utils.escape_html(String(frm.doc.institutional_policy || ""))}</p>
+					<p><strong>${__("Policy scope")}</strong>: ${
+						policyScopeSchool ? __("School-scoped") : __("Organization-wide")
+					}</p>
 					<p><strong>${__("Default schedule")}</strong>: ${__("1 week visibility (editable)")}</p>
 				</div>`,
 			},
@@ -298,24 +364,28 @@ async function openSharePolicyDialog(frm) {
 				fieldtype: "Select",
 				fieldname: "target_scope",
 				label: __("Target Scope"),
-				options: "Organization (All Schools)\nSchool\nTeam",
+				options: getTargetScopeOptions(policyMeta),
 				default: defaultTargetScope(policyMeta),
 				reqd: 1,
+			},
+			{
+				fieldtype: "HTML",
+				fieldname: "target_scope_help",
 			},
 			{
 				fieldtype: "Link",
 				fieldname: "target_school",
 				label: __("School"),
 				options: "School",
-				default: String(policyMeta.policy_school || "").trim() || "",
-				depends_on: "eval:doc.target_scope=='School'",
+				default: policyScopeSchool || "",
+				depends_on: `eval:doc.target_scope=='${TARGET_SCOPE_SCHOOL}'`,
 			},
 			{
 				fieldtype: "Link",
 				fieldname: "target_team",
 				label: __("Team"),
 				options: "Team",
-				depends_on: "eval:doc.target_scope=='Team'",
+				depends_on: `eval:doc.target_scope=='${TARGET_SCOPE_TEAM}'`,
 			},
 			{
 				fieldtype: "Section Break",
@@ -420,7 +490,7 @@ async function openSharePolicyDialog(frm) {
 		d.fields_dict.target_team.get_query = () => {
 			const organization = String(policyMeta.organization || "").trim();
 			const scope = d.get_value("target_scope");
-			const school = scope === "School" ? d.get_value("target_school") : null;
+			const school = scope === TARGET_SCOPE_SCHOOL ? d.get_value("target_school") : null;
 			const filters = {};
 			if (organization) filters.organization = organization;
 			if (school) filters.school = school;
@@ -429,16 +499,38 @@ async function openSharePolicyDialog(frm) {
 	}
 
 	d.show();
+	const updateTargetScopeUi = () => {
+		const scope = d.get_value("target_scope");
+		if (d.fields_dict.target_scope_help?.$wrapper) {
+			d.fields_dict.target_scope_help.$wrapper.html(getTargetScopeHelpHtml(policyMeta, scope));
+		}
+
+		const lockStaffOnly =
+			scope === TARGET_SCOPE_TEAM || scope === TARGET_SCOPE_ORGANIZATION_STAFF;
+		for (const fieldname of ["to_staff", "to_students", "to_guardians", "to_community"]) {
+			d.set_df_property(fieldname, "read_only", lockStaffOnly ? 1 : 0);
+		}
+		if (lockStaffOnly) {
+			d.set_value("to_students", 0);
+			d.set_value("to_guardians", 0);
+			d.set_value("to_community", 0);
+			d.set_value("to_staff", 1);
+		}
+		if (scope !== TARGET_SCOPE_TEAM) {
+			d.set_value("target_team", "");
+		}
+		if (scope !== TARGET_SCOPE_SCHOOL) {
+			d.set_value("target_school", "");
+		}
+		if (scope === TARGET_SCOPE_SCHOOL && !d.get_value("target_school") && policyScopeSchool) {
+			d.set_value("target_school", policyScopeSchool);
+		}
+	};
 	const targetScopeField = d.get_field("target_scope");
 	if (targetScopeField && targetScopeField.$input) {
 		targetScopeField.$input.on("change", () => {
-			const scope = d.get_value("target_scope");
-			if (scope === "Team") {
-				d.set_value("to_students", 0);
-				d.set_value("to_guardians", 0);
-				d.set_value("to_community", 0);
-				d.set_value("to_staff", 1);
-			}
+			updateTargetScopeUi();
 		});
 	}
+	updateTargetScopeUi();
 }

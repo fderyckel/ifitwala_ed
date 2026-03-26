@@ -172,6 +172,12 @@ def get_org_communication_quick_create_options() -> dict:
     reference_orgs = _get_reference_organizations(org_names)
     reference_schools = _get_reference_schools(school_names=school_names, organization_names=org_names)
     resolved_school_names = [row.get("name") for row in reference_schools if row.get("name")]
+    can_target_wide_school_scope = _user_has_any_role(user, WIDE_AUDIENCE_RECIPIENT_ROLES)
+    available_target_modes = [
+        target_mode
+        for target_mode in AUDIENCE_TARGET_MODES
+        if target_mode != "Organization" or can_target_wide_school_scope
+    ]
 
     return {
         "context": context,
@@ -190,7 +196,7 @@ def get_org_communication_quick_create_options() -> dict:
             "priorities": _field_options("Org Communication", "priority"),
             "portal_surfaces": _field_options("Org Communication", "portal_surface"),
             "interaction_modes": _field_options("Org Communication", "interaction_mode"),
-            "audience_target_modes": list(AUDIENCE_TARGET_MODES),
+            "audience_target_modes": available_target_modes,
         },
         "recipient_rules": {
             target_mode: {
@@ -201,13 +207,15 @@ def get_org_communication_quick_create_options() -> dict:
                 ],
                 "default_fields": (
                     ["to_staff"]
+                    if target_mode == "Organization"
+                    else ["to_staff"]
                     if target_mode == "Team"
                     else ["to_students", "to_guardians"]
                     if target_mode == "Student Group"
                     else []
                 ),
             }
-            for target_mode in AUDIENCE_TARGET_MODES
+            for target_mode in available_target_modes
         },
         "references": {
             "organizations": reference_orgs,
@@ -220,7 +228,7 @@ def get_org_communication_quick_create_options() -> dict:
         },
         "permissions": {
             "can_create": True,
-            "can_target_wide_school_scope": _user_has_any_role(user, WIDE_AUDIENCE_RECIPIENT_ROLES),
+            "can_target_wide_school_scope": can_target_wide_school_scope,
         },
     }
 

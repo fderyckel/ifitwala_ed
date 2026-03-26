@@ -21,6 +21,18 @@ const routes: RouteRecordRaw[] = [
     meta: { layout: 'student' },
   },
   {
+    path: '/student/course-selection',
+    name: 'student-course-selection',
+    component: () => import('@/pages/student/StudentCourseSelection.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/course-selection/:selection_window',
+    name: 'student-course-selection-detail',
+    component: () => import('@/pages/student/StudentCourseSelectionDetail.vue'),
+    meta: { layout: 'student' },
+  },
+  {
     path: '/student/activities',
     name: 'student-activities',
     component: () => import('@/pages/student/StudentActivities.vue'),
@@ -80,6 +92,8 @@ const routes: RouteRecordRaw[] = [
 
   // Guardian
   { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/course-selection', name: 'guardian-course-selection', component: () => import('@/pages/guardian/GuardianCourseSelection.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/course-selection/:selection_window/:student_id', name: 'guardian-course-selection-detail', component: () => import('@/pages/guardian/GuardianCourseSelectionDetail.vue'), meta: { layout: 'student' } },
   { path: '/guardian/activities', name: 'guardian-activities', component: () => import('@/pages/guardian/GuardianActivities.vue'), meta: { layout: 'student' } },
   { path: '/guardian/attendance', name: 'guardian-attendance', component: () => import('@/pages/guardian/GuardianAttendance.vue'), meta: { layout: 'student' } },
   { path: '/guardian/policies', name: 'guardian-policies', component: () => import('@/pages/guardian/GuardianPolicies.vue'), meta: { layout: 'student' } },

@@ -401,6 +401,16 @@
 															</label>
 														</div>
 
+														<div v-else-if="row.target_mode === 'Organization'" class="space-y-1">
+															<label class="type-label">Organization staff</label>
+															<p
+																class="rounded-2xl border border-border/70 bg-white px-3 py-3 type-caption text-ink/70"
+															>
+																Uses the selected organization. Staff without a School remain
+																included.
+															</p>
+														</div>
+
 														<div v-else-if="row.target_mode === 'Team'" class="space-y-1">
 															<label class="type-label">Team</label>
 															<FormControl
@@ -457,6 +467,15 @@
 																School-scope Staff and Community rows require Academic Admin,
 																Academic Assistant, HR Manager, Accounts Manager, or System
 																Manager.
+															</p>
+															<p
+																v-else-if="
+																	row.target_mode === 'Organization' && !canTargetWideSchoolScope
+																"
+																class="type-caption text-amber-700"
+															>
+																Organization staff rows require Academic Admin, Academic Assistant,
+																HR Manager, Accounts Manager, or System Manager.
 															</p>
 														</div>
 													</div>
@@ -864,6 +883,12 @@ const audienceSummaryRows = computed(() =>
 				teamSelectOptions.value.find(option => option.value === row.team)?.label ||
 				row.team ||
 				'Team';
+		} else if (row.target_mode === 'Organization') {
+			scope =
+				organizationSelectOptions.value.find(option => option.value === form.organization)
+					?.label ||
+				form.organization ||
+				'Organization';
 		} else if (row.target_mode === 'Student Group') {
 			scope =
 				studentGroupSelectOptions.value.find(option => option.value === row.student_group)
@@ -937,6 +962,9 @@ const validationMessage = computed(() => {
 			(row.to_staff || row.to_community)
 		) {
 			return 'You are not allowed to target Staff or Community at School Scope from your current role.';
+		}
+		if (!canTargetWideSchoolScope.value && row.target_mode === 'Organization') {
+			return 'You are not allowed to target Staff at Organization scope from your current role.';
 		}
 	}
 	return '';
@@ -1099,13 +1127,15 @@ function initializeForm() {
 }
 
 function createAudienceRow(seed: Partial<AudienceRowState> = {}): AudienceRowState {
+	const targetMode = seed.target_mode || 'School Scope';
 	const row: AudienceRowState = {
 		id: `aud_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-		target_mode: seed.target_mode || 'School Scope',
+		target_mode: targetMode,
 		school: seed.school || '',
 		team: seed.team || '',
 		student_group: seed.student_group || '',
-		include_descendants: Boolean(seed.include_descendants ?? true),
+		include_descendants:
+			targetMode === 'School Scope' ? Boolean(seed.include_descendants ?? true) : false,
 		to_staff: Boolean(seed.to_staff ?? false),
 		to_students: Boolean(seed.to_students ?? false),
 		to_guardians: Boolean(seed.to_guardians ?? false),
@@ -1149,6 +1179,8 @@ function allowedRecipientFields(targetMode: string): RecipientField[] {
 
 function applyAudienceDefaults(row: AudienceRowState) {
 	const allowed = new Set(allowedRecipientFields(row.target_mode));
+	row.include_descendants =
+		row.target_mode === 'School Scope' ? Boolean(row.include_descendants) : false;
 
 	for (const recipient of recipientToggleDefinitions) {
 		if (!allowed.has(recipient.field)) {
@@ -1157,6 +1189,11 @@ function applyAudienceDefaults(row: AudienceRowState) {
 	}
 
 	if (row.target_mode === 'Team') {
+		row.to_staff = true;
+		return;
+	}
+
+	if (row.target_mode === 'Organization') {
 		row.to_staff = true;
 		return;
 	}
@@ -1184,6 +1221,7 @@ function isRecipientDisabled(row: AudienceRowState, field: RecipientField) {
 	) {
 		return true;
 	}
+	if (row.target_mode === 'Organization' && field === 'to_staff') return true;
 	if (row.target_mode === 'Team' && field === 'to_staff') return true;
 	if (isClassEventMode.value && row.target_mode === 'Student Group' && field === 'to_students')
 		return true;

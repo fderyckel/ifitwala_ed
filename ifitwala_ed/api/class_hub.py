@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Optional
 import frappe
 from frappe.utils import formatdate, getdate, nowdate
 
+from ifitwala_ed.api.student_log import _can_create_student_log_for_session_user
+
 
 def _assert_instructor(student_group: str) -> None:
     if not student_group or not isinstance(student_group, str):
@@ -27,6 +29,10 @@ def _assert_instructor(student_group: str) -> None:
 
     if not is_instructor:
         frappe.throw("Not permitted to access this class")
+
+
+def _get_student_log_permissions() -> Dict[str, bool]:
+    return {"can_create_student_log": _can_create_student_log_for_session_user()}
 
 
 def _demo_students(seed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -130,6 +136,7 @@ def _build_bundle(
             "academic_year": group.get("academic_year") if group else None,
             "course": group.get("course") if group else None,
         },
+        "permissions": _get_student_log_permissions(),
         "now": {
             "date_label": today_label,
             "rotation_day_label": "Rotation Day 3",

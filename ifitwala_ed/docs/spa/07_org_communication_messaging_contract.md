@@ -97,6 +97,7 @@ Code refs:
 - `ifitwala_ed/api/guardian_home.py`
 
 Test refs:
+- `ifitwala_ed/api/test_org_comm_utils.py`
 - `ifitwala_ed/api/test_org_communication_interactions.py`
 - `ifitwala_ed/api/test_admissions_communication.py`
 - Patch coverage: None
@@ -104,10 +105,12 @@ Test refs:
 Rules:
 
 1. Org Communication visibility is enforced server-side through `check_audience_match(...)`.
-2. Admissions visibility is enforced server-side through the `Student Applicant` context guard.
-3. Unread/read state is derived from `Portal Read Receipt`.
-4. For guardian/activity summary logic, a user’s own interaction entry also counts as seen.
-5. Hidden rows never contribute to threads, comment counts, or unread counts.
+2. Audience matching supports `School Scope`, `Organization`, `Team`, and `Student Group`.
+3. `Organization` audience rows are staff-only and match active `Employee.organization` without requiring `Employee.school`.
+4. Admissions visibility is enforced server-side through the `Student Applicant` context guard.
+5. Unread/read state is derived from `Portal Read Receipt`.
+6. For guardian/activity summary logic, a user’s own interaction entry also counts as seen.
+7. Hidden rows never contribute to threads, comment counts, or unread counts.
 
 ## 5. Migration
 

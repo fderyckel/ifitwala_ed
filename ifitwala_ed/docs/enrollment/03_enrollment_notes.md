@@ -90,6 +90,15 @@ This applies to:
 * activities
 * pathway selections
 
+For academic self-enrollment, the portal launch object is `Program Offering Selection Window`:
+
+* one explicit `Program Offering`
+* one explicit `Academic Year`
+* one explicit portal audience (`Student` or `Guardian`)
+* one draft `Program Enrollment Request` per targeted student
+
+That window is operational only. It does **not** become committed academic truth.
+
 ---
 
 ### 3.2 Staff Actions
@@ -118,6 +127,8 @@ Direct mutation of `Program Enrollment` is invalid because:
 Therefore:
 
 > **Enrollment Requests are the only valid staging mechanism.**
+
+`Program Offering Selection Window` is valid only because it prepares and governs `Program Enrollment Request`; it is never an alternate committed enrollment path.
 
 ---
 

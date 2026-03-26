@@ -3,8 +3,8 @@ title: "Policy Version: Legal Text Snapshot and Activation Gate"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.4.0"
-last_change_date: "2026-03-25"
+version: "1.5.0"
+last_change_date: "2026-03-26"
 summary: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version becomes active or acknowledged."
 seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
 seo_description: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version is active or acknowledged."
@@ -68,10 +68,15 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
 4. Use **Share Policy** on the version form to open a communication modal that:
    - creates a draft `Org Communication`
    - defaults to one-week Morning Brief window
-   - reuses policy scope (school or organization-all-schools)
-   - for organization-all-schools, writes explicit audience rows for all schools in that organization
+   - reuses the parent policy scope instead of widening it:
+     - school-scoped policies offer `School` and `Team`
+     - organization-wide staff-only policies additionally offer `Organization Staff`
+     - organization-wide mixed-audience policies offer `Schools in Organization`, `School`, and `Team`
+   - `Organization Staff` creates one organization-level staff audience row and keeps `Org Communication.school` blank so staff without a linked school remain eligible
+   - `Schools in Organization` writes explicit audience rows for all schools in that organization
    - preselects recipients from `Institutional Policy.applies_to` with staff checked by default (editable before submit)
    - supports recipient toggles (staff/students/guardians/community)
+   - locks `Organization Staff` and `Team` to staff-only recipients
    - can optionally trigger a staff signature campaign (off by default; staff policies only)
    - embeds a policy link that opens the SPA `staff-policy-inform` overlay (read-only, close-only) from Morning Brief and Org Communication surfaces
 5. Activate one version at a time for live acknowledgement collection.

@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: `/hub/guardian` family information surfaces
-Last updated: 2026-03-15
+Last updated: 2026-03-26
 
 This document defines the canonical information contract for Guardian Home plus the Phase-2 guardian policy, finance, and monitoring surfaces.
 
@@ -48,7 +48,7 @@ Rules:
 
 1. Guardian Home shows the portal heading, the configured school-day window, and a refresh action.
 2. The summary cards show `unread_communications`, `unread_visible_student_logs`, `upcoming_due_tasks`, and `upcoming_assessments`.
-3. Quick links route guardians to activities, policies, finance, monitoring, portfolio, and the family snapshot.
+3. Quick links route guardians to course selection, activities, policies, finance, monitoring, portfolio, and the family snapshot.
 4. The landing page remains a briefing surface; navigation is secondary.
 
 ## 3. Home Zone Order And Content

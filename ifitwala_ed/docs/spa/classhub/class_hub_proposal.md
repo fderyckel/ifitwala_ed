@@ -290,6 +290,7 @@ Shows three tabs (read-only + quick entry):
 3. Notes
 
 * quick note (either creates Student Log OR writes to class_notes + signal note)
+* when quick note opens `Student Log`, availability must come from the live `Student Log` DocType permission contract, not hard-coded role lists
 
 **Important choice for v1:**
 If you want pastoral notes separate from evidence, keep Student Log.

@@ -244,6 +244,16 @@ function get_selected_ay_names(frm) {
 		.filter(Boolean);
 }
 
+function new_selection_window(frm) {
+	const ayNames = get_selected_ay_names(frm);
+	frappe.new_doc('Program Offering Selection Window', {
+		program_offering: frm.doc.name,
+		academic_year: ayNames.length === 1 ? ayNames[0] : null,
+		source_mode: 'Program Enrollment',
+		audience: 'Guardian',
+	});
+}
+
 function require_ay_span(frm) {
 	if (!frm.doc.program) {
 		frappe.msgprint({ message: __("Please select a Program first."), indicator: "orange" });
@@ -755,6 +765,17 @@ frappe.ui.form.on("Program Offering", {
 		if (createInvoice) {
 			createInvoice.removeClass("btn-default btn-secondary").addClass("btn-outline-secondary");
 			createInvoice.addClass("ms-2");
+		}
+
+		if (!frm.is_new() && Number(frm.doc.allow_self_enroll || 0) === 1) {
+			const selectionWindow = frm.add_custom_button(
+				__("Create Course Selection Window"),
+				() => new_selection_window(frm)
+			);
+			if (selectionWindow) {
+				selectionWindow.removeClass("btn-default btn-secondary").addClass("btn-outline-secondary");
+				selectionWindow.addClass("ms-2");
+			}
 		}
 
 		// DO NOT call set_primary_action here; it forces a right-side black button

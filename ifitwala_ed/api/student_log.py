@@ -14,6 +14,17 @@ LOG_DOCTYPE = "Student Log"
 PAGE_LENGTH_DEFAULT = 20
 
 
+def _can_create_student_log_for_session_user() -> bool:
+    user = frappe.session.user
+    if not user or user == "Guest":
+        return False
+
+    return bool(
+        frappe.has_permission(LOG_DOCTYPE, ptype="create", user=user)
+        or frappe.has_permission(LOG_DOCTYPE, ptype="write", user=user)
+    )
+
+
 def _resolve_current_student():
     """Securely map the logged-in portal user to a Student record."""
     user_id = frappe.session.user
@@ -510,6 +521,8 @@ def search_follow_up_users(**payload):
 @frappe.whitelist()
 def get_form_options(**payload):
     _validate_keys(payload, ALLOWED_OPTIONS_KEYS)
+    if not _can_create_student_log_for_session_user():
+        frappe.throw(_("You do not have permission to create student logs."), frappe.PermissionError)
 
     student = payload.get("student")
     if not student:
@@ -615,6 +628,8 @@ def get_form_options(**payload):
 @frappe.whitelist()
 def submit_student_log(**payload):
     _validate_keys(payload, ALLOWED_SUBMIT_KEYS)
+    if not _can_create_student_log_for_session_user():
+        frappe.throw(_("You do not have permission to create student logs."), frappe.PermissionError)
 
     student = payload.get("student")
     log_type = payload.get("log_type")
@@ -675,7 +690,8 @@ def submit_student_log(**payload):
         doc.next_step = next_step
         doc.follow_up_person = follow_up_person
 
-    doc.insert(ignore_permissions=False)
+    can_use_native_create = bool(frappe.has_permission(LOG_DOCTYPE, ptype="create", user=frappe.session.user))
+    doc.insert(ignore_permissions=not can_use_native_create)
     doc.submit()
 
     return {"name": doc.name}

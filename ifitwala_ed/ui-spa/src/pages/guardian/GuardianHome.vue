@@ -11,6 +11,9 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
+					<RouterLink class="if-action" :to="{ name: 'guardian-course-selection' }"
+						>Course Selection</RouterLink
+					>
 					<RouterLink class="if-action" :to="{ name: 'guardian-activities' }"
 						>Activity Booking</RouterLink
 					>
@@ -273,6 +276,12 @@ const prepItems = computed(() => snapshot.value?.zones.preparation_and_support ?
 const recentActivity = computed(() => snapshot.value?.zones.recent_activity ?? []);
 
 const quickLinks = [
+	{
+		title: 'Course Selection',
+		description: 'Confirm each child’s program choices before the deadline.',
+		icon: 'check-square',
+		to: { name: 'guardian-course-selection' },
+	},
 	{
 		title: 'Activity Booking',
 		description: 'Book and manage activities for all children.',

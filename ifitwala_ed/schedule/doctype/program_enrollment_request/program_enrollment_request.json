@@ -30,6 +30,7 @@
   "override_by",
   "override_on",
   "section_break_audit",
+  "selection_window",
   "source_student_applicant",
   "source_applicant_enrollment_plan",
   "submitted_on",
@@ -176,6 +177,13 @@
    "label": "Audit"
   },
   {
+   "fieldname": "selection_window",
+   "fieldtype": "Link",
+   "label": "Selection Window",
+   "options": "Program Offering Selection Window",
+   "read_only": 1
+  },
+  {
    "fieldname": "source_student_applicant",
    "fieldtype": "Link",
    "label": "Source Student Applicant",
@@ -204,7 +212,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-01 00:00:00.000000",
+ "modified": "2026-03-26 12:05:00.000000",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Request",

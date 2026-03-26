@@ -50,6 +50,10 @@ frappe.ui.form.on('Org Communication', {
 		normalize_brief_dates(frm);
 	},
 
+	audiences_remove(frm) {
+		setup_issuing_school_field(frm);
+	},
+
 	status(frm) {
 		if (frm.doc.status === 'Scheduled' && !frm.doc.publish_from) {
 			frappe.msgprint({
@@ -98,6 +102,10 @@ function ensure_org_comm_context(frm) {
 	});
 }
 
+function has_organization_audience(frm) {
+	return Boolean((frm.doc.audiences || []).some(row => (row.target_mode || '').trim() === 'Organization'));
+}
+
 function setup_issuing_school_field(frm) {
 	const ctx = frm._org_comm_ctx || {};
 	const default_school = ctx.default_school || null;
@@ -107,6 +115,7 @@ function setup_issuing_school_field(frm) {
 	const is_privileged = !!ctx.is_privileged;
 	const can_select_school = !!ctx.can_select_school;
 	const lock_to_default_school = !!ctx.lock_to_default_school;
+	const needs_blank_school = has_organization_audience(frm);
 
 	if (!frm.doc.organization && default_organization) {
 		frm.set_value('organization', default_organization);
@@ -129,6 +138,21 @@ function setup_issuing_school_field(frm) {
 				};
 			});
 		}
+	}
+
+	if (needs_blank_school) {
+		if (frm.doc.school) {
+			frm.set_value('school', '');
+		}
+		if (frm.fields_dict.school) {
+			frm.set_df_property('school', 'read_only', 1);
+			frm.set_df_property(
+				'school',
+				'description',
+				__('Leave Issuing School blank because Organization audience rows are organization-level.')
+			);
+		}
+		return;
 	}
 
 	if (lock_to_default_school) {
@@ -320,6 +344,7 @@ frappe.ui.form.on('Org Communication Audience', {
 		const row = locals[cdt][cdn];
 		apply_audience_row_visibility(frm, cdt, cdn, row);
 		apply_recipient_defaults(frm, cdt, cdn, row);
+		setup_issuing_school_field(frm);
 
 		// If row.school is empty, inherit parent Issuing School for School Scope only
 		if (row.target_mode === 'School Scope' && !row.school && frm.doc.school) {
@@ -405,6 +430,9 @@ function toggle_grid_field(field, show) {
 }
 
 function get_allowed_recipient_fields(target_mode) {
+	if (target_mode === 'Organization') {
+		return ['to_staff'];
+	}
 	if (target_mode === 'Team') {
 		return ['to_staff'];
 	}
@@ -445,6 +473,14 @@ function apply_recipient_defaults(frm, cdt, cdn, row) {
 	});
 
 	if (target_mode === 'Team') {
+		if (!values.to_staff) {
+			values.to_staff = true;
+			frappe.model.set_value(cdt, cdn, 'to_staff', 1);
+		}
+		return;
+	}
+
+	if (target_mode === 'Organization') {
 		if (!values.to_staff) {
 			values.to_staff = true;
 			frappe.model.set_value(cdt, cdn, 'to_staff', 1);

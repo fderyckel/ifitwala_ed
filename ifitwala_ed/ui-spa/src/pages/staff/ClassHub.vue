@@ -22,7 +22,7 @@
 		<MyTeachingPanel
 			:notes="currentBundle.notes_preview"
 			:tasks="currentBundle.task_items"
-			@add-note="openQuickEvidence"
+			@add-note="openStudentLogQuickCreate()"
 			@open-note="openNote"
 			@open-task="openTask"
 		/>
@@ -118,6 +118,7 @@ function openStudent(student: ClassHubBundle['students'][number]) {
 		student_name: student.student_name,
 		student_group: currentBundle.value.header.student_group,
 		lesson_instance: currentBundle.value.session.lesson_instance ?? null,
+		can_create_student_log: currentBundle.value.permissions.can_create_student_log,
 	});
 }
 
@@ -189,6 +190,39 @@ function openNote(note: ClassHubBundle['notes_preview'][number]) {
 function openTask(task: ClassHubBundle['task_items'][number]) {
 	overlay.open('class-hub-task-review', {
 		title: task.title,
+	});
+}
+
+function openStudentLogQuickCreate(student?: { student: string; student_name: string }) {
+	actionMessage.value = '';
+
+	if (!currentBundle.value.permissions.can_create_student_log) {
+		actionMessage.value =
+			'Your current Student Log permission does not allow note creation from the Hub.';
+		return;
+	}
+
+	if (student) {
+		overlay.open('student-log-create', {
+			mode: 'attendance',
+			sourceLabel: 'Class Hub',
+			student: {
+				id: student.student,
+				label: student.student_name,
+				image: null,
+				meta: null,
+			},
+			student_group: {
+				id: currentBundle.value.header.student_group,
+				label: currentBundle.value.header.title,
+			},
+		});
+		return;
+	}
+
+	overlay.open('student-log-create', {
+		mode: 'home',
+		sourceLabel: 'Class Hub',
 	});
 }
 
@@ -278,6 +312,9 @@ function buildDemoBundle(studentGroupValue: string): ClassHubBundle {
 			title: `Class Hub - ${studentGroupValue}`,
 			academic_year: '2024-2025',
 			course: 'Science',
+		},
+		permissions: {
+			can_create_student_log: false,
 		},
 		now: {
 			date_label: 'Today',
