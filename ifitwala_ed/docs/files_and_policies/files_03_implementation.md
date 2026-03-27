@@ -74,6 +74,39 @@ Mandatory deployment verification for new Drive-backed upload wrappers:
 * add a regression test on the Ed side that resolves the correct Drive callable
 * add a regression test on the Drive side that the exported wrapper delegates to the intended service
 
+Cross-app MIME handoff rule:
+
+Status:
+
+* Implemented
+
+Code refs:
+
+* `ifitwala_ed/utilities/governed_uploads.py::_resolve_upload_mime_type_hint`
+* `ifitwala_ed/utilities/governed_uploads.py::upload_student_image`
+* `ifitwala_ed/utilities/governed_uploads.py::upload_employee_image`
+* `ifitwala_ed/utilities/governed_uploads.py::upload_guardian_image`
+* `ifitwala_ed/utilities/governed_uploads.py::upload_task_resource`
+* `ifitwala_ed/utilities/governed_uploads.py::upload_task_submission_attachment`
+* `ifitwala_ed/admission/admissions_portal.py::upload_applicant_document`
+* `ifitwala_ed/admission/admissions_portal.py::upload_applicant_profile_image`
+
+Test refs:
+
+* `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
+* `ifitwala_ed/admission/test_admissions_portal_uploads_unit.py`
+
+Rule:
+
+* `ifitwala_ed` owns `mime_type_hint` derivation for Drive-backed wrappers
+* derive the hint from the uploaded file object when available
+* if no file-object MIME is available, fall back to the filename
+* never forward `frappe.request.mimetype` or the outer request `Content-Type` from `/api/method/upload_file` as `mime_type_hint`
+* `multipart/form-data` is a transport-envelope value, not a governed file MIME
+* if Ed forwards the envelope MIME, Drive finalize is expected to fail closed on mismatch
+
+This rule applies to both Desk and admissions flows.
+
 Therefore:
 
 * do **not** add new direct `Attach`-based media workflows for school/website imagery
@@ -512,8 +545,9 @@ Desk forms MUST NOT use the generic Attach/Attach Image uploader for governed fi
 Instead, each doctype exposes a **named, whitelisted upload method** that:
 
 1) reads the uploaded file
-2) calls the authoritative governed upload boundary (`create_and_classify_file(...)` directly or the Drive session/finalize wrapper)
-3) updates the owning document field / attachment table
+2) derives the file MIME from the uploaded file object or filename, never from the multipart request envelope
+3) calls the authoritative governed upload boundary (`create_and_classify_file(...)` directly or the Drive session/finalize wrapper)
+4) updates the owning document field / attachment table
 
 Current governed Desk endpoints:
 

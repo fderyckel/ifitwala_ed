@@ -176,6 +176,37 @@ hasattr(i, "upload_guardian_image_service")
 
 ## Current Guidance
 
+### MIME contract for portal uploads
+
+Status:
+
+* Implemented
+
+Code refs:
+
+* `ifitwala_ed.admission.admissions_portal.upload_applicant_document`
+* `ifitwala_ed.admission.admissions_portal.upload_applicant_profile_image`
+* `ifitwala_ed.admission.admissions_portal.upload_applicant_guardian_image`
+* `ifitwala_ed.admission.admissions_portal.upload_applicant_health_vaccination_proof`
+* shared helper: `ifitwala_ed.utilities.governed_uploads._resolve_upload_mime_type_hint`
+
+Test refs:
+
+* `ifitwala_ed/admission/test_admissions_portal_uploads_unit.py`
+
+Rule:
+
+* `mime_type_hint` sent to Drive must describe the file bytes expected at finalize time
+* when the request carries `request.files["file"]`, derive the hint from the uploaded file object, not from `frappe.request.mimetype`
+* for helper calls that receive raw `content`, accept an explicit per-file MIME or fall back to `file_name`
+* never forward `multipart/form-data` to Drive as `mime_type_hint`
+
+Why this is explicit:
+
+* browser uploads routed through Frappe endpoints often have `frappe.request.mimetype == "multipart/form-data"`
+* that value describes the transport envelope only
+* forwarding it is a cross-app contract bug and Drive finalize should reject it when the bytes are actually `image/png`, `image/jpeg`, `application/pdf`, and so on
+
 ### Applicant profile image contract
 
 Authoritative contract:
@@ -249,3 +280,4 @@ As of this note:
 * applicant profile image uploads are correctly routed through `ifitwala_drive`
 * applicant guardian image uploads are correctly routed through `ifitwala_drive`
 * guardian image uploads now require a saved guardian row identity
+* portal upload helpers now explicitly treat `mime_type_hint` as file-byte metadata, not multipart transport metadata
