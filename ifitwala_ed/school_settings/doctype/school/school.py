@@ -114,15 +114,21 @@ class School(NestedSet):
         NestedSet.on_update(self)
 
     def after_save(self):
-        if self.has_value_changed("is_published") or self.has_value_changed("website_slug"):
+        publication_changed = self.has_value_changed("is_published") or self.has_value_changed("website_slug")
+        has_pages = bool(frappe.db.exists("School Website Page", {"school": self.name}))
+        if publication_changed:
             self.sync_website_page_publication()
-            if int(self.is_published or 0) == 1 and (self.website_slug or "").strip():
-                from ifitwala_ed.website.bootstrap import ensure_default_school_website
+        if (
+            int(self.is_published or 0) == 1
+            and (self.website_slug or "").strip()
+            and (publication_changed or not has_pages)
+        ):
+            from ifitwala_ed.website.bootstrap import ensure_default_school_website
 
-                ensure_default_school_website(
-                    school_name=self.name,
-                    set_default_organization=True,
-                )
+            ensure_default_school_website(
+                school_name=self.name,
+                set_default_organization=True,
+            )
 
     def after_insert(self):
         ensure_default_policy_for_school(self.name, ignore_permissions=True)

@@ -270,8 +270,8 @@ def _seed_course_learning_highlights(*, profile, course) -> bool:
 
     rows = frappe.get_all(
         "Learning Unit",
-        filters={"course": course.name, "is_published": 1, "unit_status": "Active"},
-        fields=["unit_name", "unit_order", "unit_overview", "essential_understanding"],
+        filters={"course": course.name, "is_published": 1},
+        fields=["unit_name", "unit_order", "unit_status", "unit_overview", "essential_understanding"],
         order_by="unit_order asc, unit_name asc",
         limit=6,
     )
@@ -279,6 +279,8 @@ def _seed_course_learning_highlights(*, profile, course) -> bool:
         return False
 
     for row in rows:
+        if (row.get("unit_status") or "").strip() == "Archived":
+            continue
         title = (row.unit_name or "").strip()
         if not title:
             continue

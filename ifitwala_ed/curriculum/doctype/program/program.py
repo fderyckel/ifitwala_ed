@@ -34,6 +34,7 @@ class Program(NestedSet):
         self._sync_default_website_profiles()
 
     def on_update(self):
+        NestedSet.on_update(self)
         if any(
             self.has_value_changed(fieldname)
             for fieldname in (

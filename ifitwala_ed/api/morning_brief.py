@@ -451,7 +451,7 @@ def _resolve_clinic_scope_academic_year_start(school_scope: list[str], end_date)
         matching_starts.append(getdate(year_start))
 
     if matching_starts:
-        return max(matching_starts)
+        return min(matching_starts)
 
     return None
 
