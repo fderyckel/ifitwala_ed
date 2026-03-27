@@ -747,35 +747,18 @@ frappe.ui.form.on("Program Offering", {
 
 		bind_offering_year_query(frm);
 		bind_program_course_query(frm);
+		const actionGroup = __("Actions");
 
-		// Add from Catalog (blue, standalone on the left)
-		const addFrom = frm.add_custom_button(__("Add from Catalog"), () => open_catalog_picker(frm));
-		if (addFrom) {
-			addFrom.removeClass("btn-default btn-secondary").addClass("btn-primary");
-		}
-
-		// Add Non-catalog (outlined blue, standalone on the left)
-		const addNonCat = frm.add_custom_button(__("Add Non-catalog"), () => open_non_catalog_picker(frm));
-		if (addNonCat) {
-			addNonCat.removeClass("btn-default btn-secondary").addClass("btn-outline-primary");
-			addNonCat.addClass("ms-2"); // small spacing
-		}
-
-		const createInvoice = frm.add_custom_button(__("Create Draft Tuition Invoice"), () => open_tuition_invoice_dialog(frm));
-		if (createInvoice) {
-			createInvoice.removeClass("btn-default btn-secondary").addClass("btn-outline-secondary");
-			createInvoice.addClass("ms-2");
-		}
+		frm.add_custom_button(__("Add from Catalog"), () => open_catalog_picker(frm), actionGroup);
+		frm.add_custom_button(__("Add Non-catalog"), () => open_non_catalog_picker(frm), actionGroup);
+		frm.add_custom_button(__("Create Draft Tuition Invoice"), () => open_tuition_invoice_dialog(frm), actionGroup);
 
 		if (!frm.is_new() && Number(frm.doc.allow_self_enroll || 0) === 1) {
-			const selectionWindow = frm.add_custom_button(
+			frm.add_custom_button(
 				__("Create Course Selection Window"),
-				() => new_selection_window(frm)
+				() => new_selection_window(frm),
+				actionGroup
 			);
-			if (selectionWindow) {
-				selectionWindow.removeClass("btn-default btn-secondary").addClass("btn-outline-secondary");
-				selectionWindow.addClass("ms-2");
-			}
 		}
 
 		// DO NOT call set_primary_action here; it forces a right-side black button
