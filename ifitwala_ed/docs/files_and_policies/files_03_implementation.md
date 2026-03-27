@@ -54,6 +54,25 @@ Current direct-dispatcher path still present in production code:
 Implication:
 
 * `ifitwala_drive` is now an application dependency of `ifitwala_ed`, not an optional companion app, because multiple live upload paths import Drive modules directly and fail closed when Drive is missing.
+* Any new governed upload path that crosses from `ifitwala_ed` into `ifitwala_drive` is a cross-app change set, not a local feature edit.
+
+Cross-app wrapper contract:
+
+* if `ifitwala_ed` calls a new `ifitwala_drive.api.*` method, that Drive wrapper must be exported in the deployed Drive app at the same time
+* the thin API wrapper and the underlying `ifitwala_drive.services.integration.ifitwala_ed_media.*` service must both exist
+* browser refresh, browser cache clear, and `bench clear-cache` do **not** reload Python imports for this contract
+* deployment is incomplete until app processes are restarted and the imported module surface matches the code on disk
+
+Mandatory deployment verification for new Drive-backed upload wrappers:
+
+* deploy both `ifitwala_ed` and `ifitwala_drive` together
+* restart the web and worker processes after deploy
+* verify from `bench --site <site> console`:
+  * `import ifitwala_drive.api.media as m; hasattr(m, "<method_name>")`
+  * `import ifitwala_drive.services.integration.ifitwala_ed_media as i; hasattr(i, "<method_name>_service")`
+  * confirm `m.__file__` and `i.__file__` point to the intended checkout
+* add a regression test on the Ed side that resolves the correct Drive callable
+* add a regression test on the Drive side that the exported wrapper delegates to the intended service
 
 Therefore:
 

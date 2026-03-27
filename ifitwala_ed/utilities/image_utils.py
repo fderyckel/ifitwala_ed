@@ -288,6 +288,67 @@ def _resolve_employee_original_path(file_doc) -> str | None:
     return _resolve_governed_original_path(file_doc)
 
 
+def _resolve_governed_display_url(
+    primary_subject_type: str,
+    subject_name: str | None,
+    *,
+    file_name: str | None,
+    file_url: str | None,
+) -> str | None:
+    raw_url = str(file_url or "").strip()
+    if not raw_url:
+        return None
+
+    resolved_subject = str(subject_name or "").strip()
+    if primary_subject_type != "Student" or not resolved_subject:
+        return raw_url
+
+    from ifitwala_ed.api.file_access import resolve_academic_file_open_url
+
+    return (
+        resolve_academic_file_open_url(
+            file_name=file_name,
+            file_url=raw_url,
+            context_doctype="Student",
+            context_name=resolved_subject,
+        )
+        or raw_url
+    )
+
+
+def _resolve_original_governed_image_url(
+    primary_subject_type: str,
+    subject_name: str | None,
+    original_url: str | None,
+) -> str | None:
+    raw_url = str(original_url or "").strip()
+    resolved_subject = str(subject_name or "").strip()
+    if not raw_url:
+        return None
+
+    file_name = None
+    if primary_subject_type and resolved_subject:
+        file_name = frappe.db.get_value(
+            "File",
+            {
+                "attached_to_doctype": primary_subject_type,
+                "attached_to_name": resolved_subject,
+                "file_url": raw_url,
+            },
+            "name",
+        )
+
+    if not file_url_is_accessible(raw_url, file_name=file_name):
+        return None
+
+    return _resolve_governed_display_url(
+        primary_subject_type,
+        resolved_subject,
+        file_name=file_name,
+        file_url=raw_url,
+    )
+
+
 def _get_governed_image_variants_map(
     primary_subject_type: str,
     subject_names: Sequence[str] | Iterable[str],
@@ -345,7 +406,16 @@ def _get_governed_image_variants_map(
         ):
             continue
 
-        variants.setdefault(subject_name, {})[slot] = file_url
+        display_url = _resolve_governed_display_url(
+            primary_subject_type,
+            subject_name,
+            file_name=file_name,
+            file_url=file_url,
+        )
+        if not display_url:
+            continue
+
+        variants.setdefault(subject_name, {})[slot] = display_url
 
     return variants
 
@@ -367,7 +437,7 @@ def _get_preferred_governed_image_url(
         if file_url:
             return file_url
 
-    return original_url if file_url_exists_on_disk(original_url) else None
+    return _resolve_original_governed_image_url(primary_subject_type, subject_name, original_url)
 
 
 def _build_governed_image_variants(
@@ -383,8 +453,10 @@ def _build_governed_image_variants(
         if subject_name
         else {}
     )
-    original_fallback = variants.get("profile_image") or (
-        original_url if file_url_exists_on_disk(original_url) else None
+    original_fallback = variants.get("profile_image") or _resolve_original_governed_image_url(
+        primary_subject_type,
+        subject_name,
+        original_url,
     )
 
     return {
@@ -426,8 +498,12 @@ def _apply_preferred_governed_images(
 
         if preferred_url:
             row[image_field] = preferred_url
-        elif file_url_exists_on_disk(original_url):
-            row[image_field] = original_url
+        else:
+            row[image_field] = _resolve_original_governed_image_url(
+                primary_subject_type,
+                subject_name,
+                original_url,
+            )
 
     return rows
 

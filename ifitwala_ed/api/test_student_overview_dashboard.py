@@ -9,6 +9,7 @@ import frappe
 
 from ifitwala_ed.api.student_overview_dashboard import (
     _history_block,
+    _identity_block,
     _wellbeing_block,
     get_filter_meta,
     get_student_center_snapshot,
@@ -18,6 +19,64 @@ from ifitwala_ed.tests.base import IfitwalaFrappeTestCase
 
 
 class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
+    def test_identity_block_uses_preferred_student_photo(self):
+        def fake_get_value(doctype, name_or_filters, fieldname, as_dict=False, order_by=None):
+            if doctype == "Student":
+                self.assertEqual(name_or_filters, "STU-001")
+                self.assertEqual(
+                    fieldname,
+                    [
+                        "name",
+                        "student_full_name",
+                        "student_image",
+                        "cohort",
+                        "student_gender",
+                        "student_date_of_birth",
+                        "anchor_school",
+                    ],
+                )
+                self.assertTrue(as_dict)
+                return frappe._dict(
+                    {
+                        "name": "STU-001",
+                        "student_full_name": "Amina Example",
+                        "student_image": "/private/files/original-student.png",
+                        "cohort": "G6",
+                        "student_gender": "Female",
+                        "student_date_of_birth": "2014-03-02",
+                        "anchor_school": "SCH-001",
+                    }
+                )
+
+            if doctype == "Program Enrollment":
+                self.assertEqual(name_or_filters, {"student": "STU-001"})
+                self.assertTrue(as_dict)
+                self.assertEqual(order_by, "enrollment_date desc")
+                return None
+
+            if doctype == "School":
+                self.assertEqual(name_or_filters, "SCH-001")
+                self.assertEqual(fieldname, "school_name")
+                return "School One"
+
+            self.fail(f"Unexpected get_value doctype: {doctype}")
+
+        with (
+            patch("ifitwala_ed.api.student_overview_dashboard.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.api.student_overview_dashboard.frappe.db.sql", return_value=[]),
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard.get_preferred_student_image_url",
+                return_value="/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1&context_doctype=Student&context_name=STU-001",
+            ) as image_url_mock,
+        ):
+            payload = _identity_block("STU-001", None, None)
+
+        image_url_mock.assert_called_once_with("STU-001", original_url="/private/files/original-student.png")
+        self.assertEqual(
+            payload["photo"],
+            "/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1&context_doctype=Student&context_name=STU-001",
+        )
+
     def test_wellbeing_block_merges_logs_referrals_visits_and_health_note(self):
         logs = [
             frappe._dict(

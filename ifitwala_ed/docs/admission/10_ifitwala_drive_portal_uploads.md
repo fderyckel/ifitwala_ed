@@ -135,6 +135,7 @@ Workflow-aware endpoints currently available:
 * `ifitwala_drive.api.admissions.upload_applicant_guardian_image`
 * `ifitwala_drive.api.admissions.upload_applicant_health_vaccination_proof`
 * `ifitwala_drive.api.media.upload_student_image`
+* `ifitwala_drive.api.media.upload_guardian_image`
 * `ifitwala_drive.api.media.upload_employee_image`
 * `ifitwala_drive.api.media.upload_organization_logo`
 * `ifitwala_drive.api.media.upload_school_logo`
@@ -153,6 +154,23 @@ Rule:
 
 * admissions portal code should prefer workflow-aware admissions/media endpoints
 * generic upload lifecycle endpoints should remain internal building blocks unless a new wrapper does not yet exist
+
+Operational deployment rule:
+
+* adding a new `ifitwala_drive.api.*` wrapper is a cross-app deployment, not an Ed-only code change
+* the exported API wrapper and the underlying Drive integration service must ship together
+* `bench clear-cache` is not sufficient for new Python wrapper exports; restart app processes after deploy
+* verify wrapper availability from `bench --site <site> console` before testing in the browser
+
+Recommended console verification:
+
+```python
+import ifitwala_drive.api.media as m
+hasattr(m, "upload_guardian_image")
+
+import ifitwala_drive.services.integration.ifitwala_ed_media as i
+hasattr(i, "upload_guardian_image_service")
+```
 
 ---
 
@@ -218,6 +236,7 @@ For each Drive-backed admissions upload:
 * test that a `Drive Upload Session` path is used
 * test that classification and attached field remain correct
 * test guardian image slot derivation from guardian row identity
+* test wrapper-export drift: if the thin `ifitwala_drive.api.*` export is missing but the integration service exists, Ed should fail with an actionable deploy message or use the approved fallback
 
 ---
 
