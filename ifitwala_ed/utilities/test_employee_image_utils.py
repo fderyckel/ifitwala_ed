@@ -134,3 +134,62 @@ class TestEmployeeImageUtils(FrappeTestCase):
             )
 
         self.assertEqual(image_url, thumb_url)
+
+    def test_apply_preferred_employee_images_keeps_employee_specific_variants(self):
+        classification_rows = [
+            {
+                "primary_subject_id": "EMP-0001",
+                "slot": "profile_image_card",
+                "file": "FILE-CARD-1",
+            },
+            {
+                "primary_subject_id": "EMP-0002",
+                "slot": "profile_image_thumb",
+                "file": "FILE-THUMB-2",
+            },
+        ]
+        file_rows = [
+            {"name": "FILE-CARD-1", "file_url": "/files/employee/card_employee_1.webp", "is_private": 0},
+            {"name": "FILE-THUMB-2", "file_url": "/files/employee/thumb_employee_2.webp", "is_private": 0},
+        ]
+        rows = [
+            {"id": "EMP-0001", "image": "/files/employee/original_employee_1.png"},
+            {"id": "EMP-0002", "image": "/files/employee/original_employee_2.png"},
+            {"id": "EMP-0003", "image": "/files/employee/original_employee_3.png"},
+        ]
+
+        with (
+            patch("ifitwala_ed.utilities.image_utils.frappe.get_all", side_effect=[classification_rows, file_rows]),
+            patch("ifitwala_ed.utilities.image_utils.file_url_exists_on_disk", return_value=True),
+        ):
+            resolved = image_utils.apply_preferred_employee_images(rows)
+
+        self.assertEqual(resolved[0]["image"], "/files/employee/card_employee_1.webp")
+        self.assertEqual(resolved[1]["image"], "/files/employee/thumb_employee_2.webp")
+        self.assertEqual(resolved[2]["image"], "/files/employee/original_employee_3.png")
+
+    def test_apply_preferred_employee_images_falls_back_to_original_when_variant_is_missing(self):
+        classification_rows = [
+            {
+                "primary_subject_id": "EMP-0001",
+                "slot": "profile_image_thumb",
+                "file": "FILE-BROKEN-THUMB",
+            },
+        ]
+        file_rows = [
+            {"name": "FILE-BROKEN-THUMB", "file_url": "/files/employee/thumb_broken.webp", "is_private": 0},
+        ]
+        rows = [
+            {"id": "EMP-0001", "image": "/files/employee/original_employee.png"},
+        ]
+
+        def fake_file_exists(file_url, is_private=0):
+            return file_url != "/files/employee/thumb_broken.webp"
+
+        with (
+            patch("ifitwala_ed.utilities.image_utils.frappe.get_all", side_effect=[classification_rows, file_rows]),
+            patch("ifitwala_ed.utilities.image_utils.file_url_exists_on_disk", side_effect=fake_file_exists),
+        ):
+            resolved = image_utils.apply_preferred_employee_images(rows)
+
+        self.assertEqual(resolved[0]["image"], "/files/employee/original_employee.png")
