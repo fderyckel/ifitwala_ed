@@ -9,7 +9,11 @@ from frappe import _
 from frappe.utils import cint, now_datetime
 
 from ifitwala_ed.admission.admission_utils import get_applicant_document_slot_spec
-from ifitwala_ed.utilities.governed_uploads import _drive_upload_and_finalize, _load_drive_module
+from ifitwala_ed.utilities.governed_uploads import (
+    _drive_upload_and_finalize,
+    _load_drive_module,
+    _resolve_upload_mime_type_hint,
+)
 
 ALLOWED_UPLOAD_SOURCES = {"Desk", "SPA", "API", "Job"}
 
@@ -97,7 +101,10 @@ def upload_applicant_document(
                 "item_key": item_doc.item_key,
                 "item_label": item_doc.item_label,
                 "filename_original": filename,
-                "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+                "mime_type_hint": _resolve_upload_mime_type_hint(
+                    filename=filename,
+                    explicit=kwargs.get("mime_type_hint") or kwargs.get("content_type"),
+                ),
                 "expected_size_bytes": len(content),
                 "upload_source": source,
                 "is_private": cint(is_private) if is_private is not None else 1,
@@ -124,6 +131,7 @@ def upload_applicant_profile_image(
     student_applicant: str,
     file_name: str,
     content,
+    mime_type_hint: str | None = None,
     upload_source: str | None = "API",
 ):
     """Governed admissions applicant-profile image upload routed through Drive."""
@@ -144,7 +152,10 @@ def upload_applicant_profile_image(
         payload={
             "student_applicant": student_applicant,
             "filename_original": file_name,
-            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "mime_type_hint": _resolve_upload_mime_type_hint(
+                filename=file_name,
+                explicit=mime_type_hint,
+            ),
             "expected_size_bytes": len(content),
             "upload_source": source,
         },
@@ -166,6 +177,7 @@ def upload_applicant_guardian_image(
     guardian_row_name: str,
     file_name: str,
     content,
+    mime_type_hint: str | None = None,
     upload_source: str | None = "API",
 ):
     """Governed admissions guardian image upload routed through Drive."""
@@ -189,7 +201,10 @@ def upload_applicant_guardian_image(
             "student_applicant": student_applicant,
             "guardian_row_name": guardian_row_name,
             "filename_original": file_name,
-            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "mime_type_hint": _resolve_upload_mime_type_hint(
+                filename=file_name,
+                explicit=mime_type_hint,
+            ),
             "expected_size_bytes": len(content),
             "upload_source": source,
         },
@@ -215,6 +230,7 @@ def upload_applicant_health_vaccination_proof(
     row_index: int | None = None,
     file_name: str,
     content,
+    mime_type_hint: str | None = None,
     upload_source: str | None = "API",
 ):
     """Governed admissions health upload endpoint routed through Drive."""
@@ -241,7 +257,10 @@ def upload_applicant_health_vaccination_proof(
             "date": date,
             "row_index": row_index,
             "filename_original": file_name,
-            "mime_type_hint": frappe.request.mimetype if getattr(frappe, "request", None) else None,
+            "mime_type_hint": _resolve_upload_mime_type_hint(
+                filename=file_name,
+                explicit=mime_type_hint,
+            ),
             "expected_size_bytes": len(content),
             "upload_source": source,
         },

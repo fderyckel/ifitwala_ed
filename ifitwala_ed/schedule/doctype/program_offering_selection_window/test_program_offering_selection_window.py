@@ -217,6 +217,11 @@ def _make_offering(program, school, academic_year, required_course, optional_cou
                 },
             ],
             "offering_course_basket_groups": [{"course": optional_course, "basket_group": basket_group}],
-            "enrollment_rules": [{"rule_type": "MIN_TOTAL_COURSES", "int_value_1": 1}],
+            "enrollment_rules": [
+                {"rule_type": "MIN_TOTAL_COURSES", "int_value_1": 1},
+                # Portal choice-state tests rely on this fixture requiring one optional
+                # selection from the configured basket group.
+                {"rule_type": "REQUIRE_GROUP_COVERAGE", "basket_group": basket_group},
+            ],
         }
     ).insert()

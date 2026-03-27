@@ -132,6 +132,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
+import { __ } from '@/lib/i18n';
 import { getSelfEnrollmentPortalBoard } from '@/lib/services/selfEnrollment/selfEnrollmentService';
 import type {
 	PortalSelectionWindow,

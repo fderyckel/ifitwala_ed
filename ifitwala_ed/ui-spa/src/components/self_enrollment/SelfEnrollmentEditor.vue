@@ -374,6 +374,7 @@ import {
 	haveChoiceRowsChanged,
 	normalizeChoiceRow,
 } from '@/components/self_enrollment/choiceSections';
+import { __ } from '@/lib/i18n';
 import type {
 	Response as ChoiceStateResponse,
 	SelfEnrollmentChoiceCourse,

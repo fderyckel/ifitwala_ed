@@ -15,9 +15,30 @@ class TestSelfEnrollmentApi(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
+        self._guardian_links: list[tuple[str, str]] = []
 
     def tearDown(self):
         frappe.set_user("Administrator")
+        # These links live outside the test's explicit created-doc list and can leak
+        # guardian scope across methods when naming series are reused in CI.
+        for student_name, guardian_name in reversed(self._guardian_links):
+            frappe.db.delete(
+                "Student Guardian",
+                {
+                    "parent": student_name,
+                    "parenttype": "Student",
+                    "parentfield": "guardians",
+                    "guardian": guardian_name,
+                },
+            )
+            frappe.db.delete(
+                "Guardian Student",
+                {
+                    "parent": guardian_name,
+                    "parenttype": "Guardian",
+                    "student": student_name,
+                },
+            )
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
@@ -200,6 +221,7 @@ class TestSelfEnrollmentApi(FrappeTestCase):
             },
         )
         student.save(ignore_permissions=True)
+        self._guardian_links.append((student.name, guardian.name))
         return user.name
 
     def _ensure_role(self, role_name: str):

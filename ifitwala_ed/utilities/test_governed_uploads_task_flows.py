@@ -54,6 +54,73 @@ class _FakeDoc:
 
 
 class TestGovernedUploadTaskFlows(TestCase):
+    def test_resolve_upload_mime_type_hint_ignores_multipart_envelope(self):
+        with _governed_uploads_module() as governed_uploads:
+            governed_uploads.frappe.request = SimpleNamespace(
+                mimetype="multipart/form-data",
+                files={"file": SimpleNamespace(mimetype="image/png", content_type="image/png")},
+            )
+
+            mime_type_hint = governed_uploads._resolve_upload_mime_type_hint(
+                filename="student-photo.png",
+                explicit="multipart/form-data",
+            )
+
+        self.assertEqual(mime_type_hint, "image/png")
+
+    def test_upload_student_image_uses_uploaded_file_mime_type_not_request_envelope(self):
+        doc = _FakeDoc(
+            name="STU-0001",
+            anchor_school="SCH-0001",
+            student_image="",
+        )
+        doc.sync_student_contact_image = lambda: None
+        fake_drive_api = SimpleNamespace(upload_student_image=object())
+        file_doc = SimpleNamespace(
+            name="FILE-STU-0001",
+            file_url="/private/files/student-photo.png",
+            file_name="student-photo.png",
+            file_size=640,
+        )
+
+        with _governed_uploads_module() as governed_uploads:
+            governed_uploads.frappe.request = SimpleNamespace(
+                mimetype="multipart/form-data",
+                files={"file": SimpleNamespace(mimetype="image/png", content_type="image/png")},
+            )
+            with (
+                patch.object(governed_uploads, "_require_doc", return_value=doc),
+                patch.object(
+                    governed_uploads,
+                    "_get_uploaded_file",
+                    return_value=("student-photo.png", b"student-content"),
+                ),
+                patch.object(
+                    governed_uploads,
+                    "_get_drive_media_callable",
+                    return_value=fake_drive_api.upload_student_image,
+                ),
+                patch.object(governed_uploads, "_ensure_file_on_disk"),
+                patch.object(
+                    governed_uploads,
+                    "_drive_upload_and_finalize",
+                    return_value=({"upload_session_id": "DUS-STU-1"}, {"file_id": "FILE-STU-0001"}, file_doc),
+                ) as bridge,
+                patch.object(governed_uploads.frappe.db, "set_value") as set_value,
+            ):
+                payload = governed_uploads.upload_student_image(student="STU-0001")
+
+        bridge.assert_called_once()
+        self.assertEqual(bridge.call_args.kwargs["payload"]["mime_type_hint"], "image/png")
+        set_value.assert_called_once_with(
+            "Student",
+            "STU-0001",
+            "student_image",
+            "/private/files/student-photo.png",
+            update_modified=False,
+        )
+        self.assertEqual(payload["file"], "FILE-STU-0001")
+
     def test_get_drive_media_callable_falls_back_to_integration_service(self):
         api_module = SimpleNamespace()
         observed = {}

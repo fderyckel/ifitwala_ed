@@ -227,7 +227,7 @@ class TestPolicySignature(FrappeTestCase):
         self.assertEqual(new_version_row.get("acknowledgement_status"), "new_version")
 
     def test_staff_policy_library_defaults_to_employee_school_and_inherits_parent_school_policy(self):
-        parent_school = make_school(self.organization.name, prefix="PS Parent School")
+        parent_school = make_school(self.organization.name, prefix="PS Parent School", is_group=1)
         self.created.append(("School", parent_school.name))
 
         child_school = frappe.get_doc(
