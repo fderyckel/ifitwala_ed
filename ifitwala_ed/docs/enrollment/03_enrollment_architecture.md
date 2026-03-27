@@ -1,4 +1,4 @@
-# enrollment_notes.md
+# Enrollment Architecture
 
 ## Status
 
@@ -47,9 +47,11 @@ It is not a marketing summary and it is not a policy catalog.
 If code and this document disagree, stop and resolve the drift explicitly.
 
 Related architecture:
-- `docs/enrollment/academic_year_architecture.md`
-- `docs/enrollment/05_course_choice_semantics_proposal.md`
-- `docs/enrollment/activity_booking_architecture.md`
+- `docs/enrollment/01_academic_year_architecture.md`
+- `docs/enrollment/02_school_calendar_architecture.md`
+- `docs/enrollment/07_year_rollover_architecture.md`
+- `docs/enrollment/05_course_choice_semantics.md`
+- `docs/enrollment/06_activity_booking_architecture.md`
 
 ---
 
@@ -435,7 +437,7 @@ Code refs:
 - `ifitwala_ed/schedule/grade_scale_resolver_utils.py`
 - `ifitwala_ed/schedule/basket_group_utils.py`
 - `ifitwala_ed/schedule/program_enrollment_request_choice.py`
-- `ifitwala_ed/docs/enrollment/05_course_choice_semantics_proposal.md`
+- `ifitwala_ed/docs/enrollment/05_course_choice_semantics.md`
 Test refs:
 - `ifitwala_ed/schedule/test_enrollment_engine.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/test_program_enrollment_request.py`
@@ -585,7 +587,7 @@ They do not:
 
 Status: Implemented as a sibling architecture
 Code refs:
-- `ifitwala_ed/docs/enrollment/activity_booking_architecture.md`
+- `ifitwala_ed/docs/enrollment/06_activity_booking_architecture.md`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.json`
 Test refs:
 - `ifitwala_ed/api/test_activity_booking.py`
@@ -596,7 +598,7 @@ Activity booking follows the same discipline:
 - readiness checks are explicit
 - portal exposure is governed
 
-But its lifecycle is documented separately in `activity_booking_architecture.md`.
+But its lifecycle is documented separately in `06_activity_booking_architecture.md`.
 
 Do not mix academic enrollment rules and activity-booking rules inside one undocumented hybrid flow.
 

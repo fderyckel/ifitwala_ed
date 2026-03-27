@@ -1,6 +1,6 @@
-# Course Choice Semantics Proposal
+# Course Choice Semantics
 
-This proposal was implemented on 2026-03-11. The sections below now describe the live runtime contract and preserve the rationale for the cutover.
+Implemented runtime contract. This note records the live semantics and the rationale for the cutover completed on 2026-03-11.
 
 The current enrollment stack has semantic drift between:
 

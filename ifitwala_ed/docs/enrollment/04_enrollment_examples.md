@@ -4,12 +4,12 @@
 
 **Expanded Scenarios & Reality Checks (Non‑Normative, Export‑Ready)**
 
-This document **complements** `enrollment_notes.md`.
+This document **complements** `03_enrollment_architecture.md`.
 
-* `enrollment_notes.md` = **authoritative architecture & intent**
+* `03_enrollment_architecture.md` = **authoritative architecture & intent**
 * `enrollment_examples.md` = **deep scenarios, stress‑tests, and reality mapping**
 
-All examples in this file assume the canonical runtime chain documented in `enrollment_notes.md`:
+All examples in this file assume the canonical runtime chain documented in `03_enrollment_architecture.md`:
 
 `Program Offering` -> `Program Offering Selection Window` -> `Program Enrollment Request` -> `Program Enrollment`
 
@@ -21,7 +21,7 @@ for the admissions bridge.
 
 If there is ever a conflict:
 
-> **`enrollment_notes.md` always wins.**
+> **`03_enrollment_architecture.md` always wins.**
 
 This document exists to:
 

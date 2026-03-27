@@ -50,7 +50,7 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianFinance.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`
 - `ifitwala_ed/ui-spa/src/types/contracts/activity_booking/get_activity_portal_board.ts`
-- `ifitwala_ed/docs/enrollment/activity_booking_architecture.md`
+- `ifitwala_ed/docs/enrollment/06_activity_booking_architecture.md`
 
 Test refs:
 - `ifitwala_ed/api/test_self_enrollment.py`
@@ -95,7 +95,7 @@ Status: Implemented
 Code refs:
 - `ifitwala_ed/api/activity_booking.py`
 - `ifitwala_ed/api/guardian_home.py`
-- `ifitwala_ed/docs/enrollment/activity_booking_architecture.md`
+- `ifitwala_ed/docs/enrollment/06_activity_booking_architecture.md`
 
 Test refs:
 - `ifitwala_ed/api/test_activity_booking.py`

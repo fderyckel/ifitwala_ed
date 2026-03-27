@@ -1,4 +1,4 @@
-# Activity Booking Architecture (v2)
+# Activity Booking Architecture
 
 Status: Active
 
