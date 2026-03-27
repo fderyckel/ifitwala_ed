@@ -1,0 +1,94 @@
+# Copyright (c) 2026, François de Ryckel and contributors
+# For license information, please see license.txt
+
+import os
+import shutil
+from unittest.mock import patch
+
+import frappe
+from frappe.tests.utils import FrappeTestCase
+from PIL import Image
+
+from ifitwala_ed.utilities import image_utils
+
+
+class TestGuardianImageUtils(FrappeTestCase):
+    def tearDown(self):
+        drive_root = frappe.utils.get_site_path("private", "files", "ifitwala_drive", "files", "aa")
+        if os.path.isdir(drive_root):
+            shutil.rmtree(drive_root, ignore_errors=True)
+
+    def test_generate_guardian_derivatives_from_drive_private_file_url(self):
+        relative_url = "/private/files/ifitwala_drive/files/aa/bb/guardian-source.png"
+        absolute_path = frappe.utils.get_site_path(relative_url.lstrip("/"))
+        os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
+        Image.new("RGB", (1200, 1200), color=(80, 40, 120)).save(absolute_path, "PNG")
+
+        file_doc = frappe._dict(
+            {
+                "name": "FILE-GRD-0001",
+                "attached_to_doctype": "Guardian",
+                "attached_to_name": "GRD-0001",
+                "attached_to_field": "guardian_image",
+                "file_url": relative_url,
+                "file_name": "guardian-source.png",
+                "is_private": 0,
+            }
+        )
+        classification = frappe._dict(
+            {
+                "primary_subject_type": "Guardian",
+                "primary_subject_id": "GRD-0001",
+                "data_class": "identity_image",
+                "purpose": "guardian_profile_display",
+                "retention_policy": "until_school_exit_plus_6m",
+                "slot": "profile_image",
+                "organization": "ORG-0001",
+                "school": None,
+                "upload_source": "Desk",
+                "secondary_subjects": [],
+            }
+        )
+
+        with (
+            patch("ifitwala_ed.utilities.image_utils._get_file_classification", return_value=classification),
+            patch("ifitwala_ed.utilities.image_utils._governed_derivative_exists", return_value=False),
+            patch("ifitwala_ed.utilities.file_dispatcher.create_and_classify_file") as create_and_classify,
+        ):
+            image_utils._generate_guardian_derivatives(file_doc)
+
+        self.assertEqual(create_and_classify.call_count, 3)
+        created_slots = {call.kwargs["classification"]["slot"] for call in create_and_classify.call_args_list}
+        self.assertEqual(
+            created_slots,
+            {"profile_image_thumb", "profile_image_card", "profile_image_medium"},
+        )
+
+    def test_get_preferred_guardian_image_url_prefers_thumb_variant(self):
+        classification_rows = [
+            {
+                "primary_subject_id": "GRD-0001",
+                "slot": "profile_image_medium",
+                "file": "FILE-MEDIUM",
+            },
+            {
+                "primary_subject_id": "GRD-0001",
+                "slot": "profile_image_thumb",
+                "file": "FILE-THUMB",
+            },
+        ]
+        file_rows = [
+            {"name": "FILE-MEDIUM", "file_url": "/files/guardian/medium_guardian.webp", "is_private": 0},
+            {"name": "FILE-THUMB", "file_url": "/files/guardian/thumb_guardian.webp", "is_private": 0},
+        ]
+
+        with (
+            patch("ifitwala_ed.utilities.image_utils.frappe.get_all", side_effect=[classification_rows, file_rows]),
+            patch("ifitwala_ed.utilities.image_utils.file_url_exists_on_disk", return_value=True),
+        ):
+            image_url = image_utils.get_preferred_guardian_image_url(
+                "GRD-0001",
+                original_url="/files/guardian/original_guardian.png",
+            )
+
+        self.assertEqual(image_url, "/files/guardian/thumb_guardian.webp")

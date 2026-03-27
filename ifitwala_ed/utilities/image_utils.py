@@ -29,6 +29,8 @@ EMPLOYEE_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
 EMPLOYEE_VARIANT_PRIORITY = EMPLOYEE_VARIANT_SLOTS
 STUDENT_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
 STUDENT_VARIANT_PRIORITY = STUDENT_VARIANT_SLOTS
+GUARDIAN_VARIANT_SLOTS = PROFILE_IMAGE_VARIANT_SLOTS
+GUARDIAN_VARIANT_PRIORITY = GUARDIAN_VARIANT_SLOTS
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -602,6 +604,53 @@ def apply_preferred_student_images(
     )
 
 
+def get_guardian_image_variants_map(
+    guardian_names: Sequence[str] | Iterable[str],
+    *,
+    slots: Sequence[str] = GUARDIAN_VARIANT_SLOTS,
+) -> dict[str, dict[str, str]]:
+    return _get_governed_image_variants_map("Guardian", guardian_names, slots=slots)
+
+
+def get_preferred_guardian_image_url(
+    guardian_name: str | None,
+    *,
+    original_url: str | None = None,
+    slots: Sequence[str] = GUARDIAN_VARIANT_PRIORITY,
+) -> str | None:
+    return _get_preferred_governed_image_url(
+        "Guardian",
+        guardian_name,
+        original_url=original_url,
+        slots=slots,
+    )
+
+
+def build_guardian_image_variants(guardian_name: str | None, original_url: str | None = None) -> dict[str, str | None]:
+    return _build_governed_image_variants(
+        "Guardian",
+        guardian_name,
+        original_url=original_url,
+        slots=GUARDIAN_VARIANT_SLOTS,
+    )
+
+
+def apply_preferred_guardian_images(
+    rows: list[dict],
+    *,
+    guardian_field: str = "guardian",
+    image_field: str = "guardian_image",
+    slots: Sequence[str] = GUARDIAN_VARIANT_PRIORITY,
+) -> list[dict]:
+    return _apply_preferred_governed_images(
+        rows,
+        primary_subject_type="Guardian",
+        subject_field=guardian_field,
+        image_field=image_field,
+        slots=slots,
+    )
+
+
 def _generate_governed_profile_derivatives(file_doc, *, doctype: str, fieldname: str, log_label: str):
     if not file_doc or file_doc.attached_to_doctype != doctype:
         return
@@ -686,6 +735,15 @@ def _generate_student_derivatives(file_doc):
         doctype="Student",
         fieldname="student_image",
         log_label="Student",
+    )
+
+
+def _generate_guardian_derivatives(file_doc):
+    _generate_governed_profile_derivatives(
+        file_doc,
+        doctype="Guardian",
+        fieldname="guardian_image",
+        log_label="Guardian",
     )
 
 
@@ -788,6 +846,12 @@ def handle_file_after_insert(doc, method=None):
         if not doc.file_url or not doc.file_url.startswith("/files/student/"):
             return
 
+    if doc.attached_to_doctype == "Guardian":
+        if not frappe.db.exists("File Classification", {"file": doc.name}):
+            return
+        _generate_guardian_derivatives(doc)
+        return
+
     if not (doc.file_url and doc.attached_to_doctype):
         return
 
@@ -835,6 +899,9 @@ def handle_governed_file_after_classification(file_doc):
         return
     if file_doc.attached_to_doctype == "Student":
         _generate_student_derivatives(file_doc)
+        return
+    if file_doc.attached_to_doctype == "Guardian":
+        _generate_guardian_derivatives(file_doc)
 
 
 # ────────────────────────────────────────────────────────────────────────────
