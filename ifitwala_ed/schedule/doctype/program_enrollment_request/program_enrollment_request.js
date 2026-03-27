@@ -121,6 +121,157 @@ function toggleTechnicalReviewFields(frm) {
 	);
 }
 
+function safeParseValidationPayload(value) {
+	if (!hasValue(value)) return null;
+	try {
+		return JSON.parse(value);
+	} catch (error) {
+		return null;
+	}
+}
+
+function extractBasketGroupName(message) {
+	const text = String(message || "").trim();
+	const match = text.match(/'([^']+)'/);
+	return match ? String(match[1] || "").trim() : "";
+}
+
+function formatEducatorBasketMessage(entry) {
+	const payload = typeof entry === "string" ? { message: entry } : (entry || {});
+	const code = String(payload.code || "").trim();
+	const message = String(payload.message || "").trim();
+
+	if (code === "missing_required" || message === "Missing required courses in basket.") {
+		return __("A required course is missing from this request.");
+	}
+
+	if (
+		code === "ambiguous_basket_group" ||
+		message === "One or more selected courses must be assigned to a basket group before validation can pass."
+	) {
+		return __("A selected course still needs a choice section before the request can advance.");
+	}
+
+	if (code === "require_group_coverage" || message.startsWith("Basket must include at least one course from group")) {
+		const groupName = extractBasketGroupName(message);
+		return groupName
+			? __("Choice section still missing: {0}.", [groupName])
+			: __("A required choice section is still missing.");
+	}
+
+	return message || null;
+}
+
+function formatEducatorCourseReason(courseLabel, reason) {
+	const text = String(reason || "").trim();
+	if (!text) return null;
+
+	if (text === "Capacity full for this course.") {
+		return null;
+	}
+
+	if (text === "Course is not part of the Program Offering.") {
+		return __("{0} is no longer part of this program offering.", [courseLabel]);
+	}
+
+	if (
+		text === "Prerequisite requirements not met." ||
+		text === "Rule not supported by current schema." ||
+		(text.startsWith("Required course ") && text.endsWith(" not completed.")) ||
+		text.startsWith("No numeric score evidence for ") ||
+		(text.startsWith("Required ") && text.includes(" score ") && text.includes("; got "))
+	) {
+		return __("{0} needs prerequisite review before the request can advance.", [courseLabel]);
+	}
+
+	if (text === "Course already completed and not repeatable.") {
+		return __("{0} has already been completed and cannot be selected again.", [courseLabel]);
+	}
+
+	if (text === "Maximum attempts exceeded.") {
+		return __("{0} has already reached the maximum number of attempts.", [courseLabel]);
+	}
+
+	return courseLabel ? __("{0}: {1}", [courseLabel, text]) : text;
+}
+
+function buildEducatorReviewMessages(frm) {
+	const validationStatus = String(frm.doc.validation_status || "").trim();
+	const requestStatus = String(frm.doc.status || "").trim();
+	const payload = safeParseValidationPayload(frm.doc.validation_payload);
+	const messages = [];
+	const seen = new Set();
+
+	function push(message) {
+		const normalized = String(message || "").trim();
+		if (!normalized || seen.has(normalized)) return;
+		seen.add(normalized);
+		messages.push(normalized);
+	}
+
+	if (validationStatus === "Invalid") {
+		if (Number(frm.doc.requires_override || 0) === 1) {
+			push(__("School override is required before this request can be approved."));
+		}
+
+		const basket = payload?.results?.basket || {};
+		for (const violation of basket.violations || []) {
+			push(formatEducatorBasketMessage(violation));
+		}
+		for (const reason of basket.reasons || []) {
+			push(formatEducatorBasketMessage(reason));
+		}
+
+		const capacityCourses = [];
+		for (const row of payload?.results?.courses || []) {
+			if (!row?.blocked) continue;
+			const courseLabel = String(row.course || "").trim();
+			const reasons = Array.from(
+				new Set((row.reasons || []).map((reason) => String(reason || "").trim()).filter(Boolean))
+			);
+
+			if (reasons.includes("Capacity full for this course.") && courseLabel) {
+				capacityCourses.push(courseLabel);
+			}
+
+			for (const reason of reasons) {
+				push(formatEducatorCourseReason(courseLabel, reason));
+			}
+		}
+
+		if (capacityCourses.length === 1) {
+			push(__("No places are currently available in {0}.", [capacityCourses[0]]));
+		} else if (capacityCourses.length > 1) {
+			push(__("No places are currently available in: {0}.", [capacityCourses.join(", ")]));
+		}
+
+		if (!messages.length) {
+			push(__("This request still needs review before it can advance."));
+		}
+	}
+
+	if (!messages.length && validationStatus === "Valid" && ["Submitted", "Under Review", "Approved"].includes(requestStatus)) {
+		push(__("Validation checks are complete and this request is ready for academic review."));
+	}
+
+	return messages;
+}
+
+function renderEducatorReviewBanner(frm) {
+	if (!frm.dashboard || !frm.dashboard.set_headline) return;
+
+	const messages = buildEducatorReviewMessages(frm);
+	if (!messages.length) {
+		frm.dashboard.set_headline("");
+		return;
+	}
+
+	const validationStatus = String(frm.doc.validation_status || "").trim();
+	const toneClass = validationStatus === "Invalid" ? "text-danger" : "text-success";
+	const html = messages.map((message) => `• ${frappe.utils.escape_html(message)}`).join("<br>");
+	frm.dashboard.set_headline(`<span class="${toneClass}">${html}</span>`);
+}
+
 frappe.ui.form.on("Program Enrollment Request", {
 	refresh(frm) {
 		setAcademicYearQuery(frm);
@@ -128,6 +279,7 @@ frappe.ui.form.on("Program Enrollment Request", {
 		syncAcademicYearState(frm);
 		toggleRequestTypeFields(frm);
 		toggleTechnicalReviewFields(frm);
+		renderEducatorReviewBanner(frm);
 	},
 
 	program_offering(frm) {
@@ -140,9 +292,11 @@ frappe.ui.form.on("Program Enrollment Request", {
 
 	status(frm) {
 		toggleTechnicalReviewFields(frm);
+		renderEducatorReviewBanner(frm);
 	},
 
 	validation_status(frm) {
 		toggleTechnicalReviewFields(frm);
+		renderEducatorReviewBanner(frm);
 	},
 });

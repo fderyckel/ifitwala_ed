@@ -3,8 +3,8 @@ title: "Program Enrollment Request: Transactional Staging for Enrollment"
 slug: program-enrollment-request
 category: Enrollment
 doc_order: 4
-version: "1.4.0"
-last_change_date: "2026-03-26"
+version: "1.4.1"
+last_change_date: "2026-03-27"
 summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including basket-group snapshots, admissions hydration, and portal self-enrollment provenance."
 seo_title: "Program Enrollment Request: Transactional Staging for Enrollment"
 seo_description: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment."
@@ -51,6 +51,7 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 3. Request rows sync `required` from the offering.
 4. Optional rows may carry `applied_basket_group` and `choice_rank`.
 5. If request came from portal self-enrollment, `selection_window` records the campaign provenance.
+   Portal submission stays in `Draft` until the current choices pass live validation; families see plain-language guidance instead of a silent invalid submit.
 6. Move to `Submitted` / `Under Review`; server runs or refreshes the snapshot when needed.
 7. Review `validation_status`, `requires_override`, and reasons in payload.
 8. Approve only when request is valid, or when override is approved with traceability.
@@ -93,7 +94,8 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 1. Staff opens a [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/) for `Guardian`.
 2. Server prepares one draft request per child with all required rows already present.
 3. Guardian opens the portal, chooses the optional language course, and submits.
-4. Request stays canonical: `status = Submitted`, `selection_window = ...`, `submitted_by = guardian user`.
+4. If the choices pass live validation, the request stays canonical: `status = Submitted`, `selection_window = ...`, `submitted_by = guardian user`.
+5. If the choices still need attention, the request remains `Draft` and the portal explains what must be fixed first.
 
 ## Related Docs
 
@@ -159,5 +161,6 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 |---|---|---|---|---|
 | `System Manager` | Yes | Yes | Yes | Yes |
 | `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Academic Assistant` | Yes | Yes | No | No |
 | `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
 | `Academic Staff` | Yes | No | No | No |

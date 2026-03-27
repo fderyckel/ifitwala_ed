@@ -177,7 +177,27 @@ def _format_course_validation_message(*, course_label: str, message: str | None)
         )
 
     if text == "Prerequisite requirements not met.":
+        return _(
+            "The school needs to review whether {0} can be selected based on previous course requirements."
+        ).format(course_label)
+
+    if text == "Rule not supported by current schema.":
         return _("The school needs to review whether {0} can be selected.").format(course_label)
+
+    if text.startswith("Required course ") and text.endswith(" not completed."):
+        return _(
+            "The school needs to review whether {0} can be selected based on previous course requirements."
+        ).format(course_label)
+
+    if text.startswith("No numeric score evidence for "):
+        return _(
+            "The school needs to review whether {0} can be selected based on previous course requirements."
+        ).format(course_label)
+
+    if text.startswith("Required ") and " score " in text and "; got " in text:
+        return _(
+            "The school needs to review whether {0} can be selected based on previous course requirements."
+        ).format(course_label)
 
     if text == "Course already completed and not repeatable.":
         return _("{0} has already been completed and cannot be selected again.").format(course_label)
