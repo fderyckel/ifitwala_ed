@@ -154,6 +154,63 @@ class TestSelfEnrollmentApi(FrappeTestCase):
         self.assertTrue(payload["summary"]["ready_for_submit"])
         self.assertEqual(payload["validation"]["reasons"], [])
 
+    def test_guardian_choice_state_surfaces_live_capacity_block_before_submit(self):
+        context = _build_self_enrollment_context()
+        _set_offering_course_capacity(context["target_offering"], capacity=0)
+        window = context["window"]
+        window.load_students()
+        window.prepare_requests()
+        window.open_window()
+        guardian_user = self._create_guardian_user_for_student(context["student"].name)
+
+        frappe.set_user(guardian_user)
+        payload = self_enrollment_api.get_self_enrollment_choice_state(
+            selection_window=window.name,
+            student=context["student"].name,
+        )
+
+        self.assertEqual(payload["validation"]["status"], "invalid")
+        self.assertFalse(bool(payload["summary"]["ready_for_submit"]))
+        self.assertTrue(
+            any("no places are available" in reason.lower() for reason in (payload["validation"]["reasons"] or []))
+        )
+        self.assertEqual(payload["permissions"]["can_edit"], 1)
+
+    def test_guardian_submit_rejects_invalid_live_request_and_keeps_draft(self):
+        context = _build_self_enrollment_context(carry_forward_optional=False)
+        _set_offering_course_capacity(context["target_offering"], capacity=0)
+        window = context["window"]
+        window.load_students()
+        window.prepare_requests()
+        window.open_window()
+        guardian_user = self._create_guardian_user_for_student(context["student"].name)
+
+        request_name = frappe.db.get_value(
+            "Program Enrollment Request",
+            {
+                "selection_window": window.name,
+                "student": context["student"].name,
+            },
+        )
+
+        frappe.set_user(guardian_user)
+        with self.assertRaises(frappe.ValidationError):
+            self_enrollment_api.submit_self_enrollment_choices(
+                selection_window=window.name,
+                student=context["student"].name,
+                courses=[
+                    {
+                        "course": context["optional_course"].name,
+                        "applied_basket_group": context["basket_group"].name,
+                    }
+                ],
+            )
+
+        request = frappe.get_doc("Program Enrollment Request", request_name)
+        self.assertEqual(request.status, "Draft")
+        self.assertFalse(bool(request.submitted_on))
+        self.assertFalse(bool(request.submitted_by))
+
     def test_guardian_board_keeps_closed_window_visible_after_deadline(self):
         context = _build_self_enrollment_context(carry_forward_optional=False)
         window = context["window"]
@@ -229,3 +286,10 @@ class TestSelfEnrollmentApi(FrappeTestCase):
             return
         role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
         self._created.append(("Role", role.name))
+
+
+def _set_offering_course_capacity(offering, *, capacity: int):
+    offering.reload()
+    for row in offering.offering_courses or []:
+        row.capacity = capacity
+    offering.save(ignore_permissions=True)

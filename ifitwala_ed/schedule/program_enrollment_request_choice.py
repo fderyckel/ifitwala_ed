@@ -10,6 +10,7 @@ from frappe import _
 
 from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
 from ifitwala_ed.schedule.enrollment_engine import evaluate_basket_selection
+from ifitwala_ed.schedule.enrollment_request_utils import build_program_enrollment_request_validation
 
 GROUP_NAME_PATTERN = re.compile(r"'([^']+)'")
 
@@ -165,6 +166,104 @@ def _choice_validation_messages(basket_result: dict) -> list[str]:
     return messages
 
 
+def _format_course_validation_message(*, course_label: str, message: str | None) -> str | None:
+    text = str(message or "").strip()
+    if not text:
+        return None
+
+    if text == "Course is not part of the Program Offering.":
+        return _("{0} is no longer part of this selection window. Please refresh and review the choices again.").format(
+            course_label
+        )
+
+    if text == "Prerequisite requirements not met.":
+        return _("The school needs to review whether {0} can be selected.").format(course_label)
+
+    if text == "Course already completed and not repeatable.":
+        return _("{0} has already been completed and cannot be selected again.").format(course_label)
+
+    if text == "Maximum attempts exceeded.":
+        return _("{0} cannot be selected again because the maximum number of attempts has already been used.").format(
+            course_label
+        )
+
+    return text
+
+
+def _course_validation_messages(engine_payload: dict, offering_semantics: dict[str, dict]) -> list[str]:
+    messages: list[str] = []
+    seen: set[str] = set()
+    capacity_full_courses: list[str] = []
+
+    for row in list(((engine_payload.get("results") or {}).get("courses") or [])):
+        if not row.get("blocked"):
+            continue
+
+        course = (row.get("course") or "").strip()
+        semantics = offering_semantics.get(course) or {}
+        course_label = (semantics.get("course_name") or "").strip() or course
+        raw_reasons = [
+            str(reason or "").strip() for reason in list(row.get("reasons") or []) if str(reason or "").strip()
+        ]
+
+        if any(reason == "Capacity full for this course." for reason in raw_reasons):
+            if course_label and course_label not in capacity_full_courses:
+                capacity_full_courses.append(course_label)
+
+        for raw_reason in raw_reasons:
+            if raw_reason == "Capacity full for this course.":
+                continue
+            message = _format_course_validation_message(course_label=course_label, message=raw_reason)
+            if not message or message in seen:
+                continue
+            seen.add(message)
+            messages.append(message)
+
+    if capacity_full_courses:
+        if len(capacity_full_courses) == 1:
+            message = _(
+                "No places are available in {0} right now. Please contact the school if this selection still needs review."
+            ).format(capacity_full_courses[0])
+        else:
+            message = _(
+                "Some selected courses are not available right now because no places are available in this offering. Please contact the school if this selection still needs review."
+            )
+        if message not in seen:
+            seen.add(message)
+            messages.insert(0, message)
+
+    return messages
+
+
+def _live_validation_state(request, *, offering_semantics: dict[str, dict]) -> tuple[dict, str | None, bool, list[str]]:
+    engine_payload, _updates = build_program_enrollment_request_validation(request, force=1)
+    summary = engine_payload.get("summary") or {}
+    basket_result = (engine_payload.get("results") or {}).get("basket") or {}
+    basket_status = (summary.get("basket_status") or basket_result.get("status") or "").strip() or None
+    course_blocked = any(
+        bool(row.get("blocked")) for row in list(((engine_payload.get("results") or {}).get("courses") or []))
+    )
+
+    ready_for_submit = not course_blocked and basket_status in {"ok", "valid", "not_configured"}
+    live_status = basket_status
+    if course_blocked or basket_status == "invalid":
+        live_status = "invalid"
+
+    messages = _choice_validation_messages(basket_result)
+    messages.extend(_course_validation_messages(engine_payload, offering_semantics))
+
+    deduped_messages: list[str] = []
+    seen: set[str] = set()
+    for message in messages:
+        normalized = str(message or "").strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped_messages.append(normalized)
+
+    return engine_payload, live_status, ready_for_submit, deduped_messages
+
+
 def get_effective_program_enrollment_request_rows(request) -> list[dict]:
     explicit_rows = _normalize_rows(request.get("courses") or [])
     offering_semantics = get_offering_course_semantics((request.program_offering or "").strip())
@@ -225,6 +324,17 @@ def get_program_enrollment_request_choice_state(request, *, can_edit: bool) -> d
             "group_summary": {},
         }
     )
+    engine_payload = {"summary": {}, "results": {"courses": [], "basket": basket_result}}
+    live_status = (basket_result.get("status") or "").strip() or None
+    ready_for_submit = live_status in {"ok", "not_configured"}
+    validation_messages = _choice_validation_messages(basket_result)
+
+    if offering_name and request.get("student"):
+        engine_payload, live_status, ready_for_submit, validation_messages = _live_validation_state(
+            request,
+            offering_semantics=offering_semantics,
+        )
+        basket_result = ((engine_payload.get("results") or {}).get("basket") or {}) or basket_result
 
     courses = []
     required_count = 0
@@ -263,10 +373,7 @@ def get_program_enrollment_request_choice_state(request, *, can_edit: bool) -> d
             }
         )
 
-    basket_status = (basket_result.get("status") or "").strip() or None
-    ready_for_submit = basket_status in {"ok", "not_configured"}
     request_status = (request.status or "").strip() or "Draft"
-    validation_messages = _choice_validation_messages(basket_result)
 
     return {
         "request": {
@@ -292,7 +399,7 @@ def get_program_enrollment_request_choice_state(request, *, can_edit: bool) -> d
             "selected_optional_count": selected_optional_count,
         },
         "validation": {
-            "status": basket_status,
+            "status": live_status,
             "ready_for_submit": ready_for_submit,
             "reasons": validation_messages,
             "violations": [],

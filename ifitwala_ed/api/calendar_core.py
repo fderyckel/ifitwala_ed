@@ -121,9 +121,9 @@ def _normalize_sources(raw) -> List[str]:
     return ordered
 
 
-def _cache_key(employee: str, start: datetime, end: datetime, sources: Sequence[str]) -> str:
+def _cache_key(scope_subject: str, start: datetime, end: datetime, sources: Sequence[str]) -> str:
     src = "|".join(sorted(sources))
-    return f"ifitwala_ed:portal_calendar:{employee}:{start.isoformat()}:{end.isoformat()}:{src}"
+    return f"ifitwala_ed:portal_calendar:{scope_subject}:{start.isoformat()}:{end.isoformat()}:{src}"
 
 
 def _resolve_window(

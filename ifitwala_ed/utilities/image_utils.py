@@ -302,20 +302,36 @@ def _resolve_governed_display_url(
         return None
 
     resolved_subject = str(subject_name or "").strip()
-    if primary_subject_type != "Student" or not resolved_subject:
+    if not resolved_subject:
         return raw_url
 
-    from ifitwala_ed.api.file_access import resolve_academic_file_open_url
+    if primary_subject_type == "Student":
+        from ifitwala_ed.api.file_access import resolve_academic_file_open_url
 
-    return (
-        resolve_academic_file_open_url(
-            file_name=file_name,
-            file_url=raw_url,
-            context_doctype="Student",
-            context_name=resolved_subject,
+        return (
+            resolve_academic_file_open_url(
+                file_name=file_name,
+                file_url=raw_url,
+                context_doctype="Student",
+                context_name=resolved_subject,
+            )
+            or raw_url
         )
-        or raw_url
-    )
+
+    if primary_subject_type == "Guardian":
+        from ifitwala_ed.api.file_access import resolve_guardian_file_open_url
+
+        return (
+            resolve_guardian_file_open_url(
+                file_name=file_name,
+                file_url=raw_url,
+                context_doctype="Guardian",
+                context_name=resolved_subject,
+            )
+            or raw_url
+        )
+
+    return raw_url
 
 
 def _resolve_original_governed_image_url(

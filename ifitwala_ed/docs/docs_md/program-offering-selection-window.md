@@ -3,8 +3,8 @@ title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
 slug: program-offering-selection-window
 category: Enrollment
 doc_order: 3
-version: "1.0.0"
-last_change_date: "2026-03-26"
+version: "1.0.1"
+last_change_date: "2026-03-27"
 summary: "Launch one time-bound student or guardian self-enrollment campaign for a Program Offering and Academic Year, pre-create draft Program Enrollment Requests, and collect choices through the portal without bypassing the request-first architecture."
 seo_title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
 seo_description: "Launch portal self-enrollment for one Program Offering and Academic Year while keeping Program Enrollment Request as the canonical staging object."
@@ -51,12 +51,15 @@ Opening a selection window never writes committed enrollment directly. It batch-
    - unresolved optional choices remain for the portal user
 7. Open the window.
 8. Student or guardian portal users save drafts and submit selections before the deadline.
+   - portal submission proceeds only when the current choices pass live validation
+   - if validation still needs attention, the request stays in `Draft` and the portal explains what must be fixed first
 9. Staff review, validate, approve, and materialize the resulting requests later.
 
 ## Portal Behavior
 
 - Required courses remain visible but not removable.
 - Optional / elective choices stay editable while the window is open and the linked request is still `Draft`.
+- The portal uses live validation before submission, so "ready to submit" matches the real request validation outcome.
 - After submission, the linked request becomes read-only in the portal.
 - Closed windows remain visible in the portal as read-only records so families or students can still see what was submitted or which deadline was missed.
 - Guardian visibility is always child-scoped from server-resolved links; students can only access their own window rows.

@@ -43,6 +43,8 @@ Important:
 - This fallback is lineage-based and deterministic.
 - No sibling-school leakage is allowed.
 - SPA clients must not guess school/AY fallback; they consume API payload only.
+- If the logged-in user is the built-in `Administrator` account and no resolved active `Employee` record exists, employee-scoped calendar sources return empty instead of raising, while user-linked participant sources may still load.
+- Other staff portal users without an active `Employee` record still raise the explicit permission error.
 
 ## 2) Employee History (child table) behavior
 

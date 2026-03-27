@@ -38,7 +38,7 @@ def get_staff_calendar(
     sources=None,
     force_refresh: bool = False,
 ):
-    """Return a merged list of calendar entries for the logged-in employee."""
+    """Return a merged list of calendar entries for the logged-in staff user."""
     user = frappe.session.user
     if not user or user == "Guest":
         frappe.throw(_("Please sign in to view your calendar."), frappe.PermissionError)
@@ -48,16 +48,17 @@ def get_staff_calendar(
         fields=["name", "employee_full_name"],
         employment_status_filter=["!=", "Inactive"],
     )
-    if not employee:
+    employee_id = employee["name"] if employee else None
+    if not employee_id and user != "Administrator":
         frappe.throw(_("Your user is not linked to an Employee record."), frappe.PermissionError)
-    employee_id = employee["name"]
 
     tzinfo = _system_tzinfo()
     tzname = tzinfo.zone
     window_start, window_end = _resolve_window(from_datetime, to_datetime, tzinfo)
     source_list = _normalize_sources(sources)
 
-    cache_key = _cache_key(employee_id, window_start, window_end, source_list)
+    cache_scope_subject = employee_id or f"user:{user}"
+    cache_key = _cache_key(cache_scope_subject, window_start, window_end, source_list)
     if not force_refresh:
         if cached := frappe.cache().get_value(cache_key):
             try:
