@@ -1,73 +1,150 @@
 # Enrollment Execution Workflow Audit
 
-## Executive Summary
-The server-side enrollment architecture appears directionally sound: request-based staging, validation, override, and materialized enrollment are the right primitives. The current gaps are not conceptual but operational:
-1. weak or missing request-side Desk workflow surfaces,
-2. lack of preview/anxiety-reduction for direct administrative bulk enrollment,
-3. no formal admissions-to-enrollment bridge yet,
-4. no student-facing self-enrollment planner after those core boundaries are stabilized.
+## Status
 
-## 1. The Three Enrollment Lanes (Architecture Verification)
-The audit confirms that the codebase correctly supports three distinct enrollment lanes, which must not be conflated into a single "enrollment workflow":
+Retrospective note. Preserved for historical design context only.
 
-### Lane A — Admissions Bridge
-* **Flow:** `Student Applicant` → `Applicant Enrollment Plan` (pre-student bridge) → committee approval → offer sent/accepted → promotion to `Student` → hydrate real `Program Enrollment Request`.
-* **Verdict:** The `Applicant Enrollment Plan` doctype is present in the repository, representing a firm architectural boundary. This prevents polluting the core enrollment engine with pre-student applicant data.
+Use `03_enrollment_notes.md` for the current canonical architecture contract.
 
-### Lane B — Request-Based Enrollment
-* **Flow:** Student already exists → create `Program Enrollment Request` → validate snapshot → request override (if needed) → approve → materialize to `Program Enrollment`.
-* **Verdict:** The single-source validation engine (`enrollment_engine.py`) securely handles constraints. However, it is fundamentally **probable / to confirm** that `program_enrollment_request.js` is either missing or anemic, hiding these powerful primitives from the Front Desk.
+Code refs:
+- `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_tool/program_enrollment_tool.py`
+- `ifitwala_ed/schedule/doctype/course_enrollment_tool/course_enrollment_tool.py`
+- `ifitwala_ed/api/self_enrollment.py`
 
-### Lane C — Direct Staff Enrollment (With Provenance)
-* **Flow:** Batch rollover / administrative shell creation → explicit source/provenance required → no pretending this is a request workflow.
-* **Verdict:** Supported fully by the `Program Enrollment Tool` and `Course Enrollment Tool`. These are valid, policy-defined, direct-enrollment lanes. They are *not* broken substitutes for the PER request workflow; they are tools for large-scale administrative materialization.
+Test refs:
+- `ifitwala_ed/admission/doctype/applicant_enrollment_plan/test_applicant_enrollment_plan.py`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/test_program_offering_selection_window.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/test_program_enrollment_request.py`
+- `ifitwala_ed/api/test_self_enrollment.py`
 
-## 2. Tooling and UX Gaps
+This audit captured an earlier point in the architecture evolution.
 
-### Direct Administrative Lane: Program Enrollment Tool
-This tool is a bulk administrative materialization tool used for rollover and cohort progression. The actual product gap is safety, not workflow validation.
-* **Missing:** A **server-backed Dry Run / Preview**.
-* **Fix needed:** Before committing, the tool must explicitly summarize what enrollments will be created, exactly which required courses the offering spine will seed, where capacity or basket anomalies exist, and what will be skipped/blocked.
-* **Missing:** Better provenance display.
+It remains useful for understanding:
+- which boundaries were already correct
+- which gaps were later filled
+- which UX hardening gaps may still deserve follow-up
 
-### Direct Administrative Lane: Course Enrollment Tool
-* **Friction:** Currently serializes exception handling using serial `frappe.msgprint` interruptions for elective group conflicts.
-* **Fix needed:** Replace with a single structured summary table. Rows should be grouped by student / conflict / recommended action, allowing admins to bulk deselect or ignore where policy allows.
+It is not the source of truth for current runtime behavior.
 
-### Request-Based Lane: PER Desk UI
-The Desk form for `Program Enrollment Request` must be treated as an **operational console**, not merely a view with action buttons.
-* **Fix needed:** The console must provide four core functionalities:
-  - Display the immutable latest validation snapshot.
-  - Expose override state and rationale (forcing narrative accountability).
-  - Clarify workflow state (who owns the next action).
-  - Clarify materialization provenance.
+---
 
-*Note: Previous recommendations regarding a visual "Course Spine Builder" inside `Program Offering` have been downgraded. The canonical child table is authoritative, and custom visual builders invite schema drift without unblocking the core transactional execution lanes.*
+## 1. What The Audit Got Right
 
-## 3. Action Plan & Prioritization
+### 1.1 Request staging was the right backbone
 
-### Priority 1 — Admissions Bridge (High Leverage)
-Build and finalize the new pre-student handoff object before tackling student self-enrollment:
-- `Applicant Enrollment Plan`.
-- Execute offer/acceptance on that object.
-- Hydrate into a real `Program Enrollment Request` **only** after promotion to `Student`.
+The core conclusion still stands:
 
-### Priority 2 — PER Desk Request Console
-Implement or harden the Desk client/controller surface for `Program Enrollment Request` as a true operational console:
-- Validate, Request Override, Approve, Materialize actions.
-- Show the immutable validation snapshot.
-- Show provenance and ownership.
+- `Program Enrollment Request` is the correct staging object
+- validation and override logic belong there
+- `Program Enrollment` must remain committed truth, not a draft buffer
 
-### Priority 3 — Program Enrollment Tool Preview
-Add the server-backed dry run mechanism:
-- Expose what enrollments will be created, which required courses will seed, where capacity or basket issues exist, and what will be skipped/warned/blocked.
+### 1.2 Admissions needed a pre-student bridge
 
-### Priority 4 — Course Enrollment Tool Exception Table
-Replace serial `msgprint`-style interruptions with one structured exception summary, allowing bulk ignore/deselect workflows where policies allow.
+The audit correctly identified the need for a pre-student handoff layer.
 
-### Priority 5 — Self-Enrollment Portal (Later)
-Only after the core boundaries above are stabilized:
-- Build the planner board.
-- Implement discovery/catalog APIs.
-- Build debounced validation against the Hub UI.
-- Introduce pending approval states.
+That boundary now exists as:
+
+- `Student Applicant`
+- `Applicant Enrollment Plan`
+- hydration into `Program Enrollment Request` only after promotion to `Student`
+
+### 1.3 Direct administrative lanes are legitimate
+
+The audit was also correct that bulk and direct staff tools are not bugs by default.
+
+`Program Enrollment Tool` and `Course Enrollment Tool` are valid governed lanes when they preserve provenance and do not masquerade as request approval.
+
+---
+
+## 2. What Changed After The Audit
+
+### 2.1 The request window is now explicit
+
+At audit time, the architecture still described the need for a formal portal envelope.
+
+That envelope now exists as `Program Offering Selection Window`.
+
+It governs:
+
+- one `Program Offering`
+- one `Academic Year`
+- one audience (`Student` or `Guardian`)
+- one prepared draft `Program Enrollment Request` per student row
+
+### 2.2 Self-enrollment is now a real portal lane
+
+The audit described student-facing self-enrollment as future work.
+
+That is no longer current.
+
+The runtime now includes:
+
+- student routes for course selection
+- guardian routes for course selection
+- window-scoped APIs for board, detail, save, and submit
+
+The portal lane still respects the original architectural boundary:
+
+- portal actors edit only the linked draft request
+- staff still own review, override, approval, and materialization
+
+### 2.3 Surface ownership is now clearer
+
+The older audit spoke about “Front Desk” and “request-side UI” in a loose way.
+
+The current contract is sharper:
+
+- staff use Desk and workspace doctype surfaces
+- students use student portal routes only
+- guardians use guardian portal routes only
+
+That distinction should now be treated as locked architecture, not a UX implementation detail.
+
+---
+
+## 3. Remaining Follow-Up Value
+
+This retrospective still points at some useful product-quality questions.
+
+### 3.1 `Program Enrollment Request` Desk console quality
+
+The audit’s call for a stronger staff review console is still directionally useful.
+
+The Desk surface should continue to optimize for:
+
+- visible validation snapshots
+- visible override rationale
+- obvious next-action ownership
+- visible materialization provenance
+
+### 3.2 Program Enrollment Tool preview quality
+
+The earlier recommendation for a server-backed dry run remains high leverage if not already completed to the required standard.
+
+The tool should make it obvious:
+
+- what enrollments will be created
+- what request rows will be prepared
+- what is blocked or skipped
+- why each issue exists
+
+### 3.3 Course Enrollment Tool exception handling
+
+The audit’s concern about serial exception UX is still valid as a design smell.
+
+Bulk staff tools should summarize conflicts in one actionable surface, not interrupt staff with fragmented warnings.
+
+---
+
+## 4. Retrospective Conclusion
+
+This note should now be read as a historical checkpoint:
+
+- it correctly defended the request-first architecture
+- it correctly separated admissions, request, and direct-admin lanes
+- it predated the explicit `Program Offering Selection Window` and shipped student/guardian self-enrollment portal surfaces
+
+For current implementation and future change decisions, `03_enrollment_notes.md` is the canonical source.

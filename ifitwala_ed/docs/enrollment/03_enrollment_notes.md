@@ -1,24 +1,81 @@
 # enrollment_notes.md
 
-**Authoritative Architecture & Invariants**
+## Status
 
-**Status:**
-**Active – Locked where marked, Living elsewhere**
+Active. Canonical enrollment architecture note for runtime object boundaries, workflow lanes, and surface ownership.
 
-This document defines the **architecture, invariants, intent, and guardrails** for enrollment and self-enrollment in **Ifitwala_Ed**.
+Code refs:
+- `ifitwala_ed/schedule/doctype/program_offering/program_offering.py`
+- `ifitwala_ed/schedule/doctype/program_offering/program_offering.js`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.py`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.js`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.js`
+- `ifitwala_ed/schedule/enrollment_request_utils.py`
+- `ifitwala_ed/schedule/program_enrollment_request_choice.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment/program_enrollment.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_tool/program_enrollment_tool.py`
+- `ifitwala_ed/schedule/doctype/course_enrollment_tool/course_enrollment_tool.py`
+- `ifitwala_ed/api/self_enrollment.py`
+- `ifitwala_ed/ui-spa/src/router/index.ts`
+- `ifitwala_ed/ui-spa/src/pages/student/StudentCourseSelection.vue`
+- `ifitwala_ed/ui-spa/src/pages/student/StudentCourseSelectionDetail.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCourseSelection.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCourseSelectionDetail.vue`
+- `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`
 
-It exists to:
+Test refs:
+- `ifitwala_ed/schedule/doctype/program_offering/test_program_offering.py`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/test_program_offering_selection_window.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/test_program_enrollment_request.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment/test_program_enrollment.py`
+- `ifitwala_ed/schedule/test_enrollment_engine.py`
+- `ifitwala_ed/api/test_self_enrollment.py`
+- `ifitwala_ed/admission/doctype/applicant_enrollment_plan/test_applicant_enrollment_plan.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianCourseSelection.test.ts`
 
-* prevent architectural drift
-* guide contributors and coding agents
-* preserve institutional auditability
+This document defines the real enrollment architecture in Ifitwala_Ed.
 
-This is **not UI**, **not policy**, and **not marketing**.
+It is authoritative for:
+- object boundaries
+- workflow lanes
+- Desk vs portal surface ownership
+- validation and materialization invariants
 
-If code and this document ever disagree, **this document wins**.
+It is not a marketing summary and it is not a policy catalog.
+
+If code and this document disagree, stop and resolve the drift explicitly.
 
 Related architecture:
 - `docs/enrollment/academic_year_architecture.md`
+- `docs/enrollment/05_course_choice_semantics_proposal.md`
+- `docs/enrollment/activity_booking_architecture.md`
+
+---
+
+## 0. Naming Discipline
+
+Status: Active
+Code refs:
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.json`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.json`
+Test refs:
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/test_program_offering_selection_window.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/test_program_enrollment_request.py`
+
+Use the runtime names that exist in the repository:
+
+- `Program Offering` = operational offering truth
+- `Program Offering Selection Window` = the request window exposed to one portal audience
+- `Program Enrollment Request` = the request object for staged academic intent
+- `Program Enrollment` = committed academic truth
+
+For product conversations, the shorthand is acceptable only if it maps back to the real object:
+
+- “program request” means `Program Enrollment Request`
+- “program request window” means `Program Offering Selection Window`
+
+There is no separate `Program Request` doctype in the repository. Do not document one.
 
 ---
 
@@ -26,351 +83,552 @@ Related architecture:
 
 ### 1.1 What enrollment is
 
-Enrollment in Ifitwala_Ed is **not a CRUD operation**.
+Enrollment in Ifitwala_Ed is not CRUD.
 
-It is a **decision system** that evaluates:
+It is a decision system that evaluates:
 
-* eligibility (prerequisites, grades, attempts)
-* structural constraints (capacity, baskets, offerings)
-* human judgment (review, override)
-* and produces **committed academic truth**
+- eligibility
+- basket and capacity constraints
+- approval and override authority
+- provenance
 
-Any implementation that bypasses this process is **invalid by design**.
+and then produces committed academic truth.
 
----
+Any implementation that bypasses this process is invalid by design.
 
 ### 1.2 Guiding principles
 
 Enrollment must be:
 
-* **Curriculum-agnostic**
-* **Historically auditable**
-* **Explicitly overrideable**
-* **Policy-driven, not hard-coded**
-* **Reality-anchored**
+- curriculum-agnostic
+- historically auditable
+- explicitly overrideable
+- policy-driven
+- multi-tenant safe
+- reality-anchored
 
-Automation supports humans — it never replaces institutional judgment.
-
----
-
-## 2. Layer Separation (Locked)
-
-Enrollment logic is only correct when these layers remain isolated:
-
-| Layer              | Responsibility                      |
-| ------------------ | ----------------------------------- |
-| Course / Activity  | Catalog (what exists)               |
-| Program            | Academic intent & structure         |
-| Program Offering   | What is available now               |
-| Enrollment Request | What someone is asking for          |
-| Validation Engine  | Eligibility & constraint evaluation |
-| Program Enrollment | Committed academic truth            |
-| Course Term Result | Outcome evidence                    |
-
-Any leakage across layers is a **design regression**.
+Automation supports human decision-making. It does not erase accountability.
 
 ---
 
-## 3. Enrollment Entry Points
+## 2. Canonical Object Chain
 
-### 3.1 Portal (Students & Guardians)
+Status: Active
+Code refs:
+- `ifitwala_ed/schedule/doctype/program_offering/program_offering.py`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment/program_enrollment.py`
+- `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`
+Test refs:
+- `ifitwala_ed/schedule/doctype/program_offering/test_program_offering.py`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/test_program_offering_selection_window.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/test_program_enrollment_request.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment/test_program_enrollment.py`
+- `ifitwala_ed/admission/doctype/applicant_enrollment_plan/test_applicant_enrollment_plan.py`
 
-Portal users **never** write to `Program Enrollment`.
+Enrollment is only correct when these layers remain separate:
 
-They create **Enrollment Requests** that:
+| Layer | Responsibility | Must not be treated as |
+| --- | --- | --- |
+| `Program` | academic intent and structure | operational availability |
+| `Program Offering` | what this school is offering now, in explicit academic-year context | portal request state or committed enrollment |
+| `Program Offering Selection Window` | operational portal exposure of one offering to one audience (`Student` or `Guardian`) | academic truth or a substitute for approval |
+| `Program Enrollment Request` | staged, auditable request with validation snapshot | committed enrollment |
+| `Program Enrollment` | committed academic truth | a draft, planner, or request buffer |
+| `Applicant Enrollment Plan` | pre-student admissions bridge | a substitute for student-side request objects |
 
-* collect a basket
-* run validation
-* wait for approval or override
-* materialize only when approved
+### 2.1 `Program Offering`
 
-This applies to:
+`Program Offering` is the operational envelope for enrollment.
 
-* academic courses
-* activities
-* pathway selections
+It owns:
 
-For academic self-enrollment, the portal launch object is `Program Offering Selection Window`:
+- the program/school spine
+- the allowed academic year set
+- the offering course semantics
+- offering-scoped basket rules
+- self-enrollment enablement
 
-* one explicit `Program Offering`
-* one explicit `Academic Year`
-* one explicit portal audience (`Student` or `Guardian`)
-* one draft `Program Enrollment Request` per targeted student
+It does not own:
 
-That window is operational only. It does **not** become committed academic truth.
+- portal draft state
+- student-by-student request status
+- final enrollment approval decisions
+
+### 2.2 `Program Offering Selection Window`
+
+`Program Offering Selection Window` is the operational request window for portal self-service.
+
+It is valid only because it governs linked draft `Program Enrollment Request` rows.
+
+It locks:
+
+- one explicit `Program Offering`
+- one explicit `Academic Year`
+- one explicit audience: `Student` or `Guardian`
+- one student population source
+- one linked draft request per student row
+
+It does not become committed academic truth.
+
+Its statuses are operational only:
+
+- `Draft`
+- `Open`
+- `Closed`
+- `Archived`
+
+### 2.3 `Program Enrollment Request`
+
+`Program Enrollment Request` is the mandatory staging object for academic requests.
+
+It owns:
+
+- the requested basket
+- request-time course semantics snapshot
+- validation snapshot
+- override state and rationale
+- source provenance such as `selection_window` or `source_applicant_enrollment_plan`
+
+It is the only valid transactional staging object between request intent and committed enrollment.
+
+### 2.4 `Program Enrollment`
+
+`Program Enrollment` is committed academic truth.
+
+It may be created only through:
+
+- an approved `Program Enrollment Request`
+- an explicit direct staff/admin lane with preserved provenance
+- an explicit migration lane
+
+Portal users never write `Program Enrollment`.
 
 ---
 
-### 3.2 Staff Actions
+## 3. Workflow Lanes
 
-Staff may:
+Status: Active
+Code refs:
+- `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment/program_enrollment.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_tool/program_enrollment_tool.py`
+- `ifitwala_ed/schedule/doctype/course_enrollment_tool/course_enrollment_tool.py`
+Test refs:
+- `ifitwala_ed/admission/doctype/applicant_enrollment_plan/test_applicant_enrollment_plan.py`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/test_program_offering_selection_window.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/test_program_enrollment_request.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment/test_program_enrollment.py`
 
-* create Enrollment Requests on behalf of users
-* approve, reject, or override requests
-* create Program Enrollments directly **only with explicit provenance**
+There are four distinct lanes. They must not be collapsed into one vague “enrollment workflow.”
 
-Bypassing validation without an override is forbidden.
+### 3.1 Admissions bridge lane
+
+Flow:
+
+`Student Applicant` -> `Applicant Enrollment Plan` -> offer/acceptance -> student promotion -> `Program Enrollment Request`
+
+This lane exists to keep pre-student admissions intent out of the core student enrollment tables.
+
+### 3.2 Staff request lane
+
+Flow:
+
+staff chooses `Program Offering` -> optionally seeds `Program Offering Selection Window` -> creates or reviews `Program Enrollment Request` -> validates -> overrides if required -> approves -> materializes `Program Enrollment`
+
+This is the main academic review lane for existing students.
+
+### 3.3 Portal self-enrollment lane
+
+Flow:
+
+staff opens `Program Offering Selection Window` -> portal actor edits the linked draft `Program Enrollment Request` -> portal submits request -> staff reviews and approves -> materializes `Program Enrollment`
+
+The portal edits only the linked request state. It never bypasses staff review.
+
+### 3.4 Direct administrative lane
+
+Flow:
+
+`Program Enrollment Tool` or `Course Enrollment Tool` -> explicit provenance -> direct `Program Enrollment` mutation where policy allows
+
+This is a valid lane for rollover, bulk administration, and governed exceptions.
+
+It is not a substitute for request-based approval.
 
 ---
 
-## 4. Enrollment Request (Staging Object)
+## 4. Surface Ownership: Desk vs Portal
 
-### 4.1 Why it is mandatory
+Status: Active
+Code refs:
+- `ifitwala_ed/curriculum/workspace/curriculum/curriculum.json`
+- `ifitwala_ed/schedule/doctype/program_offering/program_offering.js`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.js`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.js`
+- `ifitwala_ed/ui-spa/src/router/index.ts`
+- `ifitwala_ed/api/self_enrollment.py`
+- `ifitwala_ed/ui-spa/src/lib/services/selfEnrollment/selfEnrollmentService.ts`
+- `ifitwala_ed/ui-spa/src/pages/student/StudentCourseSelection.vue`
+- `ifitwala_ed/ui-spa/src/pages/student/StudentCourseSelectionDetail.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCourseSelection.vue`
+- `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCourseSelectionDetail.vue`
+Test refs:
+- `ifitwala_ed/api/test_self_enrollment.py`
+- `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianCourseSelection.test.ts`
 
-Direct mutation of `Program Enrollment` is invalid because:
+Surface ownership is part of the architecture, not a presentation detail.
 
-* baskets are partial
-* validation must be transactional
-* overrides must be recorded
-* audit trails must remain intact
+| Actor | Surface | Objects surfaced | Allowed write scope |
+| --- | --- | --- | --- |
+| Academic staff / admins | Desk forms and workspaces | `Program Offering`, `Program Offering Selection Window`, `Program Enrollment Request`, `Program Enrollment`, bulk tools | full governed workflow actions within permission scope |
+| Student | portal routes `/student/course-selection` and `/student/course-selection/:selection_window` | invited `Program Offering Selection Window` rows and the linked draft `Program Enrollment Request` | save and submit only that linked request while the window is open |
+| Guardian | portal routes `/guardian/course-selection` and `/guardian/course-selection/:selection_window/:student_id` | invited guardian-scoped window rows for linked children and each linked child request | save and submit only the linked child request while the window is open |
 
-Therefore:
+### 4.1 Desk ownership
 
-> **Enrollment Requests are the only valid staging mechanism.**
+Desk is the authoritative staff surface for:
 
-`Program Offering Selection Window` is valid only because it prepares and governs `Program Enrollment Request`; it is never an alternate committed enrollment path.
+- authoring `Program Offering`
+- creating a `Program Offering Selection Window` from the offering
+- loading students into the window
+- preparing one draft request per student
+- opening and closing the portal window
+- reviewing, overriding, approving, and materializing requests
+- executing governed direct-enrollment tools
+
+Students and guardians do not use Desk.
+
+### 4.2 Student portal ownership
+
+Student portal self-enrollment is implemented through:
+
+- `get_self_enrollment_portal_board`
+- `get_self_enrollment_choice_state`
+- `save_self_enrollment_choices`
+- `submit_self_enrollment_choices`
+
+The student sees only:
+
+- windows addressed to audience `Student`
+- student-authorized rows
+- the request linked to that window row
+
+The student does not see or write:
+
+- arbitrary `Program Offering` records
+- other students’ requests
+- `Program Enrollment`
+- Desk-only approval or override controls
+
+### 4.3 Guardian portal ownership
+
+Guardian portal self-enrollment is implemented through the same API family, but the actor resolution is guardian-to-linked-student scoped.
+
+The guardian sees only:
+
+- windows addressed to audience `Guardian`
+- linked child rows
+- the specific request linked to that child row
+
+The guardian does not gain generalized visibility into draft academic truth outside those linked windows.
+
+### 4.4 Forbidden surface drift
+
+The following are design regressions:
+
+- exposing `Program Offering` authoring in student or guardian portals
+- letting portal users create free-floating requests without a governing window
+- treating a window as approved enrollment
+- letting portal save actions touch `Program Enrollment`
+- documenting Desk-only actions as if they were student or guardian actions
 
 ---
 
-### 4.2 Role of the Enrollment Request
+## 5. Window and Request Lifecycle
 
-An Enrollment Request:
+Status: Active
+Code refs:
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.py`
+- `ifitwala_ed/schedule/program_enrollment_request_seed.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`
+- `ifitwala_ed/api/self_enrollment.py`
+Test refs:
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/test_program_offering_selection_window.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/test_program_enrollment_request.py`
+- `ifitwala_ed/api/test_self_enrollment.py`
 
-* captures user intent
-* holds an uncommitted basket
-* stores a **frozen validation snapshot**
-* records override decisions
-* materializes into Program Enrollment only after approval
+### 5.1 Selection window lifecycle
+
+`Program Offering Selection Window` enforces:
+
+- the offering must exist
+- the academic year must belong to the offering
+- `allow_self_enroll` must be enabled on the offering
+- audience must be `Student` or `Guardian`
+- source mode must be one of:
+  - `Program Enrollment`
+  - `Cohort`
+  - `Manual`
+
+The Desk workflow is:
+
+1. define the window
+2. load target students
+3. prepare requests
+4. verify one linked request per student
+5. open the window
+
+Opening is blocked if the window does not already govern linked requests.
+
+### 5.2 Request creation under a window
+
+Preparing a window does not create committed enrollments.
+
+It creates or attaches draft `Program Enrollment Request` rows scoped by:
+
+- student
+- target `Program Offering`
+- target `Academic Year`
+- selection-window provenance
+
+If a student already has a target `Program Enrollment` or an active request in the same target context, the window must respect that instead of silently duplicating intent.
+
+### 5.3 Portal edit and submit rules
+
+Portal save and submit are allowed only when:
+
+- the actor is authorized for the student row
+- the window audience matches the actor type
+- the window is open right now
+- the linked request is still editable
+
+Once a request leaves draft state, portal editing becomes read-only.
+
+### 5.4 Request gate states
+
+For `Program Enrollment Request`, gate states are:
+
+- `Submitted`
+- `Under Review`
+- `Approved`
+
+Those states require a validation snapshot.
+
+Approval requires:
+
+- `validation_status = Valid`
+- override approval if `requires_override = 1`
+
+The request is the only valid staging area between portal/desk intent and committed enrollment.
 
 ---
 
-## 5. Eligibility & Prerequisites Engine
+## 6. Eligibility, Basket Semantics, and Snapshots
 
-### 5.1 Constraint model (Locked)
+Status: Active
+Code refs:
+- `ifitwala_ed/schedule/enrollment_engine.py`
+- `ifitwala_ed/schedule/grade_scale_resolver_utils.py`
+- `ifitwala_ed/schedule/basket_group_utils.py`
+- `ifitwala_ed/schedule/program_enrollment_request_choice.py`
+- `ifitwala_ed/docs/enrollment/05_course_choice_semantics_proposal.md`
+Test refs:
+- `ifitwala_ed/schedule/test_enrollment_engine.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/test_program_enrollment_request.py`
+- `ifitwala_ed/schedule/doctype/program_offering/test_program_offering.py`
 
-Eligibility rules use a **DNF (OR-of-AND)** model:
+### 6.1 Constraint model
 
-```
+Eligibility rules use a DNF model:
+
+```text
 (A AND B AND min_grade(A))
 OR (C)
 OR (D AND NOT E)
 ```
 
-This matches real institutional logic without boolean parsing.
+All prerequisites are program-scoped. Catalog-level prerequisite logic must not be introduced.
 
-All prerequisites are **program-scoped**.
-Catalog-level prerequisites **must not exist**.
+### 6.2 Numeric truth only
 
----
+Eligibility comparisons are numeric only:
 
-### 5.2 Numeric eligibility truth (Locked)
+- `numeric_score` to numeric threshold
+- never label-to-label runtime comparison
 
-Eligibility comparisons are **numeric only**.
+If numeric resolution fails, validation fails.
 
-* `numeric_score` → `numeric_score`
-* Float → Float
-* Never parse grade labels at runtime
+### 6.3 Grade-scale resolution
 
-Grade labels exist **only for humans**.
+Resolution order is:
 
-If numeric resolution fails → validation **fails**.
+1. `Course Term Result.grade_scale`
+2. `Program Offering Course.grade_scale`
+3. `Program Offering.grade_scale`
+4. `Course.grade_scale`
+5. `Program.grade_scale`
 
----
+Request validation snapshots must freeze the resolved threshold context so later grade-scale edits do not rewrite history.
 
-### 5.3 Grade scale resolution (Locked)
+### 6.4 Basket semantics live on offerings and snapshots
 
-The system explicitly separates **intent** from **evidence**.
+Basket-group semantics are offering-side runtime truth.
 
-Resolution order (deterministic):
+Request rows must snapshot enough meaning to remain historically stable, including:
 
-1. `Course Term Result.grade_scale` (evidence)
-2. `Course.grade_scale` (override intent)
-3. `Program.grade_scale` (baseline intent)
-4. otherwise → validation error
+- whether the course was required
+- the resolved `applied_basket_group` where relevant
+- `choice_rank` when ranking occurs inside a basket family
 
-Prerequisites **snapshot**:
+Committed enrollment rows must preserve the committed meaning rather than recomputing it from later offering edits.
 
-* `grade_scale_used`
-* `min_numeric_score`
+### 6.5 Source of academic truth for eligibility
 
-No retroactive recomputation is allowed.
+Eligibility may consult only:
 
----
+- `Program Enrollment`
+- `Course Term Result`
+- allowed reporting-cycle states
 
-## 6. Source of Academic Truth
+Eligibility must never consult:
 
-Eligibility may only consult:
-
-* `Program Enrollment`
-* `Course Term Result`
-* allowed Reporting Cycle states
-
-Eligibility **must never** consult:
-
-* draft assessments
-* unreleased tasks
-* inferred or transient data
+- draft assessments
+- unreleased task data
+- portal draft intent as if it were evidence
 
 ---
 
-## 7. Retakes, Repeats, Attempts (Policy-Driven)
+## 7. Capacity and Delivery Separation
 
-There is no universal rule.
+Status: Active
+Code refs:
+- `ifitwala_ed/schedule/doctype/program_offering/program_offering.py`
+- `ifitwala_ed/schedule/basket_group_utils.py`
+- `ifitwala_ed/eca/doctype/program_offering_activity_section/program_offering_activity_section.json`
+Test refs:
+- `ifitwala_ed/schedule/doctype/program_offering/test_program_offering.py`
 
-Institutions define:
+Capacity and delivery are different problems.
 
-* which attempts count
-* how results are selected
-* what constitutes a pass
+### 7.1 Allocation capacity
 
-Enrollment logic **consumes policy** — it does not encode it.
+Allocation capacity for academic choice lives on `Program Offering Course`.
 
----
+It is evaluated during request validation and approval lanes.
 
-## 8. Basket-Level Constraints
+It must not depend on `Student Group`.
 
-Prerequisites answer:
+### 7.2 Delivery capacity
 
-> “Can you take this course?”
+There is no standalone `Course Section` doctype.
 
-Basket rules answer:
+For delivery, `Student Group` is the section construct.
 
-> “Is this combination valid?”
-
-Basket rules are:
-
-* offering-scoped
-* evaluated on Enrollment Requests
-* independent of course-level eligibility
-
-Storage models (both allowed):
-
-* Option A: JSON rules
-* Option B: structured child table
-
-No final lock yet.
+Do not collapse allocation-choice capacity and delivery-section capacity into one concept.
 
 ---
 
-## 9. Capacity Modeling (Locked)
+## 8. Direct Enrollment, Overrides, and Provenance
 
-### 9.1 Allocation capacity (choice stage)
+Status: Active
+Code refs:
+- `ifitwala_ed/schedule/doctype/program_enrollment/program_enrollment.py`
+- `ifitwala_ed/schedule/doctype/program_enrollment_tool/program_enrollment_tool.py`
+- `ifitwala_ed/schedule/doctype/course_enrollment_tool/course_enrollment_tool.py`
+- `ifitwala_ed/schedule/enrollment_request_utils.py`
+Test refs:
+- `ifitwala_ed/schedule/doctype/program_enrollment/test_program_enrollment.py`
 
-Lives on **Program Offering Course**.
+### 8.1 Direct staff enrollment is valid only with provenance
 
-Used during request validation.
+Direct creation of `Program Enrollment` is valid only when the system records the lane explicitly.
 
-Must never depend on Student Groups.
+The committed object already distinguishes governed sources such as:
 
----
+- `Request`
+- `Admin`
+- `Migration`
 
-### 9.2 Delivery capacity (sections)
+“Direct” does not mean “unexplained.”
 
-There is **no Course Section doctype**.
+### 8.2 Overrides are first-class
 
-**Student Group is the section.**
-
----
-
-## 10. Activity Booking v2 (Implemented)
-
-Activity booking uses the same architectural discipline as enrollment requests, with dedicated lifecycle truth:
-
-1. `Activity Booking` is the booking-state source of truth.
-2. `Program Offering Activity Section` links offerings to activity `Student Group` sections.
-3. A pre-open readiness gate is mandatory before opening windows:
-   - instructor conflicts from `Employee Booking`
-   - location conflicts from `Location Booking`
-   - section schedule and materialization validity
-4. Allocation modes are explicit per offering:
-   - First Come First Serve
-   - Lottery (Preference)
-   - Manual
-5. Communication for activity events must use `Org Communication` with activity context links.
-
-Capacity enforced via:
-
-* `Student Group.maximum_size`
-* membership limits
-
-Allocation ≠ placement.
-
----
-
-## 10. Overrides (First-Class)
-
-Overrides are not exceptions.
+Overrides are not silent exceptions.
 
 Every override must record:
 
-* scope
-* reason
-* approver
-* timestamp
+- reason
+- approver
+- timestamp
+- affected request context
 
-Overrides never mutate validation snapshots.
+Overrides do not mutate historical validation snapshots.
 
----
+### 8.3 Portal users never own committed truth
 
-## 11. Core System Invariants (Non-Negotiable)
+Students and guardians may influence request state.
 
-1. **Single Evaluation Service**
-   All validation goes through
-   `enrollment_engine.evaluate_enrollment_request`.
+They do not:
 
-2. **Transactional Evaluation**
-   Validation runs only on submission or explicit revalidation.
-
-3. **Immutable Snapshots**
-   Validation results are frozen.
-
-4. **No Retroactive Mutation**
-   Rule changes never invalidate past decisions.
-
-5. **Explicit Overrides Only**
-   Silent bypasses are forbidden.
-
-6. **Enrollment Is a Legal Act**
-   Every enrollment records provenance.
-
-7. **Child Tables Are Passive**
-   No logic in child controllers or scripts.
-
-8. **Separation of Concerns**
-   Enrollment never computes grades.
-   Assessment never decides eligibility.
-
-9. **Forward-Only System**
-   Corrections are additive, not mutative.
+- approve requests
+- grant overrides
+- materialize enrollments
+- create provenance-free enrollments
 
 ---
 
-## 12. Known Deferred Problems
+## 9. Activity Booking Parallel
 
-* activity age semantics
-* course equivalencies
-* external credits / transfers
-* caching strategy (engine-level)
+Status: Implemented as a sibling architecture
+Code refs:
+- `ifitwala_ed/docs/enrollment/activity_booking_architecture.md`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.json`
+Test refs:
+- `ifitwala_ed/api/test_activity_booking.py`
 
-All are acknowledged, none block current architecture.
+Activity booking follows the same discipline:
+
+- request state is not committed placement truth
+- readiness checks are explicit
+- portal exposure is governed
+
+But its lifecycle is documented separately in `activity_booking_architecture.md`.
+
+Do not mix academic enrollment rules and activity-booking rules inside one undocumented hybrid flow.
+
+---
+
+## 10. Core System Invariants (Non-Negotiable)
+
+1. All academic request validation goes through the enrollment engine and request utilities, not ad hoc client logic.
+2. `Program Offering` is the operational offering truth; it is not itself a request or an enrollment.
+3. `Program Offering Selection Window` is the only governed portal envelope for academic self-enrollment.
+4. `Program Enrollment Request` is the only valid transactional staging object for academic requests.
+5. `Program Enrollment` is committed truth and must preserve provenance.
+6. Portal users never write committed academic truth.
+7. Validation snapshots are frozen at decision time.
+8. Rule changes must not retroactively rewrite old decisions.
+9. Child tables remain passive; business logic belongs in parent controllers and canonical services.
+10. Desk vs portal ownership must stay explicit; silent surface drift is a product defect.
 
 ---
 
-## 13. Architectural North Star
+## 11. Architectural North Star
 
-> **Enrollment in Ifitwala_Ed is a decision system with institutional memory,
-> not a form that mutates tables.**
+Enrollment in Ifitwala_Ed is a governed decision system with institutional memory.
 
-If an institution says *“we do it differently”*:
+The canonical chain is:
 
-> **Configure it — don’t rewrite it.**
+`Program Offering` -> `Program Offering Selection Window` -> `Program Enrollment Request` -> `Program Enrollment`
 
----
+for portal self-service, and:
 
-## Final Note
+`Applicant Enrollment Plan` -> `Program Enrollment Request` -> `Program Enrollment`
 
-Enrollment is academically, legally, and politically sensitive.
+for pre-student admissions handoff.
 
-Ifitwala_Ed treats it accordingly.
-
----
+If a future change cannot explain where it sits in those chains, it is probably architectural drift.

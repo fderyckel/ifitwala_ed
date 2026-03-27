@@ -67,15 +67,17 @@ def _get_program_subtree(program: str | None) -> list[str] | None:
 
 def _students_for_guardian(user: str) -> List[str]:
     """Return all student names for which this user is a guardian."""
-    guardians = frappe.get_all("Guardian", filters={"user": user}, pluck="name")
-    if not guardians:
-        return []
-    return frappe.get_all(
-        "Student Guardian",
-        filters={"guardian": ["in", guardians]},
-        distinct=True,
-        pluck="parent",
+    rows = frappe.db.sql(
+        """
+        SELECT DISTINCT sg.parent
+        FROM `tabStudent Guardian` sg
+        INNER JOIN `tabGuardian` g ON g.name = sg.guardian
+        WHERE g.user = %(user)s
+        """,
+        {"user": user},
+        as_list=True,
     )
+    return [row[0] for row in rows if row and row[0]]
 
 
 def _students_for_student_user(user: str) -> List[str]:

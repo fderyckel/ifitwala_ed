@@ -1,10 +1,15 @@
 # Top 10 SQL Anti-Patterns
 
+Status note:
+- This file records query shapes to avoid.
+- When a referenced code path has already been corrected, mark it as resolved instead of presenting it as a live defect.
+
 1. **[ifitwala_ed/api/student_overview_dashboard.py](file:///Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/api/student_overview_dashboard.py) line 69**
    ```python
    for r in frappe.db.sql("SELECT DISTINCT parent FROM `tabStudent Guardian` WHERE guardian = %s", (guardian,))
    ```
    *Why it's poor*: Loop runs an SQL query per guardian, which creates an N+1 issue if a user has many guardians. Instead, this should join or fetch all guardians into a single query.
+   *Status*: Resolved in current code. Guardian-linked students are now resolved through one bounded join between `Guardian` and `Student Guardian`, which preserves the same result shape without the multi-step lookup.
 
 2. **[ifitwala_ed/hr/doctype/leave_application/leave_application.py](file:///Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/hr/doctype/leave_application/leave_application.py) line 517**
    ```python
@@ -18,6 +23,7 @@
    )
    ```
    *Why it's poor*: Inside the [validate_leave_overlap](file:///Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/hr/doctype/leave_application/leave_application.py#512-547) method, it queries the DB inside a loop (or loops over query results and performs DB operations). While the loop iterates over a result set, it calls `frappe.db.sql` again inside [get_total_leaves_on_half_day](file:///Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/hr/doctype/leave_application/leave_application.py#555-568). This is a classic N+1 query vulnerability where checking 10 overlaps results in 10+ extra database calls instead of a single grouped query.
+   *Status*: Resolved in current code. `validate_leave_overlap()` now pre-calculates the half-day leave count once before iterating overlapping applications, so the half-day overlap branch no longer performs an extra query per row.
 
 3. **[ifitwala_ed/api/student_log_dashboard.py](file:///Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/api/student_log_dashboard.py) line 270**
    ```python
@@ -25,6 +31,7 @@
        return frappe.db.sql(sql.format(w=where_clause), params, as_dict=True)
    ```
    *Why it's poor*: The dashboard aggressively fires 6+ separate DB queries (`logTypeCount`, `logsByCohort`, `logsByProgram`, `logsByAuthor`, `nextStepTypes`, `incidentsOverTime`) sequentially, rather than using a single aggregated query or UNION structure to reduce overhead.
+   *Status*: Resolved in current code. `get_dashboard_data()` now executes one `UNION ALL` aggregate query for the analytics buckets, and the existing dashboard regression tests already cover that consolidated query shape.
 
 4. **[ifitwala_ed/api/admission_cockpit.py](file:///Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/api/admission_cockpit.py) line 1186 and 1193**
    ```python

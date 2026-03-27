@@ -9,6 +9,16 @@ This document **complements** `enrollment_notes.md`.
 * `enrollment_notes.md` = **authoritative architecture & intent**
 * `enrollment_examples.md` = **deep scenarios, stress‑tests, and reality mapping**
 
+All examples in this file assume the canonical runtime chain documented in `enrollment_notes.md`:
+
+`Program Offering` -> `Program Offering Selection Window` -> `Program Enrollment Request` -> `Program Enrollment`
+
+for portal self-service, and:
+
+`Applicant Enrollment Plan` -> `Program Enrollment Request` -> `Program Enrollment`
+
+for the admissions bridge.
+
 If there is ever a conflict:
 
 > **`enrollment_notes.md` always wins.**

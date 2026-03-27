@@ -52,6 +52,11 @@ While the code uses `frappe.get_all` which is safer than raw SQL, this pattern c
 **Risk:** Medium - Performance degradation with many guardians
 **Fix:** Join query or batch fetch in a single SQL statement
 
+**Codex Comment (2026-03-27):**
+- I agree with the direction of the finding, but this is better described as query-shape drift than a literal per-row N+1 loop in the current implementation.
+- I implemented the suggested fix: `_students_for_guardian()` now uses one parameterized join between `tabGuardian` and `tabStudent Guardian`, while preserving the same distinct student-name result contract.
+- Regression coverage was added to keep this helper on one SQL path.
+
 ---
 
 ### 2. Nested Query Loop in Leave Application Validation (DRIFT-002)
@@ -86,6 +91,11 @@ The `get_total_leaves_on_half_day()` method at line 559-571 performs an addition
 **Risk:** Low-Medium - Currently mitigated but pattern remains
 **Fix:** Document the mitigation; ensure comment explains pre-calculation
 
+**Codex Comment (2026-03-27):**
+- I would leave the code as-is. The current implementation already pre-calculates `total_leaves_on_half_day` once before iterating overlaps, so the specific inside-loop query risk described here is already mitigated in current code.
+- I did not rewrite this validator because that would create unnecessary risk around half-day overlap behavior for little benefit.
+- The right follow-up is documentation clarity: treat this as a historical issue with an existing mitigation, not a live defect requiring further implementation.
+
 ---
 
 ### 3. Dashboard Fires Multiple Sequential Queries (DRIFT-003)
@@ -114,6 +124,11 @@ The dashboard fires 6+ separate DB queries sequentially rather than using a sing
 
 **Risk:** Medium - Request waterfall on dashboard load
 **Fix:** Consolidate into single UNION query as commented
+
+**Codex Comment (2026-03-27):**
+- This appears to be stale as an active finding. Current `get_dashboard_data()` already consolidates the aggregate buckets into one `UNION ALL` query.
+- I did not change the dashboard logic because the implementation already matches the proposed fix.
+- Existing regression coverage in `ifitwala_ed/api/test_student_log_dashboard.py` already exercises the consolidated aggregate path, so this one should be kept in the audit as historical reasoning plus a note that the issue is already resolved in current code.
 
 ---
 

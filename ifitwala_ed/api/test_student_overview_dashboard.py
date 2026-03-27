@@ -10,6 +10,7 @@ import frappe
 from ifitwala_ed.api.student_overview_dashboard import (
     _history_block,
     _identity_block,
+    _students_for_guardian,
     _wellbeing_block,
     get_filter_meta,
     get_student_center_snapshot,
@@ -19,6 +20,24 @@ from ifitwala_ed.tests.base import IfitwalaFrappeTestCase
 
 
 class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
+    def test_students_for_guardian_uses_single_join_query(self):
+        seen_query = None
+
+        def fake_sql(query, params=None, as_list=False, as_dict=False):
+            nonlocal seen_query
+            seen_query = query
+            self.assertEqual(params, {"user": "guardian@example.com"})
+            self.assertTrue(as_list)
+            self.assertFalse(as_dict)
+            return [("STU-001",), ("STU-002",)]
+
+        with patch("ifitwala_ed.api.student_overview_dashboard.frappe.db.sql", side_effect=fake_sql):
+            students = _students_for_guardian("guardian@example.com")
+
+        self.assertEqual(students, ["STU-001", "STU-002"])
+        self.assertIn("SELECT DISTINCT sg.parent", seen_query)
+        self.assertIn("INNER JOIN `tabGuardian` g", seen_query)
+
     def test_identity_block_uses_preferred_student_photo(self):
         def fake_get_value(doctype, name_or_filters, fieldname, as_dict=False, order_by=None):
             if doctype == "Student":
