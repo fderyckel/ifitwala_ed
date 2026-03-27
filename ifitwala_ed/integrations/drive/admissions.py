@@ -368,15 +368,18 @@ def validate_applicant_health_finalize_context(upload_session_doc) -> dict[str, 
     if (
         getattr(upload_session_doc, "owner_doctype", None) != "Student Applicant"
         or getattr(upload_session_doc, "attached_doctype", None) != "Applicant Health Profile"
-        or not str(getattr(upload_session_doc, "intended_slot", "") or "").startswith(_HEALTH_VACCINATION_SLOT_PREFIX)
     ):
         return None
+
+    if not (getattr(upload_session_doc, "intended_slot", None) or "").startswith(_HEALTH_VACCINATION_SLOT_PREFIX):
+        frappe.throw(_("Upload session no longer matches the authoritative admissions health slot contract."))
 
     context = get_applicant_health_vaccination_context(
         {
             "student_applicant": upload_session_doc.owner_name,
             "applicant_health_profile": upload_session_doc.attached_name,
-            "filename_original": getattr(upload_session_doc, "filename_original", None),
+            "vaccine_name": None,
+            "date": None,
             "row_index": 0,
         }
     )
@@ -392,74 +395,36 @@ def validate_applicant_health_finalize_context(upload_session_doc) -> dict[str, 
         "intended_data_class": "data_class",
         "intended_purpose": "purpose",
         "intended_retention_policy": "retention_policy",
-        "intended_slot": "slot",
     }
     for session_field, context_field in field_map.items():
         if getattr(upload_session_doc, session_field, None) != context.get(context_field):
             frappe.throw(
-                _("Upload session no longer matches the authoritative admissions context for field '{0}'.").format(
-                    session_field
-                )
+                _(
+                    "Upload session no longer matches the authoritative admissions health context for field '{0}'."
+                ).format(session_field)
             )
+
     return context
 
 
 def run_admissions_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
-    file_url = getattr(created_file, "file_url", None) or frappe.db.get_value("File", created_file.name, "file_url")
+    if getattr(upload_session_doc, "owner_doctype", None) != "Student Applicant" or getattr(
+        upload_session_doc, "attached_doctype", None
+    ) not in {
+        "Student Applicant",
+        "Student Applicant Guardian",
+        "Applicant Document Item",
+        "Applicant Health Profile",
+    }:
+        return {}
+
     classification_name = frappe.db.get_value("File Classification", {"file": created_file.name}, "name")
+    file_url = getattr(created_file, "file_url", None) or frappe.db.get_value("File", created_file.name, "file_url")
 
-    if getattr(upload_session_doc, "attached_doctype", None) == "Applicant Document Item":
-        from ifitwala_ed.admission import admissions_portal as admission_api
-        from ifitwala_ed.admission.applicant_review_workflow import (
-            materialize_document_item_review_assignments,
-        )
-        from ifitwala_ed.admission.doctype.applicant_document.applicant_document import (
-            sync_applicant_document_review_from_items,
-        )
-
-        item_row = (
-            frappe.db.get_value(
-                "Applicant Document Item",
-                upload_session_doc.attached_name,
-                ["applicant_document", "item_key", "item_label"],
-                as_dict=True,
-            )
-            or {}
-        )
-        frappe.db.set_value(
-            "Applicant Document Item",
-            upload_session_doc.attached_name,
-            {
-                "file": file_url,
-                "file_name": getattr(created_file, "file_name", None)
-                or frappe.db.get_value("File", created_file.name, "file_name"),
-                "file_size": getattr(created_file, "file_size", None)
-                or frappe.db.get_value("File", created_file.name, "file_size"),
-                "review_status": "pending_review",
-            },
-            update_modified=False,
-        )
-        if item_row.get("applicant_document"):
-            sync_applicant_document_review_from_items(applicant_document=item_row["applicant_document"])
-            materialize_document_item_review_assignments(applicant_document=item_row["applicant_document"])
-        admission_api._append_document_upload_timeline(
-            student_applicant=upload_session_doc.owner_name,
-            applicant_document=item_row.get("applicant_document"),
-            applicant_document_item=upload_session_doc.attached_name,
-            file=created_file.name,
-            classification=classification_name,
-            upload_source=getattr(upload_session_doc, "upload_source", None),
-        )
-        return {
-            "classification": classification_name,
-            "file_url": file_url,
-            "applicant_document": item_row.get("applicant_document"),
-            "applicant_document_item": upload_session_doc.attached_name,
-            "item_key": item_row.get("item_key"),
-            "item_label": item_row.get("item_label"),
-        }
-
-    if getattr(upload_session_doc, "attached_doctype", None) == "Student Applicant":
+    if (
+        getattr(upload_session_doc, "attached_doctype", None) == "Student Applicant"
+        and getattr(upload_session_doc, "intended_slot", None) == _APPLICANT_PROFILE_IMAGE_SLOT
+    ):
         frappe.db.set_value(
             "Student Applicant",
             upload_session_doc.owner_name,
@@ -471,6 +436,7 @@ def run_admissions_post_finalize(upload_session_doc, created_file) -> dict[str, 
             "classification": classification_name,
             "file_url": file_url,
             "student_applicant": upload_session_doc.owner_name,
+            "slot": getattr(upload_session_doc, "intended_slot", None),
         }
 
     if getattr(upload_session_doc, "attached_doctype", None) == "Student Applicant Guardian":
@@ -486,6 +452,7 @@ def run_admissions_post_finalize(upload_session_doc, created_file) -> dict[str, 
             "file_url": file_url,
             "student_applicant": upload_session_doc.owner_name,
             "guardian_row_name": upload_session_doc.attached_name,
+            "slot": getattr(upload_session_doc, "intended_slot", None),
         }
 
     if getattr(upload_session_doc, "attached_doctype", None) == "Applicant Health Profile":
@@ -494,6 +461,67 @@ def run_admissions_post_finalize(upload_session_doc, created_file) -> dict[str, 
             "file_url": file_url,
             "student_applicant": upload_session_doc.owner_name,
             "applicant_health_profile": upload_session_doc.attached_name,
+            "slot": getattr(upload_session_doc, "intended_slot", None),
         }
 
-    return {}
+    from ifitwala_ed.admission import admissions_portal as admission_api
+    from ifitwala_ed.admission.applicant_review_workflow import materialize_document_item_review_assignments
+    from ifitwala_ed.admission.doctype.applicant_document.applicant_document import (
+        sync_applicant_document_review_from_items,
+    )
+
+    item_row = (
+        frappe.db.get_value(
+            "Applicant Document Item",
+            upload_session_doc.attached_name,
+            ["applicant_document", "item_key", "item_label"],
+            as_dict=True,
+        )
+        or {}
+    )
+    applicant_document = item_row.get("applicant_document")
+    if not applicant_document:
+        frappe.throw(
+            _("Applicant Document Item '{0}' is missing its parent document.").format(upload_session_doc.attached_name)
+        )
+
+    document_type = frappe.db.get_value("Applicant Document", applicant_document, "document_type")
+    document_type_code = frappe.db.get_value("Applicant Document Type", document_type, "code") or document_type
+
+    frappe.db.set_value(
+        "Applicant Document Item",
+        upload_session_doc.attached_name,
+        {
+            "review_status": "Pending",
+            "review_notes": None,
+            "reviewed_by": None,
+            "reviewed_on": None,
+        },
+        update_modified=False,
+    )
+    sync_applicant_document_review_from_items(applicant_document)
+    admission_api._append_document_upload_timeline(
+        student_applicant=upload_session_doc.owner_name,
+        applicant_document=applicant_document,
+        applicant_document_item=upload_session_doc.attached_name,
+        item_key=item_row.get("item_key"),
+        item_label=item_row.get("item_label"),
+        document_type=document_type,
+        document_type_code=document_type_code,
+        file_url=file_url,
+        upload_source=upload_session_doc.upload_source,
+        action="uploaded",
+    )
+    materialize_document_item_review_assignments(
+        applicant_document_item=upload_session_doc.attached_name,
+        source_event="document_item_uploaded",
+    )
+
+    return {
+        "file_url": file_url,
+        "classification": classification_name,
+        "applicant_document": applicant_document,
+        "applicant_document_item": upload_session_doc.attached_name,
+        "item_key": item_row.get("item_key"),
+        "item_label": item_row.get("item_label"),
+    }

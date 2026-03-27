@@ -251,18 +251,19 @@ def run_media_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
         )
         return {"file_url": file_url}
 
-    if getattr(upload_session_doc, "school", None) and slot.startswith("school_gallery__"):
-        row_name = slot.removeprefix("school_gallery__").strip()
-        if row_name:
-            frappe.db.set_value(
-                "Gallery Image",
-                row_name,
-                {
-                    "image": file_url,
-                    "image_file": created_file.name,
-                },
-                update_modified=False,
-            )
-        return {"file_url": file_url, "row_name": row_name or None}
+    if getattr(upload_session_doc, "school", None) and slot.startswith("school_gallery_image__"):
+        row_name = slot.split("school_gallery_image__", 1)[1]
+        school_doc = frappe.get_doc("School", upload_session_doc.school)
+        target_row = None
+        for row in school_doc.gallery_image or []:
+            if row.name == row_name:
+                target_row = row
+                break
+        if not target_row:
+            frappe.throw(_("Gallery row '{0}' was not found on School '{1}'.").format(row_name, school_doc.name))
+        target_row.governed_file = created_file.name
+        target_row.school_image = file_url
+        school_doc.save(ignore_permissions=True)
+        return {"file_url": file_url, "row_name": row_name}
 
     return {"file_url": file_url}

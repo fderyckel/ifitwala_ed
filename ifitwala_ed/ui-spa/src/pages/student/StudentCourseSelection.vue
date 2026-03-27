@@ -151,19 +151,23 @@ const dueSoonCount = computed(
 );
 
 function dueLabel(value?: string | null) {
-	if (!value) return 'No deadline';
+	if (!value) return __('No deadline');
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return value;
-	return `Due ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+	return __('Due {0}').replace(
+		'{0}',
+		date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+	);
 }
 
 function requestSummary(window: PortalSelectionWindow) {
 	const request = window.students[0]?.request;
-	if (!request) return 'Draft request not ready yet.';
-	if (request.status === 'Submitted') return 'Submitted. Staff review and approval happen next.';
-	if (request.status === 'Approved') return 'Approved and ready for enrollment materialization.';
+	if (!request) return __('Your choices are being prepared.');
+	if (request.status === 'Submitted')
+		return __('Submitted. The school will review your choices next.');
+	if (request.status === 'Approved') return __('Approved. Your choices are now confirmed.');
 	if (request.status === 'Draft')
-		return 'Draft is open. Review your choices and submit before the deadline.';
+		return __('Your draft is open. Review your choices and submit before the deadline.');
 	return `${request.status}.`;
 }
 

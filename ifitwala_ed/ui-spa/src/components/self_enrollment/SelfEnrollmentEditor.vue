@@ -92,7 +92,7 @@
 					<div>
 						<h2 class="type-h3 text-ink">Required Courses</h2>
 						<p class="type-caption text-ink/60">
-							These rows are part of the program and stay visible for reference.
+							{{ __('These courses are part of the program and stay visible for reference.') }}
 						</p>
 					</div>
 				</div>
@@ -100,7 +100,7 @@
 					v-if="!sections.required_courses.length"
 					class="card-surface p-5 type-body text-ink/70"
 				>
-					No required courses are configured for this offering.
+					{{ __('No required courses are set up for this offering.') }}
 				</div>
 				<div v-else class="space-y-3">
 					<article
@@ -149,7 +149,7 @@
 					<div>
 						<h2 class="type-h3 text-ink">Choice Groups</h2>
 						<p class="type-caption text-ink/60">
-							Select one or more options where the program allows choice.
+							{{ __('Choose from the sections below where the school offers options.') }}
 						</p>
 					</div>
 				</div>
@@ -158,7 +158,7 @@
 					v-if="!sections.basket_sections.length"
 					class="card-surface p-5 type-body text-ink/70"
 				>
-					No basket-based choices are configured for this offering.
+					{{ __('No choice sections are set up for this offering.') }}
 				</div>
 				<div v-else class="space-y-4">
 					<section
@@ -172,12 +172,14 @@
 								<p class="type-caption text-ink/60">
 									{{
 										section.required_by_rule
-											? 'Required basket coverage'
-											: 'Optional basket choice'
+											? __('Choose at least one course in this section.')
+											: __('Optional choices in this section.')
 									}}
 								</p>
 							</div>
-							<span class="chip">{{ section.selected_count }} selected</span>
+							<span class="chip">{{
+								__('{0} selected').replace('{0}', String(section.selected_count))
+							}}</span>
 						</div>
 						<div class="space-y-3">
 							<article
@@ -210,7 +212,12 @@
 											</span>
 										</label>
 										<p v-if="course.selected_elsewhere" class="mt-2 type-caption text-ink/60">
-											Already selected for {{ course.applied_basket_group }}.
+											{{
+												__('Already chosen in {0}.').replace(
+													'{0}',
+													course.applied_basket_group || ''
+												)
+											}}
 										</p>
 									</div>
 
@@ -219,14 +226,14 @@
 										class="grid w-full gap-3 lg:max-w-xl lg:grid-cols-2"
 									>
 										<label v-if="course.basket_groups.length > 1" class="flex flex-col gap-1">
-											<span class="type-label">Counts Toward</span>
+											<span class="type-label">{{ __('Counts In') }}</span>
 											<select
 												:value="course.applied_basket_group || ''"
 												class="rounded-xl border border-line-soft bg-white px-3 py-2 type-body text-ink"
 												:disabled="!canEdit"
 												@change="handleAppliedGroupChange(course.course, $event)"
 											>
-												<option value="">Select basket group</option>
+												<option value="">{{ __('Choose section') }}</option>
 												<option
 													v-for="basketGroup in course.basket_groups"
 													:key="`${course.course}-${basketGroup}`"
@@ -259,9 +266,9 @@
 			<section class="space-y-4">
 				<div class="flex items-center justify-between gap-3">
 					<div>
-						<h2 class="type-h3 text-ink">Other Electives</h2>
+						<h2 class="type-h3 text-ink">{{ __('More Options') }}</h2>
 						<p class="type-caption text-ink/60">
-							Additional elective rows outside basket-group rules.
+							{{ __('Extra course options that are not part of a choice section.') }}
 						</p>
 					</div>
 				</div>
@@ -269,7 +276,7 @@
 					v-if="!sections.ungrouped_courses.length"
 					class="card-surface p-5 type-body text-ink/70"
 				>
-					No standalone electives are configured for this offering.
+					{{ __('No extra course options are available for this offering.') }}
 				</div>
 				<div v-else class="space-y-3">
 					<article
@@ -296,13 +303,13 @@
 
 			<section class="card-surface p-5">
 				<div class="mb-3 flex items-center justify-between gap-3">
-					<h2 class="type-h3 text-ink">Validation Snapshot</h2>
-					<span :class="validationClass(payload.request.validation_status)" class="chip">
-						{{ payload.request.validation_status }}
+					<h2 class="type-h3 text-ink">{{ __('Submission Check') }}</h2>
+					<span :class="validationToneClass(validationDisplayState)" class="chip">
+						{{ validationDisplayLabel }}
 					</span>
 				</div>
 				<div v-if="!validationMessages.length" class="type-body text-ink/70">
-					No validation messages right now.
+					{{ validationEmptyMessage }}
 				</div>
 				<ul v-else class="space-y-2">
 					<li
@@ -319,13 +326,17 @@
 				<div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 					<div>
 						<p class="type-body-strong text-ink">
-							{{ hasUnsavedChanges ? 'Unsaved changes' : 'Selections saved' }}
+							{{ hasUnsavedChanges ? __('Unsaved changes') : __('Selections saved') }}
 						</p>
 						<p class="type-caption text-ink/70">
-							Save a draft while reviewing choices, then submit once the basket is complete.
+							{{
+								__(
+									'Save your work while you review options, then submit when everything looks right.'
+								)
+							}}
 						</p>
 						<p v-if="canEdit && !readyForSubmit" class="mt-2 type-caption text-flame">
-							Resolve the validation items above before submission is enabled.
+							{{ __('Please finish the items above before submitting.') }}
 						</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
@@ -335,7 +346,7 @@
 							:disabled="!canEdit || !hasUnsavedChanges || saving"
 							@click="emit('save', submitRows)"
 						>
-							{{ saving ? 'Saving...' : 'Save Draft' }}
+							{{ saving ? __('Saving...') : __('Save Draft') }}
 						</button>
 						<button
 							type="button"
@@ -343,7 +354,7 @@
 							:disabled="!canSubmit || !readyForSubmit || submitting"
 							@click="emit('submit', submitRows)"
 						>
-							{{ submitting ? 'Submitting...' : 'Submit Selection' }}
+							{{ submitting ? __('Submitting...') : __('Submit Selection') }}
 						</button>
 					</div>
 				</div>
@@ -403,12 +414,15 @@ const canEdit = computed(() => props.payload?.permissions.can_edit === 1);
 const canSubmit = computed(() => props.payload?.permissions.can_submit === 1);
 const readyForSubmit = computed(() => props.payload?.summary.ready_for_submit === true);
 const subtitle = computed(() => {
-	if (!props.payload) return 'Review the program basket and confirm your choices.';
+	if (!props.payload) return __('Review the course choices and confirm your selections.');
 	const childLabel =
 		props.payload.viewer.actor_type === 'Guardian'
 			? `${props.payload.student.full_name} · ${props.payload.window.academic_year}`
 			: props.payload.window.academic_year;
-	return `Review the program basket and confirm your choices for ${childLabel}.`;
+	return __('Review the course choices and confirm your selections for {0}.').replace(
+		'{0}',
+		childLabel
+	);
 });
 
 const dueLabel = computed(() => {
@@ -427,9 +441,45 @@ const hasUnsavedChanges = computed(() => haveChoiceRowsChanged(draftRows.value, 
 const validationMessages = computed(() => {
 	const payload = props.payload;
 	if (!payload) return [];
-	return [...(payload.validation.reasons || []), ...(payload.validation.violations || [])].filter(
-		Boolean
-	);
+	const messages = [
+		...(payload.validation.reasons || []),
+		...(payload.validation.violations || []),
+	]
+		.map(message => String(message || '').trim())
+		.filter(Boolean);
+	return Array.from(new Set(messages));
+});
+
+const validationDisplayState = computed<'invalid' | 'pending' | 'valid'>(() => {
+	const payload = props.payload;
+	if (!payload) return 'pending';
+
+	const liveStatus = String(payload.validation.status || '').trim();
+	if (liveStatus === 'invalid') return 'invalid';
+	if (payload.summary.ready_for_submit || liveStatus === 'ok' || liveStatus === 'not_configured') {
+		return 'valid';
+	}
+
+	const storedStatus = String(payload.request.validation_status || '').trim();
+	if (storedStatus === 'Invalid') return 'invalid';
+	if (storedStatus === 'Valid') return 'valid';
+	return 'pending';
+});
+
+const validationDisplayLabel = computed(() => {
+	if (validationDisplayState.value === 'valid') return __('Ready to submit');
+	if (validationDisplayState.value === 'invalid') return __('Action needed');
+	return __('Review choices');
+});
+
+const validationEmptyMessage = computed(() => {
+	if (validationDisplayState.value === 'valid') {
+		return __('Everything needed for submission is in place.');
+	}
+	if (validationDisplayState.value === 'invalid') {
+		return __('Please review the course choices above before submitting.');
+	}
+	return __('No issues to show right now.');
 });
 
 function formatShortDate(value?: string | null) {
@@ -455,6 +505,12 @@ function validationClass(status?: string | null) {
 	const normalized = String(status || '').trim();
 	if (normalized === 'Valid') return 'bg-leaf/10 text-leaf';
 	if (normalized === 'Invalid') return 'bg-flame/10 text-flame';
+	return 'bg-surface-soft text-ink/70';
+}
+
+function validationToneClass(state: 'invalid' | 'pending' | 'valid') {
+	if (state === 'valid') return 'bg-leaf/10 text-leaf';
+	if (state === 'invalid') return 'bg-flame/10 text-flame';
 	return 'bg-surface-soft text-ink/70';
 }
 

@@ -99,7 +99,7 @@
 								<div class="flex flex-wrap items-center gap-2">
 									<span class="chip">{{ student.request?.status || 'Draft' }}</span>
 									<span class="chip">{{
-										student.request?.validation_status || 'Not Validated'
+										selectionValidationLabel(student.request?.validation_status)
 									}}</span>
 								</div>
 							</div>
@@ -117,7 +117,7 @@
 									}"
 									class="if-action"
 								>
-									{{ student.request?.can_edit ? 'Continue for Child' : 'View Selection' }}
+									{{ student.request?.can_edit ? __('Continue for Child') : __('View Selection') }}
 								</RouterLink>
 							</div>
 						</article>
@@ -155,10 +155,21 @@ const submittedCount = computed(() =>
 );
 
 function dueLabel(value?: string | null) {
-	if (!value) return 'No deadline';
+	if (!value) return __('No deadline');
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return value;
-	return `Due ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+	return __('Due {0}').replace(
+		'{0}',
+		date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+	);
+}
+
+function selectionValidationLabel(status?: string | null) {
+	const normalized = String(status || '').trim();
+	if (normalized === 'Valid') return __('Ready to submit');
+	if (normalized === 'Invalid') return __('Action needed');
+	if (normalized === 'Not Validated') return __('Review choices');
+	return normalized || __('Review choices');
 }
 
 async function loadBoard() {

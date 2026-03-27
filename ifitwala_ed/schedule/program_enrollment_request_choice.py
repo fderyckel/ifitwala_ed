@@ -3,11 +3,15 @@
 
 from __future__ import annotations
 
+import re
+
 import frappe
 from frappe import _
 
 from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
 from ifitwala_ed.schedule.enrollment_engine import evaluate_basket_selection
+
+GROUP_NAME_PATTERN = re.compile(r"'([^']+)'")
 
 
 def _normalize_choice_rank(value) -> int | None:
@@ -79,6 +83,86 @@ def _required_offering_basket_groups(program_offering: str) -> list[str]:
         seen.add(basket_group)
         output.append(basket_group)
     return output
+
+
+def _extract_group_name(message: str | None) -> str | None:
+    text = str(message or "").strip()
+    if not text:
+        return None
+    match = GROUP_NAME_PATTERN.search(text)
+    if not match:
+        return None
+    return (match.group(1) or "").strip() or None
+
+
+def _format_choice_validation_message(message: str | None) -> str | None:
+    text = str(message or "").strip()
+    if not text:
+        return None
+
+    if text == "Missing required courses in basket.":
+        return _("Add every required course before you submit.")
+
+    if text == "One or more selected courses must be assigned to a basket group before validation can pass.":
+        return _("Choose which section each selected course should count toward before you submit.")
+
+    if text.startswith("Basket must include at least one course from group"):
+        group_name = _extract_group_name(text)
+        if group_name:
+            return _("Choose at least one course in {0}.").format(group_name)
+        return _("Choose at least one course in this section.")
+
+    return text
+
+
+def _format_choice_validation_violation(violation) -> str | None:
+    if isinstance(violation, str):
+        return _format_choice_validation_message(violation)
+
+    payload = violation or {}
+    code = (payload.get("code") or "").strip()
+    message = payload.get("message")
+
+    if code == "missing_required":
+        return _("Add every required course before you submit.")
+
+    if code == "ambiguous_basket_group":
+        return _("Choose which section each selected course should count toward before you submit.")
+
+    if code == "require_group_coverage":
+        group_name = _extract_group_name(message)
+        if group_name:
+            return _("Choose at least one course in {0}.").format(group_name)
+        return _("Choose at least one course in this section.")
+
+    return _format_choice_validation_message(message)
+
+
+def _choice_validation_messages(basket_result: dict) -> list[str]:
+    messages: list[str] = []
+    seen: set[str] = set()
+
+    for raw_violation in list(basket_result.get("violations") or []):
+        message = _format_choice_validation_violation(raw_violation)
+        if not message or message in seen:
+            continue
+        seen.add(message)
+        messages.append(message)
+
+    for raw_reason in list(basket_result.get("reasons") or []):
+        message = _format_choice_validation_message(raw_reason)
+        if not message or message in seen:
+            continue
+        seen.add(message)
+        messages.append(message)
+
+    if not messages and list(basket_result.get("missing_required_courses") or []):
+        messages.append(_("Add every required course before you submit."))
+
+    if not messages and (basket_result.get("status") or "").strip() == "invalid":
+        messages.append(_("Please review the course choices above before you submit."))
+
+    return messages
 
 
 def get_effective_program_enrollment_request_rows(request) -> list[dict]:
@@ -182,6 +266,7 @@ def get_program_enrollment_request_choice_state(request, *, can_edit: bool) -> d
     basket_status = (basket_result.get("status") or "").strip() or None
     ready_for_submit = basket_status in {"ok", "not_configured"}
     request_status = (request.status or "").strip() or "Draft"
+    validation_messages = _choice_validation_messages(basket_result)
 
     return {
         "request": {
@@ -209,8 +294,8 @@ def get_program_enrollment_request_choice_state(request, *, can_edit: bool) -> d
         "validation": {
             "status": basket_status,
             "ready_for_submit": ready_for_submit,
-            "reasons": list(basket_result.get("reasons") or []),
-            "violations": list(basket_result.get("violations") or []),
+            "reasons": validation_messages,
+            "violations": [],
             "missing_required_courses": list(basket_result.get("missing_required_courses") or []),
             "ambiguous_courses": list(basket_result.get("ambiguous_courses") or []),
             "group_summary": dict(basket_result.get("group_summary") or {}),

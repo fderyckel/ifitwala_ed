@@ -87,6 +87,52 @@ class TestSelfEnrollmentApi(FrappeTestCase):
         self.assertEqual(submit_payload["request"]["status"], "Submitted")
         self.assertEqual(submit_payload["permissions"]["can_edit"], 0)
 
+    def test_guardian_choice_state_uses_family_friendly_validation_message(self):
+        context = _build_self_enrollment_context(carry_forward_optional=False)
+        window = context["window"]
+        window.load_students()
+        window.prepare_requests()
+        window.open_window()
+        guardian_user = self._create_guardian_user_for_student(context["student"].name)
+
+        frappe.set_user(guardian_user)
+        payload = self_enrollment_api.get_self_enrollment_choice_state(
+            selection_window=window.name,
+            student=context["student"].name,
+        )
+
+        self.assertEqual(payload["validation"]["status"], "invalid")
+        self.assertEqual(payload["validation"]["violations"], [])
+        self.assertIn(
+            f"Choose at least one course in {context['basket_group'].name}.",
+            payload["validation"]["reasons"],
+        )
+
+    def test_guardian_save_choices_returns_live_ready_state(self):
+        context = _build_self_enrollment_context(carry_forward_optional=False)
+        window = context["window"]
+        window.load_students()
+        window.prepare_requests()
+        window.open_window()
+        guardian_user = self._create_guardian_user_for_student(context["student"].name)
+
+        frappe.set_user(guardian_user)
+        payload = self_enrollment_api.save_self_enrollment_choices(
+            selection_window=window.name,
+            student=context["student"].name,
+            courses=[
+                {
+                    "course": context["optional_course"].name,
+                    "applied_basket_group": context["basket_group"].name,
+                }
+            ],
+        )
+
+        self.assertEqual(payload["request"]["validation_status"], "Not Validated")
+        self.assertEqual(payload["validation"]["status"], "ok")
+        self.assertTrue(payload["summary"]["ready_for_submit"])
+        self.assertEqual(payload["validation"]["reasons"], [])
+
     def test_guardian_board_keeps_closed_window_visible_after_deadline(self):
         context = _build_self_enrollment_context(carry_forward_optional=False)
         window = context["window"]
