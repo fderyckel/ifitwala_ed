@@ -21,7 +21,10 @@ from ifitwala_ed.api.student_demographics_dashboard import (
 )
 from ifitwala_ed.api.student_log_dashboard import ALLOWED_ANALYTICS_ROLES as WELLBEING_ANALYTICS_ROLES
 from ifitwala_ed.api.users import STAFF_ROLES
-from ifitwala_ed.utilities.image_utils import get_preferred_student_image_url
+from ifitwala_ed.utilities.image_utils import (
+    get_preferred_guardian_image_url,
+    get_preferred_student_image_url,
+)
 
 CACHE_TTL_SECONDS = 3600
 HR_ROLES = frozenset({"HR User", "HR Manager"})
@@ -201,6 +204,56 @@ def _resolve_student_display_name(student_row, user_first_name: str | None, user
     return "Student"
 
 
+def _resolve_guardian_row_for_user(user: str):
+    guardian = frappe.db.get_value(
+        "Guardian",
+        {"user": user},
+        [
+            "name",
+            "guardian_full_name",
+            "guardian_first_name",
+            "guardian_last_name",
+            "guardian_image",
+        ],
+        as_dict=True,
+    )
+    if guardian:
+        guardian["guardian_image"] = get_preferred_guardian_image_url(
+            guardian.get("name"),
+            original_url=guardian.get("guardian_image"),
+        )
+    return guardian
+
+
+def _resolve_guardian_display_name(guardian_row, user_first_name: str | None, user_full_name: str | None) -> str:
+    if guardian_row:
+        full = (guardian_row.get("guardian_full_name") or "").strip()
+        if full:
+            return full
+
+        combined = " ".join(
+            filter(
+                None,
+                [
+                    (guardian_row.get("guardian_first_name") or "").strip(),
+                    (guardian_row.get("guardian_last_name") or "").strip(),
+                ],
+            )
+        ).strip()
+        if combined:
+            return combined
+
+    full = (user_full_name or "").strip()
+    if full:
+        return full
+
+    first = (user_first_name or "").strip()
+    if first:
+        return first
+
+    return "Guardian"
+
+
 @frappe.whitelist()
 def get_staff_home_header():
     user = frappe.session.user
@@ -271,4 +324,35 @@ def get_student_portal_identity():
     }
 
     cache.set_value(cache_key, frappe.as_json(payload), expires_in_sec=CACHE_TTL_SECONDS)
+    return payload
+
+
+@frappe.whitelist()
+def get_guardian_portal_identity():
+    user = frappe.session.user
+    if not user or user == "Guest":
+        frappe.throw(_("You must be logged in."), frappe.PermissionError)
+
+    user_row = frappe.db.get_value("User", user, ["name", "first_name", "full_name", "email"], as_dict=True)
+    if not user_row:
+        frappe.throw(_("User not found."), frappe.DoesNotExistError)
+
+    guardian_row = _resolve_guardian_row_for_user(user)
+    display_name = _resolve_guardian_display_name(
+        guardian_row,
+        user_row.get("first_name"),
+        user_row.get("full_name"),
+    )
+
+    payload = {
+        "user": user_row.get("name"),
+        "guardian": guardian_row.get("name") if guardian_row else None,
+        "display_name": display_name,
+        "full_name": (guardian_row.get("guardian_full_name") if guardian_row else None)
+        or user_row.get("full_name")
+        or display_name,
+        "email": user_row.get("email") or user_row.get("name"),
+        "image_url": (guardian_row.get("guardian_image") if guardian_row else None) or None,
+    }
+
     return payload
