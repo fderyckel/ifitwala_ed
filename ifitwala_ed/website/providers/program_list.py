@@ -39,22 +39,16 @@ def _get_program_profiles(school_scope: str, school_name: str, limit: int):
     if not school_names:
         return []
 
-    profiles = frappe.get_all(
-        "Program Website Profile",
-        filters={"school": ["in", school_names], "status": "Published"},
-        fields=["name", "program", "school", "hero_image", "intro_text"],
-    )
-    if not profiles:
-        return []
-
     offering_rows = frappe.get_all(
         "Program Offering",
-        filters={"school": ["in", school_names], "program": ["in", [p.program for p in profiles]]},
+        filters={"school": ["in", school_names]},
         fields=["program", "school"],
     )
     offered_pairs = {(row.school, row.program) for row in offering_rows if row.program and row.school}
+    if not offered_pairs:
+        return []
 
-    program_names = sorted({row.program for row in profiles if row.program})
+    program_names = sorted({program for _school, program in offered_pairs if program})
     programs = frappe.get_all(
         "Program",
         filters={
@@ -64,43 +58,66 @@ def _get_program_profiles(school_scope: str, school_name: str, limit: int):
         },
         fields=["name", "program_name", "program_image", "program_slug", "is_featured", "lft"],
     )
+    if not programs:
+        return []
 
-    profiles_by_program = {}
+    profiles = frappe.get_all(
+        "Program Website Profile",
+        filters={"school": ["in", school_names], "program": ["in", [row.name for row in programs]]},
+        fields=["name", "program", "school", "hero_image", "intro_text", "status"],
+    )
+
+    profile_map = {}
     for profile in profiles:
-        profiles_by_program.setdefault(profile.program, []).append(profile)
+        profile_map[(profile.school, profile.program)] = profile
 
     sorted_programs = sorted(
-        (program for program in programs if program.name in profiles_by_program),
+        programs,
         key=lambda row: (-int(row.is_featured or 0), int(row.lft or 0)),
+    )
+    sorted_school_names = sorted(
+        school_names,
+        key=lambda name: (
+            (getattr(school_map.get(name), "school_name", None) or name or "").lower(),
+            name,
+        ),
     )
 
     items = []
     for program in sorted_programs:
-        if not program.program_slug:
-            continue
-        program_slug = program.program_slug
         program_title = program.program_name or program.name
-
-        for profile in profiles_by_program.get(program.name, []):
-            if (profile.school, profile.program) not in offered_pairs:
+        for school_name in sorted_school_names:
+            if (school_name, program.name) not in offered_pairs:
                 continue
 
-            school = school_map.get(profile.school)
+            school = school_map.get(school_name)
             if not school or not school.website_slug:
                 continue
 
-            url = build_program_profile_url(
-                school_slug=school.website_slug,
-                program_slug=program_slug,
+            profile = profile_map.get((school_name, program.name))
+            has_detail_page = bool(
+                profile
+                and profile.status == "Published"
+                and (program.program_slug or "").strip()
+                and (school.website_slug or "").strip()
             )
-            image_source = profile.hero_image or program.program_image
+            url = (
+                build_program_profile_url(
+                    school_slug=school.website_slug,
+                    program_slug=program.program_slug,
+                )
+                if has_detail_page
+                else None
+            )
+            image_source = (profile.hero_image if profile else None) or program.program_image
             items.append(
                 {
                     "title": program_title,
                     "url": url,
-                    "intro": truncate_text(profile.intro_text or "", 160),
+                    "intro": truncate_text(profile.intro_text or "", 160) if has_detail_page else None,
                     "image": build_image_variants(image_source, "program"),
                     "school_name": school.school_name if school_scope == "all" else None,
+                    "is_teaser": not has_detail_page,
                 }
             )
             if len(items) >= limit:

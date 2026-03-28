@@ -237,19 +237,22 @@ school
 ```json
 ProgramCard[] = {
   "title": string,
-  "url": string,
-  "intro": string,
-  "image": ImageRef
+  "url": string | null,
+  "intro": string | null,
+  "image": ImageRef,
+  "is_teaser": boolean
 }
 ```
 
 **Rules**
 
-* Only programs with `Program Website Profile.status = "Published"`
 * Program must satisfy `is_published = 1` and `archive = 0`
 * Program must be offered by the school (Program Offering)
 * Ordered by `is_featured desc`, then `lft asc`
-* Intro truncated server-side
+* Published `Program Website Profile` rows render full linked detail cards
+* Draft or missing `Program Website Profile` rows still render teaser cards for published Programs
+* Teaser cards render image/title-only browse surfaces and do not link to a program detail page
+* Intro is truncated server-side and shown only for full linked detail cards
 * Discoverability is school-scoped: navigation should expose a single `Programs` page (`School Website Page.route = "programs"`), and that page renders `program_list` cards that link to each program detail route.
 
 ---

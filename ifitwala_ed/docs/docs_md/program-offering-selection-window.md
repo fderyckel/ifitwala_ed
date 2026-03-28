@@ -3,9 +3,9 @@ title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
 slug: program-offering-selection-window
 category: Enrollment
 doc_order: 3
-version: "1.0.1"
-last_change_date: "2026-03-27"
-summary: "Launch one time-bound student or guardian self-enrollment campaign for a Program Offering and Academic Year, pre-create draft Program Enrollment Requests, and collect choices through the portal without bypassing the request-first architecture."
+version: "1.0.2"
+last_change_date: "2026-03-28"
+summary: "Launch one time-bound student or guardian self-enrollment campaign for a Program Offering and Academic Year, pre-create draft Program Enrollment Requests, collect choices through the portal, and monitor response status from the window without bypassing the request-first architecture."
 seo_title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
 seo_description: "Launch portal self-enrollment for one Program Offering and Academic Year while keeping Program Enrollment Request as the canonical staging object."
 ---
@@ -49,11 +49,16 @@ Opening a selection window never writes committed enrollment directly. It batch-
    - all required offering courses are already present
    - deterministic carry-forward choices are included when possible
    - unresolved optional choices remain for the portal user
-7. Open the window.
-8. Student or guardian portal users save drafts and submit selections before the deadline.
+7. Use `View Request Tracker` from the window to monitor:
+   - who already submitted
+   - who is still draft / not submitted
+   - which rows are missing a linked request
+   - which draft or reviewed requests are blocked and why
+8. Open the window.
+9. Student or guardian portal users save drafts and submit selections before the deadline.
    - portal submission proceeds only when the current choices pass live validation
    - if validation still needs attention, the request stays in `Draft` and the portal explains what must be fixed first
-9. Staff review, validate, approve, and materialize the resulting requests later.
+10. Staff review, validate, approve, and materialize the resulting requests later.
 
 ## Portal Behavior
 
@@ -101,6 +106,7 @@ Opening a selection window never writes committed enrollment directly. It batch-
   - source population can be loaded from current enrollment, cohort, or manual rows
   - request preparation links each student row to one `Program Enrollment Request`
   - existing active requests are reused instead of duplicated
+  - the Desk form can launch the linked `Program Enrollment Request Overview` tracker with this window prefilled
 
 ### Permission Matrix
 

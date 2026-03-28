@@ -3,9 +3,9 @@ title: "Program Enrollment Tool: Batch Request Preparation and Materialization"
 slug: program-enrollment-tool
 category: Enrollment
 doc_order: 6
-version: "2.1.0"
-last_change_date: "2026-03-26"
-summary: "Use one in-product tool to prepare, validate, approve, and materialize Program Enrollment Requests for cohort rollover and low-friction year-end promotion, using the same request-seeding rules as portal self-enrollment windows."
+version: "2.2.0"
+last_change_date: "2026-03-28"
+summary: "Use one in-product tool to prepare, validate, approve, and materialize Program Enrollment Requests for cohort rollover and low-friction year-end promotion, using the same request-seeding rules as portal self-enrollment windows, while the request report handles clean fast-track approval/materialization."
 seo_title: "Program Enrollment Tool: Batch Request Preparation and Materialization"
 seo_description: "Prepare Program Enrollment Requests in batch for cohorts or existing enrollment populations, then validate, approve, and materialize them into Program Enrollments."
 ---
@@ -17,6 +17,8 @@ seo_description: "Prepare Program Enrollment Requests in batch for cohorts or ex
 It no longer writes `Program Enrollment` directly as the first step. Its canonical path is:
 
 `source students -> draft Program Enrollment Request -> validate -> approve -> materialize Program Enrollment`
+
+Use the tool when staff need to seed or manage the student population itself. When requests already exist and the goal is only to clear non-problematic academic requests quickly, use the `Program Enrollment Request Overview` fast-track action instead.
 
 ## Before You Start (Prerequisites)
 

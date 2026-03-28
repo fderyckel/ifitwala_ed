@@ -2,7 +2,7 @@
 # Page Recipes (Current Baseline)
 
 **Audience:** Marketing, admissions, and website managers
-**Status (March 24, 2026):** Synced with implemented website editor and renderer behavior, including utility links, floating inquiry CTA, `section_carousel`, and public course catalog/detail surfaces
+**Status (March 28, 2026):** Synced with implemented website editor and renderer behavior, including browse-first utility links, floating inquiry CTA, `section_carousel`, and public course catalog/detail surfaces
 **Goal:** Low-friction page composition using currently supported blocks
 
 ---
@@ -12,7 +12,8 @@
 * One H1 owner block must be first (`hero`, `admissions_overview`, or `program_intro`).
 * Route input for `School Website Page` is school-relative (`/`, `about`, `admissions`, `about/team`).
 * Publication is workflow-driven (`Draft -> In Review -> Approved -> Published`).
-* First-time School/Program/Course publication now prepares starter website/SEO defaults when those records are missing, but it does not bypass the page/profile review workflow.
+* First-time School publication now prepares and publishes canonical starter pages (`/`, `about`, `admissions`, `programs`) when the School itself is public.
+* First-time Program/Course publication still prepares starter website/SEO defaults without bypassing profile review workflow.
 * Allowed blocks depend on context:
   * `School Website Page` (Standard): `hero`, `rich_text`, `section_carousel`, `program_list`, `course_catalog`, `leadership`, `cta`, `faq`, `content_snippet`
   * `School Website Page` (Admissions): Standard + `admissions_overview`, `admissions_steps`, `admission_cta`
@@ -20,8 +21,9 @@
   * `Course Website Profile`: Standard + `course_intro`, `learning_highlights`
   * `Website Story`: Standard blocks only
 * Website shell utility actions are now first-class:
-  * `Other Organizations` link
-  * `Portal Login` link
+  * `Schools`
+  * guest `Login`
+  * authenticated `Hub` and `Logout`
   * floating `Let's Talk` bubble to inquiry route
 
 ---

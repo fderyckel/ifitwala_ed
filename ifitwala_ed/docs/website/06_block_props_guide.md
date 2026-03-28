@@ -288,8 +288,9 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 
 ### Purpose
 
-* Entry point into Program pages
-* Displays only published Program Website Profiles
+* Entry point into school-offered, published Programs
+* Published `Program Website Profile` rows render full linked detail cards
+* Draft or missing `Program Website Profile` rows render teaser cards only (image/title, no detail link)
 
 ### Props (schema)
 

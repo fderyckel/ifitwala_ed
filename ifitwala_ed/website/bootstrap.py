@@ -654,6 +654,7 @@ def _create_page_if_missing(*, school_name: str, spec: dict) -> str | None:
     if existing:
         return None
 
+    school = frappe.get_doc("School", school_name)
     page = frappe.new_doc("School Website Page")
     page.school = school_name
     page.route = spec["route"]
@@ -662,11 +663,32 @@ def _create_page_if_missing(*, school_name: str, spec: dict) -> str | None:
     page.meta_description = spec["meta_description"]
     page.show_in_navigation = int(spec.get("show_in_navigation") or 0)
     page.navigation_order = spec.get("navigation_order")
+    if int(school.is_published or 0) == 1 and (school.website_slug or "").strip():
+        page.workflow_state = "Published"
     _append_blocks(page, spec["blocks"])
     page.insert(ignore_permissions=True)
-    school = frappe.get_doc("School", school_name)
     _ensure_school_page_seo_profile(page=page, school=school)
     return page.name
+
+
+def _sync_canonical_school_page_publication(*, school, routes: list[str]) -> list[str]:
+    if int(school.is_published or 0) != 1 or not (school.website_slug or "").strip():
+        return []
+
+    page_names = frappe.get_all(
+        "School Website Page",
+        filters={"school": school.name, "route": ["in", routes]},
+        pluck="name",
+    )
+    updated_pages = []
+    for page_name in page_names:
+        page = frappe.get_doc("School Website Page", page_name)
+        if page.workflow_state == "Published" and int(page.is_published or 0) == 1:
+            continue
+        page.workflow_state = "Published"
+        page.save(ignore_permissions=True)
+        updated_pages.append(page.name)
+    return updated_pages
 
 
 def ensure_programs_index_page(*, school_name: str) -> dict:
@@ -884,10 +906,16 @@ def ensure_default_school_website(*, school_name: str, set_default_organization:
         _ensure_default_school_for_organization(school=school)
 
     created_pages = []
-    for spec in _default_page_specs(school=school):
+    page_specs = _default_page_specs(school=school)
+    for spec in page_specs:
         created = _create_page_if_missing(school_name=school.name, spec=spec)
         if created:
             created_pages.append(created)
+
+    repaired_pages = _sync_canonical_school_page_publication(
+        school=school,
+        routes=[spec["route"] for spec in page_specs],
+    )
 
     page_names = frappe.get_all(
         "School Website Page",
@@ -924,6 +952,7 @@ def ensure_default_school_website(*, school_name: str, set_default_organization:
         "school": school.name,
         "website_slug": school.website_slug,
         "created_pages": created_pages,
+        "repaired_pages": repaired_pages,
         "seo_profiles": linked_seo_profiles,
     }
 

@@ -45,27 +45,42 @@
 	{% if theme and theme.css_vars_inline %}style="{{ theme.css_vars_inline }}"{% endif %}
 >
 	<div id="ifitwala-page-root" class="ifitwala-page-shell min-h-screen flex flex-col">
-		<header class="site-header sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-			<div class="site-utility-bar border-b border-slate-200/70">
-				<div class="mx-auto flex w-full max-w-6xl items-center justify-end gap-3 px-6 py-2">
-					<a
-						href="{{ site_shell.other_organizations_url }}"
-						class="site-utility-link inline-flex rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
-					>
-						Other Organizations
-					</a>
-					<a
-						href="{{ site_shell.portal_login_url }}"
-						class="site-utility-link inline-flex rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
-					>
-						Portal Login
-					</a>
-					{% if site_shell.organization_logo %}
+			<header class="site-header sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+				<div class="site-utility-bar border-b border-slate-200/70">
+					<div class="mx-auto flex w-full max-w-6xl items-center justify-end gap-3 px-6 py-2">
 						<a
-							href="{{ site_shell.other_organizations_url }}"
-							class="site-organization-logo-link inline-flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-100"
-							title="{{ site_shell.organization_name or 'Organization' }}"
+							href="{{ site_shell.schools_url }}"
+							class="site-utility-link inline-flex rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
 						>
+							Schools
+						</a>
+						{% if site_shell.is_guest_user %}
+							<a
+								href="{{ site_shell.login_url }}"
+								class="site-utility-link inline-flex rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+							>
+								Login
+							</a>
+						{% else %}
+							<a
+								href="{{ site_shell.hub_url }}"
+								class="site-utility-link inline-flex rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+							>
+								Hub
+							</a>
+							<a
+								href="{{ site_shell.logout_url }}"
+								class="site-utility-link inline-flex rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+							>
+								Logout
+							</a>
+						{% endif %}
+						{% if site_shell.organization_logo %}
+							<a
+								href="{{ site_shell.schools_url }}"
+								class="site-organization-logo-link inline-flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-100"
+								title="{{ site_shell.organization_name or 'Organization' }}"
+							>
 							<img
 								src="{{ site_shell.organization_logo }}"
 								alt="{{ site_shell.organization_name or site_shell.brand_name }}"
@@ -77,8 +92,8 @@
 				</div>
 			</div>
 
-			<div class="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-				<a href="{{ site_shell.brand_url }}" class="site-brand-link inline-flex items-center gap-3 text-slate-900">
+				<div class="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+					<a href="{{ site_shell.brand_url }}" class="site-brand-link inline-flex items-center gap-3 text-slate-900">
 					{% if site_shell.brand_logo %}
 						<img
 							src="{{ site_shell.brand_logo }}"
@@ -88,21 +103,13 @@
 						>
 					{% endif %}
 					<span class="text-base font-semibold tracking-tight">{{ site_shell.brand_name }}</span>
-				</a>
+					</a>
 
-				<div class="flex items-center gap-2">
-					{% if site_shell.is_guest_user %}
-						<a
-							href="{{ site_shell.login_url }}"
-							class="site-login-link hidden rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 md:inline-flex"
-						>
-							Login
-						</a>
-					{% endif %}
-					<button
-						type="button"
-						class="site-nav-toggle inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium"
-						data-site-nav-toggle
+					<div class="flex items-center gap-2">
+						<button
+							type="button"
+							class="site-nav-toggle inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium"
+							data-site-nav-toggle
 						aria-expanded="false"
 						aria-controls="ifitwala-site-nav"
 					>
@@ -125,6 +132,14 @@
 								</a>
 							</li>
 						{% endfor %}
+						<li class="md:hidden">
+							<a
+								href="{{ site_shell.schools_url }}"
+								class="site-login-link inline-flex rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+							>
+								Schools
+							</a>
+						</li>
 						{% if site_shell.is_guest_user %}
 							<li class="md:hidden">
 								<a
@@ -132,6 +147,23 @@
 									class="site-login-link inline-flex rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
 								>
 									Login
+								</a>
+							</li>
+						{% else %}
+							<li class="md:hidden">
+								<a
+									href="{{ site_shell.hub_url }}"
+									class="site-login-link inline-flex rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+								>
+									Hub
+								</a>
+							</li>
+							<li class="md:hidden">
+								<a
+									href="{{ site_shell.logout_url }}"
+									class="site-login-link inline-flex rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+								>
+									Logout
 								</a>
 							</li>
 						{% endif %}

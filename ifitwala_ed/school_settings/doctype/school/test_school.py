@@ -30,7 +30,7 @@ class TestSchool(FrappeTestCase):
         rows = frappe.get_all(
             "School Website Page",
             filters={"school": school.name},
-            fields=["route", "page_type", "seo_profile", "title"],
+            fields=["route", "page_type", "seo_profile", "title", "workflow_state", "is_published"],
             order_by="route asc",
         )
         by_route = {row.route: row for row in rows}
@@ -38,6 +38,8 @@ class TestSchool(FrappeTestCase):
         self.assertEqual(set(by_route), {"/", "about", "admissions", "programs"})
         self.assertEqual(by_route["admissions"].page_type, "Admissions")
         self.assertTrue(all(bool((row.seo_profile or "").strip()) for row in rows))
+        self.assertTrue(all(row.workflow_state == "Published" for row in rows))
+        self.assertTrue(all(int(row.is_published or 0) == 1 for row in rows))
 
         admissions_page = frappe.get_doc(
             "School Website Page",

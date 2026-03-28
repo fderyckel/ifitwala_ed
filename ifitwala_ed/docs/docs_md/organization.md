@@ -3,7 +3,7 @@ title: "Organization: Legal Entity and Hierarchy Root"
 slug: organization
 category: Setup
 doc_order: 1
-version: "1.0.7"
+version: "1.0.8"
 last_change_date: "2026-03-28"
 summary: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, website-school ownership, and root website default-school resolution."
 seo_title: "Organization: Legal Entity and Hierarchy Root"
@@ -22,8 +22,11 @@ seo_description: "Define legal entities as a NestedSet hierarchy and anchor scho
 - `default_website_school`, when valid and published, is the primary public root-domain resolver for `/`.
 - `organization_logo` is the website shell organization mark (top-right utility area and organization landing brand).
 - Virtual root (`All Organizations`) cannot have a parent.
-- Scoped Organization access for `HR Manager`, `HR User`, and `Academic Admin` is descendant-based:
-  - base org from user default `organization` (fallback `Global Defaults.default_organization`)
+- Organization permissions are enforced in two layers:
+  - DocType permission rows decide which actions a role may perform
+  - organization scope decides which Organization records are in bounds
+- Non-admin Organization scope is descendant-based:
+  - base org from user default `organization` (fallback active `Employee.organization`)
   - plus explicit `User Permission` grants on `Organization` and descendants.
 
 ## Where It Is Used Across the ERP
@@ -72,6 +75,6 @@ seo_description: "Define legal entities as a NestedSet hierarchy and anchor scho
 | `HR Manager` | Yes | Yes | Yes | No | No delete permission in doctype |
 | `HR User` | Yes | No | No | No | Descendant-scoped read access (self + children) |
 | `Accounts Manager` | Yes | Yes | Yes | Yes | Full access |
-| `Academic Admin` | Yes | Yes | No | No | Read/write existing within scoped organization descendants |
+| `Academic Admin` | Yes | Yes | No | No | Actions follow DocType row; records remain limited to scoped organization descendants |
 | `Employee` | Yes | No | No | No | Read-only |
 | `Academic Assistant` | Yes | No | No | No | Read-only |

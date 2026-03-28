@@ -8,10 +8,10 @@ from frappe import _
 from frappe.utils import cint, cstr
 from frappe.utils.nestedset import NestedSet
 
+from ifitwala_ed.utilities.employee_utils import get_user_base_org
 from ifitwala_ed.utilities.organization_media import get_governed_organization_media
 
 VIRTUAL_ROOT = "All Organizations"
-ORG_SCOPE_ROLES = {"HR Manager", "HR User", "Academic Admin"}
 
 
 class Organization(NestedSet):
@@ -168,8 +168,8 @@ def _resolve_user_base_org(user: str) -> str | None:
     if org:
         return org
 
-    global_org = frappe.db.get_single_value("Global Defaults", "default_organization")
-    return cstr(global_org).strip() or None
+    employee_org = get_user_base_org(user)
+    return cstr(employee_org).strip() or None
 
 
 def _resolve_user_org_scope(user: str) -> list[str]:
@@ -239,14 +239,22 @@ def get_permission_query_conditions(user=None):
     if "System Manager" in roles:
         return None
 
-    if roles & ORG_SCOPE_ROLES:
-        orgs = _resolve_user_org_scope(user)
-        if not orgs:
-            return "1=0"
-        vals = ", ".join(frappe.db.escape(org) for org in orgs)
-        return f"`tabOrganization`.`name` IN ({vals})"
+    orgs = _resolve_user_org_scope(user)
+    if not orgs:
+        return "1=0"
 
-    return None
+    vals = ", ".join(frappe.db.escape(org) for org in orgs)
+    return f"`tabOrganization`.`name` IN ({vals})"
+
+
+def _get_scope_target_for_permission(doc, ptype: str | None) -> str:
+    ptype = cstr(ptype or "read").strip().lower()
+
+    if ptype == "create":
+        parent_org = cstr(getattr(doc, "parent_organization", "")).strip()
+        return parent_org or VIRTUAL_ROOT
+
+    return cstr(getattr(doc, "name", "")).strip()
 
 
 def has_permission(doc, ptype=None, user=None):
@@ -258,8 +266,8 @@ def has_permission(doc, ptype=None, user=None):
     if "System Manager" in roles:
         return True
 
-    scoped_ptypes = {"read", "report", "export", "print", "write", "delete"}
-    if roles & ORG_SCOPE_ROLES and (ptype or "read") in scoped_ptypes:
-        return doc.name in set(_resolve_user_org_scope(user))
+    target_org = _get_scope_target_for_permission(doc, ptype)
+    if not target_org:
+        return False
 
-    return None
+    return target_org in set(_resolve_user_org_scope(user))

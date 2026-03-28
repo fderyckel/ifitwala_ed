@@ -571,13 +571,13 @@ High-level facts (years running, student count, ratios).
 ### 3.4 `program_list`
 
 **Purpose**
-Display published program website profiles as discoverable cards.
+Display published Programs as discoverable cards, with full detail links when the school-specific website profile is published.
 
 **Data source**
 
-* `Program Website Profile` (`status = "Published"`)
 * `Program Offering` (school/program pairing)
 * `Program` (`is_published = 1`, `archive = 0`, slug required)
+* optional `Program Website Profile` (`status = "Published"` for full detail cards; draft/missing profiles render teaser cards only)
 
 **Props**
 
@@ -598,7 +598,8 @@ Display published program website profiles as discoverable cards.
 **Notes**
 
 * Filtering and publication guards live in the provider only
-* Intro text rendering is optional via `show_intro`
+* Program ordering follows tree order (`lft`)
+* Intro text rendering is optional via `show_intro` and only applies to full detail cards
 
 ---
 

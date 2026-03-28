@@ -41,12 +41,27 @@
 					<span class="text-base font-semibold tracking-tight">{{ landing.organization_name }}</span>
 				</div>
 				<div class="inline-flex items-center gap-2">
-					<a
-						href="{{ login_url if is_guest_user else '/hub' }}"
-						class="inline-flex rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
-					>
-						{{ "Login" if is_guest_user else "Hub" }}
-					</a>
+					{% if is_guest_user %}
+						<a
+							href="{{ login_url }}"
+							class="inline-flex rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+						>
+							Login
+						</a>
+					{% else %}
+						<a
+							href="{{ hub_url }}"
+							class="inline-flex rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+						>
+							Hub
+						</a>
+						<a
+							href="{{ logout_url }}"
+							class="inline-flex rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+						>
+							Logout
+						</a>
+					{% endif %}
 				</div>
 			</div>
 		</header>

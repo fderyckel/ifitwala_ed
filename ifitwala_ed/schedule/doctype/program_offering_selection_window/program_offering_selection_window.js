@@ -1,6 +1,8 @@
 // Copyright (c) 2026, Francois de Ryckel and contributors
 // For license information, please see license.txt
 
+const VIEW_MODE_WINDOW_TRACKER = 'Selection Window Tracker';
+
 function hasStudents(frm) {
 	return Boolean((frm.doc.students || []).length);
 }
@@ -26,6 +28,25 @@ function callWindowAction(frm, method) {
 	});
 }
 
+function openRequestTracker(frm) {
+	if (frm.is_new()) {
+		frappe.msgprint(__('Please save this selection window first.'));
+		return;
+	}
+
+	frappe.route_options = {
+		view_mode: VIEW_MODE_WINDOW_TRACKER,
+		selection_window: frm.doc.name,
+		school: frm.doc.school || '',
+		academic_year: frm.doc.academic_year || '',
+		program: frm.doc.program || '',
+		program_offering: frm.doc.program_offering || '',
+		request_kind: 'Academic',
+		latest_request_only: 1,
+	};
+	frappe.set_route('query-report', 'Program Enrollment Request Overview');
+}
+
 frappe.ui.form.on('Program Offering Selection Window', {
 	refresh(frm) {
 		toggleSourceFields(frm);
@@ -42,6 +63,7 @@ frappe.ui.form.on('Program Offering Selection Window', {
 
 		frm.clear_custom_buttons();
 		if (!frm.is_new()) {
+			frm.add_custom_button(__('View Request Tracker'), () => openRequestTracker(frm));
 			frm.add_custom_button(__('Load Students'), () => callWindowAction(frm, 'load_students'));
 			frm.add_custom_button(__('Prepare Requests'), () => callWindowAction(frm, 'prepare_requests'));
 

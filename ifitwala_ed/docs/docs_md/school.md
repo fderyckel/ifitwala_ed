@@ -4,7 +4,7 @@ slug: school
 category: School Settings
 doc_order: 1
 version: "1.2.0"
-last_change_date: "2026-03-23"
+last_change_date: "2026-03-28"
 summary: "Define schools as a NestedSet hierarchy anchored to an Organization for admissions, academics, calendars, policy scope, and admissions health-readiness policy."
 seo_title: "School: Academic Scope and Hierarchy Node"
 seo_description: "Define schools as a NestedSet hierarchy anchored to an Organization for admissions, academics, calendars, policy scope, and admissions health-readiness policy."
@@ -26,6 +26,7 @@ seo_description: "Define schools as a NestedSet hierarchy anchored to an Organiz
 - First-time school publication now auto-prepares missing website defaults:
   - generates `website_slug` when blank
   - seeds canonical school pages (`/`, `about`, `admissions`, `programs`) when missing
+  - publishes those canonical starter pages when the school itself is public
   - links default `Website SEO Profile` records on school pages when missing
 
 ## Where It Is Used Across the ERP
