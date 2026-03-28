@@ -16,11 +16,11 @@ class PaymentTermsTemplate(Document):
         total_portion = 0.0
         for idx, row in enumerate(self.terms, start=1):
             if not row.term_name:
-                frappe.throw(_("Row {0}: Term Name is required.").format(idx))
+                frappe.throw(_("Row {row_number}: Term Name is required.").format(row_number=idx))
             if flt(row.invoice_portion) <= 0:
-                frappe.throw(_("Row {0}: Invoice Portion must be greater than zero.").format(idx))
+                frappe.throw(_("Row {row_number}: Invoice Portion must be greater than zero.").format(row_number=idx))
             if flt(row.due_days) < 0:
-                frappe.throw(_("Row {0}: Due Days cannot be negative.").format(idx))
+                frappe.throw(_("Row {row_number}: Due Days cannot be negative.").format(row_number=idx))
             total_portion = money(total_portion + flt(row.invoice_portion))
 
         if not is_zero(total_portion - 100):

@@ -40,9 +40,11 @@ class PaymentReconciliation(Document):
                 as_dict=True,
             )
             if not payment_entry:
-                frappe.throw(_("Payment Entry {0} not found").format(row.payment_entry))
+                frappe.throw(_("Payment Entry {payment_entry} not found").format(payment_entry=row.payment_entry))
             if payment_entry.docstatus != 1:
-                frappe.throw(_("Payment Entry {0} must be submitted").format(row.payment_entry))
+                frappe.throw(
+                    _("Payment Entry {payment_entry} must be submitted").format(payment_entry=row.payment_entry)
+                )
             if payment_entry.organization != self.organization:
                 frappe.throw(_("Payment Entry must belong to the same Organization"))
             if payment_entry.party != self.account_holder:
@@ -55,9 +57,11 @@ class PaymentReconciliation(Document):
                 as_dict=True,
             )
             if not invoice:
-                frappe.throw(_("Sales Invoice {0} not found").format(row.sales_invoice))
+                frappe.throw(_("Sales Invoice {sales_invoice} not found").format(sales_invoice=row.sales_invoice))
             if invoice.docstatus != 1:
-                frappe.throw(_("Sales Invoice {0} must be submitted").format(row.sales_invoice))
+                frappe.throw(
+                    _("Sales Invoice {sales_invoice} must be submitted").format(sales_invoice=row.sales_invoice)
+                )
             if invoice.organization != self.organization:
                 frappe.throw(_("Sales Invoice must belong to the same Organization"))
             if invoice.account_holder != self.account_holder:

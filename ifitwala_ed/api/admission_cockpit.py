@@ -1179,19 +1179,15 @@ def get_admissions_cockpit_data(filters=None):
         cache.set_value(cache_key, frappe.as_json(response), expires_in_sec=COCKPIT_CACHE_TTL_SECONDS)
         return response
 
-    school_scope = get_descendant_schools(school_filter) if school_filter else []
-    if school_filter and not school_scope:
-        organizations = [
-            row[0]
-            for row in frappe.db.sql("SELECT name FROM `tabOrganization` ORDER BY lft ASC, name ASC", as_list=True)
-        ]
-        response = _empty_payload(organizations, [])
-        cache.set_value(cache_key, frappe.as_json(response), expires_in_sec=COCKPIT_CACHE_TTL_SECONDS)
-        return response
-
     all_organizations = [
         row[0] for row in frappe.db.sql("SELECT name FROM `tabOrganization` ORDER BY lft ASC, name ASC", as_list=True)
     ]
+
+    school_scope = get_descendant_schools(school_filter) if school_filter else []
+    if school_filter and not school_scope:
+        response = _empty_payload(all_organizations, [])
+        cache.set_value(cache_key, frappe.as_json(response), expires_in_sec=COCKPIT_CACHE_TTL_SECONDS)
+        return response
 
     if organization_scope:
         schools = frappe.get_all(

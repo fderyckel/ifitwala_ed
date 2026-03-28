@@ -54,9 +54,11 @@ class PaymentEntry(Document):
                 as_dict=True,
             )
             if not inv:
-                frappe.throw(_("Sales Invoice {0} not found").format(ref.reference_name))
+                frappe.throw(_("Sales Invoice {sales_invoice} not found").format(sales_invoice=ref.reference_name))
             if inv.docstatus != 1:
-                frappe.throw(_("Sales Invoice {0} must be submitted").format(ref.reference_name))
+                frappe.throw(
+                    _("Sales Invoice {sales_invoice} must be submitted").format(sales_invoice=ref.reference_name)
+                )
             if inv.organization != self.organization:
                 frappe.throw(_("Sales Invoice must belong to the same Organization"))
             if inv.account_holder != self.party:

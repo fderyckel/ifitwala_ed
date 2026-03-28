@@ -1279,9 +1279,9 @@ def reassign_inquiry(doctype, docname, new_assigned_to, assignment_lane: str | N
 
     # Must be currently assigned
     if not doc.assigned_to:
-        frappe.throw("This inquiry is not currently assigned. Please use the Assign button instead.")
+        frappe.throw(_("This inquiry is not currently assigned. Please use the Assign button instead."))
     if doc.assigned_to == new_assigned_to:
-        frappe.throw("This inquiry is already assigned to this user.")
+        frappe.throw(_("This inquiry is already assigned to this user."))
 
     _validate_inquiry_assignee_scope(new_assigned_to, doc)
     resolved_lane = _resolve_inquiry_assignment_lane_for_user(user=new_assigned_to, requested_lane=assignment_lane)

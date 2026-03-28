@@ -2,6 +2,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 import frappe
+from frappe import _
 from frappe.utils import formatdate, getdate, nowdate
 
 from ifitwala_ed.api.student_log import _can_create_student_log_for_session_user
@@ -16,7 +17,7 @@ def _assert_instructor(student_group: str) -> None:
 
     user = frappe.session.user
     if not user or user == "Guest":
-        frappe.throw("Login required")
+        frappe.throw(_("Login required"))
 
     is_instructor = frappe.db.exists(
         "Student Group Instructor",
@@ -28,7 +29,7 @@ def _assert_instructor(student_group: str) -> None:
     )
 
     if not is_instructor:
-        frappe.throw("Not permitted to access this class")
+        frappe.throw(_("Not permitted to access this class"))
 
 
 def _get_student_log_permissions() -> Dict[str, bool]:
@@ -267,7 +268,7 @@ def end_session(lesson_instance: str) -> Dict[str, Any]:
     if not lesson_instance:
         frappe.throw("lesson_instance is required")
     if frappe.session.user == "Guest":
-        frappe.throw("Login required")
+        frappe.throw(_("Login required"))
     return {
         "lesson_instance": lesson_instance,
         "status": "ended",
@@ -280,7 +281,7 @@ def save_signals(lesson_instance: str, signals_json: str) -> Dict[str, Any]:
     if not lesson_instance:
         frappe.throw("lesson_instance is required")
     if frappe.session.user == "Guest":
-        frappe.throw("Login required")
+        frappe.throw(_("Login required"))
 
     try:
         signals = json.loads(signals_json or "[]")
@@ -296,7 +297,7 @@ def save_signals(lesson_instance: str, signals_json: str) -> Dict[str, Any]:
 @frappe.whitelist()
 def quick_evidence(payload_json: str) -> Dict[str, Any]:
     if frappe.session.user == "Guest":
-        frappe.throw("Login required")
+        frappe.throw(_("Login required"))
 
     try:
         payload = json.loads(payload_json or "{}")

@@ -210,18 +210,33 @@ def get_schools_per_academic_year_for_terms(user_school):
     if not user_school:
         return []
 
-    # Get all academic years referenced in the Term table
-    academic_years = [row[0] for row in frappe.db.get_values("Term", {}, "academic_year", distinct=True)]
-    pairs = set()
-    chain = [user_school] + get_ancestors_of("School", user_school)
+    chain = list(dict.fromkeys([user_school, *get_ancestors_of("School", user_school)]))
+    priority_by_school = {school: idx for idx, school in enumerate(chain)}
+    rows = frappe.get_all(
+        "Term",
+        filters={"school": ["in", chain]},
+        fields=["school", "academic_year"],
+        distinct=True,
+    )
 
-    for ay in academic_years:
-        for sch in chain:
-            if frappe.db.exists("Term", {"school": sch, "academic_year": ay}):
-                pairs.add((sch, ay))
-                break  # Stop at the first ancestor with a term for this AY
+    nearest_school_by_year: dict[str, str] = {}
+    for row in rows:
+        school = row.get("school")
+        academic_year = row.get("academic_year")
+        if not school or not academic_year or school not in priority_by_school:
+            continue
 
-    return list(pairs)
+        current = nearest_school_by_year.get(academic_year)
+        if current is None or priority_by_school[school] < priority_by_school[current]:
+            nearest_school_by_year[academic_year] = school
+
+    return [
+        (school, academic_year)
+        for academic_year, school in sorted(
+            nearest_school_by_year.items(),
+            key=lambda item: (priority_by_school[item[1]], item[0]),
+        )
+    ]
 
 
 def get_current_term(school: str, academic_year: str) -> frappe._dict | None:

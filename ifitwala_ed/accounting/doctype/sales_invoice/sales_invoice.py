@@ -64,7 +64,9 @@ class SalesInvoice(Document):
             as_dict=True,
         )
         if not invoice:
-            frappe.throw(_("Against Sales Invoice {0} not found.").format(self.against_sales_invoice))
+            frappe.throw(
+                _("Against Sales Invoice {sales_invoice} not found.").format(sales_invoice=self.against_sales_invoice)
+            )
         if invoice.docstatus != 1:
             frappe.throw(_("Against Sales Invoice must be submitted."))
         if invoice.organization != self.organization:
@@ -95,16 +97,16 @@ class SalesInvoice(Document):
         for idx, row in enumerate(self.items, start=1):
             qty = flt(row.qty)
             if is_zero(qty):
-                frappe.throw(_("Row {0}: Qty cannot be zero").format(idx))
+                frappe.throw(_("Row {row_number}: Qty cannot be zero").format(row_number=idx))
             if is_credit_note and qty >= 0:
-                frappe.throw(_("Row {0}: Credit note rows must use negative Qty").format(idx))
+                frappe.throw(_("Row {row_number}: Credit note rows must use negative Qty").format(row_number=idx))
             if not is_credit_note and qty <= 0:
-                frappe.throw(_("Row {0}: Qty must be greater than zero").format(idx))
+                frappe.throw(_("Row {row_number}: Qty must be greater than zero").format(row_number=idx))
 
             if row.rate is None:
-                frappe.throw(_("Row {0}: Rate is required").format(idx))
+                frappe.throw(_("Row {row_number}: Rate is required").format(row_number=idx))
             if flt(row.rate) < 0:
-                frappe.throw(_("Row {0}: Rate cannot be negative").format(idx))
+                frappe.throw(_("Row {row_number}: Rate cannot be negative").format(row_number=idx))
 
             if not row.charge_source:
                 if not row.billable_offering:
@@ -118,10 +120,16 @@ class SalesInvoice(Document):
                 row.program_offering = header_program_offering
 
             if row.program_offering and header_program_offering and row.program_offering != header_program_offering:
-                frappe.throw(_("Row {0}: Program Offering must match the invoice header").format(idx))
+                frappe.throw(
+                    _("Row {row_number}: Program Offering must match the invoice header").format(row_number=idx)
+                )
 
             if row.charge_source == "Program Offering" and not row.program_offering:
-                frappe.throw(_("Row {0}: Program Offering is required for Program Offering charges").format(idx))
+                frappe.throw(
+                    _("Row {row_number}: Program Offering is required for Program Offering charges").format(
+                        row_number=idx
+                    )
+                )
 
             if row.program_offering:
                 program_org = program_org_cache.get(row.program_offering)
@@ -129,7 +137,11 @@ class SalesInvoice(Document):
                     program_org = self._get_program_offering_org(row.program_offering)
                     program_org_cache[row.program_offering] = program_org
                 if program_org and program_org != self.organization:
-                    frappe.throw(_("Row {0}: Program Offering must belong to the same Organization").format(idx))
+                    frappe.throw(
+                        _("Row {row_number}: Program Offering must belong to the same Organization").format(
+                            row_number=idx
+                        )
+                    )
                 dimensions = resolve_program_offering_dimensions(row.program_offering)
                 row.school = dimensions.school
                 row.program = dimensions.program
@@ -144,36 +156,50 @@ class SalesInvoice(Document):
                         as_dict=True,
                     )
                     if not offering:
-                        frappe.throw(_("Row {0}: Billable Offering not found").format(idx))
+                        frappe.throw(_("Row {row_number}: Billable Offering not found").format(row_number=idx))
                     offering_cache[row.billable_offering] = offering
                 if offering.disabled:
-                    frappe.throw(_("Row {0}: Billable Offering is disabled").format(idx))
+                    frappe.throw(_("Row {row_number}: Billable Offering is disabled").format(row_number=idx))
                 if offering.organization != self.organization:
-                    frappe.throw(_("Row {0}: Billable Offering must belong to the same Organization").format(idx))
+                    frappe.throw(
+                        _("Row {row_number}: Billable Offering must belong to the same Organization").format(
+                            row_number=idx
+                        )
+                    )
                 if not row.income_account:
                     row.income_account = offering.income_account
                 if offering.offering_type == "Program" and not row.student:
-                    frappe.throw(_("Row {0}: Student is required for Program tuition lines").format(idx))
+                    frappe.throw(
+                        _("Row {row_number}: Student is required for Program tuition lines").format(row_number=idx)
+                    )
             else:
                 if row.charge_source != "Manual":
-                    frappe.throw(_("Row {0}: Billable Offering is required unless Charge Source is Manual").format(idx))
+                    frappe.throw(
+                        _("Row {row_number}: Billable Offering is required unless Charge Source is Manual").format(
+                            row_number=idx
+                        )
+                    )
                 if not row.income_account:
-                    frappe.throw(_("Row {0}: Income Account is required for manual lines").format(idx))
+                    frappe.throw(
+                        _("Row {row_number}: Income Account is required for manual lines").format(row_number=idx)
+                    )
 
             if is_zero(flt(row.rate)) and not row.description:
-                frappe.throw(_("Row {0}: Description is required for zero-rate lines").format(idx))
+                frappe.throw(_("Row {row_number}: Description is required for zero-rate lines").format(row_number=idx))
 
             account = frappe.db.get_value(
                 "Account", row.income_account, ["organization", "is_group", "root_type"], as_dict=True
             )
             if not account:
-                frappe.throw(_("Row {0}: Income account not found").format(idx))
+                frappe.throw(_("Row {row_number}: Income account not found").format(row_number=idx))
             if account.organization != self.organization:
-                frappe.throw(_("Row {0}: Income account must belong to the same Organization").format(idx))
+                frappe.throw(
+                    _("Row {row_number}: Income account must belong to the same Organization").format(row_number=idx)
+                )
             if account.is_group:
-                frappe.throw(_("Row {0}: Cannot post to a group income account").format(idx))
+                frappe.throw(_("Row {row_number}: Cannot post to a group income account").format(row_number=idx))
             if account.root_type != "Income":
-                frappe.throw(_("Row {0}: Income account must have Root Type 'Income'").format(idx))
+                frappe.throw(_("Row {row_number}: Income account must have Root Type 'Income'").format(row_number=idx))
 
             if row.student:
                 student = student_cache.get(row.student)
@@ -182,24 +208,36 @@ class SalesInvoice(Document):
                         "Student", row.student, ["anchor_school", "account_holder"], as_dict=True
                     )
                     if not student:
-                        frappe.throw(_("Row {0}: Student not found").format(idx))
+                        frappe.throw(_("Row {row_number}: Student not found").format(row_number=idx))
                     student_cache[row.student] = student
                 if not student.anchor_school:
-                    frappe.throw(_("Row {0}: Student is missing Anchor School for organization validation").format(idx))
+                    frappe.throw(
+                        _("Row {row_number}: Student is missing Anchor School for organization validation").format(
+                            row_number=idx
+                        )
+                    )
                 student_org = get_school_organization(student.anchor_school)
                 if student_org and student_org != self.organization:
-                    frappe.throw(_("Row {0}: Student must belong to the same Organization").format(idx))
+                    frappe.throw(
+                        _("Row {row_number}: Student must belong to the same Organization").format(row_number=idx)
+                    )
                 if not student.account_holder:
-                    frappe.throw(_("Row {0}: Student is missing an Account Holder").format(idx))
+                    frappe.throw(_("Row {row_number}: Student is missing an Account Holder").format(row_number=idx))
                 if student.account_holder != self.account_holder:
-                    frappe.throw(_("Row {0}: Student Account Holder must match the invoice Account Holder").format(idx))
+                    frappe.throw(
+                        _("Row {row_number}: Student Account Holder must match the invoice Account Holder").format(
+                            row_number=idx
+                        )
+                    )
                 if not row.school:
                     row.school = resolve_student_school(row.student)
 
     def _get_program_offering_org(self, program_offering):
         school = frappe.db.get_value("Program Offering", program_offering, "school")
         if not school:
-            frappe.throw(_("Program Offering {0} is missing School").format(program_offering))
+            frappe.throw(
+                _("Program Offering {program_offering} is missing School").format(program_offering=program_offering)
+            )
         return get_school_organization(school)
 
     def set_item_amounts(self):
@@ -492,7 +530,7 @@ def make_credit_note(source_invoice: str) -> str:
             "posting_date": frappe.utils.today(),
             "adjustment_type": "Credit Note",
             "against_sales_invoice": source.name,
-            "remarks": _("Credit note against {0}").format(source.name),
+            "remarks": _("Credit note against {source_invoice}").format(source_invoice=source.name),
         }
     )
     for row in source.items or []:
@@ -533,7 +571,7 @@ def make_debit_note(source_invoice: str) -> str:
             "adjustment_type": "Debit Note",
             "against_sales_invoice": source.name,
             "taxes_and_charges": source.taxes_and_charges,
-            "remarks": _("Debit note against {0}").format(source.name),
+            "remarks": _("Debit note against {source_invoice}").format(source_invoice=source.name),
         }
     )
     for row in source.items or []:

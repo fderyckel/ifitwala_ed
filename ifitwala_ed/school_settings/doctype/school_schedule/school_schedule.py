@@ -203,7 +203,7 @@ class SchoolSchedule(Document):
             (self.name,),
         )
         frappe.db.commit()
-        frappe.msgprint("School Schedule Days and Blocks have been cleared.")
+        frappe.msgprint(_("School Schedule Days and Blocks have been cleared."))
         # Also clear in-memory tables
         self.set("school_schedule_day", [])
         self.set("school_schedule_block", [])
@@ -235,7 +235,7 @@ class SchoolSchedule(Document):
                 block.rotation_day = day.rotation_day
                 block.block_number = block_number
 
-        frappe.msgprint("School Schedule Blocks have been generated.")
+        frappe.msgprint(_("School Schedule Blocks have been generated."))
 
 
 def on_doctype_update():

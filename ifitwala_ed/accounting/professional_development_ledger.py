@@ -15,7 +15,9 @@ PD_ENCUMBRANCE_LIQUIDATION_VOUCHER = "Professional Development Encumbrance Liqui
 
 
 def _reserve_entries(doc) -> list[dict]:
-    remarks = _("PD encumbrance reserve for {0}").format(doc.professional_development_request or doc.name)
+    remarks = _("PD encumbrance reserve for {reference}").format(
+        reference=doc.professional_development_request or doc.name
+    )
     return [
         {
             "organization": doc.organization,
@@ -39,7 +41,9 @@ def _reserve_entries(doc) -> list[dict]:
 
 
 def _liquidation_entries(doc, actual_amount: float, liquidation_date) -> list[dict]:
-    remarks = _("PD encumbrance liquidation for {0}").format(doc.professional_development_record or doc.name)
+    remarks = _("PD encumbrance liquidation for {reference}").format(
+        reference=doc.professional_development_record or doc.name
+    )
     return [
         {
             "organization": doc.organization,

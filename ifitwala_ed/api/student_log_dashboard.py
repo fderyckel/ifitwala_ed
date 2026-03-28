@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 import frappe
+from frappe import _
 from frappe.utils import get_datetime, getdate, strip_html
 from frappe.utils.nestedset import get_descendants_of
 
@@ -34,13 +35,13 @@ def _ensure_student_log_analytics_access(user: str | None = None) -> str:
     """Permit access only to the Student Log analytics roles."""
     user = user or frappe.session.user
     if not user or user == "Guest":
-        frappe.throw("You need to sign in to access Student Log Analytics.", frappe.PermissionError)
+        frappe.throw(_("You need to sign in to access Student Log Analytics."), frappe.PermissionError)
 
     roles = set(frappe.get_roles(user))
     if roles & ALLOWED_ANALYTICS_ROLES:
         return user
 
-    frappe.throw("You do not have permission to access Student Log Analytics.", frappe.PermissionError)
+    frappe.throw(_("You do not have permission to access Student Log Analytics."), frappe.PermissionError)
     return user
 
 

@@ -29,7 +29,7 @@ class PaymentRequest(Document):
             as_dict=True,
         )
         if not invoice:
-            frappe.throw(_("Sales Invoice {0} not found.").format(self.sales_invoice))
+            frappe.throw(_("Sales Invoice {sales_invoice} not found.").format(sales_invoice=self.sales_invoice))
         if invoice.docstatus != 1:
             frappe.throw(_("Payment Requests can only be created for submitted invoices."))
         if self.organization and invoice.organization != self.organization:
@@ -94,7 +94,7 @@ def create_from_sales_invoice(sales_invoice: str) -> str:
         as_dict=True,
     )
     if not invoice:
-        frappe.throw(_("Sales Invoice {0} not found.").format(sales_invoice))
+        frappe.throw(_("Sales Invoice {sales_invoice} not found.").format(sales_invoice=sales_invoice))
 
     doc = frappe.get_doc(
         {

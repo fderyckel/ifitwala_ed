@@ -327,7 +327,7 @@ class School(NestedSet):
 @frappe.whitelist()
 def enqueue_replace_abbr(school, old, new):
     kwargs = dict(school=school, old=old, new=new)
-    frappe.enqueue("ifitwala_ed.school_settings.doctype.school.school.replace_abbr", **kwargs)
+    frappe.enqueue("ifitwala_ed.school_settings.doctype.school.school.replace_abbr", queue="long", **kwargs)
 
 
 @frappe.whitelist()
@@ -340,16 +340,25 @@ def replace_abbr(school, old, new):
 
     frappe.db.set_value("School", school, "abbr", new)
 
-    def _rename_record(doc):
-        parts = doc[0].rsplit(" - ", 1)
-        if len(parts) == 1 or parts[1].lower() == old.lower():
-            frappe.rename_doc(dt, doc[0], parts[0] + " - " + new)  # noqa: F821  # dt from outer scope
+    rename_specs = (
+        ("Academic Year", ["name", "academic_year_name"], lambda row: f"{new} {row.academic_year_name}"),
+        ("School Calendar", ["name", "calendar_name"], lambda row: f"{new} {row.calendar_name}"),
+        ("School Schedule", ["name", "schedule_name"], lambda row: f"{new} {row.schedule_name}"),
+    )
 
-    def _rename_records(dt):
-        # rename is expensive so let's be economical with memory usage
-        doc = (d for d in frappe.db.sql("select name from `tab%s` where school=%s" % (dt, "%s"), school))
-        for d in doc:
-            _rename_record(d)
+    for dt, fields, build_new_name in rename_specs:
+        rows = frappe.get_all(
+            dt,
+            filters={"school": school},
+            fields=fields,
+            order_by="modified asc, name asc",
+        )
+        for row in rows:
+            target_name = (build_new_name(row) or "").strip()
+            current_name = (row.get("name") or "").strip()
+            if not current_name or not target_name or current_name == target_name:
+                continue
+            frappe.rename_doc(dt, current_name, target_name)
 
 
 def get_name_with_abbr(name, school):

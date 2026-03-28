@@ -60,7 +60,9 @@ def get_fiscal_year_date_range(organization: str, fiscal_year_name: str) -> dict
             }
 
     frappe.throw(
-        _("Fiscal Year {0} is not active for Organization {1}").format(frappe.bold(fiscal_year_name), organization),
+        _("Fiscal Year {fiscal_year} is not active for Organization {organization}").format(
+            fiscal_year=frappe.bold(fiscal_year_name), organization=organization
+        ),
         FiscalYearError,
     )
 
@@ -97,21 +99,29 @@ def resolve_fiscal_year(
     if len(matching_rows) > 1:
         fiscal_years = ", ".join(sorted({row.get("name") for row in matching_rows}))
         frappe.throw(
-            _("Date {0} resolves to multiple active Fiscal Years for Organization {1}: {2}").format(
-                formatdate(target_date), organization, fiscal_years
+            _(
+                "Date {posting_date} resolves to multiple active Fiscal Years for Organization {organization}: {fiscal_years}"
+            ).format(
+                posting_date=formatdate(target_date),
+                organization=organization,
+                fiscal_years=fiscal_years,
             ),
             FiscalYearError,
         )
 
     if fiscal_year_name:
         frappe.throw(
-            _("Fiscal Year {0} is not active for Organization {1}").format(frappe.bold(fiscal_year_name), organization),
+            _("Fiscal Year {fiscal_year} is not active for Organization {organization}").format(
+                fiscal_year=frappe.bold(fiscal_year_name), organization=organization
+            ),
             FiscalYearError,
         )
 
     frappe.throw(
-        _("{0} {1} is not in any active Fiscal Year for Organization {2}").format(
-            _(label), formatdate(target_date), organization
+        _("{label} {posting_date} is not in any active Fiscal Year for Organization {organization}").format(
+            label=_(label),
+            posting_date=formatdate(target_date),
+            organization=organization,
         ),
         FiscalYearError,
     )

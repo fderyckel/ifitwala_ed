@@ -68,6 +68,38 @@ from ifitwala_ed.school_settings.doctype.term import term
 
 
 class TestTermPermissions(TestCase):
+    @patch(
+        "ifitwala_ed.school_settings.doctype.term.term.get_ancestors_of",
+        return_value=["SCH-ROOT", "SCH-GRAND"],
+    )
+    def test_get_schools_per_academic_year_for_terms_uses_scoped_distinct_query(self, _mock_ancestors):
+        def fake_get_all(doctype, **kwargs):
+            self.assertEqual(doctype, "Term")
+            self.assertEqual(
+                kwargs.get("filters"),
+                {"school": ["in", ["SCH-BRANCH", "SCH-ROOT", "SCH-GRAND"]]},
+            )
+            self.assertEqual(kwargs.get("fields"), ["school", "academic_year"])
+            self.assertTrue(kwargs.get("distinct"))
+            return [
+                {"school": "SCH-GRAND", "academic_year": "AY-2024"},
+                {"school": "SCH-ROOT", "academic_year": "AY-2026"},
+                {"school": "SCH-GRAND", "academic_year": "AY-2026"},
+                {"school": "SCH-BRANCH", "academic_year": "AY-2025"},
+            ]
+
+        with patch("ifitwala_ed.school_settings.doctype.term.term.frappe.get_all", side_effect=fake_get_all):
+            pairs = term.get_schools_per_academic_year_for_terms("SCH-BRANCH")
+
+        self.assertEqual(
+            pairs,
+            [
+                ("SCH-BRANCH", "AY-2025"),
+                ("SCH-ROOT", "AY-2026"),
+                ("SCH-GRAND", "AY-2024"),
+            ],
+        )
+
     @patch("ifitwala_ed.school_settings.doctype.term.term.frappe.get_roles", return_value=["Academic Admin"])
     @patch(
         "ifitwala_ed.school_settings.doctype.term.term.frappe.defaults.get_user_default",
