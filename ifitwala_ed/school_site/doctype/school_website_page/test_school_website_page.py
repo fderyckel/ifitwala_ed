@@ -4,6 +4,7 @@
 # See license.txt
 
 import json
+from pathlib import Path
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -12,6 +13,7 @@ from ifitwala_ed.school_site.doctype.school_website_page.school_website_page imp
     compute_school_page_publication_flags,
     normalize_workflow_state,
 )
+from ifitwala_ed.website.block_registry import get_block_definition_map
 from ifitwala_ed.website.seo_checks import build_seo_assistant_report
 from ifitwala_ed.website.validators import validate_page_blocks
 
@@ -39,6 +41,18 @@ def _admissions_steps_props():
 
 
 class TestSchoolWebsitePage(FrappeTestCase):
+    def test_school_website_page_block_select_options_match_block_registry(self):
+        block_json_path = (
+            Path(__file__).resolve().parents[1] / "school_website_page_block" / "school_website_page_block.json"
+        )
+        payload = json.loads(block_json_path.read_text())
+        block_field = next(field for field in payload["fields"] if field.get("fieldname") == "block_type")
+        configured_options = {
+            option.strip() for option in (block_field.get("options") or "").splitlines() if option.strip()
+        }
+        registered_types = set(get_block_definition_map())
+        self.assertFalse(sorted(registered_types - configured_options))
+
     def test_workflow_state_normalization_rejects_invalid_state(self):
         with self.assertRaises(frappe.ValidationError):
             normalize_workflow_state("Invalid State")

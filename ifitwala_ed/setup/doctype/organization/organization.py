@@ -11,7 +11,7 @@ from frappe.utils.nestedset import NestedSet
 from ifitwala_ed.utilities.organization_media import get_governed_organization_media
 
 VIRTUAL_ROOT = "All Organizations"
-HR_SCOPE_ROLES = {"HR Manager", "HR User"}
+ORG_SCOPE_ROLES = {"HR Manager", "HR User", "Academic Admin"}
 
 
 class Organization(NestedSet):
@@ -163,7 +163,7 @@ def add_node(**kwargs):
     return {"name": doc.name}
 
 
-def _resolve_hr_base_org(user: str) -> str | None:
+def _resolve_user_base_org(user: str) -> str | None:
     org = _get_user_default_from_db(user, "organization")
     if org:
         return org
@@ -172,10 +172,10 @@ def _resolve_hr_base_org(user: str) -> str | None:
     return cstr(global_org).strip() or None
 
 
-def _resolve_hr_org_scope(user: str) -> list[str]:
+def _resolve_user_org_scope(user: str) -> list[str]:
     scope: set[str] = set()
 
-    base_org = _resolve_hr_base_org(user)
+    base_org = _resolve_user_base_org(user)
     if base_org:
         scope.update(
             {cstr(org).strip() for org in (_get_descendant_organizations_uncached(base_org) or []) if cstr(org).strip()}
@@ -239,8 +239,8 @@ def get_permission_query_conditions(user=None):
     if "System Manager" in roles:
         return None
 
-    if roles & HR_SCOPE_ROLES:
-        orgs = _resolve_hr_org_scope(user)
+    if roles & ORG_SCOPE_ROLES:
+        orgs = _resolve_user_org_scope(user)
         if not orgs:
             return "1=0"
         vals = ", ".join(frappe.db.escape(org) for org in orgs)
@@ -258,7 +258,8 @@ def has_permission(doc, ptype=None, user=None):
     if "System Manager" in roles:
         return True
 
-    if roles & HR_SCOPE_ROLES and (ptype or "read") in {"read", "report", "export", "print"}:
-        return doc.name in set(_resolve_hr_org_scope(user))
+    scoped_ptypes = {"read", "report", "export", "print", "write", "delete"}
+    if roles & ORG_SCOPE_ROLES and (ptype or "read") in scoped_ptypes:
+        return doc.name in set(_resolve_user_org_scope(user))
 
     return None

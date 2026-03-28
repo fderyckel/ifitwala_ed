@@ -14,7 +14,7 @@ class TestOrganization(FrappeTestCase):
         with (
             patch("ifitwala_ed.setup.doctype.organization.organization.frappe.get_roles", return_value=["HR Manager"]),
             patch(
-                "ifitwala_ed.setup.doctype.organization.organization._resolve_hr_org_scope",
+                "ifitwala_ed.setup.doctype.organization.organization._resolve_user_org_scope",
                 return_value=["ORG-ROOT", "ORG-CHILD"],
             ),
             patch(
@@ -32,7 +32,7 @@ class TestOrganization(FrappeTestCase):
         with (
             patch("ifitwala_ed.setup.doctype.organization.organization.frappe.get_roles", return_value=["HR User"]),
             patch(
-                "ifitwala_ed.setup.doctype.organization.organization._resolve_hr_org_scope",
+                "ifitwala_ed.setup.doctype.organization.organization._resolve_user_org_scope",
                 return_value=["ORG-ROOT", "ORG-CHILD"],
             ),
         ):
@@ -41,6 +41,59 @@ class TestOrganization(FrappeTestCase):
             )
             self.assertFalse(
                 organization_controller.has_permission(blocked_doc, ptype="read", user="hr.user@example.com")
+            )
+
+    def test_org_pqc_academic_admin_scoped(self):
+        with (
+            patch(
+                "ifitwala_ed.setup.doctype.organization.organization.frappe.get_roles", return_value=["Academic Admin"]
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.organization.organization._resolve_user_org_scope",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.organization.organization.frappe.db.escape", side_effect=lambda v: f"'{v}'"
+            ),
+        ):
+            condition = organization_controller.get_permission_query_conditions(user="academic.admin@example.com")
+
+        self.assertEqual(condition, "`tabOrganization`.`name` IN ('ORG-ROOT', 'ORG-CHILD')")
+
+    def test_org_has_permission_academic_admin_is_scoped_for_read_and_write(self):
+        allowed_doc = frappe._dict(name="ORG-ROOT")
+        blocked_doc = frappe._dict(name="ORG-OTHER")
+
+        with (
+            patch(
+                "ifitwala_ed.setup.doctype.organization.organization.frappe.get_roles", return_value=["Academic Admin"]
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.organization.organization._resolve_user_org_scope",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
+        ):
+            self.assertTrue(
+                organization_controller.has_permission(allowed_doc, ptype="read", user="academic.admin@example.com")
+            )
+            self.assertTrue(
+                organization_controller.has_permission(allowed_doc, ptype="write", user="academic.admin@example.com")
+            )
+            self.assertFalse(
+                organization_controller.has_permission(blocked_doc, ptype="read", user="academic.admin@example.com")
+            )
+
+    def test_org_has_permission_academic_admin_blocks_without_scope(self):
+        allowed_doc = frappe._dict(name="ORG-ROOT")
+
+        with (
+            patch(
+                "ifitwala_ed.setup.doctype.organization.organization.frappe.get_roles", return_value=["Academic Admin"]
+            ),
+            patch("ifitwala_ed.setup.doctype.organization.organization._resolve_user_org_scope", return_value=[]),
+        ):
+            self.assertFalse(
+                organization_controller.has_permission(allowed_doc, ptype="read", user="academic.admin@example.com")
             )
 
     def test_org_get_children_root_includes_scoped_nodes_with_out_of_scope_parent(self):
@@ -58,7 +111,7 @@ class TestOrganization(FrappeTestCase):
 
         self.assertEqual([row.get("value") for row in rows], ["ORG-CHILD"])
 
-    def test_resolve_hr_base_org_uses_user_default_then_global(self):
+    def test_resolve_user_base_org_uses_user_default_then_global(self):
         with (
             patch(
                 "ifitwala_ed.setup.doctype.organization.organization._get_user_default_from_db",
@@ -69,7 +122,7 @@ class TestOrganization(FrappeTestCase):
                 return_value="ORG-GLOBAL",
             ),
         ):
-            self.assertEqual(organization_controller._resolve_hr_base_org("hr.user@example.com"), "ORG-DEFAULT")
+            self.assertEqual(organization_controller._resolve_user_base_org("hr.user@example.com"), "ORG-DEFAULT")
 
         with (
             patch(
@@ -81,11 +134,11 @@ class TestOrganization(FrappeTestCase):
                 return_value="ORG-GLOBAL",
             ),
         ):
-            self.assertEqual(organization_controller._resolve_hr_base_org("hr.user@example.com"), "ORG-GLOBAL")
+            self.assertEqual(organization_controller._resolve_user_base_org("hr.user@example.com"), "ORG-GLOBAL")
 
-    def test_resolve_hr_org_scope_unions_explicit_user_permission_descendants(self):
+    def test_resolve_user_org_scope_unions_explicit_user_permission_descendants(self):
         with (
-            patch("ifitwala_ed.setup.doctype.organization.organization._resolve_hr_base_org", return_value=None),
+            patch("ifitwala_ed.setup.doctype.organization.organization._resolve_user_base_org", return_value=None),
             patch(
                 "ifitwala_ed.setup.doctype.organization.organization.frappe.get_all",
                 return_value=["ORG-PARENT"],
@@ -95,6 +148,6 @@ class TestOrganization(FrappeTestCase):
                 return_value=["ORG-PARENT", "ORG-CHILD"],
             ),
         ):
-            scope = organization_controller._resolve_hr_org_scope("hr.user@example.com")
+            scope = organization_controller._resolve_user_org_scope("hr.user@example.com")
 
         self.assertEqual(scope, ["ORG-CHILD", "ORG-PARENT"])
