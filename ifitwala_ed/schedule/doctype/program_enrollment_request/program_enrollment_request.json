@@ -2,39 +2,44 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "format:PER-{YYYY}-{####}",
+ "autoname": "PER-.YY.-.#####",
  "creation": "2026-01-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_identity",
   "student",
-  "program_offering",
-  "request_kind",
-  "activity_booking",
-  "program",
   "school",
   "academic_year",
+  "column_break_rmhb",
+  "program",
+  "program_offering",
+  "activity_booking",
+  "column_break_oxbm",
+  "request_kind",
   "status",
+  "section_break_audit",
+  "selection_window",
+  "column_break_wcvt",
+  "submitted_on",
+  "submitted_by",
+  "column_break_xtpq",
+  "source_applicant_enrollment_plan",
+  "source_student_applicant",
   "section_break_courses",
   "courses",
+  "section_break_override",
+  "requires_override",
+  "override_approved",
+  "override_by",
+  "override_on",
+  "column_break_ayrl",
+  "override_reason",
   "section_break_validation",
   "validation_status",
   "validation_payload",
   "validated_on",
-  "validated_by",
-  "section_break_override",
-  "requires_override",
-  "override_approved",
-  "override_reason",
-  "override_by",
-  "override_on",
-  "section_break_audit",
-  "selection_window",
-  "source_student_applicant",
-  "source_applicant_enrollment_plan",
-  "submitted_on",
-  "submitted_by"
+  "validated_by"
  ],
  "fields": [
   {
@@ -128,23 +133,27 @@
    "fieldname": "validation_status",
    "fieldtype": "Select",
    "label": "Validation Status",
-   "options": "Not Validated\nValid\nInvalid"
+   "options": "Not Validated\nValid\nInvalid",
+   "read_only": 1
   },
   {
    "fieldname": "validation_payload",
    "fieldtype": "Long Text",
-   "label": "Validation Payload"
+   "label": "Validation Payload",
+   "read_only": 1
   },
   {
    "fieldname": "validated_on",
    "fieldtype": "Datetime",
-   "label": "Validated On"
+   "label": "Validated On",
+   "read_only": 1
   },
   {
    "fieldname": "validated_by",
    "fieldtype": "Link",
    "label": "Validated By",
-   "options": "User"
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_override",
@@ -172,12 +181,14 @@
    "fieldname": "override_by",
    "fieldtype": "Link",
    "label": "Override By",
-   "options": "User"
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "override_on",
    "fieldtype": "Datetime",
-   "label": "Override On"
+   "label": "Override On",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_audit",
@@ -208,23 +219,45 @@
   {
    "fieldname": "submitted_on",
    "fieldtype": "Datetime",
-   "label": "Submitted On"
+   "label": "Submitted On",
+   "read_only": 1
   },
   {
    "fieldname": "submitted_by",
    "fieldtype": "Link",
    "label": "Submitted By",
-   "options": "User"
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_rmhb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_oxbm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_wcvt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ayrl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_xtpq",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-27 22:35:48",
+ "modified": "2026-03-28 12:16:51.377042",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Request",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -281,6 +314,20 @@
    "report": 1,
    "role": "Academic Staff",
    "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counselor",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
   }
  ],
  "row_format": "Dynamic",
