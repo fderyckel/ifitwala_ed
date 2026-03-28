@@ -162,6 +162,11 @@ The exact same `frappe.db.sql` query is executed twice within 10 lines (lines 11
 **Risk:** Low - Wasted query but cached afterward
 **Fix:** Store first result in variable, reuse for second call
 
+**Codex Comment (2026-03-28):**
+- I implemented this as a straight query-reuse fix. `get_admissions_cockpit_data()` now fetches the organization list once and reuses it for both the invalid-school early return and the main payload path.
+- This is low risk because it does not alter payload shape, scope, or workflow behavior.
+- A regression test was added to assert the invalid-school path does not trigger a second identical organization lookup.
+
 ---
 
 ### 5. String Interpolation in Table Name SQL (DRIFT-005)
@@ -186,6 +191,12 @@ Uses Python `%s` string formatting to interpolate the table name (`dt`) directly
 
 **Risk:** Medium - Security concern + N+1 pattern
 **Fix:** Use `frappe.db.get_all()` with proper filters or parameterized queries
+
+**Codex Comment (2026-03-28):**
+- I agree with the finding, but the bigger defect was that `replace_abbr()` defined rename helpers and never executed a documented rename contract.
+- I implemented the most sensible Frappe-style fix: keep the work queued, move it to the long queue, and replace the generic table-scan approach with an explicit rename scope over the known school-scoped doctypes whose runtime names embed `School.abbr`: `Academic Year`, `School Calendar`, and `School Schedule`.
+- This mirrors the practical lesson from ERPNext company abbreviation handling: abbreviation-driven names should be handled by explicit, bounded rename logic, not open-ended interpolation over arbitrary tables.
+- The School doc was updated so this behavior is now explicit instead of implied.
 
 ---
 
@@ -217,6 +228,11 @@ Fetches ALL academic years globally (unscoped), then iterates through nested loo
 
 **Risk:** Medium - Unbounded query growth with data volume
 **Fix:** Single query with JOIN to fetch valid (school, year) pairs
+
+**Codex Comment (2026-03-28):**
+- I implemented the intended fix, but as one scoped distinct `Term` read rather than a join-heavy rewrite. The function now queries only `Term` rows for the user school plus ancestors, then picks the nearest school per academic year in memory.
+- This preserves the existing nearest-ancestor visibility semantics that `_get_term_visibility_scope()` depends on.
+- The result is bounded by branch scope, removes the global academic-year fetch, and eliminates the nested `exists()` loop.
 
 ---
 

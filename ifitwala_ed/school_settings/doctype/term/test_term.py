@@ -58,11 +58,20 @@ except ModuleNotFoundError:
     frappe_nestedset.get_ancestors_of = lambda *args, **kwargs: []
     frappe_nestedset.get_descendants_of = lambda *args, **kwargs: []
 
+    school_tree_stub = types.ModuleType("ifitwala_ed.utilities.school_tree")
+
+    class _ParentRuleViolation(Exception):
+        pass
+
+    school_tree_stub.ParentRuleViolation = _ParentRuleViolation
+    school_tree_stub.get_descendant_schools = lambda *args, **kwargs: []
+
     sys.modules.setdefault("frappe", frappe_stub)
     sys.modules.setdefault("frappe.model", frappe_model)
     sys.modules.setdefault("frappe.model.document", frappe_document)
     sys.modules.setdefault("frappe.utils", frappe_utils)
     sys.modules.setdefault("frappe.utils.nestedset", frappe_nestedset)
+    sys.modules.setdefault("ifitwala_ed.utilities.school_tree", school_tree_stub)
 
 from ifitwala_ed.school_settings.doctype.term import term
 

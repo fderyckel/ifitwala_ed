@@ -3,7 +3,7 @@ title: "School: Academic Scope and Hierarchy Node"
 slug: school
 category: School Settings
 doc_order: 1
-version: "1.2.0"
+version: "1.2.1"
 last_change_date: "2026-03-28"
 summary: "Define schools as a NestedSet hierarchy anchored to an Organization for admissions, academics, calendars, policy scope, and admissions health-readiness policy."
 seo_title: "School: Academic Scope and Hierarchy Node"
@@ -40,6 +40,12 @@ seo_description: "Define schools as a NestedSet hierarchy anchored to an Organiz
 - [**Organization**](/docs/en/organization/):
   - every school belongs to one organization
 
+## Related Docs
+
+- [**Organization**](/docs/en/organization/) - legal entity root and hierarchy container
+- [**Student Applicant**](/docs/en/student-applicant/) - admissions anchor and readiness pipeline
+- [**Institutional Policy**](/docs/en/institutional-policy/) - organization/school policy scope source
+
 ## Technical Notes (IT)
 
 - **DocType**: `School` (`ifitwala_ed/school_settings/doctype/school/`)
@@ -64,9 +70,8 @@ seo_description: "Define schools as a NestedSet hierarchy anchored to an Organiz
   - `add_node`
   - `enqueue_replace_abbr`
   - `replace_abbr`
-
-## Related Docs
-
-- [**Organization**](/docs/en/organization/) - legal entity root and hierarchy container
-- [**Student Applicant**](/docs/en/student-applicant/) - admissions anchor and readiness pipeline
-- [**Institutional Policy**](/docs/en/institutional-policy/) - organization/school policy scope source
+- **Abbreviation rename contract**:
+  - `enqueue_replace_abbr` runs on the long queue because dependent record renames can be expensive.
+  - `replace_abbr` only renames explicit school-scoped doctypes whose runtime names embed `School.abbr`: `Academic Year`, `School Calendar`, and `School Schedule`.
+  - It must not perform generic table scans or interpolate arbitrary table names into SQL.
+  - Surfaces that only read `School.abbr` dynamically are not renamed; they pick up the new abbreviation from the `School` record directly.

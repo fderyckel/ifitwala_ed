@@ -1,15 +1,59 @@
 # Copyright (c) 2024, fdR and Contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.school_settings.doctype.school.school import replace_abbr
 from ifitwala_ed.tests.factories.organization import make_organization, make_school
 
 
 class TestSchool(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
+
+    def test_replace_abbr_renames_only_explicit_school_scoped_doctypes(self):
+        rename_calls = []
+
+        def fake_get_all(doctype, **kwargs):
+            self.assertEqual(kwargs.get("filters"), {"school": "SCH-001"})
+            if doctype == "Academic Year":
+                return [frappe._dict(name="OLD 2025-2026", academic_year_name="2025-2026")]
+            if doctype == "School Calendar":
+                return [frappe._dict(name="OLD 2025-2026", calendar_name="2025-2026")]
+            if doctype == "School Schedule":
+                return [frappe._dict(name="OLD Weekly", schedule_name="Weekly")]
+            self.fail(f"Unexpected doctype lookup: {doctype}")
+
+        def fake_rename_doc(doctype, old_name, new_name):
+            rename_calls.append((doctype, old_name, new_name))
+
+        with (
+            patch("ifitwala_ed.school_settings.doctype.school.school.frappe.only_for"),
+            patch("ifitwala_ed.school_settings.doctype.school.school.frappe.db.set_value"),
+            patch(
+                "ifitwala_ed.school_settings.doctype.school.school.frappe.get_all",
+                side_effect=fake_get_all,
+            ),
+            patch(
+                "ifitwala_ed.school_settings.doctype.school.school.frappe.rename_doc",
+                side_effect=fake_rename_doc,
+            ),
+            patch("ifitwala_ed.school_settings.doctype.school.school.frappe.db.sql") as sql_mock,
+        ):
+            replace_abbr("SCH-001", "OLD", "NEW")
+
+        sql_mock.assert_not_called()
+        self.assertEqual(
+            rename_calls,
+            [
+                ("Academic Year", "OLD 2025-2026", "NEW 2025-2026"),
+                ("School Calendar", "OLD 2025-2026", "NEW 2025-2026"),
+                ("School Schedule", "OLD Weekly", "NEW Weekly"),
+            ],
+        )
 
     def test_publishing_school_seeds_default_website_pages_and_seo_profiles(self):
         organization = make_organization(prefix="Website Org")

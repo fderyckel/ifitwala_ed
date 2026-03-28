@@ -3,6 +3,8 @@
 
 # ifitwala_ed/school_settings/doctype/term/term.py
 
+from __future__ import annotations
+
 import frappe
 from frappe import _
 from frappe.model.document import Document

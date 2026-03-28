@@ -1,9 +1,7 @@
 # Copyright (c) 2026, François de Ryckel and Contributors
 # See license.txt
 
-# import frappe
 from frappe.tests import IntegrationTestCase
-
 
 # On IntegrationTestCase, the doctype test records and all
 # link-field test record dependencies are recursively loaded
@@ -12,11 +10,10 @@ EXTRA_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 IGNORE_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 
 
-
 class IntegrationTestProfessionalDevelopmentRequest(IntegrationTestCase):
-	"""
-	Integration tests for ProfessionalDevelopmentRequest.
-	Use this class for testing interactions between multiple components.
-	"""
+    """
+    Integration tests for ProfessionalDevelopmentRequest.
+    Use this class for testing interactions between multiple components.
+    """
 
-	pass
+    pass

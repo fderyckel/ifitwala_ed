@@ -41,6 +41,7 @@ Status note:
    ]
    ```
    *Why it's poor*: Runs the exact same `frappe.db.sql` query twice within 10 lines depending on conditions instead of caching the result of the first call or refactoring the flow to fetch it once.
+   *Status*: Resolved in current code. The admissions cockpit now fetches organization names once per request and reuses that list for the invalid-school early-return path and the main payload path.
 
 5. **[ifitwala_ed/api/attendance.py](file:///Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/api/attendance.py) line 1611** (Observed from grep results)
    ```python
@@ -59,12 +60,14 @@ Status note:
    doc = (d for d in frappe.db.sql("select name from `tab%s` where school=%s" % (dt, "%s"), school))
    ```
    *Why it's poor*: Anti-pattern of interpolating the table name via `%s` and formatting. While Frappe query builder `frappe.db.get_all` handles this cleanly and safely, using raw `%s` string concatenation for table names skips query builder safety and query caching. This feeds an N+1 generator loop `for d in doc: _rename_record(d)`.
+   *Status*: Resolved in current code. School abbreviation replacement now uses an explicit, documented rename scope over `Academic Year`, `School Calendar`, and `School Schedule`, fetched through `frappe.get_all()` instead of generic table-name interpolation.
 
 8. **[ifitwala_ed/school_settings/doctype/term/term.py](file:///Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_settings/doctype/term/term.py) line 214**
    ```python
    academic_years = [row[0] for row in frappe.db.get_values("Term", {}, "academic_year", distinct=True)]
    ```
    *Why it's poor*: Fetches all academic years globally, then dynamically iterates `frappe.db.exists()` inside nested loops for hierarchy checks ([get_schools_per_academic_year_for_terms](file:///Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/school_settings/doctype/term/term.py#205-225)), generating O(N * M) DB queries.
+   *Status*: Resolved in current code. Term visibility fallback now uses one scoped distinct read over `Term` rows limited to the user school plus ancestors, then picks the nearest matching school per academic year in memory.
 
 9. **[ifitwala_ed/api/course_schedule.py](file:///Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/api/course_schedule.py) line 65** (Observed from grep results)
    ```python
