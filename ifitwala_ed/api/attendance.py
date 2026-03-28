@@ -92,7 +92,7 @@ def get(
     """
     mode_value = (mode or "").strip()
     if mode_value not in ALLOWED_MODES:
-        frappe.throw(_("Invalid attendance mode: {0}").format(mode_value))
+        frappe.throw(_("Invalid attendance mode: {mode}.").format(mode=mode_value))
 
     heatmap_mode_value = _normalize_heatmap_mode(heatmap_mode)
     whole_day_value = 1 if cint(whole_day) else 0

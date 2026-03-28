@@ -631,7 +631,10 @@ def _compact_messages(messages):
 
     detail = "; ".join(details[:DETAIL_MESSAGE_LIMIT])
     if len(details) > DETAIL_MESSAGE_LIMIT:
-        detail = _("{0}; (+{1} more)").format(detail, len(details) - DETAIL_MESSAGE_LIMIT)
+        detail = _("{detail}; (+{remaining_count} more)").format(
+            detail=detail,
+            remaining_count=len(details) - DETAIL_MESSAGE_LIMIT,
+        )
     return detail
 
 
@@ -642,7 +645,7 @@ def _format_matrix_cell(course_row):
 
     choice_rank = course_row.get("choice_rank")
     if choice_rank:
-        return _("Choice {0}").format(choice_rank)
+        return _("Choice {choice_rank}").format(choice_rank=choice_rank)
     if cint(course_row.get("required")) == 1:
         return _("Required")
     return _("Selected")
@@ -738,7 +741,7 @@ def _format_top_invalid_reasons(reason_counts):
             INVALID_REASON_BUCKETS.index(item[0]) if item[0] in INVALID_REASON_BUCKETS else len(INVALID_REASON_BUCKETS),
         ),
     ):
-        parts.append(_("{0} ({1})").format(bucket, count))
+        parts.append(_("{bucket} ({count})").format(bucket=bucket, count=count))
         if len(parts) == 3:
             break
     return ", ".join(parts)
@@ -883,7 +886,10 @@ def _extract_invalid_reason_info(row):
     summary = ", ".join(buckets)
     detail = "; ".join(details[:DETAIL_MESSAGE_LIMIT])
     if len(details) > DETAIL_MESSAGE_LIMIT:
-        detail = _("{0}; (+{1} more)").format(detail, len(details) - DETAIL_MESSAGE_LIMIT)
+        detail = _("{detail}; (+{remaining_count} more)").format(
+            detail=detail,
+            remaining_count=len(details) - DETAIL_MESSAGE_LIMIT,
+        )
 
     return {
         "buckets": buckets,
@@ -964,9 +970,9 @@ def _humanize_course_reason(course, reason):
         return ""
     course = course or _("Selected course")
     if reason == "Capacity full for this course.":
-        return _("No places are currently available in {0}.").format(course)
+        return _("No places are currently available in {course}.").format(course=course)
     if reason == "Course is not part of the Program Offering.":
-        return _("{0} is no longer part of this program offering.").format(course)
+        return _("{course} is no longer part of this program offering.").format(course=course)
     if (
         reason
         in {
@@ -977,9 +983,9 @@ def _humanize_course_reason(course, reason):
         or reason.startswith("No numeric score evidence for ")
         or (reason.startswith("Required ") and " score " in reason and "; got " in reason)
     ):
-        return _("{0} needs prerequisite review before the request can advance.").format(course)
+        return _("{course} needs prerequisite review before the request can advance.").format(course=course)
     if reason == "Course already completed and not repeatable.":
-        return _("{0} has already been completed and cannot be selected again.").format(course)
+        return _("{course} has already been completed and cannot be selected again.").format(course=course)
     if reason == "Maximum attempts exceeded.":
-        return _("{0} has already reached the maximum number of attempts.").format(course)
-    return _("{0}: {1}").format(course, reason)
+        return _("{course} has already reached the maximum number of attempts.").format(course=course)
+    return _("{course}: {reason}").format(course=course, reason=reason)

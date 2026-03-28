@@ -42,7 +42,7 @@ def get_meeting_details(meeting: str):
     try:
         doc = frappe.get_doc("Meeting", meeting)
     except frappe.DoesNotExistError:
-        frappe.throw(_("Meeting {0} was not found.").format(meeting), frappe.DoesNotExistError)
+        frappe.throw(_("Meeting {meeting} was not found.").format(meeting=meeting), frappe.DoesNotExistError)
 
     if doc.docstatus == 2 or doc.status == "Cancelled":
         frappe.throw(_("This meeting is no longer available."), frappe.PermissionError)
@@ -120,7 +120,7 @@ def get_school_event_details(event: str):
     try:
         doc = frappe.get_doc("School Event", event)
     except frappe.DoesNotExistError:
-        frappe.throw(_("School Event {0} was not found.").format(event), frappe.DoesNotExistError)
+        frappe.throw(_("School Event {event} was not found.").format(event=event), frappe.DoesNotExistError)
 
     if doc.docstatus == 2:
         frappe.throw(_("This school event is no longer available."), frappe.PermissionError)
@@ -214,7 +214,10 @@ def get_student_group_event_details(
         as_dict=True,
     )
     if not group_row:
-        frappe.throw(_("Student Group {0} was not found.").format(group_name), frappe.DoesNotExistError)
+        frappe.throw(
+            _("Student Group {student_group} was not found.").format(student_group=group_name),
+            frappe.DoesNotExistError,
+        )
 
     course_meta = _course_meta_map([group_row.course] if group_row.course else [])
     course_label = None
@@ -334,7 +337,9 @@ def _resolve_sg_schedule_context(event_id: str, tzinfo: pytz.timezone) -> Dict[s
         "student_group": group_name,
         "rotation_day": rotation_day,
         "block_number": block_number,
-        "block_label": _("Block {0}").format(block_number) if block_number is not None else None,
+        "block_label": _("Block {block_number}").format(block_number=block_number)
+        if block_number is not None
+        else None,
         "session_date": session_date.isoformat() if session_date else None,
         "location": slot.location if slot else None,
         "start": start_dt,
@@ -357,7 +362,7 @@ def _resolve_sg_booking_context(
     )
     if not row or row.source_doctype != "Student Group":
         frappe.throw(
-            _("Employee Booking {0} was not found for a class.").format(booking_name),
+            _("Employee Booking {booking_name} was not found for a class.").format(booking_name=booking_name),
             frappe.DoesNotExistError,
         )
 

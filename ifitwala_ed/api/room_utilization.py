@@ -136,7 +136,7 @@ def _ensure_allowed_school(school: str | None) -> str:
     allowed = set(get_authorized_schools(frappe.session.user) or [])
     if school_value not in allowed:
         frappe.throw(
-            _("You are not allowed to use school {0} in room utilization.").format(school_value),
+            _("You are not allowed to use school {school} in room utilization.").format(school=school_value),
             frappe.PermissionError,
         )
     return school_value
@@ -186,7 +186,7 @@ def _validate_date_range(from_date, to_date, *, enforce_scope: bool = True) -> t
 
     days = (end - start).days + 1
     if enforce_scope and days > MAX_RANGE_DAYS and not _user_can_use_long_range():
-        frappe.throw(_("Date range too large. Please keep it within {0} days.").format(MAX_RANGE_DAYS))
+        frappe.throw(_("Date range too large. Please keep it within {max_days} days.").format(max_days=MAX_RANGE_DAYS))
 
     return start, end, days
 
@@ -573,7 +573,7 @@ def _occupancy_title(row: dict, location_label: str | None, *, single_location: 
     occupancy = str(row.get("occupancy_type") or row.get("source_doctype") or _("Busy")).strip() or _("Busy")
     if single_location or not location_label:
         return occupancy
-    return _("{0} · {1}").format(occupancy, location_label)
+    return _("{occupancy} · {location}").format(occupancy=occupancy, location=location_label)
 
 
 def _occupancy_color(row: dict) -> str:
@@ -637,7 +637,7 @@ def get_location_calendar(filters=None):
     selected_row = next((row for row in location_options if row.get("value") == selected_location), None)
     if not selected_row:
         frappe.throw(
-            _("You are not allowed to view location {0}.").format(selected_location),
+            _("You are not allowed to view location {location}.").format(location=selected_location),
             frappe.PermissionError,
         )
 

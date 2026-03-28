@@ -266,8 +266,8 @@ def get_org_chart_tree(organization: str | None = None):
             "total": total,
             "max_nodes": EXPAND_MAX_NODES,
             "max_depth": EXPAND_MAX_DEPTH,
-            "message": _("Expand all is limited to {0} people. Narrow the organization to continue.").format(
-                EXPAND_MAX_NODES
+            "message": _("Expand all is limited to {person_count} people. Narrow the organization to continue.").format(
+                person_count=EXPAND_MAX_NODES
             ),
         }
 
@@ -320,9 +320,9 @@ def get_org_chart_tree(organization: str | None = None):
                 "total": total,
                 "max_nodes": EXPAND_MAX_NODES,
                 "max_depth": EXPAND_MAX_DEPTH,
-                "message": _("Expand all is limited to {0} levels. Narrow the organization to continue.").format(
-                    EXPAND_MAX_DEPTH
-                ),
+                "message": _(
+                    "Expand all is limited to {level_count} levels. Narrow the organization to continue."
+                ).format(level_count=EXPAND_MAX_DEPTH),
             }
 
         for child_id in children_by_parent.get(node_id, []):

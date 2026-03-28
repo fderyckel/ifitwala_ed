@@ -64,9 +64,11 @@ def execute(filters=None):
         as_dict=True,
     )
     if not ay_row:
-        frappe.throw(_("Academic Year {0} was not found.").format(ay))
+        frappe.throw(_("Academic Year {academic_year} was not found.").format(academic_year=ay))
     if not (ay_row.year_start_date and ay_row.year_end_date):
-        frappe.throw(_("Academic Year {0} must have both a start date and an end date.").format(ay))
+        frappe.throw(
+            _("Academic Year {academic_year} must have both a start date and an end date.").format(academic_year=ay)
+        )
 
     schools = tuple(get_descendant_schools(school) or [school])
 

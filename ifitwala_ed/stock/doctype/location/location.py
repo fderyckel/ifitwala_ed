@@ -107,8 +107,8 @@ class Location(Document):
         if not parent_org:
             # Allow save but warn: parent should be fixed first
             frappe.msgprint(
-                _("Parent Location {0} has no Organization set; please fix the parent first.").format(
-                    frappe.utils.get_link_to_form("Location", self.parent_location)
+                _("Parent Location {parent_location} has no Organization set; please fix the parent first.").format(
+                    parent_location=frappe.utils.get_link_to_form("Location", self.parent_location)
                 ),
                 title=_("Parent Missing Organization"),
                 indicator="orange",
@@ -131,16 +131,19 @@ class Location(Document):
 
         if not parent_org:
             frappe.throw(
-                _("Parent Location {0} has no Organization set. Set it on the parent first.").format(
-                    frappe.utils.get_link_to_form("Location", self.parent_location)
+                _("Parent Location {parent_location} has no Organization set. Set it on the parent first.").format(
+                    parent_location=frappe.utils.get_link_to_form("Location", self.parent_location)
                 ),
                 title=_("Parent Missing Organization"),
             )
 
         if self.organization and self.organization != parent_org:
             frappe.throw(
-                _("Child Location Organization must match its parent. Parent: <b>{0}</b>, Child: <b>{1}</b>.").format(
-                    parent_org, self.organization
+                _(
+                    "Child Location Organization must match its parent. Parent: <b>{parent_organization}</b>, Child: <b>{child_organization}</b>."
+                ).format(
+                    parent_organization=parent_org,
+                    child_organization=self.organization,
                 ),
                 title=_("Organization Mismatch"),
             )
@@ -214,8 +217,8 @@ class Location(Document):
             lines = "\n".join(f"- {sg}: active students {count} > capacity {cap}" for sg, count in over_capacity)
             frappe.throw(
                 _(
-                    "Cannot set maximum capacity below active enrollment for Student Groups using this Location:\n{0}"
-                ).format(lines),
+                    "Cannot set maximum capacity below active enrollment for Student Groups using this Location:\n{over_capacity_lines}"
+                ).format(over_capacity_lines=lines),
                 title=_("Capacity Too Low"),
             )
 
@@ -251,9 +254,9 @@ class Location(Document):
             link = frappe.utils.get_link_to_form("School", self.school)
             frappe.throw(
                 _(
-                    "School {0} and its ancestor schools have no Organization set. "
+                    "School {school} and its ancestor schools have no Organization set. "
                     "Set an Organization on the School tree before assigning it to a Location."
-                ).format(link),
+                ).format(school=link),
                 title=_("Missing School Organization"),
             )
 
@@ -285,8 +288,11 @@ class Location(Document):
             frappe.throw(
                 _(
                     "Cannot validate Organization membership because one of the Organizations "
-                    "({0} or {1}) is missing or corrupted."
-                ).format(self.organization, school_org),
+                    "({location_organization} or {school_organization}) is missing or corrupted."
+                ).format(
+                    location_organization=self.organization,
+                    school_organization=school_org,
+                ),
                 title=_("Organization Tree Error"),
             )
 
@@ -349,8 +355,11 @@ class Location(Document):
         allowed = get_ancestor_schools(self.school) or [self.school]
         if parent_school not in allowed:
             frappe.throw(
-                _("Parent Location belongs to School {0}, which is not in the lineage of School {1}.").format(
-                    parent_school, self.school
+                _(
+                    "Parent Location belongs to School {parent_school}, which is not in the lineage of School {child_school}."
+                ).format(
+                    parent_school=parent_school,
+                    child_school=self.school,
                 ),
                 title=_("School Lineage Mismatch"),
             )

@@ -62,13 +62,13 @@ def validate_school_belongs_to_organization(*, organization: str, school: str | 
 
     school_org = frappe.db.get_value("School", school, "organization")
     if not school_org:
-        frappe.throw(_("School '{0}' was not found.").format(school))
+        frappe.throw(_("School '{school}' was not found.").format(school=school))
     if school_org != organization:
         frappe.throw(
-            _("School '{0}' belongs to '{1}', not '{2}'.").format(
-                school,
-                school_org,
-                organization,
+            _("School '{school}' belongs to '{school_organization}', not '{organization}'.").format(
+                school=school,
+                school_organization=school_org,
+                organization=organization,
             )
         )
 
@@ -119,7 +119,7 @@ def _resolve_school_context(*, school: str) -> tuple[str, list[str], list[str]]:
 
     organization = _normalize(frappe.db.get_value("School", school, "organization"))
     if not organization:
-        frappe.throw(_("School '{0}' is missing its Organization.").format(school))
+        frappe.throw(_("School '{school}' is missing its Organization.").format(school=school))
 
     return (
         organization,
@@ -364,9 +364,9 @@ def ensure_organization_media_files_visible_to_school(*, school: str, file_names
     missing = [name for name in normalized if name not in visible]
     if missing:
         frappe.throw(
-            _("Organization media is not visible to School '{0}': {1}").format(
-                school,
-                ", ".join(missing),
+            _("Organization media is not visible to School '{school}': {missing_files}").format(
+                school=school,
+                missing_files=", ".join(missing),
             )
         )
     return {name: visible[name] for name in normalized}

@@ -81,9 +81,9 @@ def _locked_reason(*, window: dict[str, Any], request_row: dict | None) -> str |
     open_from = get_datetime(window.get("open_from")) if window.get("open_from") else None
     due_on = get_datetime(window.get("due_on")) if window.get("due_on") else None
     if open_from and now_dt < open_from:
-        return _("Course selection opens on {0}.").format(open_from)
+        return _("Course selection opens on {open_from}.").format(open_from=open_from)
     if due_on and now_dt > due_on:
-        return _("Course selection closed on {0}.").format(due_on)
+        return _("Course selection closed on {due_on}.").format(due_on=due_on)
     if open_state.get("is_open_now") != 1:
         return _("Course selection is not available right now.")
     return None
@@ -432,7 +432,7 @@ def _submit_block_message(choice_state: dict) -> str:
         return _("Please review the course choices above before submitting.")
     if len(reasons) == 1:
         return reasons[0]
-    return _("Please review the course choices before submitting: {0}").format("; ".join(reasons[:3]))
+    return _("Please review the course choices before submitting: {reasons}").format(reasons="; ".join(reasons[:3]))
 
 
 def _parse_course_rows(courses) -> list[dict]:

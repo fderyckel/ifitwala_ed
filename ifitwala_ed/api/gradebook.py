@@ -659,7 +659,7 @@ def repair_task_roster(task: str):
     eligible_students = materialized.get("eligible_students", after_count)
 
     if outcomes_created:
-        message = _("Roster synced for {0} students.").format(outcomes_created)
+        message = _("Roster synced for {student_count} students.").format(student_count=outcomes_created)
     elif after_count:
         message = _("Roster is already up to date.")
     else:

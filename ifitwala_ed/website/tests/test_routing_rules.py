@@ -32,6 +32,7 @@ class TestRoutingRules(FrappeTestCase):
                 "ifitwala_ed.api.users.redirect_non_staff_away_from_desk",
             ],
         )
+        self.assertEqual(hooks.home_page, "/")
 
     def test_website_routes_are_scoped(self):
         rules = hooks.website_route_rules

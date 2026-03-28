@@ -83,7 +83,9 @@ def _ensure_visible_org_communication(org_communication: str, *, user: str, role
         frappe.throw(_("org_communication is required."))
 
     if not frappe.db.exists("Org Communication", org_communication):
-        frappe.throw(_("Org Communication {0} was not found.").format(org_communication))
+        frappe.throw(
+            _("Org Communication {org_communication} was not found.").format(org_communication=org_communication)
+        )
 
     if not check_audience_match(org_communication, user, roles, employee):
         frappe.throw(_("You do not have permission to access this communication."), frappe.PermissionError)
@@ -538,7 +540,7 @@ def react_to_org_communication(org_communication: str, reaction_code: str, surfa
 
     reaction = _to_text(reaction_code)
     if reaction not in REACTION_INTENT_MAP:
-        frappe.throw(_("Unsupported reaction code: {0}").format(reaction or _("(empty)")))
+        frappe.throw(_("Unsupported reaction code: {reaction}.").format(reaction=reaction or _("(empty)")))
 
     response = create_interaction_entry(
         org_communication=org_communication,

@@ -93,6 +93,7 @@ Role handling now follows managed sync:
 - when `Employee.employment_status` is not `Active`, the linked `User` is disabled and all assigned role rows are removed.
 - routing policy resolves active employee status using `Employee.user_id` first, then an unambiguous active match on `employee_professional_email` to avoid false-negative staff routing when legacy user links are missing.
 - at login, if a staff user has no active `Employee.user_id` link but exactly one active `Employee` row matches `employee_professional_email`, the system self-heals `user_id` and re-runs access sync.
+- if login cannot resolve any valid portal section after applying employee/admissions/student/guardian rules, the user is sent back to `/login` instead of being dropped onto `/hub/staff`.
 - `Employee._apply_designation_role()` reruns managed access sync on every Employee update for linked users so imported or drifted accounts are repaired even when the Employee document itself did not change effective access fields.
 - role-management authorization includes `HR User`, `HR Manager`, `System Manager`, and `Administrator`.
 

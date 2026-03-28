@@ -199,6 +199,8 @@ def resolve_login_redirect_path(*, user: str, roles: set[str]) -> str:
         return "/admissions"
 
     sections = resolve_portal_sections(user=user, roles=roles)
+    if not sections:
+        return "/login"
     default_section = resolve_default_portal_section(allowed_sections=sections)
     return canonical_path_for_section(default_section)
 

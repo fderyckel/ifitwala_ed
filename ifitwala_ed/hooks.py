@@ -89,8 +89,8 @@ on_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_login"
 on_session_creation = "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_session_creation"
 # Resolve website home directly from the same canonical role policy.
 get_website_user_home_page = "ifitwala_ed.api.users.get_website_user_home_page"
-# application home page (will override Website Settings)
-# home_page = "/hub"
+# application home page (overrides mutable Website Settings.home_page drift)
+home_page = "/"
 
 # website user home page (by Role)
 role_home_page = {

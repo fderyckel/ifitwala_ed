@@ -206,7 +206,7 @@ def _validate_keys(payload: dict, allowed: set[str]):
 
     unknown = set(payload.keys()) - allowed
     if unknown:
-        frappe.throw(_("Unexpected keys: {0}").format(", ".join(sorted(list(unknown)))))
+        frappe.throw(_("Unexpected keys: {keys}").format(keys=", ".join(sorted(list(unknown)))))
 
 
 def _get_employee_school_for_session_user() -> str | None:

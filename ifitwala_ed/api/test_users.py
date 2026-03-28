@@ -193,8 +193,8 @@ class TestUserRedirect(FrappeTestCase):
             frappe.delete_doc("Employee", employee.name, force=True)
             frappe.delete_doc("User", user.email, force=True)
 
-    def test_all_users_redirect_to_staff_entry(self):
-        """Standard users should be redirected to /hub/staff on login."""
+    def test_users_without_portal_access_redirect_to_login(self):
+        """Users with no resolved portal entitlement must not be dropped onto Staff Home."""
         # Create test user
         user = frappe.new_doc("User")
         user.email = "test_user_portal@example.com"
@@ -210,9 +210,9 @@ class TestUserRedirect(FrappeTestCase):
         # Call redirect function
         redirect_user_to_entry_portal()
 
-        # Assert redirect to /hub/staff
-        self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
-        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+        # Assert redirect to /login
+        self.assertEqual(frappe.local.response.get("home_page"), "/login")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/login")
 
         # Cleanup
         frappe.set_user("Administrator")

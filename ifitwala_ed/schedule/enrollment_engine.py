@@ -88,7 +88,7 @@ def evaluate_enrollment_request(payload):
     _assert_no_catalog_prereqs()
 
     if capacity_policy not in SUPPORTED_CAPACITY_POLICIES:
-        frappe.throw(_("Capacity policy '{0}' is not supported.").format(capacity_policy))
+        frappe.throw(_("Capacity policy '{capacity_policy}' is not supported.").format(capacity_policy=capacity_policy))
 
     # Normalize + count requested courses once (prevents duplicate row inflation)
     # - requested_counts is the only source of "requested_count"
