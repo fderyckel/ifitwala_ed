@@ -103,11 +103,16 @@ def _get_unit_map(items):
 
 def _validate_issue_row(doc, row, idx, item_map, unit_map):
     if not row.inventory_item:
-        frappe.throw(_("Row {0}: Inventory Item is required.").format(idx))
+        frappe.throw(_("Row {row_number}: Inventory Item is required.").format(row_number=idx))
 
     item = item_map.get(row.inventory_item)
     if not item:
-        frappe.throw(_("Row {0}: Inventory Item {1} not found.").format(idx, row.inventory_item))
+        frappe.throw(
+            _("Row {row_number}: Inventory Item {inventory_item} not found.").format(
+                row_number=idx,
+                inventory_item=row.inventory_item,
+            )
+        )
 
     has_serial_no = cint(item.has_serial_no)
     is_consumable = cint(item.is_consumable)
@@ -115,35 +120,47 @@ def _validate_issue_row(doc, row, idx, item_map, unit_map):
 
     if is_consumable:
         if row.inventory_unit:
-            frappe.throw(_("Row {0}: Consumables cannot use Inventory Unit.").format(idx))
+            frappe.throw(_("Row {row_number}: Consumables cannot use Inventory Unit.").format(row_number=idx))
         if qty <= 0:
-            frappe.throw(_("Row {0}: Consumable qty must be greater than 0.").format(idx))
+            frappe.throw(_("Row {row_number}: Consumable qty must be greater than 0.").format(row_number=idx))
 
     if has_serial_no:
         if not row.inventory_unit:
-            frappe.throw(_("Row {0}: Inventory Unit is required for serial items.").format(idx))
+            frappe.throw(_("Row {row_number}: Inventory Unit is required for serial items.").format(row_number=idx))
         if qty != 1:
-            frappe.throw(_("Row {0}: Serial item qty must be 1.").format(idx))
+            frappe.throw(_("Row {row_number}: Serial item qty must be 1.").format(row_number=idx))
 
     if row.inventory_unit:
         unit = unit_map.get(row.inventory_unit)
         if not unit:
-            frappe.throw(_("Row {0}: Inventory Unit {1} not found.").format(idx, row.inventory_unit))
+            frappe.throw(
+                _("Row {row_number}: Inventory Unit {inventory_unit} not found.").format(
+                    row_number=idx,
+                    inventory_unit=row.inventory_unit,
+                )
+            )
         if unit.inventory_item != row.inventory_item:
-            frappe.throw(_("Row {0}: Inventory Unit does not match Inventory Item.").format(idx))
+            frappe.throw(_("Row {row_number}: Inventory Unit does not match Inventory Item.").format(row_number=idx))
         if unit.status != "Available":
-            frappe.throw(_("Row {0}: Inventory Unit must be Available.").format(idx))
+            frappe.throw(_("Row {row_number}: Inventory Unit must be Available.").format(row_number=idx))
         if unit.current_location != doc.issue_from_location:
-            frappe.throw(_("Row {0}: Inventory Unit is not in the Issue From Location.").format(idx))
+            frappe.throw(
+                _("Row {row_number}: Inventory Unit is not in the Issue From Location.").format(row_number=idx)
+            )
 
 
 def _validate_return_row(doc, row, idx, returned_from, item_map, unit_map):
     if not row.inventory_item:
-        frappe.throw(_("Row {0}: Inventory Item is required.").format(idx))
+        frappe.throw(_("Row {row_number}: Inventory Item is required.").format(row_number=idx))
 
     item = item_map.get(row.inventory_item)
     if not item:
-        frappe.throw(_("Row {0}: Inventory Item {1} not found.").format(idx, row.inventory_item))
+        frappe.throw(
+            _("Row {row_number}: Inventory Item {inventory_item} not found.").format(
+                row_number=idx,
+                inventory_item=row.inventory_item,
+            )
+        )
 
     has_serial_no = cint(item.has_serial_no)
     is_consumable = cint(item.is_consumable)
@@ -151,21 +168,26 @@ def _validate_return_row(doc, row, idx, returned_from, item_map, unit_map):
 
     if is_consumable:
         if row.inventory_unit:
-            frappe.throw(_("Row {0}: Consumables cannot use Inventory Unit.").format(idx))
+            frappe.throw(_("Row {row_number}: Consumables cannot use Inventory Unit.").format(row_number=idx))
         if qty <= 0:
-            frappe.throw(_("Row {0}: Consumable qty must be greater than 0.").format(idx))
+            frappe.throw(_("Row {row_number}: Consumable qty must be greater than 0.").format(row_number=idx))
 
     if has_serial_no and not row.inventory_unit:
-        frappe.throw(_("Row {0}: Inventory Unit is required for serial items.").format(idx))
+        frappe.throw(_("Row {row_number}: Inventory Unit is required for serial items.").format(row_number=idx))
 
     if row.inventory_unit:
         unit = unit_map.get(row.inventory_unit)
         if not unit:
-            frappe.throw(_("Row {0}: Inventory Unit {1} not found.").format(idx, row.inventory_unit))
+            frappe.throw(
+                _("Row {row_number}: Inventory Unit {inventory_unit} not found.").format(
+                    row_number=idx,
+                    inventory_unit=row.inventory_unit,
+                )
+            )
         if unit.inventory_item != row.inventory_item:
-            frappe.throw(_("Row {0}: Inventory Unit does not match Inventory Item.").format(idx))
+            frappe.throw(_("Row {row_number}: Inventory Unit does not match Inventory Item.").format(row_number=idx))
         if unit.status not in {"Issued", "Under Repair"}:
-            frappe.throw(_("Row {0}: Inventory Unit must be Issued or Under Repair.").format(idx))
+            frappe.throw(_("Row {row_number}: Inventory Unit must be Issued or Under Repair.").format(row_number=idx))
 
         field_map = {
             "Employee": "current_employee",
@@ -175,40 +197,52 @@ def _validate_return_row(doc, row, idx, returned_from, item_map, unit_map):
         }
         fieldname = field_map.get(returned_from["type"])
         if not fieldname:
-            frappe.throw(_("Row {0}: Invalid Returned From Type.").format(idx))
+            frappe.throw(_("Row {row_number}: Invalid Returned From Type.").format(row_number=idx))
 
         current_holder = unit.get(fieldname)
         if current_holder != returned_from["name"]:
-            frappe.throw(_("Row {0}: Inventory Unit is not held by the selected custodian.").format(idx))
+            frappe.throw(
+                _("Row {row_number}: Inventory Unit is not held by the selected custodian.").format(row_number=idx)
+            )
 
 
 def _validate_transfer_row(doc, row, idx, item_map, unit_map):
     if not row.inventory_item:
-        frappe.throw(_("Row {0}: Inventory Item is required.").format(idx))
+        frappe.throw(_("Row {row_number}: Inventory Item is required.").format(row_number=idx))
 
     item = item_map.get(row.inventory_item)
     if not item:
-        frappe.throw(_("Row {0}: Inventory Item {1} not found.").format(idx, row.inventory_item))
+        frappe.throw(
+            _("Row {row_number}: Inventory Item {inventory_item} not found.").format(
+                row_number=idx,
+                inventory_item=row.inventory_item,
+            )
+        )
 
     has_serial_no = cint(item.has_serial_no)
     is_consumable = cint(item.is_consumable)
     qty = flt(row.qty or 0)
 
     if is_consumable and row.inventory_unit:
-        frappe.throw(_("Row {0}: Consumables cannot use Inventory Unit.").format(idx))
+        frappe.throw(_("Row {row_number}: Consumables cannot use Inventory Unit.").format(row_number=idx))
 
     if has_serial_no:
         if not row.inventory_unit:
-            frappe.throw(_("Row {0}: Inventory Unit is required for serial items.").format(idx))
+            frappe.throw(_("Row {row_number}: Inventory Unit is required for serial items.").format(row_number=idx))
         if qty != 1:
-            frappe.throw(_("Row {0}: Serial item qty must be 1.").format(idx))
+            frappe.throw(_("Row {row_number}: Serial item qty must be 1.").format(row_number=idx))
 
     if row.inventory_unit and qty != 1:
-        frappe.throw(_("Row {0}: Inventory Unit rows must have qty 1.").format(idx))
+        frappe.throw(_("Row {row_number}: Inventory Unit rows must have qty 1.").format(row_number=idx))
 
     if row.inventory_unit:
         unit = unit_map.get(row.inventory_unit)
         if not unit:
-            frappe.throw(_("Row {0}: Inventory Unit {1} not found.").format(idx, row.inventory_unit))
+            frappe.throw(
+                _("Row {row_number}: Inventory Unit {inventory_unit} not found.").format(
+                    row_number=idx,
+                    inventory_unit=row.inventory_unit,
+                )
+            )
         if unit.inventory_item != row.inventory_item:
-            frappe.throw(_("Row {0}: Inventory Unit does not match Inventory Item.").format(idx))
+            frappe.throw(_("Row {row_number}: Inventory Unit does not match Inventory Item.").format(row_number=idx))

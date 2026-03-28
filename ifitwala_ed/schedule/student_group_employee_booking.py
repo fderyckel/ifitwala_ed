@@ -20,6 +20,7 @@ from datetime import date, datetime
 from typing import Dict, List, Optional, Set, Tuple
 
 import frappe
+from frappe import _
 from frappe.utils import get_datetime, getdate
 
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
@@ -315,7 +316,15 @@ def rebuild_employee_bookings_for_student_group(
         location = slot.get("location") or row.get("location")
         if not location:
             if strict_location:
-                frappe.throw(f"Missing location for Teaching slot: {student_group} rd={rd} block={bn}")
+                frappe.throw(
+                    _(
+                        "Missing location for Teaching slot: {student_group} rd={rotation_day} block={block_number}"
+                    ).format(
+                        student_group=student_group,
+                        rotation_day=rd,
+                        block_number=bn,
+                    )
+                )
             continue
 
         # 5) Upsert Location Booking row (room truth)

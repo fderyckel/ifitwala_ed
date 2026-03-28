@@ -96,6 +96,17 @@ For non-trivial tasks, agents MUST:
 
 No opportunistic cleanup. No scope creep.
 
+### 1.2 Generated Artifact And I18n Discipline
+
+- Do not commit or leave behind oversized generated audit artifacts, scan dumps, or machine-produced markdown unless the user explicitly asks for them to live in the repo.
+- Before writing generated docs under `ifitwala_ed/docs/`, prefer concise human review outputs over exhaustive raw dumps.
+- If a generated artifact is likely to be large, split it, summarize it, or keep it outside the tracked repo workflow.
+- Treat any single generated markdown file approaching repository or tool limits as a process failure to avoid, not a lint issue to discover later.
+- For i18n, translation functions must receive stable literal source strings only.
+- Never pass variables directly to `_()` or `__()`.
+- Never use f-strings, template literals, or string concatenation as the translatable source sentence.
+- When dynamic data is required, use a literal source string with named placeholders, then format after translation.
+
 ---
 
 ## 2. Architectural Authority & Drift Control

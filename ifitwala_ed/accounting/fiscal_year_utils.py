@@ -8,10 +8,17 @@ from frappe.utils import formatdate, getdate
 from pypika import Order
 
 CACHE_KEY = "ifitwala_ed:accounting:fiscal_years"
+FISCAL_YEAR_LABELS = {
+    "Posting Date": _("Posting Date"),
+}
 
 
 class FiscalYearError(frappe.ValidationError):
     pass
+
+
+def _resolve_fiscal_year_label(label: str) -> str:
+    return FISCAL_YEAR_LABELS.get(label, label)
 
 
 def clear_fiscal_year_cache():
@@ -119,7 +126,7 @@ def resolve_fiscal_year(
 
     frappe.throw(
         _("{label} {posting_date} is not in any active Fiscal Year for Organization {organization}").format(
-            label=_(label),
+            label=_resolve_fiscal_year_label(label),
             posting_date=formatdate(target_date),
             organization=organization,
         ),

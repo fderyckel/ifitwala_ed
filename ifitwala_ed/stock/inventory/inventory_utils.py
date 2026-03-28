@@ -62,7 +62,7 @@ def resolve_issued_to(doc):
     }
     fieldname = field_map.get(issued_to_type)
     if not fieldname:
-        frappe.throw(_("Invalid Issued To Type: {0}.").format(issued_to_type))
+        frappe.throw(_("Invalid Issued To Type: {issued_to_type}.").format(issued_to_type=issued_to_type))
 
     filled = [fname for fname in field_map.values() if doc.get(fname)]
     if len(filled) != 1:
@@ -71,7 +71,10 @@ def resolve_issued_to(doc):
     value = doc.get(fieldname)
     if not value:
         frappe.throw(
-            _("{0} is required for Issued To Type {1}.").format(frappe.bold(unscrub(fieldname)), issued_to_type)
+            _("{field_label} is required for Issued To Type {issued_to_type}.").format(
+                field_label=frappe.bold(unscrub(fieldname)),
+                issued_to_type=issued_to_type,
+            )
         )
 
     return {"type": issued_to_type, "name": value}
@@ -90,7 +93,9 @@ def resolve_returned_from(doc):
     }
     fieldname = field_map.get(returned_from_type)
     if not fieldname:
-        frappe.throw(_("Invalid Returned From Type: {0}.").format(returned_from_type))
+        frappe.throw(
+            _("Invalid Returned From Type: {returned_from_type}.").format(returned_from_type=returned_from_type)
+        )
 
     filled = [fname for fname in field_map.values() if doc.get(fname)]
     if len(filled) != 1:
@@ -99,7 +104,10 @@ def resolve_returned_from(doc):
     value = doc.get(fieldname)
     if not value:
         frappe.throw(
-            _("{0} is required for Returned From Type {1}.").format(frappe.bold(unscrub(fieldname)), returned_from_type)
+            _("{field_label} is required for Returned From Type {returned_from_type}.").format(
+                field_label=frappe.bold(unscrub(fieldname)),
+                returned_from_type=returned_from_type,
+            )
         )
 
     return {"type": returned_from_type, "name": value}
@@ -120,7 +128,11 @@ def set_unit_custody(unit_name, custody_fields):
 def assert_unit_in_location(unit_name, location):
     current = frappe.db.get_value("Inventory Unit", unit_name, "current_location")
     if current != location:
-        frappe.throw(_("Inventory Unit {0} is not in Location {1}.").format(unit_name, location))
+        frappe.throw(
+            _("Inventory Unit {unit_name} is not in Location {location}.").format(
+                unit_name=unit_name, location=location
+            )
+        )
 
 
 def assert_unit_held_by(unit_name, custodian_type, custodian_name):
@@ -132,11 +144,17 @@ def assert_unit_held_by(unit_name, custodian_type, custodian_name):
     }
     fieldname = field_map.get(custodian_type)
     if not fieldname:
-        frappe.throw(_("Invalid custodian type: {0}.").format(custodian_type))
+        frappe.throw(_("Invalid custodian type: {custodian_type}.").format(custodian_type=custodian_type))
 
     current = frappe.db.get_value("Inventory Unit", unit_name, fieldname)
     if current != custodian_name:
-        frappe.throw(_("Inventory Unit {0} is not held by {1} {2}.").format(unit_name, custodian_type, custodian_name))
+        frappe.throw(
+            _("Inventory Unit {unit_name} is not held by {custodian_type} {custodian_name}.").format(
+                unit_name=unit_name,
+                custodian_type=custodian_type,
+                custodian_name=custodian_name,
+            )
+        )
 
 
 def _throw_time_coercion(value, fieldname):
@@ -146,6 +164,9 @@ def _throw_time_coercion(value, fieldname):
         "value_type": str(type(value)),
     }
     frappe.throw(
-        _("Unable to coerce datetime for {0}. Debug: {1}.").format(fieldname, frappe.as_json(debug)),
+        _("Unable to coerce datetime for {fieldname}. Debug: {debug_payload}.").format(
+            fieldname=fieldname,
+            debug_payload=frappe.as_json(debug),
+        ),
         title=_("Time Coercion Error"),
     )
