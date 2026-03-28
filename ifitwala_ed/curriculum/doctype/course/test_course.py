@@ -1,6 +1,8 @@
 # Copyright (c) 2024, fdR and Contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -83,3 +85,33 @@ class TestCourse(FrappeTestCase):
 
         courses_page = frappe.get_doc("School Website Page", courses_page_name)
         self.assertIn("course_catalog", [row.block_type for row in courses_page.blocks])
+
+    def test_publishing_course_surfaces_actionable_website_profile_guidance(self):
+        organization = make_organization(prefix="Course Publish Guidance Org")
+        school = make_school(organization.name, prefix="Course Publish Guidance School")
+
+        course = frappe.get_doc(
+            {
+                "doctype": "Course",
+                "course_name": f"Guidance Course {frappe.generate_hash(length=6)}",
+                "school": school.name,
+            }
+        ).insert(ignore_permissions=True)
+
+        raw_error = (
+            'Row #1: Block Type cannot be "course_intro". It should be one of "hero", '
+            '"admissions_overview", "admissions_steps", "admission_cta", "faq", "program_intro", '
+            '"program_list", "rich_text", "section_carousel", "content_snippet", "leadership", "cta"'
+        )
+
+        with patch(
+            "ifitwala_ed.website.bootstrap.ensure_default_course_website_profile",
+            side_effect=frappe.ValidationError(raw_error),
+        ):
+            course.reload()
+            course.is_published = 1
+            with self.assertRaisesRegex(
+                frappe.ValidationError,
+                "default Course Website Profile template is outdated",
+            ):
+                course.save(ignore_permissions=True)

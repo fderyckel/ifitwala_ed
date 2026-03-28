@@ -2,10 +2,15 @@
 # For license information, please see license.txt
 
 import json
+import re
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import cstr
+
+LEGACY_COURSE_WEBSITE_BLOCKS = {"course_intro", "learning_highlights"}
+BLOCK_TYPE_VALIDATION_RE = re.compile(r'Block Type cannot be "([^"]+)"')
 
 
 class Course(Document):
@@ -75,7 +80,27 @@ class Course(Document):
 
         from ifitwala_ed.website.bootstrap import ensure_default_course_website_profile
 
-        ensure_default_course_website_profile(course_name=self.name)
+        try:
+            ensure_default_course_website_profile(course_name=self.name)
+        except frappe.ValidationError as exc:
+            self._raise_course_website_profile_guidance(exc)
+
+    def _raise_course_website_profile_guidance(self, exc: Exception):
+        match = BLOCK_TYPE_VALIDATION_RE.search(cstr(exc))
+        block_type = match.group(1).strip() if match else ""
+        if block_type not in LEGACY_COURSE_WEBSITE_BLOCKS:
+            raise exc
+
+        frappe.throw(
+            _(
+                "Course cannot be published yet because the default Course Website Profile template is outdated. "
+                "It is trying to use the legacy website block type '{0}', which this site no longer accepts. "
+                "Ask a Website Manager or System Manager to update the Course Website Profile block configuration, "
+                "then publish this Course again."
+            ).format(block_type),
+            title=_("Course Publish Blocked"),
+            exc=frappe.ValidationError,
+        )
 
 
 @frappe.whitelist()
