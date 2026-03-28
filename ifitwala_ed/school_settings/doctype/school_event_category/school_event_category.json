@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:event_type",
  "creation": "2024-12-01 11:55:29.887781",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -16,15 +17,17 @@
   {
    "fieldname": "event_type",
    "fieldtype": "Data",
-   "label": "Event Type"
+   "label": "Event Type",
+   "unique": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-01 11:56:31.635632",
+ "modified": "2026-03-28 12:34:59.153060",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Event Category",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -40,7 +43,9 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "event_type"
 }

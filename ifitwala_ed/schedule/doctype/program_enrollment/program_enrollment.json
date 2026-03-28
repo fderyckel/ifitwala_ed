@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "format:PE-{YYYY}-{####}",
+ "autoname": "PE-.YY.-.#####",
  "creation": "2024-12-24 12:17:38.469220",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -145,7 +145,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-22 14:00:00.000000",
+ "modified": "2026-03-28 12:29:09.489493",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment",
@@ -260,5 +260,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
+ "title_field": "student_name",
  "track_changes": 1
 }

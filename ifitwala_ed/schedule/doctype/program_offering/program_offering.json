@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "PRO-OFF-.YY.-.###",
  "creation": "2025-09-20 05:43:54.178610",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -301,9 +302,9 @@
    "options": "Program Offering Course"
   },
   {
+   "description": "Map each offering course to the enrollment baskets it can satisfy.",
    "fieldname": "offering_course_basket_groups",
    "fieldtype": "Table",
-   "description": "Map each offering course to the enrollment baskets it can satisfy.",
    "label": "Enrollment Basket Memberships",
    "options": "Program Offering Course Basket Group"
   }
@@ -311,10 +312,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-11 12:23:16",
+ "modified": "2026-03-28 12:30:33.858590",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
