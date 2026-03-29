@@ -55,7 +55,7 @@ frappe.query_reports["Student Logs"] = {
 			fieldname: "follow_up_status",
 			label: __("Follow-up Status"),
 			fieldtype: "Select",
-			options: ["", "Open", "In Progress", "Completed"]
+			options: ["", __("Open"), __("In Progress"), __("Completed")]
 		},
 		{
 			fieldname: "author",
@@ -74,7 +74,7 @@ frappe.query_reports["Student Logs"] = {
 			fieldname: "view_mode",
 			label: __("View"),
 			fieldtype: "Select",
-			options: ["Compact", "Full"],
+			options: [__("Compact"), __("Full")],
 			default: "Compact"
 		},
 		{

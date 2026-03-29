@@ -102,16 +102,32 @@
 	#ifitwala-page-root .site-header {
 		border-color: color-mix(in srgb, var(--if-theme-primary) 12%, #e2e8f0);
 		background-color: rgb(255 255 255 / 0.94);
+		box-shadow: 0 10px 30px -24px color-mix(in srgb, var(--if-theme-primary) 45%, #0f172a);
 	}
 
 	#ifitwala-page-root .site-brand-link,
-	#ifitwala-page-root .site-brand-link span {
+	#ifitwala-page-root .site-brand-link .site-brand-name {
 		color: var(--if-theme-primary);
+	}
+
+	#ifitwala-page-root .site-brand-link:hover {
+		text-decoration: none;
+	}
+
+	#ifitwala-page-root .site-brand-mark {
+		box-shadow:
+			0 0 0 1px color-mix(in srgb, var(--if-theme-primary) 14%, #e2e8f0),
+			0 12px 28px -20px color-mix(in srgb, var(--if-theme-primary) 60%, #0f172a);
+	}
+
+	#ifitwala-page-root .site-brand-eyebrow {
+		color: color-mix(in srgb, var(--if-theme-primary) 48%, #64748b);
 	}
 
 	#ifitwala-page-root .site-nav-link.is-active {
 		background-color: var(--if-theme-primary);
 		color: #fff;
+		box-shadow: 0 12px 24px -18px color-mix(in srgb, var(--if-theme-primary) 80%, #0f172a);
 	}
 
 	#ifitwala-page-root .site-utility-link:hover {
@@ -119,6 +135,7 @@
 		color: var(--if-theme-primary);
 	}
 
+	#ifitwala-page-root .site-header-link:hover,
 	#ifitwala-page-root .site-nav-link:hover,
 	#ifitwala-page-root .site-footer-link:hover {
 		background-color: color-mix(in srgb, var(--if-theme-primary) 8%, #fff);
@@ -126,14 +143,25 @@
 	}
 
 	#ifitwala-page-root .site-login-link,
-	#ifitwala-page-root .site-nav-toggle {
+	#ifitwala-page-root .site-nav-toggle,
+	#ifitwala-page-root .site-organization-logo-link {
 		border-color: color-mix(in srgb, var(--if-theme-primary) 18%, #e2e8f0);
 		color: var(--if-theme-primary);
 	}
 
+	#ifitwala-page-root .site-header-link {
+		color: #334155;
+	}
+
 	#ifitwala-page-root .site-login-link:hover,
-	#ifitwala-page-root .site-nav-toggle:hover {
+	#ifitwala-page-root .site-nav-toggle:hover,
+	#ifitwala-page-root .site-header-link:hover,
+	#ifitwala-page-root .site-organization-logo-link:hover {
 		background-color: color-mix(in srgb, var(--if-theme-primary) 8%, #fff);
+	}
+
+	#ifitwala-page-root .site-nav-panel {
+		box-shadow: 0 26px 60px -36px rgb(15 23 42 / 0.34);
 	}
 
 	#ifitwala-page-root .site-cta {
@@ -205,6 +233,12 @@
 
 	#ifitwala-page-root .site-talk-bubble span:first-child {
 		color: var(--if-theme-primary);
+	}
+
+	@media (max-width: 1023px) {
+		#ifitwala-page-root .site-header {
+			box-shadow: 0 14px 30px -26px rgb(15 23 42 / 0.28);
+		}
 	}
 
 	#ifitwala-page-root .block-hero[data-hero-style='split'] .mx-auto.max-w-5xl {

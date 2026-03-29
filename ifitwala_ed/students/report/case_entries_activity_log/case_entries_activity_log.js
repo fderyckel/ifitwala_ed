@@ -18,16 +18,16 @@ frappe.query_reports["Case Entries Activity Log"] = {
 		{ fieldname: "case_manager",  label: __("Case Manager"),  fieldtype: "Link",  options: "User" },
 		{ fieldname: "assignee",      label: __("Entry Assignee"),fieldtype: "Link",  options: "User" },
 		{ fieldname: "entry_type",    label: __("Entry Type"),    fieldtype: "Select",
-			options: "\nMeeting\nCounseling Session\nAcademic Support\nCheck-in\nFamily Contact\nExternal Referral\nSafety Plan\nReview\nOther" },
+			options: __("\nMeeting\nCounseling Session\nAcademic Support\nCheck-in\nFamily Contact\nExternal Referral\nSafety Plan\nReview\nOther") },
 		{ fieldname: "entry_status",  label: __("Entry Status"),  fieldtype: "Select",
-			options: "\nOpen\nIn Progress\nDone\nCancelled" },
+			options: __("\nOpen\nIn Progress\nDone\nCancelled") },
 		{ fieldname: "case_severity", label: __("Case Severity"), fieldtype: "Select",
-			options: "\nLow\nModerate\nHigh\nCritical" },
+			options: __("\nLow\nModerate\nHigh\nCritical") },
 		{ fieldname: "case_status",   label: __("Case Status"),   fieldtype: "Select",
-			options: "\nOpen\nIn Progress\nOn Hold\nEscalated\nClosed" },
+			options: __("\nOpen\nIn Progress\nOn Hold\nEscalated\nClosed") },
 		// The only toggle we keep
 		{ fieldname: "time_bucket",   label: __("Time Bucket"),   fieldtype: "Select",
-			options: "Week\nMonth", default: "Week",
+			options: __("Week\nMonth"), default: "Week",
 			on_change: () => frappe.query_report.refresh()
 		}
 	],

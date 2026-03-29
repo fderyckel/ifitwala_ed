@@ -400,20 +400,20 @@ frappe.query_reports["Program Enrollment Request Overview"] = {
 			fieldname: "request_kind",
 			label: __("Request Kind"),
 			fieldtype: "Select",
-			options: "\nAcademic\nActivity",
+			options: __("\nAcademic\nActivity"),
 			default: "Academic"
 		},
 		{
 			fieldname: "request_status",
 			label: __("Request Status"),
 			fieldtype: "Select",
-			options: "\nDraft\nSubmitted\nUnder Review\nApproved\nRejected\nCancelled"
+			options: __("\nDraft\nSubmitted\nUnder Review\nApproved\nRejected\nCancelled")
 		},
 		{
 			fieldname: "validation_status",
 			label: __("Validation"),
 			fieldtype: "Select",
-			options: "\nNot Validated\nValid\nInvalid"
+			options: __("\nNot Validated\nValid\nInvalid")
 		},
 		{
 			fieldname: "requires_override",
@@ -425,7 +425,7 @@ frappe.query_reports["Program Enrollment Request Overview"] = {
 			label: __("Invalid Reason"),
 			fieldtype: "Select",
 			options:
-				"\nPrerequisite\nCapacity Full\nBasket Missing Required\nBasket Group Not Selected\nBasket Group Coverage\nRepeat / Max Attempts\nCourse Not In Offering\nRule Misconfigured / Unsupported\nOther"
+				__("\nPrerequisite\nCapacity Full\nBasket Missing Required\nBasket Group Not Selected\nBasket Group Coverage\nRepeat / Max Attempts\nCourse Not In Offering\nRule Misconfigured / Unsupported\nOther")
 		},
 		{
 			fieldname: "latest_request_only",
