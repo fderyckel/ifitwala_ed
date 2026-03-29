@@ -65,6 +65,7 @@ Do not let the client assemble important workflows out of generic document mutat
 - Do not widen response shape without cause.
 - Do not silently change endpoint contracts.
 - Keep request and response structures explicit and auditable.
+- For governed file/image reads, return a server-owned display/open URL for private media instead of exposing raw private paths.
 
 If contract behavior changes, docs must be updated with code.
 
@@ -87,6 +88,7 @@ Rules:
 - do not trust client hints for scope
 - reuse canonical permission/scope helpers where they exist
 - do not reimplement scope logic ad hoc per endpoint
+- if a governed file/image route is surface-specific, document the allowed viewers explicitly and add/update a permission matrix test for that route
 
 If staff/family/applicant roles may coexist, precedence must be explicit.
 

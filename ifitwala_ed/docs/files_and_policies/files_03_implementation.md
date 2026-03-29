@@ -113,6 +113,24 @@ Therefore:
 * do **not** introduce school-local media governance as a parallel system
 * do **not** hardcode filesystem assumptions into media pickers, renderers, or website blocks
 
+## Governed display/read contract (authoritative)
+
+Governed file/image **display** is a separate contract from upload/finalize.
+
+Rules:
+
+* private governed media must be exposed to the browser through a named server-owned display/open route
+* SPA and website consumers must not receive raw `/private/...` paths as their primary display contract
+* each surface that displays governed private media must define its allowed viewers explicitly
+* the display route must enforce that surface contract server-side
+* if a surface has broader or narrower visibility than generic tenant scope, that exception must be documented as surface-specific behavior
+
+Regression guardrails:
+
+* any change to governed display URL resolution must update the canonical doc for that surface
+* any change to governed display/read permissions must add or update permission-matrix tests for the affected route
+* helper tests that only assert URL selection are insufficient on their own; add endpoint-level access tests for the resolved route
+
 ---
 
 # 🧭 EXECUTION PHASES (LOCKED ORDER)

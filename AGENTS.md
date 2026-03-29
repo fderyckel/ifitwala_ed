@@ -192,6 +192,10 @@ Any DocType using `NestedSet` (`lft`, `rgt`):
 - must preserve hierarchy integrity
 - must use framework helpers only
 - must never be modified via manual SQL
+- must treat create-time validation as a separate path: unsaved nodes do not have valid tree position yet
+- must not call descendant / ancestor expansion helpers on a new document unless the helper explicitly supports unsaved nodes
+- when validation depends on tree scope, branch on `is_new()` and validate against the pending node only or another explicitly safe create-time scope
+- tree-backed validation changes must include regression coverage for both new-record save and existing-record update paths
 
 ---
 
@@ -286,6 +290,8 @@ SPA and backend work must preserve:
 - bounded request counts
 - permission-safe file access
 - reuse of Drive browse and grant APIs instead of duplicate file transport logic
+- surface-specific visibility contracts for governed file/image reads
+- server-resolved display/open URLs for private media instead of raw private paths
 
 ### 5.3 Caching Rules
 
@@ -481,6 +487,9 @@ Never swallow framework exceptions in permission or visibility logic.
 - Classification required
 - Atomic routing only
 - No URL guessing in the UI
+- No raw private file URLs in SPA/API display contracts
+- Each governed read surface must define who may open the resolved display URL
+- Any change to governed file/image visibility must update permission tests in the same change
 - Deterministic derivative slots
 - Docs under `ifitwala_ed/docs/files_and_policies/` are authoritative
 
@@ -536,6 +545,8 @@ Before considering work done, verify:
 - UI does not fail silently
 - change is safe under concurrency
 - caches/jobs/idempotency are used where needed
+- governed file/image display URLs match the intended surface visibility contract
+- permission-matrix tests cover any changed governed file/image read route
 - related tests are added or updated when required
 
 If a critical assumption cannot be verified from the workspace, stop and say exactly what is missing.

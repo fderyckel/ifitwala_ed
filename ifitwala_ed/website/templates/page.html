@@ -56,6 +56,8 @@
 							src="{{ site_shell.brand_logo }}"
 							alt="{{ site_shell.brand_name }}"
 							class="site-brand-mark h-11 w-11 rounded-xl object-cover"
+							width="48"
+							height="48"
 							loading="lazy"
 						>
 					{% endif %}
@@ -130,21 +132,9 @@
 							Logout
 						</a>
 					{% endif %}
-					<a
-						href="{{ site_shell.apply_url }}"
-						class="site-cta site-cta-primary inline-flex rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-					>
-						Apply
-					</a>
 				</div>
 
 				<div class="ml-auto flex items-center gap-2 lg:hidden">
-					<a
-						href="{{ site_shell.apply_url }}"
-						class="site-cta site-cta-primary inline-flex rounded-full px-3 py-2 text-sm font-semibold shadow-sm"
-					>
-						Apply
-					</a>
 					<button
 						type="button"
 						class="site-nav-toggle inline-flex items-center rounded-full border border-slate-300 px-3 py-2 text-sm font-medium"

@@ -73,3 +73,9 @@ The metrics script is informational by default and can be enforced with environm
 
 5. Translation alias `_` is reserved.
 - In Python modules importing `from frappe import _`, never shadow `_` with local temporary variables.
+
+6. Governed file/image reads need permission-matrix tests.
+- When a route resolves private media for a surface, test who can open it and who gets `403`; do not stop at helper-level URL-selection tests.
+
+7. Private media contracts must stay server-owned.
+- SPA and website consumers should receive server-resolved display URLs, never raw private paths, and regressions here should be fixed at the API/display-contract layer.

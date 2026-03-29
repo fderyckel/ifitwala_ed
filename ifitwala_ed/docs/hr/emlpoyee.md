@@ -126,6 +126,7 @@ Current read consumers using canonical variant resolution:
 Org chart visibility contract:
 - the staff org chart defaults to `All Organizations`, not the viewer's base organization
 - employee image access for the org chart is available to any authenticated active employee; base-organization scope does not gate employee thumbnails on that surface
+- changes to employee image display permissions must update both the employee image route tests and the org chart consumer contract tests in the same change
 
 This keeps Employee image governance and User avatar synchronization aligned.
 
