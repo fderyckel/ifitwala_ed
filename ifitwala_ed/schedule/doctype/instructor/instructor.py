@@ -5,6 +5,7 @@
 
 import frappe
 from frappe import _
+from frappe.desk.reportview import get_filters_cond
 from frappe.model.document import Document
 
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
@@ -243,3 +244,98 @@ def has_permission(doc, ptype, user):
     # Academic Admin/Assistant (and everyone else) → within allowed schools list
     schools = _user_allowed_schools(user)
     return bool(schools) and doc.school in schools
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def instructor_employee_query(doctype, txt, searchfield, start, page_len, filters):
+    user = frappe.session.user
+    filters = filters or {}
+
+    if not (
+        frappe.has_permission("Instructor", ptype="create", user=user)
+        or frappe.has_permission("Instructor", ptype="write", user=user)
+    ):
+        return []
+
+    roles = set(frappe.get_roles(user))
+    is_admin = user == "Administrator" or "System Manager" in roles
+    schools = _user_allowed_schools(user)
+
+    if not is_admin and not schools:
+        return []
+
+    current_instructor = (filters.get("current_instructor") or "").strip()
+    current_employee = (filters.get("current_employee") or "").strip()
+    query_filters = {
+        key: value for key, value in filters.items() if key not in {"current_instructor", "current_employee"}
+    }
+
+    employee_conditions = []
+    employee_filters = {}
+
+    if not is_admin:
+        escaped_schools = ", ".join(frappe.db.escape(school, percent=False) for school in schools)
+        employee_conditions.append(f"`tabEmployee`.`school` IN ({escaped_schools})")
+
+    if current_employee:
+        employee_conditions.append(
+            """
+            (
+                `tabEmployee`.`name` = %(current_employee)s
+                OR NOT EXISTS (
+                    SELECT 1
+                    FROM `tabInstructor` instructor
+                    WHERE instructor.employee = `tabEmployee`.`name`
+                    AND (%(current_instructor)s = '' OR instructor.name != %(current_instructor)s)
+                )
+            )
+            """
+        )
+    else:
+        employee_conditions.append(
+            """
+            NOT EXISTS (
+                SELECT 1
+                FROM `tabInstructor` instructor
+                WHERE instructor.employee = `tabEmployee`.`name`
+            )
+            """
+        )
+
+    filter_condition = get_filters_cond("Employee", query_filters, employee_filters)
+
+    if filter_condition:
+        employee_conditions.append(filter_condition)
+
+    where_clause = " and ".join(
+        [
+            "`tabEmployee`.`employment_status` in ('Active', 'Suspended')",
+            "`tabEmployee`.`docstatus` < 2",
+            "(`tabEmployee`.`name` like %(txt)s or `tabEmployee`.`employee_full_name` like %(txt)s)",
+            *employee_conditions,
+        ]
+    )
+
+    return frappe.db.sql(
+        f"""
+        select `tabEmployee`.`name`, `tabEmployee`.`employee_full_name`
+        from `tabEmployee`
+        where {where_clause}
+        order by
+            (case when locate(%(_txt)s, `tabEmployee`.`name`) > 0 then locate(%(_txt)s, `tabEmployee`.`name`) else 99999 end),
+            (case when locate(%(_txt)s, `tabEmployee`.`employee_full_name`) > 0 then locate(%(_txt)s, `tabEmployee`.`employee_full_name`) else 99999 end),
+            `tabEmployee`.`idx` desc,
+            `tabEmployee`.`name`,
+            `tabEmployee`.`employee_full_name`
+        limit %(page_len)s offset %(start)s
+        """,
+        {
+            "txt": f"%{txt}%",
+            "_txt": txt.replace("%", ""),
+            "start": start,
+            "page_len": page_len,
+            "current_instructor": current_instructor,
+            "current_employee": current_employee,
+        },
+    )

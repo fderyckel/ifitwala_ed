@@ -152,7 +152,7 @@ function render_catalog_list($list, rows) {
           <div class="text-muted small">${course}</div>
         </div>
         <div class="ms-auto">
-          ${req ? `<span class="badge badge-pill po-required-badge">Required</span>` : ""}
+          ${req ? `<span class="badge badge-pill po-required-badge">${__("Required")}</span>` : ""}
         </div>
       </label>
     `);

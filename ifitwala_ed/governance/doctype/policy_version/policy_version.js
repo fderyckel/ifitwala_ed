@@ -109,16 +109,16 @@ function buildPolicyMessageHtml(frm, policyMeta) {
 	const deskRoute = `/app/policy-version/${encodeURIComponent(policyVersion)}`;
 
 	const parts = [
-		`<h3>${frappe.utils.escape_html(policyLabel)}${versionLabel ? ` - Version ${frappe.utils.escape_html(versionLabel)}` : ""}</h3>`,
+		`<h3>${frappe.utils.escape_html(policyLabel)}${versionLabel ? ` ${__(" - Version ")}${frappe.utils.escape_html(versionLabel)}` : ""}</h3>`,
 	];
 	if (summary) {
-		parts.push(`<p><strong>What changed</strong><br>${frappe.utils.escape_html(summary)}</p>`);
+		parts.push(`<p><strong>${__("What changed")}</strong><br>${frappe.utils.escape_html(summary)}</p>`);
 	}
 	parts.push(
-		`<p>Added: ${stats.added}<br>Removed: ${stats.removed}<br>Modified: ${stats.modified}</p>`
+		`<p>${__("Added")}: ${stats.added}<br>${__("Removed")}: ${stats.removed}<br>${__("Modified")}: ${stats.modified}</p>`
 	);
 	if (diffHtml) {
-		parts.push("<hr><h4>Detailed changes</h4>");
+		parts.push(`<hr><h4>${__("Detailed changes")}</h4>`);
 		parts.push(diffHtml);
 	}
 	parts.push(
