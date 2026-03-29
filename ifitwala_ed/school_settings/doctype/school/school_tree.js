@@ -27,8 +27,8 @@ frappe.treeview_settings["School"] = {
 		},
 	],
 
-	breadcrumb: "School Settings",
-	root_label: "All Schools",
+	breadcrumb: __("School Settings"),
+	root_label: __("All Schools"),
 	get_tree_root: false,
 
 	menu_items: [

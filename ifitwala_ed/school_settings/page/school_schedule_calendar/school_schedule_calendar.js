@@ -41,7 +41,7 @@ function loadFullCalendarAssets(done) {
 function render_school_schedule_page(wrapper) {
   const page = frappe.ui.make_app_page({
     parent: wrapper,
-    title: 'School Schedule Calendar',
+    title: __('School Schedule Calendar'),
     single_column: true
   });
 
@@ -69,27 +69,27 @@ function render_school_schedule_page(wrapper) {
 		<div class="d-flex flex-wrap align-items-center mb-4" style="gap: 1.5rem;">
 			<div class="d-flex align-items-center me-4 mb-2">
 				<div style="width:16px; height:16px; background-color: #CAE9FF; border:1px solid #ccc; margin-right:6px;"></div>
-				<span>Weekend</span>
+				<span>${__('Weekend')}</span>
 			</div>
 			<div class="d-flex align-items-center me-4 mb-2">
 				<div style="width:16px; height:16px; background-color: #87BCDE; border:1px solid #ccc; margin-right:6px;"></div>
-				<span>Holiday</span>
+				<span>${__('Holiday')}</span>
 			</div>
 			<div class="d-flex align-items-center me-4 mb-2">
 				<div style="width:16px; height:16px; background-color: #4caf50; border:1px solid #ccc; margin-right:6px;"></div>
-				<span>Course</span>
+				<span>${__('Course')}</span>
 			</div>
 			<div class="d-flex align-items-center me-4 mb-2">
 				<div style="width:16px; height:16px; background-color: #2196f3; border:1px solid #ccc; margin-right:6px;"></div>
-				<span>Activity</span>
+				<span>${__('Activity')}</span>
 			</div>
 			<div class="d-flex align-items-center me-4 mb-2">
 				<div style="width:16px; height:16px; background-color: #ff9800; border:1px solid #ccc; margin-right:6px;"></div>
-				<span>Recess</span>
+				<span>${__('Recess')}</span>
 			</div>
 			<div class="d-flex align-items-center mb-2">
 				<div style="width:16px; height:16px; background-color: #9c27b0; border:1px solid #ccc; margin-right:6px;"></div>
-				<span>Assembly</span>
+				<span>${__('Assembly')}</span>
 			</div>
 		</div>
 	`).appendTo(page.body);

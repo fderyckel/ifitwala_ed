@@ -346,6 +346,7 @@ def _resolve_window_student_request(selection_window: str, student: str | None =
         frappe.throw(_("This selection window has not prepared a Program Enrollment Request for the student yet."))
 
     request = frappe.get_doc("Program Enrollment Request", request_name)
+    request.reload()
     if (request.selection_window or "").strip() and (request.selection_window or "").strip() != selection_window:
         frappe.throw(
             _("This Program Enrollment Request does not belong to the selected window."), frappe.PermissionError

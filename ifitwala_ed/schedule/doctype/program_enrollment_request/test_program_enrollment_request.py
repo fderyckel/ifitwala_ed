@@ -189,6 +189,11 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
             target_basket_groups=[basket_group.name],
             offering_basket_groups=[basket_group.name],
         )
+        for row in context["offering"].offering_courses:
+            if row.course == context["target_course"].name:
+                row.start_academic_term = context["term"].name
+                row.end_academic_term = context["term"].name
+        context["offering"].save()
         request = _make_enrollment_request(
             context,
             student=context["student"],
@@ -215,6 +220,8 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         self.assertEqual(courses[context["target_course"].name].status, "Enrolled")
         self.assertEqual(courses[context["target_course"].name].credited_basket_group, basket_group.name)
         self.assertEqual(int(courses[context["target_course"].name].required or 0), 0)
+        self.assertEqual(courses[context["target_course"].name].term_start, context["term"].name)
+        self.assertEqual(courses[context["target_course"].name].term_end, context["term"].name)
 
 
 def _has_prereq_result(payload, required_course, result):

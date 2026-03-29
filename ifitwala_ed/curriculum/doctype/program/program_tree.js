@@ -4,7 +4,7 @@
 // ifitwala_ed/curriculum/doctype/program/program_tree.js
 
 frappe.treeview_settings["Program"] = {
-	breadcrumb: "Curriculum",
+	breadcrumb: __("Curriculum"),
 	title: __("Program Tree"),
 	root_label: __("All Programs"),
 	get_tree_root: true, // NestedSet + parent_program drive the tree

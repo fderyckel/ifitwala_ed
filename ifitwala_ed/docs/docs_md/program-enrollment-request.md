@@ -3,9 +3,9 @@ title: "Program Enrollment Request: Transactional Staging for Enrollment"
 slug: program-enrollment-request
 category: Enrollment
 doc_order: 4
-version: "1.6.0"
+version: "1.6.1"
 last_change_date: "2026-03-29"
-summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including basket-group snapshots, admissions hydration, portal self-enrollment provenance, report-driven batch approval/materialization actions, and PER form shortcuts into the request overview."
+summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including basket-group snapshots, offering-derived term-window carry-forward, admissions hydration, portal self-enrollment provenance, report-driven batch actions, and PER form shortcuts into the request overview."
 seo_title: "Program Enrollment Request: Transactional Staging for Enrollment"
 seo_description: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment."
 ---
@@ -171,7 +171,7 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
   - request-source lock (`enrollment_source = Request`)
   - idempotent add and update of course rows
   - accepts an explicit enrollment date when a batch tool supplies one
-  - copies `required` and `credited_basket_group` into `Program Enrollment Course`
+  - copies `required`, `credited_basket_group`, and offering-derived `term_start` / `term_end` into `Program Enrollment Course`
 
 ### Permission Matrix
 

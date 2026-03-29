@@ -154,15 +154,26 @@ def _has_staff_role_assignment(*, user: str, roles: set[str]) -> bool:
     if normalized_roles & STAFF_PORTAL_ROLES:
         return True
 
-    return bool(
-        frappe.db.count(
-            "Has Role",
-            {
-                "parent": user,
-                "parenttype": "User",
-                "role": ["in", list(STAFF_PORTAL_ROLES)],
-            },
-        )
+    assigned_roles = frappe.get_all(
+        "Has Role",
+        filters={
+            "parent": user,
+            "parenttype": "User",
+            "role": ["in", list(STAFF_PORTAL_ROLES)],
+        },
+        pluck="role",
+        limit=20,
+    )
+    if assigned_roles:
+        return True
+
+    try:
+        user_doc = frappe.get_doc("User", user)
+    except Exception:
+        return False
+
+    return any(
+        (getattr(row, "role", None) or "").strip() in STAFF_PORTAL_ROLES for row in (user_doc.get("roles") or [])
     )
 
 

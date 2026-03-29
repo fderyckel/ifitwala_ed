@@ -287,7 +287,7 @@ function addTableToolbar(frm) {
 
 	grid.add_custom_button(__('Add Student…'), () => {
 		frappe.prompt(
-			[{ fieldtype: 'Link', label: 'Student', fieldname: 'student', options: 'Student', reqd: 1 }],
+			[{ fieldtype: 'Link', label: __('Student'), fieldname: 'student', options: 'Student', reqd: 1 }],
 			values => {
 				frappe.db.get_value('Student', values.student, ['student_full_name', 'cohort']).then(({ message }) => {
 					grid.add_new_row({

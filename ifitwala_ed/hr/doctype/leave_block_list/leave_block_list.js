@@ -4,10 +4,10 @@
 frappe.ui.form.on("Leave Block List", {
 	add_day_wise_dates: function (frm) {
 		let d = new frappe.ui.Dialog({
-			title: "Add Leave Block Dates",
+			title: __("Add Leave Block Dates"),
 			fields: [
 				{
-					label: "Start Date",
+					label: __("Start Date"),
 					fieldname: "start_date",
 					fieldtype: "Date",
 					reqd: 1,
@@ -17,7 +17,7 @@ frappe.ui.form.on("Leave Block List", {
 					fieldtype: "Column Break",
 				},
 				{
-					label: "End Date",
+					label: __("End Date"),
 					fieldname: "end_date",
 					fieldtype: "Date",
 					reqd: 1,
@@ -75,13 +75,13 @@ frappe.ui.form.on("Leave Block List", {
 					fieldtype: "Section Break",
 				},
 				{
-					label: "Reason",
+					label: __("Reason"),
 					fieldname: "reason",
 					fieldtype: "Small Text",
 					reqd: 1,
 				},
 			],
-			primary_action_label: "Add",
+			primary_action_label: __("Add"),
 			primary_action(values) {
 				frm.call("set_weekly_off_dates", {
 					start_date: d.get_value("start_date"),

@@ -62,23 +62,23 @@ frappe.ui.form.on("Inquiry", {
 
 		// Assignment flows
 		if (s === 'New' && is_manager) {
-			frm.add_custom_button('Assign', () => frm.trigger('assign'));
+			frm.add_custom_button(__('Assign'), () => frm.trigger('assign'));
 		}
 
 		if (s === 'Assigned' && is_manager) {
-			frm.add_custom_button('Reassign', () => frm.trigger('reassign'));
+			frm.add_custom_button(__('Reassign'), () => frm.trigger('reassign'));
 		}
 
 		if (s === 'Assigned' && (is_officer || is_manager || is_assigned_user)) {
-			frm.add_custom_button('Mark Contacted', () => frm.trigger('mark_contacted'));
+			frm.add_custom_button(__('Mark Contacted'), () => frm.trigger('mark_contacted'));
 		}
 
 		if (s === 'Contacted' && is_officer) {
-			frm.add_custom_button('Qualify', () => frm.trigger('qualify'));
+			frm.add_custom_button(__('Qualify'), () => frm.trigger('qualify'));
 		}
 
 		if (s !== 'Archived' && (is_manager || is_officer)) {
-			frm.add_custom_button('Archive', () => frm.trigger('archive'));
+			frm.add_custom_button(__('Archive'), () => frm.trigger('archive'));
 		}
 
 		// --------------------------------------------------
@@ -215,7 +215,7 @@ frappe.ui.form.on("Inquiry", {
 		frappe.prompt(
 			[
 				{
-					label: 'Assign To (Scoped Staff User)',
+					label: __('Assign To (Scoped Staff User)'),
 					fieldname: 'assigned_to',
 					fieldtype: 'Link',
 					options: 'User',
@@ -256,7 +256,7 @@ frappe.ui.form.on("Inquiry", {
 		frappe.prompt(
 			[
 				{
-					label: 'Reassign To (Scoped Staff User)',
+					label: __('Reassign To (Scoped Staff User)'),
 					fieldname: 'new_assigned_to',
 					fieldtype: 'Link',
 					options: 'User',
