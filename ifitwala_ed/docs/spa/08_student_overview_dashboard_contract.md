@@ -64,6 +64,7 @@ Status: Implemented
 Code refs:
 - `ifitwala_ed/api/student_overview_dashboard.py`
 - `ifitwala_ed/api/student_log_dashboard.py`
+- `ifitwala_ed/api/portal.py`
 - `ifitwala_ed/utilities/school_tree.py`
 - `ifitwala_ed/students/doctype/student_log/student_log.py`
 
@@ -77,12 +78,15 @@ Rules:
 2. Student users are mapped from `Student.student_email == session user`.
 3. Guardian users are mapped through `Student Guardian` rows linked from `Guardian.user`.
 4. Students and guardians can only view students inside their resolved scope.
-5. Staff scope is derived from `get_authorized_schools(user)`.
-6. For staff snapshot requests, the selected `school` must be inside the authorized school set.
-7. School scoping for student search uses descendant schools from `get_descendant_schools(...)`, intersected with the staff authorized set when applicable.
-8. Program scoping uses the `Program` NestedSet subtree when a program filter is present.
-9. Snapshot access does not hard-deny on program mismatch; student scope and school scope are the canonical guards.
-10. Student log rows and student log support counts inside the snapshot must reuse `get_student_log_visibility_predicate(..., allow_aggregate_only=False)`.
+5. Staff eligibility is restricted to `Academic Admin`, `Counselor`, `Curriculum Coordinator`, `Attendance`, `Pastoral Lead`, `System Manager`, `Administrator`, `Academic Staff`, and `Instructor`.
+6. `Academic Assistant` must not be treated as a Student Overview staff role or as a proxy through another analytics capability.
+7. Staff Home discoverability for this page must use a dedicated Student Overview capability, not `analytics_attendance`.
+8. Staff scope is derived from `get_authorized_schools(user)`.
+9. For staff snapshot requests, the selected `school` must be inside the authorized school set.
+10. School scoping for student search uses descendant schools from `get_descendant_schools(...)`, intersected with the staff authorized set when applicable.
+11. Program scoping uses the `Program` NestedSet subtree when a program filter is present.
+12. Snapshot access does not hard-deny on program mismatch; student scope and school scope are the canonical guards.
+13. Student log rows and student log support counts inside the snapshot must reuse `get_student_log_visibility_predicate(..., allow_aggregate_only=False)`.
 
 ## 4. Snapshot Payload Contract
 

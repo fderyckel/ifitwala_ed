@@ -48,6 +48,17 @@ def _is_staff(user_roles: set[str]) -> bool:
     return bool(user_roles & ALLOWED_STAFF_ROLES)
 
 
+def _ensure_student_overview_access(user: str | None = None):
+    user = user or _current_user()
+    roles = _user_roles(user)
+    student_scope = _get_student_scope(user)
+
+    if student_scope or _is_staff(roles):
+        return user, roles, student_scope
+
+    frappe.throw(_("You do not have permission to access Student Overview."), frappe.PermissionError)
+
+
 def _get_program_subtree(program: str | None) -> list[str] | None:
     if not program:
         return None
@@ -113,9 +124,7 @@ def get_filter_meta():
     Programs: distinct programs that appear in ACTIVE Program Enrollments
               under those schools (archived = 0).
     """
-    user = _current_user()
-    _roles = _user_roles(user)  # noqa: F841
-    student_scope = _get_student_scope(user)
+    user, _roles, student_scope = _ensure_student_overview_access()
 
     # Students / Guardians: scope is their Program Enrollments only
     if student_scope:
@@ -221,9 +230,7 @@ def search_students(search_text: str = "", school: str | None = None, program: s
 
     Blank search: up to 20 students in scope (no name filter).
     """
-    user = _current_user()
-    roles = _user_roles(user)
-    visible_students = _get_student_scope(user)
+    user, roles, visible_students = _ensure_student_overview_access()
 
     # ----- Helper: program subtree (NestedSet) -----
     def _get_program_subtree(program_name: str | None) -> list[str] | None:

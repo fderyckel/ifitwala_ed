@@ -706,7 +706,7 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			{
 				label: 'Student Overview',
 				to: { name: 'staff-student-overview' },
-				capability: 'analytics_attendance',
+				capability: 'analytics_student_overview',
 			},
 			{
 				label: 'Assessment Trends',

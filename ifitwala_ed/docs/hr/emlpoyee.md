@@ -123,6 +123,10 @@ Current read consumers using canonical variant resolution:
 - morning brief staff birthdays (`ifitwala_ed/api/morning_brief.py`)
 - website leadership provider (`ifitwala_ed/website/providers/leadership.py`)
 
+Org chart visibility contract:
+- the staff org chart defaults to `All Organizations`, not the viewer's base organization
+- employee image access for the org chart is available to any authenticated active employee; base-organization scope does not gate employee thumbnails on that surface
+
 This keeps Employee image governance and User avatar synchronization aligned.
 
 # Decisions

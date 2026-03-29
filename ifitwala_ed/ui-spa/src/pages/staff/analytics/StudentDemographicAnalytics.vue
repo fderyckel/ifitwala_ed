@@ -367,7 +367,8 @@ function setPreset(preset: ViewPreset) {
 					Student Demographic Analytics
 				</h1>
 				<p class="mt-0.5 text-xs text-slate-500">
-					Active-student demographics for academic admin, admissions, and marketing.
+					Active-student demographics for academic admin, academic assistants, admissions, and
+					marketing.
 				</p>
 			</div>
 		</header>

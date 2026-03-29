@@ -19,7 +19,7 @@ from ifitwala_ed.admission.admission_utils import (
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
-from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
+from ifitwala_ed.routing.policy import has_active_employee_profile
 
 ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document Item", "Student Applicant", "Contact"}
 CONTEXT_STUDENT_APPLICANT = "Student Applicant"
@@ -316,28 +316,10 @@ def _assert_employee_file_access(
     if _is_adminish(user):
         return
 
-    employee_row = frappe.db.get_value(
-        "Employee",
-        file_employee,
-        ["name", "organization", "user_id"],
-        as_dict=True,
-    )
-    if not employee_row:
+    if not frappe.db.exists("Employee", file_employee):
         frappe.throw(_("Employee not found."), frappe.DoesNotExistError)
 
-    if (employee_row.get("user_id") or "").strip() == user:
-        return
-
-    base_org = (get_user_base_org(user) or "").strip()
-    if not base_org:
-        frappe.throw(_("You do not have permission to access this employee file."), frappe.PermissionError)
-
-    target_org = (employee_row.get("organization") or "").strip()
-    if not target_org:
-        frappe.throw(_("You do not have permission to access this employee file."), frappe.PermissionError)
-
-    allowed_orgs = {item for item in (get_descendant_organizations(base_org) or []) if item}
-    if target_org in allowed_orgs:
+    if has_active_employee_profile(user=user, roles=set(frappe.get_roles(user))):
         return
 
     frappe.throw(_("You do not have permission to access this employee file."), frappe.PermissionError)

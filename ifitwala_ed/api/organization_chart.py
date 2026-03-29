@@ -198,7 +198,7 @@ def get_org_chart_context():
         ignore_permissions=True,
     )
 
-    default_org = get_user_base_org(user)
+    default_org = None
 
     return {
         "organizations": organizations,

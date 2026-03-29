@@ -60,6 +60,25 @@ def _organization_chart_module():
 
 
 class TestOrganizationChartApi(TestCase):
+    def test_get_org_chart_context_defaults_to_all_organizations(self):
+        organizations = [
+            {"name": "ORG-1", "organization_name": "Root Org"},
+            {"name": "ORG-2", "organization_name": "Branch Org"},
+        ]
+
+        with _organization_chart_module() as (organization_chart, _helper_state):
+            organization_chart.frappe.session.user = "staff@example.com"
+            organization_chart.frappe.get_all = (
+                lambda doctype, fields=None, filters=None, order_by=None, ignore_permissions=None: (
+                    organizations if doctype == "Organization" else []
+                )
+            )
+
+            payload = organization_chart.get_org_chart_context()
+
+        self.assertEqual(payload["organizations"], organizations)
+        self.assertIsNone(payload["default_organization"])
+
     def test_get_org_chart_children_applies_preferred_employee_images(self):
         root_rows = [
             {"name": "EMP-0001", "reports_to": None, "lft": 1},

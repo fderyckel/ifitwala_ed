@@ -8,6 +8,7 @@ from unittest.mock import patch
 import frappe
 
 from ifitwala_ed.api.student_overview_dashboard import (
+    _ensure_student_overview_access,
     _history_block,
     _identity_block,
     _students_for_guardian,
@@ -20,6 +21,15 @@ from ifitwala_ed.tests.base import IfitwalaFrappeTestCase
 
 
 class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
+    def test_ensure_student_overview_access_rejects_academic_assistant(self):
+        with (
+            patch("ifitwala_ed.api.student_overview_dashboard._current_user", return_value="assistant@example.com"),
+            patch("ifitwala_ed.api.student_overview_dashboard._user_roles", return_value={"Academic Assistant"}),
+            patch("ifitwala_ed.api.student_overview_dashboard._get_student_scope", return_value=[]),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                _ensure_student_overview_access()
+
     def test_students_for_guardian_uses_single_join_query(self):
         seen_query = None
 
@@ -295,6 +305,15 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
             ],
         )
 
+    def test_get_filter_meta_rejects_user_without_student_overview_access(self):
+        with (
+            patch("ifitwala_ed.api.student_overview_dashboard._current_user", return_value="assistant@example.com"),
+            patch("ifitwala_ed.api.student_overview_dashboard._user_roles", return_value={"Academic Assistant"}),
+            patch("ifitwala_ed.api.student_overview_dashboard._get_student_scope", return_value=[]),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                get_filter_meta()
+
     def test_search_students_staff_scope_intersects_selected_school_and_program_subtree(self):
         sql_calls = []
 
@@ -349,6 +368,15 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
             rows,
             [{"student": "STU-001", "student_full_name": "Ada One"}],
         )
+
+    def test_search_students_rejects_user_without_student_overview_access(self):
+        with (
+            patch("ifitwala_ed.api.student_overview_dashboard._current_user", return_value="assistant@example.com"),
+            patch("ifitwala_ed.api.student_overview_dashboard._user_roles", return_value={"Academic Assistant"}),
+            patch("ifitwala_ed.api.student_overview_dashboard._get_student_scope", return_value=[]),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                search_students(search_text="Ada", school="SCH-ROOT", program="PROG-ROOT")
 
     def test_get_student_center_snapshot_assembles_blocks_and_hides_sensitive_sections_for_guardian_view(self):
         identity = {

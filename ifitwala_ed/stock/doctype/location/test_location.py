@@ -13,6 +13,31 @@ from ifitwala_ed.utilities.location_utils import get_visible_location_rows_for_s
 
 
 class TestLocation(TestCase):
+    @patch("ifitwala_ed.stock.doctype.location.location.get_location_scope")
+    @patch("ifitwala_ed.stock.doctype.location.location.frappe.db.sql")
+    def test_new_location_capacity_validation_does_not_expand_missing_tree_node(
+        self,
+        mock_sql,
+        mock_scope,
+    ):
+        mock_sql.return_value = []
+
+        doc = frappe._dict(
+            {
+                "name": "LOC-NEW",
+                "location_name": "LOC-NEW",
+                "maximum_capacity": 10,
+                "is_new": lambda: True,
+            }
+        )
+
+        Location.validate_capacity_against_groups(doc)
+
+        mock_scope.assert_not_called()
+        query, params = mock_sql.call_args_list[0].args[:2]
+        self.assertIn("sgs.location IN %(locations)s", query)
+        self.assertEqual(params["locations"], ("LOC-NEW",))
+
     @patch("ifitwala_ed.stock.doctype.location.location.frappe.db.sql")
     @patch(
         "ifitwala_ed.stock.doctype.location.location.get_location_scope",

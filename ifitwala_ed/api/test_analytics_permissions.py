@@ -27,6 +27,14 @@ class TestAnalyticsPermissions(FrappeTestCase):
             ctx = _get_demographics_access_context(user="admission-officer@example.com")
             self.assertEqual(ctx.get("mode"), "full")
 
+    def test_demographics_access_allows_academic_assistant_full_mode(self):
+        with patch(
+            "ifitwala_ed.api.student_demographics_dashboard.frappe.get_roles",
+            return_value=["Academic Assistant"],
+        ):
+            ctx = _get_demographics_access_context(user="academic-assistant@example.com")
+            self.assertEqual(ctx.get("mode"), "full")
+
     def test_demographics_access_allows_marketing_user_full_mode(self):
         with patch(
             "ifitwala_ed.api.student_demographics_dashboard.frappe.get_roles",
@@ -77,6 +85,18 @@ class TestAnalyticsPermissions(FrappeTestCase):
     def test_staff_home_academic_load_capability_for_academic_admin(self):
         caps = _build_staff_home_capabilities({"Academic Admin"})
         self.assertTrue(caps.get("analytics_academic_load"))
+
+    def test_staff_home_demographics_capability_for_academic_assistant(self):
+        caps = _build_staff_home_capabilities({"Academic Assistant"})
+        self.assertTrue(caps.get("analytics_demographics"))
+
+    def test_staff_home_student_overview_capability_for_academic_assistant(self):
+        caps = _build_staff_home_capabilities({"Academic Assistant"})
+        self.assertFalse(caps.get("analytics_student_overview"))
+
+    def test_staff_home_student_overview_capability_for_instructor(self):
+        caps = _build_staff_home_capabilities({"Instructor"})
+        self.assertTrue(caps.get("analytics_student_overview"))
 
     def test_staff_home_academic_load_capability_is_hidden_from_instructor(self):
         caps = _build_staff_home_capabilities({"Instructor"})

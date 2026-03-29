@@ -173,7 +173,16 @@ class Location(Document):
         if cap <= 0:
             return
 
-        location_scope = tuple(get_location_scope(self.name, include_children=True) or [self.name])
+        location_name = (getattr(self, "name", None) or getattr(self, "location_name", None) or "").strip()
+        if not location_name:
+            return
+
+        if self.is_new():
+            # A brand-new Location is not in the NestedSet yet, so descendant expansion
+            # must stay on the pending node itself during create-time validation.
+            location_scope = (location_name,)
+        else:
+            location_scope = tuple(get_location_scope(location_name, include_children=True) or [location_name])
 
         # 1) Find active Student Groups that reference this Location subtree
         sg_rows = frappe.db.sql(

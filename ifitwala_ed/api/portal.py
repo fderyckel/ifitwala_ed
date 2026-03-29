@@ -20,6 +20,9 @@ from ifitwala_ed.api.student_demographics_dashboard import (
     ALLOWED_ANALYTICS_ROLES as STUDENT_DEMOGRAPHICS_ANALYTICS_ROLES,
 )
 from ifitwala_ed.api.student_log_dashboard import ALLOWED_ANALYTICS_ROLES as WELLBEING_ANALYTICS_ROLES
+from ifitwala_ed.api.student_overview_dashboard import (
+    ALLOWED_STAFF_ROLES as STUDENT_OVERVIEW_STAFF_ROLES,
+)
 from ifitwala_ed.api.users import STAFF_ROLES
 from ifitwala_ed.utilities.image_utils import (
     get_preferred_guardian_image_url,
@@ -110,6 +113,7 @@ def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> 
         "analytics_hr": bool(roles & (set(HR_ROLES) | set(ADMIN_ROLES))),
         "analytics_admissions": bool(roles & set(ADMISSIONS_ANALYTICS_ROLES)),
         "analytics_demographics": bool(roles & set(DEMOGRAPHICS_ANALYTICS_ROLES)),
+        "analytics_student_overview": bool(roles & set(STUDENT_OVERVIEW_STAFF_ROLES)),
         "analytics_scheduling": bool(roles & (set(SCHEDULING_ROLES) | set(ADMIN_ROLES))),
         "analytics_academic_load": bool(
             roles

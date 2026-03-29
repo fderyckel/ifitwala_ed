@@ -182,22 +182,14 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                         "primary_subject_id": "EMP-0001",
                     }
                 )
-            if doctype == "Employee" and filters == "EMP-0001":
-                return frappe._dict(
-                    {
-                        "name": "EMP-0001",
-                        "organization": "ORG-ROOT",
-                        "user_id": "target@example.com",
-                    }
-                )
             return None
 
         with (
             patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
             patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
             patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
-            patch("ifitwala_ed.api.file_access.get_user_base_org", return_value="ORG-ROOT"),
-            patch("ifitwala_ed.api.file_access.get_descendant_organizations", return_value=["ORG-ROOT", "ORG-CHILD"]),
+            patch("ifitwala_ed.api.file_access.frappe.db.exists", return_value=True),
+            patch("ifitwala_ed.api.file_access.has_active_employee_profile", return_value=True),
             patch("ifitwala_ed.api.file_access._read_file_bytes", return_value=b"employee-bytes"),
         ):
             frappe.local.response = {}
@@ -212,7 +204,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual(frappe.local.response.get("filecontent"), b"employee-bytes")
         self.assertEqual(frappe.local.response.get("display_content_as"), "inline")
 
-    def test_download_employee_file_denies_other_org_scope(self):
+    def test_download_employee_file_denies_non_employee_user(self):
         file_row = {
             "name": "FILE-EMP-1",
             "file_url": "/private/files/Employee/EMP-0001/thumb_employee.webp",
@@ -230,22 +222,14 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                         "primary_subject_id": "EMP-0001",
                     }
                 )
-            if doctype == "Employee" and filters == "EMP-0001":
-                return frappe._dict(
-                    {
-                        "name": "EMP-0001",
-                        "organization": "ORG-OTHER",
-                        "user_id": "target@example.com",
-                    }
-                )
             return None
 
         with (
             patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
             patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
             patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
-            patch("ifitwala_ed.api.file_access.get_user_base_org", return_value="ORG-ROOT"),
-            patch("ifitwala_ed.api.file_access.get_descendant_organizations", return_value=["ORG-ROOT", "ORG-CHILD"]),
+            patch("ifitwala_ed.api.file_access.frappe.db.exists", return_value=True),
+            patch("ifitwala_ed.api.file_access.has_active_employee_profile", return_value=False),
         ):
             with self.assertRaises(frappe.PermissionError):
                 download_employee_file(
