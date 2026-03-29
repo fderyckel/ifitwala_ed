@@ -108,6 +108,42 @@ class TestSelfEnrollmentApi(FrappeTestCase):
         self.assertEqual(submit_payload["request"]["status"], "Submitted")
         self.assertEqual(submit_payload["permissions"]["can_edit"], 0)
 
+    def test_guardian_can_submit_choices_without_saving_first(self):
+        context = _build_self_enrollment_context(carry_forward_optional=False)
+        window = context["window"]
+        window.load_students()
+        window.prepare_requests()
+        window.open_window()
+        guardian_user = self._create_guardian_user_for_student(context["student"].name)
+
+        request_name = frappe.db.get_value(
+            "Program Enrollment Request",
+            {
+                "selection_window": window.name,
+                "student": context["student"].name,
+            },
+        )
+
+        frappe.set_user(guardian_user)
+        submit_payload = self_enrollment_api.submit_self_enrollment_choices(
+            selection_window=window.name,
+            student=context["student"].name,
+            courses=[
+                {
+                    "course": context["optional_course"].name,
+                    "applied_basket_group": context["basket_group"].name,
+                }
+            ],
+        )
+
+        request = frappe.get_doc("Program Enrollment Request", request_name)
+        request.reload()
+        self.assertEqual(request.status, "Submitted")
+        self.assertEqual(request.submitted_by, guardian_user)
+        self.assertEqual(submit_payload["request"]["status"], "Submitted")
+        optional_row = next(row for row in request.courses if row.course == context["optional_course"].name)
+        self.assertEqual(optional_row.applied_basket_group, context["basket_group"].name)
+
     def test_guardian_choice_state_uses_family_friendly_validation_message(self):
         context = _build_self_enrollment_context(carry_forward_optional=False)
         window = context["window"]

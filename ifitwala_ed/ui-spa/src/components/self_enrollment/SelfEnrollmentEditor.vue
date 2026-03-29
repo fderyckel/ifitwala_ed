@@ -202,7 +202,7 @@
 												type="checkbox"
 												class="mt-1 rounded border-line-soft"
 												:disabled="!canEdit || course.selected_elsewhere"
-												@change="handleOptionalToggle(course.course, $event)"
+												@change="handleOptionalToggle(course.course, section.basket_group, $event)"
 											/>
 											<span class="min-w-0">
 												<span class="type-body-strong text-ink">{{ course.course_name }}</span>
@@ -254,6 +254,13 @@
 												:disabled="!canEdit"
 												@input="handleChoiceRankInput(course.course, $event)"
 											/>
+											<span v-if="showGuardianChoiceRankHelp" class="type-caption text-ink/60">
+												{{
+													__(
+														'1 is the first choice in this section. We fill this in for you, and you can change it if needed.'
+													)
+												}}
+											</span>
 										</label>
 									</div>
 								</div>
@@ -290,7 +297,7 @@
 								type="checkbox"
 								class="mt-1 rounded border-line-soft"
 								:disabled="!canEdit"
-								@change="handleOptionalToggle(course.course, $event)"
+								@change="handleOptionalToggle(course.course, '', $event)"
 							/>
 							<span class="min-w-0">
 								<span class="type-body-strong text-ink">{{ course.course_name }}</span>
@@ -329,14 +336,10 @@
 							{{ hasUnsavedChanges ? __('Unsaved changes') : __('Selections saved') }}
 						</p>
 						<p class="type-caption text-ink/70">
-							{{
-								__(
-									'Save your work while you review options, then submit when everything looks right.'
-								)
-							}}
+							{{ submissionGuidance }}
 						</p>
-						<p v-if="canEdit && !readyForSubmit" class="mt-2 type-caption text-flame">
-							{{ __('Please finish the items above before submitting.') }}
+						<p v-if="submissionWarning" class="mt-2 type-caption text-flame">
+							{{ submissionWarning }}
 						</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
@@ -351,7 +354,7 @@
 						<button
 							type="button"
 							class="if-action"
-							:disabled="!canSubmit || !readyForSubmit || submitting"
+							:disabled="!canAttemptSubmit || submitting"
 							@click="emit('submit', submitRows)"
 						>
 							{{ submitting ? __('Submitting...') : __('Submit Selection') }}
@@ -369,6 +372,7 @@ import { RouterLink } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 
 import {
+	applyDefaultChoiceRanks,
 	buildChoiceSections,
 	choiceRowsForSubmit,
 	haveChoiceRowsChanged,
@@ -400,11 +404,15 @@ const emit = defineEmits<{
 
 const draftRows = ref<SelfEnrollmentChoiceCourse[]>([]);
 const savedRows = ref<SelfEnrollmentChoiceCourse[]>([]);
+const showGuardianChoiceRankHelp = computed(() => props.payload?.viewer.actor_type === 'Guardian');
 
 watch(
 	() => props.payload,
 	value => {
-		const rows = (value?.courses || []).map(normalizeChoiceRow);
+		const rows = applyEditorDefaults(
+			value?.courses || [],
+			value?.viewer.actor_type === 'Guardian'
+		);
 		draftRows.value = rows;
 		savedRows.value = rows;
 	},
@@ -414,6 +422,15 @@ watch(
 const canEdit = computed(() => props.payload?.permissions.can_edit === 1);
 const canSubmit = computed(() => props.payload?.permissions.can_submit === 1);
 const readyForSubmit = computed(() => props.payload?.summary.ready_for_submit === true);
+const submitRows = computed(() => choiceRowsForSubmit(draftRows.value));
+const hasUnsavedChanges = computed(() => haveChoiceRowsChanged(draftRows.value, savedRows.value));
+const allowGuardianDirectSubmit = computed(
+	() =>
+		props.payload?.viewer.actor_type === 'Guardian' && canSubmit.value && hasUnsavedChanges.value
+);
+const canAttemptSubmit = computed(
+	() => canSubmit.value && (readyForSubmit.value || allowGuardianDirectSubmit.value)
+);
 const subtitle = computed(() => {
 	if (!props.payload) return __('Review the course choices and confirm your selections.');
 	const childLabel =
@@ -435,9 +452,25 @@ const dueLabel = computed(() => {
 const sections = computed(() =>
 	buildChoiceSections(draftRows.value, props.payload?.required_basket_groups || [])
 );
-
-const submitRows = computed(() => choiceRowsForSubmit(draftRows.value));
-const hasUnsavedChanges = computed(() => haveChoiceRowsChanged(draftRows.value, savedRows.value));
+const submissionGuidance = computed(() => {
+	if (allowGuardianDirectSubmit.value) {
+		return __(
+			'Submit uses your latest changes. Save Draft is optional if you want to come back later.'
+		);
+	}
+	return __('Save your work while you review options, then submit when everything looks right.');
+});
+const submissionWarning = computed(() => {
+	if (allowGuardianDirectSubmit.value) {
+		return __(
+			'You can submit now. If anything still needs attention, we will show you what to fix.'
+		);
+	}
+	if (canEdit.value && !readyForSubmit.value) {
+		return __('Please finish the items above before submitting.');
+	}
+	return '';
+});
 
 const validationMessages = computed(() => {
 	const payload = props.payload;
@@ -515,14 +548,25 @@ function validationToneClass(state: 'invalid' | 'pending' | 'valid') {
 	return 'bg-surface-soft text-ink/70';
 }
 
+function applyEditorDefaults(
+	rows: SelfEnrollmentChoiceCourse[],
+	useChoiceRankDefaults = showGuardianChoiceRankHelp.value
+) {
+	const normalizedRows = (rows || []).map(normalizeChoiceRow);
+	return useChoiceRankDefaults ? applyDefaultChoiceRanks(normalizedRows) : normalizedRows;
+}
+
 function updateAppliedGroup(courseName: string, basketGroup: string) {
-	draftRows.value = draftRows.value.map(row =>
-		row.course === courseName
-			? {
-					...row,
-					applied_basket_group: basketGroup || null,
-				}
-			: row
+	draftRows.value = applyEditorDefaults(
+		draftRows.value.map(row =>
+			row.course === courseName
+				? {
+						...row,
+						applied_basket_group: basketGroup || null,
+						choice_rank: basketGroup ? (row.choice_rank ?? null) : null,
+					}
+				: row
+		)
 	);
 }
 
@@ -538,24 +582,28 @@ function updateChoiceRank(courseName: string, rawValue: string) {
 	);
 }
 
-function toggleOptionalSelection(courseName: string, selected: boolean) {
-	draftRows.value = draftRows.value.map(row => {
-		if (row.course !== courseName) return row;
-		if (!selected) {
+function toggleOptionalSelection(courseName: string, selected: boolean, basketGroup?: string) {
+	draftRows.value = applyEditorDefaults(
+		draftRows.value.map(row => {
+			if (row.course !== courseName) return row;
+			if (!selected) {
+				return {
+					...row,
+					is_selected: false,
+					applied_basket_group: null,
+					choice_rank: null,
+				};
+			}
 			return {
 				...row,
-				is_selected: false,
-				applied_basket_group: null,
-				choice_rank: null,
+				is_selected: true,
+				applied_basket_group:
+					row.applied_basket_group ||
+					basketGroup ||
+					(row.basket_groups.length === 1 ? row.basket_groups[0] : null),
 			};
-		}
-		return {
-			...row,
-			is_selected: true,
-			applied_basket_group:
-				row.applied_basket_group || (row.basket_groups.length === 1 ? row.basket_groups[0] : null),
-		};
-	});
+		})
+	);
 }
 
 function handleAppliedGroupChange(courseName: string, event: Event) {
@@ -570,8 +618,12 @@ function handleChoiceRankInput(courseName: string, event: Event) {
 	updateChoiceRank(courseName, value);
 }
 
-function handleOptionalToggle(courseName: string, event: Event) {
+function handleOptionalToggle(courseName: string, basketGroup: string, event: Event) {
 	const target = event.target;
-	toggleOptionalSelection(courseName, target instanceof HTMLInputElement ? target.checked : false);
+	toggleOptionalSelection(
+		courseName,
+		target instanceof HTMLInputElement ? target.checked : false,
+		basketGroup
+	);
 }
 </script>

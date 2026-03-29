@@ -16,7 +16,8 @@ class LeavePolicy(Document):
                 max_leaves_allowed = frappe.db.get_value("Leave Type", lp_detail.leave_type, "max_leaves_allowed")
                 if max_leaves_allowed > 0 and lp_detail.annual_allocation > max_leaves_allowed:
                     frappe.throw(
-                        _("Maximum leave allowed in the leave type {0} is {1}").format(
-                            lp_detail.leave_type, max_leaves_allowed
+                        _("Maximum leave allowed in the leave type {leave_type} is {max_leaves_allowed}").format(
+                            leave_type=lp_detail.leave_type,
+                            max_leaves_allowed=max_leaves_allowed,
                         )
                     )

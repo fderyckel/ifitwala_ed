@@ -53,9 +53,9 @@ class CompensatoryLeaveRequest(Document):
 
         if half_days and (not self.half_day or getdate(self.half_day_date) not in half_days):
             frappe.throw(
-                _("You were only present for Half Day on {}. Cannot apply for a full day compensatory leave").format(
-                    ", ".join([frappe.bold(format_date(half_day)) for half_day in half_days])
-                )
+                _(
+                    "You were only present for Half Day on {half_days}. Cannot apply for a full day compensatory leave"
+                ).format(half_days=", ".join([frappe.bold(format_date(half_day)) for half_day in half_days]))
             )
 
         if len(attendance_records) < date_diff(self.work_end_date, self.work_from_date) + 1:
@@ -65,12 +65,14 @@ class CompensatoryLeaveRequest(Document):
         holidays = get_holiday_dates_for_employee(self.employee, self.work_from_date, self.work_end_date)
         if len(holidays) < date_diff(self.work_end_date, self.work_from_date) + 1:
             if date_diff(self.work_end_date, self.work_from_date):
-                msg = _("The days between {0} to {1} are not valid holidays.").format(
-                    frappe.bold(format_date(self.work_from_date)),
-                    frappe.bold(format_date(self.work_end_date)),
+                msg = _("The days between {work_from_date} to {work_end_date} are not valid holidays.").format(
+                    work_from_date=frappe.bold(format_date(self.work_from_date)),
+                    work_end_date=frappe.bold(format_date(self.work_end_date)),
                 )
             else:
-                msg = _("{0} is not a holiday.").format(frappe.bold(format_date(self.work_from_date)))
+                msg = _("{work_from_date} is not a holiday.").format(
+                    work_from_date=frappe.bold(format_date(self.work_from_date))
+                )
 
             frappe.throw(msg)
 
@@ -98,13 +100,15 @@ class CompensatoryLeaveRequest(Document):
             self.db_set("leave_allocation", leave_allocation.name)
         else:
             comp_leave_valid_from = frappe.bold(format_date(comp_leave_valid_from))
-            msg = _("This compensatory leave will be applicable from {0}.").format(comp_leave_valid_from)
+            msg = _("This compensatory leave will be applicable from {valid_from}.").format(
+                valid_from=comp_leave_valid_from
+            )
             msg += " " + _(
-                "Currently, there is no {0} leave period for this date to create/update leave allocation."
-            ).format(frappe.bold(_("active")))
-            msg += "<br><br>" + _("Please create a new {0} for the date {1} first.").format(
-                f"""<a href='{get_url_to_list("Leave Period")}'>Leave Period</a>""",
-                comp_leave_valid_from,
+                "Currently, there is no {status} leave period for this date to create/update leave allocation."
+            ).format(status=frappe.bold(_("active")))
+            msg += "<br><br>" + _("Please create a new {leave_period_link} for the date {valid_from} first.").format(
+                leave_period_link=f"""<a href='{get_url_to_list("Leave Period")}'>Leave Period</a>""",
+                valid_from=comp_leave_valid_from,
             )
             frappe.throw(msg, title=_("No Leave Period Found"))
 

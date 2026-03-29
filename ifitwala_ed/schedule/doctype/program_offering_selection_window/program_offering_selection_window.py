@@ -33,7 +33,7 @@ class ProgramOfferingSelectionWindow(Document):
     def _validate_status(self):
         status = (self.status or "Draft").strip() or "Draft"
         if status not in WINDOW_STATUS_OPTIONS:
-            frappe.throw(_("Invalid Program Offering Selection Window status: {0}.").format(status))
+            frappe.throw(_("Invalid Program Offering Selection Window status: {status}.").format(status=status))
         self.status = status
 
         audience = (self.audience or "").strip()
@@ -58,12 +58,14 @@ class ProgramOfferingSelectionWindow(Document):
             as_dict=True,
         )
         if not offering:
-            frappe.throw(_("Program Offering {0} does not exist.").format(self.program_offering))
+            frappe.throw(
+                _("Program Offering {program_offering} does not exist.").format(program_offering=self.program_offering)
+            )
         if cint(offering.get("allow_self_enroll") or 0) != 1:
             frappe.throw(
                 _(
-                    "Program Offering {0} must have Allow Self Enroll enabled before a selection window can open."
-                ).format(self.program_offering)
+                    "Program Offering {program_offering} must have Allow Self Enroll enabled before a selection window can open."
+                ).format(program_offering=self.program_offering)
             )
 
         ay_names = frappe.get_all(
@@ -74,9 +76,9 @@ class ProgramOfferingSelectionWindow(Document):
         )
         if self.academic_year not in set(ay_names or []):
             frappe.throw(
-                _("Academic Year {0} is not part of Program Offering {1}.").format(
-                    self.academic_year,
-                    self.program_offering,
+                _("Academic Year {academic_year} is not part of Program Offering {program_offering}.").format(
+                    academic_year=self.academic_year,
+                    program_offering=self.program_offering,
                 )
             )
 
@@ -86,7 +88,7 @@ class ProgramOfferingSelectionWindow(Document):
     def _validate_source_mode(self):
         source_mode = (self.source_mode or "Manual").strip() or "Manual"
         if source_mode not in SOURCE_MODE_OPTIONS:
-            frappe.throw(_("Invalid source mode: {0}.").format(source_mode))
+            frappe.throw(_("Invalid source mode: {source_mode}.").format(source_mode=source_mode))
         self.source_mode = source_mode
 
         if source_mode == "Program Enrollment":
@@ -252,8 +254,11 @@ class ProgramOfferingSelectionWindow(Document):
                     )
                 elif (existing_request.get("selection_window") or "").strip() != self.name:
                     issues.append(
-                        _("{0},Active request {1} is already linked to another selection window.").format(
-                            student, existing_request.get("name")
+                        _(
+                            "{student},Active request {request_name} is already linked to another selection window."
+                        ).format(
+                            student=student,
+                            request_name=existing_request.get("name"),
                         )
                     )
                 counts["already_requested"] += 1

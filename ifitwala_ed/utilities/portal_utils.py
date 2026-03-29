@@ -327,7 +327,7 @@ def upload_self_referral_file(referral_name: str):
     content = file_storage.stream.read()
     size_mb = len(content) / (1024 * 1024.0)
     if size_mb > MAX_MB:
-        frappe.throw(_("File is too large. Max {0} MB.").format(MAX_MB))
+        frappe.throw(_("File is too large. Max {max_mb} MB.").format(max_mb=MAX_MB))
 
     # Save as PRIVATE file
     filedoc = save_file(

@@ -441,7 +441,7 @@ def _resolve_clinic_scope_academic_year_start(school_scope: list[str], end_date)
             "year_start_date": ["<=", end_value],
             "year_end_date": [">=", end_value],
         },
-        fields=["year_start_date"],
+        fields=["year_start_date", "year_end_date"],
         order_by="year_start_date asc",
         limit=50,
     )
@@ -449,9 +449,13 @@ def _resolve_clinic_scope_academic_year_start(school_scope: list[str], end_date)
     matching_starts = []
     for row in rows:
         year_start = row.get("year_start_date")
-        if not year_start:
+        year_end = row.get("year_end_date")
+        if not year_start or not year_end:
             continue
-        matching_starts.append(getdate(year_start))
+        year_start_value = getdate(year_start)
+        year_end_value = getdate(year_end)
+        if year_start_value <= end_value <= year_end_value:
+            matching_starts.append(year_start_value)
 
     if matching_starts:
         return min(matching_starts)

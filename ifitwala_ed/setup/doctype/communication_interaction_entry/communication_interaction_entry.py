@@ -99,7 +99,7 @@ class CommunicationInteractionEntry(Document):
             self._apply_student_qa_constraints(parent)
             return
 
-        frappe.throw(_("Unknown interaction mode: {0}").format(mode))
+        frappe.throw(_("Unknown interaction mode: {interaction_mode}").format(interaction_mode=mode))
 
     def _apply_staff_comments_constraints(self, parent):
         if self.audience_type != "Staff":

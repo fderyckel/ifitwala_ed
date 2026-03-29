@@ -47,8 +47,11 @@ class LeavePolicyAssignment(Document):
         policy_org = frappe.db.get_value("Leave Policy", self.leave_policy, "organization")
         if policy_org and self.organization and policy_org != self.organization:
             frappe.throw(
-                _("Leave Policy Organization must match Employee Organization. Policy: {0}, Employee: {1}").format(
-                    policy_org, self.organization
+                _(
+                    "Leave Policy Organization must match Employee Organization. Policy: {policy_organization}, Employee: {employee_organization}"
+                ).format(
+                    policy_organization=policy_org,
+                    employee_organization=self.organization,
                 )
             )
 
@@ -80,11 +83,13 @@ class LeavePolicyAssignment(Document):
 
         if leave_policy_assignment:
             frappe.throw(
-                _("Leave Policy: {0} already assigned for Employee {1} for period {2} to {3}").format(
-                    bold(leave_policy_assignment),
-                    bold(self.employee),
-                    bold(formatdate(self.effective_from)),
-                    bold(formatdate(self.effective_to)),
+                _(
+                    "Leave Policy: {leave_policy} already assigned for Employee {employee} for period {effective_from} to {effective_to}"
+                ).format(
+                    leave_policy=bold(leave_policy_assignment),
+                    employee=bold(self.employee),
+                    effective_from=bold(formatdate(self.effective_from)),
+                    effective_to=bold(formatdate(self.effective_to)),
                 ),
                 title=_("Leave Policy Assignment Overlap"),
             )
@@ -100,8 +105,8 @@ class LeavePolicyAssignment(Document):
             leave_type = leave_types.get(policy.leave_type)
             if not leave_type.is_carry_forward:
                 msg = _(
-                    "Leaves for the Leave Type {0} won't be carry-forwarded since carry-forwarding is disabled."
-                ).format(frappe.bold(get_link_to_form("Leave Type", leave_type.name)))
+                    "Leaves for the Leave Type {leave_type} won't be carry-forwarded since carry-forwarding is disabled."
+                ).format(leave_type=frappe.bold(get_link_to_form("Leave Type", leave_type.name)))
                 frappe.msgprint(msg, indicator="orange", alert=True)
 
     def grant_leave_alloc_for_employee(self):
@@ -144,9 +149,9 @@ class LeavePolicyAssignment(Document):
         )
 
         if new_leaves_allocated == 0 and not leave_details.is_earned_leave:
-            text = _("Leave allocation is skipped for {0}, because number of leaves to be allocated is 0.").format(
-                frappe.bold(leave_details.name)
-            )
+            text = _(
+                "Leave allocation is skipped for {leave_type}, because number of leaves to be allocated is 0."
+            ).format(leave_type=frappe.bold(leave_details.name))
 
             frappe.get_doc(
                 {

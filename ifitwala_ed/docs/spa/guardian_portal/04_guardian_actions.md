@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: Guardian-initiated actions inside `/hub/guardian`
-Last updated: 2026-03-27
+Last updated: 2026-03-29
 
 This document defines what guardians can currently do through the guardian portal and what remains planned.
 
@@ -64,6 +64,8 @@ Implemented guardian actions:
 3. Open the guardian portfolio surface.
 4. Use `/guardian/course-selection` to review each linked child’s invited academic selection window, save draft choices, and submit the linked `Program Enrollment Request`.
    Submission stays in `Draft` until the current choices pass live validation; the portal must explain what needs attention before the guardian can submit.
+   Save Draft is optional. Submit must use the guardian's latest unsaved selections for that screen and either complete the submission or return a plain-language validation message.
+   When a guardian selects a course inside a choice section, the portal should prefill that section as the counted section and show a plain-language preference-rank hint with a default rank so the guardian usually does not need to type a number manually.
 5. Use `/guardian/activities` to submit bookings, confirm offered places, cancel permitted bookings, and review booking logistics through the activity booking workflow APIs.
 6. Use `/guardian/policies` to acknowledge missing guardian policy versions through a named acknowledgement endpoint.
 7. Use `/guardian/attendance` to review family-wide attendance by day and open plain-language day details for a selected child/date.

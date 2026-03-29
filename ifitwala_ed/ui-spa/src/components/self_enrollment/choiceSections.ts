@@ -40,6 +40,56 @@ export function normalizeChoiceRow(row: SelfEnrollmentChoiceCourse): SelfEnrollm
 	}
 }
 
+function selectedBasketGroup(row: SelfEnrollmentChoiceCourse): string | null {
+	if (row.required || !row.is_selected || !row.basket_groups.length) {
+		return null
+	}
+
+	const appliedBasketGroup = (row.applied_basket_group || '').trim()
+	if (appliedBasketGroup) {
+		return appliedBasketGroup
+	}
+
+	if (row.basket_groups.length === 1) {
+		return row.basket_groups[0]
+	}
+
+	return null
+}
+
+export function applyDefaultChoiceRanks(rows: SelfEnrollmentChoiceCourse[]): SelfEnrollmentChoiceCourse[] {
+	const normalizedRows = (rows || []).map(normalizeChoiceRow)
+	const nextRankByGroup = new Map<string, number>()
+	const assignedCountByGroup = new Map<string, number>()
+
+	for (const row of normalizedRows) {
+		const basketGroup = selectedBasketGroup(row)
+		if (!basketGroup || row.choice_rank == null) {
+			continue
+		}
+
+		nextRankByGroup.set(basketGroup, Math.max(nextRankByGroup.get(basketGroup) || 0, row.choice_rank))
+	}
+
+	return normalizedRows.map(row => {
+		const basketGroup = selectedBasketGroup(row)
+		if (!basketGroup || row.choice_rank != null) {
+			return row
+		}
+
+		const currentAssignedCount = assignedCountByGroup.get(basketGroup) || 0
+		const nextRankBase = nextRankByGroup.get(basketGroup) || 0
+		const choiceRank = nextRankBase > 0 ? nextRankBase + currentAssignedCount + 1 : currentAssignedCount + 1
+		assignedCountByGroup.set(basketGroup, currentAssignedCount + 1)
+
+		return {
+			...row,
+			choice_rank: choiceRank,
+			has_choice_rank: true,
+		}
+	})
+}
+
 export function buildChoiceSections(
 	rows: SelfEnrollmentChoiceCourse[],
 	requiredBasketGroups: string[]

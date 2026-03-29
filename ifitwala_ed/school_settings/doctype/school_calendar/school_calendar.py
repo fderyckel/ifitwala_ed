@@ -94,7 +94,10 @@ class SchoolCalendar(Document):
 
         if ay_school not in allowed:
             raise ParentRuleViolation(
-                _("School {0} is not within the Academic Year's hierarchy ({1}).").format(self.school, ay_school)
+                _("School {school} is not within the Academic Year's hierarchy ({academic_year_school}).").format(
+                    school=self.school,
+                    academic_year_school=ay_school,
+                )
             )
 
     # ----------------------------------------------------------------
@@ -110,7 +113,10 @@ class SchoolCalendar(Document):
             },
         ):
             frappe.throw(
-                _("A School Calendar for {0} – {1} already exists.").format(self.school, self.academic_year),
+                _("A School Calendar for {school} – {academic_year} already exists.").format(
+                    school=self.school,
+                    academic_year=self.academic_year,
+                ),
                 title=_("Duplicate"),
             )
 
@@ -185,7 +191,7 @@ class SchoolCalendar(Document):
         for h in self.get("holidays"):
             d = getdate(h.holiday_date)
             if d in seen:
-                frappe.throw(_("Duplicate holiday date found: {0}").format(formatdate(d)))
+                frappe.throw(_("Duplicate holiday date found: {holiday_date}").format(holiday_date=formatdate(d)))
             seen.add(d)
 
     def validate_dates(self):
@@ -195,9 +201,9 @@ class SchoolCalendar(Document):
         for day in self.get("holidays"):
             if not (getdate(ay.year_start_date) <= getdate(day.holiday_date) <= getdate(ay.year_end_date)):
                 frappe.throw(
-                    _("The {0} holiday is not within your school's academic year {1}").format(
-                        formatdate(day.holiday_date),
-                        get_link_to_form("Academic Year", self.academic_year),
+                    _("The {holiday_date} holiday is not within your school's academic year {academic_year}").format(
+                        holiday_date=formatdate(day.holiday_date),
+                        academic_year=get_link_to_form("Academic Year", self.academic_year),
                     )
                 )
 
@@ -215,7 +221,11 @@ class SchoolCalendar(Document):
             ch.holiday_date = d
             ch.idx = last_idx + i + 1
 
-        frappe.msgprint(_("Break dates for '{0}' have been successfully added.").format(self.break_description))
+        frappe.msgprint(
+            _("Break dates for '{break_description}' have been successfully added.").format(
+                break_description=self.break_description
+            )
+        )
 
     def validate_break_dates(self):
         ay = frappe.get_doc("Academic Year", self.academic_year)
@@ -231,8 +241,8 @@ class SchoolCalendar(Document):
             and getdate(ay.year_start_date) <= getdate(self.end_of_break) <= getdate(ay.year_end_date)
         ):
             frappe.throw(
-                _("Break must be within the academic year {0}.").format(
-                    get_link_to_form("Academic Year", self.academic_year)
+                _("Break must be within the academic year {academic_year}.").format(
+                    academic_year=get_link_to_form("Academic Year", self.academic_year)
                 )
             )
 

@@ -21,7 +21,7 @@ class TestProgramEnrollmentRequestOverview(TestCase):
         "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview.frappe.db.sql",
         return_value=[],
     )
-    def test_execute_uses_descendant_aware_school_scope(self, mock_sql, _mock_session, mock_allowed_schools):
+    def test_execute_uses_descendant_aware_school_scope(self, mock_sql, mock_allowed_schools):
         report.execute(
             {
                 "view_mode": report.VIEW_MODE_SUMMARY,

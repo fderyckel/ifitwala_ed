@@ -36,7 +36,7 @@ class ApplicantInterviewFeedback(Document):
         )
         if not interview_row:
             frappe.throw(
-                _("Applicant Interview {0} was not found.").format(interview_name),
+                _("Applicant Interview {interview_name} was not found.").format(interview_name=interview_name),
                 frappe.DoesNotExistError,
             )
 
@@ -55,7 +55,9 @@ class ApplicantInterviewFeedback(Document):
         resolved = (self.feedback_status or "Draft").strip() or "Draft"
         if resolved not in ALLOWED_FEEDBACK_STATUS:
             frappe.throw(
-                _("Feedback Status must be one of: {0}.").format(", ".join(sorted(ALLOWED_FEEDBACK_STATUS))),
+                _("Feedback Status must be one of: {feedback_statuses}.").format(
+                    feedback_statuses=", ".join(sorted(ALLOWED_FEEDBACK_STATUS))
+                ),
                 title=_("Invalid Feedback Status"),
             )
 

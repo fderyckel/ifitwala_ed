@@ -66,7 +66,7 @@ class School(NestedSet):
         media_row = media_rows[logo_file]
         media_url = (media_row.get("file_url") or "").strip()
         if not media_url:
-            frappe.throw(_("School Logo file '{0}' is missing a file URL.").format(logo_file))
+            frappe.throw(_("School Logo file '{file_name}' is missing a file URL.").format(file_name=logo_file))
 
         self.school_logo_file = logo_file
         self.school_logo = media_url
@@ -105,7 +105,9 @@ class School(NestedSet):
             media_row = visible_rows[governed_file]
             media_url = (media_row.get("file_url") or "").strip()
             if not media_url:
-                frappe.throw(_("Gallery Image file '{0}' is missing a file URL.").format(governed_file))
+                frappe.throw(
+                    _("Gallery Image file '{file_name}' is missing a file URL.").format(file_name=governed_file)
+                )
 
             row.governed_file = governed_file
             row.school_image = media_url
@@ -158,7 +160,9 @@ class School(NestedSet):
 
         # Keep existing behavior; avoid broader refactors here.
         if frappe.db.exists("School", {"abbr": self.abbr, "name": ["!=", self.name]}):
-            frappe.throw(_("Abbreviation {0} is already used for another school.").format(self.abbr))
+            frappe.throw(
+                _("Abbreviation {abbreviation} is already used for another school.").format(abbreviation=self.abbr)
+            )
 
     def validate_parent_school(self):
         if self.parent_school:

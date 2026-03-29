@@ -371,7 +371,6 @@ class TestProgramEnrollmentRequestFastTrack(TestCase):
     )
     def test_run_fast_track_queues_large_batches(
         self,
-        _mock_session,
         _mock_requests,
         _mock_permissions,
         mock_get_value,

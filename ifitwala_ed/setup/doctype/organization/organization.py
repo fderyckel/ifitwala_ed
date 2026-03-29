@@ -17,12 +17,16 @@ VIRTUAL_ROOT = "All Organizations"
 class Organization(NestedSet):
     def validate(self):
         if self.name == VIRTUAL_ROOT and self.parent_organization:
-            frappe.throw(_("The root organization '{0}' cannot have a parent.").format(VIRTUAL_ROOT))
+            frappe.throw(
+                _("The root organization '{organization}' cannot have a parent.").format(organization=VIRTUAL_ROOT)
+            )
         if self.parent_organization:
             parent_is_group = frappe.db.get_value("Organization", self.parent_organization, "is_group")
             if not parent_is_group:
                 frappe.throw(
-                    _("Parent Organization must be a Group. '{0}' is not a Group.").format(self.parent_organization)
+                    _("Parent Organization must be a Group. '{organization}' is not a Group.").format(
+                        organization=self.parent_organization
+                    )
                 )
         self.validate_default_website_school()
         self.validate_governed_public_media()
@@ -50,7 +54,7 @@ class Organization(NestedSet):
 
         media_url = (media_row.get("file_url") or "").strip()
         if not media_url:
-            frappe.throw(_("Organization Logo file '{0}' is missing a file URL.").format(logo_file))
+            frappe.throw(_("Organization Logo file '{file_name}' is missing a file URL.").format(file_name=logo_file))
 
         self.organization_logo_file = logo_file
         self.organization_logo = media_url
@@ -63,7 +67,7 @@ class Organization(NestedSet):
         school_org = frappe.db.get_value("School", default_school, "organization")
         if not school_org:
             frappe.throw(
-                _("Default Website School '{0}' was not found.").format(default_school),
+                _("Default Website School '{school}' was not found.").format(school=default_school),
                 frappe.ValidationError,
             )
 
@@ -71,8 +75,12 @@ class Organization(NestedSet):
             frappe.throw(
                 _(
                     "Default Website School must belong to this Organization.\n"
-                    "School '{0}' belongs to '{1}', not '{2}'."
-                ).format(default_school, school_org, self.name),
+                    "School '{school}' belongs to '{school_organization}', not '{organization}'."
+                ).format(
+                    school=default_school,
+                    school_organization=school_org,
+                    organization=self.name,
+                ),
                 frappe.ValidationError,
             )
 

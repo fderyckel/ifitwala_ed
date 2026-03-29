@@ -234,7 +234,7 @@ class TestMorningBrief(IfitwalaFrappeTestCase):
                 "year_start_date": ["<=", date(2026, 3, 23)],
                 "year_end_date": [">=", date(2026, 3, 23)],
             },
-            fields=["year_start_date"],
+            fields=["year_start_date", "year_end_date"],
             order_by="year_start_date asc",
             limit=50,
         )

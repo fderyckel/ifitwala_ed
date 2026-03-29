@@ -49,7 +49,9 @@ class ApplicantReviewAssignment(Document):
             as_dict=True,
         )
         if not scope_row:
-            frappe.throw(_("Invalid Student Applicant: {0}.").format(self.student_applicant))
+            frappe.throw(
+                _("Invalid Student Applicant: {student_applicant}.").format(student_applicant=self.student_applicant)
+            )
 
         self.organization = scope_row.get("organization")
         self.school = scope_row.get("school")
@@ -66,7 +68,7 @@ class ApplicantReviewAssignment(Document):
 
         allowed = DECISIONS_BY_TARGET.get(target_type)
         if not allowed:
-            frappe.throw(_("Invalid target type: {0}.").format(target_type or _("(empty)")))
+            frappe.throw(_("Invalid target type: {target_type}.").format(target_type=target_type or _("(empty)")))
 
         if status == "Open":
             # Keep open rows clean for deterministic reuse/reopen.
@@ -75,14 +77,17 @@ class ApplicantReviewAssignment(Document):
 
         if status == "Done" and decision not in allowed:
             frappe.throw(
-                _("Decision {0} is not valid for target type {1}.").format(decision or _("(empty)"), target_type)
+                _("Decision {decision} is not valid for target type {target_type}.").format(
+                    decision=decision or _("(empty)"),
+                    target_type=target_type,
+                )
             )
 
         if status == "Cancelled":
             return
 
         if status not in {"Open", "Done", "Cancelled"}:
-            frappe.throw(_("Invalid status: {0}.").format(status or _("(empty)")))
+            frappe.throw(_("Invalid status: {status}.").format(status=status or _("(empty)")))
 
     def _validate_target_belongs_to_applicant(self):
         target_type = (self.target_type or "").strip()
@@ -100,7 +105,9 @@ class ApplicantReviewAssignment(Document):
                 as_dict=True,
             )
             if not target_applicant:
-                frappe.throw(_("Invalid Applicant Document Item target: {0}.").format(target_name))
+                frappe.throw(
+                    _("Invalid Applicant Document Item target: {target_name}.").format(target_name=target_name)
+                )
             target_applicant = frappe.db.get_value(
                 "Applicant Document",
                 target_applicant.get("applicant_document"),
@@ -111,10 +118,14 @@ class ApplicantReviewAssignment(Document):
         elif target_type == TARGET_APPLICATION:
             target_applicant = target_name
         else:
-            frappe.throw(_("Unsupported target type: {0}.").format(target_type))
+            frappe.throw(_("Unsupported target type: {target_type}.").format(target_type=target_type))
 
         if target_applicant != student_applicant:
-            frappe.throw(_("Target does not belong to Student Applicant {0}.").format(student_applicant))
+            frappe.throw(
+                _("Target does not belong to Student Applicant {student_applicant}.").format(
+                    student_applicant=student_applicant
+                )
+            )
 
     def _validate_unique_open_assignment(self):
         if (self.status or "").strip() != "Open":

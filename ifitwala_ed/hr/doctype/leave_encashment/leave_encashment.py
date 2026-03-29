@@ -90,7 +90,7 @@ class LeaveEncashment(Document):
     def set_actual_encashable_days(self):
         encashment_settings = self.get_encashment_settings()
         if not encashment_settings.allow_encashment:
-            frappe.throw(_("Leave Type {0} is not encashable").format(self.leave_type))
+            frappe.throw(_("Leave Type {leave_type} is not encashable").format(leave_type=self.leave_type))
 
         self.actual_encashable_days = self.leave_balance
         leave_form_link = get_link_to_form("Leave Type", self.leave_type)
@@ -100,17 +100,18 @@ class LeaveEncashment(Document):
             actual_encashable_days = self.leave_balance - encashment_settings.non_encashable_leaves
             self.actual_encashable_days = actual_encashable_days if actual_encashable_days > 0 else 0
             frappe.msgprint(
-                _("Excluded {0} Non-Encashable Leaves for {1}").format(
-                    bold(encashment_settings.non_encashable_leaves),
-                    leave_form_link,
+                _("Excluded {excluded_leaves} Non-Encashable Leaves for {leave_type}").format(
+                    excluded_leaves=bold(encashment_settings.non_encashable_leaves),
+                    leave_type=leave_form_link,
                 ),
             )
 
         if encashment_settings.max_encashable_leaves:
             self.actual_encashable_days = min(self.actual_encashable_days, encashment_settings.max_encashable_leaves)
             frappe.msgprint(
-                _("Maximum encashable leaves for {0} are {1}").format(
-                    leave_form_link, bold(encashment_settings.max_encashable_leaves)
+                _("Maximum encashable leaves for {leave_type} are {maximum_leaves}").format(
+                    leave_type=leave_form_link,
+                    maximum_leaves=bold(encashment_settings.max_encashable_leaves),
                 ),
                 title=_("Encashment Limit Applied"),
             )
@@ -122,9 +123,9 @@ class LeaveEncashment(Document):
 
         if self.encashment_days > self.actual_encashable_days:
             frappe.throw(
-                _("Encashment Days cannot exceed {0} {1} as per Leave Type settings").format(
-                    bold(_("Actual Encashable Days")),
-                    self.actual_encashable_days,
+                _("Encashment Days cannot exceed {label} {actual_encashable_days} as per Leave Type settings").format(
+                    label=bold(_("Actual Encashable Days")),
+                    actual_encashable_days=self.actual_encashable_days,
                 )
             )
 
@@ -132,7 +133,10 @@ class LeaveEncashment(Document):
         allocation = self.get_leave_allocation()
         if not allocation:
             frappe.throw(
-                _("No Leaves Allocated to Employee: {0} for Leave Type: {1}").format(self.employee, self.leave_type)
+                _("No Leaves Allocated to Employee: {employee} for Leave Type: {leave_type}").format(
+                    employee=self.employee,
+                    leave_type=self.leave_type,
+                )
             )
 
         self.leave_balance = (
@@ -294,7 +298,7 @@ class LeaveEncashment(Document):
             )
         ).run(as_dict=True)[0].paid_amount or 0
         if flt(paid_amount) > self.encashment_amount:
-            frappe.throw(_("Row {0}# Paid Amount cannot be greater than Encashment amount"))
+            frappe.throw(_("Paid Amount cannot be greater than Encashment amount"))
 
         self.db_set("paid_amount", paid_amount)
         self.set_status(update=True)

@@ -36,7 +36,9 @@ FAST_TRACK_ACTION_META = {
     ACTION_APPROVE_ONLY: {
         "title": _("Batch Approval Finished"),
         "progress_label": _("Approving requests"),
-        "queue_message": _("{0} requests were queued for batch approval. You will be notified when the job completes."),
+        "queue_message": _(
+            "{request_count} requests were queued for batch approval. You will be notified when the job completes."
+        ),
         "preview_note": _(
             "Draft, submitted, and under-review requests will be revalidated. Valid academic requests will be approved. Nothing will materialize."
         ),
@@ -46,7 +48,7 @@ FAST_TRACK_ACTION_META = {
         "title": _("Batch Materialization Finished"),
         "progress_label": _("Materializing enrollments"),
         "queue_message": _(
-            "{0} requests were queued for batch materialization. You will be notified when the job completes."
+            "{request_count} requests were queued for batch materialization. You will be notified when the job completes."
         ),
         "preview_note": _(
             "Only Approved and Valid academic requests will materialize. Requests that are not ready or already materialized will be skipped."
@@ -57,7 +59,7 @@ FAST_TRACK_ACTION_META = {
         "title": _("Fast-Track Enrollment Finished"),
         "progress_label": _("Approving and creating enrollments"),
         "queue_message": _(
-            "{0} requests were queued for fast-track approval and materialization. You will be notified when the job completes."
+            "{request_count} requests were queued for fast-track approval and materialization. You will be notified when the job completes."
         ),
         "preview_note": _(
             "Draft, submitted, and under-review requests will be revalidated during execution. Invalid, override-required, and already-materialized requests will be skipped."
@@ -153,7 +155,7 @@ def run_fast_track_requests(filters=None, enrollment_date=None, action=None):
         return {
             "queued": 1,
             "request_count": len(request_names),
-            "message": FAST_TRACK_ACTION_META[action]["queue_message"].format(len(request_names)),
+            "message": FAST_TRACK_ACTION_META[action]["queue_message"].format(request_count=len(request_names)),
             "action": action,
         }
 
@@ -189,7 +191,7 @@ def _normalize_fast_track_filters(filters):
 def _normalize_fast_track_action(action) -> str:
     normalized = (action or ACTION_APPROVE_AND_MATERIALIZE).strip() or ACTION_APPROVE_AND_MATERIALIZE
     if normalized not in FAST_TRACK_ACTION_META:
-        frappe.throw(_("Unsupported batch request action: {0}.").format(normalized))
+        frappe.throw(_("Unsupported batch request action: {action}.").format(action=normalized))
     return normalized
 
 
@@ -254,7 +256,9 @@ def _resolve_requested_enrollment_date(*, academic_year: str, enrollment_date=No
     ay_end = getdate(row.get("year_end_date"))
     resolved = getdate(enrollment_date) if enrollment_date else ay_start
     if not (ay_start <= resolved <= ay_end):
-        frappe.throw(_("Enrollment Date must fall inside Academic Year {0}.").format(academic_year))
+        frappe.throw(
+            _("Enrollment Date must fall inside Academic Year {academic_year}.").format(academic_year=academic_year)
+        )
     return resolved
 
 
@@ -435,7 +439,9 @@ def _execute_fast_track(
 
             if status in {"Rejected", "Cancelled"}:
                 counts["blocked"] += 1
-                issues.append((request_name, student, _("Request is in terminal status {0}.").format(status)))
+                issues.append(
+                    (request_name, student, _("Request is in terminal status {status}.").format(status=status))
+                )
                 continue
 
             if action in {ACTION_APPROVE_ONLY, ACTION_APPROVE_AND_MATERIALIZE}:
@@ -481,7 +487,10 @@ def _execute_fast_track(
             materialize_program_enrollment_request(request_doc.name, enrollment_date=enrollment_date)
             request_doc.add_comment(
                 "Comment",
-                _("{0} on {1}.").format(FAST_TRACK_ACTION_META[action]["title"], enrollment_date),
+                _("{action_title} on {enrollment_date}.").format(
+                    action_title=FAST_TRACK_ACTION_META[action]["title"],
+                    enrollment_date=enrollment_date,
+                ),
             )
             counts["materialized"] += 1
         except Exception as exc:

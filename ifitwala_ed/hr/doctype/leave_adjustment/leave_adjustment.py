@@ -57,8 +57,11 @@ class LeaveAdjustment(Document):
 
         if max_leaves_allowed and (new_allocation > max_leaves_allowed):
             frappe.throw(
-                _("Allocation is greater than the maximum allowed {0} for leave type {1}").format(
-                    frappe.bold(max_leaves_allowed), frappe.bold(self.leave_type)
+                _(
+                    "Allocation is greater than the maximum allowed {max_leaves_allowed} for leave type {leave_type}"
+                ).format(
+                    max_leaves_allowed=frappe.bold(max_leaves_allowed),
+                    leave_type=frappe.bold(self.leave_type),
                 )
             )
 
@@ -70,8 +73,12 @@ class LeaveAdjustment(Document):
 
         if leave_balance < self.leaves_to_adjust:
             frappe.throw(
-                _("Reduction is more than {0}'s available leave balance {1} for leave type {2}").format(
-                    frappe.bold(self.employee_full_name), frappe.bold(leave_balance), frappe.bold(self.leave_type)
+                _(
+                    "Reduction is more than {employee}'s available leave balance {leave_balance} for leave type {leave_type}"
+                ).format(
+                    employee=frappe.bold(self.employee_full_name),
+                    leave_balance=frappe.bold(leave_balance),
+                    leave_type=frappe.bold(self.leave_type),
                 )
             )
 

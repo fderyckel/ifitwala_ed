@@ -57,7 +57,9 @@ class RecommendationRequest(Document):
         if not self.student_applicant:
             frappe.throw(_("Student Applicant is required."))
         if not frappe.db.exists("Student Applicant", self.student_applicant):
-            frappe.throw(_("Invalid Student Applicant: {0}.").format(self.student_applicant))
+            frappe.throw(
+                _("Invalid Student Applicant: {student_applicant}.").format(student_applicant=self.student_applicant)
+            )
 
         if not self.recommendation_template:
             frappe.throw(_("Recommendation Template is required."))
@@ -75,7 +77,11 @@ class RecommendationRequest(Document):
             as_dict=True,
         )
         if not template:
-            frappe.throw(_("Invalid Recommendation Template: {0}.").format(self.recommendation_template))
+            frappe.throw(
+                _("Invalid Recommendation Template: {recommendation_template}.").format(
+                    recommendation_template=self.recommendation_template
+                )
+            )
         if not cint(template.get("is_active")) and self.request_status in {"Sent", "Opened"}:
             frappe.throw(_("Recommendation Template must be active for open requests."))
 
@@ -136,7 +142,11 @@ class RecommendationRequest(Document):
     def _validate_status(self):
         allowed = {"Sent", "Opened", "Submitted", "Revoked", "Expired"}
         if self.request_status not in allowed:
-            frappe.throw(_("Invalid request status: {0}.").format(self.request_status or _("(empty)")))
+            frappe.throw(
+                _("Invalid request status: {request_status}.").format(
+                    request_status=self.request_status or _("(empty)")
+                )
+            )
 
         expires_on = get_datetime(self.expires_on)
         if self.request_status in {"Sent", "Opened"} and expires_on < now_datetime():

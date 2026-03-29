@@ -44,28 +44,28 @@ class SchoolSchedule(Document):
         if rotation_day_count > rotation_days:
             frappe.throw(
                 _(
-                    f"You have defined {rotation_day_count} rotation days, "
-                    f"but the schedule allows only {rotation_days}. "
+                    "You have defined {defined_days} rotation days, "
+                    "but the schedule allows only {allowed_days}. "
                     "Please remove the excess rotation days."
-                )
+                ).format(defined_days=rotation_day_count, allowed_days=rotation_days)
             )
 
         if rotation_day_count < rotation_days:
             frappe.throw(
                 _(
-                    f"You have defined only {rotation_day_count} rotation days, "
-                    f"but the schedule requires {rotation_days}. "
+                    "You have defined only {defined_days} rotation days, "
+                    "but the schedule requires {required_days}. "
                     "Please add the missing rotation days."
-                )
+                ).format(defined_days=rotation_day_count, required_days=rotation_days)
             )
 
         if self.first_day_rotation_day:
             if not 1 <= self.first_day_rotation_day <= rotation_days:
                 frappe.throw(
                     _(
-                        f"The chosen rotation day ({self.first_day_rotation_day}) for the first academic day "
-                        f"is out of range. You must choose a value between 1 and {rotation_days}."
-                    )
+                        "The chosen rotation day ({rotation_day}) for the first academic day "
+                        "is out of range. You must choose a value between 1 and {rotation_days}."
+                    ).format(rotation_day=self.first_day_rotation_day, rotation_days=rotation_days)
                 )
 
     # ----------------------------------------------------------------
@@ -88,8 +88,9 @@ class SchoolSchedule(Document):
         allowed = [self.school] + get_ancestors_of("School", self.school)
         if calendar_school not in allowed:
             raise ParentRuleViolation(
-                _("School {0} is not within the hierarchy of the Calendar's school ({1}).").format(
-                    get_link_to_form(self.school), calendar_school
+                _("School {school} is not within the hierarchy of the Calendar's school ({calendar_school}).").format(
+                    school=get_link_to_form(self.school),
+                    calendar_school=calendar_school,
                 )
             )
 
@@ -106,8 +107,9 @@ class SchoolSchedule(Document):
             },
         ):
             frappe.throw(
-                _("A Schedule already exists for {0} under Calendar {1}.").format(
-                    get_link_to_form(self.school), get_link_to_form(self.school_calendar)
+                _("A Schedule already exists for {school} under Calendar {school_calendar}.").format(
+                    school=get_link_to_form(self.school),
+                    school_calendar=get_link_to_form(self.school_calendar),
                 ),
                 title=_("Duplicate"),
             )
@@ -183,7 +185,9 @@ class SchoolSchedule(Document):
             schedule_day.rotation_label = rotation_label
             schedule_day.number_of_blocks = 0  # Default value, user must update later
 
-        frappe.msgprint(f"{self.rotation_days} Rotation Days have been generated.")
+        frappe.msgprint(
+            _("{rotation_days} Rotation Days have been generated.").format(rotation_days=self.rotation_days)
+        )
 
     @frappe.whitelist()
     def clear_schedule(self):
@@ -226,8 +230,9 @@ class SchoolSchedule(Document):
         for day in self.get("school_schedule_day"):
             if day.number_of_blocks <= 0:
                 frappe.throw(
-                    f"Rotation Day {day.rotation_day} does not have a valid number of blocks. "
-                    "Please set the number of blocks before generating them."
+                    _(
+                        "Rotation Day {rotation_day} does not have a valid number of blocks. Please set the number of blocks before generating them."
+                    ).format(rotation_day=day.rotation_day)
                 )
 
             for block_number in range(1, day.number_of_blocks + 1):
