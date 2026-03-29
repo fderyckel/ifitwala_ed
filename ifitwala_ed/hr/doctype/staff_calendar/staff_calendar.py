@@ -117,7 +117,10 @@ def get_events(start, end, filters=None):
     for event in events:
         title = event.get("description") or _("Holiday")
         if show_calendar_name:
-            title = _("{0}: {1}").format(event.get("staff_calendar"), title)
+            title = _("{staff_calendar}: {title}").format(
+                staff_calendar=event.get("staff_calendar"),
+                title=title,
+            )
         event["description"] = title
         event["title"] = title
         event["start"] = event.get("holiday_date")
@@ -197,9 +200,9 @@ class StaffCalendar(Document):
             conflict_names = ", ".join(c["name"] for c in conflicts)
             frappe.throw(
                 _(
-                    "Staff Calendar overlaps with existing calendar(s): {0}. "
+                    "Staff Calendar overlaps with existing calendar(s): {calendar_names}. "
                     "Please adjust the dates or reuse the existing calendar."
-                ).format(conflict_names)
+                ).format(calendar_names=conflict_names)
             )
 
     def validate_duplicate_date(self):
@@ -207,7 +210,9 @@ class StaffCalendar(Document):
         for day in self.holidays:
             if day.holiday_date in unique_dates:
                 frappe.throw(
-                    _("Date {0} is duplicated. Please remove the duplicate date.").format(formatdate(day.holiday_date))
+                    _("Date {holiday_date} is duplicated. Please remove the duplicate date.").format(
+                        holiday_date=formatdate(day.holiday_date)
+                    )
                 )
             unique_dates.append(day.holiday_date)
 

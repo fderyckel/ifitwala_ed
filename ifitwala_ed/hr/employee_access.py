@@ -191,9 +191,9 @@ def sync_user_access_from_employee(emp, *, notify_role_additions: bool = False):
                 ", ".join(frappe.bold(role) for role in removed_roles) if removed_roles else _("no assigned roles")
             )
             frappe.msgprint(
-                _("Removed all user roles from {0} because the employee is not active: {1}.").format(
-                    frappe.bold(emp.user_id),
-                    removed_label,
+                _("Removed all user roles from {user} because the employee is not active: {removed_roles}.").format(
+                    user=frappe.bold(emp.user_id),
+                    removed_roles=removed_label,
                 ),
                 title=_("Employee Access Updated"),
                 indicator="orange",
@@ -234,9 +234,9 @@ def sync_user_access_from_employee(emp, *, notify_role_additions: bool = False):
 
     if notify_role_additions and added_roles:
         frappe.msgprint(
-            _("Added default role(s) to {0}: {1}.").format(
-                frappe.bold(emp.user_id),
-                ", ".join(frappe.bold(role) for role in added_roles),
+            _("Added default role(s) to {user}: {roles}.").format(
+                user=frappe.bold(emp.user_id),
+                roles=", ".join(frappe.bold(role) for role in added_roles),
             ),
             title=_("Employee Access Updated"),
             indicator="green",

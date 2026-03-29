@@ -149,6 +149,23 @@ def has_active_employee_profile(*, user: str, roles: set[str]) -> bool:
     return status == "active"
 
 
+def _has_staff_role_assignment(*, user: str, roles: set[str]) -> bool:
+    normalized_roles = {str(role or "").strip() for role in roles if str(role or "").strip()}
+    if normalized_roles & STAFF_PORTAL_ROLES:
+        return True
+
+    return bool(
+        frappe.db.count(
+            "Has Role",
+            {
+                "parent": user,
+                "parenttype": "User",
+                "role": ["in", list(STAFF_PORTAL_ROLES)],
+            },
+        )
+    )
+
+
 def has_staff_portal_access(*, user: str, roles: set[str]) -> bool:
     # Never block the framework superuser from Desk/Staff portal entry.
     if user == "Administrator":
@@ -160,7 +177,7 @@ def has_staff_portal_access(*, user: str, roles: set[str]) -> bool:
     if has_employee and status != "active":
         return False
 
-    if roles & STAFF_PORTAL_ROLES:
+    if _has_staff_role_assignment(user=user, roles=roles):
         return True
 
     return has_employee and status == "active"

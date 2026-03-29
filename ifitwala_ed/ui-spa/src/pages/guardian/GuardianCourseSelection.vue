@@ -177,7 +177,7 @@ async function loadBoard() {
 	loading.value = true;
 	errorMessage.value = '';
 	try {
-		board.value = await getSelfEnrollmentPortalBoard();
+		board.value = await getSelfEnrollmentPortalBoard({});
 	} catch (error) {
 		errorMessage.value =
 			error instanceof Error ? error.message : 'Could not load course selection.';

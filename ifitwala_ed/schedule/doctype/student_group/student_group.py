@@ -287,7 +287,10 @@ class StudentGroup(Document):
         term_year = frappe.get_doc("Term", self.term)
         if self.academic_year != term_year.academic_year:
             frappe.throw(
-                _("The term {0} does not belong to the academic year {1}.").format(self.term, self.academic_year)
+                _("The term {term} does not belong to the academic year {academic_year}.").format(
+                    term=self.term,
+                    academic_year=self.academic_year,
+                )
             )
 
     def validate_mandatory_fields(self) -> None:
@@ -301,7 +304,9 @@ class StudentGroup(Document):
         if cint(self.maximum_size) < 0:
             frappe.throw(_("Max number of student in this group cannot be negative."))
         if self.maximum_size and len(self.students) > cint(self.maximum_size):
-            frappe.throw(_("You can only enroll {0} students in this group.").format(self.maximum_size))
+            frappe.throw(
+                _("You can only enroll {maximum_size} students in this group.").format(maximum_size=self.maximum_size)
+            )
 
     # you should not be able to make a group that include inactive students.
     # this is to ensure students are still active students (aka not graduated or not transferred, etc.)
@@ -329,11 +334,14 @@ class StudentGroup(Document):
 
             is_enabled = enabled_dict.get(student.student)
             if is_enabled is None:
-                frappe.throw(_("Student data not found for {0}").format(student.student))
+                frappe.throw(_("Student data not found for {student}.").format(student=student.student))
 
             if not is_enabled and student.active:
                 frappe.throw(
-                    _("{0} - {1} is an inactive student").format(student.group_roll_number, student.student_name)
+                    _("{roll_number} - {student_name} is an inactive student").format(
+                        roll_number=student.group_roll_number,
+                        student_name=student.student_name,
+                    )
                 )
 
             # Enrollment integrity by Program Offering (optional, only if offering is set)
@@ -348,8 +356,12 @@ class StudentGroup(Document):
                 ):
                     frappe.throw(
                         _(
-                            "Student {0} ({1}) is not enrolled in the selected Program Offering for academic year {2}."
-                        ).format(student.student_name, student.student, self.academic_year)
+                            "Student {student_name} ({student}) is not enrolled in the selected Program Offering for academic year {academic_year}."
+                        ).format(
+                            student_name=student.student_name,
+                            student=student.student,
+                            academic_year=self.academic_year,
+                        )
                     )
 
             # Cohort check (optional) — still anchored on the same offering+AY
@@ -365,8 +377,12 @@ class StudentGroup(Document):
                 ):
                     frappe.throw(
                         _(
-                            "Student {0} ({1}) is not part of the cohort {2} for this Program Offering and Academic Year."
-                        ).format(student.student_name, student.student, get_link_to_form("Student Cohort", self.cohort))
+                            "Student {student_name} ({student}) is not part of the cohort {cohort} for this Program Offering and Academic Year."
+                        ).format(
+                            student_name=student.student_name,
+                            student=student.student,
+                            cohort=get_link_to_form("Student Cohort", self.cohort),
+                        )
                     )
 
         if self.group_based_on == "Course" and self.course and self.term:
@@ -400,14 +416,14 @@ class StudentGroup(Document):
                 if conflict_group:
                     frappe.throw(
                         _(
-                            "Student <b>{0} ({1})</b> is already assigned to Course-based group {2} "
-                            "for <b>{3}</b> during <b>{4}</b>."
+                            "Student <b>{student_name} ({student})</b> is already assigned to Course-based group {student_group} "
+                            "for <b>{course}</b> during <b>{term}</b>."
                         ).format(
-                            student.student_name,
-                            student.student,
-                            get_link_to_form("Student Group", conflict_group[0][0]),
-                            get_link_to_form("Course", self.course),
-                            get_link_to_form("Term", self.term),
+                            student_name=student.student_name,
+                            student=student.student,
+                            student_group=get_link_to_form("Student Group", conflict_group[0][0]),
+                            course=get_link_to_form("Course", self.course),
+                            term=get_link_to_form("Term", self.term),
                         )
                     )
 
@@ -440,13 +456,13 @@ class StudentGroup(Document):
                 if not valid_enrollment:
                     frappe.throw(
                         _(
-                            "Student <b>{0} ({1})</b> does not have a valid Program Enrollment for "
-                            "<b>{2}</b> in term <b>{3}</b>. Please ensure they are enrolled in the course."
+                            "Student <b>{student_name} ({student})</b> does not have a valid Program Enrollment for "
+                            "<b>{course}</b> in term <b>{term}</b>. Please ensure they are enrolled in the course."
                         ).format(
-                            student.student_name,
-                            student.student,
-                            get_link_to_form("Course", self.course),
-                            get_link_to_form("Term", self.term),
+                            student_name=student.student_name,
+                            student=student.student,
+                            course=get_link_to_form("Course", self.course),
+                            term=get_link_to_form("Term", self.term),
                         )
                     )
 
@@ -462,7 +478,7 @@ class StudentGroup(Document):
                 max_roll_no += 1
                 d.group_roll_number = max_roll_no
             if d.group_roll_number in roll_no_list:
-                frappe.throw(_("Duplicate roll number for student {0}").format(d.student_name))
+                frappe.throw(_("Duplicate roll number for student {student_name}.").format(student_name=d.student_name))
             else:
                 roll_no_list.append(d.group_roll_number)
 
@@ -481,8 +497,13 @@ class StudentGroup(Document):
             if student_id in seen:
                 first_idx = seen[student_id]
                 frappe.throw(
-                    _("Student {0} - {1} appears Multiple times in row {2} & {3}").format(
-                        student_id, row.student_name, first_idx, row.idx
+                    _(
+                        "Student {student_id} - {student_name} appears Multiple times in row {first_row} & {second_row}"
+                    ).format(
+                        student_id=student_id,
+                        student_name=row.student_name,
+                        first_row=first_idx,
+                        second_row=row.idx,
                     )
                 )
             else:
@@ -512,8 +533,10 @@ class StudentGroup(Document):
                 key = f"{hash_base}:{s.student}"
                 if key in key_sets["student"]:
                     frappe.throw(
-                        _("Student clash on rotation {0} block {1} ({2})").format(
-                            row.rotation_day, row.block_number, s.student
+                        _("Student clash on rotation {rotation_day} block {block_number} ({student}).").format(
+                            rotation_day=row.rotation_day,
+                            block_number=row.block_number,
+                            student=s.student,
                         )
                     )
                 key_sets["student"].add(key)
@@ -529,8 +552,10 @@ class StudentGroup(Document):
                 key = f"{hash_base}:{identifier}"
                 if key in key_sets["instructor"]:
                     frappe.throw(
-                        _("Instructor clash on rotation {0} block {1} ({2})").format(
-                            row.rotation_day, row.block_number, identifier
+                        _("Instructor clash on rotation {rotation_day} block {block_number} ({instructor}).").format(
+                            rotation_day=row.rotation_day,
+                            block_number=row.block_number,
+                            instructor=identifier,
                         )
                     )
                 key_sets["instructor"].add(key)
@@ -639,7 +664,7 @@ class StudentGroup(Document):
         if over:
             lines = "\n".join(f"- {loc}: capacity {cap}, active students {active_students}" for loc, cap in over)
             frappe.throw(
-                _("Room capacity exceeded for the following locations:\n{0}").format(lines),
+                _("Room capacity exceeded for the following locations:\n{locations}").format(locations=lines),
                 title=_("Maximum Capacity Exceeded"),
             )
 
@@ -666,8 +691,12 @@ class StudentGroup(Document):
             cal_ay = frappe.db.get_value("School Calendar", ss.school_calendar, "academic_year")
             if cal_ay != self.academic_year:
                 frappe.throw(
-                    _("Selected School Schedule {0} belongs to Academic Year {1}, not {2}.").format(
-                        ss.name, cal_ay or "?", self.academic_year
+                    _(
+                        "Selected School Schedule {school_schedule} belongs to Academic Year {actual_academic_year}, not {expected_academic_year}."
+                    ).format(
+                        school_schedule=ss.name,
+                        actual_academic_year=cal_ay or "?",
+                        expected_academic_year=self.academic_year,
                     )
                 )
 
@@ -683,8 +712,12 @@ class StudentGroup(Document):
             allowed = set(get_ancestor_schools(base_school))  # self + parents
             if ss.school not in allowed:
                 frappe.throw(
-                    _("School Schedule {0} is owned by {1}, which is not in the ancestor chain of {2}.").format(
-                        ss.name, ss.school, base_school
+                    _(
+                        "School Schedule {school_schedule} is owned by {owner_school}, which is not in the ancestor chain of {base_school}."
+                    ).format(
+                        school_schedule=ss.name,
+                        owner_school=ss.school,
+                        base_school=base_school,
                     )
                 )
 
@@ -716,8 +749,11 @@ class StudentGroup(Document):
 
         if not row:
             frappe.throw(
-                _("No School Schedule found for school {0} (or its ancestors) in academic year {1}.").format(
-                    base_school, self.academic_year
+                _(
+                    "No School Schedule found for school {school} (or its ancestors) in academic year {academic_year}."
+                ).format(
+                    school=base_school,
+                    academic_year=self.academic_year,
                 )
             )
 
@@ -745,24 +781,35 @@ class StudentGroup(Document):
             # 1️⃣ Rotation-day within range
             if row.rotation_day < 1 or row.rotation_day > sched.rotation_days:
                 frappe.throw(
-                    _("Rotation Day {0} is outside the 1 - {1} range defined in {2}.").format(
-                        row.rotation_day, sched.rotation_days, sched.name
+                    _(
+                        "Rotation Day {rotation_day} is outside the 1 - {max_rotation_days} range defined in {school_schedule}."
+                    ).format(
+                        rotation_day=row.rotation_day,
+                        max_rotation_days=sched.rotation_days,
+                        school_schedule=sched.name,
                     )
                 )
 
             # 2️⃣ Block exists on that day
             if row.block_number not in block_map.get(row.rotation_day, {}):
                 frappe.throw(
-                    _("Block {0} is not defined on Rotation Day {1} in School Schedule {2}.").format(
-                        row.block_number, row.rotation_day, sched.name
+                    _(
+                        "Block {block_number} is not defined on Rotation Day {rotation_day} in School Schedule {school_schedule}."
+                    ).format(
+                        block_number=row.block_number,
+                        rotation_day=row.rotation_day,
+                        school_schedule=sched.name,
                     )
                 )
 
             # 3️⃣ Instructor consistency
             if row.instructor and row.instructor not in valid_instructors:
                 frappe.throw(
-                    _("Row {0}: Instructor {1} is not listed in the Student Group Instructor table.").format(
-                        row.idx, row.instructor
+                    _(
+                        "Row {row_number}: Instructor {instructor} is not listed in the Student Group Instructor table."
+                    ).format(
+                        row_number=row.idx,
+                        instructor=row.instructor,
                     )
                 )
 
@@ -982,12 +1029,14 @@ class StudentGroup(Document):
                 # First-save default: set to AY.school
                 self.school = ay_school
 
-        # Validate SG.school is in allowed set (if user or code has set it)
-        if self.school:
-            if self.school not in allowed:
-                frappe.throw(
-                    _("Student Group School must be {0} or a descendant within the allowed branch.").format(ay_school)
-                )
+            # Validate SG.school is in allowed set (if user or code has set it)
+            if self.school:
+                if self.school not in allowed:
+                    frappe.throw(
+                        _("Student Group School must be {school} or a descendant within the allowed branch.").format(
+                            school=ay_school
+                        )
+                    )
         else:
             # No SG.school provided: if Program Offering exists, prefer PO.school when valid; otherwise require explicit choice
             if po_school and (po_school in allowed):
