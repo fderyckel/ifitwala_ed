@@ -55,7 +55,7 @@ def get_student_applicant_scope(student_applicant: str) -> dict:
         as_dict=True,
     )
     if not row:
-        frappe.throw(_("Invalid Student Applicant: {0}.").format(student_applicant))
+        frappe.throw(_("Invalid Student Applicant: {student_applicant}.").format(student_applicant=student_applicant))
     return row
 
 
@@ -413,7 +413,10 @@ def _update_target_review_fields(
     if target_type == TARGET_DOCUMENT_ITEM:
         review_status = DOCUMENT_REVIEW_STATUS_BY_DECISION.get(decision)
         if not review_status:
-            frappe.throw(_("Invalid document item decision: {0}.").format(decision), frappe.ValidationError)
+            frappe.throw(
+                _("Invalid document item decision: {decision}.").format(decision=decision),
+                frappe.ValidationError,
+            )
         frappe.db.set_value(
             TARGET_DOCUMENT_ITEM,
             target_name,
@@ -445,7 +448,7 @@ def _update_target_review_fields(
         # Overall application review is advisory in v1 and does not mutate application_status.
         return
 
-    frappe.throw(_("Unsupported target type: {0}.").format(target_type), frappe.ValidationError)
+    frappe.throw(_("Unsupported target type: {target_type}.").format(target_type=target_type), frappe.ValidationError)
 
 
 def cancel_open_assignments_for_target(
@@ -523,7 +526,12 @@ def apply_review_decision(
 def complete_assignment_decision(*, assignment_doc, decision: str, notes: str | None, decided_by: str):
     options = DECISION_OPTIONS_BY_TARGET.get((assignment_doc.target_type or "").strip(), [])
     if decision not in options:
-        frappe.throw(_("Decision {0} is not valid for target type {1}.").format(decision, assignment_doc.target_type))
+        frappe.throw(
+            _("Decision {decision} is not valid for target type {target_type}.").format(
+                decision=decision,
+                target_type=assignment_doc.target_type,
+            )
+        )
 
     assignment_doc.status = "Done"
     assignment_doc.decision = decision
@@ -620,7 +628,10 @@ def get_review_assignments_summary(*, student_applicant: str) -> dict:
                 or _("Document")
             )
             item_label = (row.get("item_label") or "").strip() or (row.get("item_key") or "").strip() or row.get("name")
-            item_label_by_target[row.get("name")] = _("{0} — {1}").format(doc_label, item_label)
+            item_label_by_target[row.get("name")] = _("{document_label} — {item_label}").format(
+                document_label=doc_label,
+                item_label=item_label,
+            )
 
     grouped: dict[str, list[dict]] = defaultdict(list)
 

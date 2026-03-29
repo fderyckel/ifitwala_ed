@@ -10,7 +10,7 @@ _PROFILE_IMAGE_SLOT = "profile_image"
 
 def _require_doc(doctype: str, name: str, *, permission_type: str | None = "write"):
     if not name or not frappe.db.exists(doctype, name):
-        frappe.throw(_("{0} does not exist: {1}").format(doctype, name))
+        frappe.throw(_("{doctype} does not exist: {name}").format(doctype=doctype, name=name))
 
     doc = frappe.get_doc(doctype, name)
     if permission_type:
@@ -176,8 +176,8 @@ def validate_media_finalize_context(upload_session_doc) -> dict[str, Any] | None
     for session_field, authoritative_field in field_map.items():
         if getattr(upload_session_doc, session_field, None) != authoritative.get(authoritative_field):
             frappe.throw(
-                _("Upload session no longer matches the authoritative media context for field '{0}'.").format(
-                    session_field
+                _("Upload session no longer matches the authoritative media context for field '{field_name}'.").format(
+                    field_name=session_field
                 )
             )
 
@@ -260,7 +260,12 @@ def run_media_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
                 target_row = row
                 break
         if not target_row:
-            frappe.throw(_("Gallery row '{0}' was not found on School '{1}'.").format(row_name, school_doc.name))
+            frappe.throw(
+                _("Gallery row '{row_name}' was not found on School '{school_name}'.").format(
+                    row_name=row_name,
+                    school_name=school_doc.name,
+                )
+            )
         target_row.governed_file = created_file.name
         target_row.school_image = file_url
         school_doc.save(ignore_permissions=True)

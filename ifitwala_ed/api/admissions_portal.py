@@ -3152,10 +3152,10 @@ def invite_family_collaborator(
     email_sent = _send_applicant_invite_email(user_doc, invite_email)
     applicant.add_comment(
         "Comment",
-        text=_("Family admissions portal access invited for {0} ({1}) by {2}.").format(
-            frappe.bold(_guardian_row_display_name(target_row)),
-            frappe.bold(invite_email),
-            frappe.bold(frappe.session.user),
+        text=_("Family admissions portal access invited for {guardian_label} ({invite_email}) by {actor}.").format(
+            guardian_label=frappe.bold(_guardian_row_display_name(target_row)),
+            invite_email=frappe.bold(invite_email),
+            actor=frappe.bold(frappe.session.user),
         ),
     )
 
@@ -3259,8 +3259,9 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         email_sent = _send_applicant_invite_email(user_doc, email)
         applicant.add_comment(
             "Comment",
-            text=_("Applicant portal invite email re-sent for {0} by {1}.").format(
-                frappe.bold(applicant.name), frappe.bold(frappe.session.user)
+            text=_("Applicant portal invite email re-sent for {applicant} by {actor}.").format(
+                applicant=frappe.bold(applicant.name),
+                actor=frappe.bold(frappe.session.user),
             ),
         )
         return {"ok": True, "user": user_doc.name, "resent": True, "email_sent": email_sent}
@@ -3320,8 +3321,9 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
 
     applicant.add_comment(
         "Comment",
-        text=_("Applicant portal user invited for {0} by {1}.").format(
-            frappe.bold(applicant.name), frappe.bold(frappe.session.user)
+        text=_("Applicant portal user invited for {applicant} by {actor}.").format(
+            applicant=frappe.bold(applicant.name),
+            actor=frappe.bold(frappe.session.user),
         ),
     )
 

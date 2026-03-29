@@ -18,7 +18,7 @@ _TASK_SUBMISSION_SLOT = "submission"
 
 def _get_doc(doctype: str, name: str, *, permission_type: str | None = None):
     if not frappe.db.exists(doctype, name):
-        frappe.throw(_("{0} does not exist: {1}").format(doctype, name))
+        frappe.throw(_("{doctype} does not exist: {name}").format(doctype=doctype, name=name))
 
     doc = frappe.get_doc(doctype, name)
     if permission_type:
@@ -80,7 +80,7 @@ def _assert_task_resource_row_exists(task_doc, row_key: str) -> None:
     for row in task_doc.get("attachments") or []:
         if str(getattr(row, "name", "") or "").strip() == row_key:
             return
-    frappe.throw(_("Task attachment row was not found: {0}").format(row_key))
+    frappe.throw(_("Task attachment row was not found: {row_key}.").format(row_key=row_key))
 
 
 def build_task_resource_upload_contract(task_doc, *, row_name: str | None = None) -> dict[str, Any]:
@@ -169,9 +169,9 @@ def validate_task_resource_finalize_context(upload_session_doc) -> dict[str, Any
     for session_field, authoritative_field in field_map.items():
         if getattr(upload_session_doc, session_field, None) != authoritative[authoritative_field]:
             frappe.throw(
-                _("Upload session no longer matches the authoritative Task resource context for field '{0}'.").format(
-                    session_field
-                )
+                _(
+                    "Upload session no longer matches the authoritative Task resource context for field '{field_name}'."
+                ).format(field_name=session_field)
             )
 
     return authoritative
@@ -243,8 +243,8 @@ def reconcile_task_submission_session_payload(payload: dict[str, Any]) -> dict[s
         provided = payload.get(fieldname)
         if provided not in (None, "", authoritative_value):
             frappe.throw(
-                _("Task Submission upload field '{0}' does not match the authoritative owner context.").format(
-                    fieldname
+                _("Task Submission upload field '{field_name}' does not match the authoritative owner context.").format(
+                    field_name=fieldname
                 )
             )
 
@@ -282,9 +282,9 @@ def validate_task_submission_finalize_context(upload_session_doc) -> dict[str, A
     for session_field, authoritative_field in field_map.items():
         if getattr(upload_session_doc, session_field, None) != authoritative[authoritative_field]:
             frappe.throw(
-                _("Upload session no longer matches the authoritative Task Submission context for field '{0}'.").format(
-                    session_field
-                )
+                _(
+                    "Upload session no longer matches the authoritative Task Submission context for field '{field_name}'."
+                ).format(field_name=session_field)
             )
 
     return authoritative

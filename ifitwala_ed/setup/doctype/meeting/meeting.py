@@ -170,7 +170,9 @@ class Meeting(Document):
         if dupes:
             user_list = ", ".join(sorted(dupes))
             frappe.throw(
-                _("The following participants are listed more than once: {0}").format(user_list),
+                _("The following participants are listed more than once: {participants}").format(
+                    participants=user_list
+                ),
                 title=_("Duplicate Participants"),
             )
 
@@ -340,7 +342,7 @@ class Meeting(Document):
 
         msg = "<br>".join(lines)
         frappe.throw(
-            _("Location {0} is already booked:<br>{1}").format(self.location, msg),
+            _("Location {location} is already booked:<br>{details}").format(location=self.location, details=msg),
             title=_("Location Conflict"),
         )
 
@@ -436,8 +438,8 @@ class Meeting(Document):
             frappe.throw(
                 _(
                     "Please set attendance for all participants before marking the meeting as Completed. "
-                    "Missing for: {0}"
-                ).format(name_list),
+                    "Missing for: {participants}"
+                ).format(participants=name_list),
                 title=_("Attendance Not Recorded"),
             )
 

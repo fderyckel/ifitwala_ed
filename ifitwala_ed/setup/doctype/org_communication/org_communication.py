@@ -247,7 +247,7 @@ class OrgCommunication(Document):
             )
             if not booking_row:
                 frappe.throw(
-                    _("Activity Booking {0} does not exist.").format(booking),
+                    _("Activity Booking {booking} does not exist.").format(booking=booking),
                     title=_("Invalid Activity Context"),
                 )
             booking_offering = (booking_row.get("program_offering") or "").strip()
@@ -269,7 +269,7 @@ class OrgCommunication(Document):
             )
             if not student_group_row:
                 frappe.throw(
-                    _("Activity Student Group {0} does not exist.").format(student_group),
+                    _("Activity Student Group {student_group} does not exist.").format(student_group=student_group),
                     title=_("Invalid Activity Context"),
                 )
             if (student_group_row.get("group_based_on") or "").strip() != "Activity":

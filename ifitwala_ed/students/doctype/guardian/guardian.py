@@ -242,9 +242,9 @@ class Guardian(Document):
             if linked_organizations and any(org != explicit_organization for org in linked_organizations):
                 frappe.throw(
                     _(
-                        "Guardian organization {0} does not match the organizations of linked students. "
+                        "Guardian organization {organization} does not match the organizations of linked students. "
                         "Update the Guardian organization or family links before uploading a photo."
-                    ).format(explicit_organization)
+                    ).format(organization=explicit_organization)
                 )
             return explicit_organization
 
@@ -282,7 +282,9 @@ class Guardian(Document):
                 _ensure_user_role(user.name, "Guardian")
 
             frappe.msgprint(
-                _("User {0} already exists and has been linked.").format(get_link_to_form("User", self.guardian_email))
+                _("User {user_link} already exists and has been linked.").format(
+                    user_link=get_link_to_form("User", self.guardian_email)
+                )
             )
             return self.guardian_email
 
@@ -322,7 +324,7 @@ class Guardian(Document):
 
         # Persist the link without running Guardian.validate()
         self.db_set("user", user.name, update_modified=False)
-        frappe.msgprint(_("User {0} has been created").format(get_link_to_form("User", user.name)))
+        frappe.msgprint(_("User {user_link} has been created").format(user_link=get_link_to_form("User", user.name)))
         return user.name
 
 

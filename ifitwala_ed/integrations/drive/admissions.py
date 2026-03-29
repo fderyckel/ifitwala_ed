@@ -81,7 +81,11 @@ def get_applicant_document_context(payload: dict[str, Any]) -> dict[str, Any]:
     doc_type_code = frappe.db.get_value("Applicant Document Type", doc.document_type, "code") or doc.document_type
     slot_spec = get_applicant_document_slot_spec(document_type=doc.document_type, doc_type_code=doc_type_code)
     if not slot_spec:
-        frappe.throw(_("Applicant Document Type is missing upload classification settings: {0}.").format(doc_type_code))
+        frappe.throw(
+            _("Applicant Document Type is missing upload classification settings: {document_type_code}.").format(
+                document_type_code=doc_type_code
+            )
+        )
 
     applicant_row = _get_student_applicant_scope(doc.student_applicant)
 
@@ -127,11 +131,18 @@ def get_applicant_health_vaccination_context(payload: dict[str, Any]) -> dict[st
         or {}
     )
     if not health_row.get("name"):
-        frappe.throw(_("Applicant Health Profile does not exist: {0}").format(applicant_health_profile))
+        frappe.throw(
+            _("Applicant Health Profile does not exist: {health_profile}.").format(
+                health_profile=applicant_health_profile
+            )
+        )
     if health_row.get("student_applicant") != student_applicant:
         frappe.throw(
-            _("Applicant Health Profile '{0}' does not belong to Student Applicant '{1}'.").format(
-                applicant_health_profile, student_applicant
+            _(
+                "Applicant Health Profile '{health_profile}' does not belong to Student Applicant '{student_applicant}'."
+            ).format(
+                health_profile=applicant_health_profile,
+                student_applicant=student_applicant,
             )
         )
 
@@ -203,8 +214,9 @@ def get_applicant_guardian_image_context(payload: dict[str, Any]) -> dict[str, A
     )
     if not guardian_row.get("name"):
         frappe.throw(
-            _("Guardian row '{0}' was not found on Student Applicant '{1}'.").format(
-                guardian_row_name, student_applicant
+            _("Guardian row '{guardian_row}' was not found on Student Applicant '{student_applicant}'.").format(
+                guardian_row=guardian_row_name,
+                student_applicant=student_applicant,
             )
         )
 
@@ -280,9 +292,9 @@ def validate_applicant_document_finalize_context(upload_session_doc) -> dict[str
     for session_field, context_field in field_map.items():
         if getattr(upload_session_doc, session_field, None) != context.get(context_field):
             frappe.throw(
-                _("Upload session no longer matches the authoritative admissions context for field '{0}'.").format(
-                    session_field
-                )
+                _(
+                    "Upload session no longer matches the authoritative admissions context for field '{field_name}'."
+                ).format(field_name=session_field)
             )
     return context
 
@@ -317,9 +329,9 @@ def validate_applicant_profile_image_finalize_context(upload_session_doc) -> dic
     for session_field, context_field in field_map.items():
         if getattr(upload_session_doc, session_field, None) != context.get(context_field):
             frappe.throw(
-                _("Upload session no longer matches the authoritative admissions context for field '{0}'.").format(
-                    session_field
-                )
+                _(
+                    "Upload session no longer matches the authoritative admissions context for field '{field_name}'."
+                ).format(field_name=session_field)
             )
     return context
 
@@ -357,9 +369,9 @@ def validate_applicant_guardian_image_finalize_context(upload_session_doc) -> di
     for session_field, context_field in field_map.items():
         if getattr(upload_session_doc, session_field, None) != context.get(context_field):
             frappe.throw(
-                _("Upload session no longer matches the authoritative admissions context for field '{0}'.").format(
-                    session_field
-                )
+                _(
+                    "Upload session no longer matches the authoritative admissions context for field '{field_name}'."
+                ).format(field_name=session_field)
             )
     return context
 
@@ -400,8 +412,8 @@ def validate_applicant_health_finalize_context(upload_session_doc) -> dict[str, 
         if getattr(upload_session_doc, session_field, None) != context.get(context_field):
             frappe.throw(
                 _(
-                    "Upload session no longer matches the authoritative admissions health context for field '{0}'."
-                ).format(session_field)
+                    "Upload session no longer matches the authoritative admissions health context for field '{field_name}'."
+                ).format(field_name=session_field)
             )
 
     return context
@@ -482,7 +494,9 @@ def run_admissions_post_finalize(upload_session_doc, created_file) -> dict[str, 
     applicant_document = item_row.get("applicant_document")
     if not applicant_document:
         frappe.throw(
-            _("Applicant Document Item '{0}' is missing its parent document.").format(upload_session_doc.attached_name)
+            _("Applicant Document Item '{document_item}' is missing its parent document.").format(
+                document_item=upload_session_doc.attached_name
+            )
         )
 
     document_type = frappe.db.get_value("Applicant Document", applicant_document, "document_type")
