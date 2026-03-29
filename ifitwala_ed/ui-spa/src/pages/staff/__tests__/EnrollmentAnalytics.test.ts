@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, type App } from 'vue';
 
 const { dashboardState, dashboardSubmitMock, drilldownSubmitMock } = vi.hoisted(() => ({
@@ -250,7 +250,13 @@ function mountPage() {
 	});
 }
 
+beforeEach(() => {
+	vi.useFakeTimers();
+});
+
 afterEach(() => {
+	vi.clearAllTimers();
+	vi.useRealTimers();
 	dashboardState.current = null;
 	dashboardSubmitMock.mockReset();
 	drilldownSubmitMock.mockReset();
