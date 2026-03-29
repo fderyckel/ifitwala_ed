@@ -278,7 +278,10 @@ StaffProfile[] = {
 
 **Rules**
 
-* Filtered by leadership roles
+* Only employees with `Employee.show_on_website = 1`
+* Default grouping resolves from `Designation.default_role_profile = "Academic Admin"` for the current school scope
+* School-scoped designations match the current school; organization-scoped designations (blank `Designation.school`) are also allowed for the same organization
+* A manual designation filter may override the default role-profile grouping
 * Bio is plain text or sanitized HTML
 
 ---
@@ -317,6 +320,12 @@ CourseCard[] = {
 ### 4.5 `get_school_staff`
 
 Same shape as leadership, different filter.
+
+**Rules**
+
+* Only employees with `Employee.show_on_website = 1`
+* Excludes employees already included in the leadership grouping for the same block render
+* Ordered for stable presentation, not by recent modification time
 
 ---
 

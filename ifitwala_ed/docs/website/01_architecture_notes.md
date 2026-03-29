@@ -608,6 +608,9 @@ Display published Programs as discoverable cards, with full detail links when th
 **Purpose**
 Present leadership (principal, coordinators).
 
+Current baseline note:
+* School page authoring currently exposes this through the `leadership` block, which renders an `Academic Leadership` carousel first and may render a second `Faculty & Staff` carousel underneath.
+
 **Data source**
 
 * `school_leadership`
@@ -632,6 +635,9 @@ Present leadership (principal, coordinators).
 
 **Purpose**
 Show broader academic or administrative staff.
+
+Current baseline note:
+* The current `leadership` block owns both sections on school pages; the secondary `Faculty & Staff` carousel is populated from the broader staff set after leadership members are excluded.
 
 **Data source**
 

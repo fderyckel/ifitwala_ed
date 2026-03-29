@@ -238,6 +238,35 @@
 		color: var(--if-theme-primary);
 	}
 
+	#ifitwala-page-root .site-people-section {
+		background:
+			radial-gradient(
+				circle at top left,
+				color-mix(in srgb, var(--if-theme-primary) 7%, #fff),
+				transparent 42%
+			),
+			linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.98));
+	}
+
+	#ifitwala-page-root .site-people-track {
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+	}
+
+	#ifitwala-page-root .site-people-track::-webkit-scrollbar {
+		display: none;
+	}
+
+	#ifitwala-page-root .site-people-dot.is-active {
+		background-color: var(--if-theme-primary);
+		transform: scale(1.18);
+	}
+
+	#ifitwala-page-root .site-people-nav.hidden,
+	#ifitwala-page-root [data-people-carousel-dots].hidden {
+		display: none;
+	}
+
 	@media (max-width: 1023px) {
 		#ifitwala-page-root .site-header {
 			box-shadow: 0 14px 30px -26px rgb(15 23 42 / 0.28);

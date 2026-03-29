@@ -359,6 +359,35 @@ def _ensure_course_profile_seo_profile(*, profile, school, course) -> tuple[str 
     return profile_name, bool(profile_changed or linked_changed)
 
 
+def build_default_staff_showcase_props(*, route: str) -> dict:
+    props = {
+        "title": "Leadership & Administration",
+        "leadership_title": "Academic Leadership",
+        "staff_title": "Faculty & Staff",
+        "role_profiles": ["Academic Admin"],
+        "show_staff_carousel": True,
+    }
+
+    if route == "/":
+        props.update(
+            {
+                "description": "Meet the academic leaders and school professionals shaping learning each day.",
+                "limit": 4,
+                "staff_limit": 8,
+            }
+        )
+        return props
+
+    props.update(
+        {
+            "description": "Meet the academic leaders, faculty, and staff who shape the character of our school.",
+            "limit": 6,
+            "staff_limit": 12,
+        }
+    )
+    return props
+
+
 def _build_home_blocks(*, school) -> list[dict]:
     admissions_page_url = _school_page_url(school_slug=school.website_slug, route="admissions")
     intro_html = (school.about_snippet or "").strip()
@@ -400,11 +429,7 @@ def _build_home_blocks(*, school) -> list[dict]:
         {
             "block_type": "leadership",
             "order": 4,
-            "props": {
-                "title": "Leadership & Administration",
-                "roles": ["Head", "Principal"],
-                "limit": 6,
-            },
+            "props": build_default_staff_showcase_props(route="/"),
         },
         {
             "block_type": "cta",
@@ -452,11 +477,7 @@ def _build_about_blocks(*, school) -> list[dict]:
         {
             "block_type": "leadership",
             "order": 3,
-            "props": {
-                "title": "Leadership & Administration",
-                "roles": ["Head", "Principal"],
-                "limit": 12,
-            },
+            "props": build_default_staff_showcase_props(route="about"),
         },
         {
             "block_type": "cta",

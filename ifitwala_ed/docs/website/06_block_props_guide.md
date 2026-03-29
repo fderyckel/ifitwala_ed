@@ -414,23 +414,37 @@ Snippet resolution order is deterministic:
 
 ### Purpose
 
-* Displays staff with `show_on_website = 1`
-* Optional role filter
+* Displays school staff with `show_on_website = 1`
+* Renders two premium carousels by default:
+  * `Academic Leadership`
+  * `Faculty & Staff`
+* The leadership carousel resolves from `Designation.default_role_profile = "Academic Admin"` unless a manual `roles` designation filter is provided.
 
 ### Props (schema)
 
 | prop | type | required | default | notes |
 | --- | --- | --- | --- | --- |
 | `title` | string | no | — | Section title |
-| `roles` | array | no | — | Role filter (designation) |
-| `limit` | integer | no | — | Max staff to show |
+| `description` | string | no | — | Supporting intro copy |
+| `leadership_title` | string | no | `Academic Leadership` | Primary carousel title |
+| `staff_title` | string | no | `Faculty & Staff` | Secondary carousel title |
+| `role_profiles` | array | no | `["Academic Admin"]` | Role profiles used to resolve the primary carousel from `Designation.default_role_profile` |
+| `roles` | array | no | — | Manual designation override for the primary carousel |
+| `limit` | integer | no | `4` | Max people to show in the primary carousel |
+| `staff_limit` | integer | no | `8` | Max people to show in the staff carousel |
+| `show_staff_carousel` | boolean | no | `true` | Hide/show the secondary staff carousel |
 
 ### Example
 ```json
 {
   "title": "Leadership & Administration",
-  "roles": ["Head", "Principal"],
-  "limit": 9
+  "description": "Meet the academic leaders, faculty, and staff who shape the character of our school.",
+  "leadership_title": "Academic Leadership",
+  "staff_title": "Faculty & Staff",
+  "role_profiles": ["Academic Admin"],
+  "limit": 6,
+  "staff_limit": 12,
+  "show_staff_carousel": true
 }
 ```
 

@@ -63,6 +63,19 @@ Example `program_list` props:
 }
 ```
 
+Example `leadership` props:
+
+```json
+{
+  "title": "Leadership & Administration",
+  "description": "Meet the academic leaders and school professionals shaping learning each day.",
+  "role_profiles": ["Academic Admin"],
+  "limit": 4,
+  "staff_limit": 8,
+  "show_staff_carousel": true
+}
+```
+
 ---
 
 ## 2) About Page Recipe (`route = about`)
@@ -102,6 +115,12 @@ Example `section_carousel` props:
   "cta_link": "/schools/iss/activities"
 }
 ```
+
+Notes for `leadership` on Home/About:
+
+* By default the block renders `Academic Leadership` first, then `Faculty & Staff`.
+* Both sections only include `Employee` records where `show_on_website = 1`.
+* The primary carousel resolves from `Designation.default_role_profile = "Academic Admin"` unless page authors set a manual designation filter.
 
 ---
 

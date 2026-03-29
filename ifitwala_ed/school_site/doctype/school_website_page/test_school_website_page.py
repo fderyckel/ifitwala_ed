@@ -203,6 +203,32 @@ class TestSchoolWebsitePage(FrappeTestCase):
         )
         validate_page_blocks(page)
 
+    def test_validate_page_blocks_allows_extended_leadership_props(self):
+        page = frappe._dict(
+            {
+                "doctype": "School Website Page",
+                "page_type": "Standard",
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Home"}, order=1),
+                    _row(
+                        block_type="leadership",
+                        props={
+                            "title": "Leadership & Administration",
+                            "description": "Meet our school team.",
+                            "leadership_title": "Academic Leadership",
+                            "staff_title": "Faculty & Staff",
+                            "role_profiles": ["Academic Admin"],
+                            "limit": 4,
+                            "staff_limit": 8,
+                            "show_staff_carousel": True,
+                        },
+                        order=2,
+                    ),
+                ],
+            }
+        )
+        validate_page_blocks(page)
+
     def test_validate_page_blocks_allows_admissions_blocks_for_admissions_page(self):
         page = frappe._dict(
             {

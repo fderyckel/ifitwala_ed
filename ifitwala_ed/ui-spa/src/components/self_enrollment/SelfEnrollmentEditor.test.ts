@@ -174,9 +174,10 @@ describe('SelfEnrollmentEditor', () => {
 
 		await flushUi()
 
-		const scienceSection = Array.from(document.querySelectorAll('section')).find(section =>
-			(section.textContent || '').includes('Group 4 Sciences')
+		const scienceSectionHeading = Array.from(document.querySelectorAll('h3')).find(
+			heading => (heading.textContent || '').trim() === 'Group 4 Sciences'
 		)
+		const scienceSection = scienceSectionHeading?.closest('section') as HTMLElement | null
 		expect(scienceSection).toBeTruthy()
 
 		const checkbox = scienceSection?.querySelector('input[type="checkbox"]') as HTMLInputElement | null
@@ -187,8 +188,8 @@ describe('SelfEnrollmentEditor', () => {
 		checkbox.dispatchEvent(new Event('change', { bubbles: true }))
 		await flushUi()
 
-		const rankInput = document.querySelector('input[type="number"]') as HTMLInputElement | null
-		const countsInSelect = document.querySelector('select') as HTMLSelectElement | null
+		const rankInput = scienceSection?.querySelector('input[type="number"]') as HTMLInputElement | null
+		const countsInSelect = scienceSection?.querySelector('select') as HTMLSelectElement | null
 
 		expect(rankInput?.value).toBe('1')
 		expect(countsInSelect?.value).toBe('Group 4 Sciences')
