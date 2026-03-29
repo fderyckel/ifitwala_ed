@@ -3,9 +3,9 @@ title: "Program Enrollment Request: Transactional Staging for Enrollment"
 slug: program-enrollment-request
 category: Enrollment
 doc_order: 4
-version: "1.5.1"
-last_change_date: "2026-03-28"
-summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including basket-group snapshots, admissions hydration, portal self-enrollment provenance, and report-driven fast-track processing for clean academic requests."
+version: "1.6.0"
+last_change_date: "2026-03-29"
+summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including basket-group snapshots, admissions hydration, portal self-enrollment provenance, report-driven batch approval/materialization actions, and PER form shortcuts into the request overview."
 seo_title: "Program Enrollment Request: Transactional Staging for Enrollment"
 seo_description: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment."
 ---
@@ -41,7 +41,13 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
     - student-by-course matrix review
     - course demand summaries
     - selection-window tracker review for submitted, not-submitted, missing-request, and problematic portal responses
-  - the same report now offers `Approve + Create Enrollments` for clean academic requests in the current filtered scope
+  - the same report now offers:
+    - `Approve Valid Requests`
+    - `Create Enrollments from Approved`
+    - `Approve + Create Enrollments`
+    for clean academic requests in the current filtered scope
+- Desk shortcut:
+  - the `Program Enrollment Request` form includes `Open Request Overview`, which routes staff into the report with school, Academic Year, program, offering, request type, and selection window prefilled when available
 - Self-enrollment portal workflow:
   - [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/) pre-creates draft requests and links them to student/guardian portal editing
   - `ifitwala_ed.api.self_enrollment.*` saves and submits portal choices onto the linked request
@@ -62,7 +68,11 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 7. Review `validation_status`, `requires_override`, and reasons in payload.
 8. Approve only when request is valid, or when override is approved with traceability.
 9. Materialize approved request into one [**Program Enrollment**](/docs/en/program-enrollment/).
-10. For straightforward academic cohorts, staff may use the report fast-track action to revalidate, approve, and materialize clean requests in one batch while skipping invalid or override-required rows.
+10. For straightforward academic cohorts, staff may use the report batch actions to:
+    - approve valid requests only
+    - materialize already-approved valid requests only
+    - or run the combined approve-and-materialize shortcut
+    while skipping invalid, override-required, or already-materialized rows.
 
 ### Status and Validation Fields
 

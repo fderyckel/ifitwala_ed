@@ -54,6 +54,9 @@ async function syncAcademicYearState(frm) {
 	frm.refresh_field("academic_year");
 }
 
+const VIEW_MODE_MATRIX = "Student x Course Matrix";
+const VIEW_MODE_WINDOW_TRACKER = "Selection Window Tracker";
+
 function hasValue(value) {
 	return Boolean(String(value || "").trim());
 }
@@ -272,6 +275,32 @@ function renderEducatorReviewBanner(frm) {
 	frm.dashboard.set_headline(`<span class="${toneClass}">${html}</span>`);
 }
 
+function openRequestOverview(frm) {
+	if (frm.is_new() || !frm.doc.name) {
+		frappe.msgprint(__("Please save this request first."));
+		return;
+	}
+
+	const routeOptions = {
+		school: frm.doc.school || "",
+		academic_year: frm.doc.academic_year || "",
+		program: frm.doc.program || "",
+		program_offering: frm.doc.program_offering || "",
+		request_kind: frm.doc.request_kind || "Academic",
+		latest_request_only: 1,
+	};
+
+	if (hasValue(frm.doc.selection_window)) {
+		routeOptions.view_mode = VIEW_MODE_WINDOW_TRACKER;
+		routeOptions.selection_window = frm.doc.selection_window;
+	} else {
+		routeOptions.view_mode = VIEW_MODE_MATRIX;
+	}
+
+	frappe.route_options = routeOptions;
+	frappe.set_route("query-report", "Program Enrollment Request Overview");
+}
+
 frappe.ui.form.on("Program Enrollment Request", {
 	refresh(frm) {
 		setAcademicYearQuery(frm);
@@ -280,6 +309,11 @@ frappe.ui.form.on("Program Enrollment Request", {
 		toggleRequestTypeFields(frm);
 		toggleTechnicalReviewFields(frm);
 		renderEducatorReviewBanner(frm);
+
+		frm.clear_custom_buttons();
+		if (!frm.is_new() && hasValue(frm.doc.program_offering) && hasValue(frm.doc.academic_year) && hasValue(frm.doc.school)) {
+			frm.add_custom_button(__("Open Request Overview"), () => openRequestOverview(frm));
+		}
 	},
 
 	program_offering(frm) {

@@ -706,15 +706,15 @@ def assign_follow_up(log_name: str, user: str):
     if not (log_name and user):
         frappe.throw(_("Missing parameters."))
 
-    # Minimal parent fetch
-    sl = frappe.db.get_value(
-        "Student Log",
-        log_name,
-        ["name", "owner", "school", "student_name", "follow_up_status", "follow_up_role"],
-        as_dict=True,
-    )
+        # Minimal parent fetch
+        sl = frappe.db.get_value(
+            "Student Log",
+            log_name,
+            ["name", "owner", "school", "student_name", "follow_up_status", "follow_up_role"],
+            as_dict=True,
+        )
     if not sl:
-        frappe.throw(_("Student Log not found: {0}").format(log_name))
+        frappe.throw(_("Student Log not found: {log_name}.").format(log_name=log_name))
 
     # Completed logs cannot be (re)assigned
     if (sl.follow_up_status or "").lower() == "completed":
@@ -743,8 +743,9 @@ def assign_follow_up(log_name: str, user: str):
     )
     if not ok:
         frappe.throw(
-            _("Assignee's school branch ({0}) does not include the log's school ({1}).").format(
-                assignee_anchor, sl.school
+            _("Assignee's school branch ({assignee_school}) does not include the log's school ({log_school}).").format(
+                assignee_school=assignee_anchor,
+                log_school=sl.school,
             ),
             title=_("Outside School Branch"),
         )
@@ -752,7 +753,10 @@ def assign_follow_up(log_name: str, user: str):
     # Role guard (target): assignee must have required role (fallback 'Academic Staff')
     required_role = sl.follow_up_role or "Academic Staff"
     if required_role and required_role not in set(frappe.get_roles(user)):
-        frappe.throw(_("Assignee must have the role: {0}.").format(required_role), title=_("Role Mismatch"))
+        frappe.throw(
+            _("Assignee must have the role: {role}.").format(role=required_role),
+            title=_("Role Mismatch"),
+        )
 
     # Permission (actor): author OR Academic Admin OR current assignee OR user with the associated role
     roles_current = set(frappe.get_roles())
@@ -820,7 +824,10 @@ def assign_follow_up(log_name: str, user: str):
                     "comment_type": "Info",
                     "reference_doctype": "Student Log",
                     "reference_name": sl.name,
-                    "content": _("Reassigned: {0} → {1}").format(prev_full, new_full),
+                    "content": _("Reassigned: {previous_assignee} -> {new_assignee}").format(
+                        previous_assignee=prev_full,
+                        new_assignee=new_full,
+                    ),
                 }
             ).insert(ignore_permissions=True)
         except Exception:
@@ -876,7 +883,7 @@ def complete_log(log_name: str):
         "Student Log", log_name, ["name", "owner", "student_name", "follow_up_status"], as_dict=True
     )
     if not log_row:
-        frappe.throw(_("Student Log not found: {0}").format(log_name))
+        frappe.throw(_("Student Log not found: {log_name}.").format(log_name=log_name))
 
     roles = set(frappe.get_roles())
     is_admin = "Academic Admin" in roles
@@ -948,7 +955,7 @@ def reopen_log(log_name: str):
         as_dict=True,
     )
     if not row:
-        frappe.throw(_("Student Log not found: {0}").format(log_name))
+        frappe.throw(_("Student Log not found: {log_name}.").format(log_name=log_name))
 
     # Only from Completed
     if (row.follow_up_status or "").lower() != "completed":
@@ -1071,7 +1078,7 @@ def add_clarification(log_name: str, clarification: str):
 
     comment = log_doc.add_comment(
         comment_type="Info",
-        text=_("Clarification: {0}").format(frappe.utils.escape_html(clarification)),
+        text=_("Clarification: {clarification}").format(clarification=frappe.utils.escape_html(clarification)),
     )
     return {
         "ok": True,

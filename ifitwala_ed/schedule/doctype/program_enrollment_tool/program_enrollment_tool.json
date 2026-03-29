@@ -31,7 +31,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Get Students From",
-   "options": "Program Enrollment\nCohort",
+   "options": "Program Enrollment\nCohort\nProgram Enrollment Request",
    "reqd": 1
   },
   {
@@ -86,7 +86,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Source Program Offering",
-   "mandatory_depends_on": "eval: doc.get_students_from == \"Program Enrollment\"",
+   "mandatory_depends_on": "eval: doc.get_students_from == \"Program Enrollment\" || doc.get_students_from == \"Program Enrollment Request\"",
    "options": "Program Offering"
   },
   {
@@ -114,7 +114,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-11 12:27:19",
+ "modified": "2026-03-29 08:15:28.000000",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Enrollment Tool",

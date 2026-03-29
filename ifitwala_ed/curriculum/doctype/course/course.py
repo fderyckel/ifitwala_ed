@@ -37,9 +37,9 @@ class Course(Document):
                 continue
             if row.assessment_criteria in seen:
                 frappe.throw(
-                    _("Assessment Criteria {0} appears more than once. Please remove duplicate entries.").format(
-                        row.assessment_criteria
-                    )
+                    _(
+                        "Assessment Criteria {assessment_criteria} appears more than once. Please remove duplicate entries."
+                    ).format(assessment_criteria=row.assessment_criteria)
                 )
             seen.add(row.assessment_criteria)
 
@@ -56,8 +56,8 @@ class Course(Document):
         if abs(total_weight - 100.0) > 0.001:
             frappe.throw(
                 _(
-                    "The sum of the Criteria Weighting is {0:.2f}%. It must be exactly 100%. Please adjust and try again."
-                ).format(total_weight)
+                    "The sum of the Criteria Weighting is {total_weight:.2f}%. It must be exactly 100%. Please adjust and try again."
+                ).format(total_weight=total_weight)
             )
 
     def get_learning_units(self):
@@ -88,7 +88,9 @@ def add_course_to_programs(course, programs, mandatory=False):
         program.save()
     frappe.db.commit()
     frappe.msgprint(
-        _("The Course {0} has been added to all the selected programs successfully.").format(frappe.bold(course)),
+        _("The Course {course} has been added to all the selected programs successfully.").format(
+            course=frappe.bold(course)
+        ),
         title=_("Programs updated"),
         indicator="green",
     )

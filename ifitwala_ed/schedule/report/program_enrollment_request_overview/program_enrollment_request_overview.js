@@ -3,9 +3,46 @@
 
 const VIEW_MODE_MATRIX = "Student x Course Matrix";
 const VIEW_MODE_WINDOW_TRACKER = "Selection Window Tracker";
-const FAST_TRACK_BUTTON_KEY = "per-fast-track-btn";
+const ACTION_APPROVE_ONLY = "approve_only";
+const ACTION_MATERIALIZE_ONLY = "materialize_only";
+const ACTION_APPROVE_AND_MATERIALIZE = "approve_and_materialize";
 const FAST_TRACK_PROGRESS_EVENT = "program_enrollment_request_fast_track";
 const FAST_TRACK_DONE_EVENT = "program_enrollment_request_fast_track_done";
+const BATCH_ACTIONS = {
+	[ACTION_APPROVE_ONLY]: {
+		buttonKey: "per-approve-btn",
+		label: __("Approve Valid Requests"),
+		dialogTitle: __("Approve Valid Requests"),
+		primaryLabel: __("Approve Valid Requests"),
+		requiresEnrollmentDate: false,
+		freezeMessage: __("Approving clean requests..."),
+		queuedTitle: __("Batch Approval Queued"),
+		errorMessage: __("Unable to approve requests in batch."),
+		makePrimary: false
+	},
+	[ACTION_MATERIALIZE_ONLY]: {
+		buttonKey: "per-materialize-btn",
+		label: __("Create Enrollments from Approved"),
+		dialogTitle: __("Create Enrollments from Approved"),
+		primaryLabel: __("Create Enrollments from Approved"),
+		requiresEnrollmentDate: true,
+		freezeMessage: __("Creating enrollments from approved requests..."),
+		queuedTitle: __("Batch Materialization Queued"),
+		errorMessage: __("Unable to materialize requests in batch."),
+		makePrimary: false
+	},
+	[ACTION_APPROVE_AND_MATERIALIZE]: {
+		buttonKey: "per-combined-btn",
+		label: __("Approve + Create Enrollments"),
+		dialogTitle: __("Approve + Create Enrollments"),
+		primaryLabel: __("Approve + Create Enrollments"),
+		requiresEnrollmentDate: true,
+		freezeMessage: __("Fast-tracking clean requests..."),
+		queuedTitle: __("Fast-Track Queued"),
+		errorMessage: __("Unable to start fast-track enrollment."),
+		makePrimary: true
+	}
+};
 
 async function refreshSchoolScope(report) {
 	const school = report.get_filter_value("school") || "";
@@ -66,8 +103,15 @@ function buildFastTrackMessage(summary) {
 	return `${counts}${detailsLink}`;
 }
 
-function canShowFastTrackButton() {
-	return Boolean(frappe.query_report.__fastTrackAccess?.can_run);
+function canRunBatchAction(action) {
+	const access = frappe.query_report.__batchActionAccess || {};
+	if (action === ACTION_APPROVE_ONLY) {
+		return Boolean(access.can_approve);
+	}
+	if (action === ACTION_MATERIALIZE_ONLY) {
+		return Boolean(access.can_materialize);
+	}
+	return Boolean(access.can_run);
 }
 
 function ensureFastTrackRealtimeBinding() {
@@ -104,40 +148,35 @@ function getCurrentReportFilters() {
 	return Object.assign({}, report?.get_values?.() || {});
 }
 
-function validateFastTrackFilters(filters) {
+function validateBatchActionFilters(filters, action) {
 	if (String(filters?.latest_request_only || 0) !== "1") {
 		frappe.msgprint(
-			__("Fast-track enrollment requires Latest Request Only so older requests cannot materialize over newer intent.")
+			__("Batch request actions require Latest Request Only so older requests cannot overwrite newer intent.")
 		);
 		return false;
 	}
 
 	const requestKind = String(filters?.request_kind || "Academic").trim() || "Academic";
 	if (requestKind !== "Academic") {
-		frappe.msgprint(__("Fast-track enrollment only supports Academic requests."));
+		frappe.msgprint(__("Batch request actions only support Academic requests."));
+		return false;
+	}
+
+	if (action !== ACTION_APPROVE_ONLY && !String(filters?.academic_year || "").trim()) {
+		frappe.msgprint(__("Academic Year is required before enrollments can be created."));
 		return false;
 	}
 
 	return true;
 }
 
-function renderFastTrackPreview(preview) {
-	const counts = preview?.counts || {};
-	const rows = [
-		[__("Selected"), counts.selected || 0],
-		[__("Currently Valid"), counts.currently_valid || 0],
-		[__("Ready Now"), counts.ready_now || 0],
-		[__("Pending Validation"), counts.pending_validation || 0],
-		[__("Currently Invalid"), counts.currently_invalid || 0],
-		[__("Needs Override"), counts.needs_override || 0],
-		[__("Already Materialized"), counts.already_materialized || 0],
-		[__("Terminal"), counts.terminal || 0]
-	];
-
-	const body = rows
+function renderBatchActionPreview(preview) {
+	const body = Object.entries(preview?.counts || {})
 		.map(
-			([label, value]) =>
-				`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>${frappe.utils.escape_html(label)}</span><strong>${value}</strong></div>`
+			([key, value]) =>
+				`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>${frappe.utils.escape_html(
+					prettyCountLabel(key)
+				)}</span><strong>${value}</strong></div>`
 		)
 		.join("");
 
@@ -149,23 +188,25 @@ function renderFastTrackPreview(preview) {
 	`;
 }
 
-async function handleFastTrackRun(dialog, filters) {
+async function handleBatchActionRun(dialog, filters, action) {
+	const config = BATCH_ACTIONS[action];
 	const values = dialog.get_values() || {};
 	const response = await frappe.call({
 		method: "ifitwala_ed.schedule.program_enrollment_request_fast_track.run_fast_track_requests",
 		args: {
 			filters: JSON.stringify(filters),
-			enrollment_date: values.enrollment_date || ""
+			enrollment_date: values.enrollment_date || "",
+			action
 		},
 		freeze: true,
-		freeze_message: __("Fast-tracking clean requests...")
+		freeze_message: config.freezeMessage
 	});
 
 	dialog.hide();
 	const summary = response?.message || {};
 	if (summary.queued) {
 		frappe.msgprint({
-			title: __("Fast-Track Queued"),
+			title: config.queuedTitle,
 			message: summary.message || __("The selected requests were queued for fast-track processing."),
 			indicator: "blue"
 		});
@@ -182,68 +223,76 @@ async function handleFastTrackRun(dialog, filters) {
 	}
 }
 
-async function openFastTrackDialog() {
+async function openBatchActionDialog(action) {
+	const config = BATCH_ACTIONS[action];
 	const filters = getCurrentReportFilters();
-	if (!validateFastTrackFilters(filters)) {
+	if (!validateBatchActionFilters(filters, action)) {
 		return;
 	}
 
 	const response = await frappe.call({
 		method: "ifitwala_ed.schedule.program_enrollment_request_fast_track.preview_fast_track_requests",
-		args: { filters: JSON.stringify(filters) },
+		args: { filters: JSON.stringify(filters), action },
 		freeze: true,
-		freeze_message: __("Checking clean requests...")
+		freeze_message: __("Checking matching requests...")
 	});
 	const preview = response?.message || {};
 
+	const fields = [
+		{
+			fieldname: "preview_html",
+			fieldtype: "HTML"
+		}
+	];
+	if (config.requiresEnrollmentDate) {
+		fields.push({
+			fieldname: "enrollment_date",
+			fieldtype: "Date",
+			label: __("Enrollment Date"),
+			default: preview.default_enrollment_date || "",
+			description: __("Defaults to the Academic Year start date when left blank.")
+		});
+	}
+
 	const dialog = new frappe.ui.Dialog({
-		title: __("Approve + Create Enrollments"),
-		fields: [
-			{
-				fieldname: "preview_html",
-				fieldtype: "HTML"
-			},
-			{
-				fieldname: "enrollment_date",
-				fieldtype: "Date",
-				label: __("Enrollment Date"),
-				default: preview.default_enrollment_date || "",
-				description: __("Defaults to the Academic Year start date when left blank.")
-			}
-		],
-		primary_action_label: __("Approve + Create Enrollments"),
+		title: config.dialogTitle,
+		fields,
+		primary_action_label: config.primaryLabel,
 		primary_action: async () => {
-			await handleFastTrackRun(dialog, filters);
+			await handleBatchActionRun(dialog, filters, action);
 		}
 	});
 
-	dialog.fields_dict.preview_html.$wrapper.html(renderFastTrackPreview(preview));
+	dialog.fields_dict.preview_html.$wrapper.html(renderBatchActionPreview(preview));
 	dialog.show();
 }
 
-function ensureFastTrackButton(page) {
+function ensureBatchActionButtons(page) {
 	if (!page?.add_inner_button) return;
-	const existingButton =
-		page.inner_toolbar && page.inner_toolbar.find(`button[data-key="${FAST_TRACK_BUTTON_KEY}"]`);
 
-	if (!canShowFastTrackButton()) {
-		existingButton?.remove();
-		return;
-	}
+	Object.entries(BATCH_ACTIONS).forEach(([action, config]) => {
+		const existingButton =
+			page.inner_toolbar && page.inner_toolbar.find(`button[data-key="${config.buttonKey}"]`);
 
-	if (existingButton?.length) {
-		return;
-	}
+		if (!canRunBatchAction(action)) {
+			existingButton?.remove();
+			return;
+		}
 
-	const button = page.add_inner_button(__("Approve + Create Enrollments"), () => {
-		openFastTrackDialog().catch((error) => {
-			frappe.msgprint(error?.message || __("Unable to start fast-track enrollment."));
+		if (existingButton?.length) {
+			return;
+		}
+
+		const button = page.add_inner_button(config.label, () => {
+			openBatchActionDialog(action).catch((error) => {
+				frappe.msgprint(error?.message || config.errorMessage);
+			});
 		});
+		if (button) {
+			button.attr("data-key", config.buttonKey);
+			button.removeClass("btn-default").addClass(config.makePrimary ? "btn-primary btn-sm" : "btn-default btn-sm");
+		}
 	});
-	if (button) {
-		button.attr("data-key", FAST_TRACK_BUTTON_KEY);
-		button.removeClass("btn-default").addClass("btn-primary btn-sm");
-	}
 }
 
 frappe.query_reports["Program Enrollment Request Overview"] = {
@@ -390,7 +439,7 @@ frappe.query_reports["Program Enrollment Request Overview"] = {
 		report.page.set_title(__("Program Enrollment Request Overview"));
 		ensureFastTrackRealtimeBinding();
 
-		const [allowedSchoolResponse, fastTrackAccessResponse] = await Promise.all([
+		const [allowedSchoolResponse, batchActionAccessResponse] = await Promise.all([
 			frappe.call({
 				method: "ifitwala_ed.school_settings.school_settings_utils.get_user_allowed_schools"
 			}),
@@ -399,9 +448,9 @@ frappe.query_reports["Program Enrollment Request Overview"] = {
 			})
 		]);
 		const allowedSchools = allowedSchoolResponse.message || [];
-		frappe.query_report.__fastTrackAccess = fastTrackAccessResponse.message || { can_run: 0 };
+		frappe.query_report.__batchActionAccess = batchActionAccessResponse.message || { can_run: 0 };
 		frappe.query_report.__allowed_schools = allowedSchools;
-		ensureFastTrackButton(report.page);
+		ensureBatchActionButtons(report.page);
 
 		if (!allowedSchools.length) {
 			frappe.msgprint(__("You do not have a default school assigned. Please contact your administrator."));
@@ -423,7 +472,7 @@ frappe.query_reports["Program Enrollment Request Overview"] = {
 
 	after_datatable_render(report) {
 		if (report?.page) {
-			ensureFastTrackButton(report.page);
+			ensureBatchActionButtons(report.page);
 		}
 	},
 

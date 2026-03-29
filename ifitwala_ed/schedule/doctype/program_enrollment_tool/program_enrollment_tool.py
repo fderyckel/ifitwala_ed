@@ -18,6 +18,7 @@ from ifitwala_ed.schedule.enrollment_request_utils import (
     validate_program_enrollment_request,
 )
 from ifitwala_ed.schedule.program_enrollment_request_seed import (
+    NON_TERMINAL_REQUEST_STATUSES,
     build_request_rows_for_student,
     create_draft_request,
     get_source_enrollment_map,
@@ -26,6 +27,7 @@ from ifitwala_ed.schedule.program_enrollment_request_seed import (
 )
 
 QUEUE_THRESHOLD = 100
+REQUEST_SOURCE_MODE = "Program Enrollment Request"
 ACTION_META = {
     "prepare_requests": {
         "label": _("Preparing requests"),
@@ -90,7 +92,7 @@ class ProgramEnrollmentTool(Document):
         if total == 0:
             frappe.throw(_("No students in the list."))
 
-        self._validate_destination_context()
+        self._validate_action_context(action)
 
         if total > QUEUE_THRESHOLD:
             frappe.enqueue(
@@ -120,6 +122,9 @@ class ProgramEnrollmentTool(Document):
         return handlers[action](batch_mode=batch_mode)
 
     def _run_prepare_requests(self, *, batch_mode: bool):
+        if self.get_students_from == REQUEST_SOURCE_MODE:
+            frappe.throw(_("Prepare Requests is not available when sourcing existing Program Enrollment Requests."))
+
         student_ids = self._selected_student_ids()
         target_enrollments = self._get_target_enrollments(student_ids)
         target_requests = self._get_target_request_map(student_ids)
@@ -197,7 +202,7 @@ class ProgramEnrollmentTool(Document):
         )
 
     def _run_validate_requests(self, *, batch_mode: bool):
-        request_map = self._get_target_request_map(self._selected_student_ids())
+        request_map = self._get_action_request_map(self._selected_student_ids())
         counts = {
             "validated": 0,
             "already_valid": 0,
@@ -247,7 +252,7 @@ class ProgramEnrollmentTool(Document):
         )
 
     def _run_approve_requests(self, *, batch_mode: bool):
-        request_map = self._get_target_request_map(self._selected_student_ids())
+        request_map = self._get_action_request_map(self._selected_student_ids())
         counts = {
             "approved": 0,
             "already_approved": 0,
@@ -305,7 +310,7 @@ class ProgramEnrollmentTool(Document):
         )
 
     def _run_materialize_requests(self, *, batch_mode: bool):
-        request_map = self._get_target_request_map(self._selected_student_ids())
+        request_map = self._get_action_request_map(self._selected_student_ids())
         counts = {
             "materialized": 0,
             "blocked": 0,
@@ -375,6 +380,77 @@ class ProgramEnrollmentTool(Document):
             if ids:
                 disabled = set(frappe.get_all("Student", filters={"name": ["in", ids], "enabled": 0}, pluck="name"))
                 out = [student for student in out if student["student"] not in disabled]
+        elif self.get_students_from == REQUEST_SOURCE_MODE:
+            if not self.target_academic_year or not self.program_offering:
+                frappe.throw(_("Please specify both Request Program Offering and Request Academic Year."))
+
+            request_rows = frappe.get_all(
+                "Program Enrollment Request",
+                filters={
+                    "program_offering": self.program_offering,
+                    "academic_year": self.target_academic_year,
+                    "request_kind": "Academic",
+                    "status": ["in", list(NON_TERMINAL_REQUEST_STATUSES)],
+                },
+                fields=["name", "student", "status", "validation_status", "requires_override", "modified"],
+                order_by="modified desc",
+                limit=5000,
+            )
+
+            latest_by_student = {}
+            for row in request_rows or []:
+                student = (row.get("student") or "").strip()
+                if not student or student in latest_by_student:
+                    continue
+                latest_by_student[student] = row
+
+            student_ids = list(latest_by_student.keys())
+            if not student_ids:
+                return []
+
+            student_rows = frappe.get_all(
+                "Student",
+                filters={"name": ["in", student_ids]},
+                fields=["name", "student_full_name", "cohort", "enabled"],
+                limit=max(5000, len(student_ids) * 2),
+            )
+            student_meta = {row.get("name"): row for row in student_rows or []}
+
+            request_names = [row.get("name") for row in latest_by_student.values() if row.get("name")]
+            materialized = set()
+            if request_names:
+                materialized = set(
+                    frappe.get_all(
+                        "Program Enrollment",
+                        filters={"program_enrollment_request": ["in", request_names]},
+                        pluck="program_enrollment_request",
+                    )
+                )
+
+            for student, request_row in latest_by_student.items():
+                meta = student_meta.get(student) or {}
+                if cint(meta.get("enabled") or 0) == 0:
+                    continue
+
+                cohort = (meta.get("cohort") or "").strip()
+                if self.student_cohort and cohort != self.student_cohort:
+                    continue
+
+                request_name = (request_row.get("name") or "").strip()
+                out.append(
+                    {
+                        "student": student,
+                        "student_name": (meta.get("student_full_name") or "").strip() or student,
+                        "student_cohort": cohort,
+                        "program_enrollment_request": request_name,
+                        "request_status": (request_row.get("status") or "").strip(),
+                        "validation_status": (request_row.get("validation_status") or "").strip(),
+                        "requires_override": 1 if cint(request_row.get("requires_override")) == 1 else 0,
+                        "already_materialized": 1 if request_name in materialized else 0,
+                    }
+                )
+
+            out.sort(key=lambda row: ((row.get("student_name") or ""), (row.get("student") or "")))
         else:
             frappe.throw(_("Unsupported source {0}.").format(self.get_students_from))
         return out
@@ -394,8 +470,26 @@ class ProgramEnrollmentTool(Document):
         if not self.new_program_offering or not self.new_target_academic_year:
             frappe.throw(_("Destination Program Offering and Destination Academic Year are required."))
 
+    def _validate_existing_request_context(self):
+        if not self.program_offering or not self.target_academic_year:
+            frappe.throw(_("Request Program Offering and Request Academic Year are required."))
+
+    def _validate_action_context(self, action: str):
+        if self.get_students_from == REQUEST_SOURCE_MODE:
+            self._validate_existing_request_context()
+            if action == "prepare_requests":
+                frappe.throw(_("Prepare Requests is not available when sourcing existing Program Enrollment Requests."))
+            return
+
+        self._validate_destination_context()
+
     def _resolve_destination_enrollment_date(self):
-        year_doc = frappe.get_doc("Academic Year", self.new_target_academic_year)
+        academic_year = (
+            self.target_academic_year
+            if self.get_students_from == REQUEST_SOURCE_MODE
+            else self.new_target_academic_year
+        )
+        year_doc = frappe.get_doc("Academic Year", academic_year)
         if not getattr(year_doc, "year_start_date", None) or not getattr(year_doc, "year_end_date", None):
             frappe.throw(_("Selected Academic Year must have start and end dates."))
 
@@ -403,6 +497,8 @@ class ProgramEnrollmentTool(Document):
         ay_end = getdate(year_doc.year_end_date)
         enrollment_date = getdate(self.new_enrollment_date) if self.new_enrollment_date else ay_start
         if not (ay_start <= enrollment_date <= ay_end):
+            if self.get_students_from == REQUEST_SOURCE_MODE:
+                frappe.throw(_("Enrollment date must fall inside the selected Request Academic Year."))
             frappe.throw(_("Destination enrollment date must fall inside the selected Destination Academic Year."))
         return enrollment_date
 
@@ -427,6 +523,18 @@ class ProgramEnrollmentTool(Document):
             program_offering=self.new_program_offering,
             academic_year=self.new_target_academic_year,
         )
+
+    def _get_existing_request_map(self, student_ids: list[str]) -> dict[str, dict]:
+        return get_target_request_map(
+            student_ids=student_ids,
+            program_offering=self.program_offering,
+            academic_year=self.target_academic_year,
+        )
+
+    def _get_action_request_map(self, student_ids: list[str]) -> dict[str, dict]:
+        if self.get_students_from == REQUEST_SOURCE_MODE:
+            return self._get_existing_request_map(student_ids)
+        return self._get_target_request_map(student_ids)
 
     def _get_source_enrollment_map(self, student_ids: list[str]) -> dict[str, dict]:
         if self.get_students_from != "Program Enrollment" or not student_ids:
