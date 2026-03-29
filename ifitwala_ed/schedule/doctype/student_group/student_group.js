@@ -37,6 +37,27 @@ function get_single_instructor_value(frm) {
 	return values.length === 1 ? values[0] : "";
 }
 
+function applyDefaultInstructorToScheduleRow(frm, cdt, cdn) {
+	const row = locals[cdt]?.[cdn];
+	const defaultInstructor = get_single_instructor_value(frm);
+	if (row && defaultInstructor && !row.instructor) {
+		frappe.model.set_value(cdt, cdn, "instructor", defaultInstructor);
+	}
+}
+
+function applyDefaultInstructorToBlankScheduleRows(frm) {
+	const defaultInstructor = get_single_instructor_value(frm);
+	if (!defaultInstructor) {
+		return;
+	}
+
+	(frm.doc.student_group_schedule || []).forEach(row => {
+		if (!row.instructor) {
+			frappe.model.set_value(row.doctype, row.name, "instructor", defaultInstructor);
+		}
+	});
+}
+
 async function syncAcademicYearFromProgramOffering(frm) {
 	const programOffering = frm.doc.program_offering;
 	if (!programOffering) {
@@ -141,6 +162,8 @@ frappe.ui.form.on("Student Group", {
 	},
 
 	refresh: function (frm) {
+		applyDefaultInstructorToBlankScheduleRows(frm);
+
 		// Add buttons
 		if (!frm.doc.__islocal) {
 			if (!in_list(frappe.user_roles, "Student")) {
@@ -280,13 +303,29 @@ frappe.ui.form.on("Student Group", {
 	},
 
 	student_group_schedule_add(frm, cdt, cdn) {
-		const row = locals[cdt]?.[cdn];
-		const defaultInstructor = get_single_instructor_value(frm);
-		if (row && defaultInstructor && !row.instructor) {
-			frappe.model.set_value(cdt, cdn, "instructor", defaultInstructor);
-		}
+		applyDefaultInstructorToScheduleRow(frm, cdt, cdn);
 	},
 
+	instructors_add(frm) {
+		applyDefaultInstructorToBlankScheduleRows(frm);
+	},
+
+	instructors_remove(frm) {
+		applyDefaultInstructorToBlankScheduleRows(frm);
+	},
+
+});
+
+frappe.ui.form.on("Student Group Schedule", {
+	form_render(frm, cdt, cdn) {
+		applyDefaultInstructorToScheduleRow(frm, cdt, cdn);
+	}
+});
+
+frappe.ui.form.on("Student Group Instructor", {
+	instructor(frm) {
+		applyDefaultInstructorToBlankScheduleRows(frm);
+	}
 });
 
 

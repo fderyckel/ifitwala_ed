@@ -3,7 +3,7 @@ title: "Student Group: Operational Teaching Group Contract"
 slug: student-group
 category: Schedule
 doc_order: 1
-version: "1.0.2"
+version: "1.0.3"
 last_change_date: "2026-03-29"
 summary: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, attendance scope, and downstream teaching materialization."
 seo_title: "Student Group: Operational Teaching Group Contract"
@@ -14,7 +14,7 @@ seo_description: "Define the operational class, cohort, activity, or pastoral gr
 
 `Student Group` is the operational teaching-group record for the Schedule domain. It binds roster, instructor set, attendance scope, and timetable intent to a specific `Program Offering` and `Academic Year`, then feeds downstream scheduling, attendance, and teaching workflows.
 
-Current workspace note: when a selected Program Offering has exactly one Academic Year in its offering spine, the Student Group form now auto-fills `academic_year`. Desk block booking also preselects the instructor when exactly one instructor is attached to the group, and save-time validation warns, without blocking, only for course-based Student Groups that land in non-instructional or mismatched schedule blocks.
+Current workspace note: when a selected Program Offering has exactly one Academic Year in its offering spine, the Student Group form now auto-fills `academic_year`. Schedule rows also default `instructor` when exactly one instructor is attached to the group, and save-time validation warns, without blocking, only for course-based Student Groups that land in non-instructional or mismatched schedule blocks.
 
 ## Before You Start (Prerequisites)
 
@@ -116,7 +116,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
   - selecting `program_offering` auto-fills `academic_year` when exactly one offering AY exists
   - student bulk-add is enabled for non-activity flows
   - schedule row instructor choices are constrained to the group’s instructor table
-  - quick-add schedule booking preselects the instructor when exactly one instructor exists
+  - blank schedule rows default the instructor when exactly one instructor exists
 
 ### Current Contract
 
