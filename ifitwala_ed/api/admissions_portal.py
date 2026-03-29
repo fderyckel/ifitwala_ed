@@ -382,13 +382,15 @@ def _decode_profile_image_content(content_text: str | None) -> bytes:
 
 
 def _profile_image_allowed_formats_message() -> str:
-    return _("Only {0} image files are accepted. Convert HEIC or HEIF photos to JPG before uploading.").format(
-        PROFILE_IMAGE_ALLOWED_ACCEPT_LABEL
-    )
+    return _(
+        "Only {accepted_formats} image files are accepted. Convert HEIC or HEIF photos to JPG before uploading."
+    ).format(accepted_formats=PROFILE_IMAGE_ALLOWED_ACCEPT_LABEL)
 
 
 def _profile_image_invalid_content_message() -> str:
-    return _("Uploaded profile image must be a valid {0} image.").format(PROFILE_IMAGE_ALLOWED_ACCEPT_LABEL)
+    return _("Uploaded profile image must be a valid {accepted_format} image.").format(
+        accepted_format=PROFILE_IMAGE_ALLOWED_ACCEPT_LABEL
+    )
 
 
 def _profile_image_extension_mismatch_message() -> str:
@@ -396,11 +398,15 @@ def _profile_image_extension_mismatch_message() -> str:
 
 
 def _profile_image_size_limit_message() -> str:
-    return _("Image is too large. Max file size is {0} MB.").format(PROFILE_IMAGE_MAX_BYTES // (1024 * 1024))
+    return _("Image is too large. Max file size is {max_size_mb} MB.").format(
+        max_size_mb=PROFILE_IMAGE_MAX_BYTES // (1024 * 1024)
+    )
 
 
 def _profile_image_pixel_limit_message() -> str:
-    return _("Image is too large. Max image size is {0} megapixels.").format(PROFILE_IMAGE_MAX_PIXELS // 1_000_000)
+    return _("Image is too large. Max image size is {max_megapixels} megapixels.").format(
+        max_megapixels=PROFILE_IMAGE_MAX_PIXELS // 1_000_000
+    )
 
 
 def _profile_image_output_filename(prefix: str) -> str:
@@ -955,7 +961,9 @@ def _validate_guardian_profile_row(row: dict) -> dict:
         if not _as_text(row.get(fieldname)).strip()
     ]
     if missing_labels:
-        frappe.throw(_("Each guardian must include: {0}.").format(", ".join(missing_labels)))
+        frappe.throw(
+            _("Each guardian must include: {missing_fields}.").format(missing_fields=", ".join(missing_labels))
+        )
 
     guardian_email = normalize_email_value(row.get("guardian_email"))
     try:
@@ -1212,7 +1220,7 @@ def _apply_guardians_to_applicant(*, applicant, guardians_payload: list[dict]):
         guardian_name = _as_text(row.get("guardian")).strip()
         if guardian_name:
             if not frappe.db.exists("Guardian", guardian_name):
-                frappe.throw(_("Invalid Guardian: {0}.").format(guardian_name))
+                frappe.throw(_("Invalid Guardian: {guardian}.").format(guardian=guardian_name))
             guardian_doc = frappe.get_doc("Guardian", guardian_name)
             row = _hydrate_guardian_row_from_guardian_doc(row_payload=row, guardian_doc=guardian_doc)
         row = _validate_guardian_profile_row(row)
@@ -1514,7 +1522,9 @@ def _portal_status_for(application_status: str, enrollment_offer: dict | None = 
             return "Offer Expired"
         return "In Review"
     if application_status not in PORTAL_STATUS_MAP:
-        frappe.throw(_("Invalid Application Status: {0}.").format(application_status))
+        frappe.throw(
+            _("Invalid Application Status: {application_status}.").format(application_status=application_status)
+        )
     return PORTAL_STATUS_MAP[application_status]
 
 
@@ -2638,12 +2648,18 @@ def upload_applicant_document(
         doc_type_label = _as_text(doc_type_row.get("code") or document_type).strip() or _("Unknown")
         if missing_labels:
             frappe.throw(
-                _("This document type is not configured for uploads ({0}). Missing: {1}.").format(
-                    doc_type_label,
-                    ", ".join(missing_labels),
+                _(
+                    "This document type is not configured for uploads ({document_type}). Missing: {missing_fields}."
+                ).format(
+                    document_type=doc_type_label,
+                    missing_fields=", ".join(missing_labels),
                 )
             )
-        frappe.throw(_("This document type is not configured for uploads ({0}).").format(doc_type_label))
+        frappe.throw(
+            _("This document type is not configured for uploads ({document_type}).").format(
+                document_type=doc_type_label
+            )
+        )
 
     payload = {
         "student_applicant": row.get("name"),
@@ -2772,7 +2788,7 @@ def acknowledge_policy(
 
     if expected_candidates and normalized_typed_name not in expected_candidates:
         frappe.throw(
-            _("Typed signature must match exactly: {0}").format(expected_signature_name),
+            _("Typed signature must match exactly: {expected_name}").format(expected_name=expected_signature_name),
             frappe.ValidationError,
         )
 
@@ -2982,7 +2998,10 @@ def _get_applicant_guardian_row(applicant, guardian_row_name: str):
     for row in applicant.get("guardians") or []:
         if (row.name or "").strip() == target_name:
             return row
-    frappe.throw(_("Guardian row {0} was not found on this Applicant.").format(target_name), frappe.DoesNotExistError)
+    frappe.throw(
+        _("Guardian row {guardian_row} was not found on this Applicant.").format(guardian_row=target_name),
+        frappe.DoesNotExistError,
+    )
 
 
 def _ensure_family_guardian_user(*, guardian, email: str, applicant_name: str, row_payload: dict):
@@ -2998,8 +3017,8 @@ def _ensure_family_guardian_user(*, guardian, email: str, applicant_name: str, r
     if existing_applicant:
         frappe.throw(
             _(
-                "This email is already reserved as an Applicant login ({0}). Use a different family collaborator email."
-            ).format(existing_applicant)
+                "This email is already reserved as an Applicant login ({applicant}). Use a different family collaborator email."
+            ).format(applicant=existing_applicant)
         )
 
     resent = False

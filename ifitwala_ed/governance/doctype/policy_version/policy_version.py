@@ -404,8 +404,10 @@ class PolicyVersion(Document):
 
         self.add_comment(
             "Comment",
-            text=_("System Manager override on Policy Version by {0} at {1}. Reason: {2}.").format(
-                frappe.bold(frappe.session.user), now_datetime(), override_reason
+            text=_("System Manager override on Policy Version by {user} at {timestamp}. Reason: {reason}.").format(
+                user=frappe.bold(frappe.session.user),
+                timestamp=now_datetime(),
+                reason=override_reason,
             ),
         )
 

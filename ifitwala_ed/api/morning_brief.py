@@ -194,7 +194,10 @@ def _resolve_clinic_scope() -> dict:
     school_scope = list(dict.fromkeys(get_descendant_schools(base_school) or [base_school]))
     school_label = frappe.db.get_value("School", base_school, "school_name") or base_school
     if len(school_scope) > 1:
-        scope_label = _("{0} + {1} schools").format(school_label, len(school_scope) - 1)
+        scope_label = _("{school_label} + {school_count} schools").format(
+            school_label=school_label,
+            school_count=len(school_scope) - 1,
+        )
     else:
         scope_label = school_label
 

@@ -76,8 +76,9 @@ class PolicyAcknowledgement(Document):
         if is_system_manager() and not self._is_role_allowed_for_ack():
             self.add_comment(
                 "Comment",
-                text=_("System Manager override acknowledgement by {0} on {1}.").format(
-                    frappe.bold(frappe.session.user), now_datetime()
+                text=_("System Manager override acknowledgement by {user} on {timestamp}.").format(
+                    user=frappe.bold(frappe.session.user),
+                    timestamp=now_datetime(),
                 ),
             )
 

@@ -117,4 +117,16 @@ No two schools are the same. Student Log is designed to adapt to your specific c
 | **4. Action**       | Counselor meets student, adds **Follow-Up** note.              | **Student Log Follow-Up**    |
 | **5. Closure**      | Teacher receives "Review Outcome" task. Closes case.           | **Focus**                    |
 
+## 6. Student Logs Query Report Contract
+
+- Status: Implemented
+- Purpose: `Student Logs` is the canonical Desk query report for grouped Student Log review with inline follow-up history and a print-friendly record view.
+- UX: The interactive report supports two reading modes. `Compact` shows truncated snippets in the grid, while `Full` renders the full Student Log body and full follow-up text on screen. The print template also renders the full Student Log body and full follow-up text.
+- Permissions: Report access is server-owned. A user must satisfy both the report role list and the underlying `Student Log` DocType access checks. Being listed on the report does not bypass the `ref_doctype` gate.
+- Visibility: Returned rows are filtered with the same `Student Log` visibility predicate used elsewhere in the feature. The report must not widen access beyond the canonical Student Log permission model.
+- Scope: Filters support date range, student, program, school, academic year, log type, follow-up status, author, follow-up author, and whether follow-up is required. School filtering expands to descendants server-side.
+- Concurrency: The report uses one bounded SQL path with a shared visibility predicate and grouped follow-up aggregation. It does not rely on client-side waterfalls or client-owned permission filtering.
+- Code refs: `ifitwala_ed/students/report/student_logs/student_logs.py`, `ifitwala_ed/students/report/student_logs/student_logs.js`, `ifitwala_ed/students/report/student_logs/student_logs.html`, `ifitwala_ed/students/doctype/student_log/student_log.py`
+- Test refs: No dedicated automated test file currently covers `Student Logs` query report behavior.
+
 Student Log transforms observation from a passive record into an active tool for student success.

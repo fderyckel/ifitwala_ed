@@ -76,9 +76,12 @@ class InstitutionalPolicy(Document):
         school_org = frappe.db.get_value("School", self.school, "organization")
         frappe.throw(
             _(
-                "School Organization '{0}' is outside Policy Organization scope '{1}'. "
+                "School Organization '{school_organization}' is outside Policy Organization scope '{policy_organization}'. "
                 "Scope includes the Policy Organization and its descendants."
-            ).format(school_org or _("Unknown"), self.organization)
+            ).format(
+                school_organization=school_org or _("Unknown"),
+                policy_organization=self.organization,
+            )
         )
 
     def _enforce_immutability(self, before):
@@ -93,7 +96,11 @@ class InstitutionalPolicy(Document):
 
     def _validate_policy_category(self):
         if not self.policy_category or self.policy_category not in POLICY_CATEGORIES:
-            frappe.throw(_("Policy Category must be one of: {0}.").format(", ".join(POLICY_CATEGORIES)))
+            frappe.throw(
+                _("Policy Category must be one of: {policy_categories}.").format(
+                    policy_categories=", ".join(POLICY_CATEGORIES)
+                )
+            )
 
     def _validate_applies_to(self):
         tokens = get_policy_applies_to_tokens(self.applies_to)
@@ -103,9 +110,9 @@ class InstitutionalPolicy(Document):
         invalid = [token for token in tokens if token not in POLICY_APPLIES_TO_OPTIONS]
         if invalid:
             frappe.throw(
-                _("Applies To must only use: {0}. Invalid values: {1}.").format(
-                    ", ".join(POLICY_APPLIES_TO_OPTIONS),
-                    ", ".join(invalid),
+                _("Applies To must only use: {allowed_values}. Invalid values: {invalid_values}.").format(
+                    allowed_values=", ".join(POLICY_APPLIES_TO_OPTIONS),
+                    invalid_values=", ".join(invalid),
                 )
             )
 
@@ -162,10 +169,13 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
 def _raise_organization_transfer_permission_error(previous_organization: str, next_organization: str) -> None:
     frappe.throw(
         _(
-            "Organization cannot be changed after creation. This policy is currently scoped to '{0}'. "
-            "To move it under '{1}', create a new Institutional Policy for that organization and "
+            "Organization cannot be changed after creation. This policy is currently scoped to '{previous_organization}'. "
+            "To move it under '{next_organization}', create a new Institutional Policy for that organization and "
             "deactivate this one if needed."
-        ).format(previous_organization, next_organization),
+        ).format(
+            previous_organization=previous_organization,
+            next_organization=next_organization,
+        ),
         frappe.PermissionError,
     )
 

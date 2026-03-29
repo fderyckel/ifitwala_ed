@@ -264,13 +264,16 @@ def _assignment_title(row: dict) -> str:
             or _("Document")
         )
         item_label = (row.get("item_label") or "").strip() or (row.get("item_key") or "").strip() or _("Item")
-        doc_label = _("{0} — {1}").format(doc_label, item_label)
-        return _("Review {0} — Applicant {1}").format(doc_label, applicant_name)
+        doc_label = _("{document_label} — {item_label}").format(document_label=doc_label, item_label=item_label)
+        return _("Review {document_label} — Applicant {applicant_name}").format(
+            document_label=doc_label,
+            applicant_name=applicant_name,
+        )
 
     if target_type == TARGET_HEALTH:
-        return _("Review Health Profile — Applicant {0}").format(applicant_name)
+        return _("Review Health Profile — Applicant {applicant_name}").format(applicant_name=applicant_name)
 
-    return _("Review Application — Applicant {0}").format(applicant_name)
+    return _("Review Application — Applicant {applicant_name}").format(applicant_name=applicant_name)
 
 
 def _assignment_subtitle(row: dict) -> str:
