@@ -5,6 +5,7 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
 
 from ifitwala_ed.api.policy_signature import (
+    get_staff_policy_campaign_options,
     get_staff_policy_library,
     get_staff_policy_signature_dashboard,
     launch_staff_policy_campaign,
@@ -112,6 +113,23 @@ class TestPolicySignature(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self.created.append(("Employee", employee.name))
         return employee
+
+    def test_campaign_options_load_for_hr_manager_scope(self):
+        frappe.add_roles(self.user_one.name, "HR Manager")
+
+        frappe.set_user(self.user_one.name)
+        payload = get_staff_policy_campaign_options(
+            organization=self.organization.name,
+            school=self.school.name,
+            policy_version=self.policy_version.name,
+        )
+
+        options = payload.get("options") or {}
+        organizations = options.get("organizations") or []
+        policies = options.get("policies") or []
+
+        self.assertIn(self.organization.name, organizations)
+        self.assertTrue(any(row.get("policy_version") == self.policy_version.name for row in policies))
 
     def test_launch_campaign_counts_and_dashboard(self):
         client_request_id = f"policy-launch-{frappe.generate_hash(length=8)}"

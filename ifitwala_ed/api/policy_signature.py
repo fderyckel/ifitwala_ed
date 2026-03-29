@@ -800,7 +800,7 @@ def get_staff_policy_campaign_options(
     if policy_scope_orgs:
         policy_params["policy_organizations"] = tuple(policy_scope_orgs)
         policy_options = frappe.db.sql(
-            """
+            f"""
             SELECT
                 pv.name AS policy_version,
                 pv.version_label,

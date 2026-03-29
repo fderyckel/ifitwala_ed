@@ -394,7 +394,7 @@ async function refreshOptions() {
 	} catch (err: unknown) {
 		const message = err instanceof Error && err.message ? err.message : 'Unable to load filters.';
 		errorMessage.value = message;
-		accessDenied.value = true;
+		accessDenied.value = /permission|not permitted|not have permission/i.test(message);
 	} finally {
 		loadingOptions.value = false;
 	}

@@ -3,7 +3,7 @@ title: "Program Enrollment: Committed Academic Enrollment Truth"
 slug: program-enrollment
 category: Enrollment
 doc_order: 5
-version: "1.2.3"
+version: "1.2.4"
 last_change_date: "2026-03-29"
 summary: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions including required, credited basket-group, and offering-derived term-window snapshots."
 seo_title: "Program Enrollment: Committed Academic Enrollment Truth"
@@ -105,7 +105,7 @@ seo_description: "Store one committed enrollment per student/offering/year with 
   - `academic_year_link_query(...)`
 
 - **DocType**: `Program Enrollment` (`ifitwala_ed/schedule/doctype/program_enrollment/`)
-- **Autoname**: `format:PE-{YYYY}-{####}`
+- **Autoname**: `expression:PE-.YY.-.#####`
 - **Child table**:
   - `courses` -> `Program Enrollment Course`
 - **Enrollment course snapshot fields**:
@@ -126,6 +126,7 @@ seo_description: "Store one committed enrollment per student/offering/year with 
   - multi-group optional rows require explicit `credited_basket_group`
   - dropped courses require date (reason nudged)
   - non-request source requires override reason + role gate
+  - `Admin` source is limited to `Academic Admin`, `Curriculum Coordinator`, and `Admission Manager`
 - **Indexes and uniqueness**:
   - index on (`student`, `academic_year`)
   - index on (`program_offering`, `academic_year`)
