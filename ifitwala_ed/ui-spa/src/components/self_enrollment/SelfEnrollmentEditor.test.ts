@@ -37,10 +37,21 @@ async function flushUi() {
 }
 
 function findBasketSection(basketGroup: string): HTMLElement | null {
-	const heading = Array.from(document.querySelectorAll('h3')).find(
-		node => (node.textContent || '').trim() === basketGroup
-	)
-	return heading?.closest('section') as HTMLElement | null
+	return (
+		Array.from(document.querySelectorAll('section.card-surface.p-5')).find(section => {
+			const heading = section.querySelector('h3')
+			return (heading?.textContent || '').trim() === basketGroup
+		}) as HTMLElement | undefined
+	) || null
+}
+
+function findCourseCard(section: HTMLElement | null, courseCode: string): HTMLElement | null {
+	if (!section) return null
+	return (
+		Array.from(section.querySelectorAll('article')).find(article =>
+			(article.textContent || '').includes(courseCode)
+		) as HTMLElement | undefined
+	) || null
 }
 
 function buildPayload(courses: ChoiceStateResponse['courses']): ChoiceStateResponse {
@@ -184,7 +195,8 @@ describe('SelfEnrollmentEditor', () => {
 		const scienceSection = findBasketSection('Group 4 Sciences')
 		expect(scienceSection).toBeTruthy()
 
-		const checkbox = scienceSection?.querySelector('input[type="checkbox"]') as HTMLInputElement | null
+		const scienceCourseCard = findCourseCard(scienceSection, 'ESS')
+		const checkbox = scienceCourseCard?.querySelector('input[type="checkbox"]') as HTMLInputElement | null
 		expect(checkbox).toBeTruthy()
 		if (!checkbox) return
 
@@ -193,10 +205,11 @@ describe('SelfEnrollmentEditor', () => {
 		await flushUi()
 
 		const selectedScienceSection = findBasketSection('Group 4 Sciences')
-		const rankInput = selectedScienceSection?.querySelector(
+		const selectedScienceCourseCard = findCourseCard(selectedScienceSection, 'ESS')
+		const rankInput = selectedScienceCourseCard?.querySelector(
 			'input[type="number"]'
 		) as HTMLInputElement | null
-		const countsInSelect = selectedScienceSection?.querySelector('select') as HTMLSelectElement | null
+		const countsInSelect = selectedScienceCourseCard?.querySelector('select') as HTMLSelectElement | null
 
 		expect(rankInput?.value).toBe('1')
 		expect(countsInSelect?.value).toBe('Group 4 Sciences')

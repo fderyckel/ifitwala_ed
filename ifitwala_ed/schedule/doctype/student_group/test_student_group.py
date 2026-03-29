@@ -222,6 +222,52 @@ class TestStudentGroupScheduleAdvisories(FrappeTestCase):
 
         msgprint.assert_not_called()
 
+    def test_validate_schedule_rows_skips_warning_for_non_course_group(self):
+        group = frappe.get_doc(
+            {
+                "doctype": "Student Group",
+                "group_based_on": "Activity",
+                "instructors": [
+                    {
+                        "instructor": "Instructor One",
+                    }
+                ],
+                "student_group_schedule": [
+                    {
+                        "rotation_day": 1,
+                        "block_number": 2,
+                        "instructor": "Instructor One",
+                    }
+                ],
+            }
+        )
+        schedule = frappe._dict(
+            {
+                "name": "Schedule-1",
+                "rotation_days": 3,
+                "school_schedule_block": [
+                    frappe._dict(
+                        {
+                            "rotation_day": 1,
+                            "block_number": 2,
+                            "from_time": "10:00:00",
+                            "to_time": "10:30:00",
+                            "block_type": "Other",
+                            "description": "Assembly",
+                        }
+                    )
+                ],
+            }
+        )
+
+        with (
+            patch.object(StudentGroup, "_get_school_schedule", return_value=schedule),
+            patch("frappe.msgprint") as msgprint,
+        ):
+            group._validate_schedule_rows()
+
+        msgprint.assert_not_called()
+
     def test_fetch_block_grid_includes_block_warning_metadata(self):
         schedule = frappe._dict(
             {

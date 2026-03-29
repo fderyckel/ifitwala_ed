@@ -40,6 +40,25 @@ WORKFLOW_TRANSITIONS = {
 }
 
 
+def build_school_website_page_name(*, school: str | None, route: str | None) -> str:
+    school_label = frappe.db.get_value("School", school, "school_name") or (school or _("School"))
+    raw_route = (route or "").strip()
+    if raw_route == "/":
+        route_label = _("Home")
+        route_key = "home"
+    else:
+        segments = [segment.strip() for segment in raw_route.split("/") if segment and segment.strip()]
+        route_label = " > ".join(segment.replace("-", " ").replace("_", " ").title() for segment in segments) or _(
+            "Page"
+        )
+        route_key = "__".join(segments) or "page"
+    return _("{school} - {route} [{key}]").format(
+        school=school_label,
+        route=route_label,
+        key=route_key,
+    )
+
+
 def normalize_workflow_state(workflow_state: str | None) -> str:
     value = (workflow_state or "").strip() or WORKFLOW_DEFAULT_STATE
     if value not in WORKFLOW_STATES:
@@ -58,6 +77,12 @@ def compute_school_page_publication_flags(*, school_is_public: bool, workflow_st
 
 
 class SchoolWebsitePage(Document):
+    def autoname(self):
+        self.name = build_school_website_page_name(
+            school=self.school,
+            route=self.route,
+        )
+
     def before_insert(self):
         self._ensure_workflow_state()
         self._sync_status_flags()
@@ -135,7 +160,15 @@ class SchoolWebsitePage(Document):
             )
 
         self._validate_blocks_props_json()
-        validate_page_blocks(self)
+        if self._has_enabled_blocks():
+            validate_page_blocks(self)
+            return
+
+        if self.workflow_state != WORKFLOW_DEFAULT_STATE:
+            frappe.throw(
+                _("Add at least one enabled content block before moving this page out of Draft."),
+                frappe.ValidationError,
+            )
 
     def _sync_status_flags(self):
         school_is_public = self._get_school_publication_readiness()
@@ -293,6 +326,9 @@ class SchoolWebsitePage(Document):
                     ),
                     frappe.ValidationError,
                 )
+
+    def _has_enabled_blocks(self) -> bool:
+        return any(int(getattr(row, "is_enabled", 0) or 0) == 1 for row in self.blocks or [])
 
 
 @frappe.whitelist()

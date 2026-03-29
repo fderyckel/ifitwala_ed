@@ -483,7 +483,7 @@ def _make_term(academic_year):
         }
     )
     term.insert()
-    if school and frappe.db.get_value("Term", term.name, "school") != school:
+    if school:
         frappe.db.set_value("Term", term.name, "school", school, update_modified=False)
         term.reload()
     return term

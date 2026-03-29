@@ -554,22 +554,12 @@ class TestUserRedirect(FrappeTestCase):
         user.last_name = "RoleOnly"
         user.enabled = 1
         user.insert(ignore_permissions=True)
-        if not frappe.db.exists("Has Role", {"parent": user.email, "parenttype": "User", "role": "Employee"}):
-            frappe.get_doc(
-                {
-                    "doctype": "Has Role",
-                    "parent": user.email,
-                    "parenttype": "User",
-                    "parentfield": "roles",
-                    "role": "Employee",
-                }
-            ).insert(ignore_permissions=True)
-        frappe.clear_cache(user=user.email)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
 
-        redirect_user_to_entry_portal()
+        with patch("frappe.get_roles", return_value=["Employee"]):
+            redirect_user_to_entry_portal()
 
         self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
         self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")

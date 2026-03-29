@@ -3,7 +3,7 @@ title: "Student Group: Operational Teaching Group Contract"
 slug: student-group
 category: Schedule
 doc_order: 1
-version: "1.0.1"
+version: "1.0.2"
 last_change_date: "2026-03-29"
 summary: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, attendance scope, and downstream teaching materialization."
 seo_title: "Student Group: Operational Teaching Group Contract"
@@ -14,7 +14,7 @@ seo_description: "Define the operational class, cohort, activity, or pastoral gr
 
 `Student Group` is the operational teaching-group record for the Schedule domain. It binds roster, instructor set, attendance scope, and timetable intent to a specific `Program Offering` and `Academic Year`, then feeds downstream scheduling, attendance, and teaching workflows.
 
-Current workspace note: when a selected Program Offering has exactly one Academic Year in its offering spine, the Student Group form now auto-fills `academic_year`. Desk block booking also preselects the instructor when exactly one instructor is attached to the group, and save-time validation warns, without blocking, when a scheduled row lands in a non-instructional or mismatched schedule block.
+Current workspace note: when a selected Program Offering has exactly one Academic Year in its offering spine, the Student Group form now auto-fills `academic_year`. Desk block booking also preselects the instructor when exactly one instructor is attached to the group, and save-time validation warns, without blocking, only for course-based Student Groups that land in non-instructional or mismatched schedule blocks.
 
 ## Before You Start (Prerequisites)
 
@@ -60,7 +60,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
    - names and title are derived from abbreviation plus AY, term, or cohort
    - schedule row times are stamped from `School Schedule Block`
    - overlap, capacity, and room checks run
-   - non-instructional or mismatched schedule blocks raise warnings only
+   - for course-based groups only, non-instructional or mismatched schedule blocks raise warnings only
 7. On later saves, active-student changes, instructor changes, and schedule changes trigger downstream sync and materialization updates.
 
 ### Naming Rules
@@ -132,8 +132,8 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 - `validate_students()` enforces enabled-student membership and offering-aligned enrollment integrity.
 - `_get_school_schedule()` is the canonical schedule resolver. It validates an explicit `school_schedule` when present, otherwise resolves one from the allowed school ancestry chain for the selected Academic Year.
 - `_validate_schedule_rows()` stamps `from_time` and `to_time` from `School Schedule Block`, enforces instructor membership, and emits advisory warnings for:
-  - non-instructional blocks such as recess, assembly, and lunch-style blocks
-  - block types that do not match the group mode, for example a course group scheduled in an activity block
+  - course-based groups scheduled in non-instructional blocks such as recess, assembly, and lunch-style blocks
+  - course-based groups scheduled in block types that do not match course teaching, for example a course group scheduled in an activity block
 - `validate_location_conflicts_absolute()` expands abstract schedule rows into real datetimes via rotation dates, then checks governed room conflicts against materialized bookings.
 - `before_save()` and `after_save()` compute change deltas for students, instructors, and schedule rows so downstream sync stays bounded.
 - `on_update()` rebuilds employee bookings only for active groups that actually have schedule rows.

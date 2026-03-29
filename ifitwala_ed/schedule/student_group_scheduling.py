@@ -135,6 +135,9 @@ def _aggregate_conflicts(rows, label_map):
 def get_schedule_block_warning(group_based_on: str | None, block_type: str | None, description: str | None):
     """Return advisory metadata when a Student Group is scheduled in a non-teaching block."""
     normalized_group = (group_based_on or "").strip()
+    if normalized_group != "Course":
+        return None
+
     normalized_block_type = (block_type or "").strip().title()
     normalized_description = (description or "").strip()
     description_lower = normalized_description.lower()
