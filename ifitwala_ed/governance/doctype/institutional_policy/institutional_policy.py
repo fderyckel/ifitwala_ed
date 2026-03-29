@@ -85,9 +85,13 @@ class InstitutionalPolicy(Document):
         )
 
     def _enforce_immutability(self, before):
-        for field in ("policy_key", "organization"):
-            if before.get(field) != self.get(field):
-                frappe.throw(_("{0} is immutable once set.").format(field.replace("_", " ").title()))
+        if before.get("policy_key") != self.get("policy_key"):
+            frappe.throw(_("Policy Key is immutable once set."))
+
+        before_organization = (before.get("organization") or "").strip()
+        current_organization = (self.get("organization") or "").strip()
+        if before_organization != current_organization:
+            _raise_organization_transfer_permission_error(before_organization, current_organization)
 
         before_school = (before.get("school") or "").strip()
         current_school = (self.get("school") or "").strip()

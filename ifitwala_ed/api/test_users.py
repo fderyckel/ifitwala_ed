@@ -555,6 +555,7 @@ class TestUserRedirect(FrappeTestCase):
         user.enabled = 1
         _append_role(user, "Employee")
         user.insert(ignore_permissions=True)
+        frappe.clear_cache(user=user.email)
 
         frappe.set_user(user.email)
         frappe.local.response = {}

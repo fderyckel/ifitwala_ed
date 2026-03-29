@@ -130,8 +130,14 @@ def file_url_is_accessible(
     file_name: str | None = None,
     is_private: int | None = 0,
 ) -> bool:
-    if file_url_exists_on_disk(file_url, is_private=is_private):
+    raw_url = str(file_url or "").strip()
+    if file_url_exists_on_disk(raw_url, is_private=is_private):
         return True
+
+    # Public local files should never depend on Drive metadata for access checks.
+    # If the file is gone from disk, treat it as inaccessible and let callers fall back.
+    if raw_url.startswith("/files/") and not raw_url.startswith("/files/ifitwala_drive/") and not int(is_private or 0):
+        return False
 
     clean_file_name = str(file_name or "").strip()
     if not clean_file_name:
@@ -300,6 +306,9 @@ def _resolve_governed_display_url(
     raw_url = str(file_url or "").strip()
     if not raw_url:
         return None
+
+    if raw_url.startswith("/files/") and not raw_url.startswith("/files/ifitwala_drive/"):
+        return raw_url
 
     resolved_subject = str(subject_name or "").strip()
     if not resolved_subject:

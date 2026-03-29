@@ -1015,6 +1015,7 @@ def _build_blockers(
             if review_status == "Rejected":
                 label = _("Requirements awaiting resubmission: {0}").format(len(unapproved))
                 target_label = _("Open requirement")
+                document_item = None
             else:
                 label = _("Submitted files awaiting review: {0}").format(len(unapproved))
                 target_label = _("Open submission review")

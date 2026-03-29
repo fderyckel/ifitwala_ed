@@ -191,7 +191,9 @@ def ensure_policy_applies_to_storage(*, throw: bool = False, caller: str | None 
     except Exception:
         pass
 
-    message = _("Institutional Policy applies_to storage is not configured. Run migrations or reload the DocTypes.")
+    message = _(
+        "Institutional Policy applies_to storage is missing or not configured. Run migrations or reload the DocTypes."
+    )
     if throw:
         frappe.throw(message)
     return {"ok": False, "message": message}

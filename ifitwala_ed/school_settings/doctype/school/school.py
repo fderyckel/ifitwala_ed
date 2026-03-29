@@ -120,11 +120,13 @@ class School(NestedSet):
         has_pages = bool(frappe.db.exists("School Website Page", {"school": self.name}))
         if publication_changed:
             self.sync_website_page_publication()
-        if (
-            int(self.is_published or 0) == 1
-            and (self.website_slug or "").strip()
-            and (publication_changed or not has_pages)
-        ):
+        should_publish = int(self.is_published or 0) == 1 and bool((self.website_slug or "").strip())
+        organization_default_school = (
+            frappe.db.get_value("Organization", self.organization, "default_website_school")
+            if self.organization
+            else None
+        )
+        if should_publish and (publication_changed or not has_pages or not (organization_default_school or "").strip()):
             from ifitwala_ed.website.bootstrap import ensure_default_school_website
 
             ensure_default_school_website(

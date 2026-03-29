@@ -418,7 +418,12 @@ def route_uploaded_file(doc, method: Optional[str] = None, context_override: Opt
 
     # OPTIONAL: if already under a Home-based folder and has custom_version_no, we can skip
     meta = doc.meta
-    if doc.folder and doc.folder.startswith("Home/") and meta.has_field("custom_version_no"):
+    if (
+        doc.folder
+        and doc.folder.startswith("Home/")
+        and doc.folder != "Home/Attachments"
+        and meta.has_field("custom_version_no")
+    ):
         if getattr(doc, "custom_version_no", None):
             return
 

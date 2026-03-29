@@ -482,9 +482,10 @@ def save_self_enrollment_choices(selection_window: str, courses=None, student: s
     if locked_reason:
         frappe.throw(locked_reason)
 
-    store_program_enrollment_request_choices(request, courses=_parse_course_rows(courses))
-    request.save(ignore_permissions=True)
-    request.reload()
+    if courses is not None:
+        store_program_enrollment_request_choices(request, courses=_parse_course_rows(courses))
+        request.save(ignore_permissions=True)
+        request.reload()
     return _build_choice_state_response(
         actor_type=actor_type,
         student_meta=student_meta,
@@ -508,7 +509,8 @@ def submit_self_enrollment_choices(selection_window: str, courses=None, student:
     if locked_reason:
         frappe.throw(locked_reason)
 
-    store_program_enrollment_request_choices(request, courses=_parse_course_rows(courses))
+    if courses is not None:
+        store_program_enrollment_request_choices(request, courses=_parse_course_rows(courses))
     live_choice_state = get_program_enrollment_request_choice_state(request, can_edit=True)
     if not bool((live_choice_state.get("summary") or {}).get("ready_for_submit")):
         frappe.throw(_submit_block_message(live_choice_state))

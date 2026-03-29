@@ -129,6 +129,22 @@ def _build_bundle(
     title = " - ".join([p for p in title_parts if p]) or student_group
 
     block_label = f"Block {block_number}" if block_number else None
+    note_templates = [
+        "Needs support on the lab write-up.",
+        "Great use of vocabulary during discussion.",
+        "Still working on organizing evidence.",
+    ]
+    note_labels = ["Today", "Today", "Yesterday"]
+    notes_preview = []
+    for idx, student in enumerate(students[1:4]):
+        notes_preview.append(
+            {
+                "id": f"note-{idx + 1}",
+                "student_name": student["student_name"],
+                "preview": note_templates[idx],
+                "created_at_label": note_labels[idx],
+            }
+        )
 
     return {
         "header": {
@@ -175,26 +191,7 @@ def _build_bundle(
         ],
         "focus_students": focus_students,
         "students": students,
-        "notes_preview": [
-            {
-                "id": "note-1",
-                "student_name": students[1]["student_name"],
-                "preview": "Needs support on the lab write-up.",
-                "created_at_label": "Today",
-            },
-            {
-                "id": "note-2",
-                "student_name": students[2]["student_name"],
-                "preview": "Great use of vocabulary during discussion.",
-                "created_at_label": "Today",
-            },
-            {
-                "id": "note-3",
-                "student_name": students[3]["student_name"],
-                "preview": "Still working on organizing evidence.",
-                "created_at_label": "Yesterday",
-            },
-        ],
+        "notes_preview": notes_preview,
         "task_items": [
             {
                 "id": "task-1",

@@ -47,6 +47,9 @@ class TestProgramOfferingSelectionWindow(FrappeTestCase):
     def test_prepare_requests_skips_students_already_enrolled_in_target(self):
         context = _build_self_enrollment_context()
         window = context["window"]
+        source_enrollment = context["source_enrollment"]
+        source_enrollment.archived = 1
+        source_enrollment.save()
 
         frappe.get_doc(
             {
@@ -161,6 +164,7 @@ def _build_self_enrollment_context(*, carry_forward_optional: bool = True, audie
         "source_offering": source_offering,
         "target_offering": target_offering,
         "window": window,
+        "source_enrollment": source_enrollment,
     }
 
 

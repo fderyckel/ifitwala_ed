@@ -705,7 +705,10 @@ class TestEmployee(FrappeTestCase):
         privacy = frappe._dict(dob_to_user=0, mobile_to_user=0)
 
         with (
-            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.session.user", "administrator@example.com"),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.session",
+                frappe._dict(user="administrator@example.com"),
+            ),
             patch(
                 "ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles",
                 return_value={"System Manager"},

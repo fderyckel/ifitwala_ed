@@ -312,7 +312,10 @@ class TestDesignation(FrappeTestCase):
         designation_doc = frappe._dict(name="Teacher", designation_name="Teacher", organization="ORG-ROOT", school="")
 
         with (
-            patch("ifitwala_ed.hr.doctype.designation.designation.frappe.session.user", "academic.admin@example.com"),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation.frappe.session",
+                frappe._dict(user="academic.admin@example.com"),
+            ),
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_doc", return_value=designation_doc),
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["Academic Admin"]),
         ):
@@ -398,7 +401,10 @@ class TestDesignation(FrappeTestCase):
         ]
 
         with (
-            patch("ifitwala_ed.hr.doctype.designation.designation.frappe.session.user", "hr.manager@example.com"),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation.frappe.session",
+                frappe._dict(user="hr.manager@example.com"),
+            ),
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_doc", return_value=designation_doc),
             patch("ifitwala_ed.hr.doctype.designation.designation._assert_designation_employee_lookup_allowed"),
             patch(

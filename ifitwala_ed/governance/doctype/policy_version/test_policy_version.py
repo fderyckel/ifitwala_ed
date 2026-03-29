@@ -162,7 +162,7 @@ class TestPolicyVersionApprovedBy(FrappeTestCase):
             {
                 "doctype": "Institutional Policy",
                 "policy_key": f"approved_by_scope_{frappe.generate_hash(length=8)}",
-                "policy_title": "Approved By Scope Policy",
+                "policy_title": f"Approved By Scope Policy {frappe.generate_hash(length=8)}",
                 "policy_category": "Operations",
                 "applies_to": [{"policy_audience": "Staff"}],
                 "organization": organization,

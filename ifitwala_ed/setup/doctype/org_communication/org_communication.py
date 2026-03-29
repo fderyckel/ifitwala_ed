@@ -349,8 +349,9 @@ class OrgCommunication(Document):
         # Parent school descendants for structural consistency
         parent_descendants = []
         if self.school:
-            parent_descendants = get_descendants_of("School", self.school, ignore_permissions=True) or []
-            parent_descendants = {self.school, *parent_descendants}
+            if frappe.db.exists("School", self.school):
+                parent_descendants = get_descendants_of("School", self.school, ignore_permissions=True) or []
+                parent_descendants = {self.school, *parent_descendants}
 
         school_scope_rows = [row for row in (self.audiences or []) if (row.target_mode or "").strip() == "School Scope"]
         school_scope_names = sorted(

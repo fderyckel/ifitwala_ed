@@ -158,8 +158,8 @@ class TestProgramOffering(FrappeTestCase):
 
     def test_academic_year_link_query_includes_ancestor_school_years_for_leaf_offering(self):
         organization = _make_organization()
-        iis = _make_school(organization, prefix="IIS")
-        iss = _make_school(organization, prefix="ISS", parent_school=iis.name)
+        iis = _make_school(organization, prefix="IIS", is_group=1)
+        iss = _make_school(organization, prefix="ISS", parent_school=iis.name, is_group=1)
         ims = _make_school(organization, prefix="IMS", parent_school=iss.name)
         academic_year = _make_academic_year(iis)
 
@@ -202,7 +202,7 @@ def _make_organization():
     return organization
 
 
-def _make_school(organization, prefix="School", parent_school=None):
+def _make_school(organization, prefix="School", parent_school=None, is_group=0):
     school = frappe.get_doc(
         {
             "doctype": "School",
@@ -210,6 +210,7 @@ def _make_school(organization, prefix="School", parent_school=None):
             "abbr": f"S{frappe.generate_hash(length=4)}",
             "organization": organization.name,
             "parent_school": parent_school,
+            "is_group": int(is_group),
         }
     )
     school.insert()
