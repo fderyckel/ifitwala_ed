@@ -161,8 +161,8 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 ```json
 {
   "heading": "Admissions",
-  "content_html": "<p>We welcome families who value curiosity, care, and growth.</p>",
-  "max_width": "normal"
+  "content_html": "<p>Choosing a school is a major family decision. Our admissions experience is designed to feel personal, clear, and well paced from the very first step.</p><p>Families typically begin with an inquiry, continue with a conversation or campus visit when available, and then move into the application process with the support of the admissions team.</p>",
+  "max_width": "wide"
 }
 ```
 
@@ -189,9 +189,9 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 ```json
 {
   "steps": [
-    { "key": "inquire", "title": "Inquire", "description": "Start the conversation.", "icon": "mail" },
-    { "key": "visit", "title": "Visit", "description": "Experience our campus.", "icon": "map" },
-    { "key": "apply", "title": "Apply", "description": "Begin the application.", "icon": "file-text" }
+    { "key": "inquire", "title": "Inquire", "description": "Share a few details so the admissions team can understand your child and answer your questions.", "icon": "mail" },
+    { "key": "visit", "title": "Visit", "description": "If visits or conversations are available, we will help your family experience the campus, culture, and learning environment.", "icon": "map" },
+    { "key": "apply", "title": "Apply", "description": "Complete the application when you are ready, including any forms, records, and supporting materials.", "icon": "file-text" }
   ],
   "layout": "horizontal"
 }
@@ -204,6 +204,10 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 ### Purpose
 
 * Semantic admissions entry point (intent, not URL)
+* `visit` remains valid, but starter admissions pages only seed that CTA when `School.admissions_visit_route` is configured
+* Runtime fallback protects fresh public pages:
+  * `visit` falls back to inquiry/apply routes when no visit route is configured
+  * `apply` falls back to the admissions portal route when needed
 
 ### Props (schema)
 
@@ -219,7 +223,7 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 ```json
 {
   "intent": "inquire",
-  "label_override": null,
+  "label_override": "Get More Info",
   "style": "primary",
   "icon": "mail"
 }

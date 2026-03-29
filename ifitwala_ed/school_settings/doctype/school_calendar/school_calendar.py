@@ -3,7 +3,6 @@
 
 # ifitwala_ed/school_settings/doctype/school_calendar/school_calendar.py
 
-import json
 from datetime import date
 
 import frappe
@@ -309,20 +308,24 @@ class SchoolCalendar(Document):
 # ---------------------------------------------------------------------
 @frappe.whitelist()
 def get_events(start, end, filters=None):
-    filters = json.loads(filters) if filters else {}
+    filters = _normalize_calendar_filters(filters)
 
+    school_calendar = filters.get("school_calendar")
     school = filters.get("school")
     academic_year = filters.get("academic_year")
 
-    if not school or not academic_year:
-        frappe.throw(_("School and Academic Year are required."))
+    calendar_filters = {}
+    if school_calendar:
+        calendar_filters["name"] = school_calendar
+    elif school and academic_year:
+        calendar_filters["school"] = school
+        calendar_filters["academic_year"] = academic_year
+    else:
+        return []
 
-    calendar = frappe.get_all(
+    calendar = frappe.get_list(
         "School Calendar",
-        filters={
-            "school": school,
-            "academic_year": academic_year,
-        },
+        filters=calendar_filters,
         pluck="name",
         limit=1,
     )
@@ -349,6 +352,36 @@ def get_events(start, end, filters=None):
         filters=event_filters,
         update={"allDay": 1},
     )
+
+
+def _normalize_calendar_filters(filters) -> dict:
+    parsed = frappe.parse_json(filters) if isinstance(filters, str) else (filters or {})
+    if isinstance(parsed, dict):
+        return {key: value for key, value in parsed.items() if value not in (None, "", [])}
+
+    normalized = {}
+    for entry in parsed or []:
+        fieldname = None
+        value = None
+
+        if isinstance(entry, dict):
+            fieldname = entry.get("fieldname") or entry.get("name")
+            value = entry.get("value")
+        elif isinstance(entry, (list, tuple)):
+            if len(entry) >= 4:
+                fieldname = entry[1]
+                value = entry[3]
+            elif len(entry) >= 3:
+                fieldname = entry[0]
+                value = entry[2]
+            elif len(entry) >= 2:
+                fieldname = entry[0]
+                value = entry[1]
+
+        if fieldname and value not in (None, "", []):
+            normalized[fieldname] = value
+
+    return normalized
 
 
 @frappe.whitelist()

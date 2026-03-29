@@ -219,6 +219,9 @@ def resolve_login_redirect_path(*, user: str, roles: set[str]) -> str:
     if has_employee and status != "active":
         return "/login"
 
+    if "Employee" in roles or frappe.db.exists("Has Role", {"parent": user, "parenttype": "User", "role": "Employee"}):
+        return canonical_path_for_section("staff")
+
     # Staff access wins for active or role-only staff users.
     if has_staff_portal_access(user=user, roles=roles):
         return canonical_path_for_section("staff")

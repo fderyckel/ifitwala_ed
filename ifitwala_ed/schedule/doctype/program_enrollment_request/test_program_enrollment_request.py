@@ -470,7 +470,7 @@ def _make_academic_year(school, start_date="2025-08-01", end_date="2026-06-30"):
 
 
 def _make_term(academic_year):
-    school = frappe.db.get_value("Academic Year", academic_year.name, "school")
+    school = academic_year.school or frappe.db.get_value("Academic Year", academic_year.name, "school")
     term = frappe.get_doc(
         {
             "doctype": "Term",
@@ -483,6 +483,9 @@ def _make_term(academic_year):
         }
     )
     term.insert()
+    if school and frappe.db.get_value("Term", term.name, "school") != school:
+        frappe.db.set_value("Term", term.name, "school", school, update_modified=False)
+        term.reload()
     return term
 
 

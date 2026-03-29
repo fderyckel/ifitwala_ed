@@ -444,6 +444,6 @@ def get_users_with_role(doctype, txt, searchfield, start, page_len, filters):
         fields=["name", "full_name"],
         order_by="name asc",
         start=int(start or 0),
-        page_length=int(page_len or 20),
+        limit=int(page_len or 20),
     )
     return [(row.get("name"), row.get("full_name")) for row in rows]

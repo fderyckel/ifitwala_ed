@@ -95,7 +95,15 @@ class TestSchool(FrappeTestCase):
         )
         self.assertEqual(
             [row.block_type for row in admissions_page.blocks],
-            ["admissions_overview", "admissions_steps", "admission_cta", "admission_cta", "admission_cta"],
+            ["admissions_overview", "rich_text", "admissions_steps", "faq", "admission_cta", "admission_cta"],
+        )
+        self.assertEqual(
+            [
+                frappe.parse_json(row.props).get("intent")
+                for row in admissions_page.blocks
+                if row.block_type == "admission_cta"
+            ],
+            ["inquire", "apply"],
         )
 
         seo_profile = frappe.get_doc("Website SEO Profile", by_route["/"].seo_profile)
@@ -103,4 +111,28 @@ class TestSchool(FrappeTestCase):
         self.assertEqual(
             seo_profile.canonical_url,
             frappe.utils.get_url(f"/schools/{school.website_slug}"),
+        )
+
+    def test_publishing_school_includes_visit_cta_when_visit_route_is_configured(self):
+        organization = make_organization(prefix="Visit Route Org")
+        school = make_school(organization.name, prefix="Visit Route School")
+        school.admissions_visit_route = f"/schools/{school.name.lower().replace(' ', '-')}/visit"
+        school.is_published = 1
+        school.save(ignore_permissions=True)
+
+        admissions_page = frappe.get_doc(
+            "School Website Page",
+            frappe.db.get_value(
+                "School Website Page",
+                {"school": school.name, "route": "admissions"},
+                "name",
+            ),
+        )
+        self.assertEqual(
+            [
+                frappe.parse_json(row.props).get("intent")
+                for row in admissions_page.blocks
+                if row.block_type == "admission_cta"
+            ],
+            ["inquire", "visit", "apply"],
         )

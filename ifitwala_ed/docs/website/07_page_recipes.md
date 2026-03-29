@@ -129,18 +129,19 @@ Notes for `leadership` on Home/About:
 Suggested block order:
 
 1. `admissions_overview` (H1 owner)
-2. `admissions_steps`
-3. `faq`
-4. one or more `admission_cta`
-5. `content_snippet` (optional reuse)
+2. `rich_text`
+3. `admissions_steps`
+4. `faq`
+5. one or more `admission_cta`
+6. `content_snippet` (optional reuse)
 
 Example `admissions_overview` props:
 
 ```json
 {
   "heading": "Admissions",
-  "content_html": "<p>We welcome families who value curiosity, care, and growth.</p>",
-  "max_width": "normal"
+  "content_html": "<p>Choosing a school is a major family decision. Our admissions experience is designed to feel personal, clear, and well paced from the very first step.</p><p>Families typically begin with an inquiry, continue with a conversation or campus visit when available, and then move into the application process with the support of the admissions team.</p>",
+  "max_width": "wide"
 }
 ```
 
@@ -149,9 +150,9 @@ Example `admissions_steps` props:
 ```json
 {
   "steps": [
-    { "key": "inquire", "title": "Inquire", "description": "Start the conversation.", "icon": "mail" },
-    { "key": "visit", "title": "Visit", "description": "Experience our campus.", "icon": "map" },
-    { "key": "apply", "title": "Apply", "description": "Begin the application.", "icon": "file-text" }
+    { "key": "inquire", "title": "Inquire", "description": "Share a few details so the admissions team can understand your child and answer your questions.", "icon": "mail" },
+    { "key": "visit", "title": "Visit", "description": "If visits or conversations are available, we will help your family experience the campus, culture, and learning environment.", "icon": "map" },
+    { "key": "apply", "title": "Apply", "description": "Complete the application when you are ready, including any forms, records, and supporting materials.", "icon": "file-text" }
   ],
   "layout": "horizontal"
 }
@@ -161,11 +162,18 @@ Example `admission_cta` props:
 
 ```json
 {
-  "intent": "visit",
+  "intent": "inquire",
   "style": "primary",
-  "label_override": "Book a Campus Visit"
+  "label_override": "Get More Info",
+  "icon": "mail"
 }
 ```
+
+Notes:
+
+* Starter admissions pages now seed a richer editorial flow: overview, supporting copy, process steps, FAQs, then CTAs.
+* The optional `visit` CTA is only seeded when `School.admissions_visit_route` is configured, so a brand-new public site does not crash on a missing visit target.
+* Even if an older page still contains a `visit` CTA, runtime fallback now resolves it to the next viable admissions route instead of hard-failing the page render.
 
 ---
 

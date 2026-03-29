@@ -32,6 +32,11 @@ function get_selected_instructor_names(frm, exclude_row_name = null) {
 		.map(row => row.instructor);
 }
 
+function get_single_instructor_value(frm) {
+	const values = [...new Set((frm.doc.instructors || []).map(row => row.instructor).filter(Boolean))];
+	return values.length === 1 ? values[0] : "";
+}
+
 // Keep the toggle in sync
 ["academic_year", "program_offering", "group_based_on"].forEach(f =>
 	frappe.ui.form.on("Student Group", f, frm => toggle_school_schedule_field(frm))
@@ -255,12 +260,22 @@ frappe.ui.form.on("Student Group", {
 		});
 	},
 
+	student_group_schedule_add(frm, cdt, cdn) {
+		const row = locals[cdt]?.[cdn];
+		const defaultInstructor = get_single_instructor_value(frm);
+		if (row && defaultInstructor && !row.instructor) {
+			frappe.model.set_value(cdt, cdn, "instructor", defaultInstructor);
+		}
+	},
+
 });
 
 
 // ── Dialog builder (unchanged except parseInt + no dirty) ──────────────────────
 
 function build_matrix_dialog(frm, data) {
+	const escapeHtml = frappe.utils.escape_html;
+	const defaultInstructor = data.instructors.length === 1 ? data.instructors[0].value : "";
 	const d = new frappe.ui.Dialog({
 		title: __('Quick Add Schedule Blocks'),
 		size: 'large',
@@ -283,15 +298,25 @@ function build_matrix_dialog(frm, data) {
 			const blk = data.grid[day][row];
 			if (blk) {
 				const id = `d${day}b${blk.block}`;
+				const blockTime = [blk.from, blk.to].filter(Boolean).join(' - ');
+				const warningNote = blk.warning_label
+					? `<div class="mt-1 small text-warning">${escapeHtml(blk.warning_label)}</div>`
+					: '';
 				html += `
 					<td>
+						<div class="small text-muted">${escapeHtml(blockTime)}</div>
+						${warningNote}
 						<div class="form-check">
 							<input type="checkbox" id="${id}" class="form-check-input"/>
 						</div>
 						<input class="form-control form-control-xs mt-1 location" placeholder="Room"/>
 						<select class="form-control form-control-xs mt-1 instructor">
 							<option value=""></option>
-							${data.instructors.map(i=>`<option value="${i.value}">${i.label}</option>`).join('')}
+							${data.instructors.map(i => `
+								<option value="${escapeHtml(i.value)}" ${i.value === defaultInstructor ? 'selected' : ''}>
+									${escapeHtml(i.label)}
+								</option>
+							`).join('')}
 						</select>
 					</td>`;
 			} else {

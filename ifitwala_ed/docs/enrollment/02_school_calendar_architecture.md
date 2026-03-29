@@ -160,7 +160,36 @@ Do not document those distinctions as if they are implemented behavior.
 
 ---
 
-## 6. Anti-Patterns
+## 6. Desk Calendar Endpoint Contract
+
+Status: Active
+Code refs:
+- `ifitwala_ed/school_settings/doctype/school_calendar/school_calendar.py`
+- `ifitwala_ed/school_settings/doctype/school_calendar/school_calendar_calendar.js`
+Test refs:
+- `ifitwala_ed/school_settings/doctype/school_calendar/test_school_calendar.py`
+
+The Desk calendar view for `School Calendar` does not reliably send `filters` as a dict.
+
+Implemented request-shape rules:
+
+- `filters` may arrive as a JSON object, a JSON list, or the empty list string `[]`
+- Desk list-style filters may be shaped like `[doctype, fieldname, condition, value, hidden]`
+- the backend calendar endpoint must normalize the payload before reading filter values
+
+Implemented resolution rules:
+
+- if `school_calendar` is provided, fetch that exact calendar
+- otherwise require the `(school, academic_year)` pair
+- if the filter set is empty or incomplete, return an empty event list instead of raising during initial calendar load
+
+Guardrail:
+
+- do not call `.get(...)` on raw `filters` input in Desk calendar endpoints unless the payload has already been normalized
+
+---
+
+## 7. Anti-Patterns
 
 The following are drift:
 
@@ -168,10 +197,11 @@ The following are drift:
 - documenting parent calendars as a special type when the model has no such field or mode
 - documenting global terms as operational by themselves
 - bypassing `resolve_school_calendars_for_window(...)` with ad hoc lineage logic
+- assuming Desk calendar `filters` is always a dict in whitelisted event endpoints
 
 ---
 
-## 7. Relationship To Enrollment
+## 8. Relationship To Enrollment
 
 Enrollment consumes Academic Year explicitly and may rely on School Calendar indirectly through schedule and attendance domains.
 

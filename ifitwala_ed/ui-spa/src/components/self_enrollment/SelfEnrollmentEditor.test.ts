@@ -36,6 +36,13 @@ async function flushUi() {
 	await nextTick()
 }
 
+function findBasketSection(basketGroup: string): HTMLElement | null {
+	const heading = Array.from(document.querySelectorAll('h3')).find(
+		node => (node.textContent || '').trim() === basketGroup
+	)
+	return heading?.closest('section') as HTMLElement | null
+}
+
 function buildPayload(courses: ChoiceStateResponse['courses']): ChoiceStateResponse {
 	return {
 		generated_at: '2026-03-29T10:00:00',
@@ -174,10 +181,7 @@ describe('SelfEnrollmentEditor', () => {
 
 		await flushUi()
 
-		const scienceSectionHeading = Array.from(document.querySelectorAll('h3')).find(
-			heading => (heading.textContent || '').trim() === 'Group 4 Sciences'
-		)
-		const scienceSection = scienceSectionHeading?.closest('section') as HTMLElement | null
+		const scienceSection = findBasketSection('Group 4 Sciences')
 		expect(scienceSection).toBeTruthy()
 
 		const checkbox = scienceSection?.querySelector('input[type="checkbox"]') as HTMLInputElement | null
@@ -188,8 +192,11 @@ describe('SelfEnrollmentEditor', () => {
 		checkbox.dispatchEvent(new Event('change', { bubbles: true }))
 		await flushUi()
 
-		const rankInput = scienceSection?.querySelector('input[type="number"]') as HTMLInputElement | null
-		const countsInSelect = scienceSection?.querySelector('select') as HTMLSelectElement | null
+		const selectedScienceSection = findBasketSection('Group 4 Sciences')
+		const rankInput = selectedScienceSection?.querySelector(
+			'input[type="number"]'
+		) as HTMLInputElement | null
+		const countsInSelect = selectedScienceSection?.querySelector('select') as HTMLSelectElement | null
 
 		expect(rankInput?.value).toBe('1')
 		expect(countsInSelect?.value).toBe('Group 4 Sciences')

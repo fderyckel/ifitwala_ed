@@ -7,10 +7,10 @@
 {% endif %}
 
 <section class="block-admission-cta" data-admission-cta>
-	<div class="flex justify-center">
+	<div class="mx-auto flex max-w-6xl justify-center px-6">
 		<a
 			href="{{ data.url }}"
-			class="site-cta site-cta-link inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition {{ style_class }}"
+			class="admission-cta-pill site-cta site-cta-link inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition {{ style_class }}"
 			data-intent="{{ data.intent }}"
 			{% if data.tracking_id %}data-tracking-id="{{ data.tracking_id }}"{% endif %}
 		>

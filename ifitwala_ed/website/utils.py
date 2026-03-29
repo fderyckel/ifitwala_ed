@@ -271,22 +271,27 @@ def build_story_url(*, school_slug: str, story_slug: str) -> str:
 
 
 def resolve_admissions_cta_url(*, school, intent: str) -> str:
-    field_map = {
-        "inquire": "admissions_inquiry_route",
-        "visit": "admissions_visit_route",
-        "apply": "admissions_apply_route",
+    field_priority_map = {
+        "inquire": ("admissions_inquiry_route", "/apply/inquiry"),
+        "visit": ("admissions_visit_route", "admissions_inquiry_route", "admissions_apply_route", "/apply/inquiry"),
+        "apply": ("admissions_apply_route", "admissions_inquiry_route", "/admissions"),
     }
-    field = field_map.get(intent)
-    if not field:
+    candidates = field_priority_map.get(intent)
+    if not candidates:
         frappe.throw(
             _("Unknown admissions intent: {0}").format(intent),
             frappe.ValidationError,
         )
 
-    link = school.get(field)
-    if not link:
-        frappe.throw(
-            _("Admissions CTA target missing for intent: {0}.").format(intent),
-            frappe.ValidationError,
-        )
-    return validate_cta_link(link)
+    for candidate in candidates:
+        if candidate.startswith("/"):
+            return validate_cta_link(candidate)
+
+        link = school.get(candidate)
+        if link:
+            return validate_cta_link(link)
+
+    frappe.throw(
+        _("Admissions CTA target missing for intent: {0}.").format(intent),
+        frappe.ValidationError,
+    )

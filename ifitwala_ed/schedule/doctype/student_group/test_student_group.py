@@ -6,12 +6,17 @@
 from unittest import TestCase
 from unittest.mock import patch
 
+import frappe
+from frappe.tests.utils import FrappeTestCase
+
 from ifitwala_ed.schedule.doctype.student_group.student_group import (
+    StudentGroup,
     build_in_clause_placeholders,
     descendants_inclusive,
     instructor_log_sync_context,
     is_same_or_descendant,
 )
+from ifitwala_ed.schedule.student_group_scheduling import fetch_block_grid
 
 
 class TestStudentGroup(TestCase):
@@ -101,3 +106,153 @@ class TestStudentGroup(TestCase):
 
         self.assertTrue(should_sync)
         self.assertEqual(targets, {"Cedric Villani"})
+
+
+class TestStudentGroupScheduleAdvisories(FrappeTestCase):
+    def test_validate_schedule_rows_warns_for_break_block(self):
+        group = frappe.get_doc(
+            {
+                "doctype": "Student Group",
+                "group_based_on": "Course",
+                "instructors": [
+                    {
+                        "instructor": "Instructor One",
+                    }
+                ],
+                "student_group_schedule": [
+                    {
+                        "rotation_day": 1,
+                        "block_number": 2,
+                        "instructor": "Instructor One",
+                    }
+                ],
+            }
+        )
+        schedule = frappe._dict(
+            {
+                "name": "Schedule-1",
+                "rotation_days": 3,
+                "school_schedule_block": [
+                    frappe._dict(
+                        {
+                            "rotation_day": 1,
+                            "block_number": 2,
+                            "from_time": "10:00:00",
+                            "to_time": "10:30:00",
+                            "block_type": "Other",
+                            "description": "Lunch Break",
+                        }
+                    )
+                ],
+            }
+        )
+
+        with (
+            patch.object(StudentGroup, "_get_school_schedule", return_value=schedule),
+            patch("frappe.msgprint") as msgprint,
+        ):
+            group._validate_schedule_rows()
+
+        self.assertEqual(str(group.student_group_schedule[0].from_time), "10:00:00")
+        self.assertEqual(str(group.student_group_schedule[0].to_time), "10:30:00")
+        msgprint.assert_called_once()
+        self.assertIn("Lunch Break", msgprint.call_args.args[0])
+        self.assertEqual(msgprint.call_args.kwargs.get("indicator"), "orange")
+
+    def test_validate_schedule_rows_skips_warning_for_matching_course_block(self):
+        group = frappe.get_doc(
+            {
+                "doctype": "Student Group",
+                "group_based_on": "Course",
+                "instructors": [
+                    {
+                        "instructor": "Instructor One",
+                    }
+                ],
+                "student_group_schedule": [
+                    {
+                        "rotation_day": 1,
+                        "block_number": 1,
+                        "instructor": "Instructor One",
+                    }
+                ],
+            }
+        )
+        schedule = frappe._dict(
+            {
+                "name": "Schedule-1",
+                "rotation_days": 3,
+                "school_schedule_block": [
+                    frappe._dict(
+                        {
+                            "rotation_day": 1,
+                            "block_number": 1,
+                            "from_time": "08:00:00",
+                            "to_time": "08:45:00",
+                            "block_type": "Course",
+                            "description": "",
+                        }
+                    )
+                ],
+            }
+        )
+
+        with (
+            patch.object(StudentGroup, "_get_school_schedule", return_value=schedule),
+            patch("frappe.msgprint") as msgprint,
+        ):
+            group._validate_schedule_rows()
+
+        msgprint.assert_not_called()
+
+    def test_fetch_block_grid_includes_block_warning_metadata(self):
+        schedule = frappe._dict(
+            {
+                "school_schedule_block": [
+                    frappe._dict(
+                        {
+                            "rotation_day": 1,
+                            "block_number": 1,
+                            "from_time": "08:00:00",
+                            "to_time": "08:45:00",
+                            "block_type": "Course",
+                            "description": "",
+                        }
+                    ),
+                    frappe._dict(
+                        {
+                            "rotation_day": 1,
+                            "block_number": 2,
+                            "from_time": "10:00:00",
+                            "to_time": "10:30:00",
+                            "block_type": "Other",
+                            "description": "Lunch Break",
+                        }
+                    ),
+                ]
+            }
+        )
+        group = frappe._dict(
+            {
+                "group_based_on": "Course",
+                "instructors": [
+                    frappe._dict(
+                        {
+                            "instructor": "Instructor One",
+                            "instructor_name": "Teacher One",
+                        }
+                    )
+                ],
+            }
+        )
+
+        with (
+            patch("ifitwala_ed.schedule.student_group_scheduling.frappe.get_cached_doc", return_value=schedule),
+            patch("ifitwala_ed.schedule.student_group_scheduling.frappe.get_doc", return_value=group),
+        ):
+            payload = fetch_block_grid(schedule_name="Schedule-1", sg="SG-1")
+
+        self.assertEqual(payload["instructors"], [{"value": "Instructor One", "label": "Teacher One"}])
+        self.assertIsNone(payload["grid"][1][0]["warning_message"])
+        self.assertEqual(payload["grid"][1][1]["warning_label"], "Lunch Break")
+        self.assertIn("Lunch Break", payload["grid"][1][1]["warning_message"])

@@ -492,40 +492,117 @@ def _build_about_blocks(*, school) -> list[dict]:
     ]
 
 
-def _build_admissions_blocks(*, school) -> list[dict]:
+def _default_admissions_overview_html(*, school) -> str:
+    return (
+        f"<p>Choosing a school is a major family decision. Our admissions experience at {school.school_name} "
+        "is designed to feel personal, clear, and well paced from the very first step.</p>"
+        "<p>Families typically begin with an inquiry, continue with a conversation or campus visit when available, "
+        "and then move into the application process with the support of the admissions team.</p>"
+    )
+
+
+def _default_admissions_journey_html() -> str:
+    return (
+        "<h2>A clear path for families</h2>"
+        "<p>We aim to make admissions calm, transparent, and supportive. The next step should always feel obvious, "
+        "whether you are still exploring or ready to begin an application.</p>"
+        "<h3>What families often prepare</h3>"
+        "<ul>"
+        "<li>Basic student and family information</li>"
+        "<li>Questions they want answered by the admissions team</li>"
+        "<li>School records or documents that may be requested later in the process</li>"
+        "</ul>"
+        "<h3>What you can expect from us</h3>"
+        "<ul>"
+        "<li>Clear next steps after your first inquiry</li>"
+        "<li>Guidance on application requirements and timing</li>"
+        "<li>A welcoming introduction to the school experience and community</li>"
+        "</ul>"
+    )
+
+
+def _default_admissions_faq_items() -> list[dict]:
     return [
+        {
+            "question": "What is the best first step for a new family?",
+            "answer_html": (
+                "<p>Start with an inquiry. That gives the admissions team a chance to understand your child, "
+                "answer questions, and point you to the most relevant next step.</p>"
+            ),
+        },
+        {
+            "question": "Do we need to complete the application immediately?",
+            "answer_html": (
+                "<p>No. Many families begin by learning more about the school first, then move into the "
+                "application when they are ready.</p>"
+            ),
+        },
+        {
+            "question": "Can we visit or speak with someone before applying?",
+            "answer_html": (
+                "<p>Yes. When visits or introductory conversations are available, the admissions team will share "
+                "the right option for your family after your inquiry is received.</p>"
+            ),
+        },
+        {
+            "question": "What happens after we submit an inquiry or application?",
+            "answer_html": (
+                "<p>You can expect follow-up guidance on timing, requirements, and the next step in the process. "
+                "Schools may vary in how they schedule visits, interviews, or document review.</p>"
+            ),
+        },
+    ]
+
+
+def _build_admissions_blocks(*, school) -> list[dict]:
+    blocks = [
         {
             "block_type": "admissions_overview",
             "order": 1,
             "props": {
                 "heading": "Admissions",
-                "content_html": (
-                    f"<p>{school.school_name} welcomes families who value curiosity, care, and growth.</p>"
-                ),
-                "max_width": "normal",
+                "content_html": _default_admissions_overview_html(school=school),
+                "max_width": "wide",
+            },
+        },
+        {
+            "block_type": "rich_text",
+            "order": 2,
+            "props": {
+                "content_html": _default_admissions_journey_html(),
+                "max_width": "wide",
             },
         },
         {
             "block_type": "admissions_steps",
-            "order": 2,
+            "order": 3,
             "props": {
                 "steps": [
                     {
                         "key": "inquire",
                         "title": "Inquire",
-                        "description": "Start the conversation.",
+                        "description": (
+                            "Share a few details so the admissions team can understand your child and answer "
+                            "your questions."
+                        ),
                         "icon": "mail",
                     },
                     {
                         "key": "visit",
                         "title": "Visit",
-                        "description": "Experience our campus.",
+                        "description": (
+                            "If visits or conversations are available, we will help your family experience the "
+                            "campus, culture, and learning environment."
+                        ),
                         "icon": "map",
                     },
                     {
                         "key": "apply",
                         "title": "Apply",
-                        "description": "Begin the application.",
+                        "description": (
+                            "Complete the application when you are ready, including any forms, records, and "
+                            "supporting materials."
+                        ),
                         "icon": "file-text",
                     },
                 ],
@@ -533,32 +610,54 @@ def _build_admissions_blocks(*, school) -> list[dict]:
             },
         },
         {
-            "block_type": "admission_cta",
-            "order": 3,
-            "props": {
-                "intent": "inquire",
-                "style": "primary",
-                "label_override": (school.label_cta_inquiry or "").strip() or "Inquire",
-            },
-        },
-        {
-            "block_type": "admission_cta",
+            "block_type": "faq",
             "order": 4,
             "props": {
-                "intent": "visit",
-                "style": "secondary",
-                "label_override": (school.label_cta_roi or "").strip() or "Visit",
+                "items": _default_admissions_faq_items(),
+                "enable_schema": True,
+                "collapsed_by_default": True,
             },
         },
         {
             "block_type": "admission_cta",
             "order": 5,
             "props": {
+                "intent": "inquire",
+                "style": "primary",
+                "label_override": (school.label_cta_inquiry or "").strip() or "Get More Info",
+                "icon": "mail",
+            },
+        },
+        {
+            "block_type": "admission_cta",
+            "order": 6,
+            "props": {
                 "intent": "apply",
                 "style": "outline",
+                "label_override": "Start Application",
+                "icon": "file-text",
             },
         },
     ]
+
+    if (school.admissions_visit_route or "").strip():
+        blocks.insert(
+            5,
+            {
+                "block_type": "admission_cta",
+                "order": 6,
+                "props": {
+                    "intent": "visit",
+                    "style": "secondary",
+                    "label_override": (school.label_cta_roi or "").strip() or "Book a School Visit",
+                    "icon": "map",
+                },
+            },
+        )
+        for index, block in enumerate(blocks, start=1):
+            block["order"] = index
+
+    return blocks
 
 
 def _build_programs_blocks(*, school) -> list[dict]:

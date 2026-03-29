@@ -14,7 +14,7 @@ from ifitwala_ed.schedule.schedule_utils import get_conflict_rule, get_rotation_
 from ifitwala_ed.schedule.student_group_employee_booking import (
     rebuild_employee_bookings_for_student_group,
 )
-from ifitwala_ed.schedule.student_group_scheduling import check_slot_conflicts
+from ifitwala_ed.schedule.student_group_scheduling import check_slot_conflicts, get_schedule_block_warning
 from ifitwala_ed.utilities.location_utils import find_room_conflicts
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
@@ -770,12 +770,13 @@ class StudentGroup(Document):
 
         sched = self._get_school_schedule()  # single source of truth
 
-        # Build: {rotation_day: {block_number: (from_time, to_time)} }
-        block_map: dict[int, dict[int, tuple[str, str]]] = {}
+        # Build: {rotation_day: {block_number: School Schedule Block row} }
+        block_map: dict[int, dict[int, object]] = {}
         for b in sched.school_schedule_block:  # child table in School Schedule
-            block_map.setdefault(b.rotation_day, {})[b.block_number] = (b.from_time, b.to_time)
+            block_map.setdefault(b.rotation_day, {})[b.block_number] = b
 
         valid_instructors = {i.instructor for i in self.instructors}
+        warning_lines = []
 
         for row in self.student_group_schedule:
             # 1️⃣ Rotation-day within range
@@ -814,8 +815,32 @@ class StudentGroup(Document):
                 )
 
             # 4️⃣ Auto-fill times (use read-only fields)
-            from_t, to_t = block_map[row.rotation_day][row.block_number]
-            row.from_time, row.to_time = from_t, to_t
+            block = block_map[row.rotation_day][row.block_number]
+            row.from_time, row.to_time = block.from_time, block.to_time
+
+            warning = get_schedule_block_warning(
+                self.group_based_on,
+                getattr(block, "block_type", None),
+                getattr(block, "description", None),
+            )
+            if warning:
+                warning_lines.append(
+                    _(
+                        "Row {row_number}: Rotation Day {rotation_day}, Block {block_number} is marked as {block_label}."
+                    ).format(
+                        row_number=row.idx,
+                        rotation_day=row.rotation_day,
+                        block_number=row.block_number,
+                        block_label=warning["label"],
+                    )
+                )
+
+        if warning_lines:
+            frappe.msgprint(
+                "<br>".join(warning_lines),
+                title=_("Schedule advisory"),
+                indicator="orange",
+            )
 
     def validate_location_conflicts_absolute(self):
         """
