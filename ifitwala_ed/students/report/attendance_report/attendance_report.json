@@ -9,8 +9,8 @@
  "filters": [],
  "idx": 0,
  "is_standard": "Yes",
- "letterhead": null,
- "modified": "2025-06-14 23:32:29.008973",
+ "letter_head": null,
+ "modified": "2026-03-28 22:00:24.398207",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Attendance Report",
@@ -31,6 +31,15 @@
   },
   {
    "role": "Counselor"
+  },
+  {
+   "role": "Academic Assistant"
+  },
+  {
+   "role": "Curriculum Coordinator"
+  },
+  {
+   "role": "Pastoral Lead"
   }
  ],
  "timeout": 0

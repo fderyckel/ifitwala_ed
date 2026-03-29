@@ -203,55 +203,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Reports & Tools",
-   "link_count": 4,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Enrollment Requests",
-   "link_count": 0,
-   "link_to": "Program Enrollment Request Overview",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Program Enrollment Tool",
-   "link_count": 0,
-   "link_to": "Program Enrollment Tool",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Course Enrollment Tool",
-   "link_count": 0,
-   "link_to": "Course Enrollment Tool",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Report Enrollment Gap",
-   "link_count": 0,
-   "link_to": "Enrollment Gaps Report",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Students",
    "link_count": 3,
    "link_type": "DocType",
@@ -340,35 +291,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Org & Schools",
-   "link_count": 2,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Organization",
-   "link_count": 0,
-   "link_to": "Organization",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "School",
-   "link_count": 0,
-   "link_to": "School",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Enrollment",
    "link_count": 3,
    "link_type": "DocType",
@@ -404,9 +326,97 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports & Tools",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Enrollment Tool",
+   "link_count": 0,
+   "link_to": "Program Enrollment Tool",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Course Enrollment Tool",
+   "link_count": 0,
+   "link_to": "Course Enrollment Tool",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Report Enrollment Gap",
+   "link_count": 0,
+   "link_to": "Enrollment Gaps Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Program Enrollment Request Overview",
+   "link_count": 0,
+   "link_to": "Program Enrollment Request Overview",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Org & Schools",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Organization",
+   "link_count": 0,
+   "link_to": "Organization",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School",
+   "link_count": 0,
+   "link_to": "School",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Location",
+   "link_count": 0,
+   "link_to": "Location",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-03-28 13:02:39.000000",
+ "modified": "2026-03-29 15:00:59.964192",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",

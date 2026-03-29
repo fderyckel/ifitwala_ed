@@ -12,7 +12,7 @@
  "link_to": "Curriculum",
  "link_type": "Workspace Sidebar",
  "logo_url": "/assets/ifitwala_ed/icons/icon_desktop_curriculum.png",
- "modified": "2026-03-20 11:07:22.453659",
+ "modified": "2026-03-28 12:49:25.182359",
  "modified_by": "Administrator",
  "name": "Curriculum",
  "owner": "Administrator",
@@ -23,6 +23,9 @@
   },
   {
    "role": "Academic Admin"
+  },
+  {
+   "role": "Academic Assistant"
   },
   {
    "role": "Accreditation Visitor"

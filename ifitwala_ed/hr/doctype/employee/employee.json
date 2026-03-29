@@ -4,7 +4,7 @@
  "allow_rename": 1,
  "autoname": "format:HR-EMP-{####}",
  "creation": "2024-12-06 10:03:50.788876",
- "default_view": "Image",
+ "default_view": "List",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -539,22 +539,22 @@
   {
    "fieldname": "empl_primary_contact",
    "fieldtype": "Link",
-   "label": "Primary Contact",
-   "options": "Contact",
    "hidden": 1,
-   "read_only": 1,
-   "no_copy": 1
+   "label": "Primary Contact",
+   "no_copy": 1,
+   "options": "Contact",
+   "read_only": 1
   }
  ],
  "image_field": "employee_image",
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-01-15 13:27:17",
+ "modified": "2026-03-29 11:14:36.564802",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
- "naming_rule": "Expression",
+ "naming_rule": "Expression (old style)",
  "nsm_parent_field": "reports_to",
  "owner": "Administrator",
  "permissions": [
