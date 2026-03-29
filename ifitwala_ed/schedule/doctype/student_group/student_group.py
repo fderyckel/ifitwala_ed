@@ -1606,6 +1606,34 @@ def offering_ay_query(doctype, txt, searchfield, start, page_len, filters):
 
 
 @frappe.whitelist()
+def get_single_offering_academic_year(program_offering: str | None = None) -> dict:
+    """Return the Academic Year only when the Program Offering has exactly one AY row."""
+    if not program_offering:
+        return {"academic_year": None}
+
+    rows = frappe.get_all(
+        "Program Offering Academic Year",
+        filters={
+            "parenttype": "Program Offering",
+            "parent": program_offering,
+        },
+        fields=["academic_year"],
+        order_by="idx asc",
+    )
+
+    ay_names = []
+    seen = set()
+    for row in rows:
+        academic_year = (row.get("academic_year") or "").strip()
+        if not academic_year or academic_year in seen:
+            continue
+        seen.add(academic_year)
+        ay_names.append(academic_year)
+
+    return {"academic_year": ay_names[0] if len(ay_names) == 1 else None}
+
+
+@frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def offering_course_query(doctype, txt, searchfield, start, page_len, filters):
     """

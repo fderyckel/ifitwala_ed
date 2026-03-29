@@ -13,6 +13,7 @@ from ifitwala_ed.schedule.doctype.student_group.student_group import (
     StudentGroup,
     build_in_clause_placeholders,
     descendants_inclusive,
+    get_single_offering_academic_year,
     instructor_log_sync_context,
     is_same_or_descendant,
 )
@@ -106,6 +107,22 @@ class TestStudentGroup(TestCase):
 
         self.assertTrue(should_sync)
         self.assertEqual(targets, {"Cedric Villani"})
+
+    @patch("ifitwala_ed.schedule.doctype.student_group.student_group.frappe.get_all")
+    def test_get_single_offering_academic_year_returns_value_for_exactly_one_ay(self, mock_get_all):
+        mock_get_all.return_value = [{"academic_year": "AY-2026"}]
+
+        result = get_single_offering_academic_year("PO-1")
+
+        self.assertEqual(result, {"academic_year": "AY-2026"})
+
+    @patch("ifitwala_ed.schedule.doctype.student_group.student_group.frappe.get_all")
+    def test_get_single_offering_academic_year_returns_none_for_multiple_ays(self, mock_get_all):
+        mock_get_all.return_value = [{"academic_year": "AY-2026"}, {"academic_year": "AY-2027"}]
+
+        result = get_single_offering_academic_year("PO-1")
+
+        self.assertEqual(result, {"academic_year": None})
 
 
 class TestStudentGroupScheduleAdvisories(FrappeTestCase):

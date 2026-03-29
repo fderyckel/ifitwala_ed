@@ -3,7 +3,7 @@ title: "Student Group: Operational Teaching Group Contract"
 slug: student-group
 category: Schedule
 doc_order: 1
-version: "1.0.0"
+version: "1.0.1"
 last_change_date: "2026-03-29"
 summary: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, attendance scope, and downstream teaching materialization."
 seo_title: "Student Group: Operational Teaching Group Contract"
@@ -14,7 +14,7 @@ seo_description: "Define the operational class, cohort, activity, or pastoral gr
 
 `Student Group` is the operational teaching-group record for the Schedule domain. It binds roster, instructor set, attendance scope, and timetable intent to a specific `Program Offering` and `Academic Year`, then feeds downstream scheduling, attendance, and teaching workflows.
 
-Current workspace note: Desk block booking now preselects the instructor when exactly one instructor is attached to the group, and save-time validation warns, without blocking, when a scheduled row lands in a non-instructional or mismatched schedule block.
+Current workspace note: when a selected Program Offering has exactly one Academic Year in its offering spine, the Student Group form now auto-fills `academic_year`. Desk block booking also preselects the instructor when exactly one instructor is attached to the group, and save-time validation warns, without blocking, when a scheduled row lands in a non-instructional or mismatched schedule block.
 
 ## Before You Start (Prerequisites)
 
@@ -47,7 +47,8 @@ Current workspace note: Desk block booking now preselects the instructor when ex
 
 ## Lifecycle and Linked Documents
 
-1. Create the group with `program_offering`, `academic_year`, `group_based_on`, and `student_group_abbreviation`.
+1. Create the group with `program_offering`, `group_based_on`, and `student_group_abbreviation`.
+   If the selected Program Offering has exactly one `offering_academic_years` row, Desk auto-fills `academic_year`.
 2. Add the mode-specific anchor:
    - `course` for `Course`
    - `cohort` for `Cohort`
@@ -112,6 +113,7 @@ Current workspace note: Desk block booking now preselects the instructor when ex
   - `after_delete`
 - **Client-side Desk affordances**:
   - AY, school, course, and schedule link queries are offering-aware
+  - selecting `program_offering` auto-fills `academic_year` when exactly one offering AY exists
   - student bulk-add is enabled for non-activity flows
   - schedule row instructor choices are constrained to the group’s instructor table
   - quick-add schedule booking preselects the instructor when exactly one instructor exists

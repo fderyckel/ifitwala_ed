@@ -37,6 +37,25 @@ function get_single_instructor_value(frm) {
 	return values.length === 1 ? values[0] : "";
 }
 
+async function syncAcademicYearFromProgramOffering(frm) {
+	const programOffering = frm.doc.program_offering;
+	if (!programOffering) {
+		await frm.set_value("academic_year", null);
+		return;
+	}
+
+	const { message } = await frappe.call({
+		method: "ifitwala_ed.schedule.doctype.student_group.student_group.get_single_offering_academic_year",
+		args: { program_offering: programOffering }
+	});
+
+	if (frm.doc.program_offering !== programOffering) {
+		return;
+	}
+
+	await frm.set_value("academic_year", message?.academic_year || null);
+}
+
 // Keep the toggle in sync
 ["academic_year", "program_offering", "group_based_on"].forEach(f =>
 	frappe.ui.form.on("Student Group", f, frm => toggle_school_schedule_field(frm))
@@ -174,11 +193,11 @@ frappe.ui.form.on("Student Group", {
 	},
 
 	// FIX: clear dependent fields only when user actually changes program_offering
-	program_offering(frm) {
-		frm.set_value("academic_year", null);
+	async program_offering(frm) {
 		frm.set_value("school", null);
 		frm.set_value("course", null);
 		frm.set_value("school_schedule", null); // moved here only
+		await syncAcademicYearFromProgramOffering(frm);
 	},
 
 	academic_year(frm) {
