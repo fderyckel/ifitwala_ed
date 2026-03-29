@@ -470,10 +470,12 @@ def _make_academic_year(school, start_date="2025-08-01", end_date="2026-06-30"):
 
 
 def _make_term(academic_year):
+    school = frappe.db.get_value("Academic Year", academic_year.name, "school")
     term = frappe.get_doc(
         {
             "doctype": "Term",
             "academic_year": academic_year.name,
+            "school": school,
             "term_name": f"Term {frappe.generate_hash(length=6)}",
             "term_type": "Academic",
             "term_start_date": nowdate(),

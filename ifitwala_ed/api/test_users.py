@@ -553,8 +553,17 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Employee"
         user.last_name = "RoleOnly"
         user.enabled = 1
-        _append_role(user, "Employee")
         user.insert(ignore_permissions=True)
+        if not frappe.db.exists("Has Role", {"parent": user.email, "parenttype": "User", "role": "Employee"}):
+            frappe.get_doc(
+                {
+                    "doctype": "Has Role",
+                    "parent": user.email,
+                    "parenttype": "User",
+                    "parentfield": "roles",
+                    "role": "Employee",
+                }
+            ).insert(ignore_permissions=True)
         frappe.clear_cache(user=user.email)
 
         frappe.set_user(user.email)
