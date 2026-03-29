@@ -21,6 +21,11 @@ Inside `ifitwala_ed/docs/`, prioritize:
 
 Docs must reflect reality, not aspiration.
 
+## 0.1 Local Environment Note
+
+- This Codex session is on the user's local machine inside the repo.
+- Do not add repetitive environment caveats about `.venv`, `frappe`, `bench`, or local shell `PATH` unless a specific verification attempt failed and the exact failure is needed for accuracy.
+
 ---
 
 ## 1. Canonical Documentation Rule

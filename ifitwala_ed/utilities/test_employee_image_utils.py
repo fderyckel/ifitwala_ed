@@ -127,13 +127,26 @@ class TestEmployeeImageUtils(FrappeTestCase):
             patch("ifitwala_ed.utilities.image_utils.frappe.get_all", side_effect=[classification_rows, file_rows]),
             patch("ifitwala_ed.utilities.image_utils.file_url_exists_on_disk", return_value=False),
             patch("ifitwala_ed.utilities.image_utils.frappe.db.get_value", side_effect=fake_get_value),
+            patch(
+                "ifitwala_ed.api.file_access.resolve_employee_file_open_url",
+                return_value="/api/method/ifitwala_ed.api.file_access.download_employee_file?file=FILE-THUMB&context_doctype=Employee&context_name=EMP-0001",
+            ) as resolve_open_url,
         ):
             image_url = image_utils.get_preferred_employee_image_url(
                 "EMP-0001",
                 original_url="/files/employee/original_employee.png",
             )
 
-        self.assertEqual(image_url, thumb_url)
+        resolve_open_url.assert_called_once_with(
+            file_name="FILE-THUMB",
+            file_url=thumb_url,
+            context_doctype="Employee",
+            context_name="EMP-0001",
+        )
+        self.assertEqual(
+            image_url,
+            "/api/method/ifitwala_ed.api.file_access.download_employee_file?file=FILE-THUMB&context_doctype=Employee&context_name=EMP-0001",
+        )
 
     def test_apply_preferred_employee_images_keeps_employee_specific_variants(self):
         classification_rows = [

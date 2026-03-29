@@ -22,6 +22,11 @@ Inside `ui-spa`, prioritize:
 
 The SPA is a UX shell. It is not the source of truth.
 
+## 0.1 Local Environment Note
+
+- This Codex session runs on the user's local machine for this repository.
+- Do not add generic closeout notes about missing `frappe`, missing `bench`, or shell `PATH` differences unless a specific command failed and the exact failure is necessary to explain what could not be verified.
+
 ---
 
 ## 1. UX Rules (Non-Negotiable)

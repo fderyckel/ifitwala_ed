@@ -340,6 +340,19 @@ def _resolve_governed_display_url(
             or raw_url
         )
 
+    if primary_subject_type == "Employee":
+        from ifitwala_ed.api.file_access import resolve_employee_file_open_url
+
+        return (
+            resolve_employee_file_open_url(
+                file_name=file_name,
+                file_url=raw_url,
+                context_doctype="Employee",
+                context_name=resolved_subject,
+            )
+            or raw_url
+        )
+
     return raw_url
 
 

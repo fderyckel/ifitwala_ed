@@ -22,6 +22,11 @@ Inside `ifitwala_ed/api/`, prioritize:
 API endpoints are not generic transport wrappers.
 They are contract surfaces for real workflows.
 
+## 0.1 Local Environment Note
+
+- This Codex session runs on the user's local machine for this repo.
+- Do not add stock explanations about missing `frappe` in `.venv`, missing `bench` on `PATH`, or the shell not being the remote server unless a specific attempted command is blocked and that exact blocker matters.
+
 ---
 
 ## 1. Endpoint Design Rules

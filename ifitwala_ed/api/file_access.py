@@ -19,6 +19,7 @@ from ifitwala_ed.admission.admission_utils import (
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
+from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
 
 ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document Item", "Student Applicant", "Contact"}
 CONTEXT_STUDENT_APPLICANT = "Student Applicant"
@@ -27,6 +28,7 @@ CONTEXT_TASK_SUBMISSION = "Task Submission"
 CONTEXT_STUDENT_PORTFOLIO_ITEM = "Student Portfolio Item"
 CONTEXT_STUDENT = "Student"
 CONTEXT_GUARDIAN = "Guardian"
+CONTEXT_EMPLOYEE = "Employee"
 
 
 def build_admissions_file_open_url(
@@ -162,11 +164,56 @@ def resolve_guardian_file_open_url(
     return open_url or raw_url or None
 
 
+def build_employee_file_open_url(
+    *,
+    file_name: str,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+) -> str:
+    resolved_file = (file_name or "").strip()
+    if not resolved_file:
+        return ""
+
+    params = {"file": resolved_file}
+    if (context_doctype or "").strip():
+        params["context_doctype"] = context_doctype.strip()
+    if (context_name or "").strip():
+        params["context_name"] = context_name.strip()
+    return f"/api/method/ifitwala_ed.api.file_access.download_employee_file?{urlencode(params)}"
+
+
+def resolve_employee_file_open_url(
+    *,
+    file_name: str | None,
+    file_url: str | None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+) -> str | None:
+    raw_url = (file_url or "").strip()
+    if raw_url.startswith(("http://", "https://")):
+        return raw_url
+
+    resolved_name = (file_name or "").strip()
+    if not resolved_name:
+        return raw_url or None
+
+    open_url = build_employee_file_open_url(
+        file_name=resolved_name,
+        context_doctype=context_doctype,
+        context_name=context_name,
+    )
+    return open_url or raw_url or None
+
+
 def _require_authenticated_user() -> str:
     user = (frappe.session.user or "").strip()
     if not user or user == "Guest":
         frappe.throw(_("You need to sign in to access this file."), frappe.PermissionError)
     return user
+
+
+def _is_adminish(user: str) -> bool:
+    return user == "Administrator" or ("System Manager" in frappe.get_roles(user))
 
 
 def _resolve_file_row(file_name: str) -> dict:
@@ -229,6 +276,71 @@ def _resolve_guardian_from_file(file_row: dict) -> str:
         return attached_to_name
 
     frappe.throw(_("File is missing guardian ownership context."), frappe.ValidationError)
+
+
+def _resolve_employee_from_file(file_row: dict) -> str:
+    file_name = (file_row.get("name") or "").strip()
+    if file_name:
+        classification = frappe.db.get_value(
+            "File Classification",
+            {"file": file_name},
+            ["primary_subject_type", "primary_subject_id"],
+            as_dict=True,
+        )
+        if classification and (classification.get("primary_subject_type") or "").strip() == CONTEXT_EMPLOYEE:
+            resolved = (classification.get("primary_subject_id") or "").strip()
+            if resolved:
+                return resolved
+
+    attached_to_doctype = (file_row.get("attached_to_doctype") or "").strip()
+    attached_to_name = (file_row.get("attached_to_name") or "").strip()
+    if attached_to_doctype == CONTEXT_EMPLOYEE and attached_to_name:
+        return attached_to_name
+
+    frappe.throw(_("File is missing employee ownership context."), frappe.ValidationError)
+
+
+def _assert_employee_file_access(
+    *, user: str, file_employee: str, context_doctype: str | None, context_name: str | None
+) -> None:
+    resolved_context = (context_doctype or "").strip()
+    resolved_name = (context_name or "").strip()
+    if resolved_context:
+        if resolved_context != CONTEXT_EMPLOYEE:
+            frappe.throw(_("Unsupported employee file context."), frappe.ValidationError)
+        if not resolved_name:
+            frappe.throw(_("Context Name is required for Employee access."), frappe.ValidationError)
+        if resolved_name != file_employee:
+            frappe.throw(_("File does not belong to this Employee context."), frappe.PermissionError)
+
+    if _is_adminish(user):
+        return
+
+    employee_row = frappe.db.get_value(
+        "Employee",
+        file_employee,
+        ["name", "organization", "user_id"],
+        as_dict=True,
+    )
+    if not employee_row:
+        frappe.throw(_("Employee not found."), frappe.DoesNotExistError)
+
+    if (employee_row.get("user_id") or "").strip() == user:
+        return
+
+    base_org = (get_user_base_org(user) or "").strip()
+    if not base_org:
+        frappe.throw(_("You do not have permission to access this employee file."), frappe.PermissionError)
+
+    target_org = (employee_row.get("organization") or "").strip()
+    if not target_org:
+        frappe.throw(_("You do not have permission to access this employee file."), frappe.PermissionError)
+
+    allowed_orgs = {item for item in (get_descendant_organizations(base_org) or []) if item}
+    if target_org in allowed_orgs:
+        return
+
+    frappe.throw(_("You do not have permission to access this employee file."), frappe.PermissionError)
 
 
 def _assert_guardian_file_access(
@@ -634,6 +746,46 @@ def download_guardian_file(
     _assert_guardian_file_access(
         user=user,
         file_guardian=file_guardian,
+        context_doctype=context_doctype,
+        context_name=context_name,
+    )
+
+    file_url = (file_row.get("file_url") or "").strip()
+    if file_url.startswith(("http://", "https://")):
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = file_url
+        return
+
+    content = _read_file_bytes(file_row)
+    if content is None:
+        frappe.throw(_("Could not read the file content."), frappe.DoesNotExistError)
+
+    filename = (file_row.get("file_name") or "").strip() or "document"
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+    frappe.local.response["type"] = "download"
+    frappe.local.response["filename"] = filename
+    frappe.local.response["filecontent"] = content
+    frappe.local.response["display_content_as"] = "inline"
+    frappe.local.response["content_type"] = content_type
+
+
+@frappe.whitelist()
+def download_employee_file(
+    file: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+):
+    user = _require_authenticated_user()
+    file_name = (file or "").strip()
+    if not file_name:
+        frappe.throw(_("File is required."), frappe.ValidationError)
+
+    file_row = _resolve_any_file_row(file_name)
+    file_employee = _resolve_employee_from_file(file_row)
+    _assert_employee_file_access(
+        user=user,
+        file_employee=file_employee,
         context_doctype=context_doctype,
         context_name=context_name,
     )

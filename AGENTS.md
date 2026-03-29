@@ -74,6 +74,15 @@ Before implementing workflow/UI changes, ask:
 
 ---
 
+## 0.4 Local Environment Communication Rule
+
+- Codex is running on the user's local machine in this repository, not on a remote production server.
+- Do not add boilerplate disclaimers that the repo `.venv` does not contain `frappe`, that `bench` is not on `PATH`, or that the current shell is not the server.
+- If verification is blocked, report only the concrete blocker for the command you attempted and keep the note short.
+- Do not treat local shell path differences as architecture insight or as a reason to add generic environment caveats to the closeout.
+
+---
+
 ## 1. Operating Discipline
 
 ### 1.1 Mandatory Workflow

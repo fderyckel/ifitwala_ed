@@ -531,13 +531,13 @@ function open_meeting_book_dialog(frm) {
 				method: 'ifitwala_ed.setup.doctype.meeting.meeting.get_team_meeting_book',
 				args: params
 			}).then(r => {
-				const html = r.message || '<p>No content.</p>';
+				const html = r.message || `<p>${__('No content.')}</p>`;
 				win.document.open();
 				win.document.write(html);
 				win.document.close();
 			}).catch(() => {
 				win.document.open();
-				win.document.write('<p style="color:#b91c1c;">Error while generating meeting book.</p>');
+				win.document.write(`<p style="color:#b91c1c;">${__('Error while generating meeting book.')}</p>`);
 				win.document.close();
 			});
 

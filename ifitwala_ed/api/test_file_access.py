@@ -9,9 +9,12 @@ from frappe.tests.utils import FrappeTestCase
 from ifitwala_ed.api.file_access import (
     build_academic_file_open_url,
     build_admissions_file_open_url,
+    build_employee_file_open_url,
     build_guardian_file_open_url,
+    download_employee_file,
     download_guardian_file,
     resolve_academic_file_open_url,
+    resolve_employee_file_open_url,
     resolve_guardian_file_open_url,
 )
 
@@ -71,6 +74,20 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         self.assertEqual((query.get("context_doctype") or [None])[0], "Guardian")
         self.assertEqual((query.get("context_name") or [None])[0], "GRD-0001")
 
+    def test_build_employee_file_open_url_includes_context(self):
+        url = build_employee_file_open_url(
+            file_name="FILE-EMP-1",
+            context_doctype="Employee",
+            context_name="EMP-0001",
+        )
+        parsed = urlparse(url)
+        query = parse_qs(parsed.query)
+
+        self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.download_employee_file")
+        self.assertEqual((query.get("file") or [None])[0], "FILE-EMP-1")
+        self.assertEqual((query.get("context_doctype") or [None])[0], "Employee")
+        self.assertEqual((query.get("context_name") or [None])[0], "EMP-0001")
+
     def test_resolve_guardian_file_open_url_keeps_external_links(self):
         external = "https://cdn.example.com/avatar.webp"
         self.assertEqual(
@@ -79,6 +96,18 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                 file_url=external,
                 context_doctype="Guardian",
                 context_name="GRD-0001",
+            ),
+            external,
+        )
+
+    def test_resolve_employee_file_open_url_keeps_external_links(self):
+        external = "https://cdn.example.com/avatar.webp"
+        self.assertEqual(
+            resolve_employee_file_open_url(
+                file_name="FILE-EMP-EXT",
+                file_url=external,
+                context_doctype="Employee",
+                context_name="EMP-0001",
             ),
             external,
         )
@@ -133,4 +162,94 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                     file="FILE-GRD-1",
                     context_doctype="Guardian",
                     context_name="GRD-0001",
+                )
+
+    def test_download_employee_file_streams_private_file_for_scoped_staff(self):
+        file_row = {
+            "name": "FILE-EMP-1",
+            "file_url": "/private/files/Employee/EMP-0001/thumb_employee.webp",
+            "file_name": "thumb_employee.webp",
+            "is_private": 1,
+            "attached_to_doctype": "Employee",
+            "attached_to_name": "EMP-0001",
+        }
+
+        def fake_get_value(doctype, filters, fieldname, as_dict=False):
+            if doctype == "File Classification":
+                return frappe._dict(
+                    {
+                        "primary_subject_type": "Employee",
+                        "primary_subject_id": "EMP-0001",
+                    }
+                )
+            if doctype == "Employee" and filters == "EMP-0001":
+                return frappe._dict(
+                    {
+                        "name": "EMP-0001",
+                        "organization": "ORG-ROOT",
+                        "user_id": "target@example.com",
+                    }
+                )
+            return None
+
+        with (
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.api.file_access.get_user_base_org", return_value="ORG-ROOT"),
+            patch("ifitwala_ed.api.file_access.get_descendant_organizations", return_value=["ORG-ROOT", "ORG-CHILD"]),
+            patch("ifitwala_ed.api.file_access._read_file_bytes", return_value=b"employee-bytes"),
+        ):
+            frappe.local.response = {}
+            download_employee_file(
+                file="FILE-EMP-1",
+                context_doctype="Employee",
+                context_name="EMP-0001",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "download")
+        self.assertEqual(frappe.local.response.get("filename"), "thumb_employee.webp")
+        self.assertEqual(frappe.local.response.get("filecontent"), b"employee-bytes")
+        self.assertEqual(frappe.local.response.get("display_content_as"), "inline")
+
+    def test_download_employee_file_denies_other_org_scope(self):
+        file_row = {
+            "name": "FILE-EMP-1",
+            "file_url": "/private/files/Employee/EMP-0001/thumb_employee.webp",
+            "file_name": "thumb_employee.webp",
+            "is_private": 1,
+            "attached_to_doctype": "Employee",
+            "attached_to_name": "EMP-0001",
+        }
+
+        def fake_get_value(doctype, filters, fieldname, as_dict=False):
+            if doctype == "File Classification":
+                return frappe._dict(
+                    {
+                        "primary_subject_type": "Employee",
+                        "primary_subject_id": "EMP-0001",
+                    }
+                )
+            if doctype == "Employee" and filters == "EMP-0001":
+                return frappe._dict(
+                    {
+                        "name": "EMP-0001",
+                        "organization": "ORG-OTHER",
+                        "user_id": "target@example.com",
+                    }
+                )
+            return None
+
+        with (
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="staff@example.com"),
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", side_effect=fake_get_value),
+            patch("ifitwala_ed.api.file_access.get_user_base_org", return_value="ORG-ROOT"),
+            patch("ifitwala_ed.api.file_access.get_descendant_organizations", return_value=["ORG-ROOT", "ORG-CHILD"]),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                download_employee_file(
+                    file="FILE-EMP-1",
+                    context_doctype="Employee",
+                    context_name="EMP-0001",
                 )
