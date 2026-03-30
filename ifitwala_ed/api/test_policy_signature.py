@@ -94,6 +94,21 @@ class TestPolicySignature(FrappeTestCase):
             return
         frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
+    def _ensure_role(self, role_name: str):
+        if frappe.db.exists("Role", role_name):
+            return
+        role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+        self.created.append(("Role", role.name))
+
+    def _assign_role(self, user: str, role_name: str):
+        self._ensure_role(role_name)
+        if frappe.db.exists("Has Role", {"parent": user, "parenttype": "User", "role": role_name}):
+            return
+        user_doc = frappe.get_doc("User", user)
+        user_doc.append("roles", {"role": role_name})
+        user_doc.save(ignore_permissions=True)
+        frappe.clear_cache(user=user)
+
     def _make_employee(self, user: str, school: str | None = None):
         school_name = (school or self.school.name).strip()
         employee = frappe.get_doc(
@@ -115,7 +130,7 @@ class TestPolicySignature(FrappeTestCase):
         return employee
 
     def test_campaign_options_load_for_hr_manager_scope(self):
-        frappe.add_roles(self.user_one.name, "HR Manager")
+        self._assign_role(self.user_one.name, "HR Manager")
 
         frappe.set_user(self.user_one.name)
         payload = get_staff_policy_campaign_options(
