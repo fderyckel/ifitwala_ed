@@ -53,10 +53,10 @@ function fetch_and_render_student_info(frm, student_fieldname = 'student') {
 			// Render info into HTML field
 			const html = `
 				<div>
-					<b>Name:</b> ${s.student_full_name || '—'}<br>
-					<b>Preferred Name:</b> ${s.student_preferred_name || '—'}<br>
-					<b>Gender:</b> ${s.student_gender || '—'}<br>
-					<b>Date of Birth:</b> ${frappe.format(s.student_date_of_birth, { fieldtype: 'Date' })}<br>
+					<b>${__('Name')}:</b> ${s.student_full_name || __('—')}<br>
+					<b>${__('Preferred Name')}:</b> ${s.student_preferred_name || __('—')}<br>
+					<b>${__('Gender')}:</b> ${s.student_gender || __('—')}<br>
+					<b>${__('Date of Birth')}:</b> ${frappe.format(s.student_date_of_birth, { fieldtype: 'Date' })}<br>
 				</div>
 			`;
 			frm.fields_dict.student_info?.$wrapper.html(html);
@@ -74,7 +74,7 @@ function calculate_age(date_string) {
 	const months = today.diff(dob, 'months');
 	dob.add(months, 'months');
 	const days = today.diff(dob, 'days');
-	return `${years} Year(s) ${months} Month(s) ${days} Day(s)`;
+	return `${years} ${__('Year(s)')} ${months} ${__('Month(s)')} ${days} ${__('Day(s)')}`;
 }
 
 
@@ -87,10 +87,10 @@ function show_guardian_details_dialog(student_id) {
 			if (r.message && r.message.length) {
 				const message = r.message.map(guardian => `
 					<div style="margin-bottom: 10px; padding: 10px; border: 1px solid #d1d8dd;">
-						<b>Guardian Name:</b> ${guardian.guardian_name}<br>
-						<b>Relation:</b> ${guardian.relation}<br>
-						<b>Email:</b> ${guardian.email_address || 'N/A'}<br>
-						<b>Mobile:</b> ${guardian.mobile_number || 'N/A'}
+						<b>${__('Guardian Name')}:</b> ${guardian.guardian_name}<br>
+						<b>${__('Relation')}:</b> ${guardian.relation}<br>
+						<b>${__('Email')}:</b> ${guardian.email_address || __('N/A')}<br>
+						<b>${__('Mobile')}:</b> ${guardian.mobile_number || __('N/A')}
 					</div>
 				`).join('');
 

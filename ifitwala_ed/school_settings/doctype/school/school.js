@@ -322,15 +322,15 @@ frappe.ui.form.on("School", {
 
 cur_frm.cscript.change_abbr = function () {
 	var dialog = new frappe.ui.Dialog({
-		title: "Replace Abbr",
+		title: __("Replace Abbr"),
 		fields: [
 			{
 				fieldtype: "Data",
-				label: "New Abbreviation",
+				label: __("New Abbreviation"),
 				fieldname: "new_abbr",
 				reqd: 1,
 			},
-			{ fieldtype: "Button", label: "Update", fieldname: "update" },
+			{ fieldtype: "Button", label: __("Update"), fieldname: "update" },
 		],
 	});
 

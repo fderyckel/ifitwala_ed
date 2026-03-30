@@ -10,11 +10,45 @@ function initNavigationToggle() {
 		return;
 	}
 
+	const desktopMedia = window.matchMedia("(min-width: 1024px)");
+
+	function setExpanded(expanded) {
+		navToggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+		navPanel.classList.toggle("hidden", !expanded);
+	}
+
+	function closePanel() {
+		setExpanded(false);
+	}
+
 	navToggle.addEventListener("click", () => {
 		const expanded = navToggle.getAttribute("aria-expanded") === "true";
-		navToggle.setAttribute("aria-expanded", expanded ? "false" : "true");
-		navPanel.classList.toggle("hidden", expanded);
+		setExpanded(!expanded);
 	});
+
+	navPanel.querySelectorAll("a").forEach((link) => {
+		link.addEventListener("click", closePanel);
+	});
+
+	document.addEventListener("keydown", (event) => {
+		if (event.key === "Escape") {
+			closePanel();
+		}
+	});
+
+	if (typeof desktopMedia.addEventListener === "function") {
+		desktopMedia.addEventListener("change", (event) => {
+			if (event.matches) {
+				closePanel();
+			}
+		});
+	} else if (typeof desktopMedia.addListener === "function") {
+		desktopMedia.addListener((event) => {
+			if (event.matches) {
+				closePanel();
+			}
+		});
+	}
 }
 
 function initLazyImagePolish() {

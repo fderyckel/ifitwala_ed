@@ -4,14 +4,18 @@
 # See license.txt
 
 import json
+from pathlib import Path
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.school_site.doctype.school_website_page.school_website_page import (
+    build_school_website_page_name,
     compute_school_page_publication_flags,
     normalize_workflow_state,
 )
+from ifitwala_ed.tests.factories.organization import make_organization, make_school
+from ifitwala_ed.website.block_registry import get_block_definition_map
 from ifitwala_ed.website.seo_checks import build_seo_assistant_report
 from ifitwala_ed.website.validators import validate_page_blocks
 
@@ -39,6 +43,18 @@ def _admissions_steps_props():
 
 
 class TestSchoolWebsitePage(FrappeTestCase):
+    def test_school_website_page_block_select_options_match_block_registry(self):
+        block_json_path = (
+            Path(__file__).resolve().parents[1] / "school_website_page_block" / "school_website_page_block.json"
+        )
+        payload = json.loads(block_json_path.read_text())
+        block_field = next(field for field in payload["fields"] if field.get("fieldname") == "block_type")
+        configured_options = {
+            option.strip() for option in (block_field.get("options") or "").splitlines() if option.strip()
+        }
+        registered_types = set(get_block_definition_map())
+        self.assertFalse(sorted(registered_types - configured_options))
+
     def test_workflow_state_normalization_rejects_invalid_state(self):
         with self.assertRaises(frappe.ValidationError):
             normalize_workflow_state("Invalid State")
@@ -58,6 +74,62 @@ class TestSchoolWebsitePage(FrappeTestCase):
         )
         self.assertEqual(status, "Draft")
         self.assertEqual(is_published, 0)
+
+    def test_build_school_website_page_name_uses_school_name_and_route(self):
+        organization = make_organization(prefix="Name Org")
+        school = make_school(organization.name, prefix="Name School")
+
+        self.assertEqual(
+            build_school_website_page_name(school=school.name, route="/"),
+            f"{school.school_name} - Home [home]",
+        )
+        self.assertEqual(
+            build_school_website_page_name(school=school.name, route="about/team"),
+            f"{school.school_name} - About > Team [about__team]",
+        )
+
+    def test_draft_school_website_page_can_save_without_blocks(self):
+        organization = make_organization(prefix="Draft Org")
+        school = make_school(organization.name, prefix="Draft School")
+        school.website_slug = f"draft-{frappe.generate_hash(length=6)}"
+        school.save(ignore_permissions=True)
+
+        page = frappe.get_doc(
+            {
+                "doctype": "School Website Page",
+                "school": school.name,
+                "route": "/",
+                "page_type": "Standard",
+                "title": school.school_name,
+            }
+        )
+        page.insert()
+
+        self.assertEqual(page.name, f"{school.school_name} - Home [home]")
+        self.assertEqual(page.full_route, f"/schools/{school.website_slug}")
+        self.assertEqual(page.workflow_state, "Draft")
+        self.assertEqual(page.status, "Draft")
+        self.assertEqual(page.is_published, 0)
+
+    def test_non_draft_school_website_page_requires_enabled_block(self):
+        organization = make_organization(prefix="Review Org")
+        school = make_school(organization.name, prefix="Review School")
+        school.website_slug = f"review-{frappe.generate_hash(length=6)}"
+        school.save(ignore_permissions=True)
+
+        page = frappe.get_doc(
+            {
+                "doctype": "School Website Page",
+                "school": school.name,
+                "route": "about",
+                "page_type": "Standard",
+                "title": "About",
+                "workflow_state": "In Review",
+            }
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            page.insert()
 
     def test_validate_page_blocks_rejects_empty_enabled_set(self):
         page = frappe._dict({"blocks": []})
@@ -189,6 +261,32 @@ class TestSchoolWebsitePage(FrappeTestCase):
         )
         validate_page_blocks(page)
 
+    def test_validate_page_blocks_allows_extended_leadership_props(self):
+        page = frappe._dict(
+            {
+                "doctype": "School Website Page",
+                "page_type": "Standard",
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Home"}, order=1),
+                    _row(
+                        block_type="leadership",
+                        props={
+                            "title": "Leadership & Administration",
+                            "description": "Meet our school team.",
+                            "leadership_title": "Academic Leadership",
+                            "staff_title": "Faculty & Staff",
+                            "role_profiles": ["Academic Admin"],
+                            "limit": 4,
+                            "staff_limit": 8,
+                            "show_staff_carousel": True,
+                        },
+                        order=2,
+                    ),
+                ],
+            }
+        )
+        validate_page_blocks(page)
+
     def test_validate_page_blocks_allows_admissions_blocks_for_admissions_page(self):
         page = frappe._dict(
             {
@@ -240,6 +338,44 @@ class TestSchoolWebsitePage(FrappeTestCase):
                     _row(
                         block_type="admission_cta",
                         props={"intent": "inquire"},
+                        order=2,
+                    ),
+                ],
+            }
+        )
+        with self.assertRaises(frappe.ValidationError):
+            validate_page_blocks(page)
+
+    def test_validate_page_blocks_allows_course_blocks_for_course_profile(self):
+        page = frappe._dict(
+            {
+                "doctype": "Course Website Profile",
+                "blocks": [
+                    _row(
+                        block_type="course_intro",
+                        props={"heading": "Course"},
+                        order=1,
+                    ),
+                    _row(
+                        block_type="learning_highlights",
+                        props={"heading": "Highlights"},
+                        order=2,
+                    ),
+                ],
+            }
+        )
+        validate_page_blocks(page)
+
+    def test_validate_page_blocks_rejects_course_intro_for_standard_school_page(self):
+        page = frappe._dict(
+            {
+                "doctype": "School Website Page",
+                "page_type": "Standard",
+                "blocks": [
+                    _row(block_type="hero", props={"title": "Home"}, order=1),
+                    _row(
+                        block_type="course_intro",
+                        props={"heading": "Course"},
                         order=2,
                     ),
                 ],
@@ -331,3 +467,23 @@ class TestSchoolWebsitePage(FrappeTestCase):
         )
         codes = {row["code"] for row in report["checks"]}
         self.assertNotIn("cta_missing_program", codes)
+
+    def test_seo_assistant_course_cta_present_clears_course_warning(self):
+        report = build_seo_assistant_report(
+            parent_doctype="Course Website Profile",
+            doc_payload={
+                "course": "Course",
+                "intro_text": "Course intro",
+                "blocks": [
+                    {
+                        "block_type": "course_intro",
+                        "order": 1,
+                        "idx": 1,
+                        "is_enabled": 1,
+                        "props": json.dumps({"heading": "Course", "cta_intent": "inquire"}),
+                    }
+                ],
+            },
+        )
+        codes = {row["code"] for row in report["checks"]}
+        self.assertNotIn("cta_missing_course", codes)

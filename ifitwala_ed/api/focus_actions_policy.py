@@ -179,7 +179,9 @@ def acknowledge_staff_policy(
         if expected_candidates and normalized_typed_name not in expected_candidates:
             expected_label = expected_full_name or employee_name
             frappe.throw(
-                _("Typed signature must match your employee name exactly: {0}").format(expected_label),
+                _("Typed signature must match your employee name exactly: {expected_name}").format(
+                    expected_name=expected_label
+                ),
                 frappe.ValidationError,
             )
 

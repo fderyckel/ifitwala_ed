@@ -4,11 +4,11 @@
 // ifitwala_ed/public/js/organization_tree.js
 
 frappe.treeview_settings["Organization"] = {
-	root_label: "All Organizations",
+	root_label: __("All Organizations"),
 	get_tree_nodes: "ifitwala_ed.setup.doctype.organization.organization.get_children",
 	add_tree_node: "ifitwala_ed.setup.doctype.organization.organization.add_node",
 	get_tree_root: false,
-	breadcrumb: "School Settings",
+	breadcrumb: __("School Settings"),
 	disable_add_node: false,
 	show_expand_all: true,
 

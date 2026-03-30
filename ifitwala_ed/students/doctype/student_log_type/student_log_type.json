@@ -42,7 +42,7 @@
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-14 07:20:40.374725",
+ "modified": "2026-03-26 20:03:13.024515",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Log Type",
@@ -75,6 +75,19 @@
   },
   {
    "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -85,8 +98,13 @@
    "write": 1
   },
   {
+   "email": 1,
+   "export": 1,
+   "print": 1,
    "read": 1,
-   "role": "Academic Staff"
+   "report": 1,
+   "role": "Counselor",
+   "share": 1
   },
   {
    "read": 1,

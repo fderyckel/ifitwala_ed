@@ -3,9 +3,9 @@ title: "Program Enrollment Tool: Batch Request Preparation and Materialization"
 slug: program-enrollment-tool
 category: Enrollment
 doc_order: 6
-version: "2.0.0"
-last_change_date: "2026-03-11"
-summary: "Use one in-product tool to prepare, validate, approve, and materialize Program Enrollment Requests for cohort rollover and low-friction year-end promotion."
+version: "2.3.0"
+last_change_date: "2026-03-29"
+summary: "Use one in-product tool to either seed new Program Enrollment Requests from cohorts or existing enrollments, or fetch existing academic requests directly for batch validation, approval, and materialization, while the request report handles filtered approval/materialization shortcuts."
 seo_title: "Program Enrollment Tool: Batch Request Preparation and Materialization"
 seo_description: "Prepare Program Enrollment Requests in batch for cohorts or existing enrollment populations, then validate, approve, and materialize them into Program Enrollments."
 ---
@@ -18,10 +18,18 @@ It no longer writes `Program Enrollment` directly as the first step. Its canonic
 
 `source students -> draft Program Enrollment Request -> validate -> approve -> materialize Program Enrollment`
 
+Use the tool when staff need to seed or manage the student population itself. It now also supports an existing-request mode when the requests already exist and staff want one operator surface to fetch, validate, approve, and materialize them in bulk.
+
+When the goal is only to clear non-problematic academic requests quickly inside a filtered report view, use `Program Enrollment Request Overview` instead.
+
 ## Before You Start (Prerequisites)
 
-- Define source filter (`Program Enrollment` or `Cohort`) and load students.
-- Set destination (`Destination Program Offering`, `Destination Academic Year`).
+- Choose whether the tool is sourcing:
+  - `Program Enrollment`
+  - `Cohort`
+  - `Program Enrollment Request`
+- When sourcing `Program Enrollment` or `Cohort`, set destination (`Destination Program Offering`, `Destination Academic Year`).
+- When sourcing `Program Enrollment Request`, set the request scope (`Request Program Offering`, `Request Academic Year`).
 - Ensure the destination offering has offering courses and enrollment rules configured.
 - Ensure the destination Academic Year has valid start/end dates.
 
@@ -30,6 +38,8 @@ It no longer writes `Program Enrollment` directly as the first step. Its canonic
 - Preserves the locked request-first architecture while keeping the older batch-tool workflow staff rely on.
 - Handles large year-end rollover work without per-student navigation.
 - Lets staff process straightforward cohorts in one surface, while still stopping on requests that need review.
+- Gives staff a lower-friction batch lane when requests already exist, without forcing them into per-request review.
+- Shares the same request-seeding engine used by [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/), so staff launch and portal launch do not drift.
 
 <Callout type="info" title="Request-first contract">
 The tool prepares `Program Enrollment Request` rows first, then offers batch actions to validate, approve, and materialize them. This keeps override and audit rules intact.
@@ -39,18 +49,31 @@ The tool prepares `Program Enrollment Request` rows first, then offers batch act
 
 - `Program Enrollment`
 - `Cohort`
-
-Unsupported source modes were removed from the runtime contract.
+- `Program Enrollment Request`
 
 ## Workflow
 
-1. Choose the source population and click `Get Students`.
-2. Review students who are already enrolled in the destination offering/year.
-3. Click `Prepare Requests`.
-4. Click `Validate Requests`.
-5. Click `Approve Valid Requests`.
-6. Click `Materialize Requests`.
-7. Download the details CSV for any review items, blockers, or failures.
+### Mode A: Seed New Requests
+
+1. Choose source `Program Enrollment` or `Cohort`.
+2. Load students with `Get Students`.
+3. Review students who are already enrolled in the destination offering/year.
+4. Click `Prepare Requests`.
+5. Click `Validate Requests`.
+6. Click `Approve Valid Requests`.
+7. Click `Materialize Requests`.
+
+### Mode B: Process Existing Requests
+
+1. Choose source `Program Enrollment Request`.
+2. Set `Request Program Offering` and `Request Academic Year`.
+3. Click `Get Existing Requests`.
+4. Review the loaded request states in the tool grid.
+5. Click `Validate Requests`.
+6. Click `Approve Valid Requests`.
+7. Click `Materialize Requests`.
+
+Download the details CSV for any review items, blockers, or failures.
 
 ## What the Tool Carries Forward
 
@@ -78,11 +101,18 @@ If a choice still needs staff judgment, the tool creates the draft request and r
 - Destination: one new offering/year
 - Result: the tool creates draft requests with required destination courses only, then staff batch-validates, approves, and materializes.
 
+### Example 3: Existing Requests Already Submitted
+
+- Source: `Program Enrollment Request`
+- Request scope: one offering + one Academic Year
+- Result: staff load the existing academic requests directly, validate the stale drafts or submissions, approve the clean ones, and materialize enrollments without opening each request one by one.
+
 ## Related Docs
 
 - [**Program Enrollment Request**](/docs/en/program-enrollment-request/)
 - [**Program Enrollment**](/docs/en/program-enrollment/)
 - [**Course Enrollment Tool**](/docs/en/course-enrollment-tool/)
+- [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/)
 - [**Student Enrollment Playbook**](/docs/en/student-enrollment-playbook/)
 
 ## Technical Notes (IT)
@@ -106,9 +136,10 @@ If a choice still needs staff judgment, the tool creates the draft request and r
 - **DocType**: `Program Enrollment Tool` (`ifitwala_ed/schedule/doctype/program_enrollment_tool/`)
 - **Single doc**: `issingle = 1`
 - **Core behavior**:
-  - sources students from cohort or existing enrollment
+  - sources rows from cohort, existing enrollment, or existing academic enrollment requests
   - skips students already enrolled in the destination
   - creates draft `Program Enrollment Request` rows only when no active destination request already exists
+  - can fetch the latest active academic request per student for an offering/year and process those requests in place
   - supports batch validation, approval, and materialization
   - uses queue + realtime completion for large batches
   - writes review/blocker/failure detail to CSV when needed

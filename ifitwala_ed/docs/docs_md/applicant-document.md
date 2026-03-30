@@ -3,8 +3,8 @@ title: "Applicant Document: Authoritative Owner of Admissions Files"
 slug: applicant-document
 category: Admission
 doc_order: 6
-version: "1.7.0"
-last_change_date: "2026-03-12"
+version: "1.7.1"
+last_change_date: "2026-03-23"
 summary: "Define Applicant Document as the applicant/type bucket and Applicant Document Item as per-file slot rows for review, readiness, and promotion."
 seo_title: "Applicant Document: Authoritative Owner of Admissions Files"
 seo_description: "Define Applicant Document parent buckets and Applicant Document Item per-file slots for admissions upload, review, readiness, and promotion."
@@ -26,6 +26,7 @@ seo_description: "Define Applicant Document parent buckets and Applicant Documen
 - admissions file entries are modeled as `Applicant Document Item` rows under each `Applicant Document`
 - direct admissions file attachment to `Student Applicant` or `Student` is forbidden
 - only `Student Applicant.applicant_image` remains a specific identity-image exception
+- binary upload/finalize for applicant documents is delegated by `ifitwala_ed.admission.admissions_portal` to `ifitwala_drive.api.admissions.upload_applicant_document`
 
 <Callout type="warning" title="Non-negotiable ownership rule">
 All admissions evidence files must attach to `Applicant Document Item` (scoped under `Applicant Document`). Treat any alternative attachment path as an architecture bug.
@@ -126,6 +127,8 @@ This preserves auditability, GDPR-local erasure semantics, and operational trace
 - applicant identity/scope checks
 - document type scope/activity checks (ancestor-aware org/school scope)
 - document type upload classification contract checks
+- resolves/creates `Applicant Document` and `Applicant Document Item` in `ifitwala_ed` before the file is sent to Drive
+- delegates upload session creation and governed finalize to `ifitwala_drive.api.admissions.upload_applicant_document`
 - governed classification with `primary_subject_type = Student Applicant`
 - resolves/creates `Applicant Document Item` (`item_key`, `item_label`) under parent bucket
 - file attachment target forced to `Applicant Document Item`
@@ -216,6 +219,7 @@ Staff review surface rule:
   - `logical_key = <doc_type_code>`
 - **Portal/API surfaces**:
   - governed endpoint: `ifitwala_ed/admission/admissions_portal.py::upload_applicant_document`
+  - Drive wrapper called by that endpoint: `ifitwala_drive.api.admissions.upload_applicant_document`
   - portal list endpoints: `ifitwala_ed/api/admissions_portal.py::list_applicant_documents`, `list_applicant_document_types`
   - portal upload wrapper: `ifitwala_ed/api/admissions_portal.py::upload_applicant_document`
   - shared readiness helper: `ifitwala_ed/admission/applicant_document_readiness.py`

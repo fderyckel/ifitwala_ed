@@ -18,18 +18,18 @@ ADMIN_ROLES_FULL = {"System Manager", "Academic Admin"}
 
 # Elevated audience rights: can target School Scope audiences with
 # Staff or Community recipients, and can choose Issuing School within their nested scope.
-ELEVATED_WIDE_AUDIENCE_ROLES = {"System Manager", "Academic Admin", "Assistant Admin"}
+ELEVATED_WIDE_AUDIENCE_ROLES = {"System Manager", "Academic Admin", "Academic Assistant"}
 # Allowed to target/publish School Scope audiences that include Staff or Community.
 # Kept separate from issuing-school elevation to avoid widening school-selection privileges.
 WIDE_AUDIENCE_RECIPIENT_ROLES = {
     "System Manager",
     "Academic Admin",
-    "Assistant Admin",
+    "Academic Assistant",
     "HR Manager",
     "Accounts Manager",
 }
 
-AUDIENCE_TARGET_MODES = {"School Scope", "Team", "Student Group"}
+AUDIENCE_TARGET_MODES = ("School Scope", "Organization", "Team", "Student Group")
 RECIPIENT_TOGGLE_FIELDS = ("to_staff", "to_students", "to_guardians", "to_community")
 RECIPIENT_TOGGLE_LABELS = {
     "to_staff": "Staff",
@@ -39,6 +39,7 @@ RECIPIENT_TOGGLE_LABELS = {
 }
 TARGET_MODE_ALLOWED_RECIPIENTS = {
     "School Scope": {"to_staff", "to_students", "to_guardians", "to_community"},
+    "Organization": {"to_staff"},
     "Team": {"to_staff"},
     "Student Group": {"to_staff", "to_students", "to_guardians"},
 }
@@ -155,10 +156,14 @@ class OrgCommunication(Document):
         """Enforce optional Issuing School rules using nestedset school hierarchy."""
         user = frappe.session.user
         default_school, tree = _get_school_scope_tree(user)
+        has_non_school_scope_audience = any(
+            (row.target_mode or "").strip() and (row.target_mode or "").strip() != "School Scope"
+            for row in (self.audiences or [])
+        )
 
         # School is optional. When user has a configured default school and no value
-        # was chosen, derive it for continuity with school-scoped users.
-        if not self.school and default_school:
+        # was chosen, derive it for continuity with school-scoped users only.
+        if not self.school and default_school and not has_non_school_scope_audience:
             self.school = default_school
 
         if not self.school:
@@ -242,7 +247,7 @@ class OrgCommunication(Document):
             )
             if not booking_row:
                 frappe.throw(
-                    _("Activity Booking {0} does not exist.").format(booking),
+                    _("Activity Booking {booking} does not exist.").format(booking=booking),
                     title=_("Invalid Activity Context"),
                 )
             booking_offering = (booking_row.get("program_offering") or "").strip()
@@ -264,7 +269,7 @@ class OrgCommunication(Document):
             )
             if not student_group_row:
                 frappe.throw(
-                    _("Activity Student Group {0} does not exist.").format(student_group),
+                    _("Activity Student Group {student_group} does not exist.").format(student_group=student_group),
                     title=_("Invalid Activity Context"),
                 )
             if (student_group_row.get("group_based_on") or "").strip() != "Activity":
@@ -344,8 +349,9 @@ class OrgCommunication(Document):
         # Parent school descendants for structural consistency
         parent_descendants = []
         if self.school:
-            parent_descendants = get_descendants_of("School", self.school, ignore_permissions=True) or []
-            parent_descendants = {self.school, *parent_descendants}
+            if frappe.db.exists("School", self.school):
+                parent_descendants = get_descendants_of("School", self.school, ignore_permissions=True) or []
+                parent_descendants = {self.school, *parent_descendants}
 
         school_scope_rows = [row for row in (self.audiences or []) if (row.target_mode or "").strip() == "School Scope"]
         school_scope_names = sorted(
@@ -382,6 +388,17 @@ class OrgCommunication(Document):
                     frappe.throw(
                         _("Audience row for School Scope must specify a School."),
                         title=_("Incomplete Audience"),
+                    )
+            elif target_mode == "Organization":
+                if row.school or row.team or row.student_group:
+                    frappe.throw(
+                        _("Audience row for Organization cannot specify School, Team, or Student Group."),
+                        title=_("Invalid Organization Audience"),
+                    )
+                if self.school:
+                    frappe.throw(
+                        _("Organization audience rows require a blank Issuing School."),
+                        title=_("Invalid Organization Audience"),
                     )
             elif target_mode == "Team":
                 if not row.team:
@@ -446,7 +463,7 @@ class OrgCommunication(Document):
     # ----------------------------------------------------------------
 
     def _enforce_role_restrictions_on_audiences(self):
-        """Restrict School Scope rows with Staff/Community recipients to privileged roles."""
+        """Restrict wide staff/community audience rows to privileged roles."""
         user = frappe.session.user
         is_wide_privileged = _user_has_any_role(user, WIDE_AUDIENCE_RECIPIENT_ROLES)
 
@@ -455,15 +472,24 @@ class OrgCommunication(Document):
 
         for row in self.audiences:
             target_mode = (row.target_mode or "").strip()
-            if target_mode != "School Scope":
-                continue
-
             enabled_recipients = _get_enabled_recipient_fields(row)
-            if enabled_recipients & {"to_staff", "to_community"} and not is_wide_privileged:
+            if (
+                target_mode == "School Scope"
+                and enabled_recipients & {"to_staff", "to_community"}
+                and not is_wide_privileged
+            ):
                 frappe.throw(
                     _(
                         "You are not allowed to target Staff or Community at School Scope. "
-                        "Only Academic Admin, Assistant Admin, HR Manager, Accounts Manager, or System Manager may do this."
+                        "Only Academic Admin, Academic Assistant, HR Manager, Accounts Manager, or System Manager may do this."
+                    ),
+                    title=_("Audience Not Allowed"),
+                )
+            if target_mode == "Organization" and not is_wide_privileged:
+                frappe.throw(
+                    _(
+                        "You are not allowed to target Staff at Organization scope. "
+                        "Only Academic Admin, Academic Assistant, HR Manager, Accounts Manager, or System Manager may do this."
                     ),
                     title=_("Audience Not Allowed"),
                 )
@@ -498,12 +524,15 @@ class OrgCommunication(Document):
         # Restrict publishing of wide audiences for non-privileged users
         if self.status == "Published" and not is_admin:
             if any(
-                (r.target_mode or "").strip() == "School Scope"
-                and _get_enabled_recipient_fields(r) & {"to_staff", "to_community"}
+                (
+                    (r.target_mode or "").strip() == "School Scope"
+                    and _get_enabled_recipient_fields(r) & {"to_staff", "to_community"}
+                )
+                or (r.target_mode or "").strip() == "Organization"
                 for r in self.audiences
             ):
                 frappe.throw(
-                    _("You are not allowed to publish School Scope communications that target Staff or Community."),
+                    _("You are not allowed to publish wide staff/community communications from your current role."),
                     title=_("Publish Not Allowed"),
                 )
 
@@ -568,7 +597,7 @@ class OrgCommunication(Document):
         """
         user = frappe.session.user
         if not _user_has_any_role(user, ADMIN_ROLES_FULL):
-            # Assistant Admin is intentionally excluded here: they can manage content
+            # Academic Assistant is intentionally excluded here: they can manage content
             # but should not hard-delete the record.
             frappe.throw(
                 _("You are not allowed to delete communications. Please archive instead."),
@@ -760,7 +789,7 @@ def get_org_communication_context() -> dict:
     - allowed_schools:
       * default_school node + descendants when default_school exists
       * org-scope schools when no default_school for non-privileged users
-    - is_privileged: can choose Issuing School (Academic Admin, Assistant Admin, System Manager)
+    - is_privileged: can choose Issuing School (Academic Admin, Academic Assistant, System Manager)
     """
     user = frappe.session.user
     default_school, school_tree = _get_school_scope_tree(user)
@@ -804,7 +833,7 @@ def get_org_communication_context() -> dict:
 def get_permission_query_conditions(user: str | None = None) -> str | None:
     """Limit Org Communication list by school/org for non-admin users.
 
-    Admins (System Manager, Academic Admin, Assistant Admin) see all.
+    Admins (System Manager, Academic Admin, Academic Assistant) see all.
     Others see communications for their effective school scope:
     - default_school + descendants when available
     - otherwise, schools under their authorized organization scope
@@ -857,7 +886,7 @@ def has_permission(doc: "OrgCommunication", user: str = None, ptype: str = None)
     # Admin roles: defer to role-based permissions except for delete, which we tighten.
     if _user_has_any_role(user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES):
         if ptype == "delete":
-            # Assistant Admin is not in ADMIN_ROLES_FULL, so only System Manager
+            # Academic Assistant is not in ADMIN_ROLES_FULL, so only System Manager
             # and Academic Admin get delete = True here.
             return _user_has_any_role(user, ADMIN_ROLES_FULL)
         return True

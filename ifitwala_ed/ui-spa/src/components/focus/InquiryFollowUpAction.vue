@@ -37,6 +37,87 @@
 			</div>
 		</div>
 
+		<div class="card-surface p-4 space-y-4">
+			<div class="flex items-start justify-between gap-3">
+				<div>
+					<div class="type-body font-medium">Inquiry details</div>
+					<div class="type-meta text-muted mt-1">
+						Review the original inquiry before recording first contact.
+					</div>
+				</div>
+				<div class="shrink-0 flex items-center gap-2">
+					<button
+						v-if="inquiry?.contact"
+						type="button"
+						class="btn btn-quiet"
+						@click="openContactInDesk(inquiry.contact)"
+					>
+						Open contact
+					</button>
+					<button
+						v-else
+						type="button"
+						class="btn btn-quiet"
+						:disabled="contactBusy"
+						@click="createContact"
+					>
+						{{ contactBusy ? 'Creating…' : 'Create contact' }}
+					</button>
+				</div>
+			</div>
+
+			<div class="grid gap-4 md:grid-cols-2">
+				<div class="space-y-3">
+					<div>
+						<div class="type-meta text-muted">Name</div>
+						<div class="type-body mt-1">{{ subjectName }}</div>
+					</div>
+					<div v-if="inquiry?.email">
+						<div class="type-meta text-muted">Email</div>
+						<a
+							:href="`mailto:${inquiry.email}`"
+							class="type-body mt-1 inline-flex text-canopy underline-offset-2 hover:underline"
+						>
+							{{ inquiry.email }}
+						</a>
+					</div>
+					<div v-if="inquiry?.phone_number">
+						<div class="type-meta text-muted">Phone</div>
+						<a
+							:href="`tel:${inquiry.phone_number}`"
+							class="type-body mt-1 inline-flex text-canopy underline-offset-2 hover:underline"
+						>
+							{{ inquiry.phone_number }}
+						</a>
+					</div>
+					<div>
+						<div class="type-meta text-muted">Contact</div>
+						<div class="type-body mt-1">
+							{{ inquiry?.contact || 'No linked contact yet' }}
+						</div>
+					</div>
+				</div>
+
+				<div class="space-y-2">
+					<div class="type-meta text-muted">Message</div>
+					<div class="rounded-xl border border-ink/10 bg-white px-4 py-3">
+						<p v-if="inquiry?.message" class="type-body whitespace-pre-wrap text-ink">
+							{{ inquiry.message }}
+						</p>
+						<p v-else class="type-meta text-muted">No message provided.</p>
+					</div>
+				</div>
+			</div>
+
+			<div v-if="contactNotice" class="rounded-xl border border-ink/10 bg-white p-3">
+				<p class="type-meta text-ink">{{ contactNotice }}</p>
+			</div>
+
+			<div v-if="contactError" class="rounded-xl border border-ink/10 bg-white p-3">
+				<p class="type-meta text-ink">{{ contactError }}</p>
+			</div>
+		</div>
+
 		<div class="card-surface p-4">
 			<div class="type-body font-medium">First contact action</div>
 			<div class="type-meta text-muted mt-1">
@@ -74,6 +155,7 @@ import { __ } from '@/lib/i18n';
 import { createFocusService } from '@/lib/services/focus/focusService';
 
 import type { Response as GetFocusContextResponse } from '@/types/contracts/focus/get_focus_context';
+import type { Request as CreateInquiryContactRequest } from '@/types/contracts/focus/create_inquiry_contact';
 import type { Request as MarkInquiryContactedRequest } from '@/types/contracts/focus/mark_inquiry_contacted';
 
 const props = defineProps<{
@@ -93,6 +175,9 @@ const inquiry = ref<GetFocusContextResponse['inquiry']>(null);
 const busy = ref(false);
 const submittedOnce = ref(false);
 const actionError = ref<string | null>(null);
+const contactBusy = ref(false);
+const contactError = ref<string | null>(null);
+const contactNotice = ref<string | null>(null);
 
 const subjectName = computed(() => {
 	const value = (inquiry.value?.subject_name || '').trim();
@@ -110,6 +195,9 @@ watch(
 		busy.value = false;
 		submittedOnce.value = false;
 		actionError.value = null;
+		contactBusy.value = false;
+		contactError.value = null;
+		contactNotice.value = null;
 	},
 	{ immediate: true, deep: false }
 );
@@ -126,6 +214,12 @@ function openInDesk(name: string) {
 	const safeName = String(name || '').trim();
 	if (!safeName) return;
 	window.open(`/desk/inquiry/${encodeURIComponent(safeName)}`, '_blank', 'noopener');
+}
+
+function openContactInDesk(name: string) {
+	const safeName = String(name || '').trim();
+	if (!safeName) return;
+	window.open(`/desk/contact/${encodeURIComponent(safeName)}`, '_blank', 'noopener');
 }
 
 function requireFocusItemId(): string | null {
@@ -146,6 +240,44 @@ function newClientRequestId(prefix = 'req') {
 function errorMessage(err: unknown): string {
 	if (err instanceof Error && err.message) return err.message;
 	return __('Please try again.');
+}
+
+async function createContact() {
+	if (contactBusy.value || inquiry.value?.contact) return;
+
+	contactError.value = null;
+	contactNotice.value = null;
+
+	const focusItemId = String(props.focusItemId || '').trim();
+	if (!focusItemId) {
+		contactError.value = __(
+			'Missing focus item. Please close and reopen this item from the Focus list.'
+		);
+		return;
+	}
+
+	contactBusy.value = true;
+	try {
+		const payload: CreateInquiryContactRequest = {
+			focus_item_id: focusItemId,
+		};
+		const response = await focusService.createInquiryContact(payload);
+		if (inquiry.value) {
+			inquiry.value = {
+				...inquiry.value,
+				contact: response.contact_name,
+			};
+		}
+		contactNotice.value =
+			response.status === 'already_linked'
+				? __('Contact already linked: {0}', [response.contact_name])
+				: __('Contact linked: {0}', [response.contact_name]);
+		requestRefresh();
+	} catch (err: unknown) {
+		contactError.value = errorMessage(err);
+	} finally {
+		contactBusy.value = false;
+	}
 }
 
 async function markContacted() {

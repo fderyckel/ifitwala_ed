@@ -17,12 +17,16 @@ class TestDesignation(FrappeTestCase):
         with self.assertRaises(frappe.ValidationError):
             doc.validate_organization_scope()
 
-    def test_designation_pqc_operator_scope_uses_org_descendants(self):
+    def test_designation_pqc_operator_scope_uses_read_org_and_school_scope(self):
         with (
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["HR Manager"]),
             patch(
-                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_operator_org_scope",
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_org_scope",
                 return_value=["All Organizations", "ORG-ROOT", "ORG-CHILD"],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_school_scope",
+                return_value=["SCH-ROOT", "SCH-CHILD"],
             ),
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.db.escape", side_effect=lambda v: f"'{v}'"),
         ):
@@ -30,18 +34,19 @@ class TestDesignation(FrappeTestCase):
 
         self.assertEqual(
             condition,
-            "(`tabDesignation`.`organization` IN ('All Organizations', 'ORG-ROOT', 'ORG-CHILD') AND 1=1)",
+            "(`tabDesignation`.`organization` IN ('All Organizations', 'ORG-ROOT', 'ORG-CHILD') "
+            "AND (IFNULL(`tabDesignation`.`school`, '') = '' OR `tabDesignation`.`school` IN ('SCH-ROOT', 'SCH-CHILD')))",
         )
 
     def test_designation_pqc_academic_admin_uses_org_and_school_ancestors(self):
         with (
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["Academic Admin"]),
             patch(
-                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_applicable_org_scope",
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_org_scope",
                 return_value=["All Organizations", "ORG-ROOT", "ORG-CHILD"],
             ),
             patch(
-                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_school_scope",
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_school_scope",
                 return_value=["SCH-ROOT", "SCH-CHILD"],
             ),
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.db.escape", side_effect=lambda v: f"'{v}'"),
@@ -54,58 +59,46 @@ class TestDesignation(FrappeTestCase):
             "AND (IFNULL(`tabDesignation`.`school`, '') = '' OR `tabDesignation`.`school` IN ('SCH-ROOT', 'SCH-CHILD')))",
         )
 
-    def test_designation_has_permission_academic_admin_does_not_read_all_organizations_row(self):
+    def test_can_user_read_designation_academic_admin_does_not_read_all_organizations_row(self):
         doc = frappe._dict(organization="All Organizations", school="")
 
         with (
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["Academic Admin"]),
             patch(
-                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_applicable_org_scope",
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_org_scope",
                 return_value=["ORG-ROOT"],
             ),
             patch(
-                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_school_scope",
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_school_scope",
                 return_value=None,
             ),
         ):
-            allowed = designation_controller.has_permission(doc, ptype="read", user="academic.admin@example.com")
+            allowed = designation_controller._can_user_read_designation(doc, user="academic.admin@example.com")
 
         self.assertFalse(allowed)
 
-    def test_designation_has_permission_academic_admin_cannot_write(self):
-        doc = frappe._dict(organization="ORG-ROOT", school="")
-
-        with (
-            patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["Academic Admin"]),
-            patch(
-                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_applicable_org_scope",
-                return_value=["All Organizations", "ORG-ROOT"],
-            ),
-        ):
-            allowed = designation_controller.has_permission(doc, ptype="write", user="academic.admin@example.com")
-
-        self.assertFalse(allowed)
-
-    def test_designation_has_permission_non_operator_school_scope_flows_to_child_school_user(self):
+    def test_can_user_read_designation_non_operator_school_scope_flows_to_child_school_user(self):
         doc = frappe._dict(organization="ORG-ROOT", school="SCH-ROOT")
 
         with (
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["Instructor"]),
             patch(
-                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_applicable_org_scope",
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_org_scope",
                 return_value=["All Organizations", "ORG-ROOT"],
             ),
             patch(
-                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_school_scope",
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_school_scope",
                 return_value=["SCH-ROOT", "SCH-CHILD"],
             ),
         ):
-            allowed = designation_controller.has_permission(doc, ptype="read", user="instructor@example.com")
+            allowed = designation_controller._can_user_read_designation(doc, user="instructor@example.com")
 
         self.assertTrue(allowed)
 
-    def test_designation_has_permission_operator_write_uses_descendant_org_scope_only(self):
-        doc = frappe._dict(organization="ORG-ROOT", school="SCH-ROOT")
+    def test_assert_mutation_scope_allowed_operator_save_uses_descendant_org_scope_only(self):
+        doc = designation_controller.Designation.__new__(designation_controller.Designation)
+        doc.organization = "ORG-ROOT"
+        doc.school = ""
 
         with (
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["HR Manager"]),
@@ -114,11 +107,43 @@ class TestDesignation(FrappeTestCase):
                 return_value=["All Organizations", "ORG-ROOT", "ORG-CHILD"],
             ),
         ):
-            allowed = designation_controller.has_permission(doc, ptype="write", user="hr.manager@example.com")
+            doc._assert_mutation_scope_allowed("save", user="hr.manager@example.com")
 
-        self.assertTrue(allowed)
+    def test_assert_mutation_scope_allowed_blocks_outside_org_scope(self):
+        doc = designation_controller.Designation.__new__(designation_controller.Designation)
+        doc.organization = "ORG-PARENT"
+        doc.school = ""
 
-    def test_designation_has_permission_non_operator_blocks_sibling_school_user(self):
+        with (
+            patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["HR Manager"]),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_operator_org_scope",
+                return_value=["All Organizations", "ORG-ROOT", "ORG-CHILD"],
+            ),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                doc._assert_mutation_scope_allowed("save", user="hr.manager@example.com")
+
+    def test_assert_mutation_scope_allowed_blocks_sibling_school(self):
+        doc = designation_controller.Designation.__new__(designation_controller.Designation)
+        doc.organization = "ORG-ROOT"
+        doc.school = "SCH-SIBLING"
+
+        with (
+            patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["HR Manager"]),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_operator_org_scope",
+                return_value=["All Organizations", "ORG-ROOT", "ORG-CHILD"],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_operator_school_write_scope",
+                return_value=["SCH-ROOT", "SCH-CHILD"],
+            ),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                doc._assert_mutation_scope_allowed("save", user="hr.manager@example.com")
+
+    def test_can_user_read_designation_non_operator_blocks_sibling_school_user(self):
         doc = frappe._dict(organization="ORG-ROOT", school="SCH-ROOT")
 
         with (
@@ -126,15 +151,15 @@ class TestDesignation(FrappeTestCase):
                 "ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["Academic Assistant"]
             ),
             patch(
-                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_applicable_org_scope",
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_org_scope",
                 return_value=["All Organizations", "ORG-ROOT"],
             ),
             patch(
-                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_school_scope",
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_designation_read_school_scope",
                 return_value=["SCH-OTHER"],
             ),
         ):
-            allowed = designation_controller.has_permission(doc, ptype="read", user="academic.assistant@example.com")
+            allowed = designation_controller._can_user_read_designation(doc, user="academic.assistant@example.com")
 
         self.assertFalse(allowed)
 
@@ -183,6 +208,50 @@ class TestDesignation(FrappeTestCase):
 
         self.assertEqual(scope, ["All Organizations", "ORG-CHILD", "ORG-EXPLICIT", "ORG-EXPLICIT-CHILD", "ORG-ROOT"])
 
+    def test_resolve_designation_read_org_scope_for_operator_includes_ancestors_and_descendants(self):
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_user_base_org",
+                return_value="ORG-CHILD",
+            ),
+            patch("ifitwala_ed.hr.doctype.designation.designation.frappe.db.exists", return_value=True),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation.frappe.get_all",
+                return_value=["ORG-EXPLICIT"],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._get_ancestor_organizations_uncached",
+                side_effect=lambda org: {
+                    "ORG-CHILD": ["All Organizations", "ORG-ROOT", "ORG-CHILD"],
+                    "ORG-EXPLICIT": ["All Organizations", "ORG-OTHER", "ORG-EXPLICIT"],
+                }[org],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._get_descendant_organizations_uncached",
+                side_effect=lambda org: {
+                    "ORG-CHILD": ["ORG-CHILD", "ORG-GRANDCHILD"],
+                    "ORG-EXPLICIT": ["ORG-EXPLICIT", "ORG-EXPLICIT-CHILD"],
+                }[org],
+            ),
+        ):
+            scope = designation_controller._resolve_designation_read_org_scope(
+                "hr.manager@example.com",
+                roles={"HR Manager"},
+            )
+
+        self.assertEqual(
+            scope,
+            [
+                "All Organizations",
+                "ORG-CHILD",
+                "ORG-EXPLICIT",
+                "ORG-EXPLICIT-CHILD",
+                "ORG-GRANDCHILD",
+                "ORG-OTHER",
+                "ORG-ROOT",
+            ],
+        )
+
     def test_resolve_designation_school_scope_uses_school_ancestors(self):
         with (
             patch(
@@ -207,6 +276,29 @@ class TestDesignation(FrappeTestCase):
 
         self.assertIsNone(scope)
 
+    def test_resolve_designation_read_school_scope_for_operator_uses_ancestor_and_descendant_schools(self):
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._resolve_user_base_school",
+                return_value="SCH-CHILD",
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._get_ancestor_schools_uncached",
+                return_value=["SCH-ROOT", "SCH-CHILD"],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation._get_descendant_schools_uncached",
+                return_value=["SCH-CHILD", "SCH-GRANDCHILD"],
+            ),
+        ):
+            scope = designation_controller._resolve_designation_read_school_scope(
+                "hr.manager@example.com",
+                roles={"HR Manager"},
+                org_scope=["ORG-ROOT"],
+            )
+
+        self.assertEqual(scope, ["SCH-CHILD", "SCH-GRANDCHILD", "SCH-ROOT"])
+
     def test_get_default_designation_organization_uses_resolved_user_org(self):
         with patch(
             "ifitwala_ed.hr.doctype.designation.designation._resolve_user_base_org",
@@ -220,7 +312,10 @@ class TestDesignation(FrappeTestCase):
         designation_doc = frappe._dict(name="Teacher", designation_name="Teacher", organization="ORG-ROOT", school="")
 
         with (
-            patch.object(frappe.session, "user", "academic.admin@example.com"),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation.frappe.session",
+                frappe._dict(user="academic.admin@example.com"),
+            ),
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_doc", return_value=designation_doc),
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_roles", return_value=["Academic Admin"]),
         ):
@@ -306,7 +401,10 @@ class TestDesignation(FrappeTestCase):
         ]
 
         with (
-            patch.object(frappe.session, "user", "hr.manager@example.com"),
+            patch(
+                "ifitwala_ed.hr.doctype.designation.designation.frappe.session",
+                frappe._dict(user="hr.manager@example.com"),
+            ),
             patch("ifitwala_ed.hr.doctype.designation.designation.frappe.get_doc", return_value=designation_doc),
             patch("ifitwala_ed.hr.doctype.designation.designation._assert_designation_employee_lookup_allowed"),
             patch(

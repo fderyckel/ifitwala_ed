@@ -59,7 +59,7 @@ class ActivityBooking(Document):
     def _validate_status(self):
         status = (self.status or "Draft").strip() or "Draft"
         if status not in ALL_STATUSES:
-            frappe.throw(_("Invalid Activity Booking status: {0}").format(status))
+            frappe.throw(_("Invalid Activity Booking status: {status}.").format(status=status))
         self.status = status
 
     def _validate_confirmation_requirements(self):
@@ -91,8 +91,11 @@ class ActivityBooking(Document):
         if existing:
             row = existing[0]
             frappe.throw(
-                _("Student already has an active booking ({0}) with status {1} for this offering.").format(
-                    row.get("name"), row.get("status")
+                _(
+                    "Student already has an active booking ({booking_name}) with status {booking_status} for this offering."
+                ).format(
+                    booking_name=row.get("name"),
+                    booking_status=row.get("status"),
                 ),
                 title=_("Duplicate Active Booking"),
             )

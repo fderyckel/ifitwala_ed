@@ -152,7 +152,7 @@ function render_catalog_list($list, rows) {
           <div class="text-muted small">${course}</div>
         </div>
         <div class="ms-auto">
-          ${req ? `<span class="badge badge-pill po-required-badge">Required</span>` : ""}
+          ${req ? `<span class="badge badge-pill po-required-badge">${__("Required")}</span>` : ""}
         </div>
       </label>
     `);
@@ -242,6 +242,16 @@ function get_selected_ay_names(frm) {
 	return (frm.doc.offering_academic_years || [])
 		.map(r => r.academic_year)
 		.filter(Boolean);
+}
+
+function new_selection_window(frm) {
+	const ayNames = get_selected_ay_names(frm);
+	frappe.new_doc('Program Offering Selection Window', {
+		program_offering: frm.doc.name,
+		academic_year: ayNames.length === 1 ? ayNames[0] : null,
+		source_mode: 'Program Enrollment',
+		audience: 'Guardian',
+	});
 }
 
 function require_ay_span(frm) {
@@ -737,24 +747,18 @@ frappe.ui.form.on("Program Offering", {
 
 		bind_offering_year_query(frm);
 		bind_program_course_query(frm);
+		const actionGroup = __("Actions");
 
-		// Add from Catalog (blue, standalone on the left)
-		const addFrom = frm.add_custom_button(__("Add from Catalog"), () => open_catalog_picker(frm));
-		if (addFrom) {
-			addFrom.removeClass("btn-default btn-secondary").addClass("btn-primary");
-		}
+		frm.add_custom_button(__("Add from Catalog"), () => open_catalog_picker(frm), actionGroup);
+		frm.add_custom_button(__("Add Non-catalog"), () => open_non_catalog_picker(frm), actionGroup);
+		frm.add_custom_button(__("Create Draft Tuition Invoice"), () => open_tuition_invoice_dialog(frm), actionGroup);
 
-		// Add Non-catalog (outlined blue, standalone on the left)
-		const addNonCat = frm.add_custom_button(__("Add Non-catalog"), () => open_non_catalog_picker(frm));
-		if (addNonCat) {
-			addNonCat.removeClass("btn-default btn-secondary").addClass("btn-outline-primary");
-			addNonCat.addClass("ms-2"); // small spacing
-		}
-
-		const createInvoice = frm.add_custom_button(__("Create Draft Tuition Invoice"), () => open_tuition_invoice_dialog(frm));
-		if (createInvoice) {
-			createInvoice.removeClass("btn-default btn-secondary").addClass("btn-outline-secondary");
-			createInvoice.addClass("ms-2");
+		if (!frm.is_new() && Number(frm.doc.allow_self_enroll || 0) === 1) {
+			frm.add_custom_button(
+				__("Create Course Selection Window"),
+				() => new_selection_window(frm),
+				actionGroup
+			);
 		}
 
 		// DO NOT call set_primary_action here; it forces a right-side black button

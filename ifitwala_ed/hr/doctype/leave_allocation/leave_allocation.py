@@ -71,8 +71,8 @@ class LeaveAllocation(Document):
             if leave_allocated > max_leaves_allowed:
                 frappe.throw(
                     _(
-                        "Total allocated leaves are more than maximum allocation allowed for {0} leave type for employee {1} in the period"
-                    ).format(self.leave_type, self.employee),
+                        "Total allocated leaves are more than maximum allocation allowed for {leave_type} leave type for employee {employee} in the period"
+                    ).format(leave_type=self.leave_type, employee=self.employee),
                     OverAllocationError,
                 )
 
@@ -135,11 +135,13 @@ class LeaveAllocation(Document):
 
     def validate_earned_leave_update(self):
         if self.leave_policy_assignment and frappe.db.get_value("Leave Type", self.leave_type, "is_earned_leave"):
-            msg = _("Cannot update allocation for {0} after submission").format(frappe.bold(_("Earned Leaves")))
+            msg = _("Cannot update allocation for {leave_type} after submission").format(
+                leave_type=frappe.bold(_("Earned Leaves"))
+            )
             msg += "<br><br>"
             msg += _(
-                "Earned Leaves are auto-allocated via scheduler based on the annual allocation set in the Leave Policy: {0}"
-            ).format(get_link_to_form("Leave Policy", self.leave_policy))
+                "Earned Leaves are auto-allocated via scheduler based on the annual allocation set in the Leave Policy: {leave_policy}"
+            ).format(leave_policy=get_link_to_form("Leave Policy", self.leave_policy))
             frappe.throw(msg, title=_("Not Allowed"))
 
     def validate_against_leave_applications(self):
@@ -148,14 +150,14 @@ class LeaveAllocation(Document):
             if frappe.db.get_value("Leave Type", self.leave_type, "allow_negative"):
                 frappe.msgprint(
                     _(
-                        "Note: Total allocated leaves {0} shouldn't be less than already approved leaves {1} for the period"
-                    ).format(self.total_leaves_allocated, leaves_taken)
+                        "Note: Total allocated leaves {total_leaves} shouldn't be less than already approved leaves {approved_leaves} for the period"
+                    ).format(total_leaves=self.total_leaves_allocated, approved_leaves=leaves_taken)
                 )
             else:
                 frappe.throw(
                     _(
-                        "Total allocated leaves {0} cannot be less than already approved leaves {1} for the period"
-                    ).format(self.total_leaves_allocated, leaves_taken),
+                        "Total allocated leaves {total_leaves} cannot be less than already approved leaves {approved_leaves} for the period"
+                    ).format(total_leaves=self.total_leaves_allocated, approved_leaves=leaves_taken),
                     LessAllocationError,
                 )
 
@@ -173,7 +175,11 @@ class LeaveAllocation(Document):
 
     def validate_lwp(self):
         if frappe.db.get_value("Leave Type", self.leave_type, "is_lwp"):
-            frappe.throw(_("Leave Type {0} cannot be allocated since it is leave without pay").format(self.leave_type))
+            frappe.throw(
+                _("Leave Type {leave_type} cannot be allocated since it is leave without pay").format(
+                    leave_type=self.leave_type
+                )
+            )
 
     def validate_allocation_overlap(self):
         leave_allocation = frappe.db.sql(
@@ -190,13 +196,18 @@ class LeaveAllocation(Document):
 
         if leave_allocation:
             frappe.msgprint(
-                _("{0} already allocated for Employee {1} for period {2} to {3}").format(
-                    self.leave_type, self.employee, formatdate(self.from_date), formatdate(self.to_date)
+                _("{leave_type} already allocated for Employee {employee} for period {from_date} to {to_date}").format(
+                    leave_type=self.leave_type,
+                    employee=self.employee,
+                    from_date=formatdate(self.from_date),
+                    to_date=formatdate(self.to_date),
                 )
             )
 
             frappe.throw(
-                _("Reference: {0}").format(get_link_to_form("Leave Allocation", leave_allocation[0][0])),
+                _("Reference: {reference}").format(
+                    reference=get_link_to_form("Leave Allocation", leave_allocation[0][0])
+                ),
                 OverlapError,
             )
 
@@ -212,8 +223,11 @@ class LeaveAllocation(Document):
         if future_allocation:
             frappe.throw(
                 _(
-                    "Leave cannot be allocated before {0}, as leave balance has already been carry-forwarded in the future leave allocation record {1}"
-                ).format(formatdate(future_allocation[0].from_date), future_allocation[0].name),
+                    "Leave cannot be allocated before {from_date}, as leave balance has already been carry-forwarded in the future leave allocation record {allocation_name}"
+                ).format(
+                    from_date=formatdate(future_allocation[0].from_date),
+                    allocation_name=future_allocation[0].name,
+                ),
                 BackDatedAllocationError,
             )
 
@@ -239,7 +253,9 @@ class LeaveAllocation(Document):
             and not frappe.db.get_value("Leave Type", self.leave_type, "is_earned_leave")
             and not frappe.db.get_value("Leave Type", self.leave_type, "is_compensatory")
         ):
-            frappe.throw(_("Total leaves allocated is mandatory for Leave Type {0}").format(self.leave_type))
+            frappe.throw(
+                _("Total leaves allocated is mandatory for Leave Type {leave_type}").format(leave_type=self.leave_type)
+            )
 
     def limit_carry_forward_based_on_max_allowed_leaves(self):
         max_leaves_allowed = frappe.db.get_value("Leave Type", self.leave_type, "max_leaves_allowed")
@@ -303,8 +319,9 @@ class LeaveAllocation(Document):
     def allocate_leaves_manually(self, new_leaves, from_date=None):
         if from_date and not (getdate(self.from_date) <= getdate(from_date) <= getdate(self.to_date)):
             frappe.throw(
-                _("Cannot allocate leaves outside the allocation period {0} - {1}").format(
-                    frappe.bold(formatdate(self.from_date)), frappe.bold(formatdate(self.to_date))
+                _("Cannot allocate leaves outside the allocation period {from_date} - {to_date}").format(
+                    from_date=frappe.bold(formatdate(self.from_date)),
+                    to_date=frappe.bold(formatdate(self.to_date)),
                 ),
                 title=_("Invalid Dates"),
             )
@@ -336,22 +353,24 @@ class LeaveAllocation(Document):
             date = from_date or frappe.flags.current_date or getdate()
             create_additional_leave_ledger_entry(self, new_leaves, date)
 
-            text = _("{0} leaves were manually allocated by {1} on {2}").format(
-                frappe.bold(new_leaves), frappe.session.user, frappe.bold(formatdate(date))
+            text = _("{leaves} leaves were manually allocated by {user} on {date}").format(
+                leaves=frappe.bold(new_leaves),
+                user=frappe.session.user,
+                date=frappe.bold(formatdate(date)),
             )
             self.add_comment(comment_type="Info", text=text)
             frappe.msgprint(
-                _("{0} leaves allocated successfully").format(frappe.bold(new_leaves)),
+                _("{leaves} leaves allocated successfully").format(leaves=frappe.bold(new_leaves)),
                 indicator="green",
                 alert=True,
             )
 
         else:
-            msg = _("Total leaves allocated cannot exceed annual allocation of {0}.").format(
-                frappe.bold(_(annual_allocation))
+            msg = _("Total leaves allocated cannot exceed annual allocation of {annual_allocation}.").format(
+                annual_allocation=frappe.bold(annual_allocation)
             )
             msg += "<br><br>"
-            msg += _("Reference: {0}").format(get_link_to_form("Leave Policy", self.leave_policy))
+            msg += _("Reference: {reference}").format(reference=get_link_to_form("Leave Policy", self.leave_policy))
             frappe.throw(msg, title=_("Annual Allocation Exceeded"))
 
     @frappe.whitelist()
@@ -417,16 +436,19 @@ class LeaveAllocation(Document):
             if new_allocation > max_leaves_allowed and max_leaves_allowed > 0:
                 frappe.throw(
                     msg=_(
-                        "Cannot allocate more leaves due to maximum leaves allowed limit of {0} in {1} leave type."
-                    ).format(frappe.bold(max_leaves_allowed), frappe.bold(self.leave_type)),
+                        "Cannot allocate more leaves due to maximum leaves allowed limit of {max_leaves_allowed} in {leave_type} leave type."
+                    ).format(
+                        max_leaves_allowed=frappe.bold(max_leaves_allowed),
+                        leave_type=frappe.bold(self.leave_type),
+                    ),
                     title=_("Retry Failed"),
                 )
 
             elif new_allocation_without_cf > annual_allocation and frequency != "Yearly":
                 frappe.throw(
                     msg=_(
-                        "Cannot allocate more leaves due to maximum leave allocation limit of {0} in leave policy assignment"
-                    ).format(frappe.bold(annual_allocation)),
+                        "Cannot allocate more leaves due to maximum leave allocation limit of {annual_allocation} in leave policy assignment"
+                    ).format(annual_allocation=frappe.bold(annual_allocation)),
                     title=_("Retry Failed"),
                 )
 
@@ -533,15 +555,15 @@ def get_unused_leaves(employee, leave_type, from_date, to_date):
 
 def validate_carry_forward(leave_type):
     if not frappe.db.get_value("Leave Type", leave_type, "is_carry_forward"):
-        frappe.throw(_("Leave Type {0} cannot be carry-forwarded").format(leave_type))
+        frappe.throw(_("Leave Type {leave_type} cannot be carry-forwarded").format(leave_type=leave_type))
 
 
 def show_expire_leave_dialog(expired_leaves, leave_type):
     frappe.msgprint(
         title=_("Leaves Expired"),
         msg=_(
-            "{0} leaves from allocation for {1} leave type have expired and will be processed during the next scheduled job. It is recommended to expire them now before creating new leave policy assignments."
-        ).format(frappe.bold(expired_leaves), frappe.bold(leave_type)),
+            "{expired_leaves} leaves from allocation for {leave_type} leave type have expired and will be processed during the next scheduled job. It is recommended to expire them now before creating new leave policy assignments."
+        ).format(expired_leaves=frappe.bold(expired_leaves), leave_type=frappe.bold(leave_type)),
         indicator="orange",
         primary_action={
             "label": _("Expire Leaves"),

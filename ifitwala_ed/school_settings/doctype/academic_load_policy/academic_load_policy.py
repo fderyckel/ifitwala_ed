@@ -15,7 +15,6 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools
 ALLOWED_POLICY_ROLES = {
     "Academic Admin",
     "Academic Assistant",
-    "Assistant Admin",
     "Curriculum Coordinator",
     "System Manager",
     "Administrator",
@@ -118,9 +117,9 @@ class AcademicLoadPolicy(Document):
         )
         if duplicate:
             frappe.throw(
-                _("School {0} already has an active Academic Load Policy ({1}).").format(
-                    self.school,
-                    duplicate,
+                _("School {school} already has an active Academic Load Policy ({policy_name}).").format(
+                    school=self.school,
+                    policy_name=duplicate,
                 )
             )
 

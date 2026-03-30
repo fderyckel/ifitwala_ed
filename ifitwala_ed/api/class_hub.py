@@ -2,7 +2,10 @@ import json
 from typing import Any, Dict, List, Optional
 
 import frappe
+from frappe import _
 from frappe.utils import formatdate, getdate, nowdate
+
+from ifitwala_ed.api.student_log import _can_create_student_log_for_session_user
 
 
 def _assert_instructor(student_group: str) -> None:
@@ -14,7 +17,7 @@ def _assert_instructor(student_group: str) -> None:
 
     user = frappe.session.user
     if not user or user == "Guest":
-        frappe.throw("Login required")
+        frappe.throw(_("Login required"))
 
     is_instructor = frappe.db.exists(
         "Student Group Instructor",
@@ -26,7 +29,11 @@ def _assert_instructor(student_group: str) -> None:
     )
 
     if not is_instructor:
-        frappe.throw("Not permitted to access this class")
+        frappe.throw(_("Not permitted to access this class"))
+
+
+def _get_student_log_permissions() -> Dict[str, bool]:
+    return {"can_create_student_log": _can_create_student_log_for_session_user()}
 
 
 def _demo_students(seed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -122,6 +129,22 @@ def _build_bundle(
     title = " - ".join([p for p in title_parts if p]) or student_group
 
     block_label = f"Block {block_number}" if block_number else None
+    note_templates = [
+        "Needs support on the lab write-up.",
+        "Great use of vocabulary during discussion.",
+        "Still working on organizing evidence.",
+    ]
+    note_labels = ["Today", "Today", "Yesterday"]
+    notes_preview = []
+    for idx, student in enumerate(students[1:4]):
+        notes_preview.append(
+            {
+                "id": f"note-{idx + 1}",
+                "student_name": student["student_name"],
+                "preview": note_templates[idx],
+                "created_at_label": note_labels[idx],
+            }
+        )
 
     return {
         "header": {
@@ -130,6 +153,7 @@ def _build_bundle(
             "academic_year": group.get("academic_year") if group else None,
             "course": group.get("course") if group else None,
         },
+        "permissions": _get_student_log_permissions(),
         "now": {
             "date_label": today_label,
             "rotation_day_label": "Rotation Day 3",
@@ -167,26 +191,7 @@ def _build_bundle(
         ],
         "focus_students": focus_students,
         "students": students,
-        "notes_preview": [
-            {
-                "id": "note-1",
-                "student_name": students[1]["student_name"],
-                "preview": "Needs support on the lab write-up.",
-                "created_at_label": "Today",
-            },
-            {
-                "id": "note-2",
-                "student_name": students[2]["student_name"],
-                "preview": "Great use of vocabulary during discussion.",
-                "created_at_label": "Today",
-            },
-            {
-                "id": "note-3",
-                "student_name": students[3]["student_name"],
-                "preview": "Still working on organizing evidence.",
-                "created_at_label": "Yesterday",
-            },
-        ],
+        "notes_preview": notes_preview,
         "task_items": [
             {
                 "id": "task-1",
@@ -260,7 +265,7 @@ def end_session(lesson_instance: str) -> Dict[str, Any]:
     if not lesson_instance:
         frappe.throw("lesson_instance is required")
     if frappe.session.user == "Guest":
-        frappe.throw("Login required")
+        frappe.throw(_("Login required"))
     return {
         "lesson_instance": lesson_instance,
         "status": "ended",
@@ -273,7 +278,7 @@ def save_signals(lesson_instance: str, signals_json: str) -> Dict[str, Any]:
     if not lesson_instance:
         frappe.throw("lesson_instance is required")
     if frappe.session.user == "Guest":
-        frappe.throw("Login required")
+        frappe.throw(_("Login required"))
 
     try:
         signals = json.loads(signals_json or "[]")
@@ -289,7 +294,7 @@ def save_signals(lesson_instance: str, signals_json: str) -> Dict[str, Any]:
 @frappe.whitelist()
 def quick_evidence(payload_json: str) -> Dict[str, Any]:
     if frappe.session.user == "Guest":
-        frappe.throw("Login required")
+        frappe.throw(_("Login required"))
 
     try:
         payload = json.loads(payload_json or "{}")

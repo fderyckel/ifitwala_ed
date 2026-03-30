@@ -211,7 +211,7 @@ All overlays:
 * tabs: Snapshot / Evidence / Notes
 * Snapshot: signal selector + quick note
 * Evidence: add Task Submission with `submission_origin = Teacher Observation`
-* Notes: session notes for that student (either stored as signals or linked submissions)
+* Notes: if this flow creates `Student Log`, permission must come from the live `Student Log` DocType contract instead of hard-coded roles
 
 **Overlay 2: Quick Evidence**
 

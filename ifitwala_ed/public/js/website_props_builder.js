@@ -47,7 +47,10 @@
 		},
 		leadership: {
 			limit: 4,
+			staff_limit: 8,
 			roles: [],
+			role_profiles: ['Academic Admin'],
+			show_staff_carousel: true,
 		},
 	};
 

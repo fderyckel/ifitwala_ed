@@ -21,7 +21,9 @@ from ifitwala_ed.governance.policy_utils import (
     get_policy_applies_to_tokens,
     get_policy_applies_to_tokens_for_policy,
 )
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
+SCOPE_ORGANIZATION_STAFF = "organization_staff"
 SCOPE_ORGANIZATION_ALL_SCHOOLS = "organization_all_schools"
 SCOPE_SCHOOL = "school"
 SCOPE_TEAM = "team"
@@ -29,7 +31,11 @@ SCOPE_TEAM = "team"
 
 def _normalize_scope(scope: str | None) -> str:
     raw = (scope or "").strip().lower()
+    if raw in {SCOPE_ORGANIZATION_STAFF, "organization staff", "organization (all staff)"}:
+        return SCOPE_ORGANIZATION_STAFF
     if raw in {SCOPE_ORGANIZATION_ALL_SCHOOLS, "organization (all schools)", "organization"}:
+        return SCOPE_ORGANIZATION_ALL_SCHOOLS
+    if raw == "schools in organization":
         return SCOPE_ORGANIZATION_ALL_SCHOOLS
     if raw == SCOPE_SCHOOL:
         return SCOPE_SCHOOL
@@ -68,6 +74,12 @@ def _default_recipient_flags(applies_to) -> dict[str, int]:
     if "Guardian" in tokens:
         flags["to_guardians"] = 1
     return flags
+
+
+def _is_staff_only_recipients(recipient_flags: dict[str, int]) -> bool:
+    return bool(recipient_flags.get("to_staff")) and not any(
+        recipient_flags.get(fieldname) for fieldname in ("to_students", "to_guardians", "to_community")
+    )
 
 
 def _policy_row(policy_version: str) -> dict:
@@ -139,6 +151,16 @@ def _get_organization_schools(organization: str) -> list[str]:
         limit=0,
     )
     return [(row.get("name") or "").strip() for row in schools if (row.get("name") or "").strip()]
+
+
+def _is_school_within_scope(root_school: str | None, target_school: str | None) -> bool:
+    root_school = (root_school or "").strip()
+    target_school = (target_school or "").strip()
+    if not root_school or not target_school:
+        return False
+    if root_school == target_school:
+        return True
+    return target_school in set(get_descendant_schools(root_school) or [])
 
 
 def _resolve_message_html(*, row: dict, override_html: str | None) -> str:
@@ -234,10 +256,6 @@ def create_policy_amendment_communication(
     if not policy_organization:
         frappe.throw(_("Policy organization is required to create communication."))
 
-    scope = _normalize_scope(target_scope)
-    if not scope:
-        scope = SCOPE_SCHOOL if policy_school else SCOPE_ORGANIZATION_ALL_SCHOOLS
-
     target_school = (target_school or "").strip() or None
     target_team = (target_team or "").strip() or None
     campaign_employee_group = (campaign_employee_group or "").strip() or None
@@ -253,6 +271,16 @@ def create_policy_amendment_communication(
         recipient_flags = _default_recipient_flags(row.get("applies_to_tokens"))
     if not any(recipient_flags.values()):
         frappe.throw(_("Select at least one recipient type."))
+
+    scope = _normalize_scope(target_scope)
+    if not scope:
+        scope = (
+            SCOPE_SCHOOL
+            if policy_school
+            else SCOPE_ORGANIZATION_STAFF
+            if _is_staff_only_recipients(recipient_flags)
+            else SCOPE_ORGANIZATION_ALL_SCHOOLS
+        )
 
     team_row = None
     resolved_school = ""
@@ -274,14 +302,11 @@ def create_policy_amendment_communication(
         ).strip() != policy_organization:
             frappe.throw(_("Selected Team must belong to the same policy organization."))
 
-        resolved_school = (
-            (target_school or "")
-            or (team_row.get("school") or "")
-            or policy_school
-            or _resolve_org_root_school(policy_organization)
-        ).strip()
-        if not resolved_school:
-            frappe.throw(_("Could not resolve Issuing School for Team scope communication."))
+        resolved_school = ((target_school or "") or (team_row.get("school") or "")).strip()
+        if policy_school and not resolved_school:
+            frappe.throw(_("Team scope on a school-scoped policy requires a team inside the policy school scope."))
+        if policy_school and not _is_school_within_scope(policy_school, resolved_school):
+            frappe.throw(_("Selected Team must belong to the policy school scope."))
         if (
             recipient_flags.get("to_students")
             or recipient_flags.get("to_guardians")
@@ -296,12 +321,25 @@ def create_policy_amendment_communication(
                 **recipient_flags,
             }
         ]
+    elif scope == SCOPE_ORGANIZATION_STAFF:
+        if policy_school:
+            frappe.throw(_("Organization Staff scope is only available for organization-wide policies."))
+        if not _is_staff_only_recipients(recipient_flags):
+            frappe.throw(_("Organization Staff scope supports Staff recipients only."))
+        audience_rows = [
+            {
+                "target_mode": "Organization",
+                **recipient_flags,
+            }
+        ]
     else:
         if scope == SCOPE_ORGANIZATION_ALL_SCHOOLS:
-            resolved_school = _resolve_org_root_school(policy_organization)
+            if policy_school:
+                frappe.throw(_("Schools in Organization scope is not available for school-scoped policies."))
             org_schools = _get_organization_schools(policy_organization)
             if not org_schools:
-                frappe.throw(_("No schools were found for this organization."))
+                frappe.throw(_("Schools in Organization scope requires at least one School in this organization."))
+            resolved_school = _resolve_org_root_school(policy_organization)
             audience_rows = [
                 {
                     "target_mode": "School Scope",
@@ -315,6 +353,8 @@ def create_policy_amendment_communication(
             resolved_school = (target_school or policy_school or "").strip()
             if not resolved_school:
                 frappe.throw(_("School is required for School scope communication."))
+            if policy_school and not _is_school_within_scope(policy_school, resolved_school):
+                frappe.throw(_("Selected School must be within the policy school scope."))
 
         if scope == SCOPE_SCHOOL:
             audience_rows = [

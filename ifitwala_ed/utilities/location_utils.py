@@ -16,9 +16,10 @@ If a location is considered booked:
 from typing import Any, Dict, Iterable, List, Optional
 
 import frappe
-from frappe.utils import get_datetime
+from frappe.utils import cint, get_datetime
 from frappe.utils.caching import redis_cache
 
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 from ifitwala_ed.utilities.tree_utils import get_descendants_inclusive
 
 # ─────────────────────────────────────────────────────────────
@@ -26,6 +27,9 @@ from ifitwala_ed.utilities.tree_utils import get_descendants_inclusive
 # ─────────────────────────────────────────────────────────────
 
 LOCATION_SCOPE_CACHE_TTL = 60 * 60 * 12  # 12 hours
+VISIBLE_LOCATION_SCOPE_CACHE_TTL = 60 * 5  # 5 minutes
+SCHEDULABLE_LOCATION_CACHE_TTL = 60 * 5  # 5 minutes
+VISIBLE_LOCATION_MAX_ROWS = 2000
 
 
 def _overlaps(a_start, a_end, b_start, b_end) -> bool:
@@ -159,6 +163,234 @@ def is_bookable_room(location: str) -> bool:
     This helper is NOT yet enforced everywhere.
     """
     return _is_bookable_room_cached(location)
+
+
+def _get_location_type_flag_map(location_types: Iterable[str]) -> Dict[str, Dict[str, Any]]:
+    names = sorted({name for name in (location_types or []) if name})
+    if not names:
+        return {}
+
+    rows = frappe.get_all(
+        "Location Type",
+        filters={"name": ["in", names]},
+        fields=["name", "location_type_name", "is_schedulable", "is_container"],
+        limit=max(len(names), 1),
+    )
+    return {row.get("name"): row for row in rows if row.get("name")}
+
+
+def _row_is_schedulable_space(row: Dict[str, Any], type_map: Dict[str, Dict[str, Any]]) -> bool:
+    if not row:
+        return False
+
+    try:
+        if cint(row.get("is_group") or 0):
+            return False
+    except Exception:
+        return False
+
+    location_type = row.get("location_type")
+    type_row = type_map.get(location_type) if location_type else None
+    if type_row:
+        return cint(type_row.get("is_schedulable") or 0) == 1
+
+    # Legacy fallback:
+    # - explicit capacity 0 means "do not surface as a room" in rooming workflows
+    # - blank capacity keeps pre-existing untyped rooms visible until data is cleaned up
+    capacity = row.get("maximum_capacity")
+    if capacity in (None, ""):
+        return True
+
+    try:
+        return int(capacity) > 0
+    except Exception:
+        return False
+
+
+@redis_cache(ttl=SCHEDULABLE_LOCATION_CACHE_TTL)
+def is_schedulable_location(location: str) -> bool:
+    if not location:
+        return False
+
+    fields = ["name", "is_group", "location_type", "maximum_capacity"]
+    if frappe.db.has_column("Location", "disabled"):
+        fields.append("disabled")
+
+    row = frappe.db.get_value("Location", location, fields, as_dict=True)
+    if not row:
+        return False
+
+    if "disabled" in row:
+        try:
+            if cint(row.get("disabled") or 0):
+                return False
+        except Exception:
+            return False
+
+    type_map = _get_location_type_flag_map([row.get("location_type")])
+    return _row_is_schedulable_space(row, type_map)
+
+
+def _dedupe_keep_order(names: Iterable[str]) -> List[str]:
+    seen = set()
+    out: List[str] = []
+    for name in names or []:
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        out.append(name)
+    return out
+
+
+@redis_cache(ttl=VISIBLE_LOCATION_SCOPE_CACHE_TTL)
+def get_visible_location_names_for_school(selected_school: str) -> List[str]:
+    """
+    Canonical location-visibility scope for school-scoped rooming surfaces.
+
+    Visibility includes:
+    - Locations whose own School is the selected school or any of its descendants
+    - Descendants of group/container Locations in that same direct school scope
+    - Descendants of ancestor-school Locations explicitly shared downward
+
+    This preserves sibling isolation while allowing parent-school shared facilities
+    such as a central auditorium or event hall.
+    """
+    if not selected_school:
+        return []
+
+    school_scope = get_descendant_schools(selected_school) or [selected_school]
+    direct_rows = frappe.get_all(
+        "Location",
+        filters={"school": ["in", school_scope]},
+        fields=["name", "is_group"],
+        order_by="lft asc",
+        limit=VISIBLE_LOCATION_MAX_ROWS,
+    )
+
+    names: List[str] = []
+    for row in direct_rows:
+        location_name = row.get("name")
+        if not location_name:
+            continue
+        names.append(location_name)
+        if cint(row.get("is_group") or 0):
+            names.extend(get_location_scope(location_name, include_children=True))
+
+    if frappe.db.has_column("Location", "shared_with_descendant_schools"):
+        ancestor_scope = get_ancestor_schools(selected_school) or [selected_school]
+        shared_rows = frappe.get_all(
+            "Location",
+            filters={
+                "school": ["in", ancestor_scope],
+                "shared_with_descendant_schools": 1,
+            },
+            fields=["name"],
+            order_by="lft asc",
+            limit=500,
+        )
+        for row in shared_rows:
+            location_name = row.get("name")
+            if not location_name:
+                continue
+            names.extend(get_location_scope(location_name, include_children=True))
+
+    return _dedupe_keep_order(names)
+
+
+def get_visible_location_rows_for_school(
+    selected_school: str,
+    *,
+    include_groups: bool = False,
+    only_schedulable: bool = False,
+    within_location: Optional[str] = None,
+    location_types: Optional[Iterable[str]] = None,
+    capacity_needed: Optional[int] = None,
+    fields: Optional[Iterable[str]] = None,
+    limit: int = 500,
+    order_by: str = "location_name asc",
+) -> List[Dict[str, Any]]:
+    """
+    Return visible Location rows for a selected school using the canonical
+    school-scope + ancestor-shared-location contract.
+
+    This helper is the single source for:
+    - room utilization candidates
+    - room suggestion candidates
+    - quick-create location options
+    - location calendar selectors
+    """
+    if not selected_school:
+        return []
+
+    visible_names = get_visible_location_names_for_school(selected_school)
+    if within_location:
+        allowed_within = set(get_location_scope(within_location, include_children=True))
+        visible_names = [name for name in visible_names if name in allowed_within]
+
+    if not visible_names:
+        return []
+
+    requested_fields = list(
+        fields
+        or [
+            "name",
+            "location_name",
+            "school",
+            "parent_location",
+            "location_type",
+            "is_group",
+            "maximum_capacity",
+        ]
+    )
+    if (
+        frappe.db.has_column("Location", "shared_with_descendant_schools")
+        and "shared_with_descendant_schools" not in requested_fields
+    ):
+        requested_fields.append("shared_with_descendant_schools")
+
+    row_limit = max(min(int(limit or 500), VISIBLE_LOCATION_MAX_ROWS), 1)
+    rows = frappe.get_all(
+        "Location",
+        filters={"name": ["in", visible_names]},
+        fields=requested_fields,
+        order_by=order_by,
+        limit=row_limit,
+    )
+    if not rows:
+        return []
+
+    location_type_map = _get_location_type_flag_map(row.get("location_type") for row in rows)
+    type_filter = {name for name in (location_types or []) if name}
+
+    out: List[Dict[str, Any]] = []
+    for row in rows:
+        if not include_groups and cint(row.get("is_group") or 0):
+            continue
+
+        if type_filter and row.get("location_type") not in type_filter:
+            continue
+
+        if only_schedulable and not _row_is_schedulable_space(row, location_type_map):
+            continue
+
+        if capacity_needed and capacity_needed > 0:
+            try:
+                if int(row.get("maximum_capacity") or 0) < int(capacity_needed):
+                    continue
+            except Exception:
+                continue
+
+        location_type = row.get("location_type")
+        if location_type:
+            row["location_type_name"] = (location_type_map.get(location_type) or {}).get(
+                "location_type_name"
+            ) or location_type
+        else:
+            row["location_type_name"] = None
+
+        out.append(row)
+
+    return out
 
 
 # ─────────────────────────────────────────────────────────────

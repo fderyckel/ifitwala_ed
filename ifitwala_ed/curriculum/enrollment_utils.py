@@ -19,6 +19,11 @@ def resolve_min_numeric_score(min_grade, grade_scale, cache=None):
 
     grade_value = grade_label_to_numeric(grade_scale, min_grade, cache=cache)
     if grade_value is None:
-        frappe.throw(_("Min grade '{0}' not found in Grade Scale '{1}'.").format(min_grade, grade_scale))
+        frappe.throw(
+            _("Min grade '{min_grade}' not found in Grade Scale '{grade_scale}'.").format(
+                min_grade=min_grade,
+                grade_scale=grade_scale,
+            )
+        )
 
     return grade_value

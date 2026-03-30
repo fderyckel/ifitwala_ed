@@ -28,7 +28,11 @@ class FiscalYear(Document):
             if not row.organization:
                 frappe.throw(_("Organization is required on each Fiscal Year row"))
             if row.organization in organizations:
-                frappe.throw(_("Organization {0} is duplicated in this Fiscal Year").format(row.organization))
+                frappe.throw(
+                    _("Organization {organization} is duplicated in this Fiscal Year").format(
+                        organization=row.organization
+                    )
+                )
             organizations.append(row.organization)
 
         if not organizations:
@@ -71,4 +75,4 @@ class FiscalYear(Document):
 
         if rows:
             details = ", ".join(sorted({f"{row.name} ({row.organization})" for row in rows}))
-            frappe.throw(_("Fiscal Year overlaps with existing active scope: {0}").format(details))
+            frappe.throw(_("Fiscal Year overlaps with existing active scope: {details}").format(details=details))

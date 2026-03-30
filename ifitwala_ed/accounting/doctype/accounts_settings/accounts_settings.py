@@ -28,20 +28,26 @@ class AccountsSettings(Document):
         acc_type = frappe.db.get_value("Account", account, "account_type")
         if acc_type and acc_type != account_type:
             frappe.throw(
-                _("{0} must be an account of type {1}").format(frappe.bold(account), frappe.bold(account_type))
+                _("{account} must be an account of type {account_type}").format(
+                    account=frappe.bold(account), account_type=frappe.bold(account_type)
+                )
             )
 
     def _validate_account_root_type(self, account, root_type):
         self._validate_account_org(account)
         acc_root = frappe.db.get_value("Account", account, "root_type")
         if acc_root and acc_root != root_type:
-            frappe.throw(_("{0} must have Root Type {1}").format(frappe.bold(account), frappe.bold(root_type)))
+            frappe.throw(
+                _("{account} must have Root Type {root_type}").format(
+                    account=frappe.bold(account), root_type=frappe.bold(root_type)
+                )
+            )
 
     def _validate_account_org(self, account):
         account_org = frappe.db.get_value("Account", account, "organization")
         if account_org and account_org != self.organization:
             frappe.throw(
-                _("Account {0} must belong to Organization {1}").format(
-                    frappe.bold(account), frappe.bold(self.organization)
+                _("Account {account} must belong to Organization {organization}").format(
+                    account=frappe.bold(account), organization=frappe.bold(self.organization)
                 )
             )

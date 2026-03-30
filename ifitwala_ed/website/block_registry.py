@@ -224,6 +224,28 @@ WEBSITE_BLOCK_DEFINITIONS = [
         "is_core": 1,
     },
     {
+        "block_type": "course_catalog",
+        "label": "Course Catalog",
+        "template_path": "ifitwala_ed/website/blocks/course_catalog.html",
+        "script_path": None,
+        "provider_path": "ifitwala_ed.website.providers.course_catalog.get_context",
+        "props_schema": {
+            "type": "object",
+            "properties": {
+                "show_intro": {"type": "boolean"},
+                "show_course_group": {"type": "boolean"},
+                "show_related_programs": {"type": "boolean"},
+                "card_style": {"type": "string", "enum": ["standard", "compact"]},
+                "limit": {"type": ["integer", "null"], "minimum": 1},
+                "empty_state_title": {"type": "string"},
+                "empty_state_text": {"type": "string"},
+            },
+            "additionalProperties": False,
+        },
+        "seo_role": "supporting",
+        "is_core": 1,
+    },
+    {
         "block_type": "program_list",
         "label": "Program List",
         "template_path": "ifitwala_ed/website/blocks/program_list.html",
@@ -266,17 +288,66 @@ WEBSITE_BLOCK_DEFINITIONS = [
         "is_core": 1,
     },
     {
+        "block_type": "course_intro",
+        "label": "Course Intro",
+        "template_path": "ifitwala_ed/website/blocks/course_intro.html",
+        "script_path": None,
+        "provider_path": "ifitwala_ed.website.providers.course_intro.get_context",
+        "props_schema": {
+            "type": "object",
+            "properties": {
+                "heading": {"type": "string"},
+                "content_html": {"type": "string"},
+                "hero_image": {"type": ["string", "null"]},
+                "overview_heading": {"type": "string"},
+                "aims_heading": {"type": "string"},
+                "assessment_heading": {"type": "string"},
+                "cta_intent": {
+                    "type": ["string", "null"],
+                    "enum": ["inquire", "visit", "apply", None],
+                },
+            },
+            "required": ["heading"],
+            "additionalProperties": False,
+        },
+        "seo_role": "owns_h1",
+        "is_core": 1,
+    },
+    {
+        "block_type": "learning_highlights",
+        "label": "Learning Highlights",
+        "template_path": "ifitwala_ed/website/blocks/learning_highlights.html",
+        "script_path": None,
+        "provider_path": "ifitwala_ed.website.providers.learning_highlights.get_context",
+        "props_schema": {
+            "type": "object",
+            "properties": {
+                "heading": {"type": "string"},
+                "limit": {"type": ["integer", "null"], "minimum": 1},
+            },
+            "additionalProperties": False,
+        },
+        "seo_role": "supporting",
+        "is_core": 1,
+    },
+    {
         "block_type": "leadership",
         "label": "Leadership",
         "template_path": "ifitwala_ed/website/blocks/leadership.html",
-        "script_path": None,
+        "script_path": "/assets/ifitwala_ed/website/blocks/leadership.js",
         "provider_path": "ifitwala_ed.website.providers.leadership.get_context",
         "props_schema": {
             "type": "object",
             "properties": {
                 "title": {"type": "string"},
+                "description": {"type": "string"},
+                "leadership_title": {"type": "string"},
+                "staff_title": {"type": "string"},
                 "roles": {"type": "array", "items": {"type": "string"}},
+                "role_profiles": {"type": "array", "items": {"type": "string"}},
                 "limit": {"type": "integer", "minimum": 1},
+                "staff_limit": {"type": "integer", "minimum": 1},
+                "show_staff_carousel": {"type": "boolean"},
             },
             "additionalProperties": False,
         },
@@ -310,6 +381,7 @@ BASE_SURFACE_BLOCK_TYPES = (
     "rich_text",
     "section_carousel",
     "program_list",
+    "course_catalog",
     "leadership",
     "cta",
     "faq",
@@ -321,6 +393,7 @@ ADMISSIONS_SURFACE_BLOCK_TYPES = (
     "admission_cta",
 )
 PROGRAM_SURFACE_BLOCK_TYPES = ("program_intro",)
+COURSE_SURFACE_BLOCK_TYPES = ("course_intro", "learning_highlights")
 
 
 SYNC_FIELDS = (
@@ -387,6 +460,8 @@ def get_allowed_block_types(*, parent_doctype: str | None, page_type: str | None
             allowed.update(ADMISSIONS_SURFACE_BLOCK_TYPES)
     elif parent_doctype == "Program Website Profile":
         allowed = set(BASE_SURFACE_BLOCK_TYPES) | set(PROGRAM_SURFACE_BLOCK_TYPES)
+    elif parent_doctype == "Course Website Profile":
+        allowed = set(BASE_SURFACE_BLOCK_TYPES) | set(COURSE_SURFACE_BLOCK_TYPES)
     elif parent_doctype == "Website Story":
         allowed = set(BASE_SURFACE_BLOCK_TYPES)
     else:

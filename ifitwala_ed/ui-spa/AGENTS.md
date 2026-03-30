@@ -22,6 +22,11 @@ Inside `ui-spa`, prioritize:
 
 The SPA is a UX shell. It is not the source of truth.
 
+## 0.1 Local Environment Note
+
+- This Codex session runs on the user's local machine for this repository.
+- Do not add generic closeout notes about missing `frappe`, missing `bench`, or shell `PATH` differences unless a specific command failed and the exact failure is necessary to explain what could not be verified.
+
 ---
 
 ## 1. UX Rules (Non-Negotiable)
@@ -63,6 +68,7 @@ If an overlay works from one entry point but fails from another, treat it as a d
 - Respect the canonical POST payload shape.
 - Use explicit request/response contracts.
 - Do not silently unwrap, reshape, or defend against arbitrary backend drift in the SPA.
+- For governed/private media, consume only server-resolved display URLs; never construct or forward raw private file paths in components.
 
 If the backend contract is wrong, fail clearly and fix the backend.
 
@@ -127,6 +133,7 @@ The SPA must never be treated as a permission boundary.
 - Server owns correctness.
 - Do not hide missing backend permission checks behind frontend conditions.
 - Never expose more data than the surface needs.
+- If a media asset fails due to permission or missing file access, show a fallback state and treat the API/display contract as the bug to fix, not the component.
 
 ---
 

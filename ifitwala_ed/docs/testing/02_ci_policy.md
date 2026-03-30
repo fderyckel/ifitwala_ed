@@ -14,7 +14,7 @@ All PRs targeting `main` must pass:
 
 1. `backend-smoke`
 - Fast confidence suite for critical backend invariants.
-- Includes merge-gating portal routing, file-access, analytics-permission, admissions portal, and focus workflow contract tests.
+- Includes merge-gating portal routing, workspace sidebar contract integrity, file-access, analytics-permission, self-enrollment, staff policy signature, admissions portal, and focus workflow contract tests.
 
 2. `backend-domain`
 - Runs module-level backend tests scoped to changed Python domains.
@@ -34,6 +34,8 @@ All PRs targeting `main` must pass:
 ## 2.1 Framework baseline
 
 CI benches are initialized against **Frappe `version-16`**.
+CI bootstrap must also fetch repo-required companion apps before site creation.
+Temporary exception: CI currently fetches `ifitwala_drive` from `main` because that dependency repo does not yet publish a `version-16` branch.
 
 ## 3. Nightly policy
 

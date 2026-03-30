@@ -694,7 +694,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { createResource, FeatherIcon, toast } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
@@ -734,6 +734,11 @@ interface DialogContent {
 	badge: string;
 }
 
+interface CriticalIncidentsOverlayState {
+	items: StudentLogDetail[];
+	loading: boolean;
+}
+
 type ArrayWidgetKey =
 	| 'announcements'
 	| 'staff_birthdays'
@@ -771,6 +776,10 @@ const criticalIncidentsList = createResource<StudentLogDetail[]>({
 	url: 'ifitwala_ed.api.morning_brief.get_critical_incidents_details',
 	auto: false,
 });
+const criticalIncidentsOverlayState = reactive<CriticalIncidentsOverlayState>({
+	items: [],
+	loading: false,
+});
 
 const widgets = createResource<WidgetsPayload>({
 	url: 'ifitwala_ed.api.morning_brief.get_briefing_widgets',
@@ -805,6 +814,13 @@ const currentSpotlight = computed<Announcement | null>(
 	() => spotlightAnnouncements.value[spotlightIndex.value] || null
 );
 
+function syncCriticalIncidentsOverlayState(): void {
+	criticalIncidentsOverlayState.items = Array.isArray(criticalIncidentsList.data)
+		? criticalIncidentsList.data
+		: [];
+	criticalIncidentsOverlayState.loading = Boolean(criticalIncidentsList.loading);
+}
+
 watch(spotlightAnnouncements, (list: Announcement[]) => {
 	if (!list.length) {
 		spotlightIndex.value = 0;
@@ -814,6 +830,14 @@ watch(spotlightAnnouncements, (list: Announcement[]) => {
 		spotlightIndex.value = 0;
 	}
 });
+
+watch(
+	() => [criticalIncidentsList.data, criticalIncidentsList.loading],
+	() => {
+		syncCriticalIncidentsOverlayState();
+	},
+	{ immediate: true }
+);
 
 const criticalCount = computed(
 	() => (widgets.data?.announcements || []).filter(a => a.priority === 'Critical').length
@@ -1185,15 +1209,15 @@ function openPolicyInformOverlay(payload: PolicyInformLinkPayload): void {
 }
 
 function openCriticalIncidentsOverlay(): void {
-	// Fetch data if not already loaded
-	if (!criticalIncidentsList.data && !criticalIncidentsList.loading) {
-		criticalIncidentsList.fetch();
+	const shouldFetch = !criticalIncidentsList.data && !criticalIncidentsList.loading;
+	if (shouldFetch) {
+		criticalIncidentsOverlayState.loading = true;
+		void criticalIncidentsList.fetch();
+	} else {
+		syncCriticalIncidentsOverlayState();
 	}
 
-	overlay.open('critical-incidents-list', {
-		items: criticalIncidentsList.data || [],
-		loading: criticalIncidentsList.loading,
-	});
+	overlay.open('critical-incidents-list', criticalIncidentsOverlayState);
 }
 
 const formattedDate = computed<string>(() => widgets.data?.today_label ?? '');

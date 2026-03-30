@@ -7,6 +7,9 @@ export type ClassHubBundle = {
     academic_year?: string | null
     course?: string | null
   }
+  permissions: {
+    can_create_student_log: boolean
+  }
   now: {
     date_label: string
     rotation_day_label?: string | null

@@ -9,12 +9,17 @@ from frappe.utils import cint
 from frappe.utils.nestedset import NestedSet
 
 FLOAT_EPS = 1e-6
+PROGRAM_TREE_ROOT = "All Programs"
 
 
 class Program(NestedSet):
     nsm_parent_field = "parent_program"
 
     def validate(self):
+        self._validate_root_program_constraints()
+        self._validate_parent_program_is_group()
+        self._validate_group_nodes_keep_group_flag()
+
         # Keep existing validations
         self._validate_duplicate_course()
         self._validate_active_courses()
@@ -25,11 +30,84 @@ class Program(NestedSet):
         self._apply_default_colors_for_assessment_categories()
         self._validate_program_assessment_categories()
 
+    def after_insert(self):
+        self._sync_default_website_profiles()
+
+    def on_update(self):
+        NestedSet.on_update(self)
+        if any(
+            self.has_value_changed(fieldname)
+            for fieldname in (
+                "is_published",
+                "program_slug",
+                "program_image",
+                "description",
+                "program_overview",
+                "program_aims",
+            )
+        ):
+            self._sync_default_website_profiles()
+
+    def _validate_root_program_constraints(self):
+        if self.name != PROGRAM_TREE_ROOT:
+            return
+
+        if (self.parent_program or "").strip():
+            frappe.throw(
+                _("The root Program {program_name} cannot have a Parent Program.").format(
+                    program_name=PROGRAM_TREE_ROOT
+                )
+            )
+
+        if cint(self.archive) == 1:
+            frappe.throw(
+                _("The root Program {program_name} cannot be archived.").format(program_name=PROGRAM_TREE_ROOT)
+            )
+
+        if cint(self.is_group) != 1:
+            frappe.throw(
+                _("The root Program {program_name} must remain marked as Group.").format(program_name=PROGRAM_TREE_ROOT)
+            )
+
+    def _validate_parent_program_is_group(self):
+        parent_program = (self.parent_program or "").strip()
+        if not parent_program:
+            return
+
+        if self.name and parent_program == self.name:
+            frappe.throw(_("A Program cannot be its own Parent Program."))
+
+        parent_is_group = frappe.db.get_value("Program", parent_program, "is_group")
+        if parent_is_group is None:
+            frappe.throw(_("Parent Program {parent_program} was not found.").format(parent_program=parent_program))
+
+        if cint(parent_is_group) != 1:
+            frappe.throw(
+                _(
+                    "Parent Program {parent_program} must be marked as Group before it can own child programs. "
+                    "Use Make Parent a Group or enable Group on that Program."
+                ).format(parent_program=parent_program),
+                frappe.ValidationError,
+            )
+
+    def _validate_group_nodes_keep_group_flag(self):
+        if cint(self.is_group) == 1 or not self.name:
+            return
+
+        has_children = frappe.db.exists("Program", {"parent_program": self.name})
+        if has_children:
+            frappe.throw(
+                _("Program {program_name} has child programs and must remain marked as Group.").format(
+                    program_name=self.name
+                ),
+                frappe.ValidationError,
+            )
+
     def _validate_duplicate_course(self):
         seen = set()
         for row in self.courses or []:
             if row.course in seen:
-                frappe.throw(_("Course {0} entered twice").format(row.course))
+                frappe.throw(_("Course {course} entered twice").format(course=row.course))
             seen.add(row.course)
 
     def _validate_active_courses(self):
@@ -51,7 +129,7 @@ class Program(NestedSet):
 
         if inactive:
             lines = "\n".join([f"Row {idx}: {name} (status: {st})" for idx, name, st in inactive])
-            frappe.throw(_("Only Active Courses can be added:\n{0}").format(lines))
+            frappe.throw(_("Only Active Courses can be added:\n{courses}").format(courses=lines))
 
     def _validate_website_publication(self):
         if cint(self.is_published) != 1:
@@ -62,10 +140,20 @@ class Program(NestedSet):
                 frappe.ValidationError,
             )
         if not (self.program_slug or "").strip():
-            frappe.throw(
-                _("Program slug is required before publishing."),
-                frappe.ValidationError,
+            from ifitwala_ed.website.bootstrap import _next_available_program_slug
+
+            self.program_slug = _next_available_program_slug(
+                self.program_name or self.name,
+                program_name=self.name or self.program_name,
             )
+
+    def _sync_default_website_profiles(self):
+        if cint(self.is_published) != 1 or cint(self.archive) == 1:
+            return
+
+        from ifitwala_ed.website.bootstrap import ensure_default_program_website_profiles
+
+        ensure_default_program_website_profiles(program_name=self.name)
 
     def _validate_course_basket_groups(self):
         valid_courses = {(row.course or "").strip() for row in (self.courses or []) if (row.course or "").strip()}
@@ -77,23 +165,34 @@ class Program(NestedSet):
             course = (row.course or "").strip()
             basket_group = (row.basket_group or "").strip()
             if not course:
-                frappe.throw(_("Enrollment basket membership row {0}: Course is required.").format(idx))
+                frappe.throw(
+                    _("Enrollment basket membership row {row_number}: Course is required.").format(row_number=idx)
+                )
             if course not in valid_courses:
                 frappe.throw(
-                    _("Enrollment basket membership row {0}: Course {1} is not present in Program Courses.").format(
-                        idx, course
+                    _(
+                        "Enrollment basket membership row {row_number}: Course {course} is not present in Program Courses."
+                    ).format(
+                        row_number=idx,
+                        course=course,
                     )
                 )
             if not basket_group:
                 frappe.throw(
-                    _("Enrollment basket membership row {0}: Basket Group (Enrollment) is required.").format(idx)
+                    _("Enrollment basket membership row {row_number}: Basket Group (Enrollment) is required.").format(
+                        row_number=idx
+                    )
                 )
 
             key = (course, basket_group)
             if key in seen:
                 frappe.throw(
-                    _("Enrollment basket membership row {0}: duplicate mapping for {1} -> {2}.").format(
-                        idx, course, basket_group
+                    _(
+                        "Enrollment basket membership row {row_number}: duplicate mapping for {course} -> {basket_group}."
+                    ).format(
+                        row_number=idx,
+                        course=course,
+                        basket_group=basket_group,
                     )
                 )
             seen.add(key)
@@ -170,11 +269,19 @@ class Program(NestedSet):
 
         if dup_rows:
             lines = "\n".join([f"Row {idx}: {cat}" for idx, cat in dup_rows])
-            frappe.throw(_("Duplicate Assessment Categories are not allowed:\n{0}").format(lines))
+            frappe.throw(_("Duplicate Assessment Categories are not allowed:\n{categories}").format(categories=lines))
         if neg_rows:
-            frappe.throw(_("Default Weight cannot be negative (rows: {0}).").format(", ".join(map(str, neg_rows))))
+            frappe.throw(
+                _("Default Weight cannot be negative (rows: {row_numbers}).").format(
+                    row_numbers=", ".join(map(str, neg_rows))
+                )
+            )
         if over_rows:
-            frappe.throw(_("Default Weight cannot exceed 100 (rows: {0}).").format(", ".join(map(str, over_rows))))
+            frappe.throw(
+                _("Default Weight cannot exceed 100 (rows: {row_numbers}).").format(
+                    row_numbers=", ".join(map(str, over_rows))
+                )
+            )
 
         # Weight math ONLY enforced if Points is enabled
         if points_on:
@@ -185,8 +292,8 @@ class Program(NestedSet):
             if active_total > 100.0 + 0.0001:
                 frappe.throw(
                     _(
-                        "For Points, the total of active category weights must not exceed 100 (current total: {0:.2f})."
-                    ).format(active_total)
+                        "For Points, the total of active category weights must not exceed 100 (current total: {total_weight:.2f})."
+                    ).format(total_weight=active_total)
                 )
 
             # If you want exact 100 when publishing later, enforce in on_submit or before_publish hook.
@@ -271,7 +378,9 @@ def inherit_assessment_categories(program: str, overwrite: int = 1):
     parent_rows = parent.get("assessment_categories") or []  # Program Assessment Category
     if not parent_rows:
         frappe.throw(
-            _("Parent Program <b>{0}</b> has no Program Assessment Categories to inherit.").format(parent.name)
+            _("Parent Program <b>{program_name}</b> has no Program Assessment Categories to inherit.").format(
+                program_name=parent.name
+            )
         )
 
     # De-dup by Assessment Category link while copying
@@ -304,3 +413,59 @@ def inherit_assessment_categories(program: str, overwrite: int = 1):
     doc.save(ignore_permissions=False)
 
     return {"parent": parent.name, "added": len(clean_rows), "total": len(doc.get("assessment_categories") or [])}
+
+
+@frappe.whitelist()
+def make_program_group(program: str):
+    if not program:
+        frappe.throw(_("Program is required."))
+
+    doc = frappe.get_doc("Program", program)
+    doc.check_permission("write")
+
+    if cint(doc.is_group) == 1:
+        return {"program": doc.name, "changed": False}
+
+    doc.is_group = 1
+    doc.save()
+    return {"program": doc.name, "changed": True}
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def program_parent_query(doctype, txt, searchfield, start, page_len, filters):
+    raw_filters = filters or {}
+    if isinstance(raw_filters, str):
+        try:
+            raw_filters = frappe.parse_json(raw_filters) or {}
+        except Exception:
+            raw_filters = {}
+    if not isinstance(raw_filters, dict):
+        raw_filters = {}
+
+    current_program = ((raw_filters or {}).get("current_program") or "").strip()
+    conditions = []
+    params = []
+
+    search_txt = (txt or "").strip()
+    if search_txt:
+        like_txt = f"%{search_txt}%"
+        conditions.append("(name like %s or program_name like %s)")
+        params.extend([like_txt, like_txt])
+
+    if current_program:
+        bounds = frappe.db.get_value("Program", current_program, ["lft", "rgt"], as_dict=True)
+        if bounds and bounds.get("lft") is not None and bounds.get("rgt") is not None:
+            conditions.append("not (lft >= %s and rgt <= %s)")
+            params.extend([bounds["lft"], bounds["rgt"]])
+
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    sql = f"""
+        SELECT name, program_name
+        FROM `tabProgram`
+        {where_clause}
+        ORDER BY lft ASC, program_name ASC, name ASC
+        LIMIT %s, %s
+    """
+    params.extend([int(start or 0), int(page_len or 20)])
+    return frappe.db.sql(sql, params)

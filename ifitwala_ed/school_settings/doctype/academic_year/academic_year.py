@@ -8,7 +8,24 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr, get_link_to_form, getdate
 
-from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_first_ancestor_with_doc, is_leaf_school
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
+
+
+def _get_branch_school_scope(user_school) -> list[str]:
+    """
+    Return the caller's school branch only:
+    - the user's school and descendants
+    - the user's school and ancestors
+
+    This keeps sibling isolation intact while allowing users to see ancestor-school
+    Academic Years needed by descendant-school operational surfaces.
+    """
+    if not user_school:
+        return []
+
+    descendants = get_descendant_schools(user_school) or [user_school]
+    ancestors = get_ancestor_schools(user_school) or [user_school]
+    return list(dict.fromkeys([*descendants, *ancestors]))
 
 
 class AcademicYear(Document):
@@ -38,14 +55,20 @@ class AcademicYear(Document):
             },
         ):
             frappe.throw(
-                _("Academic Year {0} already exists for school {1}.").format(self.academic_year_name, self.school),
+                _("Academic Year {academic_year} already exists for school {school}.").format(
+                    academic_year=self.academic_year_name,
+                    school=self.school,
+                ),
                 title=_("Duplicate"),
             )
 
     def _validate_dates(self):
         if self.year_start_date and self.year_end_date and getdate(self.year_start_date) > getdate(self.year_end_date):
             frappe.throw(
-                _("Start date ({0}) must be before end date ({1}).").format(self.year_start_date, self.year_end_date),
+                _("Start date ({start_date}) must be before end date ({end_date}).").format(
+                    start_date=self.year_start_date,
+                    end_date=self.year_end_date,
+                ),
                 title=_("Date Error"),
             )
 
@@ -57,8 +80,11 @@ class AcademicYear(Document):
                 start_ay.db_set("starts_on", self.year_start_date)
                 start_ay.db_set("ends_on", self.year_start_date)
                 frappe.msgprint(
-                    _("Date for the start of the year {0} has been updated on the School Event Calendar {1}").format(
-                        self.year_start_date, get_link_to_form("School Event", start_ay.name)
+                    _(
+                        "Date for the start of the year {start_date} has been updated on the School Event Calendar {school_event}"
+                    ).format(
+                        start_date=self.year_start_date,
+                        school_event=get_link_to_form("School Event", start_ay.name),
                     )
                 )
 
@@ -68,8 +94,11 @@ class AcademicYear(Document):
                 end_ay.db_set("starts_on", self.year_end_date)
                 end_ay.db_set("ends_on", self.year_end_date)
                 frappe.msgprint(
-                    _("Date for the end of the year {0} has been updated on the School Event Calendar {1}").format(
-                        self.year_end_date, get_link_to_form("School Event", end_ay.name)
+                    _(
+                        "Date for the end of the year {end_date} has been updated on the School Event Calendar {school_event}"
+                    ).format(
+                        end_date=self.year_end_date,
+                        school_event=get_link_to_form("School Event", end_ay.name),
                     )
                 )
 
@@ -80,7 +109,7 @@ class AcademicYear(Document):
                     "doctype": "School Event",
                     "owner": frappe.session.user,
                     "school": self.school,
-                    "subject": "Start of the " + cstr(self.name) + " Academic Year",
+                    "subject": _("Start of the {academic_year} Academic Year").format(academic_year=cstr(self.name)),
                     "starts_on": getdate(self.year_start_date),
                     "ends_on": getdate(self.year_start_date),
                     "event_category": "Other",
@@ -96,8 +125,11 @@ class AcademicYear(Document):
 
             self.db_set("ay_start", start_year.name)
             frappe.msgprint(
-                _("Date for the start of the year {0} has been created on the School Event Calendar {1}").format(
-                    self.year_start_date, get_link_to_form("School Event", start_year.name)
+                _(
+                    "Date for the start of the year {start_date} has been created on the School Event Calendar {school_event}"
+                ).format(
+                    start_date=self.year_start_date,
+                    school_event=get_link_to_form("School Event", start_year.name),
                 )
             )
 
@@ -107,7 +139,7 @@ class AcademicYear(Document):
                     "doctype": "School Event",
                     "owner": frappe.session.user,
                     "school": self.school,
-                    "subject": "End of the " + cstr(self.name) + " Academic Year",
+                    "subject": _("End of the {academic_year} Academic Year").format(academic_year=cstr(self.name)),
                     "starts_on": getdate(self.year_end_date),
                     "ends_on": getdate(self.year_end_date),
                     "event_category": "Other",
@@ -123,8 +155,11 @@ class AcademicYear(Document):
 
             self.db_set("ay_end", end_year.name)
             frappe.msgprint(
-                _("Date for the end of the year {0} has been created on the School Event Calendar {1}").format(
-                    self.year_end_date, get_link_to_form("School Event", end_year.name)
+                _(
+                    "Date for the end of the year {end_date} has been created on the School Event Calendar {school_event}"
+                ).format(
+                    end_date=self.year_end_date,
+                    school_event=get_link_to_form("School Event", end_year.name),
                 )
             )
 
@@ -196,11 +231,7 @@ def get_permission_query_conditions(user):
     if not user_school:
         return "1=0"
 
-    if is_leaf_school(user_school):
-        schools = get_first_ancestor_with_doc("Academic Year", user_school)
-    else:
-        schools = get_descendant_schools(user_school)
-
+    schools = _get_branch_school_scope(user_school)
     if not schools:
         return "1=0"
     schools_list = "', '".join(schools)
@@ -218,9 +249,5 @@ def has_permission(doc, ptype=None, user=None):
     if not user_school:
         return False
 
-    if is_leaf_school(user_school):
-        schools = get_first_ancestor_with_doc("Academic Year", user_school)
-    else:
-        schools = get_descendant_schools(user_school)
-
+    schools = _get_branch_school_scope(user_school)
     return doc.school in schools

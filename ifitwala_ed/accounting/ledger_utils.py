@@ -27,7 +27,9 @@ def validate_posting_date(organization, posting_date):
     lock_until_date = frappe.db.get_value("Accounts Settings", organization, "lock_until_date")
     if lock_until_date and getdate(posting_date) <= getdate(lock_until_date):
         frappe.throw(
-            _("Posting date {0} is in a locked period for Organization {1}").format(posting_date, organization)
+            _("Posting date {posting_date} is in a locked period for Organization {organization}").format(
+                posting_date=posting_date, organization=organization
+            )
         )
 
     closed_period = frappe.db.exists(
@@ -40,7 +42,9 @@ def validate_posting_date(organization, posting_date):
         },
     )
     if closed_period:
-        frappe.throw(_("Posting date {0} falls in a closed Accounting Period").format(posting_date))
+        frappe.throw(
+            _("Posting date {posting_date} falls in a closed Accounting Period").format(posting_date=posting_date)
+        )
 
 
 def make_gl_entries(entries, voucher_type, voucher_no, cancel=False):

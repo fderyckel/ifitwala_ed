@@ -96,12 +96,40 @@ class TestPolicyVersionApprovedBy(FrappeTestCase):
         self.assertNotIn(self.sibling_writer, names)
         self.assertNotIn(self.no_write_user, names)
 
-    def _make_organization(self, prefix: str) -> str:
+    def test_parent_org_hr_manager_can_create_policy_version_for_descendant_policy(self):
+        parent_org = self._make_organization("PV Parent", is_group=1)
+        child_org = self._make_organization("PV Child", parent=parent_org)
+        child_school = self._make_school(child_org, "PV Child Org School", is_group=1)
+        child_policy = self._make_policy(organization=child_org, school=child_school)
+        parent_hr_user = self._make_user_with_employee_for_org(
+            role="HR Manager",
+            organization=parent_org,
+            school=None,
+            prefix="parent-hr-writer",
+        )
+
+        frappe.set_user(parent_hr_user)
+        version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": child_policy.name,
+                "version_label": f"v-{frappe.generate_hash(length=6)}",
+                "policy_text": "<p>Descendant org policy text.</p>",
+                "is_active": 0,
+            }
+        ).insert()
+        self.created.append(("Policy Version", version.name))
+
+        self.assertEqual(version.institutional_policy, child_policy.name)
+
+    def _make_organization(self, prefix: str, parent: str | None = None, is_group: int = 0) -> str:
         doc = frappe.get_doc(
             {
                 "doctype": "Organization",
                 "organization_name": f"{prefix}-{frappe.generate_hash(length=8)}",
                 "abbr": f"O{frappe.generate_hash(length=5)}",
+                "parent_organization": parent,
+                "is_group": int(is_group),
             }
         )
         doc.insert(ignore_permissions=True)
@@ -134,7 +162,7 @@ class TestPolicyVersionApprovedBy(FrappeTestCase):
             {
                 "doctype": "Institutional Policy",
                 "policy_key": f"approved_by_scope_{frappe.generate_hash(length=8)}",
-                "policy_title": "Approved By Scope Policy",
+                "policy_title": f"Approved By Scope Policy {frappe.generate_hash(length=8)}",
                 "policy_category": "Operations",
                 "applies_to": [{"policy_audience": "Staff"}],
                 "organization": organization,
@@ -147,13 +175,21 @@ class TestPolicyVersionApprovedBy(FrappeTestCase):
         return doc
 
     def _make_user_with_employee(self, *, role: str, school: str, prefix: str) -> str:
+        return self._make_user_with_employee_for_org(
+            role=role,
+            organization=self.organization,
+            school=school,
+            prefix=prefix,
+        )
+
+    def _make_user_with_employee_for_org(self, *, role: str, organization: str, school: str | None, prefix: str) -> str:
         user = make_user(
             email=f"{prefix}-{frappe.generate_hash(length=8)}@ifitwala.test",
             roles=[role],
         )
         self.created.append(("User", user.name))
 
-        employee = frappe.get_doc(
+        employee_doc = frappe.get_doc(
             {
                 "doctype": "Employee",
                 "employee_first_name": "Policy",
@@ -162,11 +198,13 @@ class TestPolicyVersionApprovedBy(FrappeTestCase):
                 "employee_professional_email": user.name,
                 "date_of_joining": nowdate(),
                 "employment_status": "Active",
-                "organization": self.organization,
-                "school": school,
+                "organization": organization,
                 "user_id": user.name,
             }
-        ).insert(ignore_permissions=True)
+        )
+        if school:
+            employee_doc.school = school
+        employee = employee_doc.insert(ignore_permissions=True)
         self.created.append(("Employee", employee.name))
         return user.name
 
@@ -412,7 +450,7 @@ class TestPolicyVersionAmendments(FrappeTestCase):
             {
                 "doctype": "Institutional Policy",
                 "policy_key": f"{policy_key_prefix}_{frappe.generate_hash(length=8)}",
-                "policy_title": "Staff Policy",
+                "policy_title": f"Staff Policy {frappe.generate_hash(length=4)}",
                 "policy_category": "Operations",
                 "applies_to": [{"policy_audience": "Staff"}],
                 "organization": organization,

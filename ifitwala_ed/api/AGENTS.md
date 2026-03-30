@@ -22,6 +22,11 @@ Inside `ifitwala_ed/api/`, prioritize:
 API endpoints are not generic transport wrappers.
 They are contract surfaces for real workflows.
 
+## 0.1 Local Environment Note
+
+- This Codex session runs on the user's local machine for this repo.
+- Do not add stock explanations about missing `frappe` in `.venv`, missing `bench` on `PATH`, or the shell not being the remote server unless a specific attempted command is blocked and that exact blocker matters.
+
 ---
 
 ## 1. Endpoint Design Rules
@@ -60,6 +65,7 @@ Do not let the client assemble important workflows out of generic document mutat
 - Do not widen response shape without cause.
 - Do not silently change endpoint contracts.
 - Keep request and response structures explicit and auditable.
+- For governed file/image reads, return a server-owned display/open URL for private media instead of exposing raw private paths.
 
 If contract behavior changes, docs must be updated with code.
 
@@ -82,6 +88,7 @@ Rules:
 - do not trust client hints for scope
 - reuse canonical permission/scope helpers where they exist
 - do not reimplement scope logic ad hoc per endpoint
+- if a governed file/image route is surface-specific, document the allowed viewers explicitly and add/update a permission matrix test for that route
 
 If staff/family/applicant roles may coexist, precedence must be explicit.
 

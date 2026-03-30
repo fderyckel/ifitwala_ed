@@ -325,6 +325,7 @@ Behavior:
 * Added `InquiryFollowUpAction.vue` routed by `FocusRouterOverlay.vue`
 * Extended `focus.list` and `focus.get_context` with Inquiry while preserving contract shape
 * Added named endpoint `focus.mark_inquiry_contacted` with assignee + permission + idempotency guards
+* Inquiry focus overlay now exposes inquiry message/contact details and named endpoint `focus.create_inquiry_contact` for canonical Contact linkage
 
 ### Phase 3 — Staff Policy Signature (delivered)
 

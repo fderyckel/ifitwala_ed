@@ -1,0 +1,206 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "WEB-COURSE-PROF-.###",
+ "creation": "2026-03-24 14:37:09",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_identity",
+  "school",
+  "course",
+  "course_slug",
+  "status",
+  "workflow_state",
+  "seo_profile",
+  "section_break_content",
+  "hero_image",
+  "intro_text",
+  "overview_html",
+  "aims_html",
+  "assessment_summary_html",
+  "section_break_highlights",
+  "learning_highlights",
+  "section_break_blocks",
+  "blocks"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_identity",
+   "fieldtype": "Section Break",
+   "label": "Identity"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Course",
+   "options": "Course",
+   "reqd": 1
+  },
+  {
+   "fieldname": "course_slug",
+   "fieldtype": "Data",
+   "label": "Course Slug"
+  },
+  {
+   "default": "Draft",
+   "description": "Read-only. Controlled by Workflow State and Course publication readiness.",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nPublished",
+   "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "workflow_state",
+   "fieldtype": "Select",
+   "label": "Workflow State",
+   "options": "Draft\nIn Review\nApproved\nPublished",
+   "read_only": 1
+  },
+  {
+   "fieldname": "seo_profile",
+   "fieldtype": "Link",
+   "label": "SEO Profile",
+   "options": "Website SEO Profile"
+  },
+  {
+   "fieldname": "section_break_content",
+   "fieldtype": "Section Break",
+   "label": "Content"
+  },
+  {
+   "fieldname": "hero_image",
+   "fieldtype": "Attach Image",
+   "label": "Hero Image"
+  },
+  {
+   "fieldname": "intro_text",
+   "fieldtype": "Text Editor",
+   "label": "Intro Text"
+  },
+  {
+   "fieldname": "overview_html",
+   "fieldtype": "Text Editor",
+   "label": "Overview"
+  },
+  {
+   "fieldname": "aims_html",
+   "fieldtype": "Text Editor",
+   "label": "Aims"
+  },
+  {
+   "fieldname": "assessment_summary_html",
+   "fieldtype": "Text Editor",
+   "label": "Assessment Summary"
+  },
+  {
+   "fieldname": "section_break_highlights",
+   "fieldtype": "Section Break",
+   "label": "Learning Highlights"
+  },
+  {
+   "fieldname": "learning_highlights",
+   "fieldtype": "Table",
+   "label": "Learning Highlights",
+   "options": "Course Website Highlight"
+  },
+  {
+   "fieldname": "section_break_blocks",
+   "fieldtype": "Section Break",
+   "label": "Blocks"
+  },
+  {
+   "fieldname": "blocks",
+   "fieldtype": "Table",
+   "label": "Blocks",
+   "options": "School Website Page Block"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-24 14:37:09",
+ "modified_by": "Administrator",
+ "module": "School Site",
+ "name": "Course Website Profile",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Website Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Marketing User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

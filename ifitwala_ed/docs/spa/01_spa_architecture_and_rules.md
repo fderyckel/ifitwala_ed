@@ -275,6 +275,9 @@ Server contract for staff portal:
 
 1. Attempt `Staff Calendar` holidays using nearest lineage school match.
 2. If no Staff Calendar holidays are available, fallback to effective `School Calendar Holidays` for the same window (`self -> nearest ancestor`).
+3. If the logged-in user is the built-in `Administrator` account and no active `Employee` record resolves, the calendar feed must still return a normal payload instead of raising a permission error.
+4. This fallback is only for the built-in `Administrator` user. Other staff portal users without an active `Employee` record must still receive the explicit permission error.
+5. In the `Administrator` fallback path, employee-scoped sources stay empty, while user-scoped participant sources may still return events.
 
 Server + client contract for student portal:
 

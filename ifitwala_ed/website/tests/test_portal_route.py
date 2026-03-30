@@ -42,6 +42,18 @@ class TestPortalRoute(FrappeTestCase):
             frappe.set_user("Administrator")
             self._restore_request(original_request)
 
+    def test_logged_in_user_without_portal_access_redirects_back_to_login(self):
+        user = self._create_user("no-portal")
+        original_request = self._set_request_path("/hub/staff")
+        frappe.set_user(user.name)
+        try:
+            with self.assertRaises(frappe.Redirect):
+                get_context(frappe._dict())
+            self.assertEqual(frappe.local.flags.redirect_location, "/login?redirect-to=/hub/staff")
+        finally:
+            frappe.set_user("Administrator")
+            self._restore_request(original_request)
+
     def test_staff_hitting_student_namespace_redirects_to_staff_home(self):
         user = self._create_user("staff", roles=["Employee"])
         self._create_employee(user.name)
@@ -55,7 +67,7 @@ class TestPortalRoute(FrappeTestCase):
             frappe.set_user("Administrator")
             self._restore_request(original_request)
 
-    def test_administrator_role_with_inactive_employee_still_routes_to_staff_home(self):
+    def test_administrator_role_with_inactive_employee_redirects_to_login(self):
         user = self._create_user("admin-inactive", roles=["Administrator"])
         self._create_employee(user.name, employment_status="Temporary Leave")
         original_request = self._set_request_path("/hub/student")
@@ -63,7 +75,7 @@ class TestPortalRoute(FrappeTestCase):
         try:
             with self.assertRaises(frappe.Redirect):
                 get_context(frappe._dict())
-            self.assertEqual(frappe.local.flags.redirect_location, "/hub/staff")
+            self.assertEqual(frappe.local.flags.redirect_location, "/login?redirect-to=/hub/staff")
         finally:
             frappe.set_user("Administrator")
             self._restore_request(original_request)

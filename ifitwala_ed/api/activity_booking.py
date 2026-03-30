@@ -24,6 +24,7 @@ from ifitwala_ed.schedule.doctype.program_offering.program_offering import (
     preview_activity_booking_readiness,
 )
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
+from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
 
 ACTIVE_BOOKING_STATUSES = {"Submitted", "Waitlisted", "Offered", "Confirmed"}
 RESERVED_SEAT_STATUSES = {"Offered", "Confirmed"}
@@ -230,9 +231,9 @@ def _assert_window_is_open(offering) -> None:
     open_to = get_datetime(offering.activity_booking_open_to) if offering.activity_booking_open_to else None
 
     if open_from and now_dt < open_from:
-        frappe.throw(_("Activity booking opens on {0}.").format(open_from))
+        frappe.throw(_("Activity booking opens on {open_from}.").format(open_from=open_from))
     if open_to and now_dt > open_to:
-        frappe.throw(_("Activity booking closed on {0}.").format(open_to))
+        frappe.throw(_("Activity booking closed on {open_to}.").format(open_to=open_to))
 
 
 def _actor_for_student(student: str) -> str:
@@ -288,9 +289,13 @@ def _validate_student_age(offering, student: str) -> None:
     )
 
     if min_age is not None and age_years < cint(min_age):
-        frappe.throw(_("Student must be at least {0} years old for this activity.").format(min_age))
+        frappe.throw(
+            _("Student must be at least {minimum_age} years old for this activity.").format(minimum_age=min_age)
+        )
     if max_age is not None and age_years > cint(max_age):
-        frappe.throw(_("Student must be at most {0} years old for this activity.").format(max_age))
+        frappe.throw(
+            _("Student must be at most {maximum_age} years old for this activity.").format(maximum_age=max_age)
+        )
 
 
 def _lock_student_offering(student: str, program_offering: str) -> list[dict]:
@@ -421,7 +426,7 @@ def _create_invoice_if_required(booking_doc, offering) -> None:
             "qty": 1,
             "rate": amount,
             "student": booking_doc.student,
-            "description": _("Activity booking fee for {0}").format(offering.name),
+            "description": _("Activity booking fee for {program_offering}").format(program_offering=offering.name),
             "charge_source": "Program Offering",
         }
     ]
@@ -445,7 +450,7 @@ def _emit_booking_communication(booking_doc, event_label: str, message: str) -> 
     frappe.flags.allow_activity_comm_system_write = True
     try:
         result = create_activity_communication(
-            title=_("Activity Booking: {0}").format(event_label),
+            title=_("Activity Booking: {event_label}").format(event_label=event_label),
             message=message,
             school=school,
             activity_program_offering=offering,
@@ -564,7 +569,9 @@ def submit_activity_booking(
 
     max_choices = cint(settings.get("default_max_choices") or 0)
     if max_choices > 0 and len(clean_choices) > max_choices:
-        frappe.throw(_("You can rank up to {0} activity choices for this booking.").format(max_choices))
+        frappe.throw(
+            _("You can rank up to {max_choices} activity choices for this booking.").format(max_choices=max_choices)
+        )
 
     idempotency_key = (idempotency_key or "").strip() or None
     if idempotency_key:
@@ -580,8 +587,11 @@ def submit_activity_booking(
     if locked_active:
         row = locked_active[0]
         frappe.throw(
-            _("Student already has an active booking ({0}) with status {1} for this offering.").format(
-                row.get("name"), row.get("status")
+            _(
+                "Student already has an active booking ({booking_name}) with status {booking_status} for this offering."
+            ).format(
+                booking_name=row.get("name"),
+                booking_status=row.get("status"),
             ),
             title=_("Duplicate Active Booking"),
         )
@@ -644,7 +654,7 @@ def submit_activity_booking(
         status = "Submitted"
         allocation_snapshot["decision"] = "submitted"
     else:
-        frappe.throw(_("Unsupported allocation mode: {0}").format(allocation_mode))
+        frappe.throw(_("Unsupported allocation mode: {allocation_mode}").format(allocation_mode=allocation_mode))
 
     booking = frappe.new_doc("Activity Booking")
     booking.program_offering = program_offering
@@ -683,9 +693,9 @@ def submit_activity_booking(
         booking.org_communication = _emit_booking_communication(
             booking,
             event_label="Confirmed",
-            message=_("Activity booking {0} has been confirmed for section {1}.").format(
-                booking.name,
-                booking.allocated_student_group,
+            message=_("Activity booking {booking_name} has been confirmed for section {section}.").format(
+                booking_name=booking.name,
+                section=booking.allocated_student_group,
             ),
         )
         booking.save(ignore_permissions=True)
@@ -693,9 +703,9 @@ def submit_activity_booking(
         booking.org_communication = _emit_booking_communication(
             booking,
             event_label="Waitlisted",
-            message=_("Activity booking {0} is on waitlist for section {1}.").format(
-                booking.name,
-                booking.allocated_student_group,
+            message=_("Activity booking {booking_name} is on waitlist for section {section}.").format(
+                booking_name=booking.name,
+                section=booking.allocated_student_group,
             ),
         )
         booking.save(ignore_permissions=True)
@@ -903,7 +913,9 @@ def confirm_activity_booking_offer(activity_booking: str):
     )
     if conflict:
         frappe.throw(
-            _("Cannot confirm booking due to schedule overlap with booking {0}.").format(conflict.get("other_booking"))
+            _("Cannot confirm booking due to schedule overlap with booking {other_booking}.").format(
+                other_booking=conflict.get("other_booking")
+            )
         )
 
     doc.status = "Confirmed"
@@ -916,7 +928,7 @@ def confirm_activity_booking_offer(activity_booking: str):
     doc.org_communication = _emit_booking_communication(
         doc,
         event_label="Offer Accepted",
-        message=_("Activity booking {0} has been confirmed.").format(doc.name),
+        message=_("Activity booking {booking_name} has been confirmed.").format(booking_name=doc.name),
     )
     doc.save(ignore_permissions=True)
     return _booking_payload(
@@ -955,9 +967,9 @@ def _promote_next_waitlist(program_offering: str, section: str) -> dict | None:
     doc.org_communication = _emit_booking_communication(
         doc,
         event_label="Spot Offered",
-        message=_("A spot opened for booking {0}. Offer expires on {1}.").format(
-            doc.name,
-            doc.offer_expires_on,
+        message=_("A spot opened for booking {booking_name}. Offer expires on {offer_expires_on}.").format(
+            booking_name=doc.name,
+            offer_expires_on=doc.offer_expires_on,
         ),
     )
     doc.save(ignore_permissions=True)
@@ -1007,7 +1019,9 @@ def _assert_self_cancellation_allowed(doc, offering, actor: str) -> None:
     first_slot_start = _first_section_slot_start(target_section, offering)
     if first_slot_start and now_datetime() >= get_datetime(first_slot_start):
         frappe.throw(
-            _("Self-service cancellation closed when the first session started on {0}.").format(first_slot_start),
+            _("Self-service cancellation closed when the first session started on {first_session_start}.").format(
+                first_session_start=first_slot_start
+            ),
             frappe.PermissionError,
         )
 
@@ -1216,6 +1230,7 @@ def _student_rows(student_names: list[str]) -> list[dict]:
         ],
         limit=max(100, len(names) + 20),
     )
+    apply_preferred_student_images(rows, student_field="name", image_field="student_image")
     row_map = {row.get("name"): row for row in rows if cint(row.get("enabled") or 0) == 1}
     out = []
     for name in names:
@@ -1669,7 +1684,7 @@ def submit_activity_booking_batch(
                 {
                     "ok": False,
                     "student": None,
-                    "error": _("Row {0}: Invalid request payload.").format(idx),
+                    "error": _("Row {row_number}: Invalid request payload.").format(row_number=idx),
                 }
             )
             continue
@@ -1681,7 +1696,7 @@ def submit_activity_booking_batch(
                 {
                     "ok": False,
                     "student": None,
-                    "error": _("Row {0}: Student is required.").format(idx),
+                    "error": _("Row {row_number}: Student is required.").format(row_number=idx),
                 }
             )
             continue

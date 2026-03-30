@@ -91,7 +91,7 @@ Every file **must be classifiable** by the following dimensions:
 | Business domain     | Yes      | Functional grouping     |
 | Owning document     | Yes      | Lifecycle control       |
 
-*Exception: org‑level employees may omit `school` if they are not school‑scoped.
+*Exception: org‑level employees and guardian-owned profile media may omit `school` when the governing record is organization-scoped.
 If any other dimension is missing, the upload is invalid.
 
 ---
@@ -553,6 +553,7 @@ policy_acknowledgement
 background_check
 academic_report
 employee_profile_display
+guardian_profile_display
 student_profile_display
 applicant_profile_display
 administrative

@@ -78,12 +78,17 @@
 		</FiltersBar>
 
 		<!-- Main Content Grid -->
-		<div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-6 flex-1 min-h-0">
+		<div
+			class="grid grid-cols-1 gap-6 flex-1 min-h-0 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:h-[calc(100vh-16rem)]"
+		>
 			<!-- LEFT LIST -->
 			<div
 				class="flex flex-col min-h-0 h-full bg-surface-glass rounded-2xl border border-line-soft shadow-soft overflow-hidden"
 			>
-				<div class="flex-1 overflow-y-auto p-4 space-y-2 bg-sand/20">
+				<div
+					class="custom-scrollbar flex-1 overflow-y-auto p-4 space-y-2 bg-sand/20"
+					@scroll.passive="onFeedScroll"
+				>
 					<div
 						v-if="feedLoading && !feedItems.length"
 						class="py-12 text-center text-slate-token/60"
@@ -181,16 +186,11 @@
 						</div>
 					</div>
 
-					<!-- Load More -->
-					<div v-if="hasMore" class="pt-2">
-						<Button
-							variant="subtle"
-							class="w-full text-xs"
-							:loading="feedLoading"
-							@click="loadMore"
-						>
-							Load More
-						</Button>
+					<div
+						v-if="feedLoading && feedItems.length"
+						class="flex items-center justify-center py-3 text-slate-token/60"
+					>
+						<LoadingIndicator />
 					</div>
 				</div>
 			</div>
@@ -272,6 +272,9 @@
 								v-html="detailMessageHtml"
 								@click="onDetailContentClick"
 							></div>
+							<p v-else-if="detailSnippetFallback" class="whitespace-pre-line text-slate-token/80">
+								{{ detailSnippetFallback }}
+							</p>
 							<div v-else class="text-slate-token/60">
 								No full announcement content is available for this item.
 							</div>
@@ -353,8 +356,9 @@ import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 import { getInteractionStats as buildInteractionStats } from '@/utils/interactionStats';
 
-const PAGE_LENGTH = 30;
+const PAGE_LENGTH = 10;
 const FEED_THROTTLE_MS = 500;
+const FEED_SCROLL_THRESHOLD_PX = 180;
 
 const DATE_RANGES = [
 	{ label: 'Last 7 Days', value: '7d' },
@@ -407,8 +411,15 @@ const selectedStats = computed(() => {
 });
 
 const detailMessageHtml = computed(() => {
-	if (!fullContent.value || typeof fullContent.value.message !== 'string') return '';
-	return fullContent.value.message.trim();
+	if (!fullContent.value || typeof fullContent.value.message_html !== 'string') return '';
+	return fullContent.value.message_html.trim();
+});
+
+const detailSnippetFallback = computed(() => {
+	if (detailMessageHtml.value) return '';
+	const snippet =
+		typeof selectedComm.value?.snippet === 'string' ? selectedComm.value.snippet : '';
+	return snippet.trim();
 });
 
 // User Context for Filters
@@ -706,6 +717,16 @@ async function loadFeed(reset = false) {
 function loadMore() {
 	if (feedLoading.value || !hasMore.value) return;
 	requestFeedLoad(false);
+}
+
+function onFeedScroll(event: Event) {
+	const target = event.target as HTMLElement | null;
+	if (!target || feedLoading.value || !hasMore.value) return;
+
+	const remaining = target.scrollHeight - target.scrollTop - target.clientHeight;
+	if (remaining <= FEED_SCROLL_THRESHOLD_PX) {
+		loadMore();
+	}
 }
 
 async function selectItem(item: OrgCommunicationListItem, opts?: { silent?: boolean }) {

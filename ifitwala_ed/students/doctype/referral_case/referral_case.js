@@ -49,8 +49,7 @@ frappe.ui.form.on("Referral Case", {
 		const canTriage = frappe.user.has_role(["Counselor", "Academic Admin"]);
 		if (canTriage && frm.doc.docstatus === 1) {
 			frm.dashboard.set_headline(__(
-				"Edit <b>Severity</b>, <b>Mandated Reporting</b>, and <b>Case Manager</b> in the form. " +
-				"Changes are logged to this case and mirrored on the originating Student Referral."
+				"Edit <b>Severity</b>, <b>Mandated Reporting</b>, and <b>Case Manager</b> in the form. Changes are logged to this case and mirrored on the originating Student Referral."
 			));
 		}
 	}
@@ -72,10 +71,10 @@ function open_entry_dialog(frm) {
 		title: __("New Case Entry"),
 		fields: [
 			{ fieldname: "entry_type", fieldtype: "Select", label: __("Entry Type"),
-				options: "Meeting\nCounseling Session\nAcademic Support\nCheck-in\nFamily Contact\nExternal Referral\nSafety Plan\nReview\nOther\nStudent Support Guidance", reqd: 1 },
+				options: __("Meeting\nCounseling Session\nAcademic Support\nCheck-in\nFamily Contact\nExternal Referral\nSafety Plan\nReview\nOther\nStudent Support Guidance"), reqd: 1 },
 			{ fieldname: "summary", fieldtype: "Text Editor", label: __("Summary"), reqd: 1 },
 			{ fieldname: "assignee", fieldtype: "Link", label: __("Assignee (optional)"), options: "User" },
-			{ fieldname: "status", fieldtype: "Select", label: __("Status"), options: "Open\nIn Progress\nDone\nCancelled", default: "Open" },
+			{ fieldname: "status", fieldtype: "Select", label: __("Status"), options: __("Open\nIn Progress\nDone\nCancelled"), default: "Open" },
 			{ fieldname: "attachment", fieldtype: "Attach", label: __("Attachment") },
 			{ fieldname: "create_todo", fieldtype: "Check", label: __("Create ToDo for Assignee"), default: 1 },
 			{ fieldname: "due_date", fieldtype: "Date", label: __("Due Date (ToDo)") }

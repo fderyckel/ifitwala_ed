@@ -124,6 +124,7 @@ class TestCalendarApi(TestCase):
             patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc", side_effect=_fake_get_doc),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.get_all", side_effect=_fake_get_all),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location", return_value=None),
             patch(
                 "ifitwala_ed.api.calendar_quick_create._get_quick_create_scope",
                 return_value={
@@ -185,6 +186,8 @@ class TestCalendarApi(TestCase):
             patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
             patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc", side_effect=_fake_get_doc),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="SCHOOL-1"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location", return_value=None),
         ):
             response = create_school_event_quick(
                 client_request_id="req-custom-1",
@@ -281,6 +284,7 @@ class TestCalendarApi(TestCase):
                 day_start_time="08:00",
                 day_end_time="17:00",
                 school="SCHOOL-1",
+                location_type="Hall",
                 require_room=True,
             )
 
@@ -292,6 +296,7 @@ class TestCalendarApi(TestCase):
             day_start_time="08:00",
             day_end_time="17:00",
             school="SCHOOL-1",
+            location_type="Hall",
             require_room=True,
         )
         self.assertEqual(payload, expected)
@@ -305,6 +310,7 @@ class TestCalendarApi(TestCase):
                 date="2026-02-01",
                 start_time="09:00",
                 end_time="10:00",
+                location_type="Hall",
                 capacity_needed=4,
                 limit=5,
             )
@@ -314,6 +320,7 @@ class TestCalendarApi(TestCase):
             date="2026-02-01",
             start_time="09:00",
             end_time="10:00",
+            location_type="Hall",
             capacity_needed=4,
             limit=5,
         )
@@ -361,7 +368,11 @@ class TestCalendarApi(TestCase):
             patch("ifitwala_ed.api.calendar_quick_create._collect_meeting_busy_windows"),
             patch("ifitwala_ed.api.calendar_quick_create._collect_school_event_busy_windows"),
             patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="SCHOOL-1"),
-            patch("ifitwala_ed.api.calendar_quick_create._room_rows_for_school_scope", return_value=room_rows),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location_type", return_value="Hall"),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._room_rows_for_school_scope",
+                return_value=room_rows,
+            ) as mocked_room_scope,
             patch("ifitwala_ed.api.calendar_quick_create._collect_room_busy_windows", return_value={}),
         ):
             payload = calendar_quick_create.suggest_meeting_slots(
@@ -372,9 +383,15 @@ class TestCalendarApi(TestCase):
                 day_start_time="08:00",
                 day_end_time="09:00",
                 school="SCHOOL-1",
+                location_type="Hall",
                 require_room=True,
             )
 
+        mocked_room_scope.assert_called_once_with(
+            "SCHOOL-1",
+            2,
+            location_type="Hall",
+        )
         self.assertEqual(len(payload["slots"]), 1)
         self.assertEqual(payload["slots"][0]["suggested_room"]["value"], "ROOM-1")
         self.assertEqual(payload["slots"][0]["available_room_count"], 2)
@@ -382,6 +399,7 @@ class TestCalendarApi(TestCase):
             "Exact matches already include at least one free room in the selected school scope.",
             payload["notes"],
         )
+        self.assertIn("Room ranking is limited to location type Hall.", payload["notes"])
 
     def test_quick_create_slot_suggestions_drop_exact_match_without_free_room(self):
         cache = _DummyCache()
@@ -421,7 +439,11 @@ class TestCalendarApi(TestCase):
             patch("ifitwala_ed.api.calendar_quick_create._collect_meeting_busy_windows"),
             patch("ifitwala_ed.api.calendar_quick_create._collect_school_event_busy_windows"),
             patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="SCHOOL-1"),
-            patch("ifitwala_ed.api.calendar_quick_create._room_rows_for_school_scope", return_value=room_rows),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location_type", return_value="Hall"),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._room_rows_for_school_scope",
+                return_value=room_rows,
+            ) as mocked_room_scope,
             patch(
                 "ifitwala_ed.api.calendar_quick_create._collect_room_busy_windows",
                 return_value={"ROOM-1": [blocked_window]},
@@ -435,9 +457,15 @@ class TestCalendarApi(TestCase):
                 day_start_time="08:00",
                 day_end_time="09:00",
                 school="SCHOOL-1",
+                location_type="Hall",
                 require_room=True,
             )
 
+        mocked_room_scope.assert_called_once_with(
+            "SCHOOL-1",
+            2,
+            location_type="Hall",
+        )
         self.assertEqual(payload["slots"], [])
         self.assertEqual(payload["fallback_slots"], [])
         self.assertIn("excluded because no room was free", payload["notes"][-1])

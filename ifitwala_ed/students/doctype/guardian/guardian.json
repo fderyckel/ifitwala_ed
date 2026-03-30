@@ -22,6 +22,7 @@
   "contact_html",
   "address_html",
   "user",
+  "organization",
   "guardian_image",
   "children_section",
   "students",
@@ -98,6 +99,12 @@
    "fieldtype": "Link",
    "label": "User ID",
    "options": "User"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization"
   },
   {
    "fieldname": "guardian_image",
@@ -189,7 +196,7 @@
  "image_field": "guardian_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-15 14:48:06.217463",
+ "modified": "2026-03-26 22:38:00.000000",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Guardian",
@@ -288,7 +295,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Counsellor",
+   "role": "Counselor",
    "share": 1
   },
   {

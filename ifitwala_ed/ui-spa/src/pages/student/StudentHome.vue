@@ -11,6 +11,9 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
+					<RouterLink :to="{ name: 'student-course-selection' }" class="if-action">
+						Course Selection
+					</RouterLink>
 					<RouterLink :to="{ name: 'student-activities' }" class="if-action">
 						Book Activities
 					</RouterLink>
@@ -459,6 +462,12 @@ onMounted(() => {
 });
 
 const quickLinks = [
+	{
+		title: 'Course Selection',
+		description: 'Review required rows and confirm your program choices.',
+		icon: 'check-square',
+		to: { name: 'student-course-selection' },
+	},
 	{
 		title: 'Activity Booking',
 		description: 'Browse and book extra-curricular activities.',

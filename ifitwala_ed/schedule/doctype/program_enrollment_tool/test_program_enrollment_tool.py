@@ -80,6 +80,61 @@ class TestProgramEnrollmentTool(FrappeTestCase):
             {context["required_course"].name, context["optional_course"].name},
         )
 
+    def test_program_tool_can_fetch_existing_requests_then_validate_approve_and_materialize(self):
+        context = _build_program_tool_context()
+
+        request = frappe.get_doc(
+            {
+                "doctype": "Program Enrollment Request",
+                "student": context["student"].name,
+                "program_offering": context["target_offering"].name,
+                "academic_year": context["target_ay"].name,
+                "courses": [
+                    {"course": context["required_course"].name},
+                    {"course": context["optional_course"].name},
+                ],
+            }
+        ).insert()
+
+        tool = frappe.get_doc("Program Enrollment Tool")
+        tool.get_students_from = "Program Enrollment Request"
+        tool.program_offering = context["target_offering"].name
+        tool.target_academic_year = context["target_ay"].name
+        tool.new_enrollment_date = context["target_ay"].year_start_date
+
+        students = tool.get_students()
+        self.assertEqual(len(students), 1)
+        self.assertEqual(students[0]["student"], context["student"].name)
+        self.assertEqual(students[0]["program_enrollment_request"], request.name)
+        self.assertEqual(students[0]["request_status"], "Draft")
+
+        tool.set("students", students)
+
+        validate_summary = tool.validate_requests()
+        self.assertEqual(validate_summary["counts"]["validated"], 1)
+        request.reload()
+        self.assertEqual(request.status, "Submitted")
+        self.assertEqual(request.validation_status, "Valid")
+
+        approve_summary = tool.approve_requests()
+        self.assertEqual(approve_summary["counts"]["approved"], 1)
+        request.reload()
+        self.assertEqual(request.status, "Approved")
+
+        materialize_summary = tool.materialize_requests()
+        self.assertEqual(materialize_summary["counts"]["materialized"], 1)
+
+        enrollment_name = frappe.db.get_value(
+            "Program Enrollment",
+            {
+                "student": context["student"].name,
+                "program_offering": context["target_offering"].name,
+                "academic_year": context["target_ay"].name,
+            },
+        )
+        enrollment = frappe.get_doc("Program Enrollment", enrollment_name)
+        self.assertEqual(enrollment.program_enrollment_request, request.name)
+
 
 def _build_program_tool_context():
     grade_scale = _make_grade_scale()

@@ -3,15 +3,26 @@
 
 # ifitwala_ed/api/student_log.py
 
-import os
-
 import frappe
 from frappe import _
 from frappe.utils import cint, now_datetime, nowdate, nowtime, strip_html
 from frappe.utils.nestedset import get_descendants_of
 
+from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
+
 LOG_DOCTYPE = "Student Log"
 PAGE_LENGTH_DEFAULT = 20
+
+
+def _can_create_student_log_for_session_user() -> bool:
+    user = frappe.session.user
+    if not user or user == "Guest":
+        return False
+
+    return bool(
+        frappe.has_permission(LOG_DOCTYPE, ptype="create", user=user)
+        or frappe.has_permission(LOG_DOCTYPE, ptype="write", user=user)
+    )
 
 
 def _resolve_current_student():
@@ -195,7 +206,7 @@ def _validate_keys(payload: dict, allowed: set[str]):
 
     unknown = set(payload.keys()) - allowed
     if unknown:
-        frappe.throw(_("Unexpected keys: {0}").format(", ".join(sorted(list(unknown)))))
+        frappe.throw(_("Unexpected keys: {keys}").format(keys=", ".join(sorted(list(unknown)))))
 
 
 def _get_employee_school_for_session_user() -> str | None:
@@ -378,27 +389,6 @@ def _is_follow_up_person_allowed(next_step: str, student: str, user_id: str) -> 
     return True
 
 
-def _thumb_url(original_url: str | None) -> str | None:
-    """
-    Return thumb_* variant url when it exists, else original.
-    image_utils generates: /files/<doctype_folder>/thumb_<base>.webp
-    For Student: doctype_folder = 'student'
-    """
-    if not original_url:
-        return None
-    filename = os.path.basename(original_url)
-    base, _ext = os.path.splitext(filename)
-
-    # If already a generated variant, keep it
-    if filename.startswith(("hero_", "medium_", "card_", "thumb_")):
-        return original_url
-
-    variant = f"/files/student/thumb_{base}.webp"
-    if frappe.db.get_value("File", {"file_url": variant}, "name"):
-        return variant
-    return original_url
-
-
 @frappe.whitelist()
 def search_students(**payload):
     _validate_keys(payload, ALLOWED_SEARCH_STUDENT_KEYS)
@@ -429,6 +419,7 @@ def search_students(**payload):
         ],
         limit=limit,
     )
+    apply_preferred_student_images(rows, student_field="name", image_field="student_image")
 
     out = []
     for r in rows:
@@ -439,7 +430,7 @@ def search_students(**payload):
                 "student": r.get("name"),
                 "label": label or r.get("name"),
                 "meta": meta,
-                "image": _thumb_url(r.get("student_image")),
+                "image": r.get("student_image"),
             }
         )
     return out
@@ -530,6 +521,8 @@ def search_follow_up_users(**payload):
 @frappe.whitelist()
 def get_form_options(**payload):
     _validate_keys(payload, ALLOWED_OPTIONS_KEYS)
+    if not _can_create_student_log_for_session_user():
+        frappe.throw(_("You do not have permission to create student logs."), frappe.PermissionError)
 
     student = payload.get("student")
     if not student:
@@ -635,6 +628,8 @@ def get_form_options(**payload):
 @frappe.whitelist()
 def submit_student_log(**payload):
     _validate_keys(payload, ALLOWED_SUBMIT_KEYS)
+    if not _can_create_student_log_for_session_user():
+        frappe.throw(_("You do not have permission to create student logs."), frappe.PermissionError)
 
     student = payload.get("student")
     log_type = payload.get("log_type")
@@ -695,7 +690,8 @@ def submit_student_log(**payload):
         doc.next_step = next_step
         doc.follow_up_person = follow_up_person
 
-    doc.insert(ignore_permissions=False)
+    can_use_native_create = bool(frappe.has_permission(LOG_DOCTYPE, ptype="create", user=frappe.session.user))
+    doc.insert(ignore_permissions=not can_use_native_create)
     doc.submit()
 
     return {"name": doc.name}

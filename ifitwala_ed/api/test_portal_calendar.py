@@ -97,6 +97,31 @@ class TestPortalCalendar(FrappeTestCase):
         self.assertIn("events", payload)
         self.assertTrue(any(evt.get("source") == "staff_holiday" for evt in payload.get("events", [])))
 
+    def test_administrator_staff_calendar_without_employee_link_returns_empty_payload(self):
+        payload = get_staff_calendar(
+            from_datetime="2026-01-07T00:00:00",
+            to_datetime="2026-01-10T00:00:00",
+            sources=["student_group", "meeting", "school_event", "staff_holiday"],
+            force_refresh=True,
+        )
+
+        self.assertEqual(payload.get("timezone"), _system_tzinfo().zone)
+        self.assertEqual(payload.get("events"), [])
+        self.assertEqual(payload.get("counts"), {})
+        self.assertEqual(payload.get("sources"), ["student_group", "meeting", "school_event", "staff_holiday"])
+
+    def test_non_administrator_without_employee_link_is_blocked(self):
+        user = self._create_user()
+        frappe.set_user(user.name)
+
+        with self.assertRaises(frappe.PermissionError):
+            get_staff_calendar(
+                from_datetime="2026-01-07T00:00:00",
+                to_datetime="2026-01-10T00:00:00",
+                sources=["student_group", "meeting", "school_event", "staff_holiday"],
+                force_refresh=True,
+            )
+
     def _create_organization(self) -> str:
         hash_key = frappe.generate_hash(length=6).upper()
         doc = frappe.get_doc(

@@ -86,7 +86,7 @@ function refresh_scope_preview(frm, options = {}) {
 	if (!frm.doc.school) {
 		frm.__eoy_scope_valid = false;
 		apply_status_rules(frm);
-		wrapper.html("<div class='text-muted'>Select a school to preview scope.</div>");
+		wrapper.html(`<div class='text-muted'>${frappe.utils.escape_html(__("Select a school to preview scope."))}</div>`);
 		return;
 	}
 
@@ -99,13 +99,13 @@ function refresh_scope_preview(frm, options = {}) {
 		frm.__eoy_scope_valid = true;
 		apply_status_rules(frm);
 		if (!rows.length) {
-			wrapper.html("<div class='text-muted'>No schools resolved for the current selection.</div>");
+			wrapper.html(`<div class='text-muted'>${frappe.utils.escape_html(__("No schools resolved for the current selection."))}</div>`);
 			return;
 		}
 		const list = rows
 			.map((row) => frappe.utils.escape_html(row.school_name || row.name))
 			.join(", ");
-		const header = `<strong>${count} school${count === 1 ? "" : "s"}:</strong> `;
+		const header = `<strong>${frappe.utils.escape_html(__("{0} school(s):", [count]))}</strong> `;
 		wrapper.html(`<div>${header}${list}</div>`);
 	}).catch((err) => {
 		const message = err?.message || __("Unable to resolve school scope.");
@@ -150,13 +150,13 @@ function run_action(frm, method, successMessage) {
 			const list = rows
 				.map((row) => frappe.utils.escape_html(row.school_name || row.name))
 				.join(", ");
-			const scopeLine = list ? `<br><strong>${count} school${count === 1 ? "" : "s"}:</strong> ${list}` : "";
+			const scopeLine = list ? `<br><strong>${frappe.utils.escape_html(__("{0} school(s):", [count]))}</strong> ${list}` : "";
 			const message = [
 				__("You are about to run an end-of-year action."),
 				`<br><strong>${__("Target School")}:</strong> ${frappe.utils.escape_html(frm.doc.school)}`,
 				`<br><strong>${__("Academic Year")}:</strong> ${frappe.utils.escape_html(frm.doc.academic_year)}`,
 				scopeLine,
-				"<br><br><strong>Warning:</strong> This is irreversible.",
+				`<br><br><strong>${__("Warning")}:</strong> ${__("This is irreversible.")}`,
 			].join("");
 
 			frappe.confirm(message, () => {

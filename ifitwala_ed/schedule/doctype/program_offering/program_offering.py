@@ -75,7 +75,7 @@ class ProgramOffering(Document):
 
         # 4) Status sanity
         if self.status not in ("Planned", "Active", "Archived"):
-            frappe.throw(_("Invalid Status: {0}").format(self.status))
+            frappe.throw(_("Invalid Status: {status}.").format(status=self.status))
 
         self._validate_catalog_membership()
         self._apply_default_span_to_rows()
@@ -101,27 +101,35 @@ class ProgramOffering(Document):
         seen = set()
         cols = []
         for idx, r in enumerate(rows, start=1):
-            _assert(r.academic_year, _("Row {0}: Academic Year is required.").format(idx))
+            _assert(r.academic_year, _("Row {row_number}: Academic Year is required.").format(row_number=idx))
             ay = r.academic_year
             ay_school, ay_start, ay_end = _ay_fields(ay)
             _assert(
                 ay_school,
-                _("Row {0}: Academic Year {1} has no School set.").format(idx, get_link_to_form("Academic Year", ay)),
+                _("Row {row_number}: Academic Year {academic_year} has no School set.").format(
+                    row_number=idx,
+                    academic_year=get_link_to_form("Academic Year", ay),
+                ),
             )
             _assert(
                 ay_school in allowed_schools,
-                _("Row {0}: Academic Year {1} belongs to {2}, which is outside the offering school's ancestry.").format(
-                    idx, get_link_to_form("Academic Year", ay), get_link_to_form("School", ay_school)
+                _(
+                    "Row {row_number}: Academic Year {academic_year} belongs to {school}, which is outside the offering school's ancestry."
+                ).format(
+                    row_number=idx,
+                    academic_year=get_link_to_form("Academic Year", ay),
+                    school=get_link_to_form("School", ay_school),
                 ),
             )
             _assert(
                 ay_start and ay_end,
-                _("Row {0}: Academic Year {1} must have start and end dates.").format(
-                    idx, get_link_to_form("Academic Year", ay)
+                _("Row {row_number}: Academic Year {academic_year} must have start and end dates.").format(
+                    row_number=idx,
+                    academic_year=get_link_to_form("Academic Year", ay),
                 ),
             )
 
-            _assert(ay not in seen, _("Duplicate Academic Year: {0}.").format(ay))
+            _assert(ay not in seen, _("Duplicate Academic Year: {academic_year}.").format(academic_year=ay))
             seen.add(ay)
             cols.append({"name": ay, "start": getdate(ay_start), "end": getdate(ay_end), "school": ay_school})
 
@@ -131,13 +139,15 @@ class ProgramOffering(Document):
             prev, curr = cols[i - 1], cols[i]
             _assert(
                 prev["end"] < curr["start"],
-                _("Academic Years overlap: {0} ({1}→{2}) and {3} ({4}→{5}).").format(
-                    prev["name"],
-                    frappe.format(prev["start"], {"fieldtype": "Date"}),
-                    frappe.format(prev["end"], {"fieldtype": "Date"}),
-                    curr["name"],
-                    frappe.format(curr["start"], {"fieldtype": "Date"}),
-                    frappe.format(curr["end"], {"fieldtype": "Date"}),
+                _(
+                    "Academic Years overlap: {first_academic_year} ({first_start}->{first_end}) and {second_academic_year} ({second_start}->{second_end})."
+                ).format(
+                    first_academic_year=prev["name"],
+                    first_start=frappe.format(prev["start"], {"fieldtype": "Date"}),
+                    first_end=frappe.format(prev["end"], {"fieldtype": "Date"}),
+                    second_academic_year=curr["name"],
+                    second_start=frappe.format(curr["start"], {"fieldtype": "Date"}),
+                    second_end=frappe.format(curr["end"], {"fieldtype": "Date"}),
                 ),
             )
         return cols
@@ -159,19 +169,23 @@ class ProgramOffering(Document):
         if head_start:
             _assert(
                 min_ay <= head_start <= max_ay,
-                _("Start Date {0} must lie within the spanning Academic Years ({1} → {2}).").format(
-                    frappe.format(head_start, {"fieldtype": "Date"}),
-                    frappe.format(min_ay, {"fieldtype": "Date"}),
-                    frappe.format(max_ay, {"fieldtype": "Date"}),
+                _(
+                    "Start Date {start_date} must lie within the spanning Academic Years ({academic_year_start} -> {academic_year_end})."
+                ).format(
+                    start_date=frappe.format(head_start, {"fieldtype": "Date"}),
+                    academic_year_start=frappe.format(min_ay, {"fieldtype": "Date"}),
+                    academic_year_end=frappe.format(max_ay, {"fieldtype": "Date"}),
                 ),
             )
         if head_end:
             _assert(
                 min_ay <= head_end <= max_ay,
-                _("End Date {0} must lie within the spanning Academic Years ({1} → {2}).").format(
-                    frappe.format(head_end, {"fieldtype": "Date"}),
-                    frappe.format(min_ay, {"fieldtype": "Date"}),
-                    frappe.format(max_ay, {"fieldtype": "Date"}),
+                _(
+                    "End Date {end_date} must lie within the spanning Academic Years ({academic_year_start} -> {academic_year_end})."
+                ).format(
+                    end_date=frappe.format(head_end, {"fieldtype": "Date"}),
+                    academic_year_start=frappe.format(min_ay, {"fieldtype": "Date"}),
+                    academic_year_end=frappe.format(max_ay, {"fieldtype": "Date"}),
                 ),
             )
 
@@ -198,27 +212,34 @@ class ProgramOffering(Document):
         head_end = getdate(self.end_date) if self.end_date else None
 
         for idx, row in enumerate(self.offering_courses, start=1):
-            _assert(row.course, _("Row {0}: Course is required.").format(idx))
-            _assert(row.start_academic_year, _("Row {0}: Start Academic Year is required.").format(idx))
-            _assert(row.end_academic_year, _("Row {0}: End Academic Year is required.").format(idx))
+            _assert(row.course, _("Row {row_number}: Course is required.").format(row_number=idx))
+            _assert(
+                row.start_academic_year, _("Row {row_number}: Start Academic Year is required.").format(row_number=idx)
+            )
+            _assert(row.end_academic_year, _("Row {row_number}: End Academic Year is required.").format(row_number=idx))
 
             start_ay = ay_index.get(row.start_academic_year)
             end_ay = ay_index.get(row.end_academic_year)
             _assert(
                 start_ay,
-                _("Row {0}: Start AY {1} must be listed in Offering Academic Years.").format(
-                    idx, get_link_to_form("Academic Year", row.start_academic_year)
+                _("Row {row_number}: Start AY {academic_year} must be listed in Offering Academic Years.").format(
+                    row_number=idx,
+                    academic_year=get_link_to_form("Academic Year", row.start_academic_year),
                 ),
             )
             _assert(
                 end_ay,
-                _("Row {0}: End AY {1} must be listed in Offering Academic Years.").format(
-                    idx, get_link_to_form("Academic Year", row.end_academic_year)
+                _("Row {row_number}: End AY {academic_year} must be listed in Offering Academic Years.").format(
+                    row_number=idx,
+                    academic_year=get_link_to_form("Academic Year", row.end_academic_year),
                 ),
             )
 
             # AY ordering by dates
-            _assert(start_ay["start"] <= end_ay["end"], _("Row {0}: Start AY must not be after End AY.").format(idx))
+            _assert(
+                start_ay["start"] <= end_ay["end"],
+                _("Row {row_number}: Start AY must not be after End AY.").format(row_number=idx),
+            )
 
             # Terms (optional)
             start_term_name = getattr(row, "start_academic_term", None)
@@ -231,22 +252,27 @@ class ProgramOffering(Document):
                 ts_school, ts_ay, ts_start, ts_end = _term_fields(start_term_name)
                 _assert(
                     ts_ay == row.start_academic_year,
-                    _("Row {0}: Start Term {1} must belong to Start AY {2}.").format(
-                        idx,
-                        get_link_to_form("Term", start_term_name),
-                        get_link_to_form("Academic Year", row.start_academic_year),
+                    _("Row {row_number}: Start Term {term} must belong to Start AY {academic_year}.").format(
+                        row_number=idx,
+                        term=get_link_to_form("Term", start_term_name),
+                        academic_year=get_link_to_form("Academic Year", row.start_academic_year),
                     ),
                 )
                 _assert(
                     ts_school in allowed_schools,
-                    _("Row {0}: Start Term {1} belongs to {2}, outside the offering school's tree.").format(
-                        idx, get_link_to_form("Term", start_term_name), get_link_to_form("School", ts_school)
+                    _(
+                        "Row {row_number}: Start Term {term} belongs to {school}, outside the offering school's tree."
+                    ).format(
+                        row_number=idx,
+                        term=get_link_to_form("Term", start_term_name),
+                        school=get_link_to_form("School", ts_school),
                     ),
                 )
                 _assert(
                     ts_start,
-                    _("Row {0}: Start Term {1} is missing term_start_date.").format(
-                        idx, get_link_to_form("Term", start_term_name)
+                    _("Row {row_number}: Start Term {term} is missing term_start_date.").format(
+                        row_number=idx,
+                        term=get_link_to_form("Term", start_term_name),
                     ),
                 )
                 start_term_dt = getdate(ts_start)
@@ -255,27 +281,37 @@ class ProgramOffering(Document):
                 te_school, te_ay, te_start, te_end = _term_fields(end_term_name)
                 _assert(
                     te_ay == row.end_academic_year,
-                    _("Row {0}: End Term {1} must belong to End AY {2}.").format(
-                        idx,
-                        get_link_to_form("Term", end_term_name),
-                        get_link_to_form("Academic Year", row.end_academic_year),
+                    _("Row {row_number}: End Term {term} must belong to End AY {academic_year}.").format(
+                        row_number=idx,
+                        term=get_link_to_form("Term", end_term_name),
+                        academic_year=get_link_to_form("Academic Year", row.end_academic_year),
                     ),
                 )
                 _assert(
                     te_school in allowed_schools,
-                    _("Row {0}: End Term {1} belongs to {2}, outside the offering school's tree.").format(
-                        idx, get_link_to_form("Term", end_term_name), get_link_to_form("School", te_school)
+                    _(
+                        "Row {row_number}: End Term {term} belongs to {school}, outside the offering school's tree."
+                    ).format(
+                        row_number=idx,
+                        term=get_link_to_form("Term", end_term_name),
+                        school=get_link_to_form("School", te_school),
                     ),
                 )
                 _assert(
                     te_start or te_end,
-                    _("Row {0}: End Term {1} is missing dates.").format(idx, get_link_to_form("Term", end_term_name)),
+                    _("Row {row_number}: End Term {term} is missing dates.").format(
+                        row_number=idx,
+                        term=get_link_to_form("Term", end_term_name),
+                    ),
                 )
                 # prefer term end when available
                 end_term_dt = getdate(te_end) if te_end else getdate(te_start)
 
             if start_term_name and end_term_name:
-                _assert(start_term_dt <= end_term_dt, _("Row {0}: Start Term must not be after End Term.").format(idx))
+                _assert(
+                    start_term_dt <= end_term_dt,
+                    _("Row {row_number}: Start Term must not be after End Term.").format(row_number=idx),
+                )
 
             # Determine explicit/implicit user input
             from_explicit = bool(getattr(row, "from_date", None))
@@ -290,7 +326,10 @@ class ProgramOffering(Document):
             # - implicit (blank) → clamp to head window
             if head_start:
                 if from_explicit:
-                    _assert(head_start <= row_start, _("Row {0}: From Date is before Offering Start Date.").format(idx))
+                    _assert(
+                        head_start <= row_start,
+                        _("Row {row_number}: From Date is before Offering Start Date.").format(row_number=idx),
+                    )
                 else:
                     if row_start < head_start:
                         row_start = head_start
@@ -299,29 +338,41 @@ class ProgramOffering(Document):
 
             if head_end:
                 if to_explicit:
-                    _assert(row_end <= head_end, _("Row {0}: To Date is after Offering End Date.").format(idx))
+                    _assert(
+                        row_end <= head_end,
+                        _("Row {row_number}: To Date is after Offering End Date.").format(row_number=idx),
+                    )
                 else:
                     if row_end > head_end:
                         row_end = head_end
                         row.to_date = row_end
 
             # Basic ordering (after any clamping)
-            _assert(row_start <= row_end, _("Row {0}: From Date cannot be after To Date.").format(idx))
+            _assert(
+                row_start <= row_end,
+                _("Row {row_number}: From Date cannot be after To Date.").format(row_number=idx),
+            )
 
             # Inside AY envelope (after clamping)
-            _assert(min_ay <= row_start <= max_ay, _("Row {0}: From Date out of Academic Year span.").format(idx))
-            _assert(min_ay <= row_end <= max_ay, _("Row {0}: To Date out of Academic Year span.").format(idx))
+            _assert(
+                min_ay <= row_start <= max_ay,
+                _("Row {row_number}: From Date out of Academic Year span.").format(row_number=idx),
+            )
+            _assert(
+                min_ay <= row_end <= max_ay,
+                _("Row {row_number}: To Date out of Academic Year span.").format(row_number=idx),
+            )
 
             # If terms + explicit dates both exist, ensure explicit dates lie within term windows
             if start_term_name and from_explicit:
                 _assert(
                     start_term_dt <= getdate(row.from_date),
-                    _("Row {0}: From Date is earlier than Start Term window.").format(idx),
+                    _("Row {row_number}: From Date is earlier than Start Term window.").format(row_number=idx),
                 )
             if end_term_name and to_explicit:
                 _assert(
                     getdate(row.to_date) <= end_term_dt,
-                    _("Row {0}: To Date is later than End Term window.").format(idx),
+                    _("Row {row_number}: To Date is later than End Term window.").format(row_number=idx),
                 )
 
     def _validate_catalog_membership(self):
@@ -352,17 +403,20 @@ class ProgramOffering(Document):
             if not is_in_catalog and not is_exception:
                 frappe.throw(
                     _(
-                        "Row {0}: Course {1} is not in the Program catalog. "
+                        "Row {row_number}: Course {course} is not in the Program catalog. "
                         "Either add it to Program Course, or mark this row as Non-catalog and provide a justification."
-                    ).format(idx, frappe.utils.get_link_to_form("Course", course))
+                    ).format(row_number=idx, course=frappe.utils.get_link_to_form("Course", course))
                 )
 
             if is_exception:
                 # Optional: require a reason if field exists
                 if "exception_reason" in row.as_dict() and not (row.get("exception_reason") or "").strip():
                     frappe.throw(
-                        _("Row {0}: Please provide an Exception Justification for the non-catalog course {1}.").format(
-                            idx, frappe.utils.get_link_to_form("Course", course)
+                        _(
+                            "Row {row_number}: Please provide an Exception Justification for the non-catalog course {course}."
+                        ).format(
+                            row_number=idx,
+                            course=frappe.utils.get_link_to_form("Course", course),
                         )
                     )
 
@@ -378,23 +432,34 @@ class ProgramOffering(Document):
         for idx, row in enumerate(self.offering_course_basket_groups or [], start=1):
             course = (row.course or "").strip()
             basket_group = (row.basket_group or "").strip()
-            _assert(course, _("Enrollment basket membership row {0}: Course is required.").format(idx))
+            _assert(
+                course, _("Enrollment basket membership row {row_number}: Course is required.").format(row_number=idx)
+            )
             _assert(
                 course in valid_courses,
-                _("Enrollment basket membership row {0}: Course {1} is not present in Offering Courses.").format(
-                    idx, course
+                _(
+                    "Enrollment basket membership row {row_number}: Course {course} is not present in Offering Courses."
+                ).format(
+                    row_number=idx,
+                    course=course,
                 ),
             )
             _assert(
                 basket_group,
-                _("Enrollment basket membership row {0}: Basket Group (Enrollment) is required.").format(idx),
+                _("Enrollment basket membership row {row_number}: Basket Group (Enrollment) is required.").format(
+                    row_number=idx
+                ),
             )
 
             key = (course, basket_group)
             _assert(
                 key not in seen,
-                _("Enrollment basket membership row {0}: duplicate mapping for {1} -> {2}.").format(
-                    idx, course, basket_group
+                _(
+                    "Enrollment basket membership row {row_number}: duplicate mapping for {course} -> {basket_group}."
+                ).format(
+                    row_number=idx,
+                    course=course,
+                    basket_group=basket_group,
                 ),
             )
             seen.add(key)
@@ -408,8 +473,8 @@ class ProgramOffering(Document):
             if rule_type == "REQUIRE_GROUP_COVERAGE" and not (row.basket_group or "").strip():
                 frappe.throw(
                     _(
-                        "Enrollment Rule row {0}: Basket Group (Enrollment) is required for REQUIRE_GROUP_COVERAGE."
-                    ).format(idx)
+                        "Enrollment Rule row {row_number}: Basket Group (Enrollment) is required for REQUIRE_GROUP_COVERAGE."
+                    ).format(row_number=idx)
                 )
 
     def _get_ay_envelope(self) -> tuple[str | None, str | None]:
@@ -448,7 +513,7 @@ class ProgramOffering(Document):
         status = (self.activity_booking_status or "Draft").strip() or "Draft"
         allowed_status = {"Draft", "Ready", "Open", "Closed"}
         if status not in allowed_status:
-            frappe.throw(_("Invalid Activity Booking Status: {0}").format(status))
+            frappe.throw(_("Invalid Activity Booking Status: {status}.").format(status=status))
         self.activity_booking_status = status
 
         min_age = self.activity_min_age_years
@@ -497,16 +562,20 @@ class ProgramOffering(Document):
         for idx, row in enumerate(rows, start=1):
             sg = (row.student_group or "").strip()
             if not sg:
-                frappe.throw(_("Activity Section row {0}: Student Group is required.").format(idx))
+                frappe.throw(_("Activity Section row {row_number}: Student Group is required.").format(row_number=idx))
             if sg in seen:
-                frappe.throw(_("Duplicate Activity Section Student Group: {0}.").format(sg))
+                frappe.throw(_("Duplicate Activity Section Student Group: {student_group}.").format(student_group=sg))
             seen.add(sg)
             group_names.append(sg)
 
             if row.capacity_override is not None and cint(row.capacity_override) < 0:
-                frappe.throw(_("Activity Section row {0}: Capacity Override cannot be negative.").format(idx))
+                frappe.throw(
+                    _("Activity Section row {row_number}: Capacity Override cannot be negative.").format(row_number=idx)
+                )
             if row.priority_tier is not None and cint(row.priority_tier) < 0:
-                frappe.throw(_("Activity Section row {0}: Priority Tier cannot be negative.").format(idx))
+                frappe.throw(
+                    _("Activity Section row {row_number}: Priority Tier cannot be negative.").format(row_number=idx)
+                )
 
         group_rows = frappe.get_all(
             "Student Group",
@@ -526,23 +595,33 @@ class ProgramOffering(Document):
             sg = row.student_group
             meta = group_map.get(sg)
             if not meta:
-                frappe.throw(_("Activity Section row {0}: Student Group {1} was not found.").format(idx, sg))
+                frappe.throw(
+                    _("Activity Section row {row_number}: Student Group {student_group} was not found.").format(
+                        row_number=idx,
+                        student_group=sg,
+                    )
+                )
 
             if (meta.get("group_based_on") or "").strip() != "Activity":
                 frappe.throw(
-                    _("Activity Section row {0}: Student Group {1} must be group type Activity.").format(
-                        idx, get_link_to_form("Student Group", sg)
+                    _(
+                        "Activity Section row {row_number}: Student Group {student_group} must be group type Activity."
+                    ).format(
+                        row_number=idx,
+                        student_group=get_link_to_form("Student Group", sg),
                     )
                 )
 
             sg_offering = (meta.get("program_offering") or "").strip()
             if sg_offering and sg_offering != self.name:
                 frappe.throw(
-                    _("Activity Section row {0}: Student Group {1} belongs to Program Offering {2}, not {3}.").format(
-                        idx,
-                        get_link_to_form("Student Group", sg),
-                        get_link_to_form("Program Offering", sg_offering),
-                        get_link_to_form("Program Offering", self.name),
+                    _(
+                        "Activity Section row {row_number}: Student Group {student_group} belongs to Program Offering {actual_offering}, not {expected_offering}."
+                    ).format(
+                        row_number=idx,
+                        student_group=get_link_to_form("Student Group", sg),
+                        actual_offering=get_link_to_form("Program Offering", sg_offering),
+                        expected_offering=get_link_to_form("Program Offering", self.name),
                     )
                 )
 
@@ -722,7 +801,9 @@ class ProgramOffering(Document):
                 location = (srow.get("location") or "").strip()
                 if rd is None or blk is None:
                     section_payload["errors"].append(
-                        _("Schedule row {0} is missing rotation day or block number.").format(srow.get("name"))
+                        _("Schedule row {schedule_row} is missing rotation day or block number.").format(
+                            schedule_row=srow.get("name")
+                        )
                     )
                     continue
                 key = (cint(rd), cint(blk))
@@ -730,13 +811,13 @@ class ProgramOffering(Document):
 
                 if not location:
                     section_payload["errors"].append(
-                        _("Schedule row {0} is missing location.").format(srow.get("name"))
+                        _("Schedule row {schedule_row} is missing location.").format(schedule_row=srow.get("name"))
                     )
                 elif not is_bookable_room(location):
                     section_payload["errors"].append(
-                        _("Schedule row {0} uses non-bookable location {1}.").format(
-                            srow.get("name"),
-                            location,
+                        _("Schedule row {schedule_row} uses non-bookable location {location}.").format(
+                            schedule_row=srow.get("name"),
+                            location=location,
                         )
                     )
 
@@ -1108,7 +1189,7 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
 
     db_filters = {}
     if school:
-        db_filters["school"] = school
+        db_filters["school"] = ["in", get_ancestor_schools(school) or [school]]
 
     or_filters = None
     if search_txt:
@@ -1124,7 +1205,7 @@ def academic_year_link_query(doctype, txt, searchfield, start, page_len, filters
         or_filters=or_filters,
         order_by="year_start_date DESC, name DESC",
         start=int(start or 0),
-        page_length=int(page_len or 20),
+        limit=int(page_len or 20),
     )
     return [[r.get("name"), (r.get("academic_year_name") or r.get("name"))] for r in rows]
 

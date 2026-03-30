@@ -20,10 +20,10 @@ class LeaveLedgerEntry(Document):
         if getdate(self.from_date) > getdate(self.to_date):
             frappe.throw(
                 _(
-                    "Leave Ledger Entry's To date needs to be after From date. Currently, From Date is {0} and To Date is {1}"
+                    "Leave Ledger Entry's To date needs to be after From date. Currently, From Date is {from_date} and To Date is {to_date}"
                 ).format(
-                    frappe.bold(formatdate(self.from_date)),
-                    frappe.bold(formatdate(self.to_date)),
+                    from_date=frappe.bold(formatdate(self.from_date)),
+                    to_date=frappe.bold(formatdate(self.to_date)),
                 ),
                 exc=InvalidLeaveLedgerEntry,
                 title=_("Invalid Leave Ledger Entry"),
@@ -55,9 +55,9 @@ def validate_leave_allocation_against_leave_application(ledger):
 
     if leave_application_records:
         frappe.throw(
-            _("Leave allocation {0} is linked with the Leave Application {1}").format(
-                ledger.transaction_name,
-                ", ".join(
+            _("Leave allocation {leave_allocation} is linked with the Leave Application {leave_applications}").format(
+                leave_allocation=ledger.transaction_name,
+                leave_applications=", ".join(
                     get_link_to_form("Leave Application", application) for application in leave_application_records
                 ),
             )

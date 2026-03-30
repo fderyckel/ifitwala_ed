@@ -16,7 +16,7 @@ class TestStudentReferral(FrappeTestCase):
     def test_privileged_roles_can_read_all_referrals(self):
         doc = frappe._dict(owner="teacher@example.com", referral_source="Staff")
 
-        for role_name in ("Academic Admin", "Counselor", "Counsellor", "Pastoral Lead", "System Manager"):
+        for role_name in ("Academic Admin", "Counselor", "Pastoral Lead", "System Manager"):
             with patch(
                 "ifitwala_ed.students.doctype.student_referral.student_referral.frappe.get_roles",
                 return_value=[role_name],

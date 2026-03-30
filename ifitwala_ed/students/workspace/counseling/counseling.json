@@ -116,10 +116,20 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 4,
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Enrollment Requests",
+   "link_count": 0,
+   "link_to": "Program Enrollment Request Overview",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   },
   {
    "hidden": 0,
@@ -162,7 +172,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-02-25 15:48:41.113654",
+ "modified": "2026-03-28 12:47:08.000000",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Counseling",
@@ -176,7 +186,7 @@
    "role": "Academic Admin"
   },
   {
-   "role": "Counsellor"
+   "role": "Counselor"
   }
  ],
  "sequence_id": 3.0,

@@ -13,6 +13,22 @@ class Course(Document):
         self.validate_criteria_weighting()
         self.validate_duplicate_criteria()
 
+    def after_insert(self):
+        self._sync_default_website_profile()
+
+    def on_update(self):
+        if any(
+            self.has_value_changed(fieldname)
+            for fieldname in (
+                "is_published",
+                "school",
+                "course_image",
+                "description",
+                "term_long",
+            )
+        ):
+            self._sync_default_website_profile()
+
     def validate_duplicate_criteria(self):
         """Ensure no Assessment Criteria appears more than once on this course."""
         seen = set()
@@ -21,9 +37,9 @@ class Course(Document):
                 continue
             if row.assessment_criteria in seen:
                 frappe.throw(
-                    _("Assessment Criteria {0} appears more than once. Please remove duplicate entries.").format(
-                        row.assessment_criteria
-                    )
+                    _(
+                        "Assessment Criteria {assessment_criteria} appears more than once. Please remove duplicate entries."
+                    ).format(assessment_criteria=row.assessment_criteria)
                 )
             seen.add(row.assessment_criteria)
 
@@ -40,8 +56,8 @@ class Course(Document):
         if abs(total_weight - 100.0) > 0.001:
             frappe.throw(
                 _(
-                    "The sum of the Criteria Weighting is {0:.2f}%. It must be exactly 100%. Please adjust and try again."
-                ).format(total_weight)
+                    "The sum of the Criteria Weighting is {total_weight:.2f}%. It must be exactly 100%. Please adjust and try again."
+                ).format(total_weight=total_weight)
             )
 
     def get_learning_units(self):
@@ -52,6 +68,14 @@ class Course(Document):
                 lu_data.append(unit_doc)
         # lu_data = lu_data.sort(key=lambda x: x.start_date)
         return lu_data
+
+    def _sync_default_website_profile(self):
+        if int(self.is_published or 0) != 1 or not (self.school or "").strip():
+            return
+
+        from ifitwala_ed.website.bootstrap import ensure_default_course_website_profile
+
+        ensure_default_course_website_profile(course_name=self.name)
 
 
 @frappe.whitelist()
@@ -64,7 +88,9 @@ def add_course_to_programs(course, programs, mandatory=False):
         program.save()
     frappe.db.commit()
     frappe.msgprint(
-        _("The Course {0} has been added to all the selected programs successfully.").format(frappe.bold(course)),
+        _("The Course {course} has been added to all the selected programs successfully.").format(
+            course=frappe.bold(course)
+        ),
         title=_("Programs updated"),
         indicator="green",
     )

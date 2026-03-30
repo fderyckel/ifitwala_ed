@@ -73,6 +73,7 @@ class TestStudentPatientVisit(FrappeTestCase):
                     "note": "Student visited the nurse while assigned to a class.",
                 }
             ).insert()
+            visit.notify_instructor()
 
         self.assertTrue(visit.name)
         self.assertTrue(saw_group_lookup["value"])

@@ -14,7 +14,8 @@
 
 | Path | Owner | Purpose |
 | --- | --- | --- |
-| `/` | Organization Landing | Top-level marketing page |
+| `/` | Root resolver | Redirect to default published school; fallback to `/schools` |
+| `/schools` | Organization Landing | School discovery page |
 | `/schools/<school_slug>/...` | Custom website renderer | School marketing pages |
 | `/apply/...` | Native Frappe Web Forms | Public admissions entry forms |
 | `/inquiry` | Legacy redirect | `301` to `/apply/inquiry` |
@@ -25,7 +26,8 @@
 
 Rules:
 * No root catch-all.
-* No default-school redirect at `/`.
+* `/` resolves to the configured default published school when available.
+* If no valid default school is available, `/` falls back to `/schools`.
 * No root-level school marketing pages.
 * No exception-based router ownership for webforms.
 * Web Form branding must be delivered by static assets via `webform_include_css` / `webform_include_js` (app `public/...` paths), not route or controller overrides.
@@ -569,13 +571,13 @@ High-level facts (years running, student count, ratios).
 ### 3.4 `program_list`
 
 **Purpose**
-Display published program website profiles as discoverable cards.
+Display published Programs as discoverable cards, with full detail links when the school-specific website profile is published.
 
 **Data source**
 
-* `Program Website Profile` (`status = "Published"`)
 * `Program Offering` (school/program pairing)
 * `Program` (`is_published = 1`, `archive = 0`, slug required)
+* optional `Program Website Profile` (`status = "Published"` for full detail cards; draft/missing profiles render teaser cards only)
 
 **Props**
 
@@ -596,7 +598,8 @@ Display published program website profiles as discoverable cards.
 **Notes**
 
 * Filtering and publication guards live in the provider only
-* Intro text rendering is optional via `show_intro`
+* Program ordering follows tree order (`lft`)
+* Intro text rendering is optional via `show_intro` and only applies to full detail cards
 
 ---
 
@@ -604,6 +607,9 @@ Display published program website profiles as discoverable cards.
 
 **Purpose**
 Present leadership (principal, coordinators).
+
+Current baseline note:
+* School page authoring currently exposes this through the `leadership` block, which renders an `Academic Leadership` carousel first and may render a second `Faculty & Staff` carousel underneath.
 
 **Data source**
 
@@ -629,6 +635,9 @@ Present leadership (principal, coordinators).
 
 **Purpose**
 Show broader academic or administrative staff.
+
+Current baseline note:
+* The current `leadership` block owns both sections on school pages; the secondary `Faculty & Staff` carousel is populated from the broader staff set after leadership members are excluded.
 
 **Data source**
 

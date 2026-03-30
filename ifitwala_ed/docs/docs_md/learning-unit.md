@@ -3,8 +3,8 @@ title: "Learning Unit: Planned Curriculum Container Inside a Course"
 slug: learning-unit
 category: Curriculum
 doc_order: 5
-version: "1.0.0"
-last_change_date: "2026-03-12"
+version: "1.1.0"
+last_change_date: "2026-03-23"
 summary: "Plan a course-level unit with sequence, pedagogy, standards alignment, and lesson structure, then optionally anchor reusable tasks to it."
 seo_title: "Learning Unit: Planned Curriculum Container Inside a Course"
 seo_description: "Plan a course-level unit with sequence, pedagogy, standards alignment, and lesson structure, then optionally anchor reusable tasks to it."
@@ -26,6 +26,7 @@ Test refs: None
 
 - Create the parent `Course` first because `course` is required.
 - Decide whether the unit also needs a `Program` reference and publication state.
+- In Desk List View, filtering by a parent `Program` now includes units linked to descendant programs in that program tree.
 - Prepare any standards metadata you want to record in the `standards` child table.
 
 ## Where It Is Used Across the ERP
@@ -47,6 +48,7 @@ Test refs: None (scaffold only: `ifitwala_ed/curriculum/doctype/learning_unit/te
 
 1. Create the unit with `unit_name` and required `course`.
 2. Capture pedagogy, content, skills, concepts, misconceptions, and publication state.
+   In the Desk list, a `program = <parent>` filter expands to the selected program plus its descendant programs.
 3. Add `Learning Unit Standard Alignment` rows and any planning reflections.
 4. Add ordered `Lesson` rows under the unit.
 5. Optionally anchor reusable `Task` rows to the unit; delivery and assessment happen later through `Task Delivery`.
@@ -75,6 +77,7 @@ Test refs: None (scaffold only: `ifitwala_ed/curriculum/doctype/learning_unit/te
 - **DocType schema file**: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`
 - **Controller file**: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.py`
 - **Desk client script**: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.js`
+- **Desk list script**: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit_list.js`
 - **Required fields (`reqd=1`)**:
   - `unit_name` (`Data`)
   - `course` (`Link` -> `Course`)
@@ -86,11 +89,13 @@ Test refs: None (scaffold only: `ifitwala_ed/curriculum/doctype/learning_unit/te
   - `before_save`
 - **Operational/public methods**:
   - `reorder_learning_units(course, unit_names)` (whitelisted)
+  - `get_program_subtree_scope(program)` (whitelisted)
 
 ### Current Contract
 
 - `Learning Unit` owns ordering within a course through `unit_order`.
 - `learning_unit.py` auto-assigns or repairs `unit_order` collisions in steps of 10.
+- Desk List View expands parent-program filters to the full descendant program subtree before fetching rows.
 - `task.py` validates that any `Task.learning_unit` belongs to the same course as `Task.default_course`.
 - `learning_unit.js` provides lesson-list and lesson-reorder actions from the unit form.
 

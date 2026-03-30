@@ -27,6 +27,7 @@ def setup_education():
     ensure_initial_setup_flag()
     ensure_root_organization()
     create_roles_with_homepage()
+    ensure_canonical_role_records()
     ensure_leave_roles()
     grant_role_read_select_to_hr()
     create_designations()
@@ -116,6 +117,25 @@ def create_roles_with_homepage():
             frappe.get_doc({"doctype": "Role", **role}).insert(ignore_permissions=True)
 
 
+def ensure_canonical_role_records():
+    """Ensure role records exist for canonical role names used in seed data."""
+    roles = [
+        {"role_name": "Academic Assistant", "desk_access": 1},
+        {"role_name": "Counselor", "desk_access": 1},
+    ]
+
+    for role in roles:
+        existing = frappe.db.exists("Role", role["role_name"])
+        if existing:
+            doc = frappe.get_doc("Role", role["role_name"])
+            if int(doc.desk_access or 0) != int(role["desk_access"]):
+                doc.desk_access = role["desk_access"]
+                doc.save(ignore_permissions=True)
+            continue
+
+        frappe.get_doc({"doctype": "Role", **role}).insert(ignore_permissions=True)
+
+
 def ensure_leave_roles():
     for role_name in ["Leave Approver"]:
         if not frappe.db.exists("Role", role_name):
@@ -194,9 +214,9 @@ def create_designations():
         {"doctype": "Designation", "designation_name": "Teacher Assistant", "organization": organization},
         {
             "doctype": "Designation",
-            "designation_name": "Counsellor",
+            "designation_name": "Counselor",
             "organization": organization,
-            "default_role_profile": "Counsellor",
+            "default_role_profile": "Counselor",
             "default_workspace": "Counseling",
         },
         {
@@ -274,7 +294,7 @@ def add_other_records(country=None):
             "associated_role": "Curriculum Coordinator",
         },
         {"doctype": "Student Log Next Step", "next_step": "Refer to Patoral Lead"},
-        {"doctype": "Student Log Next Step", "next_step": "Refer to counseling", "associated_role": "Counsellor"},
+        {"doctype": "Student Log Next Step", "next_step": "Refer to counseling", "associated_role": "Counselor"},
         {
             "doctype": "Student Log Next Step",
             "next_step": "Refer to academic admin",
@@ -313,14 +333,36 @@ def add_other_records(country=None):
         frappe.db.commit()
 
 
+def _get_doctype_editor_roles(doctype: str) -> list[str]:
+    """Return roles that can create or edit the given DocType at permlevel 0."""
+    meta = frappe.get_meta(doctype)
+    roles: list[str] = []
+
+    for perm in meta.permissions or []:
+        role = cstr(perm.get("role")).strip()
+        if not role:
+            continue
+        if int(perm.get("write") or 0) or int(perm.get("create") or 0):
+            roles.append(role)
+
+    return list(dict.fromkeys(roles))
+
+
 def grant_role_read_select_to_hr():
-    """Allow HR Manager / HR User to link to Role from Designation (and read role names).
-    This must be done at setup time because Frappe validates Link fields via validate_link,
-    which requires Read or Select on the target doctype (Role).
+    """Allow staff who manage Role-linked setup doctypes to resolve Role links safely.
+
+    Frappe validates Link fields via validate_link, which requires Read or Select on
+    the target doctype (Role). Student Log Next Step editors need the same access as
+    Designation editors so they can set the associated role for a next step.
     """
     target_doctype = "Role"
-    # Roles that can edit Designation should be able to resolve Role links.
-    target_roles = ["HR Manager", "HR User", "Academic Admin"]
+    target_roles = [
+        "HR Manager",
+        "HR User",
+        "Academic Admin",
+        *_get_doctype_editor_roles("Student Log Next Step"),
+    ]
+    target_roles = list(dict.fromkeys(role for role in target_roles if cstr(role).strip()))
 
     # Custom permissions are stored as Custom DocPerm (safe to add; survives updates).
     # We only grant read + select at permlevel 0.
@@ -440,7 +482,9 @@ def grant_core_crm_permissions():
             "Admission Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Academic Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Academic Assistant": ["read", "write", "create", "delete", "email", "comment", "assign"],
-            "Assistant Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "HR Manager": ["read"],
+            "HR User": ["read"],
+            "Employee": ["read"],
             "Accounts User": ["read", "write", "create", "email", "comment", "assign"],
             "Accounts Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
         },

@@ -7,10 +7,15 @@
 {% endif %}
 
 <section class="block-admissions-overview">
-	<div class="mx-auto flex {{ width_class }} flex-col gap-6 px-6 text-center">
-		<h1 class="text-4xl font-semibold tracking-tight">{{ data.heading }}</h1>
-		<div class="prose prose-lg mx-auto">
-			{{ data.content | safe }}
+	<div class="mx-auto max-w-6xl px-6">
+		<div class="admissions-overview-shell">
+			<div class="admissions-overview-copy mx-auto flex {{ width_class }} flex-col gap-6 text-center">
+				<p class="admissions-overview-eyebrow">Admissions</p>
+				<h1 class="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">{{ data.heading }}</h1>
+				<div class="admissions-overview-prose prose prose-lg mx-auto max-w-none">
+					{{ data.content | safe }}
+				</div>
+			</div>
 		</div>
 	</div>
 </section>

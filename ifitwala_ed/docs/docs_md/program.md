@@ -3,8 +3,8 @@ title: "Program: Curriculum Container and Enrollment Policy Anchor"
 slug: program
 category: Curriculum
 doc_order: 1
-version: "1.2.0"
-last_change_date: "2026-03-13"
+version: "1.4.1"
+last_change_date: "2026-03-28"
 summary: "Define the academic program tree, its catalog courses, basket-group memberships, assessment model, and prerequisite policy foundation used by offerings and enrollment validation."
 seo_title: "Program: Curriculum Container and Enrollment Policy Anchor"
 seo_description: "Define the academic program tree, its catalog courses, basket-group memberships, assessment model, and prerequisite policy foundation used by offerings and enrollment validation."
@@ -19,6 +19,8 @@ seo_description: "Define the academic program tree, its catalog courses, basket-
 - Create all relevant [**Course**](/docs/en/course/) records first.
 - Prepare the default [**Grade Scale**](/docs/en/grade-scale/) for program-level prerequisite resolution.
 - Decide parent/child structure if you need a program tree (`NestedSet`).
+- Any selected `parent_program` must be a group node (`is_group = 1`).
+- The seeded root `All Programs` stays the tree root: no parent, never archived, always `is_group = 1`.
 - Decide whether any catalog course should belong to one or more [**Basket Group**](/docs/en/basket-group/) memberships for later offering and enrollment rules.
 
 ## Why It Matters
@@ -45,6 +47,8 @@ In enrollment architecture, Program is intent/structure. Enrollment truth is com
 ## Lifecycle and Linked Documents
 
 1. Create program identity and optional tree parent.
+   If the chosen parent is not yet marked as a group, the form now offers a one-click conversion before save.
+   The parent picker also excludes the current program and its descendants to prevent circular tree edits.
 2. Add `courses` rows ([**Program Course**](/docs/en/program-course/)).
 3. Add `course_basket_groups` rows when catalog courses may satisfy one or more basket requirements.
    In the form, this table is labeled `Enrollment Basket Memberships`.
@@ -52,12 +56,18 @@ In enrollment architecture, Program is intent/structure. Enrollment truth is com
 5. Configure assessment settings and `assessment_categories` rows.
    If a child program leaves `assessment_categories` empty, the server now resolves the nearest ancestor program's categories at runtime until the child adds its own local rows.
 6. Publish only when website fields are valid (`program_slug`, not archived).
+   First publish auto-generates a missing `program_slug` and prepares draft website profiles for schools that already offer the Program. Published Programs remain discoverable on the school Programs page as teaser cards until the school-specific profile is published.
 
 <DoDont doTitle="Do" dontTitle="Don't">
   <Do>Keep only `Course.status = Active` rows in the program catalog.</Do>
+  <Do>Keep `All Programs` as the immutable root node for the program tree.</Do>
+  <Do>Keep every parent node marked as `is_group = 1`.</Do>
   <Do>Use basket-group membership rows when a course can satisfy one or more requirement families.</Do>
   <Do>Leave a child program's assessment categories empty only when you intentionally want it to inherit the nearest ancestor's categories at runtime.</Do>
+  <Do>Review and publish the seeded school-specific website profiles when the full public program detail page is ready.</Do>
   <Dont>Add duplicate course rows in `courses`.</Dont>
+  <Dont>Re-parent or archive the seeded `All Programs` root.</Dont>
+  <Dont>Unset `is_group` on a Program that already has child Programs.</Dont>
   <Dont>Publish archived programs or publish without `program_slug`.</Dont>
 </DoDont>
 
@@ -102,6 +112,8 @@ Result: the catalog keeps one course row for ESS while the basket-group table re
 - **Operational/public methods**:
   - `inherit_assessment_categories(program, overwrite=1)` (whitelisted)
   - `get_effective_assessment_categories(program)` (whitelisted)
+  - `make_program_group(program)` (whitelisted)
+  - `program_parent_query(...)` (whitelisted link query)
 
 - **DocType**: `Program` (`ifitwala_ed/curriculum/doctype/program/`)
 - **Autoname**: `field:program_name`
@@ -115,14 +127,19 @@ Result: the catalog keeps one course row for ESS while the basket-group table re
   - `assessment_categories` -> `Program Assessment Category`
   - `program_coordinators` -> `Program Coordinator`
 - **Validation guarantees** (`program.py`):
+  - the seeded `All Programs` root cannot be re-parented, archived, or changed to a non-group node
+  - parent programs must already be marked as group nodes
+  - programs with child programs cannot stop being group nodes
+  - parent link search excludes the current program subtree to prevent cycle-causing selections in the form
   - duplicate course rows are blocked
   - only Active courses can be added
   - each basket-group mapping must point to a course already present in `courses`
   - duplicate `(course, basket_group)` mappings are blocked
-  - publish guard (`archive` + `program_slug`) enforced only when published
+  - publish guard (`archive` + `program_slug`) enforced only when published; first publish fills a blank slug automatically
   - assessment-category duplicate and weight guards
   - empty child programs resolve assessment categories from the nearest ancestor program at runtime
   - when `points = 1`, active category weights must exist and total must be `<= 100`
+  - when a published Program is already offered by one or more schools, draft `Program Website Profile` records are prepared automatically with starter hero/intro/block/SEO defaults, without overwriting authored profile content
 
 ### Permission Matrix
 

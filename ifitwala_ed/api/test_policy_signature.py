@@ -5,6 +5,7 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
 
 from ifitwala_ed.api.policy_signature import (
+    get_staff_policy_campaign_options,
     get_staff_policy_library,
     get_staff_policy_signature_dashboard,
     launch_staff_policy_campaign,
@@ -93,6 +94,21 @@ class TestPolicySignature(FrappeTestCase):
             return
         frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
+    def _ensure_role(self, role_name: str):
+        if frappe.db.exists("Role", role_name):
+            return
+        role = frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
+        self.created.append(("Role", role.name))
+
+    def _assign_role(self, user: str, role_name: str):
+        self._ensure_role(role_name)
+        if frappe.db.exists("Has Role", {"parent": user, "parenttype": "User", "role": role_name}):
+            return
+        user_doc = frappe.get_doc("User", user)
+        user_doc.append("roles", {"role": role_name})
+        user_doc.save(ignore_permissions=True)
+        frappe.clear_cache(user=user)
+
     def _make_employee(self, user: str, school: str | None = None):
         school_name = (school or self.school.name).strip()
         employee = frappe.get_doc(
@@ -112,6 +128,23 @@ class TestPolicySignature(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self.created.append(("Employee", employee.name))
         return employee
+
+    def test_campaign_options_load_for_hr_manager_scope(self):
+        self._assign_role(self.user_one.name, "HR Manager")
+
+        frappe.set_user(self.user_one.name)
+        payload = get_staff_policy_campaign_options(
+            organization=self.organization.name,
+            school=self.school.name,
+            policy_version=self.policy_version.name,
+        )
+
+        options = payload.get("options") or {}
+        organizations = options.get("organizations") or []
+        policies = options.get("policies") or []
+
+        self.assertIn(self.organization.name, organizations)
+        self.assertTrue(any(row.get("policy_version") == self.policy_version.name for row in policies))
 
     def test_launch_campaign_counts_and_dashboard(self):
         client_request_id = f"policy-launch-{frappe.generate_hash(length=8)}"
@@ -207,7 +240,10 @@ class TestPolicySignature(FrappeTestCase):
                 "policy_text": "<p>Read and sign this policy update.</p>",
                 "is_active": 1,
             }
-        ).insert(ignore_permissions=True)
+        )
+        self.policy_version.is_active = 0
+        self.policy_version.save(ignore_permissions=True)
+        amendment = amendment.insert(ignore_permissions=True)
         self.created.append(("Policy Version", amendment.name))
 
         frappe.set_user(self.user_one.name)
@@ -224,14 +260,14 @@ class TestPolicySignature(FrappeTestCase):
         self.assertEqual(new_version_row.get("acknowledgement_status"), "new_version")
 
     def test_staff_policy_library_defaults_to_employee_school_and_inherits_parent_school_policy(self):
-        parent_school = make_school(self.organization.name, prefix="PS Parent School")
+        parent_school = make_school(self.organization.name, prefix="PS Parent School", is_group=1)
         self.created.append(("School", parent_school.name))
 
         child_school = frappe.get_doc(
             {
                 "doctype": "School",
                 "school_name": f"PS Child School {frappe.generate_hash(length=6)}",
-                "abbr": f"PSC{frappe.generate_hash(length=4)}",
+                "abbr": f"PC{frappe.generate_hash(length=3)}",
                 "organization": self.organization.name,
                 "parent_school": parent_school.name,
             }

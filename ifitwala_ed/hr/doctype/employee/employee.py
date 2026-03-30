@@ -3,8 +3,6 @@
 
 # ifitwala_ed.hr.doctype.employee.employee
 
-import os
-
 import frappe
 from frappe import _, scrub
 from frappe.contacts.address_and_contact import load_address_and_contact
@@ -16,6 +14,7 @@ from ifitwala_ed.utilities.employee_utils import (
     get_descendant_organizations,
     get_user_base_org,
 )
+from ifitwala_ed.utilities.image_utils import get_preferred_employee_image_url
 from ifitwala_ed.utilities.transaction_base import delete_events
 
 
@@ -545,8 +544,8 @@ class Employee(NestedSet):
         user = frappe.get_doc("User", self.user_id)
         user.flags.ignore_permissions = True
 
-        # Ensure base role
-        if "Employee" not in {r.role for r in user.roles}:
+        # Keep the base role for active staff only; non-active users are role-stripped by access sync.
+        if self.employment_status == "Active" and "Employee" not in {r.role for r in user.roles}:
             user.append("roles", {"role": "Employee"})
 
         user.first_name = self.employee_first_name
@@ -557,18 +556,9 @@ class Employee(NestedSet):
             user.birth_date = self.employee_date_of_birth
 
         # ---- image sync -------------------------------------------------------
-        img_path = self.employee_image
-        if img_path:
-            abs_path = frappe.utils.get_site_path("public", img_path.lstrip("/"))
-            if not os.path.exists(abs_path):
-                frappe.log_error(
-                    title=_("Missing file on disk during update_user"),
-                    message=f"{abs_path} does not exist for Employee {self.name}",
-                )
-                img_path = None
-
-        if img_path and user.user_image != img_path:
-            user.user_image = img_path
+        avatar_url = get_preferred_employee_image_url(self.name, original_url=self.employee_image)
+        if avatar_url and user.user_image != avatar_url:
+            user.user_image = avatar_url
 
         user.save(ignore_permissions=True)
 
@@ -626,6 +616,86 @@ class Employee(NestedSet):
             frappe.cache().hdel("employees_with_number", cell_number)
             frappe.cache().hdel("employees_with_number", prev_number)
 
+    def _resolve_primary_contact_name(self) -> str | None:
+        if not self.user_id:
+            return None
+
+        contact_name = frappe.db.get_value("Contact", {"user": self.user_id}, "name")
+        if contact_name:
+            return contact_name
+
+        contact_name = frappe.db.get_value(
+            "Dynamic Link",
+            {
+                "link_doctype": "User",
+                "link_name": self.user_id,
+                "parenttype": "Contact",
+            },
+            "parent",
+        )
+        if contact_name:
+            return contact_name
+
+        if self.empl_primary_contact and frappe.db.exists("Contact", self.empl_primary_contact):
+            return self.empl_primary_contact
+
+        return None
+
+    def _get_or_create_primary_contact(self) -> str | None:
+        contact_name = self._resolve_primary_contact_name()
+        if contact_name:
+            return contact_name
+
+        if not self.user_id:
+            return None
+
+        contact = frappe.new_doc("Contact")
+        contact.user = self.user_id
+        contact.first_name = self.employee_first_name or self.employee_full_name or self.name
+        contact.last_name = self.employee_last_name or ""
+
+        if cstr(self.employee_gender).strip() and frappe.db.exists("Gender", self.employee_gender):
+            contact.gender = self.employee_gender
+
+        email = cstr(self.employee_professional_email).strip()
+        if email:
+            contact.append("email_ids", {"email_id": email, "is_primary": 1})
+
+        mobile = cstr(self.employee_mobile_phone).strip()
+        if mobile:
+            contact.mobile_no = mobile
+            contact.append("phone_nos", {"phone": mobile, "is_primary_mobile_no": 1})
+
+        try:
+            contact.insert(ignore_permissions=True)
+            return contact.name
+        except Exception:
+            contact_name = self._resolve_primary_contact_name()
+            if contact_name:
+                return contact_name
+            raise
+
+    def _ensure_contact_employee_link(self, contact_name: str):
+        if not contact_name:
+            return
+
+        exists = frappe.db.exists(
+            "Dynamic Link",
+            {
+                "parenttype": "Contact",
+                "parentfield": "links",
+                "parent": contact_name,
+                "link_doctype": "Employee",
+                "link_name": self.name,
+            },
+        )
+        if exists:
+            return
+
+        contact = frappe.get_doc("Contact", contact_name)
+        contact.append("links", {"link_doctype": "Employee", "link_name": self.name})
+        contact.save(ignore_permissions=True)
+
     def _ensure_primary_contact(self):
         """
         NOTE:
@@ -640,16 +710,7 @@ class Employee(NestedSet):
         if not self.user_id:
             return
 
-        contact_name = frappe.db.get_value(
-            "Dynamic Link",
-            {
-                "link_doctype": "User",
-                "link_name": self.user_id,
-                "parenttype": "Contact",
-            },
-            "parent",
-        )
-
+        contact_name = self._get_or_create_primary_contact()
         if not contact_name:
             frappe.log_error(
                 title="Employee Contact Link Missing",
@@ -657,29 +718,10 @@ class Employee(NestedSet):
             )
             return
 
-        exists = frappe.db.exists(
-            "Dynamic Link",
-            {
-                "parenttype": "Contact",
-                "parent": contact_name,
-                "link_doctype": "Employee",
-                "link_name": self.name,
-            },
-        )
+        self._ensure_contact_employee_link(contact_name)
 
-        if not exists:
-            frappe.get_doc(
-                {
-                    "doctype": "Dynamic Link",
-                    "parenttype": "Contact",
-                    "parentfield": "links",
-                    "parent": contact_name,
-                    "link_doctype": "Employee",
-                    "link_name": self.name,
-                }
-            ).insert(ignore_permissions=True)
-
-        if not self.empl_primary_contact:
+        if self.empl_primary_contact != contact_name:
+            self.empl_primary_contact = contact_name
             self.db_set("empl_primary_contact", contact_name, update_modified=False)
 
     def _can_sync_user_profile(self) -> bool:
@@ -732,13 +774,8 @@ class Employee(NestedSet):
         if not self._can_manage_user_roles():
             return
 
-        prev = self.get_doc_before_save()
-        user_changed = (not prev) or ((prev.user_id or "") != (self.user_id or ""))
-        if not user_changed and self._access_sync_signature(prev) == self._access_sync_signature():
-            return
-
         # Keep designation-driven roles aligned with the managed sync model,
-        # including secondary Employee History changes that alter effective access.
+        # including baseline Employee role repair and non-active role stripping.
         from ifitwala_ed.hr.employee_access import sync_user_access_from_employee
 
         sync_user_access_from_employee(self, notify_role_additions=True)
@@ -833,6 +870,7 @@ def create_user(employee, user=None, email=None):
 
     emp.user_id = user_doc.name
     emp.save(ignore_permissions=True)
+    emp._ensure_primary_contact()
 
     return user_doc.name
 

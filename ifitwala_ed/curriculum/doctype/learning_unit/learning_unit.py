@@ -3,7 +3,9 @@
 
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
+from frappe.utils.nestedset import get_descendants_of
 
 _STEP = 10
 
@@ -68,7 +70,7 @@ def reorder_learning_units(course: str, unit_names):
 
     # Permission: require write on the Course (or equivalent role permissions)
     if not frappe.has_permission("Course", ptype="write", doc=course):
-        frappe.throw("Not permitted to reorder units for this course.", frappe.PermissionError)
+        frappe.throw(_("Not permitted to reorder units for this course."), frappe.PermissionError)
 
     # Duplicates check
     if len(unit_names) != len(set(unit_names)):
@@ -105,3 +107,13 @@ def reorder_learning_units(course: str, unit_names):
     )
 
     return {"updated": len(values), "order_step": _STEP}
+
+
+@frappe.whitelist()
+def get_program_subtree_scope(program: str):
+    program = (program or "").strip()
+    if not program:
+        frappe.throw("program is required.", frappe.ValidationError)
+
+    descendants = get_descendants_of("Program", program) or []
+    return [program, *descendants]

@@ -33,10 +33,10 @@ class InventoryUnit(Document):
             "Inventory Unit",
             {"serial_no": self.serial_no, "name": ["!=", self.name]},
         ):
-            frappe.throw(_("Serial No {0} is already assigned.").format(self.serial_no))
+            frappe.throw(_("Serial No {serial_no} is already assigned.").format(serial_no=self.serial_no))
 
         if self.asset_tag and frappe.db.exists(
             "Inventory Unit",
             {"asset_tag": self.asset_tag, "name": ["!=", self.name]},
         ):
-            frappe.throw(_("Asset Tag {0} is already assigned.").format(self.asset_tag))
+            frappe.throw(_("Asset Tag {asset_tag} is already assigned.").format(asset_tag=self.asset_tag))

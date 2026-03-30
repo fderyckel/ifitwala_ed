@@ -91,7 +91,7 @@ frappe.ui.form.on("School Calendar", {
 					[
 						{
 							fieldtype: "Link",
-							label: "New Academic Year",
+							label: __("New Academic Year"),
 							fieldname: "academic_year",
 							options: "Academic Year",
 							reqd: 1,
@@ -102,7 +102,7 @@ frappe.ui.form.on("School Calendar", {
 						},
 						{
 							fieldtype: "Link",
-							label: "Target School",
+							label: __("Target School"),
 							fieldname: "school",
 							options: "School",
 							reqd: 1

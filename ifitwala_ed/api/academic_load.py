@@ -24,7 +24,6 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_school
 ALLOWED_ANALYTICS_ROLES = {
     "Academic Admin",
     "Academic Assistant",
-    "Assistant Admin",
     "Curriculum Coordinator",
     "System Manager",
     "Administrator",
@@ -33,7 +32,6 @@ ALLOWED_ANALYTICS_ROLES = {
 ACADEMIC_ROLE_OPTIONS = [
     "Academic Admin",
     "Academic Assistant",
-    "Assistant Admin",
     "Curriculum Coordinator",
     "Academic Staff",
     "Instructor",
@@ -1166,8 +1164,8 @@ def get_academic_load_staff_detail(payload=None, employee=None):
             "events": sorted(match["_detail"]["events"], key=lambda row: row.get("starts_on") or ""),
             "timeline": timeline[:30],
             "assignment_notes": [
-                _("Student adjustment uses a divisor of {0}.").format(
-                    flt(get_active_policy_for_school(dataset["policy"]["school"]).student_ratio_divisor)
+                _("Student adjustment uses a divisor of {divisor}.").format(
+                    divisor=flt(get_active_policy_for_school(dataset["policy"]["school"]).student_ratio_divisor)
                 ),
                 _("Cover suitability is ranked from exact group fit, then course/program fit, then current load."),
             ],

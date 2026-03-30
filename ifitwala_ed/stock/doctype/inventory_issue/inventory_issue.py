@@ -35,7 +35,9 @@ class InventoryIssue(Document):
             if not self.accepted_on:
                 missing.append(_("Accepted On"))
             if missing:
-                frappe.throw(_("Missing acknowledgment fields: {0}.").format(", ".join(missing)))
+                frappe.throw(
+                    _("Missing acknowledgment fields: {missing_fields}.").format(missing_fields=", ".join(missing))
+                )
         elif self.acknowledgment_attachment:
             frappe.throw(_("Terms must be accepted when acknowledgment attachment is provided."))
 

@@ -157,8 +157,10 @@ def resolve_grade_symbol(grade_scale, grade_symbol):
         if len(allowed) > 10:
             preview = f"{preview}, ..."
         frappe.throw(
-            _("Grade symbol '{0}' is not valid for scale {1}. Allowed: {2}").format(
-                grade_symbol, grade_scale, preview or _("(none configured)")
+            _("Grade symbol '{grade_symbol}' is not valid for scale {grade_scale}. Allowed: {allowed_symbols}").format(
+                grade_symbol=grade_symbol,
+                grade_scale=grade_scale,
+                allowed_symbols=preview or _("(none configured)"),
             )
         )
 

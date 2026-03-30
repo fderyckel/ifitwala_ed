@@ -11,6 +11,7 @@ from datetime import date
 from typing import Any
 
 import frappe
+from frappe import _
 from frappe.utils import getdate, nowdate
 
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
@@ -20,7 +21,7 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools
 ALLOWED_ANALYTICS_ROLES = {
     "Academic Admin",
     "Pastoral Lead",
-    "Counsellor",
+    "Counselor",
     "Curriculum Coordinator",
     "Admissions Officer",
     "Admissions Manager",
@@ -100,7 +101,7 @@ def _normalize_filters(payload: dict) -> dict:
 def _get_access_context(user: str | None = None) -> dict:
     user = user or frappe.session.user
     if not user or user == "Guest":
-        frappe.throw("You need to sign in to access Enrollment Analytics.", frappe.PermissionError)
+        frappe.throw(_("You need to sign in to access Enrollment Analytics."), frappe.PermissionError)
 
     roles = set(frappe.get_roles(user))
     if roles & ALLOWED_ANALYTICS_ROLES:
@@ -123,7 +124,7 @@ def _get_access_context(user: str | None = None) -> dict:
         if has_students:
             return {"user": user, "mode": "instructor"}
 
-    frappe.throw("You do not have permission to access Enrollment Analytics.", frappe.PermissionError)
+    frappe.throw(_("You do not have permission to access Enrollment Analytics."), frappe.PermissionError)
     return {"user": user, "mode": "full"}
 
 
@@ -143,7 +144,7 @@ def _resolve_scope(filters: dict, ctx: dict) -> dict:
 
     selected_org = filters.get("organization") or base_org
     if selected_org and org_scope and selected_org not in org_scope:
-        frappe.throw("You do not have access to this organization.", frappe.PermissionError)
+        frappe.throw(_("You do not have access to this organization."), frappe.PermissionError)
 
     allowed_schools = authorized_schools
     if not allowed_schools and org_scope:
@@ -174,7 +175,7 @@ def _resolve_scope(filters: dict, ctx: dict) -> dict:
         selected_school = filters.get("school") or (allowed_schools[0] if allowed_schools else base_school)
 
     if selected_school and allowed_schools and selected_school not in allowed_schools:
-        frappe.throw("You do not have access to this school.", frappe.PermissionError)
+        frappe.throw(_("You do not have access to this school."), frappe.PermissionError)
 
     school_scope = get_descendant_schools(selected_school) if selected_school else []
     if allowed_schools and school_scope:

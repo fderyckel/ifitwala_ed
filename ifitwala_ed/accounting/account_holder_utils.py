@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 
 
 @frappe.whitelist()
@@ -12,7 +13,7 @@ def get_school_organization(school):
 
     organization = frappe.db.get_value("School", school, "organization")
     if not organization:
-        frappe.throw(f"School {school} is not linked to an Organization.")
+        frappe.throw(_("School {school} is not linked to an Organization.").format(school=school))
 
     return organization
 
@@ -42,4 +43,8 @@ def validate_account_holder_for_student(student_doc):
     ah_org = frappe.db.get_value("Account Holder", student_doc.account_holder, "organization")
 
     if student_org and ah_org and student_org != ah_org:
-        frappe.throw(f"Account Holder must belong to the same Organization as the Student ({student_org}).")
+        frappe.throw(
+            _("Account Holder must belong to the same Organization as the Student ({student_org}).").format(
+                student_org=student_org
+            )
+        )

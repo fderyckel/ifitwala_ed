@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "SEVENT-.YYYY.-.######",
+ "autoname": "SE-.YY.-.MM.-.#####",
  "creation": "2024-12-01 11:52:33.351389",
  "default_view": "Calendar",
  "doctype": "DocType",
@@ -156,11 +156,11 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2025-11-26 20:22:54.788144",
+ "modified": "2026-03-28 12:32:22.897191",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School Event",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

@@ -610,7 +610,17 @@
 														<p class="type-body-strong text-ink">{{ room.label }}</p>
 														<p class="type-caption text-ink/60">
 															<span v-if="room.building">{{ room.building }}</span>
-															<span v-if="room.building && room.max_capacity"> · </span>
+															<span
+																v-if="
+																	room.building && (room.location_type_name || room.max_capacity)
+																"
+															>
+																·
+															</span>
+															<span v-if="room.location_type_name">
+																{{ room.location_type_name }}
+															</span>
+															<span v-if="room.location_type_name && room.max_capacity"> · </span>
 															<span v-if="room.max_capacity">
 																Capacity {{ room.max_capacity }}
 															</span>
@@ -630,17 +640,33 @@
 												No free room matched the selected slot and school scope.
 											</p>
 
-											<div class="space-y-1">
-												<label class="type-label">Location (optional)</label>
-												<FormControl
-													type="select"
-													:options="locationSelectOptions"
-													option-label="label"
-													option-value="value"
-													:model-value="meetingForm.location"
-													:disabled="submitting"
-													@update:modelValue="value => updateMeetingField('location', value)"
-												/>
+											<div class="space-y-3">
+												<div class="space-y-1">
+													<label class="type-label">Room type filter</label>
+													<FormControl
+														type="select"
+														:options="meetingLocationTypeSelectOptions"
+														option-label="label"
+														option-value="value"
+														:model-value="meetingForm.location_type"
+														:disabled="submitting"
+														@update:modelValue="
+															value => updateMeetingField('location_type', value)
+														"
+													/>
+												</div>
+												<div class="space-y-1">
+													<label class="type-label">Location (optional)</label>
+													<FormControl
+														type="select"
+														:options="meetingLocationSelectOptions"
+														option-label="label"
+														option-value="value"
+														:model-value="meetingForm.location"
+														:disabled="submitting"
+														@update:modelValue="value => updateMeetingField('location', value)"
+													/>
+												</div>
 												<p class="type-caption text-ink/60">
 													Capacity target: {{ roomCapacityTarget }} people including organizer.
 												</p>
@@ -816,7 +842,7 @@
 											<label class="type-label">Location (optional)</label>
 											<FormControl
 												type="select"
-												:options="locationSelectOptions"
+												:options="schoolEventLocationSelectOptions"
 												option-label="label"
 												option-value="value"
 												:model-value="schoolEventForm.location"
@@ -927,6 +953,7 @@ import {
 
 import type {
 	AttendeeKindOption,
+	LocationOption,
 	Response as EventQuickCreateOptionsResponse,
 	SelectOption,
 } from '@/types/contracts/calendar/get_event_quick_create_options';
@@ -1014,6 +1041,7 @@ const meetingForm = reactive({
 	day_end_time: '',
 	duration_minutes: '60',
 	location: '',
+	location_type: '',
 	meeting_category: '',
 	virtual_meeting_link: '',
 	agenda: '',
@@ -1115,14 +1143,57 @@ const schoolSelectOptions = computed<SelectOption[]>(() => [
 	...(options.value?.schools || []),
 ]);
 
+const locationsBySchool = computed<Record<string, LocationOption[]>>(
+	() => options.value?.locations_by_school || {}
+);
+
+const locationTypesBySchool = computed<Record<string, SelectOption[]>>(
+	() => options.value?.location_types_by_school || {}
+);
+
+function schoolScopedLocationRows(school: string, fallback: LocationOption[] = []) {
+	const schoolKey = String(school || '').trim();
+	if (!schoolKey) return fallback;
+	return locationsBySchool.value[schoolKey] || fallback;
+}
+
+function schoolScopedLocationTypeRows(school: string, fallback: SelectOption[] = []) {
+	const schoolKey = String(school || '').trim();
+	if (!schoolKey) return fallback;
+	return locationTypesBySchool.value[schoolKey] || fallback;
+}
+
 const studentGroupSelectOptions = computed<SelectOption[]>(() => [
 	{ value: '', label: 'Select student group' },
 	...(options.value?.student_groups || []),
 ]);
 
-const locationSelectOptions = computed<SelectOption[]>(() => [
+const meetingLocationRows = computed<LocationOption[]>(() => {
+	const schoolRows = schoolScopedLocationRows(meetingForm.school, options.value?.locations || []);
+	const selectedType = String(meetingForm.location_type || '').trim();
+	if (!selectedType) return schoolRows;
+	return schoolRows.filter(row => row.location_type === selectedType);
+});
+
+const meetingLocationTypeSelectOptions = computed<SelectOption[]>(() => [
+	{ value: '', label: 'All room types' },
+	...schoolScopedLocationTypeRows(meetingForm.school, options.value?.location_types || []),
+]);
+
+const meetingLocationSelectOptions = computed<SelectOption[]>(() => [
 	{ value: '', label: 'No location' },
-	...(options.value?.locations || []),
+	...meetingLocationRows.value.map(row => ({
+		value: row.value,
+		label: row.label,
+	})),
+]);
+
+const schoolEventLocationSelectOptions = computed<SelectOption[]>(() => [
+	{ value: '', label: 'No location' },
+	...schoolScopedLocationRows(schoolEventForm.school, options.value?.locations || []).map(row => ({
+		value: row.value,
+		label: row.label,
+	})),
 ]);
 
 const meetingCategorySelectOptions = computed<SelectOption[]>(() => [
@@ -1345,6 +1416,7 @@ function initializeForms() {
 	meetingForm.day_end_time = defaults?.day_end_time || endTime;
 	meetingForm.duration_minutes = duration;
 	meetingForm.location = '';
+	meetingForm.location_type = '';
 	meetingForm.meeting_category = '';
 	meetingForm.virtual_meeting_link = '';
 	meetingForm.agenda = '';
@@ -1711,6 +1783,7 @@ async function findCommonTimes() {
 			day_start_time: meetingForm.day_start_time,
 			day_end_time: meetingForm.day_end_time,
 			school: showRoomAssistant.value ? meetingForm.school || null : null,
+			location_type: showRoomAssistant.value ? meetingForm.location_type || null : null,
 			require_room: showRoomAssistant.value,
 		});
 
@@ -1799,6 +1872,7 @@ async function findRoomSuggestions() {
 			date: meetingForm.date,
 			start_time: meetingForm.start_time,
 			end_time: meetingForm.end_time,
+			location_type: meetingForm.location_type || null,
 			capacity_needed: roomCapacityTarget.value,
 			limit: 8,
 		});
@@ -1823,6 +1897,9 @@ async function findRoomSuggestions() {
 
 function applySuggestedRoom(room: MeetingRoomSuggestion) {
 	meetingForm.location = room.value;
+	if (room.location_type) {
+		meetingForm.location_type = room.location_type;
+	}
 }
 
 async function loadOptions() {
@@ -1952,15 +2029,19 @@ watch(
 		() => meetingForm.day_start_time,
 		() => meetingForm.day_end_time,
 		() => meetingForm.duration_minutes,
+		() => meetingForm.location_type,
 	],
 	() => {
 		resetSlotSuggestions();
 	}
 );
 
-watch([() => meetingForm.school, () => meetingForm.meeting_format], () => {
-	resetSlotSuggestions();
-});
+watch(
+	[() => meetingForm.school, () => meetingForm.meeting_format, () => meetingForm.location_type],
+	() => {
+		resetSlotSuggestions();
+	}
+);
 
 watch(
 	[
@@ -1969,6 +2050,7 @@ watch(
 		() => meetingForm.end_time,
 		() => meetingForm.school,
 		() => meetingForm.meeting_format,
+		() => meetingForm.location_type,
 	],
 	() => {
 		resetRoomSuggestions();
@@ -1976,6 +2058,39 @@ watch(
 			meetingForm.location = '';
 		}
 	}
+);
+
+watch(
+	() => meetingLocationTypeSelectOptions.value,
+	optionsList => {
+		const allowed = new Set(optionsList.map(option => option.value));
+		if (meetingForm.location_type && !allowed.has(meetingForm.location_type)) {
+			meetingForm.location_type = '';
+		}
+	},
+	{ deep: true }
+);
+
+watch(
+	() => meetingLocationSelectOptions.value,
+	optionsList => {
+		const allowed = new Set(optionsList.map(option => option.value));
+		if (meetingForm.location && !allowed.has(meetingForm.location)) {
+			meetingForm.location = '';
+		}
+	},
+	{ deep: true }
+);
+
+watch(
+	() => schoolEventLocationSelectOptions.value,
+	optionsList => {
+		const allowed = new Set(optionsList.map(option => option.value));
+		if (schoolEventForm.location && !allowed.has(schoolEventForm.location)) {
+			schoolEventForm.location = '';
+		}
+	},
+	{ deep: true }
 );
 
 watch(

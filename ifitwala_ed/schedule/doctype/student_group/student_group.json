@@ -204,11 +204,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-02 20:30:17",
+ "modified": "2026-03-28 12:27:37.841147",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Student Group",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

@@ -9,6 +9,7 @@ from datetime import date
 from typing import Dict, List
 
 import frappe
+from frappe import _
 from frappe.utils import getdate, nowdate, strip_html
 
 from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
@@ -16,12 +17,12 @@ from ifitwala_ed.students.doctype.student_log.student_log import get_student_log
 from ifitwala_ed.students.doctype.student_referral.student_referral import (
     get_permission_query_conditions as get_student_referral_permission_query_conditions,
 )
+from ifitwala_ed.utilities.image_utils import get_preferred_student_image_url
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ALLOWED_STAFF_ROLES = {
     "Academic Admin",
     "Counselor",
-    "Counsellor",
     "Curriculum Coordinator",
     "Attendance",
     "Pastoral Lead",
@@ -35,7 +36,7 @@ ALLOWED_STAFF_ROLES = {
 def _current_user() -> str:
     user = frappe.session.user
     if not user or user == "Guest":
-        frappe.throw("You need to sign in to access Student Overview.", frappe.PermissionError)
+        frappe.throw(_("You need to sign in to access Student Overview."), frappe.PermissionError)
     return user
 
 
@@ -45,6 +46,17 @@ def _user_roles(user: str | None = None) -> set[str]:
 
 def _is_staff(user_roles: set[str]) -> bool:
     return bool(user_roles & ALLOWED_STAFF_ROLES)
+
+
+def _ensure_student_overview_access(user: str | None = None):
+    user = user or _current_user()
+    roles = _user_roles(user)
+    student_scope = _get_student_scope(user)
+
+    if student_scope or _is_staff(roles):
+        return user, roles, student_scope
+
+    frappe.throw(_("You do not have permission to access Student Overview."), frappe.PermissionError)
 
 
 def _get_program_subtree(program: str | None) -> list[str] | None:
@@ -67,15 +79,17 @@ def _get_program_subtree(program: str | None) -> list[str] | None:
 
 def _students_for_guardian(user: str) -> List[str]:
     """Return all student names for which this user is a guardian."""
-    guardians = frappe.get_all("Guardian", filters={"user": user}, pluck="name")
-    if not guardians:
-        return []
-    return frappe.get_all(
-        "Student Guardian",
-        filters={"guardian": ["in", guardians]},
-        distinct=True,
-        pluck="parent",
+    rows = frappe.db.sql(
+        """
+        SELECT DISTINCT sg.parent
+        FROM `tabStudent Guardian` sg
+        INNER JOIN `tabGuardian` g ON g.name = sg.guardian
+        WHERE g.user = %(user)s
+        """,
+        {"user": user},
+        as_list=True,
     )
+    return [row[0] for row in rows if row and row[0]]
 
 
 def _students_for_student_user(user: str) -> List[str]:
@@ -110,9 +124,7 @@ def get_filter_meta():
     Programs: distinct programs that appear in ACTIVE Program Enrollments
               under those schools (archived = 0).
     """
-    user = _current_user()
-    _roles = _user_roles(user)  # noqa: F841
-    student_scope = _get_student_scope(user)
+    user, _roles, student_scope = _ensure_student_overview_access()
 
     # Students / Guardians: scope is their Program Enrollments only
     if student_scope:
@@ -218,9 +230,7 @@ def search_students(search_text: str = "", school: str | None = None, program: s
 
     Blank search: up to 20 students in scope (no name filter).
     """
-    user = _current_user()
-    roles = _user_roles(user)
-    visible_students = _get_student_scope(user)
+    user, roles, visible_students = _ensure_student_overview_access()
 
     # ----- Helper: program subtree (NestedSet) -----
     def _get_program_subtree(program_name: str | None) -> list[str] | None:
@@ -325,18 +335,18 @@ def _ensure_can_view_student(student: str, school: str | None, program: str | No
     # Students/Guardians: only within their scope
     scope = _get_student_scope(user)
     if scope and student not in scope:
-        frappe.throw("You are not allowed to access this student.", frappe.PermissionError)
+        frappe.throw(_("You are not allowed to access this student."), frappe.PermissionError)
 
     if _is_staff(roles):
         authorized = set(get_authorized_schools(user))
         if school and authorized and school not in authorized:
-            frappe.throw("You are not allowed to access this school.", frappe.PermissionError)
+            frappe.throw(_("You are not allowed to access this school."), frappe.PermissionError)
         # program is best-effort; skip hard enforcement to avoid false negatives
         return
 
     # If not staff and no explicit scope match, deny
     if not scope:
-        frappe.throw("You are not allowed to access this student.", frappe.PermissionError)
+        frappe.throw(_("You are not allowed to access this student."), frappe.PermissionError)
 
 
 def _compute_age(dob: date | str | None) -> int | None:
@@ -412,7 +422,10 @@ def _identity_block(student: str, program: str | None, school: str | None):
     return {
         "student": student,
         "full_name": student_doc.get("student_full_name"),
-        "photo": student_doc.get("student_image"),
+        "photo": get_preferred_student_image_url(
+            student,
+            original_url=student_doc.get("student_image"),
+        ),
         "cohort": student_doc.get("cohort"),
         "gender": student_doc.get("student_gender"),
         "age": _compute_age(student_doc.get("student_date_of_birth")),

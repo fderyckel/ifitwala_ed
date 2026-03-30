@@ -79,13 +79,16 @@ Code refs:
 Test refs:
 - `ifitwala_ed/api/test_org_communication_quick_create.py`
 - `ifitwala_ed/setup/doctype/org_communication/test_org_communication.py`
+- `ifitwala_ed/ui-spa/src/components/communication/__tests__/OrgCommunicationQuickCreateModal.test.ts`
 
 Rules:
 
 1. Server-side `Org Communication` controller logic remains the source of truth for organization scope, issuing school scope, audience validation, status rules, and portal-surface rules.
 2. The SPA mirrors the Desk client audience-row behaviors for target-mode visibility and recipient defaults, but those checks are UX only.
 3. The SPA must not bypass or replace controller validation with generic `frappe.client.insert`.
-4. Role-based restrictions for School Scope audiences targeting Staff or Community remain server-owned and are only mirrored in the SPA to make blocked actions obvious earlier.
+4. Role-based restrictions for wide-audience rows remain server-owned and are only mirrored in the SPA to make blocked actions obvious earlier:
+   - `School Scope` rows targeting `Staff` or `Community`
+   - `Organization` rows targeting `Staff`
 
 ## 4. Overlay and Invalidation Contract
 
@@ -99,6 +102,7 @@ Code refs:
 
 Test refs:
 - `ifitwala_ed/ui-spa/src/lib/services/__tests__/orgCommunicationQuickCreateService.test.ts`
+- `ifitwala_ed/ui-spa/src/components/communication/__tests__/OrgCommunicationQuickCreateModal.test.ts`
 
 Rules:
 
@@ -118,10 +122,12 @@ Code refs:
 
 Test refs:
 - `ifitwala_ed/api/test_org_communication_quick_create.py`
+- `ifitwala_ed/ui-spa/src/components/communication/__tests__/OrgCommunicationQuickCreateModal.test.ts`
 
 - Quick-create idempotency TTL: `900s`
-- Audience target modes remain limited to:
+- Audience target modes are:
   - `School Scope`
   - `Team`
   - `Student Group`
+  - `Organization` for Academic Admin, Academic Assistant, HR Manager, Accounts Manager, and System Manager
 - Class-event mode preserves the legacy quick-create intent, but now uses the same named workflow and server-owned validation path as Staff Home quick create.

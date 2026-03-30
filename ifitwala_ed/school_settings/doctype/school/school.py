@@ -66,7 +66,7 @@ class School(NestedSet):
         media_row = media_rows[logo_file]
         media_url = (media_row.get("file_url") or "").strip()
         if not media_url:
-            frappe.throw(_("School Logo file '{0}' is missing a file URL.").format(logo_file))
+            frappe.throw(_("School Logo file '{file_name}' is missing a file URL.").format(file_name=logo_file))
 
         self.school_logo_file = logo_file
         self.school_logo = media_url
@@ -105,7 +105,9 @@ class School(NestedSet):
             media_row = visible_rows[governed_file]
             media_url = (media_row.get("file_url") or "").strip()
             if not media_url:
-                frappe.throw(_("Gallery Image file '{0}' is missing a file URL.").format(governed_file))
+                frappe.throw(
+                    _("Gallery Image file '{file_name}' is missing a file URL.").format(file_name=governed_file)
+                )
 
             row.governed_file = governed_file
             row.school_image = media_url
@@ -114,8 +116,23 @@ class School(NestedSet):
         NestedSet.on_update(self)
 
     def after_save(self):
-        if self.has_value_changed("is_published") or self.has_value_changed("website_slug"):
+        publication_changed = self.has_value_changed("is_published") or self.has_value_changed("website_slug")
+        has_pages = bool(frappe.db.exists("School Website Page", {"school": self.name}))
+        if publication_changed:
             self.sync_website_page_publication()
+        should_publish = int(self.is_published or 0) == 1 and bool((self.website_slug or "").strip())
+        organization_default_school = (
+            frappe.db.get_value("Organization", self.organization, "default_website_school")
+            if self.organization
+            else None
+        )
+        if should_publish and (publication_changed or not has_pages or not (organization_default_school or "").strip()):
+            from ifitwala_ed.website.bootstrap import ensure_default_school_website
+
+            ensure_default_school_website(
+                school_name=self.name,
+                set_default_organization=True,
+            )
 
     def after_insert(self):
         ensure_default_policy_for_school(self.name, ignore_permissions=True)
@@ -145,7 +162,9 @@ class School(NestedSet):
 
         # Keep existing behavior; avoid broader refactors here.
         if frappe.db.exists("School", {"abbr": self.abbr, "name": ["!=", self.name]}):
-            frappe.throw(_("Abbreviation {0} is already used for another school.").format(self.abbr))
+            frappe.throw(
+                _("Abbreviation {abbreviation} is already used for another school.").format(abbreviation=self.abbr)
+            )
 
     def validate_parent_school(self):
         if self.parent_school:
@@ -245,9 +264,11 @@ class School(NestedSet):
         if not getattr(self, "is_published", 0):
             return
         if not (self.website_slug or "").strip():
-            frappe.throw(
-                _("Website slug is required before publishing a School."),
-                frappe.ValidationError,
+            from ifitwala_ed.website.bootstrap import _next_available_school_slug
+
+            self.website_slug = _next_available_school_slug(
+                self.abbr or self.school_name or self.name,
+                school_name=self.name or self.school_name,
             )
 
     def apply_parent_attendance_threshold_defaults(self):
@@ -312,7 +333,7 @@ class School(NestedSet):
 @frappe.whitelist()
 def enqueue_replace_abbr(school, old, new):
     kwargs = dict(school=school, old=old, new=new)
-    frappe.enqueue("ifitwala_ed.school_settings.doctype.school.school.replace_abbr", **kwargs)
+    frappe.enqueue("ifitwala_ed.school_settings.doctype.school.school.replace_abbr", queue="long", **kwargs)
 
 
 @frappe.whitelist()
@@ -325,16 +346,25 @@ def replace_abbr(school, old, new):
 
     frappe.db.set_value("School", school, "abbr", new)
 
-    def _rename_record(doc):
-        parts = doc[0].rsplit(" - ", 1)
-        if len(parts) == 1 or parts[1].lower() == old.lower():
-            frappe.rename_doc(dt, doc[0], parts[0] + " - " + new)  # noqa: F821  # dt from outer scope
+    rename_specs = (
+        ("Academic Year", ["name", "academic_year_name"], lambda row: f"{new} {row.academic_year_name}"),
+        ("School Calendar", ["name", "calendar_name"], lambda row: f"{new} {row.calendar_name}"),
+        ("School Schedule", ["name", "schedule_name"], lambda row: f"{new} {row.schedule_name}"),
+    )
 
-    def _rename_records(dt):
-        # rename is expensive so let's be economical with memory usage
-        doc = (d for d in frappe.db.sql("select name from `tab%s` where school=%s" % (dt, "%s"), school))
-        for d in doc:
-            _rename_record(d)
+    for dt, fields, build_new_name in rename_specs:
+        rows = frappe.get_all(
+            dt,
+            filters={"school": school},
+            fields=fields,
+            order_by="modified asc, name asc",
+        )
+        for row in rows:
+            target_name = (build_new_name(row) or "").strip()
+            current_name = (row.get("name") or "").strip()
+            if not current_name or not target_name or current_name == target_name:
+                continue
+            frappe.rename_doc(dt, current_name, target_name)
 
 
 def get_name_with_abbr(name, school):

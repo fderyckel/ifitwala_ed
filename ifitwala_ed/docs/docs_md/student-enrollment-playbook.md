@@ -12,7 +12,7 @@ seo_description: "Run the full enrollment workflow end-to-end: prepare curriculu
 
 ## Student Enrollment Playbook: Curriculum to Ready Enrollment
 
-This page is the operational path for enrolling students into programs and courses while preserving the locked enrollment architecture in `docs/enrollment/03_enrollment_notes.md`.
+This page is the operational path for enrolling students into programs and courses while preserving the locked enrollment architecture in `docs/enrollment/03_enrollment_architecture.md`.
 
 <Callout type="warning" title="Architecture boundary">
 `Program Enrollment` is committed truth. Use `Program Enrollment Request` for validation and approval gates; do not treat direct edits as the default intake workflow.

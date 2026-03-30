@@ -9,6 +9,8 @@ import frappe
 from frappe import _
 from frappe.utils import getdate, now_datetime
 
+from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
+
 
 def _requested_course_rows_from_doc(doc) -> list[dict]:
     requested = []
@@ -143,6 +145,66 @@ def _resolve_materialization_enrollment_date(academic_year: str, enrollment_date
     return frappe.utils.nowdate()
 
 
+def _resolve_materialization_course_terms(
+    *, program_offering: str, academic_year: str, school: str, courses: list[str]
+):
+    from ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment import (
+        _ay_bounds_for,
+        _offering_courses_index,
+    )
+
+    course_names = sorted({(course or "").strip() for course in (courses or []) if (course or "").strip()})
+    if not program_offering or not academic_year or not course_names:
+        return {}
+
+    ay_start, ay_end = _ay_bounds_for(program_offering, academic_year)
+    if not (ay_start and ay_end):
+        return {}
+
+    offering_index = _offering_courses_index(program_offering)
+    course_rows = frappe.get_all(
+        "Course",
+        filters={"name": ["in", course_names]},
+        fields=["name", "term_long"],
+        limit=max(200, len(course_names) * 2),
+    )
+    course_term_long = {
+        (row.get("name") or "").strip(): int(row.get("term_long") or 0)
+        for row in (course_rows or [])
+        if (row.get("name") or "").strip()
+    }
+    bounds = get_school_term_bounds(school, academic_year) or {}
+
+    output = {}
+    for course in course_names:
+        spans = [
+            span
+            for span in (offering_index.get(course) or [])
+            if ay_start <= span.get("end") and span.get("start") <= ay_end
+        ]
+        spans.sort(
+            key=lambda span: (
+                0 if span.get("term_start") or span.get("term_end") else 1,
+                span.get("start"),
+                span.get("end"),
+            )
+        )
+        chosen = spans[0] if spans else {}
+
+        term_start = (chosen.get("term_start") or "").strip()
+        term_end = (chosen.get("term_end") or "").strip()
+        if not course_term_long.get(course) and bounds:
+            term_start = term_start or (bounds.get("term_start") or "")
+            term_end = term_end or (bounds.get("term_end") or "")
+
+        output[course] = {
+            "term_start": term_start,
+            "term_end": term_end,
+        }
+
+    return output
+
+
 @frappe.whitelist()
 def materialize_program_enrollment_request(request_name, enrollment_date=None):
     if not request_name:
@@ -164,26 +226,7 @@ def materialize_program_enrollment_request(request_name, enrollment_date=None):
 
     materialization_enrollment_date = _resolve_materialization_enrollment_date(req.academic_year, enrollment_date)
 
-    # 2) Collect unique request rows from request (no duplicate courses)
-    request_rows = []
-    seen = set()
-    for row in req.courses or []:
-        course = (row.course or "").strip()
-        if not course or course in seen:
-            continue
-        seen.add(course)
-        request_rows.append(
-            {
-                "course": course,
-                "required": 1 if int(row.required or 0) == 1 else 0,
-                "credited_basket_group": (row.applied_basket_group or "").strip(),
-            }
-        )
-
-    if not request_rows:
-        frappe.throw(_("No courses selected to materialize."))
-
-    # 3) Resolve program + school from request/offering (single fetch)
+    # 2) Resolve program + school from request/offering (single fetch)
     offering = (
         frappe.db.get_value(
             "Program Offering",
@@ -199,6 +242,38 @@ def materialize_program_enrollment_request(request_name, enrollment_date=None):
         frappe.throw(_("Program is required to materialize enrollment."))
 
     school = req.school or offering.get("school")
+
+    # 3) Collect unique request rows from request (no duplicate courses) and enrich with offering term intent.
+    request_rows = []
+    seen = set()
+    requested_courses = []
+    for row in req.courses or []:
+        course = (row.course or "").strip()
+        if not course or course in seen:
+            continue
+        seen.add(course)
+        requested_courses.append(course)
+        request_rows.append(
+            {
+                "course": course,
+                "required": 1 if int(row.required or 0) == 1 else 0,
+                "credited_basket_group": (row.applied_basket_group or "").strip(),
+            }
+        )
+
+    if not request_rows:
+        frappe.throw(_("No courses selected to materialize."))
+
+    course_terms = _resolve_materialization_course_terms(
+        program_offering=req.program_offering,
+        academic_year=req.academic_year,
+        school=school,
+        courses=requested_courses,
+    )
+    for row in request_rows:
+        term_info = course_terms.get(row["course"]) or {}
+        row["term_start"] = (term_info.get("term_start") or "").strip()
+        row["term_end"] = (term_info.get("term_end") or "").strip()
 
     # 4) Find existing enrollment for same (student, offering, ay)
     filters = {
@@ -228,6 +303,8 @@ def materialize_program_enrollment_request(request_name, enrollment_date=None):
                 existing[course].status = "Enrolled"
                 existing[course].required = row["required"]
                 existing[course].credited_basket_group = row["credited_basket_group"]
+                existing[course].term_start = row["term_start"]
+                existing[course].term_end = row["term_end"]
             else:
                 enrollment.append(
                     "courses",
@@ -236,6 +313,8 @@ def materialize_program_enrollment_request(request_name, enrollment_date=None):
                         "status": "Enrolled",
                         "required": row["required"],
                         "credited_basket_group": row["credited_basket_group"],
+                        "term_start": row["term_start"],
+                        "term_end": row["term_end"],
                     },
                 )
 
@@ -257,6 +336,8 @@ def materialize_program_enrollment_request(request_name, enrollment_date=None):
                         "status": "Enrolled",
                         "required": row["required"],
                         "credited_basket_group": row["credited_basket_group"],
+                        "term_start": row["term_start"],
+                        "term_end": row["term_end"],
                     }
                     for row in request_rows
                 ],

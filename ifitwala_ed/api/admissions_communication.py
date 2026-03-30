@@ -25,7 +25,7 @@ ALLOWED_STAFF_ROLES = ADMISSIONS_ROLES | {
     "Academic Admin",
     "Academic Staff",
     "Administrator",
-    "Assistant Admin",
+    "Academic Assistant",
     "Employee",
     "System Manager",
 }
@@ -56,7 +56,9 @@ def _normalize_context(context_doctype: str | None, context_name: str | None) ->
     doctype = _to_text(context_doctype)
     name = _to_text(context_name)
     if doctype not in SUPPORTED_CONTEXT_DOCTYPES:
-        frappe.throw(_("Unsupported admissions communication context: {0}.").format(doctype or _("(empty)")))
+        frappe.throw(
+            _("Unsupported admissions communication context: {doctype}.").format(doctype=doctype or _("(empty)"))
+        )
     if not name:
         frappe.throw(_("context_name is required."))
     return doctype, name
@@ -89,7 +91,7 @@ def _resolve_student_applicant_row(applicant_name: str) -> dict:
         as_dict=True,
     )
     if not row:
-        frappe.throw(_("Student Applicant {0} was not found.").format(applicant_name))
+        frappe.throw(_("Student Applicant {applicant} was not found.").format(applicant=applicant_name))
     return {
         "name": _to_text(row.get("name")),
         "organization": _to_text(row.get("organization")),
@@ -111,7 +113,7 @@ def _require_actor_context(*, context_doctype: str, context_name: str) -> dict:
         context_row = _resolve_student_applicant_row(context_name)
         applicant_user = _to_text(context_row.get("applicant_user"))
     else:
-        frappe.throw(_("Unsupported admissions communication context: {0}.").format(context_doctype))
+        frappe.throw(_("Unsupported admissions communication context: {doctype}.").format(doctype=context_doctype))
 
     if ADMISSIONS_APPLICANT_ROLE in roles:
         if context_doctype != "Student Applicant":
@@ -181,7 +183,7 @@ def _create_thread(*, context_doctype: str, context_name: str, context_row: dict
     doc.allow_public_thread = 1
     doc.admission_context_doctype = context_doctype
     doc.admission_context_name = context_name
-    doc.message = _("Admissions case communication thread for {0}.").format(context_name)
+    doc.message = _("Admissions case communication thread for {context_name}.").format(context_name=context_name)
     doc.append(
         "audiences",
         {
@@ -368,7 +370,9 @@ def send_admissions_case_message(
     if not note:
         frappe.throw(_("Message body is required."))
     if len(note) > MESSAGE_LIMIT:
-        frappe.throw(_("Message body cannot exceed {0} characters.").format(MESSAGE_LIMIT))
+        frappe.throw(
+            _("Message body cannot exceed {character_limit} characters.").format(character_limit=MESSAGE_LIMIT)
+        )
 
     is_applicant = actor_ctx.get("actor") == "applicant"
     visible_to_applicant = True if is_applicant else bool(cint(applicant_visible))

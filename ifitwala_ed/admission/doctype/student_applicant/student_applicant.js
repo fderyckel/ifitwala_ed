@@ -310,21 +310,21 @@ function open_schedule_interview_dialog(frm) {
 				fieldname: "interview_type",
 				fieldtype: "Select",
 				label: __("Interview Type"),
-				options: "Family\nStudent\nJoint",
+				options: __("Family\nStudent\nJoint"),
 				default: "Student",
 			},
 			{
 				fieldname: "mode",
 				fieldtype: "Select",
 				label: __("Mode"),
-				options: "In Person\nOnline\nPhone",
+				options: __("In Person\nOnline\nPhone"),
 				default: "In Person",
 			},
 			{
 				fieldname: "confidentiality_level",
 				fieldtype: "Select",
 				label: __("Confidentiality Level"),
-				options: "Admissions Team\nLeadership Only",
+				options: __("Admissions Team\nLeadership Only"),
 			},
 			{
 				fieldname: "notes",
@@ -980,7 +980,7 @@ function render_recommendation_requests_table(payload) {
 	if (!rows.length) {
 		return `
 			<div style="margin-bottom: 10px;">${escape_html(summaryText)}</div>
-			<div class="text-muted">${escape_html("No recommendation requests yet.")}</div>
+			<div class="text-muted">${escape_html(__("No recommendation requests yet."))}</div>
 		`;
 	}
 
@@ -998,8 +998,8 @@ function render_recommendation_requests_table(payload) {
 				<td>${escape_html(format_datetime(row?.sent_on))}</td>
 				<td>${escape_html(format_datetime(row?.expires_on))}</td>
 				<td>
-					${canResend ? `<button type="button" class="btn btn-xs btn-default recommendation-action-btn" data-action="resend" data-request="${escape_html(requestName)}">${escape_html("Resend")}</button>` : ""}
-					${canRevoke ? `<button type="button" class="btn btn-xs btn-default recommendation-action-btn" data-action="revoke" data-request="${escape_html(requestName)}" style="margin-left: 6px;">${escape_html("Revoke")}</button>` : ""}
+					${canResend ? `<button type="button" class="btn btn-xs btn-default recommendation-action-btn" data-action="resend" data-request="${escape_html(requestName)}">${escape_html(__("Resend"))}</button>` : ""}
+					${canRevoke ? `<button type="button" class="btn btn-xs btn-default recommendation-action-btn" data-action="revoke" data-request="${escape_html(requestName)}" style="margin-left: 6px;">${escape_html(__("Revoke"))}</button>` : ""}
 				</td>
 			</tr>
 		`;
@@ -1042,7 +1042,7 @@ function open_recommendation_requests_dialog(frm) {
 	});
 
 	const loadRows = () => {
-		dialog.fields_dict.body.$wrapper.html(`<div class="text-muted">${escape_html("Loading recommendation requests...")}</div>`);
+		dialog.fields_dict.body.$wrapper.html(`<div class="text-muted">${escape_html(__("Loading recommendation requests..."))}</div>`);
 		return frappe.call({
 			method: "ifitwala_ed.api.recommendation_intake.list_recommendation_requests",
 			args: { student_applicant: frm.doc.name },
@@ -1148,8 +1148,8 @@ function render_review_sections(frm) {
 		.then((res) => {
 			const data = res && res.message;
 			if (!data) {
-				set_html(frm, "review_snapshot", render_empty("No readiness data."));
-				set_html(frm, "review_assignments_summary", render_empty("No review assignment decisions yet."));
+				set_html(frm, "review_snapshot", render_empty(__("No readiness data.")));
+				set_html(frm, "review_assignments_summary", render_empty(__("No review assignment decisions yet.")));
 				return;
 			}
 			set_html(frm, "review_snapshot", render_snapshot(data));
@@ -1161,8 +1161,8 @@ function render_review_sections(frm) {
 			bind_document_summary_actions(frm);
 		})
 		.catch(() => {
-			set_html(frm, "review_snapshot", render_empty("Unable to load review snapshot."));
-			set_html(frm, "review_assignments_summary", render_empty("Unable to load review assignment summary."));
+			set_html(frm, "review_snapshot", render_empty(__("Unable to load review snapshot.")));
+			set_html(frm, "review_assignments_summary", render_empty(__("Unable to load review assignment summary.")));
 		});
 }
 
@@ -1177,21 +1177,21 @@ function render_snapshot(data) {
 	const ready = data.ready ? "Yes" : "No";
 	const issues = data.issues || [];
 	return [
-		render_line("Ready for approval", escape_html(ready)),
-		render_line("Readiness issues", render_list(issues)),
-		render_line("Profile", render_ok_label(data.profile)),
-		render_line("Policies", render_ok_label(data.policies)),
-		render_line("Documents", render_ok_label(data.documents)),
-		render_line("Recommendations", render_ok_label(data.recommendations)),
-		render_line("Health", render_ok_label(data.health)),
-		render_line("Interviews", render_ok_label(data.interviews)),
+		render_line(__("Ready for approval"), escape_html(ready)),
+		render_line(__("Readiness issues"), render_list(issues)),
+		render_line(__("Profile"), render_ok_label(data.profile)),
+		render_line(__("Policies"), render_ok_label(data.policies)),
+		render_line(__("Documents"), render_ok_label(data.documents)),
+		render_line(__("Recommendations"), render_ok_label(data.recommendations)),
+		render_line(__("Health"), render_ok_label(data.health)),
+		render_line(__("Interviews"), render_ok_label(data.interviews)),
 	].join("");
 }
 
 function render_review_assignments(summary) {
 	const groups = [
-		{ key: "Applicant Health Profile", label: "Health" },
-		{ key: "Student Applicant", label: "Overall Application" },
+		{ key: "Applicant Health Profile", label: __("Health") },
+		{ key: "Student Applicant", label: __("Overall Application") },
 	];
 
 	const sections = groups
@@ -1211,7 +1211,7 @@ function render_review_assignments(summary) {
 					.join("")
 				: `
 					<tr>
-						<td colspan="5" class="text-muted">No completed reviews.</td>
+						<td colspan="5" class="text-muted">${escape_html(__("No completed reviews."))}</td>
 					</tr>
 				`;
 
@@ -1222,11 +1222,11 @@ function render_review_assignments(summary) {
 						<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 							<thead>
 								<tr>
-									<th>Target</th>
-									<th>Reviewer</th>
-									<th>Decision</th>
-									<th>Decided On</th>
-									<th>Notes</th>
+									<th>${escape_html(__("Target"))}</th>
+									<th>${escape_html(__("Reviewer"))}</th>
+									<th>${escape_html(__("Decision"))}</th>
+									<th>${escape_html(__("Decided On"))}</th>
+									<th>${escape_html(__("Notes"))}</th>
 								</tr>
 							</thead>
 							<tbody>${body}</tbody>
@@ -1239,28 +1239,28 @@ function render_review_assignments(summary) {
 
 	const helperNote = `
 		<div class="text-muted" style="margin-bottom: 8px;">
-			Document review status and reviewer metadata are shown in Documents Summary below.
+			${escape_html(__("Document review status and reviewer metadata are shown in Documents Summary below."))}
 		</div>
 	`;
-	return `${helperNote}${sections || render_empty("No review assignment decisions yet.")}`;
+	return `${helperNote}${sections || render_empty(__("No review assignment decisions yet."))}`;
 }
 
 function render_interviews(interviews) {
 	if (!interviews) {
-		return render_empty("No interview data.");
+		return render_empty(__("No interview data."));
 	}
 	const count = Number(interviews.count || 0);
 	const items = Array.isArray(interviews.items) ? interviews.items : [];
 	const helperNote = `
 		<div class="text-muted" style="margin-bottom: 8px;">
-			Feedback status counts submitted Applicant Interview Feedback rows only. Parent interview notes stay operational.
+			${escape_html(__("Feedback status counts submitted Applicant Interview Feedback rows only. Parent interview notes stay operational."))}
 		</div>
 	`;
 	if (!items.length) {
 		return [
 			helperNote,
-			render_line("Interview count", escape_html(String(count))),
-			`<div class="text-muted" style="margin-top: 6px;">No interviews yet.</div>`,
+			render_line(__("Interview count"), escape_html(String(count))),
+			`<div class="text-muted" style="margin-top: 6px;">${escape_html(__("No interviews yet."))}</div>`,
 		].join("");
 	}
 
@@ -1270,9 +1270,9 @@ function render_interviews(interviews) {
 	const latestLink = latestInterviewName
 		? render_text_link(
 			`/desk/applicant-interview/${encodeURIComponent(latestInterviewName)}`,
-			"Open latest interview"
+			__("Open latest interview")
 		)
-		: escape_html("—");
+		: escape_html(__("—"));
 	const latestInterviewerLabels = render_interviewer_labels(latestRow);
 	const latestFeedbackStatus = escape_html(String(latestRow?.feedback_status_label || "—"));
 
@@ -1296,18 +1296,18 @@ function render_interviews(interviews) {
 	return `
 		${helperNote}
 		<div style="margin-bottom: 10px;">
-			${render_line("Interview count", escape_html(String(count)))}
-			${render_line("Latest interview", `${latestLink} · ${latestSchedule}`)}
-			${render_line("Latest panel", latestInterviewerLabels)}
-			${render_line("Latest feedback", latestFeedbackStatus)}
+			${render_line(__("Interview count"), escape_html(String(count)))}
+			${render_line(__("Latest interview"), `${latestLink} · ${latestSchedule}`)}
+			${render_line(__("Latest panel"), latestInterviewerLabels)}
+			${render_line(__("Latest feedback"), latestFeedbackStatus)}
 		</div>
 		<div class="table-responsive">
 			<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 				<thead>
 					<tr>
-						<th>Date / Time</th>
-						<th>Interviewer</th>
-						<th>Feedback Status</th>
+						<th>${escape_html(__("Date / Time"))}</th>
+						<th>${escape_html(__("Interviewer"))}</th>
+						<th>${escape_html(__("Feedback Status"))}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -1347,12 +1347,12 @@ function render_interviewer_labels(row) {
 	const fallback = interviewers
 		.map((entry) => String(entry?.label || entry?.user || "").trim())
 		.filter(Boolean);
-	return escape_html(fallback.join(", ") || "—");
+	return escape_html(fallback.join(", ") || __("—"));
 }
 
 function render_health(health) {
 	if (!health) {
-		return render_empty("No health profile data.");
+		return render_empty(__("No health profile data."));
 	}
 	const requiredForApproval = health.required_for_approval !== false;
 	const reviewStatus = map_health_status(health.status);
@@ -1363,7 +1363,7 @@ function render_health(health) {
 				`/desk/applicant-health-profile/${encodeURIComponent(String(health.profile_name))}`,
 				String(health.profile_name)
 			)
-		: escape_html("Not created");
+		: escape_html(__("Not created"));
 	const reviewedBy = render_user_link(health.reviewed_by);
 	const reviewedOn = format_datetime(health.reviewed_on);
 	const declaredBy = render_user_link(health.declared_by);
@@ -1371,26 +1371,26 @@ function render_health(health) {
 
 	return `
 		<div style="margin-bottom: 10px;">
-			${render_pill(health.status === "complete" ? "✓ Health Cleared" : reviewStatus, reviewTone)}
-			<span style="margin-left: 6px;">${render_pill(health.declared_complete ? "✓ Declaration Complete" : "Declaration Pending", declarationTone)}</span>
-			${requiredForApproval ? "" : `<span style="margin-left: 6px;">${render_pill("Optional for approval", "slate")}</span>`}
+			${render_pill(health.status === "complete" ? __("✓ Health Cleared") : reviewStatus, reviewTone)}
+			<span style="margin-left: 6px;">${render_pill(health.declared_complete ? __("✓ Declaration Complete") : __("Declaration Pending"), declarationTone)}</span>
+			${requiredForApproval ? "" : `<span style="margin-left: 6px;">${render_pill(__("Optional for approval"), "slate")}</span>`}
 		</div>
 		<table class="table table-bordered" style="margin-bottom: 0;">
 			<tbody>
 				<tr>
-					<th style="width: 24%;">Health Profile</th>
+					<th style="width: 24%;">${escape_html(__("Health Profile"))}</th>
 					<td>${profileLink}</td>
 				</tr>
 				<tr>
-					<th>Review Status</th>
+					<th>${escape_html(__("Review Status"))}</th>
 					<td>${escape_html(reviewStatus)}</td>
 				</tr>
 				<tr>
-					<th>Reviewed By / On</th>
+					<th>${escape_html(__("Reviewed By / On"))}</th>
 					<td>${reviewedBy} · ${escape_html(reviewedOn)}</td>
 				</tr>
 				<tr>
-					<th>Declared By / On</th>
+					<th>${escape_html(__("Declared By / On"))}</th>
 					<td>${declaredBy} · ${escape_html(declaredOn)}</td>
 				</tr>
 			</tbody>
@@ -1400,47 +1400,47 @@ function render_health(health) {
 
 function render_policies(policies) {
 	if (!policies) {
-		return render_empty("No policy data.");
+		return render_empty(__("No policy data."));
 	}
 	const rows = Array.isArray(policies.rows) ? policies.rows : [];
 	if (!rows.length) {
-		return render_empty("No required policies are in scope.");
+		return render_empty(__("No required policies are in scope."));
 	}
 
 	const signedCount = rows.filter((row) => Boolean(row?.is_acknowledged)).length;
 	const missing = Array.isArray(policies.missing) ? policies.missing : [];
 	const tableRows = rows.map((row) => {
-		const label = String(row?.label || row?.policy_key || row?.policy_title || row?.policy_name || "Policy");
+		const label = String(row?.label || row?.policy_key || row?.policy_title || row?.policy_name || __("Policy"));
 		const version = String(row?.policy_version || "").trim();
 		const signers = Array.isArray(row?.signers) ? row.signers : [];
 		const statusPill = row?.is_acknowledged
-			? render_pill("✓ Signed", "green")
-			: render_pill("Pending", "amber");
+			? render_pill(__("✓ Signed"), "green")
+			: render_pill(__("Pending"), "amber");
 		return `
 			<tr>
 				<td>${escape_html(label)}</td>
 				<td>${statusPill}</td>
 				<td>${render_signers(signers)}</td>
 				<td>${escape_html(format_datetime(row?.acknowledged_at))}</td>
-				<td>${version ? render_text_link(`/desk/policy-version/${encodeURIComponent(version)}`, version) : escape_html("—")}</td>
+				<td>${version ? render_text_link(`/desk/policy-version/${encodeURIComponent(version)}`, version) : escape_html(__("—"))}</td>
 			</tr>
 		`;
 	}).join("");
 
 	return `
 		<div style="margin-bottom: 10px;">
-			${render_pill(`${signedCount}/${rows.length} signed`, policies.ok ? "green" : "amber")}
-			${missing.length ? `<span style="margin-left: 6px;">${render_pill(`Missing: ${missing.length}`, "red")}</span>` : ""}
+			${render_pill(__("{0}/{1} signed", [signedCount, rows.length]), policies.ok ? "green" : "amber")}
+			${missing.length ? `<span style="margin-left: 6px;">${render_pill(__("Missing: {0}", [missing.length]), "red")}</span>` : ""}
 		</div>
 		<div class="table-responsive">
 			<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 				<thead>
 					<tr>
-						<th>Policy</th>
-						<th>Status</th>
-						<th>Signed By</th>
-						<th>Signed On</th>
-						<th>Version</th>
+						<th>${escape_html(__("Policy"))}</th>
+						<th>${escape_html(__("Status"))}</th>
+						<th>${escape_html(__("Signed By"))}</th>
+						<th>${escape_html(__("Signed On"))}</th>
+						<th>${escape_html(__("Version"))}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -1459,19 +1459,19 @@ function render_recommendation_review_section(recommendations) {
 	const metrics = `
 		<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px;">
 			<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#f8fbff;">
-				<div class="text-muted" style="font-size:12px;">Required</div>
+				<div class="text-muted" style="font-size:12px;">${escape_html(__("Required"))}</div>
 				<div style="font-weight:600;font-size:16px;">${escape_html(String(summary?.required_total || 0))}</div>
 			</div>
 			<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#f8fbff;">
-				<div class="text-muted" style="font-size:12px;">Received</div>
+				<div class="text-muted" style="font-size:12px;">${escape_html(__("Received"))}</div>
 				<div style="font-weight:600;font-size:16px;">${escape_html(String(summary?.received_total || 0))}</div>
 			</div>
 			<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#f8fbff;">
-				<div class="text-muted" style="font-size:12px;">Requested</div>
+				<div class="text-muted" style="font-size:12px;">${escape_html(__("Requested"))}</div>
 				<div style="font-weight:600;font-size:16px;">${escape_html(String(summary?.requested_total || 0))}</div>
 			</div>
 			<div style="border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;background:#f8fbff;">
-				<div class="text-muted" style="font-size:12px;">Pending Review</div>
+				<div class="text-muted" style="font-size:12px;">${escape_html(__("Pending Review"))}</div>
 				<div style="font-weight:600;font-size:16px;">${escape_html(String(pendingReviewCount))}</div>
 			</div>
 		</div>
@@ -1480,9 +1480,9 @@ function render_recommendation_review_section(recommendations) {
 	if (!rows.length) {
 		return `
 			<div style="margin-bottom: 16px;">
-				<div style="font-weight: 600; margin-bottom: 8px;">Recommendation Review</div>
+				<div style="font-weight: 600; margin-bottom: 8px;">${escape_html(__("Recommendation Review"))}</div>
 				${metrics}
-				<div class="text-muted">No submitted recommendations are available yet.</div>
+				<div class="text-muted">${escape_html(__("No submitted recommendations are available yet."))}</div>
 			</div>
 		`;
 	}
@@ -1495,16 +1495,16 @@ function render_recommendation_review_section(recommendations) {
 		const actionButton = (
 			recommendationRequest || recommendationSubmission || applicantDocumentItem
 		)
-			? `<button type="button" class="recommendation-review-action-btn" data-recommendation-request="${escape_html(recommendationRequest)}" data-recommendation-submission="${escape_html(recommendationSubmission)}" data-applicant-document-item="${escape_html(applicantDocumentItem)}" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;">${escape_html("Review Recommendation")}</button>`
-			: escape_html("—");
+			? `<button type="button" class="recommendation-review-action-btn" data-recommendation-request="${escape_html(recommendationRequest)}" data-recommendation-submission="${escape_html(recommendationSubmission)}" data-applicant-document-item="${escape_html(applicantDocumentItem)}" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;">${escape_html(__("Review Recommendation"))}</button>`
+			: escape_html(__("—"));
 		const uploadedAt = format_human_moment(row?.submitted_on || row?.consumed_on);
 		return `
 			<tr>
 				<td>
-					<div style="font-weight: 600;">${escape_html(String(row?.recommender_name || row?.recommender_email || "Referee"))}</div>
-					<div class="text-muted">${escape_html(String(row?.recommender_relationship || "—"))}</div>
+					<div style="font-weight: 600;">${escape_html(String(row?.recommender_name || row?.recommender_email || __("Referee")))}</div>
+					<div class="text-muted">${escape_html(String(row?.recommender_relationship || __("—")))}</div>
 				</td>
-				<td>${escape_html(String(row?.template_name || row?.recommendation_template || "Recommendation"))}</td>
+				<td>${escape_html(String(row?.template_name || row?.recommendation_template || __("Recommendation")))}</td>
 				<td>
 					<div>${escape_html(format_human_moment(row?.sent_on))}</div>
 					<div class="text-muted">${escape_html(format_human_moment(row?.opened_on))}</div>
@@ -1516,7 +1516,7 @@ function render_recommendation_review_section(recommendations) {
 				</td>
 				<td>
 					${actionButton}
-					${fileUrl ? `<div style="margin-top:6px;">${render_text_link(fileUrl, "Open attachment", true)}</div>` : ""}
+					${fileUrl ? `<div style="margin-top:6px;">${render_text_link(fileUrl, __("Open attachment"), true)}</div>` : ""}
 				</td>
 			</tr>
 		`;
@@ -1524,18 +1524,18 @@ function render_recommendation_review_section(recommendations) {
 
 	return `
 		<div style="margin-bottom: 16px;">
-			<div style="font-weight: 600; margin-bottom: 8px;">Recommendation Review</div>
+			<div style="font-weight: 600; margin-bottom: 8px;">${escape_html(__("Recommendation Review"))}</div>
 			${metrics}
 			<div class="table-responsive">
 				<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 					<thead>
 						<tr>
-							<th>Referee</th>
-							<th>Template</th>
-							<th>Shared / Opened</th>
-							<th>Submitted</th>
-							<th>Review Status</th>
-							<th>Actions</th>
+							<th>${escape_html(__("Referee"))}</th>
+							<th>${escape_html(__("Template"))}</th>
+							<th>${escape_html(__("Shared / Opened"))}</th>
+							<th>${escape_html(__("Submitted"))}</th>
+							<th>${escape_html(__("Review Status"))}</th>
+							<th>${escape_html(__("Actions"))}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -1549,7 +1549,7 @@ function render_recommendation_review_section(recommendations) {
 
 function render_documents(documents, recommendations) {
 	if (!documents) {
-		return render_empty("No document data.");
+		return render_empty(__("No document data."));
 	}
 	const requiredRows = Array.isArray(documents.required_rows) ? documents.required_rows : [];
 	const uploadedRows = Array.isArray(documents.uploaded_rows) ? documents.uploaded_rows : [];
@@ -1560,30 +1560,30 @@ function render_documents(documents, recommendations) {
 	}).length;
 
 	if (!requiredRows.length && !uploadedRows.length) {
-		return render_empty("No document requirements are in scope.");
+		return render_empty(__("No document requirements are in scope."));
 	}
 	const canManageOverrides = can_manage_document_overrides();
 	const canReviewSubmissions = can_review_document_submissions();
 
 	const requiredBody = requiredRows.map((row) => {
 		const docName = String(row?.applicant_document || "").trim();
-		const fileLink = row?.file_url ? render_text_link(String(row.file_url), "Open latest file", true) : escape_html("—");
+		const fileLink = row?.file_url ? render_text_link(String(row.file_url), __("Open latest file"), true) : escape_html(__("—"));
 		const requirementOverride = String(row?.requirement_override || "").trim();
 		const overrideReason = String(row?.override_reason || "").trim();
 		const overrideMeta = requirementOverride
-			? `<div class="text-muted" style="margin-top: 4px;">${escape_html(overrideReason || "Override recorded.")}</div>`
+			? `<div class="text-muted" style="margin-top: 4px;">${escape_html(overrideReason || __("Override recorded."))}</div>`
 			: "";
 		const actionButtons = canManageOverrides
 			? requirementOverride
-				? `<button type="button" class="document-requirement-action-btn" data-action="clear_override" data-applicant-document="${escape_html(docName)}" data-document-type="${escape_html(String(row?.document_type || ""))}" style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Clear Override")}</button>`
+				? `<button type="button" class="document-requirement-action-btn" data-action="clear_override" data-applicant-document="${escape_html(docName)}" data-document-type="${escape_html(String(row?.document_type || ""))}" style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html(__("Clear Override"))}</button>`
 				: [
-					`<button type="button" class="document-requirement-action-btn" data-action="set_override" data-override="Waived" data-applicant-document="${escape_html(docName)}" data-document-type="${escape_html(String(row?.document_type || ""))}" data-label="${escape_html(String(row?.label || row?.document_type || "Requirement"))}" style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Waive")}</button>`,
-					`<button type="button" class="document-requirement-action-btn" data-action="set_override" data-override="Exception Approved" data-applicant-document="${escape_html(docName)}" data-document-type="${escape_html(String(row?.document_type || ""))}" data-label="${escape_html(String(row?.label || row?.document_type || "Requirement"))}" style="border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Exception")}</button>`,
+					`<button type="button" class="document-requirement-action-btn" data-action="set_override" data-override="Waived" data-applicant-document="${escape_html(docName)}" data-document-type="${escape_html(String(row?.document_type || ""))}" data-label="${escape_html(String(row?.label || row?.document_type || __("Requirement")))}" style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html(__("Waive"))}</button>`,
+					`<button type="button" class="document-requirement-action-btn" data-action="set_override" data-override="Exception Approved" data-applicant-document="${escape_html(docName)}" data-document-type="${escape_html(String(row?.document_type || ""))}" data-label="${escape_html(String(row?.label || row?.document_type || __("Requirement")))}" style="border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html(__("Exception"))}</button>`,
 				].join("")
-			: escape_html("—");
+			: escape_html(__("—"));
 		return `
 			<tr>
-				<td>${escape_html(String(row?.label || row?.document_type || "Requirement"))}</td>
+				<td>${escape_html(String(row?.label || row?.document_type || __("Requirement")))}</td>
 				<td>${render_document_status_pill(row?.review_status)}${overrideMeta}</td>
 				<td>${render_approved_required_pill(row)}</td>
 				<td>${render_user_link(row?.uploaded_by)}<div class="text-muted">${escape_html(format_datetime(row?.uploaded_at))}</div></td>
@@ -1596,37 +1596,37 @@ function render_documents(documents, recommendations) {
 
 	const uploadedBody = uploadedRows.map((row) => `
 		<tr>
-			<td>${escape_html(String(row?.document_label || row?.document_type || "Requirement"))}</td>
-			<td>${escape_html(String(row?.item_label || row?.item_key || row?.applicant_document_item || "Submission"))}</td>
+			<td>${escape_html(String(row?.document_label || row?.document_type || __("Requirement")))}</td>
+			<td>${escape_html(String(row?.item_label || row?.item_key || row?.applicant_document_item || __("Submission")))}</td>
 			<td>${render_document_status_pill(row?.review_status)}</td>
 			<td>${render_user_link(row?.uploaded_by)}<div class="text-muted">${escape_html(format_datetime(row?.uploaded_at))}</div></td>
 			<td>${render_user_link(row?.reviewed_by)}<div class="text-muted">${escape_html(format_datetime(row?.reviewed_on))}</div></td>
-			<td>${row?.file_url ? render_text_link(String(row.file_url), "Open file", true) : escape_html("—")}</td>
-			<td>${canReviewSubmissions ? render_submission_action_buttons(row) : escape_html("—")}</td>
+			<td>${row?.file_url ? render_text_link(String(row.file_url), __("Open file"), true) : escape_html(__("—"))}</td>
+			<td>${canReviewSubmissions ? render_submission_action_buttons(row) : escape_html(__("—"))}</td>
 		</tr>
 	`).join("");
 
 	return `
 		<div style="margin-bottom: 10px;">
-			${render_pill(documents.ok ? "✓ All required requirements complete" : "Action required", documents.ok ? "green" : "amber")}
-			${missing.length ? `<span style="margin-left: 6px;">${render_pill(`Missing: ${missing.length}`, "red")}</span>` : ""}
-			${pendingUploadedReviews ? `<span style="margin-left: 6px;">${render_pill(`Pending submitted-file reviews: ${pendingUploadedReviews}`, "amber")}</span>` : ""}
+			${render_pill(documents.ok ? __("✓ All required requirements complete") : __("Action required"), documents.ok ? "green" : "amber")}
+			${missing.length ? `<span style="margin-left: 6px;">${render_pill(__("Missing: {0}", [missing.length]), "red")}</span>` : ""}
+			${pendingUploadedReviews ? `<span style="margin-left: 6px;">${render_pill(__("Pending submitted-file reviews: {0}", [pendingUploadedReviews]), "amber")}</span>` : ""}
 		</div>
 		${render_recommendation_review_section(recommendations)}
 		${requiredRows.length ? `
 			<div style="margin-bottom: 12px;">
-				<div style="font-weight: 600; margin-bottom: 6px;">Requirements</div>
+				<div style="font-weight: 600; margin-bottom: 6px;">${escape_html(__("Requirements"))}</div>
 				<div class="table-responsive">
 					<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 						<thead>
 							<tr>
-								<th>Requirement</th>
-								<th>Status</th>
-								<th>Approved / Required</th>
-								<th>Latest Upload</th>
-								<th>Latest Review</th>
-								<th>File</th>
-								<th>Actions</th>
+								<th>${escape_html(__("Requirement"))}</th>
+								<th>${escape_html(__("Status"))}</th>
+								<th>${escape_html(__("Approved / Required"))}</th>
+								<th>${escape_html(__("Latest Upload"))}</th>
+								<th>${escape_html(__("Latest Review"))}</th>
+								<th>${escape_html(__("File"))}</th>
+								<th>${escape_html(__("Actions"))}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -1638,18 +1638,18 @@ function render_documents(documents, recommendations) {
 		` : ""}
 		${uploadedRows.length ? `
 			<div>
-				<div style="font-weight: 600; margin-bottom: 6px;">Submitted Files</div>
+				<div style="font-weight: 600; margin-bottom: 6px;">${escape_html(__("Submitted Files"))}</div>
 				<div class="table-responsive">
 					<table class="table table-bordered table-sm" style="margin-bottom: 0;">
 						<thead>
 							<tr>
-								<th>Requirement</th>
-								<th>Submission</th>
-								<th>Review Status</th>
-								<th>Uploaded</th>
-								<th>Reviewed</th>
-								<th>File</th>
-								<th>Actions</th>
+								<th>${escape_html(__("Requirement"))}</th>
+								<th>${escape_html(__("Submission"))}</th>
+								<th>${escape_html(__("Review Status"))}</th>
+								<th>${escape_html(__("Uploaded"))}</th>
+								<th>${escape_html(__("Reviewed"))}</th>
+								<th>${escape_html(__("File"))}</th>
+								<th>${escape_html(__("Actions"))}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -1677,13 +1677,13 @@ function new_admissions_review_request_id(prefix = "admissions_review") {
 function render_submission_action_buttons(row) {
 	const itemName = String(row?.applicant_document_item || "").trim();
 	if (!itemName) {
-		return escape_html("—");
+		return escape_html(__("—"));
 	}
-	const attrs = `data-applicant-document-item="${escape_html(itemName)}" data-label="${escape_html(String(row?.label || row?.item_label || row?.item_key || "Submission"))}"`;
+	const attrs = `data-applicant-document-item="${escape_html(itemName)}" data-label="${escape_html(String(row?.label || row?.item_label || row?.item_key || __("Submission")))}"`;
 	return [
-		`<button type="button" class="document-submission-action-btn" data-action="approve_submission" ${attrs} style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Approve")}</button>`,
-		`<button type="button" class="document-submission-action-btn" data-action="needs_follow_up_submission" ${attrs} style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Request Changes")}</button>`,
-		`<button type="button" class="document-submission-action-btn" data-action="reject_submission" ${attrs} style="border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html("Reject")}</button>`,
+		`<button type="button" class="document-submission-action-btn" data-action="approve_submission" ${attrs} style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html(__("Approve"))}</button>`,
+		`<button type="button" class="document-submission-action-btn" data-action="needs_follow_up_submission" ${attrs} style="margin-right: 6px; border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html(__("Request Changes"))}</button>`,
+		`<button type="button" class="document-submission-action-btn" data-action="reject_submission" ${attrs} style="border:1px solid #d7dce2; background:#fff; color:#3f4b57; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600;">${escape_html(__("Reject"))}</button>`,
 	].join("");
 }
 
@@ -1816,13 +1816,13 @@ function render_recommendation_review_dialog(payload) {
 		recommendation.applicant_document_item &&
 		canReviewSubmissions
 	);
-	const reviewStatus = String(recommendation.review_status || "Pending").trim() || "Pending";
+	const reviewStatus = String(recommendation.review_status || __("Pending")).trim() || __("Pending");
 
 	const timelineRows = [
-		{ label: "Shared", value: recommendation.sent_on },
-		{ label: "Opened", value: recommendation.opened_on },
-		{ label: "Submitted", value: recommendation.submitted_on },
-		{ label: "Reviewed", value: recommendation.reviewed_on },
+		{ label: __("Shared"), value: recommendation.sent_on },
+		{ label: __("Opened"), value: recommendation.opened_on },
+		{ label: __("Submitted"), value: recommendation.submitted_on },
+		{ label: __("Reviewed"), value: recommendation.reviewed_on },
 	];
 
 	const timelineBody = timelineRows.map((row) => `
@@ -1835,23 +1835,23 @@ function render_recommendation_review_dialog(payload) {
 	const answerBody = answers.length
 		? answers.map((answer) => `
 			<div style="border:1px solid #d7dce2;border-radius:12px;padding:12px;background:#fff;margin-bottom:8px;">
-				<div class="text-muted" style="font-size:12px;margin-bottom:4px;">${escape_html(String(answer?.label || answer?.field_key || "Answer"))}</div>
-				<div style="white-space:pre-wrap;">${escape_html(String(answer?.display_value || (answer?.has_value ? answer?.value || "" : "No response")))}</div>
+				<div class="text-muted" style="font-size:12px;margin-bottom:4px;">${escape_html(String(answer?.label || answer?.field_key || __("Answer")))}</div>
+				<div style="white-space:pre-wrap;">${escape_html(String(answer?.display_value || (answer?.has_value ? answer?.value || "" : __("No response"))))}</div>
 			</div>
 		`).join("")
-		: `<div class="text-muted">No structured answers were captured for this recommendation.</div>`;
+		: `<div class="text-muted">${escape_html(__("No structured answers were captured for this recommendation."))}</div>`;
 
 	const reviewActions = canReview
 		? `
 			<div style="margin-top:16px;border-top:1px solid #e5e7eb;padding-top:12px;">
 				<label style="display:block;margin-bottom:8px;">
-					<div class="text-muted" style="font-size:12px;margin-bottom:4px;">Review Note</div>
-					<textarea class="recommendation-review-note" rows="3" placeholder="Required for Request Changes or Reject" style="width:100%;border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;resize:vertical;"></textarea>
+					<div class="text-muted" style="font-size:12px;margin-bottom:4px;">${escape_html(__("Review Note"))}</div>
+					<textarea class="recommendation-review-note" rows="3" placeholder="${frappe.utils.escape_html(__("Required for Request Changes or Reject"))}" style="width:100%;border:1px solid #d7dce2;border-radius:12px;padding:10px 12px;resize:vertical;"></textarea>
 				</label>
 				<div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;">
-					<button type="button" class="recommendation-review-decision-btn" data-decision="Approved" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">${escape_html("Approve")}</button>
-					<button type="button" class="recommendation-review-decision-btn" data-decision="Needs Follow-Up" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">${escape_html("Request Changes")}</button>
-					<button type="button" class="recommendation-review-decision-btn" data-decision="Rejected" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">${escape_html("Reject")}</button>
+					<button type="button" class="recommendation-review-decision-btn" data-decision="Approved" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">${escape_html(__("Approve"))}</button>
+					<button type="button" class="recommendation-review-decision-btn" data-decision="Needs Follow-Up" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">${escape_html(__("Request Changes"))}</button>
+					<button type="button" class="recommendation-review-decision-btn" data-decision="Rejected" style="border:1px solid #d7dce2;background:#fff;color:#1f4b5c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">${escape_html(__("Reject"))}</button>
 				</div>
 			</div>
 		`
@@ -1865,9 +1865,9 @@ function render_recommendation_review_dialog(payload) {
 		<div style="display:grid;gap:16px;">
 			<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start;">
 				<div>
-					<div class="text-muted" style="font-size:12px;">Recommendation Review</div>
-					<div style="font-size:20px;font-weight:700;color:#17313b;">${escape_html(String(recommendation.recommender_name || recommendation.recommender_email || "Referee"))}</div>
-					<div class="text-muted" style="margin-top:4px;">${escape_html(String(recommendation.template_name || recommendation.recommendation_template || "Recommendation"))}${recommendation.recommender_relationship ? ` · ${escape_html(String(recommendation.recommender_relationship))}` : ""}</div>
+					<div class="text-muted" style="font-size:12px;">${escape_html(__("Recommendation Review"))}</div>
+					<div style="font-size:20px;font-weight:700;color:#17313b;">${escape_html(String(recommendation.recommender_name || recommendation.recommender_email || __("Referee")))}</div>
+					<div class="text-muted" style="margin-top:4px;">${escape_html(String(recommendation.template_name || recommendation.recommendation_template || __("Recommendation")))}${recommendation.recommender_relationship ? ` · ${escape_html(String(recommendation.recommender_relationship))}` : ""}</div>
 				</div>
 				<div>${render_document_status_pill(reviewStatus)}</div>
 			</div>
@@ -1876,14 +1876,14 @@ function render_recommendation_review_dialog(payload) {
 			</div>
 			<div style="border:1px solid #d7dce2;border-radius:12px;padding:12px;background:#f8fbff;">
 				<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-					${recommendation.attestation_confirmed ? `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#e8f7ee;border:1px solid #9ad5b0;color:#1f7a3e;">${escape_html("Attestation confirmed")}</span>` : ""}
+					${recommendation.attestation_confirmed ? `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#e8f7ee;border:1px solid #9ad5b0;color:#1f7a3e;">${escape_html(__("Attestation confirmed"))}</span>` : ""}
 					${recommendation.item_label ? `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#f4f5f7;border:1px solid #d7dce2;color:#3f4b57;">${escape_html(String(recommendation.item_label))}</span>` : ""}
-					${recommendation.file_url ? render_text_link(String(recommendation.file_url), recommendation.file_name || "Open attached file", true) : ""}
+					${recommendation.file_url ? render_text_link(String(recommendation.file_url), recommendation.file_name || __("Open attached file"), true) : ""}
 				</div>
 				${recommendation.recommender_email ? `<div class="text-muted" style="margin-top:8px;">${escape_html(String(recommendation.recommender_email))}</div>` : ""}
 			</div>
 			<div>
-				<div style="font-weight:600;margin-bottom:8px;">Submission Answers</div>
+					<div style="font-weight:600;margin-bottom:8px;">${escape_html(__("Submission Answers"))}</div>
 				${answerBody}
 			</div>
 			${reviewActions}
@@ -1926,7 +1926,7 @@ function open_recommendation_review_dialog(frm, anchor) {
 	let currentAnchor = normalize_recommendation_review_anchor(anchor);
 
 	const renderLoading = () => {
-		dialog.fields_dict.body.$wrapper.html(`<div class="text-muted">${escape_html("Loading recommendation review...")}</div>`);
+		dialog.fields_dict.body.$wrapper.html(`<div class="text-muted">${escape_html(__("Loading recommendation review..."))}</div>`);
 	};
 
 	const loadPayload = () => {
@@ -2038,12 +2038,12 @@ function review_document_submission(frm, payload, options = {}) {
 
 function render_ok_label(section) {
 	if (!section) {
-		return render_pill("Unknown", "slate");
+		return render_pill(__("Unknown"), "slate");
 	}
 	if (section.required_for_approval === false) {
-		return section.ok ? render_pill("Optional - Complete", "slate") : render_pill("Optional", "slate");
+		return section.ok ? render_pill(__("Optional - Complete"), "slate") : render_pill(__("Optional"), "slate");
 	}
-	return section.ok ? render_pill("✓ OK", "green") : render_pill("Needs Review", "amber");
+	return section.ok ? render_pill(__("✓ OK"), "green") : render_pill(__("Needs Review"), "amber");
 }
 
 function render_line(label, value) {
@@ -2052,7 +2052,7 @@ function render_line(label, value) {
 
 function render_list(items) {
 	if (!items || !items.length) {
-		return escape_html("None");
+		return escape_html(__("None"));
 	}
 	return items.map((item) => escape_html(String(item))).join(", ");
 }
@@ -2079,7 +2079,7 @@ function render_pill(text, tone = "slate") {
 function render_text_link(url, label, openInNewTab = false) {
 	const safeUrl = String(url || "").trim();
 	if (!safeUrl) {
-		return escape_html("—");
+		return escape_html(__("—"));
 	}
 	const attrs = openInNewTab ? ' target="_blank" rel="noopener noreferrer"' : "";
 	return `<a href="${escape_html(safeUrl)}"${attrs}>${escape_html(label || safeUrl)}</a>`;
@@ -2088,14 +2088,14 @@ function render_text_link(url, label, openInNewTab = false) {
 function render_user_link(user) {
 	const userName = String(user || "").trim();
 	if (!userName) {
-		return escape_html("—");
+		return escape_html(__("—"));
 	}
 	return render_text_link(`/desk/user/${encodeURIComponent(userName)}`, userName);
 }
 
 function render_signers(signers) {
 	if (!Array.isArray(signers) || !signers.length) {
-		return escape_html("—");
+		return escape_html(__("—"));
 	}
 	return signers.map((row) => render_user_link(row?.acknowledged_by)).join(", ");
 }
@@ -2103,7 +2103,7 @@ function render_signers(signers) {
 function format_datetime(value) {
 	const text = String(value || "").trim();
 	if (!text) {
-		return "—";
+		return __("—");
 	}
 	try {
 		return frappe.datetime.str_to_user(text);
@@ -2156,7 +2156,7 @@ function format_relative_time(value) {
 
 function format_human_moment(value) {
 	const absolute = format_datetime(value);
-	if (absolute === "—") {
+	if (absolute === __("—")) {
 		return absolute;
 	}
 	const relative = format_relative_time(value);
@@ -2165,22 +2165,28 @@ function format_human_moment(value) {
 
 function render_document_status_pill(status) {
 	const normalized = String(status || "Pending").trim();
-	if (normalized === "Approved" || normalized === "Waived" || normalized === "Exception Approved") {
-		return render_pill(normalized, "green");
+	if (normalized === "Approved") {
+		return render_pill(__("Approved"), "green");
+	}
+	if (normalized === "Waived") {
+		return render_pill(__("Waived"), "green");
+	}
+	if (normalized === "Exception Approved") {
+		return render_pill(__("Exception Approved"), "green");
 	}
 	if (normalized === "Rejected") {
-		return render_pill("Rejected", "red");
+		return render_pill(__("Rejected"), "red");
 	}
 	if (normalized === "Superseded") {
-		return render_pill("Superseded", "slate");
+		return render_pill(__("Superseded"), "slate");
 	}
 	if (normalized === "Needs Follow-Up") {
-		return render_pill("Needs Follow-Up", "amber");
+		return render_pill(__("Needs Follow-Up"), "amber");
 	}
 	if (normalized === "Missing") {
-		return render_pill("Missing", "red");
+		return render_pill(__("Missing"), "red");
 	}
-	return render_pill(normalized || "Pending", "amber");
+	return render_pill(normalized || __("Pending"), "amber");
 }
 
 function render_approved_required_pill(row) {
@@ -2190,7 +2196,7 @@ function render_approved_required_pill(row) {
 	}
 	const requiredCount = Number(row?.required_count || 0);
 	if (!requiredCount) {
-		return escape_html("—");
+		return escape_html(__("—"));
 	}
 	const approvedCount = Number(row?.approved_count || 0);
 	const tone = approvedCount >= requiredCount ? "green" : "amber";
@@ -2199,55 +2205,55 @@ function render_approved_required_pill(row) {
 
 function map_health_status(status) {
 	if (status === "complete") {
-		return "Cleared";
+		return __("Cleared");
 	}
 	if (status === "needs_follow_up") {
-		return "Needs Follow-Up";
+		return __("Needs Follow-Up");
 	}
 	if (status === "pending") {
-		return "Pending Review";
+		return __("Pending Review");
 	}
 	if (status === "missing") {
-		return "Missing";
+		return __("Missing");
 	}
-	return "Pending";
+	return __("Pending");
 }
 
 function add_decision_actions(frm) {
 	const status = frm.doc.application_status;
-	["Start Review", "Approve", "Reject", "Promote", "Upgrade Identity"].forEach((label) =>
+	[__("Start Review"), __("Approve"), __("Reject"), __("Promote"), __("Upgrade Identity")].forEach((label) =>
 		frm.remove_custom_button(label)
 	);
 
 	if (status === "Submitted") {
-		frm.add_custom_button("Start Review", () => {
-			frappe.confirm("Move this applicant to Under Review?", () => {
+		frm.add_custom_button(__("Start Review"), () => {
+			frappe.confirm(__("Move this applicant to Under Review?"), () => {
 				blurActiveModalFocus();
 				frm.call("mark_under_review")
 					.then(() => frm.reload_doc())
 					.catch((err) => {
-						frappe.msgprint(err.message || "Unable to move applicant to Under Review.");
+						frappe.msgprint(err.message || __("Unable to move applicant to Under Review."));
 					});
 			});
 		});
 	}
 
 	if (status === "Under Review") {
-		frm.add_custom_button("Approve", () => {
-			frappe.confirm("Approve this applicant?", () => {
+		frm.add_custom_button(__("Approve"), () => {
+			frappe.confirm(__("Approve this applicant?"), () => {
 				blurActiveModalFocus();
 				frm.call("approve_application")
 					.then(() => frm.reload_doc())
 					.catch((err) => {
-						frappe.msgprint(err.message || "Unable to approve applicant.");
+						frappe.msgprint(err.message || __("Unable to approve applicant."));
 					});
 			});
 		});
 
-		frm.add_custom_button("Reject", () => {
+		frm.add_custom_button(__("Reject"), () => {
 			frappe.prompt(
 				{
-					label: "Rejection Reason",
+					label: __("Rejection Reason"),
 					fieldname: "reason",
 					fieldtype: "Small Text",
 					reqd: 1,
@@ -2257,36 +2263,36 @@ function add_decision_actions(frm) {
 					frm.call("reject_application", { reason: values.reason })
 						.then(() => frm.reload_doc())
 						.catch((err) => {
-							frappe.msgprint(err.message || "Unable to reject applicant.");
+							frappe.msgprint(err.message || __("Unable to reject applicant."));
 						});
 				},
-				"Reject Applicant",
-				"Reject"
+				__("Reject Applicant"),
+				__("Reject")
 			);
 		});
 	}
 
 	if (status === "Approved") {
-		frm.add_custom_button("Promote", () => {
-			frappe.confirm("Promote this applicant to Student?", () => {
+		frm.add_custom_button(__("Promote"), () => {
+			frappe.confirm(__("Promote this applicant to Student?"), () => {
 				blurActiveModalFocus();
 				frm.call("promote_to_student")
 					.then(() => frm.reload_doc())
 					.catch((err) => {
-						frappe.msgprint(err.message || "Unable to promote applicant.");
+						frappe.msgprint(err.message || __("Unable to promote applicant."));
 					});
 			});
 		});
 	}
 
 	if (status === "Promoted") {
-		frm.add_custom_button("Upgrade Identity", () => {
-			frappe.confirm("Upgrade identity for this promoted applicant?", () => {
+		frm.add_custom_button(__("Upgrade Identity"), () => {
+			frappe.confirm(__("Upgrade identity for this promoted applicant?"), () => {
 				blurActiveModalFocus();
 				frm.call("upgrade_identity")
 					.then(() => frm.reload_doc())
 					.catch((err) => {
-						frappe.msgprint(err.message || "Unable to upgrade identity.");
+						frappe.msgprint(err.message || __("Unable to upgrade identity."));
 					});
 			});
 		});

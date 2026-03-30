@@ -46,7 +46,7 @@ class TestEmployee(FrappeTestCase):
         ):
             roles, workspace = employee_access.compute_effective_access_from_employee(emp)
 
-        self.assertEqual(roles, {"Academic Staff", "School Data Analyst"})
+        self.assertEqual(roles, {"Academic Staff", "Employee", "School Data Analyst"})
         self.assertEqual(workspace, "Academics")
 
     def test_compute_effective_access_prejoin_assigns_baseline_role_only(self):
@@ -66,7 +66,7 @@ class TestEmployee(FrappeTestCase):
         ):
             roles, workspace = employee_access.compute_effective_access_from_employee(emp)
 
-        self.assertEqual(roles, {"Academic Staff"})
+        self.assertEqual(roles, {"Academic Staff", "Employee"})
         self.assertIsNone(workspace)
 
     def test_compute_effective_access_no_active_rows_returns_empty_for_started_employee(self):
@@ -80,7 +80,7 @@ class TestEmployee(FrappeTestCase):
             roles, workspace = employee_access.compute_effective_access_from_employee(emp)
 
         designation_defaults.assert_not_called()
-        self.assertEqual(roles, set())
+        self.assertEqual(roles, {"Employee"})
         self.assertIsNone(workspace)
 
     def test_compute_effective_access_uses_date_window_when_is_current_flags_are_stale(self):
@@ -119,16 +119,18 @@ class TestEmployee(FrappeTestCase):
         with patch("ifitwala_ed.hr.employee_access._designation_defaults", side_effect=designation_defaults):
             roles, workspace = employee_access.compute_effective_access_from_employee(emp)
 
-        self.assertEqual(roles, {"Academic Admin"})
+        self.assertEqual(roles, {"Academic Admin", "Employee"})
         self.assertEqual(workspace, "Admin")
 
-    def test_sync_user_access_disables_non_active_employee_user(self):
+    def test_sync_user_access_strips_roles_for_non_active_employee_user(self):
         emp = frappe._dict(
             user_id="nonactive.employee@example.com",
             employment_status="Temporary Leave",
             employee_history=[],
         )
-        user_doc = frappe._dict(default_workspace=None, user_type="System User", enabled=1)
+        role_rows = [frappe._dict(role="Employee"), frappe._dict(role="Academic Staff")]
+        user_doc = frappe._dict(default_workspace=None, user_type="System User", enabled=1, roles=role_rows)
+        user_doc.remove = Mock(side_effect=lambda row: role_rows.remove(row))
         user_doc.save = Mock()
 
         with (
@@ -144,6 +146,7 @@ class TestEmployee(FrappeTestCase):
         compute_access.assert_not_called()
         diff_roles.assert_not_called()
         self.assertEqual(user_doc.enabled, 0)
+        self.assertEqual(role_rows, [])
         user_doc.save.assert_called_once_with(ignore_permissions=True)
 
     def test_sync_user_access_enables_active_employee_user(self):
@@ -158,7 +161,7 @@ class TestEmployee(FrappeTestCase):
         with (
             patch(
                 "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
-                return_value=(set(), None),
+                return_value=({"Employee"}, None),
             ) as compute_access,
             patch("ifitwala_ed.hr.employee_access._diff_user_roles", return_value=(set(), [])),
             patch("ifitwala_ed.hr.employee_access.frappe.get_doc", return_value=user_doc),
@@ -182,11 +185,11 @@ class TestEmployee(FrappeTestCase):
         with (
             patch(
                 "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
-                return_value=({"Academic Admin", "Leave Approver"}, None),
+                return_value=({"Academic Admin", "Employee", "Leave Approver"}, None),
             ),
             patch(
                 "ifitwala_ed.hr.employee_access._diff_user_roles",
-                return_value=({"Academic Admin", "Leave Approver"}, []),
+                return_value=({"Academic Admin", "Employee", "Leave Approver"}, []),
             ),
             patch("ifitwala_ed.hr.employee_access.frappe.get_doc", return_value=user_doc),
             patch("ifitwala_ed.hr.employee_access.frappe.msgprint") as msgprint,
@@ -196,9 +199,34 @@ class TestEmployee(FrappeTestCase):
 
         msgprint.assert_called_once_with(
             "Added default role(s) to <b>active.employee@example.com</b>: "
-            "<b>Academic Admin</b>, <b>Leave Approver</b>.",
+            "<b>Academic Admin</b>, <b>Employee</b>, <b>Leave Approver</b>.",
             title="Employee Access Updated",
             indicator="green",
+        )
+
+    def test_sync_user_access_notifies_when_roles_are_removed_for_non_active_employee(self):
+        emp = frappe._dict(
+            user_id="nonactive.employee@example.com",
+            employment_status="Suspended",
+            employee_history=[],
+        )
+        role_rows = [frappe._dict(role="Employee"), frappe._dict(role="Academic Admin")]
+        user_doc = frappe._dict(default_workspace=None, user_type="System User", enabled=1, roles=role_rows)
+        user_doc.remove = Mock(side_effect=lambda row: role_rows.remove(row))
+        user_doc.save = Mock()
+
+        with (
+            patch("ifitwala_ed.hr.employee_access.frappe.get_doc", return_value=user_doc),
+            patch("ifitwala_ed.hr.employee_access.frappe.msgprint") as msgprint,
+            patch("ifitwala_ed.hr.employee_access.frappe.bold", side_effect=lambda value: f"<b>{value}</b>"),
+        ):
+            employee_access.sync_user_access_from_employee(emp, notify_role_additions=True)
+
+        msgprint.assert_called_once_with(
+            "Removed all user roles from <b>nonactive.employee@example.com</b> because the employee is not active: "
+            "<b>Academic Admin</b>, <b>Employee</b>.",
+            title="Employee Access Updated",
+            indicator="orange",
         )
 
     def test_apply_designation_role_requests_role_addition_notification(self):
@@ -250,30 +278,19 @@ class TestEmployee(FrappeTestCase):
 
         sync_access.assert_called_once_with(emp, notify_role_additions=True)
 
-    def test_apply_designation_role_skips_when_effective_access_is_unchanged(self):
+    def test_apply_designation_role_reconciles_even_when_effective_access_is_unchanged(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)
         emp.user_id = "staff@example.com"
         emp.employment_status = "Active"
         emp.employee_history = [frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None})]
 
-        previous = frappe._dict(
-            user_id="staff@example.com",
-            employment_status="Active",
-            employee_history=[frappe._dict({"designation": "Teacher", "from_date": nowdate(), "to_date": None})],
-        )
-
         with (
             patch.object(emp, "_can_manage_user_roles", return_value=True),
-            patch.object(emp, "get_doc_before_save", return_value=previous),
-            patch(
-                "ifitwala_ed.hr.employee_access.compute_effective_access_from_employee",
-                return_value=({"Academic Staff"}, "Academics"),
-            ),
             patch("ifitwala_ed.hr.employee_access.sync_user_access_from_employee") as sync_access,
         ):
             emp._apply_designation_role()
 
-        sync_access.assert_not_called()
+        sync_access.assert_called_once_with(emp, notify_role_additions=True)
 
     def test_apply_designation_role_syncs_when_employment_status_changes(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)
@@ -299,6 +316,38 @@ class TestEmployee(FrappeTestCase):
             emp._apply_designation_role()
 
         sync_access.assert_called_once_with(emp, notify_role_additions=True)
+
+    def test_update_user_prefers_thumb_variant_for_user_avatar(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.employment_status = "Active"
+        emp.employee_first_name = "Test"
+        emp.employee_last_name = "Staff"
+        emp.employee_full_name = "Test Staff"
+        emp.employee_date_of_birth = None
+        emp.employee_image = "/files/original.png"
+        emp.name = "EMP-0001"
+
+        user_doc = frappe._dict(
+            roles=[],
+            user_image="/files/original.png",
+        )
+        user_doc.append = Mock()
+        user_doc.save = Mock()
+        user_doc.flags = frappe._dict()
+
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc", return_value=user_doc),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.get_preferred_employee_image_url",
+                return_value="/files/thumb.webp",
+            ) as preferred_image,
+        ):
+            emp.update_user()
+
+        preferred_image.assert_called_once_with("EMP-0001", original_url="/files/original.png")
+        self.assertEqual(user_doc.user_image, "/files/thumb.webp")
+        user_doc.save.assert_called_once_with(ignore_permissions=True)
 
     def test_employee_pqc_hr_user_is_org_scoped_and_includes_unassigned(self):
         with (
@@ -511,3 +560,167 @@ class TestEmployee(FrappeTestCase):
         update_user.assert_not_called()
         update_org.assert_called_once()
         update_school.assert_called_once()
+
+    def test_ensure_primary_contact_adds_employee_link_and_updates_primary_contact(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.name = "EMP-0001"
+        emp.empl_primary_contact = None
+        emp.db_set = Mock()
+
+        contact_doc = Mock()
+        contact_doc.append = Mock()
+        contact_doc.save = Mock()
+
+        def db_exists(doctype, filters=None):
+            if doctype == "Dynamic Link":
+                return False
+            if doctype == "Contact":
+                return True
+            return False
+
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value",
+                return_value="CONTACT-0001",
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.exists",
+                side_effect=db_exists,
+            ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc", return_value=contact_doc) as get_doc,
+        ):
+            emp._ensure_primary_contact()
+
+        get_doc.assert_called_once_with("Contact", "CONTACT-0001")
+        contact_doc.append.assert_called_once_with("links", {"link_doctype": "Employee", "link_name": "EMP-0001"})
+        contact_doc.save.assert_called_once_with(ignore_permissions=True)
+        emp.db_set.assert_called_once_with("empl_primary_contact", "CONTACT-0001", update_modified=False)
+
+    def test_resolve_primary_contact_name_prefers_contact_user(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.empl_primary_contact = None
+
+        with patch(
+            "ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value",
+            side_effect=["CONTACT-0007"],
+        ) as get_value:
+            contact_name = emp._resolve_primary_contact_name()
+
+        self.assertEqual(contact_name, "CONTACT-0007")
+        get_value.assert_called_once_with("Contact", {"user": "staff@example.com"}, "name")
+
+    def test_ensure_primary_contact_repairs_link_from_existing_primary_contact(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.name = "EMP-0001"
+        emp.empl_primary_contact = "CONTACT-0009"
+        emp.db_set = Mock()
+
+        contact_doc = Mock()
+        contact_doc.append = Mock()
+        contact_doc.save = Mock()
+
+        def db_exists(doctype, filters=None):
+            if doctype == "Contact":
+                return filters == "CONTACT-0009"
+            if doctype == "Dynamic Link":
+                return False
+            return False
+
+        with (
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value", return_value=None),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.exists", side_effect=db_exists),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc", return_value=contact_doc),
+        ):
+            emp._ensure_primary_contact()
+
+        contact_doc.append.assert_called_once_with("links", {"link_doctype": "Employee", "link_name": "EMP-0001"})
+        contact_doc.save.assert_called_once_with(ignore_permissions=True)
+        emp.db_set.assert_not_called()
+
+    def test_ensure_primary_contact_creates_contact_when_missing(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.user_id = "staff@example.com"
+        emp.name = "EMP-0001"
+        emp.employee_first_name = "Staff"
+        emp.employee_last_name = "Member"
+        emp.employee_full_name = "Staff Member"
+        emp.employee_gender = "Female"
+        emp.employee_professional_email = "staff@example.com"
+        emp.employee_mobile_phone = "+660000000"
+        emp.empl_primary_contact = None
+        emp.db_set = Mock()
+
+        contact_doc = Mock()
+        contact_doc.name = "CONTACT-NEW"
+        contact_doc.append = Mock()
+        contact_doc.insert = Mock()
+        contact_doc.save = Mock()
+
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value",
+                side_effect=[None, None],
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.exists",
+                side_effect=lambda doctype, filters=None: doctype == "Gender",
+            ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.new_doc", return_value=contact_doc),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc",
+                return_value=contact_doc,
+            ),
+        ):
+            emp._ensure_primary_contact()
+
+        contact_doc.append.assert_any_call("email_ids", {"email_id": "staff@example.com", "is_primary": 1})
+        contact_doc.append.assert_any_call("phone_nos", {"phone": "+660000000", "is_primary_mobile_no": 1})
+        contact_doc.append.assert_any_call("links", {"link_doctype": "Employee", "link_name": "EMP-0001"})
+        contact_doc.insert.assert_called_once_with(ignore_permissions=True)
+        contact_doc.save.assert_called_once_with(ignore_permissions=True)
+        emp.db_set.assert_called_once_with("empl_primary_contact", "CONTACT-NEW", update_modified=False)
+
+    def test_create_user_repairs_primary_contact_link_after_save(self):
+        emp = frappe._dict(
+            user_id=None,
+            employee_professional_email="staff@example.com",
+            employee_first_name="Staff",
+            employee_middle_name=None,
+            employee_last_name="Member",
+            employee_gender="Female",
+            employee_date_of_birth=None,
+            employee_mobile_phone=None,
+        )
+        emp.save = Mock()
+        emp._ensure_primary_contact = Mock()
+
+        user_doc = frappe._dict(name="staff@example.com")
+        user_doc.flags = frappe._dict()
+        user_doc.update = Mock()
+        user_doc.insert = Mock()
+
+        privacy = frappe._dict(dob_to_user=0, mobile_to_user=0)
+
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.session",
+                frappe._dict(user="administrator@example.com"),
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.get_roles",
+                return_value={"System Manager"},
+            ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc", return_value=emp),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.new_doc", return_value=user_doc),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_single", return_value=privacy),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.exists", return_value=False),
+        ):
+            result = employee_controller.create_user("EMP-0001")
+
+        self.assertEqual(result, "staff@example.com")
+        user_doc.insert.assert_called_once_with(ignore_permissions=True)
+        emp.save.assert_called_once_with(ignore_permissions=True)
+        emp._ensure_primary_contact.assert_called_once_with()

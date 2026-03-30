@@ -15,6 +15,65 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
 
+    def test_request_autofills_single_offering_academic_year(self):
+        context = _setup_enrollment_context(score=95)
+
+        request = frappe.get_doc(
+            {
+                "doctype": "Program Enrollment Request",
+                "student": context["student"].name,
+                "program_offering": context["offering"].name,
+                "courses": [{"course": context["target_course"].name}],
+            }
+        ).insert()
+
+        self.assertEqual(request.academic_year, context["academic_year"].name)
+        self.assertEqual(request.program, context["program"].name)
+        self.assertEqual(request.school, context["school"].name)
+
+    def test_request_rejects_academic_year_outside_offering(self):
+        context = _setup_enrollment_context(score=95)
+        outside_ay = _make_academic_year(
+            context["school"],
+            start_date="2027-08-01",
+            end_date="2028-06-30",
+        )
+
+        request = frappe.get_doc(
+            {
+                "doctype": "Program Enrollment Request",
+                "student": context["student"].name,
+                "program_offering": context["offering"].name,
+                "academic_year": outside_ay.name,
+                "courses": [{"course": context["target_course"].name}],
+            }
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            request.insert()
+
+    def test_request_requires_explicit_academic_year_for_multi_year_offering(self):
+        context = _setup_enrollment_context(score=95)
+        second_ay = _make_academic_year(
+            context["school"],
+            start_date="2026-08-01",
+            end_date="2027-06-30",
+        )
+        context["offering"].append("offering_academic_years", {"academic_year": second_ay.name})
+        context["offering"].save()
+
+        request = frappe.get_doc(
+            {
+                "doctype": "Program Enrollment Request",
+                "student": context["student"].name,
+                "program_offering": context["offering"].name,
+                "courses": [{"course": context["target_course"].name}],
+            }
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            request.insert()
+
     def test_validate_request_prereq_pass(self):
         context = _setup_enrollment_context(score=95)
         request = _make_enrollment_request(
@@ -130,6 +189,11 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
             target_basket_groups=[basket_group.name],
             offering_basket_groups=[basket_group.name],
         )
+        for row in context["offering"].offering_courses:
+            if row.course == context["target_course"].name:
+                row.start_academic_term = context["term"].name
+                row.end_academic_term = context["term"].name
+        context["offering"].save()
         request = _make_enrollment_request(
             context,
             student=context["student"],
@@ -156,6 +220,8 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         self.assertEqual(courses[context["target_course"].name].status, "Enrolled")
         self.assertEqual(courses[context["target_course"].name].credited_basket_group, basket_group.name)
         self.assertEqual(int(courses[context["target_course"].name].required or 0), 0)
+        self.assertEqual(courses[context["target_course"].name].term_start, context["term"].name)
+        self.assertEqual(courses[context["target_course"].name].term_end, context["term"].name)
 
 
 def _has_prereq_result(payload, required_course, result):
@@ -387,14 +453,14 @@ def _make_school(organization):
     return school
 
 
-def _make_academic_year(school):
+def _make_academic_year(school, start_date="2025-08-01", end_date="2026-06-30"):
     academic_year = frappe.get_doc(
         {
             "doctype": "Academic Year",
             "academic_year_name": f"AY {frappe.generate_hash(length=6)}",
             "school": school.name,
-            "year_start_date": "2025-08-01",
-            "year_end_date": "2026-06-30",
+            "year_start_date": start_date,
+            "year_end_date": end_date,
             "archived": 0,
             "visible_to_admission": 1,
         }
@@ -404,10 +470,12 @@ def _make_academic_year(school):
 
 
 def _make_term(academic_year):
+    school = academic_year.school or frappe.db.get_value("Academic Year", academic_year.name, "school")
     term = frappe.get_doc(
         {
             "doctype": "Term",
             "academic_year": academic_year.name,
+            "school": school,
             "term_name": f"Term {frappe.generate_hash(length=6)}",
             "term_type": "Academic",
             "term_start_date": nowdate(),
@@ -415,6 +483,9 @@ def _make_term(academic_year):
         }
     )
     term.insert()
+    if school:
+        frappe.db.set_value("Term", term.name, "school", school, update_modified=False)
+        term.reload()
     return term
 
 

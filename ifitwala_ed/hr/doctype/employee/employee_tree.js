@@ -12,7 +12,7 @@ frappe.treeview_settings["Employee"] = {
 			default: "All Organizations",
 		},
 	],
-	breadcrumb: "HR",
+	breadcrumb: __("HR"),
 	disable_add_node: true,
 	get_tree_root: false,
 	toolbar: [

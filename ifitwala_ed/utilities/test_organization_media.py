@@ -100,8 +100,9 @@ class TestOrganizationMedia(FrappeTestCase):
         self.assertEqual(classification.get("organization"), self.child_org)
         self.assertEqual(classification.get("school"), self.leaf_school)
         self.assertEqual(classification.get("slot"), slot)
-        self.assertIn(
-            f"/files/Organizations/{self.child_org}/Schools/{self.leaf_school}/Media/Public/", file_doc.file_url
+        self.assertEqual(
+            file_doc.folder,
+            f"Home/Organizations/{self.child_org}/Schools/{self.leaf_school}/Media/Public",
         )
 
     def test_visible_media_for_school_respects_org_and_school_ancestry(self):

@@ -117,6 +117,35 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
         self.assertEqual(payload["references"]["teams"][0]["name"], "TEAM-1")
         self.assertEqual(payload["references"]["student_groups"][0]["name"], "SG-1")
         self.assertFalse(payload["permissions"]["can_target_wide_school_scope"])
+        self.assertNotIn("Organization", payload["fields"]["audience_target_modes"])
+
+    def test_get_options_includes_organization_mode_for_wide_audience_roles(self):
+        with (
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.has_permission", return_value=True),
+            patch(
+                "ifitwala_ed.api.org_communication_quick_create.get_org_communication_context",
+                return_value={
+                    "default_school": None,
+                    "default_organization": "ORG-1",
+                    "allowed_schools": [],
+                    "allowed_organizations": ["ORG-1"],
+                    "is_privileged": True,
+                    "can_select_school": True,
+                    "lock_to_default_school": False,
+                },
+            ),
+            patch("ifitwala_ed.api.org_communication_quick_create._field_default", return_value=None),
+            patch("ifitwala_ed.api.org_communication_quick_create._field_options", return_value=[]),
+            patch("ifitwala_ed.api.org_communication_quick_create._get_reference_organizations", return_value=[]),
+            patch("ifitwala_ed.api.org_communication_quick_create._get_reference_schools", return_value=[]),
+            patch("ifitwala_ed.api.org_communication_quick_create._get_reference_teams", return_value=[]),
+            patch("ifitwala_ed.api.org_communication_quick_create._get_reference_student_groups", return_value=[]),
+            patch("ifitwala_ed.api.org_communication_quick_create._user_has_any_role", return_value=True),
+        ):
+            payload = org_communication_quick_create.get_org_communication_quick_create_options()
+
+        self.assertIn("Organization", payload["fields"]["audience_target_modes"])
+        self.assertIn("Organization", payload["recipient_rules"])
 
     def test_create_quick_inserts_org_communication_and_appends_audiences(self):
         doc = _DummyOrgCommunicationDoc()

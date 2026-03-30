@@ -52,15 +52,19 @@ class ProgramEnrollment(Document):
         off = _offering_core(self.program_offering)
         if not off:
             frappe.throw(
-                _("Invalid Program Offering {0}.").format(get_link_to_form("Program Offering", self.program_offering))
+                _("Invalid Program Offering {program_offering}.").format(
+                    program_offering=get_link_to_form("Program Offering", self.program_offering)
+                )
             )
 
         # 2) Program / school / cohort must already match offering (never reassign here)
         if self.program != off.program:
             frappe.throw(
-                _("Enrollment Program {0} does not match Program Offering's Program {1}.").format(
-                    get_link_to_form("Program", self.program),
-                    get_link_to_form("Program", off.program),
+                _(
+                    "Enrollment Program {enrollment_program} does not match Program Offering's Program {offering_program}."
+                ).format(
+                    enrollment_program=get_link_to_form("Program", self.program),
+                    offering_program=get_link_to_form("Program", off.program),
                 )
             )
 
@@ -76,9 +80,9 @@ class ProgramEnrollment(Document):
             frappe.throw(_("Academic Year is required."))
         if self.academic_year not in ay_names:
             frappe.throw(
-                _("Academic Year {0} is not part of Program Offering {1}.").format(
-                    get_link_to_form("Academic Year", self.academic_year),
-                    get_link_to_form("Program Offering", self.program_offering),
+                _("Academic Year {academic_year} is not part of Program Offering {program_offering}.").format(
+                    academic_year=get_link_to_form("Academic Year", self.academic_year),
+                    program_offering=get_link_to_form("Program Offering", self.program_offering),
                 )
             )
 
@@ -99,14 +103,14 @@ class ProgramEnrollment(Document):
             ay = frappe.get_doc("Academic Year", self.academic_year)
             if getdate(self.enrollment_date) < getdate(ay.year_start_date):
                 frappe.throw(
-                    _("Enrollment date is before the start of Academic Year {0}.").format(
-                        get_link_to_form("Academic Year", self.academic_year)
+                    _("Enrollment date is before the start of Academic Year {academic_year}.").format(
+                        academic_year=get_link_to_form("Academic Year", self.academic_year)
                     )
                 )
             if getdate(self.enrollment_date) > getdate(ay.year_end_date):
                 frappe.throw(
-                    _("Enrollment date is after the end of Academic Year {0}.").format(
-                        get_link_to_form("Academic Year", self.academic_year)
+                    _("Enrollment date is after the end of Academic Year {academic_year}.").format(
+                        academic_year=get_link_to_form("Academic Year", self.academic_year)
                     )
                 )
 
@@ -131,7 +135,9 @@ class ProgramEnrollment(Document):
         off = _offering_core(self.program_offering)
         if not off:
             frappe.throw(
-                _("Invalid Program Offering {0}.").format(get_link_to_form("Program Offering", self.program_offering))
+                _("Invalid Program Offering {program_offering}.").format(
+                    program_offering=get_link_to_form("Program Offering", self.program_offering)
+                )
             )
 
         # 1) Mirror authoritative values
@@ -140,8 +146,11 @@ class ProgramEnrollment(Document):
             self.program = off.get("program")
         elif self.program != off.get("program"):
             frappe.throw(
-                _("Enrollment Program {0} does not match Program Offering's Program {1}.").format(
-                    get_link_to_form("Program", self.program), get_link_to_form("Program", off.get("program"))
+                _(
+                    "Enrollment Program {enrollment_program} does not match Program Offering's Program {offering_program}."
+                ).format(
+                    enrollment_program=get_link_to_form("Program", self.program),
+                    offering_program=get_link_to_form("Program", off.get("program")),
                 )
             )
 
@@ -155,9 +164,9 @@ class ProgramEnrollment(Document):
         if self.academic_year:
             if self.academic_year not in ay_names:
                 frappe.throw(
-                    _("Academic Year {0} is not part of Program Offering {1}.").format(
-                        get_link_to_form("Academic Year", self.academic_year),
-                        get_link_to_form("Program Offering", self.program_offering),
+                    _("Academic Year {academic_year} is not part of Program Offering {program_offering}.").format(
+                        academic_year=get_link_to_form("Academic Year", self.academic_year),
+                        program_offering=get_link_to_form("Program Offering", self.program_offering),
                     )
                 )
         else:
@@ -165,7 +174,9 @@ class ProgramEnrollment(Document):
                 self.academic_year = ay_names[0]
             else:
                 frappe.throw(
-                    _("Please choose an Academic Year from this Program Offering: {0}.").format(", ".join(ay_names))
+                    _("Please choose an Academic Year from this Program Offering: {academic_years}.").format(
+                        academic_years=", ".join(ay_names)
+                    )
                 )
 
         # 3) Resolve AY via school tree guard
@@ -182,7 +193,11 @@ class ProgramEnrollment(Document):
     def _validate_enrollment_source(self):
         source = (self.enrollment_source or "Admin").strip()
         if source not in ALLOWED_SOURCES:
-            frappe.throw(_("Enrollment Source must be one of: {0}.").format(", ".join(sorted(ALLOWED_SOURCES))))
+            frappe.throw(
+                _("Enrollment Source must be one of: {allowed_sources}.").format(
+                    allowed_sources=", ".join(sorted(ALLOWED_SOURCES))
+                )
+            )
         self.enrollment_source = source
 
         previous_source = None
@@ -261,8 +276,12 @@ class ProgramEnrollment(Document):
 
             if credited_group and credited_group not in allowed_groups:
                 frappe.throw(
-                    _("Course row {0}: Credited Basket Group (Enrollment) {1} is not allowed for course {2}.").format(
-                        idx, credited_group, course
+                    _(
+                        "Course row {row_number}: Credited Basket Group (Enrollment) {credited_basket_group} is not allowed for course {course}."
+                    ).format(
+                        row_number=idx,
+                        credited_basket_group=credited_group,
+                        course=course,
                     )
                 )
 
@@ -272,7 +291,12 @@ class ProgramEnrollment(Document):
 
             if not int(row.required or 0) and len(allowed_groups) > 1 and not credited_group:
                 frappe.throw(
-                    _("Course row {0}: select a Credited Basket Group (Enrollment) for course {1}.").format(idx, course)
+                    _(
+                        "Course row {row_number}: select a Credited Basket Group (Enrollment) for course {course}."
+                    ).format(
+                        row_number=idx,
+                        course=course,
+                    )
                 )
 
     def before_save(self):
@@ -326,7 +350,7 @@ class ProgramEnrollment(Document):
             )
             if not self.academic_year:
                 raise ParentRuleViolation(
-                    _("No active Academic Year found for {0} or its ancestors.").format(self.school)
+                    _("No active Academic Year found for {school} or its ancestors.").format(school=self.school)
                 )
             return
 
@@ -334,8 +358,9 @@ class ProgramEnrollment(Document):
         ay_school = frappe.db.get_value("Academic Year", self.academic_year, "school")
         if ay_school not in allowed_schools:
             raise ParentRuleViolation(
-                _("Academic Year {0} belongs to {1}, which is outside the allowed hierarchy.").format(
-                    self.academic_year, ay_school
+                _("Academic Year {academic_year} belongs to {school}, which is outside the allowed hierarchy.").format(
+                    academic_year=self.academic_year,
+                    school=ay_school,
                 )
             )
 
@@ -361,12 +386,12 @@ class ProgramEnrollment(Document):
         if existing_enrollment:
             frappe.throw(
                 _(
-                    "Student {0} already has an active Program Enrollment for program {1} in academic year {2}.  See {3}."
+                    "Student {student_name} already has an active Program Enrollment for program {program} in academic year {academic_year}.  See {existing_enrollment}."
                 ).format(
-                    self.student_name,
-                    get_link_to_form("Program", existing_enrollment.program),
-                    existing_enrollment.academic_year,
-                    get_link_to_form("Program Enrollment", existing_enrollment.name),
+                    student_name=self.student_name,
+                    program=get_link_to_form("Program", existing_enrollment.program),
+                    academic_year=existing_enrollment.academic_year,
+                    existing_enrollment=get_link_to_form("Program Enrollment", existing_enrollment.name),
                 ),
                 title=_("Active Enrollment Exists"),  # added for better UI message.
             )
@@ -379,15 +404,15 @@ class ProgramEnrollment(Document):
         for row in self.courses:
             # duplicate
             if row.course in seen_courses:
-                frappe.throw(_("Course {0} entered twice.").format(get_link_to_form("Course", row.course)))
+                frappe.throw(_("Course {course} entered twice.").format(course=get_link_to_form("Course", row.course)))
             seen_courses.add(row.course)
 
             # existence in offering
             if row.course not in off_idx:
                 frappe.throw(
-                    _("Course {0} is not part of Program Offering {1}.").format(
-                        get_link_to_form("Course", row.course),
-                        get_link_to_form("Program Offering", self.program_offering),
+                    _("Course {course} is not part of Program Offering {program_offering}.").format(
+                        course=get_link_to_form("Course", row.course),
+                        program_offering=get_link_to_form("Program Offering", self.program_offering),
                     )
                 )
 
@@ -405,8 +430,8 @@ class ProgramEnrollment(Document):
 
             if enr_start and enr_end and enr_start > enr_end:
                 frappe.throw(
-                    _("For course <b>{0}</b>: The start term window is after the end term window.").format(
-                        row.course or ""
+                    _("For course <b>{course}</b>: The start term window is after the end term window.").format(
+                        course=row.course or ""
                     )
                 )
 
@@ -415,8 +440,8 @@ class ProgramEnrollment(Document):
             if not ok:
                 frappe.throw(
                     _(
-                        "Course {0} is not delivered during the selected Academic Year/Term window for this Program Offering."
-                    ).format(get_link_to_form("Course", row.course))
+                        "Course {course} is not delivered during the selected Academic Year/Term window for this Program Offering."
+                    ).format(course=get_link_to_form("Course", row.course))
                 )
 
     # you cannot enroll twice for the same offering and year
@@ -434,8 +459,11 @@ class ProgramEnrollment(Document):
             student_name = self.student_name or frappe.db.get_value("student", self.student, "student_name")
             link_to_existing_enrollment = get_link_to_form("Program Enrollment", existing_enrollment_name)
             frappe.throw(
-                _("Student {0} is already enrolled in this Program Offering for this academic year. See {1}").format(
-                    student_name, link_to_existing_enrollment
+                _(
+                    "Student {student_name} is already enrolled in this Program Offering for this academic year. See {existing_enrollment}"
+                ).format(
+                    student_name=student_name,
+                    existing_enrollment=link_to_existing_enrollment,
                 )
             )
 
@@ -446,9 +474,9 @@ class ProgramEnrollment(Document):
         ay_names = _offering_ay_names(self.program_offering)
         if self.academic_year not in ay_names:
             frappe.throw(
-                _("Academic Year {0} is not part of Program Offering {1}.").format(
-                    get_link_to_form("Academic Year", self.academic_year),
-                    get_link_to_form("Program Offering", self.program_offering),
+                _("Academic Year {academic_year} is not part of Program Offering {program_offering}.").format(
+                    academic_year=get_link_to_form("Academic Year", self.academic_year),
+                    program_offering=get_link_to_form("Program Offering", self.program_offering),
                 )
             )
 
@@ -517,16 +545,16 @@ class ProgramEnrollment(Document):
             # earlier validate() already checks, but keep this idempotent
             return
         if off.get("school") and self.school and self.school != off["school"]:
-            frappe.throw(_("School must match Program Offering ({0}).").format(off["school"]))
+            frappe.throw(_("School must match Program Offering ({school}).").format(school=off["school"]))
         target_cohort = off.get("student_cohort")
         if target_cohort and self.cohort and self.cohort != target_cohort:
-            frappe.throw(_("Cohort must match Program Offering ({0}).").format(target_cohort))
+            frappe.throw(_("Cohort must match Program Offering ({cohort}).").format(cohort=target_cohort))
 
     def _validate_dropped_requires_date(self):
         missing = [r.course for r in (self.courses or []) if r.status == "Dropped" and not r.dropped_date]
         if missing:
             lines = "<br>".join(f"• {frappe.bold(c or '')}" for c in missing)
-            frappe.throw(_("Dropped courses require a Dropped Date:<br>{0}").format(lines))
+            frappe.throw(_("Dropped courses require a Dropped Date:<br>{course_lines}").format(course_lines=lines))
 
         # require reason
         missing_reason = [
@@ -534,7 +562,7 @@ class ProgramEnrollment(Document):
         ]
         if missing_reason:
             lines = "<br>".join(f"• {frappe.bold(c or '')}" for c in missing_reason)
-            frappe.msgprint(_("Think about adding a Dropped Reason:<br>{0}").format(lines))
+            frappe.msgprint(_("Think about adding a Dropped Reason:<br>{course_lines}").format(course_lines=lines))
 
     # If a student is in a program offering and that offering has required courses,
     # load those that overlap the chosen Academic Year (AY).
@@ -598,15 +626,21 @@ class ProgramEnrollment(Document):
             # Check valid terms
             if row.term_start and row.term_start not in valid_terms:
                 frappe.throw(
-                    _("Term Start '{0}' must be from {1} for Academic Year '{2}'.").format(
-                        row.term_start, source_school, self.academic_year
+                    _(
+                        "Term Start '{term_start}' must be from {source_school} for Academic Year '{academic_year}'."
+                    ).format(
+                        term_start=row.term_start,
+                        source_school=source_school,
+                        academic_year=self.academic_year,
                     ),
                     title=_("Invalid Term Start"),
                 )
             if row.term_end and row.term_end not in valid_terms:
                 frappe.throw(
-                    _("Term End '{0}' must be from {1} for Academic Year '{2}'.").format(
-                        row.term_end, source_school, self.academic_year
+                    _("Term End '{term_end}' must be from {source_school} for Academic Year '{academic_year}'.").format(
+                        term_end=row.term_end,
+                        source_school=source_school,
+                        academic_year=self.academic_year,
                     ),
                     title=_("Invalid Term End"),
                 )
@@ -620,13 +654,13 @@ class ProgramEnrollment(Document):
                 if getdate(term_start_doc.term_start_date) > getdate(term_end_doc.term_start_date):
                     frappe.throw(
                         _(
-                            "For course <b>{0}</b>: The start term <b>{1}</b> ({2}) must not be after the end term <b>{3}</b> ({4})."
+                            "For course <b>{course}</b>: The start term <b>{term_start}</b> ({term_start_date}) must not be after the end term <b>{term_end}</b> ({term_end_date})."
                         ).format(
-                            row.course or "",
-                            row.term_start,
-                            term_start_doc.term_start_date,
-                            row.term_end,
-                            term_end_doc.term_start_date,
+                            course=row.course or "",
+                            term_start=row.term_start,
+                            term_start_date=term_start_doc.term_start_date,
+                            term_end=row.term_end,
+                            term_end_date=term_end_doc.term_start_date,
                         ),
                         title=_("Invalid Term Sequence"),
                     )

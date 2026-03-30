@@ -3,8 +3,8 @@ title: "Task Submission: Versioned Student Evidence with Governance"
 slug: task-submission
 category: Assessment
 doc_order: 8
-version: "1.1.0"
-last_change_date: "2026-03-12"
+version: "1.1.1"
+last_change_date: "2026-03-23"
 summary: "Capture append-only student evidence (files, text, links), enforce versioning, and keep outcomes and portfolio workflows synchronized."
 seo_title: "Task Submission: Versioned Student Evidence with Governance"
 seo_description: "Capture append-only student evidence (files, text, links), enforce versioning, and keep outcomes and portfolio workflows synchronized."
@@ -26,7 +26,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_submission/test_task_submission.
 
 - Create the target `Task Outcome` first.
 - Ensure submitter identity is valid for the submission context.
-- If attachments are used, route them through the governed upload flow.
+- If attachments are used, route them through the governed upload flow backed by `ifitwala_ed.utilities.governed_uploads.upload_task_submission_attachment` -> `ifitwala_drive.api.submissions.upload_task_submission_artifact`.
 
 ## Where It Is Used Across the ERP
 
@@ -39,6 +39,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_submission/test_task_submission.
 - Student portal submission endpoints live in `ifitwala_ed/api/task_submission.py`.
 - Gradebook draft, submit, and moderation flows auto-resolve the latest submission or create evidence stubs when allowed.
 - Portfolio and reflection surfaces can reuse submission evidence through `ifitwala_ed/api/student_portfolio.py`.
+- Desk attachment uploads delegate the binary upload/finalize path to `ifitwala_drive`, then append the finalized file URL into `Task Submission.attachments`.
 
 ## Lifecycle and Linked Documents
 
@@ -91,7 +92,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_submission/test_task_submission.
 - `validate()` enforces append-only behavior, evidence presence, and lock-date / late-submission policy.
 - `after_insert()` applies outcome submission effects.
 - `task_submission_service.py` owns student submission orchestration, file handling, and evidence stub creation.
-- File governance still applies: uploads must follow governed routing and classification rules.
+- File governance still applies: Desk attachment uploads currently run through `ifitwala_ed.utilities.governed_uploads.upload_task_submission_attachment`, which calls `ifitwala_drive.api.submissions.upload_task_submission_artifact` before the finalized file is appended to the submission row.
 
 ### Verified Coverage
 

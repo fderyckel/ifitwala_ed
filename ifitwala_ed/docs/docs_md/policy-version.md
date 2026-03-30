@@ -3,8 +3,8 @@ title: "Policy Version: Legal Text Snapshot and Activation Gate"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.3.0"
-last_change_date: "2026-02-28"
+version: "1.5.0"
+last_change_date: "2026-03-26"
 summary: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version becomes active or acknowledged."
 seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
 seo_description: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version is active or acknowledged."
@@ -34,6 +34,7 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
 - `approved_by` (when set) must be an enabled system user with `Policy Version` write access and in policy scope:
   - school-scoped policy: approver must belong to the same school or an ancestor/parent school
   - organization-scoped policy: approver must belong to the same organization or an ancestor/parent organization
+- Policy admins may create, read, and edit versions for policies rooted in their base organization or descendant organizations.
 - Runtime visibility is scope-enforced server-side through parent policy scope:
   - parent policy organization must be in user organization lineage (`self + parents`)
   - if parent policy is school-scoped, policy school must be in user school lineage (`self + parents`)
@@ -67,10 +68,15 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
 4. Use **Share Policy** on the version form to open a communication modal that:
    - creates a draft `Org Communication`
    - defaults to one-week Morning Brief window
-   - reuses policy scope (school or organization-all-schools)
-   - for organization-all-schools, writes explicit audience rows for all schools in that organization
+   - reuses the parent policy scope instead of widening it:
+     - school-scoped policies offer `School` and `Team`
+     - organization-wide staff-only policies additionally offer `Organization Staff`
+     - organization-wide mixed-audience policies offer `Schools in Organization`, `School`, and `Team`
+   - `Organization Staff` creates one organization-level staff audience row and keeps `Org Communication.school` blank so staff without a linked school remain eligible
+   - `Schools in Organization` writes explicit audience rows for all schools in that organization
    - preselects recipients from `Institutional Policy.applies_to` with staff checked by default (editable before submit)
    - supports recipient toggles (staff/students/guardians/community)
+   - locks `Organization Staff` and `Team` to staff-only recipients
    - can optionally trigger a staff signature campaign (off by default; staff policies only)
    - embeds a policy link that opens the SPA `staff-policy-inform` overlay (read-only, close-only) from Morning Brief and Org Communication surfaces
 5. Activate one version at a time for live acknowledgement collection.
@@ -138,7 +144,7 @@ Runtime controller rules:
 - `approved_by` options are filtered by a server link query so only write-capable users in valid policy scope are selectable.
 - `policy_text` becomes append-only once version is active or acknowledged; edits then require creating a new version.
 - Amended versions are first-class artifacts with human `change_summary` and stored paragraph diff (`diff_html` + `change_stats`).
-- Read/list visibility is enforced by `permission_query_conditions` + `has_permission` hooks via parent institutional policy scope.
+- Policy admins may manage versions for parent policies rooted in their organization or descendant organizations; non-admin read/list visibility remains enforced through parent policy scope.
 
 ## Related Docs
 

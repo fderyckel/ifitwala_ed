@@ -138,15 +138,22 @@
 							<section v-else class="space-y-4">
 								<div class="space-y-2">
 									<label class="type-caption text-slate-token/70" for="teacher-note"
-										>Teacher note</label
+										>Student log note</label
 									>
-									<textarea
-										id="teacher-note"
-										v-model="teacherNote"
-										rows="4"
-										class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 type-body text-ink"
-										placeholder="Capture a quick note for later."
-									></textarea>
+									<template v-if="canCreateStudentLog">
+										<textarea
+											id="teacher-note"
+											v-model="teacherNote"
+											rows="4"
+											class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 type-body text-ink"
+											placeholder="Draft the note you want to add to Student Log."
+										></textarea>
+									</template>
+									<div v-else class="rounded-xl border border-slate-200 bg-white/90 px-4 py-4">
+										<p class="type-body text-slate-token/70">
+											Student Log creation is not available for your current role in this Hub flow.
+										</p>
+									</div>
 								</div>
 								<p v-if="noteMessage" class="type-caption text-flame">
 									{{ noteMessage }}
@@ -154,9 +161,10 @@
 								<button
 									type="button"
 									class="rounded-full bg-jacaranda px-5 py-2 type-button-label text-white shadow-soft"
+									:disabled="!canCreateStudentLog"
 									@click="saveNote"
 								>
-									Save note
+									Create student log
 								</button>
 							</section>
 						</div>
@@ -182,6 +190,7 @@ const props = defineProps<{
 	student_name: string;
 	student_group: string;
 	lesson_instance?: string | null;
+	can_create_student_log?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -203,6 +212,7 @@ const snapshotNote = ref('');
 const teacherNote = ref('');
 const errorMessage = ref('');
 const noteMessage = ref('');
+const canCreateStudentLog = computed(() => Boolean(props.can_create_student_log));
 
 function emitClose() {
 	emit('close');
@@ -251,20 +261,32 @@ function openQuickEvidence() {
 
 async function saveNote() {
 	noteMessage.value = '';
+	if (!canCreateStudentLog.value) {
+		noteMessage.value =
+			'Your current Student Log permission does not allow note creation from the Hub.';
+		return;
+	}
 	if (!teacherNote.value.trim()) {
 		noteMessage.value = 'Add a note before saving.';
 		return;
 	}
 
 	try {
-		await service.quickEvidence({
-			student_group: props.student_group,
-			lesson_instance: props.lesson_instance ?? null,
-			students: [props.student],
-			evidence_type: 'text',
-			text: teacherNote.value.trim(),
+		overlay.open('student-log-create', {
+			mode: 'attendance',
+			sourceLabel: 'Class Hub',
+			initial_log_text: teacherNote.value.trim(),
+			student: {
+				id: props.student,
+				label: props.student_name,
+				image: null,
+				meta: null,
+			},
+			student_group: {
+				id: props.student_group,
+				label: props.student_group,
+			},
 		});
-		emitClose();
 	} catch (err) {
 		noteMessage.value = 'Unable to save right now.';
 		console.error('[StudentContextOverlay] saveNote failed', err);

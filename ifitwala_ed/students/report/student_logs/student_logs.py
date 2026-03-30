@@ -3,6 +3,9 @@
 
 # Ifitwala Ed - Student Log + Follow-ups (Script Report)
 
+import re
+from html import unescape
+
 import frappe
 from frappe.utils import add_days, getdate, strip_html_tags
 
@@ -201,7 +204,8 @@ def _get_data(f):
         if r["log_id"] not in seen:
             seen.add(r["log_id"])
 
-            log_snip = _snippet(strip_html_tags(r.get("log_html") or ""), 220)
+            log_text = _plain_text(r.get("log_html") or "")
+            log_snip = _snippet(log_text, 220)
             visibility = _visibility_icons(r.get("visible_to_student"), r.get("visible_to_guardians"))
 
             data.append(
@@ -223,6 +227,7 @@ def _get_data(f):
                     "author_name": r.get("author_name"),
                     "visibility": visibility,
                     "log_snippet": log_snip,
+                    "log_text": log_text,
                     "follow_up_count": r.get("follow_up_count") or 0,
                     "last_follow_up_on": r.get("last_follow_up_on"),
                     # child columns blank at header level
@@ -230,12 +235,14 @@ def _get_data(f):
                     "fu_date": None,
                     "fu_author": None,
                     "follow_up_snippet": None,
+                    "follow_up_text": None,
                 }
             )
 
         # child rows (only when there is a follow-up)
         if r.get("follow_up_id"):
-            fu_snip = _snippet(strip_html_tags(r.get("follow_up_html") or ""), 200)
+            follow_up_text = _plain_text(r.get("follow_up_html") or "")
+            fu_snip = _snippet(follow_up_text, 200)
             data.append(
                 {
                     "indent": 1,
@@ -254,6 +261,7 @@ def _get_data(f):
                     "author_name": None,
                     "visibility": "",
                     "log_snippet": "",
+                    "log_text": "",
                     "follow_up_count": None,
                     "last_follow_up_on": None,
                     # child fields:
@@ -261,6 +269,7 @@ def _get_data(f):
                     "fu_date": r["fu_date"],
                     "fu_author": r["fu_author"],
                     "follow_up_snippet": fu_snip,
+                    "follow_up_text": follow_up_text,
                 }
             )
 
@@ -277,6 +286,20 @@ def _snippet(text: str, length: int) -> str:
         return ""
     text = " ".join(text.split())  # collapse whitespace
     return text if len(text) <= length else f"{text[:length].rstrip()}…"
+
+
+def _plain_text(value: str) -> str:
+    if not value:
+        return ""
+
+    text = re.sub(r"(?i)<br\s*/?>", "\n", value)
+    text = re.sub(r"(?i)</(p|div|li|tr|h[1-6])>", "\n", text)
+    text = unescape(strip_html_tags(text))
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"[ \t\f\v]+", " ", text)
+    text = re.sub(r" *\n *", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 
 def _visibility_icons(visible_to_student: int | None, visible_to_guardians: int | None) -> str:

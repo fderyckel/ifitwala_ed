@@ -3,8 +3,8 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.4.2"
-last_change_date: "2026-03-09"
+version: "1.4.3"
+last_change_date: "2026-03-22"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
 seo_description: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
@@ -80,6 +80,8 @@ Allowed transitions are strictly server-validated:
 - **Staff focus overlay (SPA)**:
   - assigned inquiries appear in Staff Home "Your Focus"
   - action type `inquiry.follow_up.act.first_contact` routes to the inquiry follow-up focus action
+  - inquiry follow-up focus shows inquiry identity, linked contact state, email, phone number, and the original inquiry message
+  - focus users can create/link the canonical `Contact` anchor from the overlay via the same Inquiry linkage workflow
 - **CRM linkage**: `create_contact_from_inquiry` links/creates `Contact`.
 - **Optional admissions conversion**:
   - links to [**Student Applicant**](/docs/en/student-applicant/)
@@ -203,6 +205,7 @@ Workflow transitions are server-validated. Teams should follow the canonical sta
   - `list_focus_items` (includes Inquiry action items assigned to current user)
   - `get_focus_context` (returns Inquiry context payload for focus routing)
   - `mark_inquiry_contacted` (named focus action endpoint delegating to `Inquiry.mark_contacted`)
+  - `create_inquiry_contact` (named focus action endpoint delegating to `Inquiry.create_contact_from_inquiry` with assignee-bound focus guards)
 
 ### Permission Matrix
 

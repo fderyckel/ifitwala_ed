@@ -13,6 +13,7 @@ from frappe.utils.caching import redis_cache
 
 from ifitwala_ed.api.org_communication_interactions import get_seen_org_communication_names
 from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
+from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 FORBIDDEN_PAYLOAD_KEYS = {"rotation_day", "block_number"}
@@ -188,6 +189,7 @@ def _resolve_guardian_scope(user: str) -> Tuple[str, List[Dict[str, Any]]]:
         fields=["name", "student_full_name", "anchor_school", "student_image"],
         order_by="student_full_name asc, name asc",
     )
+    apply_preferred_student_images(students, student_field="name", image_field="student_image")
 
     children = [
         {

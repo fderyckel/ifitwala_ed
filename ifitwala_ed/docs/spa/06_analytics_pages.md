@@ -191,6 +191,46 @@ resource.submit({
 })
 ```
 
+### 3.3 SQL helper fragments in raw queries must be interpolated deliberately
+
+If a backend analytics query embeds an SQL helper fragment such as:
+
+```python
+policy_applies_to_filter_sql(...)
+```
+
+the outer SQL string MUST interpolate that helper before execution.
+
+Required patterns:
+
+* `f""" ... {policy_applies_to_filter_sql(...)} ... """`
+* one explicit pre-built fragment variable inserted into the final SQL string
+
+Forbidden pattern:
+
+```python
+frappe.db.sql(
+    """
+    ...
+    AND {policy_applies_to_filter_sql(policy_alias="ip", audience_placeholder="%(applies_to)s")}
+    ...
+    """,
+    params,
+)
+```
+
+Why this is locked:
+
+* the helper call remains literal text instead of SQL
+* MySQL then receives broken identifiers such as `policy_alias`
+* permitted users see a server error on a valid page
+* the bug often escapes review because the query looks visually correct
+
+Required follow-up:
+
+* add a regression test that executes the real endpoint path under an allowed role
+* do not rely on import-only or helper-only tests for dynamic SQL assembly
+
 **Invariant**
 
 > If filters exist → POST + `submit(payload)`
@@ -358,6 +398,28 @@ Rules:
 * If export returns later, the behavior must be re-documented here before code ships.
 
 ---
+
+### 5.5 Permission states must be evidence-based
+
+Analytics pages must only show an access-restricted state when the failure is actually a permission failure.
+
+Required behavior:
+
+* permission-like server responses may render the restricted state
+* generic 500s must stay generic errors
+* transport failures must stay transport failures
+
+Forbidden behavior:
+
+* mapping every failed bootstrap request to "You do not have permission"
+
+Why this is locked:
+
+* it hides real backend defects behind a false permission story
+* it sends authorized users to role debugging when the real issue is server-side
+* it increases time-to-fix because logs and UI disagree
+
+If the page cannot prove the failure is permission-related, it must show an honest error state instead.
 
 ## 6. Performance & Query Design
 

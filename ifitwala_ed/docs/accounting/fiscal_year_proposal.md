@@ -10,7 +10,7 @@ This document captured the original fiscal-year proposal. The implementation now
 ## 1. Problem Statement
 
 Status: Proposed
-Code refs: `ifitwala_ed/accounting/ledger_utils.py`, `ifitwala_ed/accounting/doctype/accounting_period/accounting_period.json`, `ifitwala_ed/accounting/doctype/accounts_settings/accounts_settings.json`, `ifitwala_ed/docs/accounting/accounting_notes.md`, `ifitwala_ed/docs/enrollment/academic_year_architecture.md`
+Code refs: `ifitwala_ed/accounting/ledger_utils.py`, `ifitwala_ed/accounting/doctype/accounting_period/accounting_period.json`, `ifitwala_ed/accounting/doctype/accounts_settings/accounts_settings.json`, `ifitwala_ed/docs/accounting/accounting_notes.md`, `ifitwala_ed/docs/enrollment/01_academic_year_architecture.md`
 Test refs: `ifitwala_ed/accounting/doctype/sales_invoice/test_sales_invoice.py`, `ifitwala_ed/accounting/doctype/payment_entry/test_payment_entry.py`, `ifitwala_ed/accounting/doctype/payment_reconciliation/test_payment_reconciliation.py`, `ifitwala_ed/accounting/doctype/journal_entry/test_journal_entry.py`
 
 Current repo state:
@@ -169,7 +169,7 @@ This proposal does not require `Accounting Period` to become the fiscal-year mas
 ## 4. Contract Matrix
 
 Status: Proposed
-Code refs: `ifitwala_ed/accounting/doctype/accounting_period/accounting_period.json`, `ifitwala_ed/accounting/ledger_utils.py`, `ifitwala_ed/accounting/report/general_ledger/general_ledger.py`, `ifitwala_ed/docs/accounting/accounting_notes.md`, `ifitwala_ed/docs/enrollment/academic_year_architecture.md`
+Code refs: `ifitwala_ed/accounting/doctype/accounting_period/accounting_period.json`, `ifitwala_ed/accounting/ledger_utils.py`, `ifitwala_ed/accounting/report/general_ledger/general_ledger.py`, `ifitwala_ed/docs/accounting/accounting_notes.md`, `ifitwala_ed/docs/enrollment/01_academic_year_architecture.md`
 Test refs: `ifitwala_ed/accounting/doctype/sales_invoice/test_sales_invoice.py`, `ifitwala_ed/accounting/doctype/payment_entry/test_payment_entry.py`, `ifitwala_ed/accounting/doctype/payment_reconciliation/test_payment_reconciliation.py`, `ifitwala_ed/accounting/doctype/journal_entry/test_journal_entry.py`
 
 | Surface | Current State | Proposed State | Status |
@@ -190,7 +190,7 @@ Unknown rows: None
 ## 5. Rationale Before Behavior Change
 
 Status: Proposed
-Code refs: `ifitwala_ed/docs/accounting/accounting_notes.md`, `ifitwala_ed/docs/enrollment/academic_year_architecture.md`
+Code refs: `ifitwala_ed/docs/accounting/accounting_notes.md`, `ifitwala_ed/docs/enrollment/01_academic_year_architecture.md`
 Test refs: None
 
 Pros

@@ -4,6 +4,7 @@
 
 import base64
 from contextlib import contextmanager
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import frappe
@@ -79,6 +80,31 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         ):
             with self._patched_drive_admissions_bridge():
                 payload = upload_applicant_document()
+
+        self.assertTrue(bool(payload.get("applicant_document")))
+        self.assertTrue(bool(payload.get("applicant_document_item")))
+        self.assertEqual(payload.get("item_key"), "passport")
+        self.assertEqual(payload.get("item_label"), "Passport")
+
+    def test_upload_reads_json_request_payload_when_bound_kwargs_are_blank_strings(self):
+        frappe.set_user(self.applicant_user)
+        request_payload = {
+            "student_applicant": self.applicant.name,
+            "document_type": self.document_type,
+            "item_key": "passport",
+            "item_label": "Passport",
+            "client_request_id": f"upload_{frappe.generate_hash(length=8)}",
+            "file_name": "passport.txt",
+            "content": self._tiny_file_base64(),
+        }
+        with self._patched_form_dict({}), self._patched_request_json(request_payload):
+            with self._patched_drive_admissions_bridge():
+                payload = upload_applicant_document(
+                    student_applicant="",
+                    document_type="",
+                    file_name="",
+                    content="",
+                )
 
         self.assertTrue(bool(payload.get("applicant_document")))
         self.assertTrue(bool(payload.get("applicant_document_item")))
@@ -262,6 +288,26 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
                     pass
             else:
                 frappe.form_dict = original_form_dict
+
+    @contextmanager
+    def _patched_request_json(self, payload: dict):
+        original_request = getattr(frappe, "request", None)
+        frappe.request = SimpleNamespace(
+            get_json=lambda silent=True: payload,
+            data=frappe.as_json(payload),
+            files=None,
+            mimetype="application/json",
+        )
+        try:
+            yield
+        finally:
+            if original_request is None:
+                try:
+                    del frappe.request
+                except AttributeError:
+                    pass
+            else:
+                frappe.request = original_request
 
     def _ensure_role(self, role_name: str):
         if frappe.db.exists("Role", role_name):

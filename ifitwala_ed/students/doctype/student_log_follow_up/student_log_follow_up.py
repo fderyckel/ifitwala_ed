@@ -116,8 +116,8 @@ class StudentLogFollowUp(Document):
                     {
                         "doctype": "Notification Log",
                         "subject": _("Follow-up ready to review"),
-                        "email_content": _("Follow-up for {0} has been submitted. Click to review.").format(
-                            log.student_name or log.name
+                        "email_content": _("Follow-up for {student} has been submitted. Click to review.").format(
+                            student=log.student_name or log.name
                         ),
                         "type": "Alert",
                         "for_user": author_user,
@@ -133,8 +133,8 @@ class StudentLogFollowUp(Document):
                         message={
                             "type": "Alert",
                             "subject": _("Follow-up ready to review"),
-                            "message": _("Follow-up for {0} has been submitted. Click to review.").format(
-                                log.student_name or log.name
+                            "message": _("Follow-up for {student} has been submitted. Click to review.").format(
+                                student=log.student_name or log.name
                             ),
                             "reference_doctype": "Student Log",
                             "reference_name": log.name,
@@ -158,8 +158,8 @@ class StudentLogFollowUp(Document):
                     {
                         "doctype": "Notification Log",
                         "subject": _("New follow-up on assigned log"),
-                        "email_content": _("A new follow-up was added for {0}. Click to review.").format(
-                            log.student_name or log.name
+                        "email_content": _("A new follow-up was added for {student}. Click to review.").format(
+                            student=log.student_name or log.name
                         ),
                         "type": "Alert",
                         "for_user": assignee_user,
@@ -175,8 +175,8 @@ class StudentLogFollowUp(Document):
                         message={
                             "type": "Alert",
                             "subject": _("New follow-up on assigned log"),
-                            "message": _("A new follow-up was added for {0}. Click to review.").format(
-                                log.student_name or log.name
+                            "message": _("A new follow-up was added for {student}. Click to review.").format(
+                                student=log.student_name or log.name
                             ),
                             "reference_doctype": "Student Log",
                             "reference_name": log.name,

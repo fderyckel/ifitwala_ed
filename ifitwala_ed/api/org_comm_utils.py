@@ -6,6 +6,7 @@
 import frappe
 from frappe import _
 
+from ifitwala_ed.utilities.employee_utils import get_ancestor_organizations
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
 
@@ -29,12 +30,15 @@ def check_audience_match(
                     - Academic Admin: allowed
                     - Others: must be member of that Team via Team Member child table
 
+    Strict filter behavior for organization-wide rows:
+    - Organization target mode is staff-only and matches active Employee.organization.
+    - The communication organization must be self/ancestor of Employee.organization.
+
     Strict school filter behaviour:
     - If filter_school = X, only School Scope rows are eligible.
     - Match only audiences where audience.school is in {X} ∪ Anc(X).
     - Never include descendants of X.
-    - Org Communication Audience does not define an explicit global/organization mode,
-      so School scope does not include global rows.
+    - School scope does not include organization rows.
     """
 
     def _as_bool(value) -> bool:
@@ -59,7 +63,7 @@ def check_audience_match(
             "Instructor",
             "Employee",
             "Academic Admin",
-            "Assistant Admin",
+            "Academic Assistant",
             "System Manager",
         }
         if set(roles or []) & staff_roles:
@@ -103,6 +107,16 @@ def check_audience_match(
             return user_school_name == aud_school or user_school_name in descendants_cache[aud_school]
         return user_school_name == aud_school
 
+    def _organization_scope_match(comm_org, user_org_name, ancestor_cache):
+        if not comm_org or not user_org_name:
+            return False
+        if user_org_name not in ancestor_cache:
+            try:
+                ancestor_cache[user_org_name] = set(get_ancestor_organizations(user_org_name) or [])
+            except Exception:
+                ancestor_cache[user_org_name] = set()
+        return comm_org in ancestor_cache[user_org_name]
+
     # Normalize "All"/empty
     if filter_team in ("All", "", None):
         filter_team = None
@@ -112,8 +126,6 @@ def check_audience_match(
         filter_school = None
 
     # Defensive: scope filters are mutually exclusive (student_group > team > school).
-    # NOTE: Org Communication Audience only defines School Scope / Team / Student Group.
-    # There is no explicit global/organization audience mode to include here.
     active_scope = None
     if filter_student_group:
         active_scope = "Student Group"
@@ -152,7 +164,9 @@ def check_audience_match(
     if not audiences:
         return False
 
+    comm_org = frappe.get_cached_value("Org Communication", comm_name, "organization") if comm_name else None
     user_school = employee.get("school") if employee else None
+    user_organization = employee.get("organization") if employee else None
     user_recipient_flags = _get_user_recipient_flags()
 
     filter_school_scope: set[str] | None = None
@@ -204,6 +218,7 @@ def check_audience_match(
         instructor_groups = _get_instructor_groups(user, employee)
 
     descendants_cache: dict[str, set[str]] = {}
+    organization_ancestor_cache: dict[str, set[str]] = {}
 
     for aud in audiences:
         target_mode = (aud.target_mode or "").strip()
@@ -251,6 +266,11 @@ def check_audience_match(
                 user_school,
                 descendants_cache,
             ):
+                return True
+            continue
+
+        if target_mode == "Organization":
+            if _organization_scope_match(comm_org, user_organization, organization_ancestor_cache):
                 return True
             continue
 

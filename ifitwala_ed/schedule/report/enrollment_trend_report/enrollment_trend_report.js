@@ -5,7 +5,7 @@ frappe.query_reports["Enrollment Trend Report"] = {
   filters: [
     {
       fieldname: "school",
-      label: "School",
+      label: __("School"),
       fieldtype: "Link",
       options: "School",
       reqd: 0

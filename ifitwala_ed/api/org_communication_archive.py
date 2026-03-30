@@ -310,7 +310,7 @@ def get_org_communication_item(name=None):
     return {
         "name": doc.name,
         "title": doc.title,
-        "message": doc.message,  # HTML content
+        "message_html": doc.message,  # HTML content
         "communication_type": doc.communication_type,
         "priority": doc.priority,
         "publish_from": doc.publish_from,

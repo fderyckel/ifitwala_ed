@@ -9,89 +9,99 @@
 		</header>
 
 		<FiltersBar class="analytics-filters">
-			<div class="flex flex-col gap-1">
-				<label class="type-label">Organization</label>
-				<select
-					v-model="filters.organization"
-					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
-					@change="handleOrganizationChange"
-				>
-					<option v-for="org in organizationOptions" :key="org.value" :value="org.value">
-						{{ org.label }}
-					</option>
-				</select>
-			</div>
-
-			<div class="flex flex-col gap-1">
-				<label class="type-label">School</label>
-				<select
-					v-model="filters.school"
-					class="h-9 min-w-[170px] rounded-md border px-2 text-sm"
-					@change="handleSchoolChange"
-				>
-					<option v-for="school in schoolOptions" :key="school.value" :value="school.value">
-						{{ school.label }}
-					</option>
-				</select>
-			</div>
-
-			<div class="flex flex-col gap-1">
-				<label class="type-label">Academic Year Range</label>
-				<div class="flex flex-wrap items-center gap-2">
-					<select
-						v-model="yearRange.start"
-						class="h-9 min-w-[160px] rounded-md border px-2 text-sm"
-					>
-						<option :value="null">From</option>
-						<option v-for="year in yearRangeOptions" :key="year.value" :value="year.value">
-							{{ formatAcademicYearLabel(year) }}
-						</option>
-					</select>
-					<span class="text-slate-300">to</span>
-					<select v-model="yearRange.end" class="h-9 min-w-[160px] rounded-md border px-2 text-sm">
-						<option :value="null">To</option>
-						<option v-for="year in yearRangeOptions" :key="year.value" :value="year.value">
-							{{ formatAcademicYearLabel(year) }}
-						</option>
-					</select>
+			<div class="enrollment-analytics__filters-grid" data-testid="enrollment-filter-grid">
+				<div class="enrollment-analytics__field enrollment-analytics__field--organization">
+					<label class="type-label">Organization</label>
+					<FormControl
+						v-model="filters.organization"
+						type="select"
+						:options="organizationOptions"
+						class="w-full"
+						data-testid="enrollment-organization-filter"
+						@update:modelValue="handleOrganizationChange"
+					/>
 				</div>
-				<span v-if="yearRangeMessage" class="text-[0.65rem] text-amber-600">{{
-					yearRangeMessage
-				}}</span>
-				<span v-else class="text-[0.65rem] text-slate-400">Pick 2-5 consecutive years.</span>
-			</div>
 
-			<div class="flex flex-col gap-1">
-				<label class="type-label">Compare Dimension</label>
-				<select
-					v-model="filters.compare_dimension"
-					class="h-9 min-w-[140px] rounded-md border px-2 text-sm"
+				<div class="enrollment-analytics__field enrollment-analytics__field--school">
+					<label class="type-label">School</label>
+					<FormControl
+						v-model="filters.school"
+						type="select"
+						:options="schoolOptions"
+						class="w-full"
+						data-testid="enrollment-school-filter"
+						@update:modelValue="handleSchoolChange"
+					/>
+				</div>
+
+				<div class="enrollment-analytics__field enrollment-analytics__field--year-range">
+					<label class="type-label">Academic Year Range</label>
+					<div class="enrollment-analytics__year-range">
+						<select
+							v-model="yearRange.start"
+							class="h-9 min-w-0 rounded-md border px-2 text-sm"
+							data-testid="enrollment-year-range-start"
+						>
+							<option :value="null">From</option>
+							<option v-for="year in yearRangeOptions" :key="year.value" :value="year.value">
+								{{ formatAcademicYearLabel(year) }}
+							</option>
+						</select>
+						<span class="enrollment-analytics__year-range-separator">to</span>
+						<select
+							v-model="yearRange.end"
+							class="h-9 min-w-0 rounded-md border px-2 text-sm"
+							data-testid="enrollment-year-range-end"
+						>
+							<option :value="null">To</option>
+							<option v-for="year in yearRangeOptions" :key="year.value" :value="year.value">
+								{{ formatAcademicYearLabel(year) }}
+							</option>
+						</select>
+					</div>
+					<span v-if="yearRangeMessage" class="text-[0.65rem] text-amber-600">{{
+						yearRangeMessage
+					}}</span>
+					<span v-else class="text-[0.65rem] text-slate-400">Pick 2-5 consecutive years.</span>
+				</div>
+
+				<div class="enrollment-analytics__field enrollment-analytics__field--compare">
+					<label class="type-label">Compare Dimension</label>
+					<FormControl
+						v-model="filters.compare_dimension"
+						type="select"
+						:options="compareDimensionOptions"
+						class="w-full"
+						data-testid="enrollment-compare-filter"
+					/>
+				</div>
+
+				<div
+					v-if="showChartMode"
+					class="enrollment-analytics__field enrollment-analytics__field--chart-mode"
 				>
-					<option value="school">School</option>
-					<option value="program">Program</option>
-				</select>
-			</div>
+					<label class="type-label">Chart Mode</label>
+					<FormControl
+						v-model="filters.chart_mode"
+						type="select"
+						:options="chartModeOptions"
+						class="w-full"
+						data-testid="enrollment-chart-mode-filter"
+					/>
+				</div>
 
-			<div class="flex flex-col gap-1">
-				<label class="type-label">Chart Mode</label>
-				<select
-					v-model="filters.chart_mode"
-					class="h-9 min-w-[130px] rounded-md border px-2 text-sm"
+				<div
+					v-if="showAsOfDate"
+					class="enrollment-analytics__field enrollment-analytics__field--as-of"
 				>
-					<option v-for="mode in chartModeOptions" :key="mode.value" :value="mode.value">
-						{{ mode.label }}
-					</option>
-				</select>
-			</div>
-
-			<div class="flex flex-col gap-1">
-				<label class="type-label">As-of Date</label>
-				<input
-					type="date"
-					v-model="filters.as_of_date"
-					class="h-9 min-w-[150px] rounded-md border px-2 text-sm"
-					:disabled="filters.chart_mode !== 'snapshot'"
-				/>
+					<label class="type-label">As-of Date</label>
+					<input
+						type="date"
+						v-model="filters.as_of_date"
+						class="h-9 w-full rounded-md border px-2 text-sm"
+						data-testid="enrollment-as-of-date"
+					/>
+				</div>
 			</div>
 		</FiltersBar>
 
@@ -151,7 +161,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
-import { createResource } from 'frappe-ui';
+import { FormControl, createResource } from 'frappe-ui';
 
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
@@ -210,7 +220,6 @@ type SlicePayload = {
 };
 
 const today = new Date().toISOString().slice(0, 10);
-const trendEnabled = false;
 
 const filters = reactive({
 	organization: null as string | null,
@@ -275,6 +284,7 @@ const dashboard = computed<DashboardResponse>(() => {
 });
 
 const options = computed(() => dashboard.value.meta?.options || {});
+const trendEnabled = computed(() => Boolean(dashboard.value.meta?.trend_enabled));
 
 const organizationOptions = computed(() => {
 	const orgs = options.value.organizations || [];
@@ -294,6 +304,11 @@ const schoolOptions = computed(() => {
 		label: (s.abbr ? `${s.abbr} — ` : '') + (s.school_name || s.name),
 	}));
 });
+
+const compareDimensionOptions = [
+	{ label: 'School', value: 'school' },
+	{ label: 'Program', value: 'program' },
+];
 
 const academicYearOptions = computed(() => {
 	const years = options.value.academic_years || [];
@@ -334,13 +349,15 @@ const showYearSchoolLabel = computed(() => {
 });
 
 const chartModeOptions = computed(() =>
-	trendEnabled
+	trendEnabled.value
 		? [
 				{ value: 'snapshot', label: 'Snapshot' },
 				{ value: 'trend', label: 'Trend' },
 			]
 		: [{ value: 'snapshot', label: 'Snapshot' }]
 );
+const showChartMode = computed(() => chartModeOptions.value.length > 1);
+const showAsOfDate = computed(() => filters.chart_mode === 'snapshot');
 
 const scopeLabel = computed(() => {
 	const orgLabel =
@@ -643,7 +660,7 @@ async function applyDefaults(meta?: DashboardResponse['meta']) {
 		filters.chart_mode = defaults.chart_mode;
 	}
 
-	if (!trendEnabled && filters.chart_mode === 'trend') {
+	if (!trendEnabled.value && filters.chart_mode === 'trend') {
 		filters.chart_mode = 'snapshot';
 	}
 
@@ -742,7 +759,7 @@ watch(
 watch(
 	() => filters.chart_mode,
 	mode => {
-		if (!trendEnabled && mode === 'trend') {
+		if (!trendEnabled.value && mode === 'trend') {
 			filters.chart_mode = 'snapshot';
 		}
 	}
@@ -752,3 +769,86 @@ onMounted(() => {
 	loadDashboard();
 });
 </script>
+
+<style scoped>
+.enrollment-analytics__filters-grid {
+	display: grid;
+	width: 100%;
+	gap: 0.75rem;
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.enrollment-analytics__field {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.enrollment-analytics__year-range {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 0.5rem;
+	align-items: center;
+}
+
+.enrollment-analytics__year-range-separator {
+	display: none;
+	font-size: 0.75rem;
+	color: rgb(var(--slate-rgb) / 0.55);
+}
+
+@media (min-width: 640px) {
+	.enrollment-analytics__year-range {
+		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+	}
+
+	.enrollment-analytics__year-range-separator {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+}
+
+@media (min-width: 768px) {
+	.enrollment-analytics__filters-grid {
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+	}
+
+	.enrollment-analytics__field--organization,
+	.enrollment-analytics__field--school,
+	.enrollment-analytics__field--compare,
+	.enrollment-analytics__field--chart-mode,
+	.enrollment-analytics__field--as-of {
+		grid-column: span 3;
+	}
+
+	.enrollment-analytics__field--year-range {
+		grid-column: span 6;
+	}
+}
+
+@media (min-width: 1280px) {
+	.enrollment-analytics__filters-grid {
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+	}
+
+	.enrollment-analytics__field--organization,
+	.enrollment-analytics__field--school {
+		grid-column: span 3;
+	}
+
+	.enrollment-analytics__field--year-range {
+		grid-column: span 4;
+	}
+
+	.enrollment-analytics__field--compare {
+		grid-column: span 2;
+	}
+
+	.enrollment-analytics__field--chart-mode,
+	.enrollment-analytics__field--as-of {
+		grid-column: span 2;
+	}
+}
+</style>

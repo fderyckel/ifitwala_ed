@@ -43,7 +43,7 @@ def _validate_payload(payload: dict) -> dict:
     }
     extra = set(payload.keys()) - allowed_keys
     if extra:
-        frappe.throw(_("Unsupported payload fields: {0}").format(", ".join(sorted(extra))))
+        frappe.throw(_("Unsupported payload fields: {fields}").format(fields=", ".join(sorted(extra))))
 
     title = (payload.get("title") or "").strip()
     if not title:
@@ -61,20 +61,20 @@ def _validate_payload(payload: dict) -> dict:
     if task_type:
         task_type_options = set(_parse_options("Task", "task_type"))
         if task_type not in task_type_options:
-            frappe.throw(_("Invalid task type: {0}").format(task_type))
+            frappe.throw(_("Invalid task type: {task_type}").format(task_type=task_type))
     if task_type == "Quiz" and not payload.get("quiz_question_bank"):
         frappe.throw(_("Quiz Question Bank is required for quiz tasks."))
 
     delivery_options = set(_parse_options("Task Delivery", "delivery_mode"))
     if delivery_mode not in delivery_options:
-        frappe.throw(_("Invalid delivery mode: {0}").format(delivery_mode))
+        frappe.throw(_("Invalid delivery mode: {delivery_mode}").format(delivery_mode=delivery_mode))
 
     grading_mode = payload.get("grading_mode")
     if grading_mode in ("", None):
         grading_mode = None
 
     if grading_mode is not None and grading_mode not in V1_GRADING_MODES:
-        frappe.throw(_("Invalid grading mode for v1: {0}").format(grading_mode))
+        frappe.throw(_("Invalid grading mode for v1: {grading_mode}").format(grading_mode=grading_mode))
 
     if grading_mode == "Points":
         max_points = payload.get("max_points")
@@ -143,7 +143,7 @@ def create_task_and_delivery(
 
     # ✅ enforce “no unknown keys” even though we accept **unexpected to catch them
     if unexpected:
-        frappe.throw(_("Unsupported payload fields: {0}").format(", ".join(sorted(unexpected.keys()))))
+        frappe.throw(_("Unsupported payload fields: {fields}").format(fields=", ".join(sorted(unexpected.keys()))))
 
     payload = {
         "title": title,

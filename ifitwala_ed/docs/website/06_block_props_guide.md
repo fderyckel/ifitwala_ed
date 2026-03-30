@@ -5,7 +5,7 @@
 **Scope:** Builder‑lite v1 + Phase‑02 blocks
 **Goal:** Exact props, types, rules, and examples for every block
 **Canonical implementation source:** `ifitwala_ed/website/block_registry.py`
-**Status (March 11, 2026):** Synced with implemented Builder-lite blocks including organization-media-backed image pickers for school-context forms
+**Status (March 24, 2026):** Synced with implemented Builder-lite blocks including organization-media-backed image pickers for school-context forms and course catalog/detail blocks
 
 ---
 
@@ -43,7 +43,7 @@ Disallowed:
 
 ### 0.5 Desk image picker behavior
 
-On school-bound Desk forms (`School Website Page`, `Program Website Profile`, `Website Story`):
+On school-bound Desk forms (`School Website Page`, `Program Website Profile`, `Course Website Profile`, `Website Story`):
 
 * image props in the builder use the governed `Organization Media` picker
 * the picker can reuse visible organization/school media or upload a new governed image
@@ -55,9 +55,10 @@ Block availability is enforced by parent DocType context (Desk picker + save-tim
 
 | context | allowed block types |
 | --- | --- |
-| `School Website Page` + `page_type = Standard` | `hero`, `rich_text`, `section_carousel`, `program_list`, `leadership`, `cta`, `faq`, `content_snippet` |
+| `School Website Page` + `page_type = Standard` | `hero`, `rich_text`, `section_carousel`, `program_list`, `course_catalog`, `leadership`, `cta`, `faq`, `content_snippet` |
 | `School Website Page` + `page_type = Admissions` | all Standard blocks + `admissions_overview`, `admissions_steps`, `admission_cta` |
 | `Program Website Profile` | all Standard blocks + `program_intro` |
+| `Course Website Profile` | all Standard blocks + `course_intro`, `learning_highlights` |
 | `Website Story` | Standard blocks only |
 
 If a block type is outside the allowed set for the current context, save is blocked with a validation error.
@@ -160,8 +161,8 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 ```json
 {
   "heading": "Admissions",
-  "content_html": "<p>We welcome families who value curiosity, care, and growth.</p>",
-  "max_width": "normal"
+  "content_html": "<p>Choosing a school is a major family decision. Our admissions experience is designed to feel personal, clear, and well paced from the very first step.</p><p>Families typically begin with an inquiry, continue with a conversation or campus visit when available, and then move into the application process with the support of the admissions team.</p>",
+  "max_width": "wide"
 }
 ```
 
@@ -188,9 +189,9 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 ```json
 {
   "steps": [
-    { "key": "inquire", "title": "Inquire", "description": "Start the conversation.", "icon": "mail" },
-    { "key": "visit", "title": "Visit", "description": "Experience our campus.", "icon": "map" },
-    { "key": "apply", "title": "Apply", "description": "Begin the application.", "icon": "file-text" }
+    { "key": "inquire", "title": "Inquire", "description": "Share a few details so the admissions team can understand your child and answer your questions.", "icon": "mail" },
+    { "key": "visit", "title": "Visit", "description": "If visits or conversations are available, we will help your family experience the campus, culture, and learning environment.", "icon": "map" },
+    { "key": "apply", "title": "Apply", "description": "Complete the application when you are ready, including any forms, records, and supporting materials.", "icon": "file-text" }
   ],
   "layout": "horizontal"
 }
@@ -203,6 +204,10 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 ### Purpose
 
 * Semantic admissions entry point (intent, not URL)
+* `visit` remains valid, but starter admissions pages only seed that CTA when `School.admissions_visit_route` is configured
+* Runtime fallback protects fresh public pages:
+  * `visit` falls back to inquiry/apply routes when no visit route is configured
+  * `apply` falls back to the admissions portal route when needed
 
 ### Props (schema)
 
@@ -218,7 +223,7 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 ```json
 {
   "intent": "inquire",
-  "label_override": null,
+  "label_override": "Get More Info",
   "style": "primary",
   "icon": "mail"
 }
@@ -287,8 +292,9 @@ Legacy shapes like `primary_cta` are rejected and will throw a render error.
 
 ### Purpose
 
-* Entry point into Program pages
-* Displays only published Program Website Profiles
+* Entry point into school-offered, published Programs
+* Published `Program Website Profile` rows render full linked detail cards
+* Draft or missing `Program Website Profile` rows render teaser cards only (image/title, no detail link)
 
 ### Props (schema)
 
@@ -412,23 +418,37 @@ Snippet resolution order is deterministic:
 
 ### Purpose
 
-* Displays staff with `show_on_website = 1`
-* Optional role filter
+* Displays school staff with `show_on_website = 1`
+* Renders two premium carousels by default:
+  * `Academic Leadership`
+  * `Faculty & Staff`
+* The leadership carousel resolves from `Designation.default_role_profile = "Academic Admin"` unless a manual `roles` designation filter is provided.
 
 ### Props (schema)
 
 | prop | type | required | default | notes |
 | --- | --- | --- | --- | --- |
 | `title` | string | no | — | Section title |
-| `roles` | array | no | — | Role filter (designation) |
-| `limit` | integer | no | — | Max staff to show |
+| `description` | string | no | — | Supporting intro copy |
+| `leadership_title` | string | no | `Academic Leadership` | Primary carousel title |
+| `staff_title` | string | no | `Faculty & Staff` | Secondary carousel title |
+| `role_profiles` | array | no | `["Academic Admin"]` | Role profiles used to resolve the primary carousel from `Designation.default_role_profile` |
+| `roles` | array | no | — | Manual designation override for the primary carousel |
+| `limit` | integer | no | `4` | Max people to show in the primary carousel |
+| `staff_limit` | integer | no | `8` | Max people to show in the staff carousel |
+| `show_staff_carousel` | boolean | no | `true` | Hide/show the secondary staff carousel |
 
 ### Example
 ```json
 {
   "title": "Leadership & Administration",
-  "roles": ["Head", "Principal"],
-  "limit": 9
+  "description": "Meet the academic leaders, faculty, and staff who shape the character of our school.",
+  "leadership_title": "Academic Leadership",
+  "staff_title": "Faculty & Staff",
+  "role_profiles": ["Academic Admin"],
+  "limit": 6,
+  "staff_limit": 12,
+  "show_staff_carousel": true
 }
 ```
 
@@ -456,5 +476,90 @@ Snippet resolution order is deterministic:
   "text": "Start your admissions journey today.",
   "button_label": "Apply Now",
   "button_link": "https://apply.school.edu"
+}
+```
+
+---
+
+## 13) Course Intro
+
+### Purpose
+
+* Course detail hero + intro
+* Owns the page `<h1>` on course pages
+* Renders overview, aims, and assessment summary from the `Course Website Profile` fields
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `heading` | string | yes | — | Rendered as `<h1>` |
+| `content_html` | string | no | — | Optional override for `intro_text` |
+| `hero_image` | string \| null | no | — | Optional override for profile hero image |
+| `overview_heading` | string | no | `"Overview"` | Section label |
+| `aims_heading` | string | no | `"What Students Will Develop"` | Section label |
+| `assessment_heading` | string | no | `"Assessment Approach"` | Section label |
+| `cta_intent` | string \| null | no | — | `inquire`, `visit`, `apply`, or `null` |
+
+### Example
+```json
+{
+  "heading": "Biology HL",
+  "cta_intent": "inquire"
+}
+```
+
+---
+
+## 14) Learning Highlights
+
+### Purpose
+
+* Render curated, website-owned learning highlights for a course
+* Preserve the public/private boundary by avoiding raw `Learning Unit` tree output
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `heading` | string | no | `"Learning Highlights"` | Section title |
+| `limit` | integer \| null | no | all rows | Optional cap |
+
+### Example
+```json
+{
+  "heading": "Learning Highlights",
+  "limit": 6
+}
+```
+
+---
+
+## 15) Course Catalog
+
+### Purpose
+
+* Display published public course pages as discoverable school-scoped cards
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `show_intro` | boolean | no | `true` | Show course intro text |
+| `show_course_group` | boolean | no | `true` | Show course group label |
+| `show_related_programs` | boolean | no | `true` | Show related published program labels |
+| `card_style` | string | no | `"standard"` | `standard` or `compact` |
+| `limit` | integer \| null | no | `24` | Max courses to show |
+| `empty_state_title` | string | no | `"Course catalog coming soon."` | Empty-state heading |
+| `empty_state_text` | string | no | implementation default | Empty-state text |
+
+### Example
+```json
+{
+  "show_intro": true,
+  "show_course_group": true,
+  "show_related_programs": true,
+  "card_style": "standard",
+  "limit": 24
 }
 ```

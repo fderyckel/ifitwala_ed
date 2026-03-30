@@ -3,12 +3,131 @@
 
 # ifitwala_ed.hr.doctype.staff_calendar.staff_calendar
 
+import importlib
 from datetime import date
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import date_diff, formatdate, getdate
+
+
+def _missing_holidays_dependency_message() -> str:
+    return _(
+        "Local holiday lookup is unavailable because the server dependency 'holidays' is not installed. "
+        "Install the app Python dependencies, restart the bench, and reload this form."
+    )
+
+
+def _load_holidays_api(*, raise_on_missing: bool):
+    try:
+        holidays_module = importlib.import_module("holidays")
+        holidays_utils = importlib.import_module("holidays.utils")
+    except ModuleNotFoundError as exc:
+        if exc.name not in {"holidays", "holidays.utils"}:
+            raise
+        if raise_on_missing:
+            frappe.throw(_missing_holidays_dependency_message())
+        return None, None
+
+    return holidays_module.country_holidays, holidays_utils.list_supported_countries
+
+
+def _normalize_calendar_filters(filters) -> dict:
+    parsed = frappe.parse_json(filters) if isinstance(filters, str) else (filters or {})
+    if isinstance(parsed, dict):
+        return {key: value for key, value in parsed.items() if value not in (None, "", [])}
+
+    normalized = {}
+    for entry in parsed or []:
+        fieldname = None
+        value = None
+
+        if isinstance(entry, dict):
+            fieldname = entry.get("fieldname") or entry.get("name")
+            value = entry.get("value")
+        elif isinstance(entry, (list, tuple)):
+            if len(entry) >= 4:
+                fieldname = entry[1]
+                value = entry[3]
+            elif len(entry) >= 3:
+                fieldname = entry[0]
+                value = entry[2]
+            elif len(entry) >= 2:
+                fieldname = entry[0]
+                value = entry[1]
+
+        if fieldname and value not in (None, "", []):
+            normalized[fieldname] = value
+
+    return normalized
+
+
+@frappe.whitelist()
+def get_events(start, end, filters=None):
+    filters = _normalize_calendar_filters(filters)
+
+    staff_calendar = filters.get("staff_calendar")
+    school = filters.get("school")
+    employee_group = filters.get("employee_group")
+    academic_year = filters.get("academic_year")
+
+    if staff_calendar:
+        calendar_names = [staff_calendar]
+    else:
+        calendar_filters = {}
+        if school:
+            calendar_filters["school"] = school
+        if employee_group:
+            calendar_filters["employee_group"] = employee_group
+        if academic_year:
+            calendar_filters["academic_year"] = academic_year
+        if start:
+            calendar_filters["to_date"] = [">=", getdate(start)]
+        if end:
+            calendar_filters["from_date"] = ["<=", getdate(end)]
+
+        calendar_names = frappe.get_all("Staff Calendar", filters=calendar_filters, pluck="name")
+
+    if not calendar_names:
+        return []
+
+    event_filters = [
+        ["Staff Calendar Holidays", "parent", "in", calendar_names],
+    ]
+    if start:
+        event_filters.append(["Staff Calendar Holidays", "holiday_date", ">=", getdate(start)])
+    if end:
+        event_filters.append(["Staff Calendar Holidays", "holiday_date", "<=", getdate(end)])
+
+    events = frappe.get_list(
+        "Staff Calendar Holidays",
+        fields=[
+            "name",
+            "parent as staff_calendar",
+            "holiday_date",
+            "description",
+            "color",
+        ],
+        filters=event_filters,
+        order_by="holiday_date asc",
+    )
+
+    show_calendar_name = len(calendar_names) > 1 and not staff_calendar
+    for event in events:
+        title = event.get("description") or _("Holiday")
+        if show_calendar_name:
+            title = _("{staff_calendar}: {title}").format(
+                staff_calendar=event.get("staff_calendar"),
+                title=title,
+            )
+        event["description"] = title
+        event["title"] = title
+        event["start"] = event.get("holiday_date")
+        event["end"] = event.get("holiday_date")
+        event["allDay"] = 1
+
+    return events
 
 
 class StaffCalendar(Document):
@@ -81,9 +200,9 @@ class StaffCalendar(Document):
             conflict_names = ", ".join(c["name"] for c in conflicts)
             frappe.throw(
                 _(
-                    "Staff Calendar overlaps with existing calendar(s): {0}. "
+                    "Staff Calendar overlaps with existing calendar(s): {calendar_names}. "
                     "Please adjust the dates or reuse the existing calendar."
-                ).format(conflict_names)
+                ).format(calendar_names=conflict_names)
             )
 
     def validate_duplicate_date(self):
@@ -91,7 +210,9 @@ class StaffCalendar(Document):
         for day in self.holidays:
             if day.holiday_date in unique_dates:
                 frappe.throw(
-                    _("Date {0} is duplicated. Please remove the duplicate date.").format(formatdate(day.holiday_date))
+                    _("Date {holiday_date} is duplicated. Please remove the duplicate date.").format(
+                        holiday_date=formatdate(day.holiday_date)
+                    )
                 )
             unique_dates.append(day.holiday_date)
 
@@ -174,11 +295,10 @@ class StaffCalendar(Document):
     def get_country_holidays(self):
         self._ensure_saved()
 
-        from holidays import country_holidays
-
         if not self.country:
             frappe.throw(_("Please select the country first."))
 
+        country_holidays, _list_supported_countries = _load_holidays_api(raise_on_missing=True)
         existing = self.get_holidays()
         from_date = getdate(self.from_date)
         to_date = getdate(self.to_date)
@@ -213,11 +333,19 @@ class StaffCalendar(Document):
 
     @frappe.whitelist()
     def get_supported_countries(self):
-        from holidays.utils import list_supported_countries
+        _, list_supported_countries = _load_holidays_api(raise_on_missing=False)
+        if not list_supported_countries:
+            return {
+                "available": False,
+                "countries": [],
+                "subdivisions_by_country": {},
+                "message": _missing_holidays_dependency_message(),
+            }
 
         subdivisions_by_country = list_supported_countries()
         countries = [{"value": code, "label": code} for code in sorted(subdivisions_by_country.keys())]
         return {
+            "available": True,
             "countries": countries,
             "subdivisions_by_country": subdivisions_by_country,
         }

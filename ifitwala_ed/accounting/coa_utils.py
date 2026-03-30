@@ -140,7 +140,7 @@ def create_coa_for_organization(organization, template_name=None):
 
     chart = get_chart(template_name)
     if not chart:
-        frappe.throw(_("Chart of Accounts template not found: {0}").format(template_name))
+        frappe.throw(_("Chart of Accounts template not found: {template_name}").format(template_name=template_name))
 
     create_charts(organization, custom_chart=chart, chart_template=template_name)
 
@@ -171,7 +171,11 @@ def ensure_accounts_settings(organization):
 
     missing = [key for key, value in defaults.items() if not value and key != "default_advance_account"]
     if missing:
-        frappe.throw(_("Missing default accounts for Accounts Settings: {0}").format(", ".join(missing)))
+        frappe.throw(
+            _("Missing default accounts for Accounts Settings: {missing_accounts}").format(
+                missing_accounts=", ".join(missing)
+            )
+        )
 
     settings = frappe.new_doc("Accounts Settings")
     settings.organization = organization

@@ -37,6 +37,13 @@ from typing import Dict, List, Tuple
 import frappe
 from frappe import _
 
+NON_INSTRUCTIONAL_BLOCK_TYPES = frozenset({"Recess", "Assembly", "Other"})
+BREAK_DESCRIPTION_KEYWORDS = ("break", "lunch", "recess", "assembly")
+EXPECTED_BLOCK_TYPES_BY_GROUP = {
+    "Course": "Course",
+    "Activity": "Activity",
+}
+
 
 def _extract(obj, attr):
     """Return obj[attr] or obj.attr, whichever exists (None if missing)."""
@@ -123,6 +130,43 @@ def _aggregate_conflicts(rows, label_map):
             }
         )
     return out
+
+
+def get_schedule_block_warning(group_based_on: str | None, block_type: str | None, description: str | None):
+    """Return advisory metadata when a Student Group is scheduled in a non-teaching block."""
+    normalized_group = (group_based_on or "").strip()
+    if normalized_group != "Course":
+        return None
+
+    normalized_block_type = (block_type or "").strip().title()
+    normalized_description = (description or "").strip()
+    description_lower = normalized_description.lower()
+
+    block_label = normalized_description or normalized_block_type or _("non-instructional time")
+
+    if normalized_block_type in NON_INSTRUCTIONAL_BLOCK_TYPES or any(
+        keyword in description_lower for keyword in BREAK_DESCRIPTION_KEYWORDS
+    ):
+        return {
+            "label": block_label,
+            "message": _("This block is marked as {block_label}; please confirm the timing is intentional.").format(
+                block_label=block_label
+            ),
+        }
+
+    expected_block_type = EXPECTED_BLOCK_TYPES_BY_GROUP.get(normalized_group)
+    if expected_block_type and normalized_block_type and normalized_block_type != expected_block_type:
+        return {
+            "label": normalized_block_type,
+            "message": _(
+                "This {group_based_on} Student Group is being scheduled in a {block_type} block; please confirm the timing is intentional."
+            ).format(
+                group_based_on=normalized_group,
+                block_type=normalized_block_type,
+            ),
+        }
+
+    return None
 
 
 @frappe.whitelist()
@@ -367,15 +411,25 @@ def fetch_block_grid(schedule_name: str | None = None, sg: str | None = None) ->
         sg = sg or frappe.form_dict.get("sg")
 
     doc = frappe.get_cached_doc("School Schedule", schedule_name)
+    sg_doc = frappe.get_doc("Student Group", sg) if sg else None
 
     grid: dict[int, list[dict]] = {}
     for blk in doc.school_schedule_block:  # variable blocks per day
+        warning = get_schedule_block_warning(
+            getattr(sg_doc, "group_based_on", None),
+            getattr(blk, "block_type", None),
+            getattr(blk, "description", None),
+        )
         grid.setdefault(blk.rotation_day, []).append(
             {
                 "block": blk.block_number,
                 "label": f"B{blk.block_number}",
                 "from": blk.from_time,
                 "to": blk.to_time,
+                "block_type": blk.block_type,
+                "description": blk.description,
+                "warning_label": warning["label"] if warning else None,
+                "warning_message": warning["message"] if warning else None,
             }
         )
 
@@ -385,8 +439,7 @@ def fetch_block_grid(schedule_name: str | None = None, sg: str | None = None) ->
 
     # instructor list is purely SG-based; optional if sg is missing
     instructors = []
-    if sg:
-        sg_doc = frappe.get_doc("Student Group", sg)
+    if sg_doc:
         instructors = [
             {"value": i.instructor, "label": i.instructor_name or i.instructor}
             for i in (sg_doc.instructors or [])

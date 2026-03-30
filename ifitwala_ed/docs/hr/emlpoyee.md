@@ -43,6 +43,8 @@ Important:
 - This fallback is lineage-based and deterministic.
 - No sibling-school leakage is allowed.
 - SPA clients must not guess school/AY fallback; they consume API payload only.
+- If the logged-in user is the built-in `Administrator` account and no resolved active `Employee` record exists, employee-scoped calendar sources return empty instead of raising, while user-linked participant sources may still load.
+- Other staff portal users without an active `Employee` record still raise the explicit permission error.
 
 ## 2) Employee History (child table) behavior
 
@@ -71,9 +73,11 @@ Current create flow:
 - HR/System Manager authorization checks
 - professional email required and uniqueness checks
 - create `User`, link back to `Employee.user_id`, save employee
+- immediately repair the contact graph so the user-linked `Contact` also carries an `Employee` dynamic link and `Employee.empl_primary_contact` points at that contact
+- employee contact resolution prefers `Contact.user = Employee.user_id`; if no contact exists yet, the save flow creates a minimal contact from employee identity data and then adds the `Employee` dynamic link
 
 Role handling now follows managed sync:
-- on employee save, `sync_user_access_from_employee` computes effective roles/workspace from employee history + designation defaults.
+- on employee save, `sync_user_access_from_employee` computes effective roles/workspace from employee history + designation defaults, and always includes the baseline `Employee` role for active staff users.
 - when the access-sync trigger path adds new managed roles to the linked user, the Employee save flow shows an HR-facing dialog listing the roles that were added.
 - on employee save, linked user defaults are always aligned with Employee context:
   - `organization` default from `Employee.organization`
@@ -81,10 +85,16 @@ Role handling now follows managed sync:
 - on employee save, linked `User.enabled` is enforced from `Employee.employment_status`:
   - `Active` -> `enabled = 1`
   - any other status (`Temporary Leave`, `Suspended`, `Left`, or blank) -> `enabled = 0`
-- role rows are preserved; status gating is enforced via user enable/disable state (no role stripping for non-active employees).
+- on employee save, `_ensure_primary_contact()` self-heals the contact graph: if the user-linked contact exists but is missing a `Contact.links` row to the current `Employee`, the link is inserted; if the employee already has `empl_primary_contact`, that contact is reused as a repair target.
+- contact visibility for employee-linked contacts is server-scoped through `Contact.links -> Employee`:
+  - `HR Manager` / `HR User`: read employee contacts in their organization scope
+  - `Academic Admin` / `Academic Assistant`: read employee contacts in their default school + descendant-school scope
+  - `Employee`: read only the contact linked to their own employee record
+- when `Employee.employment_status` is not `Active`, the linked `User` is disabled and all assigned role rows are removed.
 - routing policy resolves active employee status using `Employee.user_id` first, then an unambiguous active match on `employee_professional_email` to avoid false-negative staff routing when legacy user links are missing.
 - at login, if a staff user has no active `Employee.user_id` link but exactly one active `Employee` row matches `employee_professional_email`, the system self-heals `user_id` and re-runs access sync.
-- `Employee._apply_designation_role()` reruns managed access sync whenever effective access changes, including first-time user linkage (`user_id` newly set), secondary `Employee History` rows, and active/inactive access state changes.
+- if login cannot resolve any valid portal section after applying employee/admissions/student/guardian rules, the user is sent back to `/login` instead of being dropped onto `/hub/staff`.
+- `Employee._apply_designation_role()` reruns managed access sync on every Employee update for linked users so imported or drifted accounts are repaired even when the Employee document itself did not change effective access fields.
 - role-management authorization includes `HR User`, `HR Manager`, `System Manager`, and `Administrator`.
 
 ## 4) Employee picture behavior (form + backend)
@@ -93,12 +103,30 @@ Frontend form logic:
 - file: `ifitwala_ed/hr/doctype/employee/employee.js`
 - image field is read-only and uses governed upload action.
 - upload uses method `ifitwala_ed.utilities.governed_uploads.upload_employee_image`.
-- after upload, form reloads and applies preferred image variants.
+- after upload, form reloads and applies preferred image variants from classified slots.
 
 Backend linkage:
 - file: `ifitwala_ed/hr/doctype/employee/employee.py`
-- `update_user()` syncs profile fields to `User`, including `user_image` when applicable.
-- missing file-on-disk situations are logged with structured error logging.
+- `ifitwala_ed.utilities.image_utils` owns canonical Employee image variant resolution and Drive-aware derivative generation.
+- governed Employee uploads create classified WebP derivatives with slots:
+  - `profile_image_thumb`
+  - `profile_image_card`
+  - `profile_image_medium`
+- `Employee.employee_image` remains the latest canonical Employee image reference.
+- consumers that need a smaller image must resolve the classified variants instead of guessing file paths.
+- `update_user()` syncs linked `User.user_image` from the preferred Employee variant (`thumb` first, then `card`, `medium`, original).
+
+Current read consumers using canonical variant resolution:
+- Employee form avatar (`employee.js`)
+- Employee list refresh (`employee_list.js`)
+- organization chart API (`ifitwala_ed/api/organization_chart.py`)
+- morning brief staff birthdays (`ifitwala_ed/api/morning_brief.py`)
+- website leadership provider (`ifitwala_ed/website/providers/leadership.py`)
+
+Org chart visibility contract:
+- the staff org chart defaults to `All Organizations`, not the viewer's base organization
+- employee image access for the org chart is available to any authenticated active employee; base-organization scope does not gate employee thumbnails on that surface
+- changes to employee image display permissions must update both the employee image route tests and the org chart consumer contract tests in the same change
 
 This keeps Employee image governance and User avatar synchronization aligned.
 
@@ -126,7 +154,7 @@ Impact: pre-join users get baseline role access; workspace is deferred until cur
 
 [2026-02-18] Decision:
 We decided that employee account access is strictly controlled by `Employee.employment_status`, and only `Active` keeps the linked `User` enabled.
-Reason: non-active employees must not access either Desk or Portal while retaining historical role assignments.
+Reason: non-active employees must not access either Desk or Portal.
 Impact: the employee sync hook now toggles `User.enabled` automatically and blocks login/access for non-active employee statuses.
 
 [2026-02-18] Decision:
@@ -196,3 +224,8 @@ Impact: designation change and first-time user-link flows now surface the exact 
 We decided Employee save must rerun managed user-access sync when effective access changes from `Employee History`, not only when the primary designation changes.
 Reason: staff can hold multiple simultaneous designations, and secondary history rows can add server-owned roles and permissions.
 Impact: adding or editing a current secondary designation row now updates the linked user's managed roles during the same Employee save flow.
+
+[2026-03-24] Decision:
+We decided active linked staff users must always carry the baseline `Employee` role in addition to current designation/history-managed roles, and non-active linked users must lose all roles.
+Reason: imported or drifted staff accounts were missing the base `Employee` role, while non-active employees must not retain confidential-system access through stale roles.
+Impact: every Employee save now reconciles the linked user role set; active users regain `Employee` plus current designation/history roles, and HR sees a save-time notice when non-active status strips the linked user's roles.

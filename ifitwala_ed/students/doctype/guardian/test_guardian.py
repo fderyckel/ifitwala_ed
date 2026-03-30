@@ -1,11 +1,37 @@
 # ifitwala_ed/students/doctype/guardian/test_guardian.py
 
+from types import SimpleNamespace
+from unittest import TestCase
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
+
+from ifitwala_ed.students.doctype.guardian.guardian import Guardian
 
 
 class TestGuardian(FrappeTestCase):
     pass
+
+
+class TestGuardianFileScope(TestCase):
+    def test_resolve_profile_image_organization_uses_explicit_org_when_consistent(self):
+        guardian = SimpleNamespace(
+            name="GRD-0001",
+            organization="ORG-0001",
+            get_linked_student_organizations=lambda: ["ORG-0001"],
+        )
+
+        self.assertEqual(Guardian.resolve_profile_image_organization(guardian), "ORG-0001")
+
+    def test_resolve_profile_image_organization_rejects_cross_org_links(self):
+        guardian = SimpleNamespace(
+            name="GRD-0001",
+            organization="ORG-0001",
+            get_linked_student_organizations=lambda: ["ORG-0001", "ORG-0002"],
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            Guardian.resolve_profile_image_organization(guardian)
 
 
 class TestGuardianUserCreation(FrappeTestCase):

@@ -3,8 +3,8 @@ title: "Applicant Health Profile: Health Disclosure and Clearance"
 slug: applicant-health-profile
 category: Admission
 doc_order: 7
-version: "2.4.1"
-last_change_date: "2026-03-19"
+version: "2.4.2"
+last_change_date: "2026-03-23"
 summary: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
 seo_title: "Applicant Health Profile: Health Disclosure and Clearance"
 seo_description: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
@@ -34,6 +34,7 @@ seo_description: "Capture health details, control family/staff editing by applic
 - Admissions portal APIs:
   - `get_applicant_health`
   - `update_applicant_health`
+  - vaccination-proof upload runtime path: `ifitwala_ed.admission.admissions_portal.upload_applicant_health_vaccination_proof` -> `ifitwala_drive.api.admissions.upload_applicant_health_vaccination_proof`
   - declaration-complete transition (`applicant_health_declared_complete: 0 -> 1`) materializes reviewer assignments
 - Staff review UI: reviewer metadata stamped when moving to review outcomes.
 - Assigned reviewers can inspect the full applicant folder read-only from Admissions Workspace or Desk while the review assignment remains open.
@@ -80,7 +81,7 @@ Families can provide health details in portal phases where edits are allowed, th
     On applicant promotion, health fields and vaccination rows are copied into `Student Patient` / `Student Patient Vaccination`.
   </Step>
   <Step title="Governed Proof Files">
-    Vaccination proof images are uploaded through governed dispatcher storage and linked via canonical file URLs.
+    Vaccination proof images are uploaded from the applicant workflow in `ifitwala_ed`, then delegated to `ifitwala_drive.api.admissions.upload_applicant_health_vaccination_proof` for upload-session/finalize handling and linked back via canonical file URLs.
   </Step>
 </Steps>
 
@@ -117,7 +118,9 @@ When school policy requires health clearance, do not move applicants to final ap
   - endpoints in `ifitwala_ed/api/admissions_portal.py`:
     - `get_applicant_health`
     - `update_applicant_health`
+    - `upload_applicant_health_vaccination_proof`
   - SPA page consuming these APIs: `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantHealth.vue`
+  - Drive wrapper used for governed vaccination-proof upload: `ifitwala_drive.api.admissions.upload_applicant_health_vaccination_proof`
 - **Controller methods**:
   - permission gating by role and applicant status
   - reviewer metadata stamping (`reviewed_by`, `reviewed_on`)

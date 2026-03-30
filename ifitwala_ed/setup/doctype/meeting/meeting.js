@@ -482,7 +482,7 @@ function ensure_creator_and_chair(frm) {
 					fieldname: "chosen_role",
 					fieldtype: "Select",
 					label: __("Assign role"),
-					options: ["Chair", "Facilitator"],
+					options: [__("Chair"), __("Facilitator")],
 					reqd: 1,
 				},
 			],

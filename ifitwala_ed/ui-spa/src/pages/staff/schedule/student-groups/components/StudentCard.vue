@@ -2,11 +2,11 @@
 	<div class="rounded-2xl bg-white p-3 shadow-sm transition hover:-translate-y-0.5">
 		<a :href="`/desk/student/${student.student}`" target="_blank" rel="noopener" class="block">
 			<img
-				:src="thumb(student.student_image)"
+				:src="student.student_image || DEFAULT_IMG"
 				:alt="`Photo of ${student.student_name}`"
 				loading="lazy"
 				class="h-40 w-full rounded-xl object-cover"
-				@error="onImgError($event, student.student_image)"
+				@error="onImgError"
 			/>
 		</a>
 
@@ -87,22 +87,8 @@ const emit = defineEmits<{
 	(e: 'show-medical', payload: { student: StudentRow; note: string }): void;
 }>();
 
-/** -------- Thumbnail helpers (match server/client logic) -------- */
+/** -------- Image fallback helper -------- */
 const DEFAULT_IMG = '/assets/ifitwala_ed/images/default_student_image.png';
-function slugify(filename: string) {
-	return filename
-		.replace(/\.[^.]+$/, '')
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '_')
-		.replace(/^_+|_+$/g, '');
-}
-function thumb(original_url?: string) {
-	if (!original_url) return DEFAULT_IMG;
-	if (original_url.startsWith('/files/gallery_resized/student/')) return original_url;
-	if (!original_url.startsWith('/files/student/')) return DEFAULT_IMG;
-	const base = slugify(original_url.split('/').pop() || '');
-	return `/files/gallery_resized/student/thumb_${base}.webp`;
-}
 function onImgError(e: Event, fallback?: string) {
 	const el = e.target as HTMLImageElement;
 	el.onerror = null;

@@ -26,6 +26,57 @@ function get_student_filters(frm) {
 	};
 }
 
+function get_selected_instructor_names(frm, exclude_row_name = null) {
+	return (frm.doc.instructors || [])
+		.filter(row => row.name !== exclude_row_name && !!row.instructor)
+		.map(row => row.instructor);
+}
+
+function get_single_instructor_value(frm) {
+	const values = [...new Set((frm.doc.instructors || []).map(row => row.instructor).filter(Boolean))];
+	return values.length === 1 ? values[0] : "";
+}
+
+function applyDefaultInstructorToScheduleRow(frm, cdt, cdn) {
+	const row = locals[cdt]?.[cdn];
+	const defaultInstructor = get_single_instructor_value(frm);
+	if (row && defaultInstructor && !row.instructor) {
+		frappe.model.set_value(cdt, cdn, "instructor", defaultInstructor);
+	}
+}
+
+function applyDefaultInstructorToBlankScheduleRows(frm) {
+	const defaultInstructor = get_single_instructor_value(frm);
+	if (!defaultInstructor) {
+		return;
+	}
+
+	(frm.doc.student_group_schedule || []).forEach(row => {
+		if (!row.instructor) {
+			frappe.model.set_value(row.doctype, row.name, "instructor", defaultInstructor);
+		}
+	});
+}
+
+async function syncAcademicYearFromProgramOffering(frm) {
+	const programOffering = frm.doc.program_offering;
+	if (!programOffering) {
+		await frm.set_value("academic_year", null);
+		return;
+	}
+
+	const { message } = await frappe.call({
+		method: "ifitwala_ed.schedule.doctype.student_group.student_group.get_single_offering_academic_year",
+		args: { program_offering: programOffering }
+	});
+
+	if (frm.doc.program_offering !== programOffering) {
+		return;
+	}
+
+	await frm.set_value("academic_year", message?.academic_year || null);
+}
+
 // Keep the toggle in sync
 ["academic_year", "program_offering", "group_based_on"].forEach(f =>
 	frappe.ui.form.on("Student Group", f, frm => toggle_school_schedule_field(frm))
@@ -79,6 +130,19 @@ frappe.ui.form.on("Student Group", {
 			filters: { academic_year: frm.doc.academic_year }
 		}));
 
+		frm.set_query("instructor", "instructors", (doc, cdt, cdn) => {
+			const row = locals[cdt]?.[cdn];
+			const selected = get_selected_instructor_names(frm, row?.name);
+			if (!selected.length) {
+				return {};
+			}
+			return {
+				filters: {
+					name: ["not in", selected]
+				}
+			};
+		});
+
 		// Instructor constraint on schedule rows
 		// FIX: add guard so we don’t reset query every refresh
 		if (frm.fields_dict["student_group_schedule"]) {
@@ -98,6 +162,8 @@ frappe.ui.form.on("Student Group", {
 	},
 
 	refresh: function (frm) {
+		applyDefaultInstructorToBlankScheduleRows(frm);
+
 		// Add buttons
 		if (!frm.doc.__islocal) {
 			if (!in_list(frappe.user_roles, "Student")) {
@@ -150,11 +216,11 @@ frappe.ui.form.on("Student Group", {
 	},
 
 	// FIX: clear dependent fields only when user actually changes program_offering
-	program_offering(frm) {
-		frm.set_value("academic_year", null);
+	async program_offering(frm) {
 		frm.set_value("school", null);
 		frm.set_value("course", null);
 		frm.set_value("school_schedule", null); // moved here only
+		await syncAcademicYearFromProgramOffering(frm);
 	},
 
 	academic_year(frm) {
@@ -236,25 +302,38 @@ frappe.ui.form.on("Student Group", {
 		});
 	},
 
+	student_group_schedule_add(frm, cdt, cdn) {
+		applyDefaultInstructorToScheduleRow(frm, cdt, cdn);
+	},
+
+	instructors_add(frm) {
+		applyDefaultInstructorToBlankScheduleRows(frm);
+	},
+
+	instructors_remove(frm) {
+		applyDefaultInstructorToBlankScheduleRows(frm);
+	},
+
+});
+
+frappe.ui.form.on("Student Group Schedule", {
+	form_render(frm, cdt, cdn) {
+		applyDefaultInstructorToScheduleRow(frm, cdt, cdn);
+	}
 });
 
 frappe.ui.form.on("Student Group Instructor", {
-	instructors_add: function (frm) {
-		frm.fields_dict["instructors"].grid.get_field("instructor").get_query =
-			function (doc) {
-				let instructor_list = [];
-				$.each(doc.instructors, function (idx, val) {
-					instructor_list.push(val.instructor);
-				});
-				return { filters: [["Instructor", "name", "not in", instructor_list]] };
-			};
-	},
+	instructor(frm) {
+		applyDefaultInstructorToBlankScheduleRows(frm);
+	}
 });
 
 
 // ── Dialog builder (unchanged except parseInt + no dirty) ──────────────────────
 
 function build_matrix_dialog(frm, data) {
+	const escapeHtml = frappe.utils.escape_html;
+	const defaultInstructor = data.instructors.length === 1 ? data.instructors[0].value : "";
 	const d = new frappe.ui.Dialog({
 		title: __('Quick Add Schedule Blocks'),
 		size: 'large',
@@ -277,15 +356,25 @@ function build_matrix_dialog(frm, data) {
 			const blk = data.grid[day][row];
 			if (blk) {
 				const id = `d${day}b${blk.block}`;
+				const blockTime = [blk.from, blk.to].filter(Boolean).join(' - ');
+				const warningNote = blk.warning_label
+					? `<div class="mt-1 small text-warning">${escapeHtml(blk.warning_label)}</div>`
+					: '';
 				html += `
 					<td>
+						<div class="small text-muted">${escapeHtml(blockTime)}</div>
+						${warningNote}
 						<div class="form-check">
 							<input type="checkbox" id="${id}" class="form-check-input"/>
 						</div>
 						<input class="form-control form-control-xs mt-1 location" placeholder="Room"/>
 						<select class="form-control form-control-xs mt-1 instructor">
 							<option value=""></option>
-							${data.instructors.map(i=>`<option value="${i.value}">${i.label}</option>`).join('')}
+							${data.instructors.map(i => `
+								<option value="${escapeHtml(i.value)}" ${i.value === defaultInstructor ? 'selected' : ''}>
+									${escapeHtml(i.label)}
+								</option>
+							`).join('')}
 						</select>
 					</td>`;
 			} else {

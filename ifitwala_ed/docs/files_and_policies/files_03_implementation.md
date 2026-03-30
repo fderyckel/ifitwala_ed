@@ -32,11 +32,104 @@ Current implementation gap:
 * a generic organization media management surface now exists from `Organization` and `School` Desk forms
 * legacy URL-only school/organization public media is no longer accepted and must be relinked or re-uploaded through governed organization media
 
+## Runtime boundary with Ifitwala Drive
+
+The file-governance architecture is not fully local to `ifitwala_ed`.
+Current runtime is split deliberately:
+
+* `ifitwala_ed` owns workflow context, permission checks, tenant scope, subject resolution, and which business record a file belongs to.
+* `ifitwala_drive` owns Drive upload sessions, temporary object handling, finalize flow, and the governed storage boundary for the Drive-backed upload paths.
+
+Current Drive-backed paths in production code include:
+
+* admissions document and portal image uploads via `ifitwala_ed/admission/admissions_portal.py` -> `ifitwala_drive.api.admissions.*`
+* task submission attachments via `ifitwala_ed/utilities/governed_uploads.py::upload_task_submission_attachment` -> `ifitwala_drive.api.submissions.upload_task_submission_artifact`
+* task resource uploads via `ifitwala_ed/utilities/governed_uploads.py::upload_task_resource` -> `ifitwala_drive.api.resources.upload_task_resource`
+* employee/student/school/organization media flows via `ifitwala_ed/utilities/governed_uploads.py` -> `ifitwala_drive.api.media.*`
+
+Current direct-dispatcher path still present in production code:
+
+* Desk applicant profile image upload via `ifitwala_ed/utilities/governed_uploads.py::upload_applicant_image` -> `ifitwala_ed.utilities.file_dispatcher.create_and_classify_file(...)`
+
+Implication:
+
+* `ifitwala_drive` is now an application dependency of `ifitwala_ed`, not an optional companion app, because multiple live upload paths import Drive modules directly and fail closed when Drive is missing.
+* Any new governed upload path that crosses from `ifitwala_ed` into `ifitwala_drive` is a cross-app change set, not a local feature edit.
+
+Cross-app wrapper contract:
+
+* if `ifitwala_ed` calls a new `ifitwala_drive.api.*` method, that Drive wrapper must be exported in the deployed Drive app at the same time
+* the thin API wrapper and the underlying `ifitwala_drive.services.integration.ifitwala_ed_media.*` service must both exist
+* browser refresh, browser cache clear, and `bench clear-cache` do **not** reload Python imports for this contract
+* deployment is incomplete until app processes are restarted and the imported module surface matches the code on disk
+
+Mandatory deployment verification for new Drive-backed upload wrappers:
+
+* deploy both `ifitwala_ed` and `ifitwala_drive` together
+* restart the web and worker processes after deploy
+* verify from `bench --site <site> console`:
+  * `import ifitwala_drive.api.media as m; hasattr(m, "<method_name>")`
+  * `import ifitwala_drive.services.integration.ifitwala_ed_media as i; hasattr(i, "<method_name>_service")`
+  * confirm `m.__file__` and `i.__file__` point to the intended checkout
+* add a regression test on the Ed side that resolves the correct Drive callable
+* add a regression test on the Drive side that the exported wrapper delegates to the intended service
+
+Cross-app MIME handoff rule:
+
+Status:
+
+* Implemented
+
+Code refs:
+
+* `ifitwala_ed/utilities/governed_uploads.py::_resolve_upload_mime_type_hint`
+* `ifitwala_ed/utilities/governed_uploads.py::upload_student_image`
+* `ifitwala_ed/utilities/governed_uploads.py::upload_employee_image`
+* `ifitwala_ed/utilities/governed_uploads.py::upload_guardian_image`
+* `ifitwala_ed/utilities/governed_uploads.py::upload_task_resource`
+* `ifitwala_ed/utilities/governed_uploads.py::upload_task_submission_attachment`
+* `ifitwala_ed/admission/admissions_portal.py::upload_applicant_document`
+* `ifitwala_ed/admission/admissions_portal.py::upload_applicant_profile_image`
+
+Test refs:
+
+* `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
+* `ifitwala_ed/admission/test_admissions_portal_uploads_unit.py`
+
+Rule:
+
+* `ifitwala_ed` owns `mime_type_hint` derivation for Drive-backed wrappers
+* derive the hint from the uploaded file object when available
+* if no file-object MIME is available, fall back to the filename
+* never forward `frappe.request.mimetype` or the outer request `Content-Type` from `/api/method/upload_file` as `mime_type_hint`
+* `multipart/form-data` is a transport-envelope value, not a governed file MIME
+* if Ed forwards the envelope MIME, Drive finalize is expected to fail closed on mismatch
+
+This rule applies to both Desk and admissions flows.
+
 Therefore:
 
 * do **not** add new direct `Attach`-based media workflows for school/website imagery
 * do **not** introduce school-local media governance as a parallel system
 * do **not** hardcode filesystem assumptions into media pickers, renderers, or website blocks
+
+## Governed display/read contract (authoritative)
+
+Governed file/image **display** is a separate contract from upload/finalize.
+
+Rules:
+
+* private governed media must be exposed to the browser through a named server-owned display/open route
+* SPA and website consumers must not receive raw `/private/...` paths as their primary display contract
+* each surface that displays governed private media must define its allowed viewers explicitly
+* the display route must enforce that surface contract server-side
+* if a surface has broader or narrower visibility than generic tenant scope, that exception must be documented as surface-specific behavior
+
+Regression guardrails:
+
+* any change to governed display URL resolution must update the canonical doc for that surface
+* any change to governed display/read permissions must add or update permission-matrix tests for the affected route
+* helper tests that only assert URL selection are insufficient on their own; add endpoint-level access tests for the resolved route
 
 ---
 
@@ -470,12 +563,14 @@ Desk forms MUST NOT use the generic Attach/Attach Image uploader for governed fi
 Instead, each doctype exposes a **named, whitelisted upload method** that:
 
 1) reads the uploaded file
-2) calls the authoritative governed upload boundary (`create_and_classify_file(...)` directly or the Drive session/finalize wrapper)
-3) updates the owning document field / attachment table
+2) derives the file MIME from the uploaded file object or filename, never from the multipart request envelope
+3) calls the authoritative governed upload boundary (`create_and_classify_file(...)` directly or the Drive session/finalize wrapper)
+4) updates the owning document field / attachment table
 
 Current governed Desk endpoints:
 
 * `upload_employee_image(employee)`
+* `upload_guardian_image(guardian)`
 * `upload_student_image(student)`
 * `upload_applicant_image(student_applicant)`
 * `upload_task_resource(task)`
@@ -483,6 +578,7 @@ Current governed Desk endpoints:
 
 These are the only allowed upload entry points for:
 
+* Guardian `guardian_image`
 * Employee `employee_image`
 * Student `student_image`
 * Student Applicant `applicant_image`
@@ -544,6 +640,13 @@ Public exposure is allowed **only** when the applicant has acknowledged the medi
 
 Promotion may **copy** `Student Applicant.applicant_image` into `Student.student_image`
 as a new File record. The public version (if consented) must use a randomized suffix.
+
+When Student profile images are governed uploads, derivative generation follows the same
+post-classification rule as Employee profile images:
+
+* canonical derivative slots: `profile_image_thumb`, `profile_image_card`, `profile_image_medium`
+* derivatives are generated from the current governed original after classification
+* Student list/avatar consumers must resolve these governed variants canonically and must not guess legacy `gallery_resized/student` URLs
 
 **Operational activation**
 

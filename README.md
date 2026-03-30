@@ -1,6 +1,6 @@
-# 🌱 Ifitwala_Ed
+# 🌱 Ifitwala Ed
 
-### A Unified Institutional Operating System for Education
+## A Unified Institutional Operating System for Education
 
 **Ifitwala_Ed** is an open-source **Institutional Operating System** that replaces fragmented SaaS tools with **one coherent data model, one permission system, and one analytics surface**.
 
@@ -185,6 +185,7 @@ Ifitwala_Ed relies on the battle-tested security foundations of the **Frappe Fra
 Ifitwala_Ed is **Open Source by design**. We believe institutions should own their infrastructure.
 
 * **Backend:** [Frappe Framework](https://frappe.io) v16 (Python/MariaDB/Redis)
+* **Required Frappe apps:** `ifitwala_drive` is a hard dependency and must be installed on the site with `ifitwala_ed`
 * **Frontend:** Vue 3, Tailwind CSS, Frappe UI
 * **License:** GPL-3.0
 

@@ -9,6 +9,7 @@ from collections import Counter, defaultdict
 from datetime import date
 
 import frappe
+from frappe import _
 from frappe.utils import getdate, nowdate
 
 from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
@@ -17,8 +18,9 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ALLOWED_ANALYTICS_ROLES = {
     "Academic Admin",
+    "Academic Assistant",
     "Pastoral Lead",
-    "Counsellor",
+    "Counselor",
     "Curriculum Coordinator",
     "Accreditation Visitor",
     "Marketing User",
@@ -37,7 +39,7 @@ def _ensure_demographics_access(user: str | None = None) -> str:
 def _get_demographics_access_context(user: str | None = None) -> dict:
     user = user or frappe.session.user
     if not user or user == "Guest":
-        frappe.throw("You need to sign in to access Student Demographic Analytics.", frappe.PermissionError)
+        frappe.throw(_("You need to sign in to access Student Demographic Analytics."), frappe.PermissionError)
 
     roles = set(frappe.get_roles(user))
     if roles & ALLOWED_ANALYTICS_ROLES:
@@ -61,7 +63,7 @@ def _get_demographics_access_context(user: str | None = None) -> dict:
         if has_students:
             return {"user": user, "mode": "instructor"}
 
-    frappe.throw("You do not have permission to access Student Demographic Analytics.", frappe.PermissionError)
+    frappe.throw(_("You do not have permission to access Student Demographic Analytics."), frappe.PermissionError)
     return {"user": user, "mode": "full"}
 
 

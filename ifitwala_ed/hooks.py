@@ -11,7 +11,7 @@ app_license = "MIT"
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = ["ifitwala_drive"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -89,8 +89,8 @@ on_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_login"
 on_session_creation = "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_session_creation"
 # Resolve website home directly from the same canonical role policy.
 get_website_user_home_page = "ifitwala_ed.api.users.get_website_user_home_page"
-# application home page (will override Website Settings)
-# home_page = "/hub"
+# application home page (overrides mutable Website Settings.home_page drift)
+home_page = "/"
 
 # website user home page (by Role)
 role_home_page = {
@@ -208,7 +208,6 @@ has_permission = {
     "Academic Year": "ifitwala_ed.school_settings.doctype.academic_year.academic_year.has_permission",
     "Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.has_permission",
     "Employee": "ifitwala_ed.hr.doctype.employee.employee.employee_has_permission",
-    "Designation": "ifitwala_ed.hr.doctype.designation.designation.has_permission",
     "Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.has_permission",
     "Academic Load Policy": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.has_permission",
     "Activity Booking": "ifitwala_ed.eca.doctype.activity_booking.activity_booking.has_permission",

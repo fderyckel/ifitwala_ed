@@ -3,20 +3,24 @@
 
 **Audience:** Website admins, implementers, and content editors
 **Scope:** Builder-lite public website routing
-**Status (February 13, 2026):** Implemented and enforced by route rules, renderer resolution, and `School Website Page` validation
+**Status (March 24, 2026):** Implemented and enforced by route rules, root-school resolution, renderer resolution, and `School Website Page` validation
 
 ---
 
 ## 0. Root route ownership (`/`)
 
-The public root route `/` is the **Organization Landing**.
+The public root route `/` is the **root-school resolver**.
 
-* `/` is not rewritten to a default school anymore.
-* Legacy aliases `/home`, `/index`, and `/index.html` resolve to the same landing.
+* `/` redirects to the default published school website when one is available.
+* Legacy aliases `/home`, `/index`, and `/index.html` resolve to the same root behavior.
+* If the top-most active organization has a valid `default_website_school`, that school wins.
+* If not, the resolver picks the first published school with a `website_slug` under the top-most active organization scope.
+* If no eligible school exists, `/` falls back to `/schools`.
+* `/schools` is the organization landing/discovery page.
 * School websites are scoped under `/schools/...`.
 * Desk entry `/desk` remains framework-owned and outside website page resolution.
 
-This keeps organization-level discovery separate from school-level website pages.
+This keeps the out-of-the-box public experience school-first while preserving organization-level discovery.
 
 ---
 
@@ -125,8 +129,16 @@ For school website requests:
 
 For organization landing requests:
 
-1. `/` (and aliases) render the organization landing page
+1. `/schools` renders the organization landing page
 2. Landing lists published schools with valid `website_slug`
+
+For root resolver requests:
+
+1. `/` (and aliases) resolve the top-most active organization
+2. Prefer `Organization.default_website_school` when it is published and has a valid `website_slug`
+3. Otherwise choose the first published school under that organization scope (`School.lft asc`)
+4. Redirect to `/schools/{school_slug}`
+5. If no eligible school exists, redirect to `/schools`
 
 For admissions/public form requests:
 
@@ -142,4 +154,4 @@ For authenticated portal requests:
 
 ## 5. Summary (one-line rule)
 
-> **`/` is organization landing; school pages live under `/schools/{school_slug}/...`; `route` is user input; `full_route` is canonical.**
+> **`/` resolves to the default public school (fallback `/schools`); organization discovery lives at `/schools`; school pages live under `/schools/{school_slug}/...`; `route` is user input; `full_route` is canonical.**

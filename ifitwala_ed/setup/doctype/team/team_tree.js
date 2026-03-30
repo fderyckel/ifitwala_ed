@@ -4,11 +4,11 @@
 // ifitwala_ed/public/js/team_tree.js
 
 frappe.treeview_settings["Team"] = {
-	root_label: "All Teams",
+	root_label: __("All Teams"),
 	get_tree_nodes: "ifitwala_ed.setup.doctype.team.team.get_children",
 	add_tree_node: "ifitwala_ed.setup.doctype.team.team.add_node",
 	get_tree_root: false,
-	breadcrumb: "School Settings",
+	breadcrumb: __("School Settings"),
 	show_expand_all: true,
 
 	// Extra fields shown in the built-in "Add Child" dialog.

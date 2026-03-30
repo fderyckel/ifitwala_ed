@@ -8,7 +8,12 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.setup.initial_setup import complete_initial_setup
-from ifitwala_ed.setup.setup import create_designations, create_roles_with_homepage
+from ifitwala_ed.setup.setup import (
+    create_designations,
+    create_roles_with_homepage,
+    ensure_canonical_role_records,
+    grant_role_read_select_to_hr,
+)
 
 
 class _DummyDoc:
@@ -25,6 +30,10 @@ class _DummyDoc:
 
 
 class TestSetupRoles(FrappeTestCase):
+    @staticmethod
+    def _custom_docperm_has_select_field() -> bool:
+        return frappe.db.has_column("Custom DocPerm", "select")
+
     def test_create_roles_with_homepage_normalizes_academic_staff_home_page(self):
         if frappe.db.exists("Role", "Academic Staff"):
             role = frappe.get_doc("Role", "Academic Staff")
@@ -40,6 +49,66 @@ class TestSetupRoles(FrappeTestCase):
         role.reload()
         self.assertEqual(role.home_page, "/hub/staff")
         self.assertEqual(int(role.desk_access or 0), 1)
+
+    def test_ensure_canonical_role_records_creates_canonical_roles(self):
+        for role_name in ("Academic Assistant", "Counselor"):
+            if frappe.db.exists("Role", role_name):
+                frappe.delete_doc("Role", role_name, force=1, ignore_permissions=True)
+
+        ensure_canonical_role_records()
+
+        self.assertTrue(frappe.db.exists("Role", "Academic Assistant"))
+        self.assertTrue(frappe.db.exists("Role", "Counselor"))
+
+    def test_grant_role_read_select_to_hr_seeds_student_log_next_step_editor_roles(self):
+        editor_role = "Student Log Next Step Editor"
+        if not frappe.db.exists("Role", editor_role):
+            frappe.get_doc({"doctype": "Role", "role_name": editor_role, "desk_access": 1}).insert(
+                ignore_permissions=True
+            )
+
+        existing_step_perms = frappe.get_all(
+            "Custom DocPerm",
+            filters={"parent": "Student Log Next Step", "role": editor_role, "permlevel": 0},
+            pluck="name",
+        )
+        for docname in existing_step_perms:
+            frappe.delete_doc("Custom DocPerm", docname, force=1, ignore_permissions=True)
+
+        existing_role_perms = frappe.get_all(
+            "Custom DocPerm",
+            filters={"parent": "Role", "role": editor_role, "permlevel": 0},
+            pluck="name",
+        )
+        for docname in existing_role_perms:
+            frappe.delete_doc("Custom DocPerm", docname, force=1, ignore_permissions=True)
+
+        step_docperm = frappe.new_doc("Custom DocPerm")
+        step_docperm.parent = "Student Log Next Step"
+        step_docperm.parenttype = "DocType"
+        step_docperm.parentfield = "permissions"
+        step_docperm.role = editor_role
+        step_docperm.permlevel = 0
+        step_docperm.read = 1
+        step_docperm.write = 1
+        step_docperm.insert(ignore_permissions=True)
+
+        grant_role_read_select_to_hr()
+
+        fields = ["read"]
+        if self._custom_docperm_has_select_field():
+            fields.append("select")
+
+        role_docperm = frappe.get_value(
+            "Custom DocPerm",
+            {"parent": "Role", "role": editor_role, "permlevel": 0},
+            fields,
+            as_dict=True,
+        )
+        self.assertIsNotNone(role_docperm)
+        self.assertEqual(int(role_docperm.read or 0), 1)
+        if "select" in fields:
+            self.assertEqual(int(role_docperm.select or 0), 1)
 
     def test_create_designations_skips_without_real_organization(self):
         with (

@@ -242,8 +242,7 @@ function nudge_before_delete(frm) {
 
 		frappe.confirm(
 			__(
-				"Remove course <b>{0}</b> from this enrollment?<br><br>" +
-				"<span class='text-muted'>For traceability, prefer setting <b>Status = Dropped</b> and a <b>Dropped Date</b>.</span>",
+				"Remove course <b>{0}</b> from this enrollment?<br><br><span class='text-muted'>For traceability, prefer setting <b>Status = Dropped</b> and a <b>Dropped Date</b>.</span>",
 				[(row.course_name || row.course || "—")]
 			),
 			() => {

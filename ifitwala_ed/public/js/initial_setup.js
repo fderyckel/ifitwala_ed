@@ -7,16 +7,30 @@ frappe.after_ajax(() => {
 
 		// Prompt fields
 		const fields = [
-			{ fieldtype: 'Data', label: 'Organization Name', fieldname: 'org_name', reqd: 1 },
-			{ fieldtype: 'Data', label: 'Organization Abbreviation', fieldname: 'org_abbr', reqd: 1 },
+			{ fieldtype: 'Data', label: __('Organization Name'), fieldname: 'org_name', reqd: 1 },
+			{
+				fieldtype: 'Data',
+				label: __('Organization Abbreviation'),
+				fieldname: 'org_abbr',
+				reqd: 1,
+			},
 			{ fieldtype: 'Section Break' },
 
-			{ fieldtype: 'Data', label: 'Top School Name', fieldname: 'school_name', reqd: 1 },
-			{ fieldtype: 'Data', label: 'Top School Abbreviation', fieldname: 'school_abbr', reqd: 1 },
+			{ fieldtype: 'Data', label: __('Top School Name'), fieldname: 'school_name', reqd: 1 },
+			{
+				fieldtype: 'Data',
+				label: __('Top School Abbreviation'),
+				fieldname: 'school_abbr',
+				reqd: 1,
+			},
 			{ fieldtype: 'Section Break' },
 
 			// ─── new branding fields ───────────────────────────────────────────
-			{ fieldtype: 'Attach Image', label: 'Login Page Logo (app_logo)', fieldname: 'app_logo' },
+			{
+				fieldtype: 'Attach Image',
+				label: __('Login Page Logo (app_logo)'),
+				fieldname: 'app_logo',
+			},
 			// ───────────────────────────────────────────────────────────────────
 		];
 

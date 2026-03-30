@@ -55,7 +55,7 @@ frappe.query_reports["Student Logs"] = {
 			fieldname: "follow_up_status",
 			label: __("Follow-up Status"),
 			fieldtype: "Select",
-			options: ["", "Open", "In Progress", "Completed"]
+			options: ["", __("Open"), __("In Progress"), __("Completed")]
 		},
 		{
 			fieldname: "author",
@@ -74,7 +74,7 @@ frappe.query_reports["Student Logs"] = {
 			fieldname: "view_mode",
 			label: __("View"),
 			fieldtype: "Select",
-			options: ["Compact", "Full"],
+			options: [__("Compact"), __("Full")],
 			default: "Compact"
 		},
 		{
@@ -158,7 +158,13 @@ frappe.query_reports["Student Logs"] = {
 		// Snippet cells → ellipsis + native tooltip
 		if (column.fieldname === "log_snippet" || column.fieldname === "follow_up_snippet") {
 			if (!value) return val;
-			const safe = frappe.utils.escape_html(value);
+			const sourceText = column.fieldname === "log_snippet"
+				? (data?.log_text || value)
+				: (data?.follow_up_text || value);
+			const safe = frappe.utils.escape_html(sourceText);
+			if (mode === "Full") {
+				return `<span class="report-cell-full">${safe}</span>`;
+			}
 			const wide = column.fieldname === "follow_up_snippet" ? " wide" : "";
 			return `<span class="report-cell-ellipsis${wide}" title="${safe}">${safe}</span>`;
 		}
@@ -235,6 +241,13 @@ function inject_compact_css_once() {
 			vertical-align:bottom;
 		}
 		.report-cell-ellipsis.wide{ max-width:340px; }
+		.report-cell-full{
+			display:block;
+			white-space:normal;
+			overflow:visible;
+			text-overflow:clip;
+			word-break:break-word;
+		}
 
 			/* subtle de-emphasis */
 			.text-dim{ opacity:.8; }

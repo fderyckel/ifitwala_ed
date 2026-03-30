@@ -158,12 +158,12 @@ frappe.ui.form.on("Student Log", {
 						const recognition = new SpeechRecognition();
 						recognition.continuous = true;
 						recognition.interimResults = false;
-						recognition.lang = 'en-US';
+						recognition.lang = "en-US";
 
 						window._recognition = recognition;
 
 						recognition.onstart = function () {
-							$this.addClass('listening text-primary').removeClass('text-muted');
+							$this.addClass("listening text-primary").removeClass("text-muted");
 							$this.html(`<svg class="icon icon-sm"><use href="#icon-mic"></use></svg> ${__('Listening…')}`);
 							frappe.show_alert({ message: __("Listening…"), indicator: "orange" }, 3);
 						};
@@ -171,7 +171,7 @@ frappe.ui.form.on("Student Log", {
 						recognition.onresult = function (event) {
 							const transcript = Array.from(event.results)
 								.map(result => result[0].transcript)
-								.join('');
+								.join("");
 
 							if (transcript) {
 								let current = frm.doc.log || "";
@@ -181,17 +181,17 @@ frappe.ui.form.on("Student Log", {
 						};
 
 						recognition.onend = function () {
-							$this.removeClass('listening text-primary').addClass('text-muted');
+							$this.removeClass("listening text-primary").addClass("text-muted");
 							$this.html(`<svg class="icon icon-sm"><use href="#icon-mic"></use></svg> ${__('Dictate')}`);
 							window._recognition = null;
 						};
 
 						recognition.onerror = function (event) {
 							// 'no-speech' is common, just ignore or stop
-							if (event.error !== 'no-speech') {
+							if (event.error !== "no-speech") {
 								frappe.msgprint(__("Microphone error: {0}", [event.error]));
 							}
-							$this.removeClass('listening text-primary').addClass('text-muted');
+							$this.removeClass("listening text-primary").addClass("text-muted");
 							$this.html(`<svg class="icon icon-sm"><use href="#icon-mic"></use></svg> ${__('Dictate')}`);
 						};
 

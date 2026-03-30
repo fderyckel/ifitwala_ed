@@ -41,6 +41,44 @@ class TestAdmissionCockpit(FrappeTestCase):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
 
+    def test_invalid_school_scope_reuses_single_organization_lookup(self):
+        class _CacheStub:
+            def __init__(self):
+                self.values = {}
+
+            def get_value(self, key):
+                return self.values.get(key)
+
+            def set_value(self, key, value, expires_in_sec=None):
+                self.values[key] = value
+
+        cache = _CacheStub()
+        sql_calls = []
+
+        def fake_sql(query, params=None, as_list=False, as_dict=False):
+            if "FROM `tabOrganization`" in query:
+                sql_calls.append(query)
+                self.assertTrue(as_list)
+                return [("ORG-1",), ("ORG-2",)]
+            self.fail(f"Unexpected SQL query: {query}")
+
+        with (
+            patch("ifitwala_ed.api.admission_cockpit._ensure_cockpit_access", return_value=self.staff_user.name),
+            patch("ifitwala_ed.api.admission_cockpit._get_roles_for_user", return_value={"Admission Manager"}),
+            patch("ifitwala_ed.api.admission_cockpit.get_descendant_schools", return_value=[]),
+            patch("ifitwala_ed.api.admission_cockpit.frappe.parse_json", return_value={"school": "MISSING-SCHOOL"}),
+            patch("ifitwala_ed.api.admission_cockpit.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.admission_cockpit.frappe.as_json", side_effect=lambda value: value),
+            patch("ifitwala_ed.api.admission_cockpit.frappe.db.sql", side_effect=fake_sql),
+            patch("ifitwala_ed.api.admission_cockpit.frappe.get_all") as get_all_mock,
+        ):
+            payload = get_admissions_cockpit_data(filters={"school": "MISSING-SCHOOL"})
+
+        get_all_mock.assert_not_called()
+        self.assertEqual(len(sql_calls), 1)
+        self.assertEqual(payload["config"]["organizations"], ["ORG-1", "ORG-2"])
+        self.assertEqual(payload["config"]["schools"], [])
+
     def test_missing_requirement_blocker_targets_applicant_workspace(self):
         document_type = self._create_document_type(
             organization=self.organization,

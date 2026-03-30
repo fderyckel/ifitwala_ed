@@ -3,9 +3,9 @@ title: "Organization: Legal Entity and Hierarchy Root"
 slug: organization
 category: Setup
 doc_order: 1
-version: "1.0.4"
-last_change_date: "2026-02-27"
-summary: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, and website-school ownership."
+version: "1.0.9"
+last_change_date: "2026-03-29"
+summary: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, website-school ownership, and root website default-school resolution."
 seo_title: "Organization: Legal Entity and Hierarchy Root"
 seo_description: "Define legal entities as a NestedSet hierarchy and anchor schools, policy scope, and website-school ownership."
 ---
@@ -19,10 +19,14 @@ seo_description: "Define legal entities as a NestedSet hierarchy and anchor scho
 - Organization is a tree (`NestedSet`) using `parent_organization`.
 - Parent organization must be a group (`is_group = 1`).
 - `default_website_school`, when set, must belong to the same organization.
-- `organization_logo` is the website shell organization mark (top-right utility area and organization landing brand).
+- `default_website_school`, when valid and published, is the primary public root-domain resolver for `/`.
+- `organization_logo` is the website shell organization mark and organization landing brand.
 - Virtual root (`All Organizations`) cannot have a parent.
-- HR scope on Organization is descendant-based:
-  - base org from user default `organization` (fallback `Global Defaults.default_organization`)
+- Organization permissions are enforced in two layers:
+  - DocType permission rows decide which actions a role may perform
+  - organization scope decides which Organization records are in bounds
+- Non-admin Organization scope is descendant-based:
+  - base org from user default `organization` (fallback active `Employee.organization`)
   - plus explicit `User Permission` grants on `Organization` and descendants.
 
 ## Where It Is Used Across the ERP
@@ -38,6 +42,14 @@ seo_description: "Define legal entities as a NestedSet hierarchy and anchor scho
   - organization is required and defaults from the user organization scope (default organization, fallback employee organization)
   - issuing school is optional; when set, it must belong to the selected organization or its descendants
   - org-level communications (blank issuing school) are visible only inside authorized organization scope
+  - `Organization` audience rows are staff-only and match active `Employee.organization`, including descendant organizations when the communication organization is an ancestor
+
+## Related Docs
+
+- [**Institutional Policy**](/docs/en/institutional-policy/) - organization-scoped policy identity
+- [**Policy Version**](/docs/en/policy-version/) - active legal versions under policy identities
+- [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) - context evidence constrained by organization scope
+- [**Student Applicant**](/docs/en/student-applicant/) - admissions anchor and readiness flow
 
 ## Technical Notes (IT)
 
@@ -63,13 +75,6 @@ seo_description: "Define legal entities as a NestedSet hierarchy and anchor scho
 | `HR Manager` | Yes | Yes | Yes | No | No delete permission in doctype |
 | `HR User` | Yes | No | No | No | Descendant-scoped read access (self + children) |
 | `Accounts Manager` | Yes | Yes | Yes | Yes | Full access |
-| `Academic Admin` | Yes | Yes | No | No | Read/write existing |
+| `Academic Admin` | Yes | Yes | No | No | Actions follow DocType row; records remain limited to scoped organization descendants |
 | `Employee` | Yes | No | No | No | Read-only |
 | `Academic Assistant` | Yes | No | No | No | Read-only |
-
-## Related Docs
-
-- [**Institutional Policy**](/docs/en/institutional-policy/) - organization-scoped policy identity
-- [**Policy Version**](/docs/en/policy-version/) - active legal versions under policy identities
-- [**Policy Acknowledgement**](/docs/en/policy-acknowledgement/) - context evidence constrained by organization scope
-- [**Student Applicant**](/docs/en/student-applicant/) - admissions anchor and readiness flow

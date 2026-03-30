@@ -3,9 +3,9 @@ title: "Program Enrollment: Committed Academic Enrollment Truth"
 slug: program-enrollment
 category: Enrollment
 doc_order: 5
-version: "1.2.1"
-last_change_date: "2026-03-13"
-summary: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions including required and credited basket-group snapshots."
+version: "1.2.4"
+last_change_date: "2026-03-29"
+summary: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions including required, credited basket-group, and offering-derived term-window snapshots."
 seo_title: "Program Enrollment: Committed Academic Enrollment Truth"
 seo_description: "Store one committed enrollment per student/offering/year with source provenance, AY and term integrity checks, and traceable course status transitions."
 ---
@@ -39,6 +39,7 @@ seo_description: "Store one committed enrollment per student/offering/year with 
 2. System syncs spine from offering (`program`, `school`, optional `cohort`, AY membership).
 3. Required offering courses can be seeded when creating a new enrollment.
 4. Course rows sync `required` from the offering and keep `credited_basket_group` when applicable.
+   Request materialization also copies explicit offering term windows into `term_start` / `term_end`, with the same non-term-long fallback bounds used elsewhere when the offering does not pin terms.
 5. Course rows progress through `Enrolled`, `Dropped`, `Completed`.
 6. Archiving marks historical, non-current enrollment state.
 7. When this row becomes the first active enrollment for a promoted applicant, the server can auto-trigger identity upgrade; ordinary edits to an already-active row do not.
@@ -60,6 +61,7 @@ seo_description: "Store one committed enrollment per student/offering/year with 
   - `program_enrollment_request` link
   - course rows set to `Enrolled`
   - `credited_basket_group` copied from the request when applicable
+  - `term_start` / `term_end` copied from the offering delivery window when defined
 
 ### Example 2: Mid-year Drop Traceability
 
@@ -103,12 +105,14 @@ seo_description: "Store one committed enrollment per student/offering/year with 
   - `academic_year_link_query(...)`
 
 - **DocType**: `Program Enrollment` (`ifitwala_ed/schedule/doctype/program_enrollment/`)
-- **Autoname**: `format:PE-{YYYY}-{####}`
+- **Autoname**: `expression:PE-.YY.-.#####`
 - **Child table**:
   - `courses` -> `Program Enrollment Course`
 - **Enrollment course snapshot fields**:
   - `required`
   - `credited_basket_group`
+  - `term_start`
+  - `term_end`
 - **Key invariants enforced** (`program_enrollment.py`):
   - offering spine lock (`program`, `school`, optional `cohort` alignment)
   - AY must belong to offering AY spine
@@ -122,6 +126,7 @@ seo_description: "Store one committed enrollment per student/offering/year with 
   - multi-group optional rows require explicit `credited_basket_group`
   - dropped courses require date (reason nudged)
   - non-request source requires override reason + role gate
+  - `Admin` source is limited to `Academic Admin`, `Curriculum Coordinator`, and `Admission Manager`
 - **Indexes and uniqueness**:
   - index on (`student`, `academic_year`)
   - index on (`program_offering`, `academic_year`)
@@ -138,5 +143,5 @@ seo_description: "Store one committed enrollment per student/offering/year with 
 | `Curriculum Coordinator` | Yes | Yes | Yes | No |
 | `Admission Officer` | Yes | Yes | Yes | No |
 | `Admission Manager` | Yes | Yes | Yes | Yes |
-| `Counsellor` | Yes | No | No | No |
+| `Counselor` | Yes | No | No | No |
 | `Academic Staff` | Yes | No | No | No |

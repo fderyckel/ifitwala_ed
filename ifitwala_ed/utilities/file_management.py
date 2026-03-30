@@ -84,7 +84,7 @@ def ensure_folder(path: str) -> str:
     Returns the final folder path usable in File.folder (e.g. 'Home/Admissions/Applicant/SA-2025-0001').
     """
     if not path.startswith("Home/"):
-        frappe.throw(_("Folder path must start with 'Home/' (got: {0})").format(path))
+        frappe.throw(_("Folder path must start with 'Home/' (got: {path})").format(path=path))
 
     # Normalize accidental double-home paths like "Home/Home" or "Home/Home/..."
     while path.startswith("Home/Home"):
@@ -141,6 +141,7 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
     # Hard gate: governed doctypes must use dispatcher uploads.
     if doc.attached_to_doctype in {
         "Employee",
+        "Guardian",
         "Student",
         "Student Applicant",
         "Task Submission",
@@ -150,6 +151,7 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
     }:
         action_map = {
             ("Employee", "employee_image"): _("Upload Employee Image"),
+            ("Guardian", "guardian_image"): _("Upload Guardian Photo"),
             ("Student", "student_image"): _("Upload Student Image"),
             ("Student Applicant", "applicant_image"): _("Upload Applicant Image"),
             ("Task", None): _("Upload Task Resource"),
@@ -164,7 +166,12 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
         if not action:
             action = _("the governed upload action")
 
-        frappe.throw(_("Governed upload required for {0}. Use {1}.").format(doc.attached_to_doctype, action))
+        frappe.throw(
+            _("Governed upload required for {doctype}. Use {action}.").format(
+                doctype=doc.attached_to_doctype,
+                action=action,
+            )
+        )
 
     if doc.attached_to_doctype != "Student Applicant":
         return
@@ -411,7 +418,12 @@ def route_uploaded_file(doc, method: Optional[str] = None, context_override: Opt
 
     # OPTIONAL: if already under a Home-based folder and has custom_version_no, we can skip
     meta = doc.meta
-    if doc.folder and doc.folder.startswith("Home/") and meta.has_field("custom_version_no"):
+    if (
+        doc.folder
+        and doc.folder.startswith("Home/")
+        and doc.folder != "Home/Attachments"
+        and meta.has_field("custom_version_no")
+    ):
         if getattr(doc, "custom_version_no", None):
             return
 

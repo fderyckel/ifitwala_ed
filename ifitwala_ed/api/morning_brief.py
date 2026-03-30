@@ -13,6 +13,7 @@ from ifitwala_ed.api.org_comm_utils import check_audience_match
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
+from ifitwala_ed.utilities.image_utils import apply_preferred_employee_images, apply_preferred_student_images
 from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_user_default_school
 
 CLINIC_SUMMARY_RANGE_BUSINESS_DAYS = "3D"
@@ -160,8 +161,28 @@ def _can_view_clinic_metrics(user: str) -> bool:
     return bool(frappe.has_permission("Student Patient Visit", ptype="read", user=user))
 
 
-def _resolve_clinic_scope() -> dict:
+def _get_clinic_default_school() -> str | None:
     base_school = get_user_default_school()
+    if base_school:
+        return base_school
+
+    user = frappe.session.user
+    if not user or user == "Guest":
+        return None
+
+    fields = ["name", "school"]
+    if frappe.db.has_column("Employee", "default_school"):
+        fields.insert(1, "default_school")
+
+    employee = frappe.db.get_value("Employee", {"user_id": user}, fields, as_dict=True)
+    if not employee:
+        return None
+
+    return employee.get("default_school") or employee.get("school")
+
+
+def _resolve_clinic_scope() -> dict:
+    base_school = _get_clinic_default_school()
     if not base_school:
         return {
             "base_school": None,
@@ -173,7 +194,10 @@ def _resolve_clinic_scope() -> dict:
     school_scope = list(dict.fromkeys(get_descendant_schools(base_school) or [base_school]))
     school_label = frappe.db.get_value("School", base_school, "school_name") or base_school
     if len(school_scope) > 1:
-        scope_label = _("{0} + {1} schools").format(school_label, len(school_scope) - 1)
+        scope_label = _("{school_label} + {school_count} schools").format(
+            school_label=school_label,
+            school_count=len(school_scope) - 1,
+        )
     else:
         scope_label = school_label
 
@@ -277,16 +301,24 @@ def _is_scope_business_day(calendar_context: dict[str, list[dict]], school_scope
 
 
 def _query_clinic_visit_counts(school_scope: list[str], start_date, end_date) -> list[dict]:
-    school_condition = "AND school IN %(schools)s" if school_scope else ""
+    school_expr = "COALESCE(NULLIF(spv.school, ''), st.anchor_school)"
+    school_condition = f"AND {school_expr} IN %(schools)s" if school_scope else ""
     return frappe.db.sql(
         f"""
-        SELECT school, date, COUNT(*) AS count
-        FROM `tabStudent Patient Visit`
-        WHERE docstatus = 1
-          AND date BETWEEN %(start_date)s AND %(end_date)s
+        SELECT
+            {school_expr} AS school,
+            spv.date AS date,
+            COUNT(*) AS count
+        FROM `tabStudent Patient Visit` spv
+        LEFT JOIN `tabStudent Patient` sp
+            ON sp.name = spv.student_patient
+        LEFT JOIN `tabStudent` st
+            ON st.name = sp.student
+        WHERE spv.docstatus = 1
+          AND spv.date BETWEEN %(start_date)s AND %(end_date)s
           {school_condition}
-        GROUP BY school, date
-        ORDER BY date ASC
+        GROUP BY {school_expr}, spv.date
+        ORDER BY spv.date ASC
         """,
         {
             "schools": tuple(school_scope),
@@ -396,12 +428,47 @@ def _build_clinic_business_week_summary(
     return points
 
 
-def _resolve_clinic_trend_start_date(time_range: str, end_date):
+def _resolve_clinic_scope_academic_year_start(school_scope: list[str], end_date):
+    if not school_scope:
+        return None
+
+    end_value = getdate(end_date)
+    rows = frappe.get_all(
+        "Academic Year",
+        filters={
+            "school": ["in", school_scope],
+            "archived": 0,
+            "year_start_date": ["<=", end_value],
+            "year_end_date": [">=", end_value],
+        },
+        fields=["year_start_date", "year_end_date"],
+        order_by="year_start_date asc",
+        limit=50,
+    )
+
+    matching_starts = []
+    for row in rows:
+        year_start = row.get("year_start_date")
+        year_end = row.get("year_end_date")
+        if not year_start or not year_end:
+            continue
+        year_start_value = getdate(year_start)
+        year_end_value = getdate(year_end)
+        if year_start_value <= end_value <= year_end_value:
+            matching_starts.append(year_start_value)
+
+    if matching_starts:
+        return min(matching_starts)
+
+    return None
+
+
+def _resolve_clinic_trend_start_date(time_range: str, end_date, school_scope: list[str] | None = None):
     end_value = getdate(end_date)
     if time_range == "YTD":
-        academic_year = frappe.db.get_value("Academic Year", {"current": 1}, "year_start_date")
-        if academic_year:
-            return getdate(academic_year)
+        academic_year_start = _resolve_clinic_scope_academic_year_start(school_scope or [], end_value)
+        if academic_year_start:
+            return academic_year_start
         return getdate(f"{end_value.year}-01-01")
 
     if time_range == CLINIC_SUMMARY_RANGE_BUSINESS_WEEKS:
@@ -570,6 +637,7 @@ def get_recent_student_logs(user):
         f"""
         SELECT
             sl.name,
+            sl.student,
             sl.student_name,
             sl.student_image,
             sl.log_type,
@@ -591,6 +659,8 @@ def get_recent_student_logs(user):
         },
         as_dict=True,
     )
+
+    apply_preferred_student_images(logs, student_field="student", image_field="student_image")
 
     formatted_logs = []
     for log in logs:
@@ -641,20 +711,22 @@ def get_staff_birthdays():
         )
 
     sql = f"""
-		SELECT
-			employee_full_name as name,
-			employee_image as image,
-			employee_date_of_birth as date_of_birth
-		FROM
-			`tabEmployee`
-		WHERE
-			status = 'Active'
-			AND employee_date_of_birth IS NOT NULL
-			AND {condition}
-		ORDER BY
-			DATE_FORMAT(employee_date_of_birth, '%%%%m-%%%%d') ASC
-	"""
-    return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+        SELECT
+            name as employee,
+            employee_full_name as name,
+            employee_image as image,
+            employee_date_of_birth as date_of_birth
+        FROM
+            `tabEmployee`
+        WHERE
+            employment_status = 'Active'
+            AND employee_date_of_birth IS NOT NULL
+            AND {condition}
+        ORDER BY
+            DATE_FORMAT(employee_date_of_birth, '%%%%m-%%%%d') ASC
+    """
+    rows = frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+    return apply_preferred_employee_images(rows, employee_field="employee", image_field="image")
 
 
 def get_my_student_birthdays(group_names):
@@ -679,6 +751,7 @@ def get_my_student_birthdays(group_names):
 
     sql = f"""
 		SELECT DISTINCT
+			s.name AS student,
 			s.student_first_name AS first_name,
 			s.student_last_name AS last_name,
 			s.student_image AS image,
@@ -692,7 +765,8 @@ def get_my_student_birthdays(group_names):
 		ORDER BY DATE_FORMAT(s.student_date_of_birth, '%%%%m-%%%%d') ASC
 	"""
 
-    return frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+    rows = frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+    return apply_preferred_student_images(rows, student_field="student", image_field="image")
 
 
 # ==============================================================================
@@ -832,7 +906,7 @@ def get_clinic_visits_trend(time_range="1M"):
         frappe.throw(scope["error"], frappe.PermissionError)
 
     end_date = getdate(today())
-    start_date = _resolve_clinic_trend_start_date(time_range, end_date)
+    start_date = _resolve_clinic_trend_start_date(time_range, end_date, scope["school_scope"])
     calendar_context = _load_clinic_calendar_context(scope["school_scope"], start_date, end_date)
     count_map = _build_clinic_count_map(_query_clinic_visit_counts(scope["school_scope"], start_date, end_date))
     final_data = []

@@ -96,8 +96,8 @@ class Student(Document):
         # Enforce unique student_full_name
         if frappe.db.exists("Student", {"student_full_name": self.student_full_name, "name": ["!=", self.name]}):
             frappe.throw(
-                _("Student Full Name '{0}' must be unique. Please choose a different name.").format(
-                    self.student_full_name
+                _("Student Full Name '{student_full_name}' must be unique. Please choose a different name.").format(
+                    student_full_name=self.student_full_name
                 )
             )
 
@@ -204,7 +204,11 @@ class Student(Document):
                 student_user.flags.ignore_permissions = True
                 student_user.add_roles("Student")
                 student_user.save()
-                frappe.msgprint(_("User {0} has been created").format(get_link_to_form("User", self.student_email)))
+                frappe.msgprint(
+                    _("User {user_link} has been created").format(
+                        user_link=get_link_to_form("User", self.student_email)
+                    )
+                )
             except Exception as e:
                 frappe.log_error(f"Error creating user for student {self.name}: {e}")
                 frappe.msgprint(f"Error creating user for student {self.name}. Check Error Log for details.")
@@ -215,7 +219,9 @@ class Student(Document):
             student_patient = frappe.get_doc({"doctype": "Student Patient", "student": self.name})
             student_patient.save()
             frappe.msgprint(
-                _("Student Patient {0} linked to this student has been created").format(self.student_full_name)
+                _("Student Patient {student_name} linked to this student has been created").format(
+                    student_name=self.student_full_name
+                )
             )
 
     ############################################
@@ -334,7 +340,7 @@ class Student(Document):
                     update_modified=False,
                 )
             else:
-                frappe.throw(_("Original file not found: {0}").format(old_file_path))
+                frappe.throw(_("Original file not found: {file_path}").format(file_path=old_file_path))
 
             # Update doc.student_image to reflect new URL
             frappe.db.set_value(
@@ -351,13 +357,20 @@ class Student(Document):
             file_doc.file_url = new_url
             process_single_file(file_doc)
 
-            frappe.msgprint(_("Image renamed to {0} and moved to /files/student/").format(expected_file_name))
+            frappe.msgprint(
+                _("Image renamed to {file_name} and moved to /files/student/").format(file_name=expected_file_name)
+            )
 
         except Exception as e:
             frappe.log_error(
                 title=_("Student Image Error"), message=f"Error handling student image for {self.name}: {e}"
             )
-            frappe.msgprint(_("Error handling student image for {0}: {1}").format(self.name, e))
+            frappe.msgprint(
+                _("Error handling student image for {student_name}: {error}").format(
+                    student_name=self.name,
+                    error=e,
+                )
+            )
 
     # Sync the student image to the linked contact. This method is called after the student image is renamed
     def sync_student_contact_image(self):
@@ -553,9 +566,3 @@ def get_student_guardians(student_id: str) -> list[dict]:
         filters={"parent": student_id, "parenttype": "Student", "parentfield": "guardians"},
         fields=["guardian", "guardian_name", "relation", "can_consent", "email", "phone"],
     )
-
-
-def on_doctype_update():
-    # speed up reverse lookups and parent scans
-    frappe.db.add_index("Student Sibling", ["student"])
-    frappe.db.add_index("Student Sibling", ["parent"])

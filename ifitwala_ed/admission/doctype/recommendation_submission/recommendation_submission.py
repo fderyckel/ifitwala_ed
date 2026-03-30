@@ -58,7 +58,11 @@ class RecommendationSubmission(Document):
         if not self.recommendation_request:
             frappe.throw(_("Recommendation Request is required."))
         if not frappe.db.exists("Recommendation Request", self.recommendation_request):
-            frappe.throw(_("Invalid Recommendation Request: {0}.").format(self.recommendation_request))
+            frappe.throw(
+                _("Invalid Recommendation Request: {recommendation_request}.").format(
+                    recommendation_request=self.recommendation_request
+                )
+            )
 
         request_row = frappe.db.get_value(
             "Recommendation Request",

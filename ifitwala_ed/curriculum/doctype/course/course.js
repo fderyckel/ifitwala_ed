@@ -69,6 +69,8 @@ frappe.ui.form.on("Course", {
         },
       };
     });
+
+		refresh_course_website_banner(frm);
   },
 
 
@@ -120,6 +122,36 @@ frappe.ui.form.on("Course", {
     });
   },
 });
+
+async function refresh_course_website_banner(frm) {
+	if (!frm.dashboard || !frm.dashboard.set_headline) return;
+
+	const warnings = [];
+	if (frm.doc.is_published && !frm.doc.school) {
+		warnings.push(__("Course is published but has no School, so no public website profile can be prepared."));
+	}
+
+	if (frm.doc.is_published && frm.doc.school) {
+		const profiles = await frappe.db.get_list("Course Website Profile", {
+			filters: { course: frm.doc.name },
+			fields: ["name", "status"],
+			limit: 20
+		});
+		const publishedProfiles = (profiles || []).filter((row) => row.status === "Published");
+		if (!profiles || profiles.length === 0) {
+			warnings.push(__("Course is published but no Website Profile has been prepared yet."));
+		} else if (publishedProfiles.length === 0) {
+			warnings.push(__("Course website profile is prepared, but not published yet."));
+		}
+	}
+
+	if (warnings.length) {
+		const html = warnings.map((msg) => `• ${frappe.utils.escape_html(msg)}`).join("<br>");
+		frm.dashboard.set_headline(`<span class="text-warning">${html}</span>`);
+	} else {
+		frm.dashboard.set_headline("");
+	}
+}
 
 function prefill_course_default_school(frm) {
 	if (!frm.is_new() || frm.doc.school) return;

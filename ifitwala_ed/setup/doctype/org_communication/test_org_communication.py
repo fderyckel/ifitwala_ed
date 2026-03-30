@@ -129,6 +129,26 @@ class TestOrgCommunication(FrappeTestCase):
 
         self.assertIsNone(doc.school)
 
+    def test_validate_school_scope_preserves_blank_school_for_organization_audience(self):
+        doc = frappe._dict(
+            school=None,
+            audiences=[frappe._dict(target_mode="Organization", to_staff=1)],
+        )
+
+        with (
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._get_school_scope_tree",
+                return_value=("SCH-ROOT", ["SCH-ROOT"]),
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._user_has_any_role",
+                return_value=False,
+            ),
+        ):
+            org_communication_controller.OrgCommunication._validate_and_enforce_issuing_school_scope(doc)
+
+        self.assertIsNone(doc.school)
+
     def test_validate_organization_scope_derives_default_org(self):
         doc = frappe._dict(organization=None)
 
@@ -264,6 +284,85 @@ class TestOrgCommunication(FrappeTestCase):
             ),
         ):
             org_communication_controller.OrgCommunication._validate_audiences(doc)
+
+    def test_organization_audience_validation_without_parent_school(self):
+        doc = frappe._dict(
+            school=None,
+            audiences=[
+                frappe._dict(
+                    target_mode="Organization",
+                    school=None,
+                    team=None,
+                    student_group=None,
+                    to_staff=1,
+                    to_students=0,
+                    to_guardians=0,
+                    to_community=0,
+                )
+            ],
+        )
+
+        with (
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._user_has_any_role",
+                return_value=False,
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._get_allowed_schools_for_user",
+                return_value=[],
+            ),
+        ):
+            org_communication_controller.OrgCommunication._validate_audiences(doc)
+
+    def test_organization_audience_rejects_parent_school(self):
+        doc = frappe._dict(
+            school="SCH-ROOT",
+            audiences=[
+                frappe._dict(
+                    target_mode="Organization",
+                    school=None,
+                    team=None,
+                    student_group=None,
+                    to_staff=1,
+                    to_students=0,
+                    to_guardians=0,
+                    to_community=0,
+                )
+            ],
+        )
+
+        with (
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._user_has_any_role",
+                return_value=False,
+            ),
+            patch(
+                "ifitwala_ed.setup.doctype.org_communication.org_communication._get_allowed_schools_for_user",
+                return_value=[],
+            ),
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                org_communication_controller.OrgCommunication._validate_audiences(doc)
+
+    def test_organization_audience_requires_wide_audience_role(self):
+        doc = frappe._dict(
+            audiences=[
+                frappe._dict(
+                    target_mode="Organization",
+                    to_staff=1,
+                    to_students=0,
+                    to_guardians=0,
+                    to_community=0,
+                )
+            ]
+        )
+
+        with patch(
+            "ifitwala_ed.setup.doctype.org_communication.org_communication._user_has_any_role",
+            return_value=False,
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                org_communication_controller.OrgCommunication._enforce_role_restrictions_on_audiences(doc)
 
     def test_context_uses_org_scope_schools_when_default_school_missing(self):
         with (

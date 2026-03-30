@@ -87,9 +87,9 @@ class Team(NestedSet):
         if duplicates:
             names = ", ".join(frappe.bold(name) for name in duplicates)
             frappe.throw(
-                _("The following members are already part of this team: {0}. Remove duplicates before saving.").format(
-                    names
-                )
+                _(
+                    "The following members are already part of this team: {members}. Remove duplicates before saving."
+                ).format(members=names)
             )
 
 
@@ -219,7 +219,7 @@ def get_schedulable_academic_years(team):
     """Return academic years tied to the team's school whose end date hasn't passed."""
     team_row = frappe.db.get_value("Team", team, ["school"], as_dict=True)
     if not team_row:
-        frappe.throw(_("Team {0} was not found.").format(frappe.bold(team)))
+        frappe.throw(_("Team {team} was not found.").format(team=frappe.bold(team)))
 
     candidate_schools = []
     if team_row.school:
@@ -300,7 +300,7 @@ def schedule_recurring_meetings(
         frappe.throw(_("Start Date, Start Time, and End Time are required."))
 
     if not repeat_option or repeat_option not in RECURRENCE_PRESETS:
-        frappe.throw(_("Unsupported repeat option: {0}").format(frappe.bold(repeat_option)))
+        frappe.throw(_("Unsupported repeat option: {repeat_option}").format(repeat_option=frappe.bold(repeat_option)))
 
     occurrences = cint(occurrences)
     if occurrences <= 0:
@@ -311,7 +311,11 @@ def schedule_recurring_meetings(
         "Academic Year", academic_year, ["name", "year_start_date", "year_end_date"], as_dict=True
     )
     if not ay_row or not ay_row.year_start_date or not ay_row.year_end_date:
-        frappe.throw(_("Academic Year {0} must have start and end dates.").format(frappe.bold(academic_year)))
+        frappe.throw(
+            _("Academic Year {academic_year} must have start and end dates.").format(
+                academic_year=frappe.bold(academic_year)
+            )
+        )
 
     ay_start = getdate(ay_row.year_start_date)
     ay_end = getdate(ay_row.year_end_date)
@@ -319,8 +323,9 @@ def schedule_recurring_meetings(
     start_date_value = getdate(start_date)
     if start_date_value < ay_start or start_date_value > ay_end:
         frappe.throw(
-            _("Start Date must fall within the Academic Year window ({0} → {1}).").format(
-                format_date(ay_start), format_date(ay_end)
+            _("Start Date must fall within the Academic Year window ({start_date} -> {end_date}).").format(
+                start_date=format_date(ay_start),
+                end_date=format_date(ay_end),
             )
         )
 
@@ -369,7 +374,7 @@ def schedule_recurring_meetings(
         frappe.throw(_("No meetings can be scheduled before the Academic Year ends."))
 
     base_title = meeting_title or team_doc.team_name or team_doc.name
-    series_title = _("{0} [{1}]").format(base_title, ay_row.name)
+    series_title = _("{series_title} [{academic_year}]").format(series_title=base_title, academic_year=ay_row.name)
 
     series_doc = frappe.get_doc(
         {
@@ -435,7 +440,7 @@ def schedule_recurring_meetings(
         except Exception as err:
             frappe.log_error(
                 frappe.get_traceback(),
-                _("Failed to create meeting on {0}").format(format_date(meeting_date)),
+                _("Failed to create meeting on {meeting_date}").format(meeting_date=format_date(meeting_date)),
             )
             failures.append({"date": format_date(meeting_date), "error": str(err)})
 
@@ -449,8 +454,9 @@ def schedule_recurring_meetings(
     if created:
         team_doc.add_comment(
             "Info",
-            _("Scheduled {0} meeting(s) via {1}.").format(
-                len(created), get_link_to_form("Meeting Series", series_doc.name)
+            _("Scheduled {meeting_count} meeting(s) via {meeting_series_link}.").format(
+                meeting_count=len(created),
+                meeting_series_link=get_link_to_form("Meeting Series", series_doc.name),
             ),
         )
 

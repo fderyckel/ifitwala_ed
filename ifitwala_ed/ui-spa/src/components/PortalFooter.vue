@@ -69,7 +69,7 @@
 				<input type="checkbox" v-model="form.consent" class="mt-0.5" />
 				<span>
 					I understand this is not an emergency service and consent to share this information with
-					the counsellor team.
+					the counselor team.
 				</span>
 			</label>
 
@@ -165,7 +165,7 @@
 
 			<!-- Confidentiality microcopy -->
 			<p class="text-[11px] text-gray-500">
-				Confidentiality: by default, your submission will be visible to the counsellor case team
+				Confidentiality: by default, your submission will be visible to the counselor case team
 				only.
 			</p>
 		</div>
@@ -285,8 +285,8 @@ async function submit() {
 		toast({
 			title: 'Submitted',
 			text: name
-				? `Thank you. Your message has been sent to the counsellor team. Reference: ${name}`
-				: 'Thank you. Your message has been sent to the counsellor team.',
+				? `Thank you. Your message has been sent to the counselor team. Reference: ${name}`
+				: 'Thank you. Your message has been sent to the counselor team.',
 			icon: 'check',
 			theme: 'green',
 		});
@@ -298,7 +298,7 @@ async function submit() {
 		console.error(err);
 		toast({
 			title: 'Could not submit',
-			text: 'Please review your entries and try again. If the problem persists, contact the school counsellor.',
+			text: 'Please review your entries and try again. If the problem persists, contact the school counselor.',
 			icon: 'x',
 			theme: 'red',
 		});

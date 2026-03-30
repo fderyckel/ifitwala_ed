@@ -21,6 +21,11 @@ Inside `ifitwala_ed/docs/`, prioritize:
 
 Docs must reflect reality, not aspiration.
 
+## 0.1 Local Environment Note
+
+- This Codex session is on the user's local machine inside the repo.
+- Do not add repetitive environment caveats about `.venv`, `frappe`, `bench`, or local shell `PATH` unless a specific verification attempt failed and the exact failure is needed for accuracy.
+
 ---
 
 ## 1. Canonical Documentation Rule
@@ -85,6 +90,7 @@ Docs must be explicit enough that a coding agent can tell:
   - scheduler/background job
   - report/dashboard
 - what must not be reimplemented elsewhere
+- for governed file/image reads, which surface owns the visibility contract and which API resolves the display/open URL
 
 If a doc is too vague to guide safe implementation, improve the doc first.
 
@@ -99,6 +105,7 @@ Canonical feature docs should explicitly state, where relevant:
 - multi-tenant isolation expectations
 - concurrency/performance expectations
 - queue/cache/realtime expectations when those are part of the design
+- permission-matrix expectations for governed file/image access when a surface exposes private media
 
 Do not leave these as implicit assumptions for critical workflows.
 

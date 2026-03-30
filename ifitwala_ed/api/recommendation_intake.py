@@ -202,7 +202,7 @@ def _request_scope_ancestors(student_applicant: str) -> tuple[dict, set[str], se
         as_dict=True,
     )
     if not applicant_row:
-        frappe.throw(_("Invalid Student Applicant: {0}.").format(student_applicant))
+        frappe.throw(_("Invalid Student Applicant: {student_applicant}.").format(student_applicant=student_applicant))
 
     org_scope, school_scope = get_applicant_scope_ancestors(
         organization=applicant_row.get("organization"),
@@ -242,7 +242,7 @@ def _ensure_template_scope_for_applicant(*, student_applicant: str, template_nam
         as_dict=True,
     )
     if not template_row:
-        frappe.throw(_("Invalid Recommendation Template: {0}.").format(template_name))
+        frappe.throw(_("Invalid Recommendation Template: {template_name}.").format(template_name=template_name))
     if not cint(template_row.get("is_active")):
         frappe.throw(_("Recommendation Template is inactive."))
     if not _template_in_scope(template_row=template_row, org_scope=org_scope, school_scope=school_scope):
@@ -382,10 +382,12 @@ def _send_recommendation_request_email(*, request_row: dict, intake_url: str, is
         return False
     subject = _("Recommendation Request for Applicant")
     status_label = _("resend") if is_resend else _("new request")
-    message = _("You have received a {0}. Use this secure link to submit the recommendation before {1}: {2}").format(
-        status_label,
-        request_row.get("expires_on"),
-        intake_url,
+    message = _(
+        "You have received a {status_label}. Use this secure link to submit the recommendation before {expires_on}: {intake_url}"
+    ).format(
+        status_label=status_label,
+        expires_on=request_row.get("expires_on"),
+        intake_url=intake_url,
     )
     try:
         frappe.sendmail(
@@ -507,13 +509,22 @@ def _normalize_answers(snapshot: dict, answers: dict) -> dict:
         if field_type == "Check":
             value = 1 if _as_bool(raw_value) else 0
             if required and not value:
-                frappe.throw(_("Required field is missing: {0}.").format(label), frappe.ValidationError)
+                frappe.throw(
+                    _("Required field is missing: {field_label}.").format(field_label=label),
+                    frappe.ValidationError,
+                )
         else:
             value = "" if raw_value is None else str(raw_value).strip()
             if required and not value:
-                frappe.throw(_("Required field is missing: {0}.").format(label), frappe.ValidationError)
+                frappe.throw(
+                    _("Required field is missing: {field_label}.").format(field_label=label),
+                    frappe.ValidationError,
+                )
             if field_type == "Select" and value and options and value not in options:
-                frappe.throw(_("Invalid option for {0}.").format(label), frappe.ValidationError)
+                frappe.throw(
+                    _("Invalid option for {field_label}.").format(field_label=label),
+                    frappe.ValidationError,
+                )
 
         normalized[key] = {
             "label": label,
@@ -1216,7 +1227,9 @@ def create_recommendation_request(payload=None, **kwargs):
         )
         if active_or_submitted_count >= max_allowed:
             frappe.throw(
-                _("Maximum recommendation requests reached for template {0}.").format(template_name),
+                _("Maximum recommendation requests reached for template {template_name}.").format(
+                    template_name=template_name
+                ),
                 frappe.ValidationError,
             )
 
@@ -1240,7 +1253,9 @@ def create_recommendation_request(payload=None, **kwargs):
         token_hash = _token_hash(token)
         token_hint = token[-8:]
         item_key = _new_item_key(student_applicant)
-        resolved_item_label = item_label or _("Recommendation - {0}").format(recommender_name)
+        resolved_item_label = item_label or _("Recommendation - {recommender_name}").format(
+            recommender_name=recommender_name
+        )
         expires_on = add_to_date(now_datetime(), days=expires_in_days, as_datetime=True)
 
         applicant_document, applicant_document_item = _ensure_document_item_slot(
@@ -1287,9 +1302,9 @@ def create_recommendation_request(payload=None, **kwargs):
         applicant = frappe.get_doc("Student Applicant", applicant_row.get("name"))
         applicant.add_comment(
             "Comment",
-            text=_("Recommendation request created for {0} by {1}.").format(
-                frappe.bold(recommender_email),
-                frappe.bold(frappe.session.user),
+            text=_("Recommendation request created for {recommender_email} by {actor}.").format(
+                recommender_email=frappe.bold(recommender_email),
+                actor=frappe.bold(frappe.session.user),
             ),
         )
 
@@ -1360,9 +1375,9 @@ def resend_recommendation_request(
     applicant = frappe.get_doc("Student Applicant", doc.student_applicant)
     applicant.add_comment(
         "Comment",
-        text=_("Recommendation request re-sent for {0} by {1}.").format(
-            frappe.bold(doc.recommender_email),
-            frappe.bold(frappe.session.user),
+        text=_("Recommendation request re-sent for {recommender_email} by {actor}.").format(
+            recommender_email=frappe.bold(doc.recommender_email),
+            actor=frappe.bold(frappe.session.user),
         ),
     )
 
@@ -1401,9 +1416,9 @@ def revoke_recommendation_request(*, recommendation_request: str | None = None):
     applicant = frappe.get_doc("Student Applicant", doc.student_applicant)
     applicant.add_comment(
         "Comment",
-        text=_("Recommendation request revoked for {0} by {1}.").format(
-            frappe.bold(doc.recommender_email),
-            frappe.bold(frappe.session.user),
+        text=_("Recommendation request revoked for {recommender_email} by {actor}.").format(
+            recommender_email=frappe.bold(doc.recommender_email),
+            actor=frappe.bold(frappe.session.user),
         ),
     )
 
@@ -1816,7 +1831,10 @@ def send_recommendation_otp(*, token: str | None = None):
         frappe.sendmail(
             recipients=[row.get("recommender_email")],
             subject=_("Recommendation verification code"),
-            message=_("Your verification code is {0}. It expires in {1} minutes.").format(code, OTP_TTL_MINUTES),
+            message=_("Your verification code is {otp_code}. It expires in {ttl_minutes} minutes.").format(
+                otp_code=code,
+                ttl_minutes=OTP_TTL_MINUTES,
+            ),
         )
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Recommendation OTP send failed")
@@ -2030,7 +2048,9 @@ def submit_recommendation(payload=None, **kwargs):
         applicant = frappe.get_doc("Student Applicant", request_doc.student_applicant)
         applicant.add_comment(
             "Comment",
-            text=_("Recommendation submitted for request {0}.").format(frappe.bold(request_doc.name)),
+            text=_("Recommendation submitted for request {request_name}.").format(
+                request_name=frappe.bold(request_doc.name)
+            ),
         )
 
         result = {

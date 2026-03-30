@@ -193,8 +193,8 @@ class TestUserRedirect(FrappeTestCase):
             frappe.delete_doc("Employee", employee.name, force=True)
             frappe.delete_doc("User", user.email, force=True)
 
-    def test_all_users_redirect_to_staff_entry(self):
-        """Standard users should be redirected to /hub/staff on login."""
+    def test_users_without_portal_access_redirect_to_login(self):
+        """Users with no resolved portal entitlement must not be dropped onto Staff Home."""
         # Create test user
         user = frappe.new_doc("User")
         user.email = "test_user_portal@example.com"
@@ -210,9 +210,9 @@ class TestUserRedirect(FrappeTestCase):
         # Call redirect function
         redirect_user_to_entry_portal()
 
-        # Assert redirect to /hub/staff
-        self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
-        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+        # Assert redirect to /login
+        self.assertEqual(frappe.local.response.get("home_page"), "/login")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/login")
 
         # Cleanup
         frappe.set_user("Administrator")
@@ -553,13 +553,13 @@ class TestUserRedirect(FrappeTestCase):
         user.first_name = "Employee"
         user.last_name = "RoleOnly"
         user.enabled = 1
-        _append_role(user, "Employee")
         user.insert(ignore_permissions=True)
 
         frappe.set_user(user.email)
         frappe.local.response = {}
 
-        redirect_user_to_entry_portal()
+        with patch("frappe.get_roles", return_value=["Employee"]):
+            redirect_user_to_entry_portal()
 
         self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
         self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
@@ -620,8 +620,8 @@ class TestUserRedirect(FrappeTestCase):
         frappe.delete_doc("Employee", employee.name, force=True)
         frappe.delete_doc("User", user.email, force=True)
 
-    def test_non_active_employee_profile_falls_back_to_staff(self):
-        """Non-Active employee profile without student/guardian roles falls back to /hub/staff."""
+    def test_non_active_employee_profile_redirects_to_login(self):
+        """Non-active employee profiles should not retain portal entry access."""
         user = frappe.new_doc("User")
         user.email = "test_temp_leave_employee_profile_redirect@example.com"
         user.first_name = "Temporary"
@@ -644,8 +644,40 @@ class TestUserRedirect(FrappeTestCase):
 
         redirect_user_to_entry_portal()
 
-        self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
-        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+        self.assertEqual(frappe.local.response.get("home_page"), "/login")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/login")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_non_active_employee_with_stale_staff_role_redirects_to_login(self):
+        """Inactive employee status must win over stale staff-role rows."""
+        user = frappe.new_doc("User")
+        user.email = "test_temp_leave_employee_with_admin_role@example.com"
+        user.first_name = "Temporary"
+        user.last_name = "AdminRole"
+        user.enabled = 1
+        _append_role(user, "Administrator")
+        user.insert(ignore_permissions=True)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Temporary"
+        employee.employee_last_name = "AdminRole"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Temporary Leave"
+        employee.insert(ignore_permissions=True)
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/login")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/login")
 
         frappe.set_user("Administrator")
         frappe.delete_doc("Employee", employee.name, force=True)

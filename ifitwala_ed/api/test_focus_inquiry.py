@@ -5,7 +5,13 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.api.focus import ACTION_INQUIRY_FIRST_CONTACT, build_focus_item_id, mark_inquiry_contacted
+from ifitwala_ed.api.focus import (
+    ACTION_INQUIRY_FIRST_CONTACT,
+    build_focus_item_id,
+    create_inquiry_contact,
+    get_focus_context,
+    mark_inquiry_contacted,
+)
 from ifitwala_ed.tests.factories.users import make_user
 
 
@@ -40,6 +46,9 @@ class TestFocusInquiry(FrappeTestCase):
                 "doctype": "Inquiry",
                 "first_name": "Focus",
                 "last_name": "Inquiry",
+                "email": f"focus-{frappe.generate_hash(length=8)}@example.com",
+                "phone_number": "+6612345678",
+                "message": "Parent asked about enrollment and transportation.",
             }
         )
         doc.insert(ignore_permissions=True)
@@ -166,3 +175,61 @@ class TestFocusInquiry(FrappeTestCase):
         self.assertEqual(first["status"], "processed")
         self.assertEqual(second["status"], "already_processed")
         self.assertTrue(second["idempotent"])
+
+    def test_get_focus_context_includes_inquiry_message_and_contact_state(self):
+        assignee = self._make_admissions_user("Admission Officer")
+        inquiry_name = self._make_inquiry(assigned_to=assignee, workflow_state="Assigned")
+        focus_item_id = build_focus_item_id(
+            "inquiry",
+            "Inquiry",
+            inquiry_name,
+            ACTION_INQUIRY_FIRST_CONTACT,
+            assignee,
+        )
+
+        frappe.set_user(assignee)
+        ctx = get_focus_context(focus_item_id=focus_item_id)
+
+        self.assertEqual(ctx["reference_doctype"], "Inquiry")
+        self.assertEqual(ctx["inquiry"]["message"], "Parent asked about enrollment and transportation.")
+        self.assertFalse(bool(ctx["inquiry"]["contact"]))
+        self.assertTrue(bool(ctx["inquiry"]["email"]))
+        self.assertTrue(bool(ctx["inquiry"]["phone_number"]))
+
+    def test_create_inquiry_contact_links_contact_for_assignee(self):
+        assignee = self._make_admissions_user("Admission Officer")
+        inquiry_name = self._make_inquiry(assigned_to=assignee, workflow_state="Assigned")
+        focus_item_id = build_focus_item_id(
+            "inquiry",
+            "Inquiry",
+            inquiry_name,
+            ACTION_INQUIRY_FIRST_CONTACT,
+            assignee,
+        )
+
+        frappe.set_user(assignee)
+        result = create_inquiry_contact(focus_item_id=focus_item_id)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["status"], "processed")
+        self.assertTrue(bool(result["contact_name"]))
+        self.assertEqual(frappe.db.get_value("Inquiry", inquiry_name, "contact"), result["contact_name"])
+
+    def test_create_inquiry_contact_is_idempotent_once_contact_exists(self):
+        assignee = self._make_admissions_user("Admission Officer")
+        inquiry_name = self._make_inquiry(assigned_to=assignee, workflow_state="Assigned")
+        focus_item_id = build_focus_item_id(
+            "inquiry",
+            "Inquiry",
+            inquiry_name,
+            ACTION_INQUIRY_FIRST_CONTACT,
+            assignee,
+        )
+
+        frappe.set_user(assignee)
+        first = create_inquiry_contact(focus_item_id=focus_item_id)
+        second = create_inquiry_contact(focus_item_id=focus_item_id)
+
+        self.assertEqual(first["status"], "processed")
+        self.assertEqual(second["status"], "already_linked")
+        self.assertEqual(first["contact_name"], second["contact_name"])

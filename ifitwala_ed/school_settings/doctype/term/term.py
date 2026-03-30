@@ -3,13 +3,15 @@
 
 # ifitwala_ed/school_settings/doctype/term/term.py
 
+from __future__ import annotations
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_link_to_form, getdate, nowdate
 from frappe.utils.nestedset import get_ancestors_of
 
-from ifitwala_ed.utilities.school_tree import ParentRuleViolation, get_descendant_schools, is_leaf_school
+from ifitwala_ed.utilities.school_tree import ParentRuleViolation, get_descendant_schools
 
 
 class Term(Document):
@@ -47,8 +49,8 @@ class Term(Document):
             frappe.throw(
                 _(
                     "The start of the term cannot be before the start of the linked academic year. "
-                    "The start of the academic year {0} has been set to {1}.  Please adjust the dates"
-                ).format(self.academic_year, year.year_start_date)
+                    "The start of the academic year {academic_year} has been set to {start_date}.  Please adjust the dates"
+                ).format(academic_year=self.academic_year, start_date=year.year_start_date)
             )
 
         # end of term can not be after end of academic year
@@ -60,8 +62,8 @@ class Term(Document):
             frappe.throw(
                 _(
                     "The end of the term cannot be after the end of the linked academic year.  "
-                    "The end of the academic year {0} has been set to {1}. Please adjust the dates."
-                ).format(self.academic_year, year.year_end_date)
+                    "The end of the academic year {academic_year} has been set to {end_date}. Please adjust the dates."
+                ).format(academic_year=self.academic_year, end_date=year.year_end_date)
             )
 
     def on_update(self):
@@ -85,7 +87,10 @@ class Term(Document):
         ancestors = [self.school] + get_ancestors_of("School", self.school)
         if ay_school not in ancestors:
             frappe.throw(
-                _("School {0} is not within the Academic Year’s hierarchy ({1}).").format(self.school, ay_school),
+                _("School {school} is not within the Academic Year's hierarchy ({academic_year_school}).").format(
+                    school=self.school,
+                    academic_year_school=ay_school,
+                ),
                 exc=ParentRuleViolation,
             )
 
@@ -121,9 +126,9 @@ class Term(Document):
         if query:
             frappe.throw(
                 _(
-                    "A term with this academic year {0} and this name {1} already exists. "
+                    "A term with this academic year {academic_year} and this name {term_name} already exists. "
                     "Please adjust the name if necessary."
-                ).format(self.academic_year, self.term_name)
+                ).format(academic_year=self.academic_year, term_name=self.term_name)
             )
 
     def create_calendar_events(self):
@@ -138,8 +143,8 @@ class Term(Document):
                 start_evt.db_set("starts_on", self.term_start_date)
                 start_evt.db_set("ends_on", self.term_start_date)
                 frappe.msgprint(
-                    _("Start of term date updated on School Event {0}").format(
-                        get_link_to_form("School Event", start_evt.name)
+                    _("Start of term date updated on School Event {school_event}.").format(
+                        school_event=get_link_to_form("School Event", start_evt.name)
                     )
                 )
 
@@ -149,8 +154,8 @@ class Term(Document):
                 end_evt.db_set("starts_on", self.term_end_date)
                 end_evt.db_set("ends_on", self.term_end_date)
                 frappe.msgprint(
-                    _("End of term date updated on School Event {0}").format(
-                        get_link_to_form("School Event", end_evt.name)
+                    _("End of term date updated on School Event {school_event}.").format(
+                        school_event=get_link_to_form("School Event", end_evt.name)
                     )
                 )
 
@@ -161,7 +166,7 @@ class Term(Document):
                     "doctype": "School Event",
                     "owner": frappe.session.user,
                     "school": self.school,
-                    "subject": _("Start of {0}").format(self.term_name),
+                    "subject": _("Start of {term_name}").format(term_name=self.term_name),
                     "starts_on": getdate(self.term_start_date),
                     "ends_on": getdate(self.term_start_date),
                     "event_category": "Other",
@@ -176,7 +181,9 @@ class Term(Document):
 
             self.db_set("at_start", start_evt.name)
             frappe.msgprint(
-                _("Start of term event created: {0}").format(get_link_to_form("School Event", start_evt.name))
+                _("Start of term event created: {school_event}.").format(
+                    school_event=get_link_to_form("School Event", start_evt.name)
+                )
             )
 
         if not self.at_end and self.term_end_date:
@@ -185,7 +192,7 @@ class Term(Document):
                     "doctype": "School Event",
                     "owner": frappe.session.user,
                     "school": self.school,
-                    "subject": _("End of {0}").format(self.term_name),
+                    "subject": _("End of {term_name}").format(term_name=self.term_name),
                     "starts_on": getdate(self.term_end_date),
                     "ends_on": getdate(self.term_end_date),
                     "event_category": "Other",
@@ -199,7 +206,11 @@ class Term(Document):
             end_evt.insert(ignore_permissions=True)
 
             self.db_set("at_end", end_evt.name)
-            frappe.msgprint(_("End of term event created: {0}").format(get_link_to_form("School Event", end_evt.name)))
+            frappe.msgprint(
+                _("End of term event created: {school_event}.").format(
+                    school_event=get_link_to_form("School Event", end_evt.name)
+                )
+            )
 
 
 def get_schools_per_academic_year_for_terms(user_school):
@@ -210,18 +221,33 @@ def get_schools_per_academic_year_for_terms(user_school):
     if not user_school:
         return []
 
-    # Get all academic years referenced in the Term table
-    academic_years = [row[0] for row in frappe.db.get_values("Term", {}, "academic_year", distinct=True)]
-    pairs = set()
-    chain = [user_school] + get_ancestors_of("School", user_school)
+    chain = list(dict.fromkeys([user_school, *get_ancestors_of("School", user_school)]))
+    priority_by_school = {school: idx for idx, school in enumerate(chain)}
+    rows = frappe.get_all(
+        "Term",
+        filters={"school": ["in", chain]},
+        fields=["school", "academic_year"],
+        distinct=True,
+    )
 
-    for ay in academic_years:
-        for sch in chain:
-            if frappe.db.exists("Term", {"school": sch, "academic_year": ay}):
-                pairs.add((sch, ay))
-                break  # Stop at the first ancestor with a term for this AY
+    nearest_school_by_year: dict[str, str] = {}
+    for row in rows:
+        school = row.get("school")
+        academic_year = row.get("academic_year")
+        if not school or not academic_year or school not in priority_by_school:
+            continue
 
-    return list(pairs)
+        current = nearest_school_by_year.get(academic_year)
+        if current is None or priority_by_school[school] < priority_by_school[current]:
+            nearest_school_by_year[academic_year] = school
+
+    return [
+        (school, academic_year)
+        for academic_year, school in sorted(
+            nearest_school_by_year.items(),
+            key=lambda item: (priority_by_school[item[1]], item[0]),
+        )
+    ]
 
 
 def get_current_term(school: str, academic_year: str) -> frappe._dict | None:
@@ -286,21 +312,8 @@ def get_permission_query_conditions(user):
     if not user_school:
         return "1=0"
 
-    if is_leaf_school(user_school):
-        pairs = get_schools_per_academic_year_for_terms(user_school)
-        if not pairs:
-            return "1=0"
-        # Build SQL for pairs
-        conditions = [
-            "(`tabTerm`.`school` = '{0}' AND `tabTerm`.`academic_year` = '{1}')".format(sch, ay) for sch, ay in pairs
-        ]
-        return " OR ".join(conditions)
-    else:
-        schools = get_descendant_schools(user_school)
-        if not schools:
-            return "1=0"
-        schools_list = "', '".join(schools)
-        return f"`tabTerm`.`school` IN ('{schools_list}')"
+    schools, pairs = _get_term_visibility_scope(user_school)
+    return _build_term_permission_query_conditions(schools, pairs)
 
 
 def has_permission(doc, ptype=None, user=None):
@@ -330,9 +343,42 @@ def has_permission(doc, ptype=None, user=None):
     if not user_school:
         return False
 
-    if is_leaf_school(user_school):
-        pairs = get_schools_per_academic_year_for_terms(user_school)
-        return (doc.school, doc.academic_year) in pairs
-    else:
-        schools = get_descendant_schools(user_school)
-        return doc.school in schools
+    schools, pairs = _get_term_visibility_scope(user_school)
+    if doc.school in schools:
+        return True
+    return (doc.school, doc.academic_year) in pairs
+
+
+def _get_term_visibility_scope(user_school: str) -> tuple[list[str], list[tuple[str, str]]]:
+    schools = list(dict.fromkeys(get_descendant_schools(user_school) or [user_school]))
+    pairs = []
+
+    # Keep nearest-ancestor term fallback visible for the user's branch even when the
+    # default school is not a leaf node. Local and descendant schools remain primary.
+    descendant_scope = set(schools)
+    for school, academic_year in get_schools_per_academic_year_for_terms(user_school):
+        if school in descendant_scope:
+            continue
+        pairs.append((school, academic_year))
+
+    return schools, pairs
+
+
+def _build_term_permission_query_conditions(schools: list[str], pairs: list[tuple[str, str]]) -> str:
+    conditions = []
+
+    if schools:
+        school_list = ", ".join(frappe.db.escape(school) for school in schools)
+        conditions.append(f"`tabTerm`.`school` IN ({school_list})")
+
+    if pairs:
+        pair_conditions = [
+            "(`tabTerm`.`school` = {0} AND `tabTerm`.`academic_year` = {1})".format(
+                frappe.db.escape(school),
+                frappe.db.escape(academic_year),
+            )
+            for school, academic_year in pairs
+        ]
+        conditions.append(f"({' OR '.join(pair_conditions)})")
+
+    return " OR ".join(conditions) if conditions else "1=0"

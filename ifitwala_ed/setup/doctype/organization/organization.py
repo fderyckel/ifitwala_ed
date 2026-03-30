@@ -8,21 +8,25 @@ from frappe import _
 from frappe.utils import cint, cstr
 from frappe.utils.nestedset import NestedSet
 
+from ifitwala_ed.utilities.employee_utils import get_user_base_org
 from ifitwala_ed.utilities.organization_media import get_governed_organization_media
 
 VIRTUAL_ROOT = "All Organizations"
-HR_SCOPE_ROLES = {"HR Manager", "HR User"}
 
 
 class Organization(NestedSet):
     def validate(self):
         if self.name == VIRTUAL_ROOT and self.parent_organization:
-            frappe.throw(_("The root organization '{0}' cannot have a parent.").format(VIRTUAL_ROOT))
+            frappe.throw(
+                _("The root organization '{organization}' cannot have a parent.").format(organization=VIRTUAL_ROOT)
+            )
         if self.parent_organization:
             parent_is_group = frappe.db.get_value("Organization", self.parent_organization, "is_group")
             if not parent_is_group:
                 frappe.throw(
-                    _("Parent Organization must be a Group. '{0}' is not a Group.").format(self.parent_organization)
+                    _("Parent Organization must be a Group. '{organization}' is not a Group.").format(
+                        organization=self.parent_organization
+                    )
                 )
         self.validate_default_website_school()
         self.validate_governed_public_media()
@@ -50,7 +54,7 @@ class Organization(NestedSet):
 
         media_url = (media_row.get("file_url") or "").strip()
         if not media_url:
-            frappe.throw(_("Organization Logo file '{0}' is missing a file URL.").format(logo_file))
+            frappe.throw(_("Organization Logo file '{file_name}' is missing a file URL.").format(file_name=logo_file))
 
         self.organization_logo_file = logo_file
         self.organization_logo = media_url
@@ -63,7 +67,7 @@ class Organization(NestedSet):
         school_org = frappe.db.get_value("School", default_school, "organization")
         if not school_org:
             frappe.throw(
-                _("Default Website School '{0}' was not found.").format(default_school),
+                _("Default Website School '{school}' was not found.").format(school=default_school),
                 frappe.ValidationError,
             )
 
@@ -71,8 +75,12 @@ class Organization(NestedSet):
             frappe.throw(
                 _(
                     "Default Website School must belong to this Organization.\n"
-                    "School '{0}' belongs to '{1}', not '{2}'."
-                ).format(default_school, school_org, self.name),
+                    "School '{school}' belongs to '{school_organization}', not '{organization}'."
+                ).format(
+                    school=default_school,
+                    school_organization=school_org,
+                    organization=self.name,
+                ),
                 frappe.ValidationError,
             )
 
@@ -163,19 +171,19 @@ def add_node(**kwargs):
     return {"name": doc.name}
 
 
-def _resolve_hr_base_org(user: str) -> str | None:
+def _resolve_user_base_org(user: str) -> str | None:
     org = _get_user_default_from_db(user, "organization")
     if org:
         return org
 
-    global_org = frappe.db.get_single_value("Global Defaults", "default_organization")
-    return cstr(global_org).strip() or None
+    employee_org = get_user_base_org(user)
+    return cstr(employee_org).strip() or None
 
 
-def _resolve_hr_org_scope(user: str) -> list[str]:
+def _resolve_user_org_scope(user: str) -> list[str]:
     scope: set[str] = set()
 
-    base_org = _resolve_hr_base_org(user)
+    base_org = _resolve_user_base_org(user)
     if base_org:
         scope.update(
             {cstr(org).strip() for org in (_get_descendant_organizations_uncached(base_org) or []) if cstr(org).strip()}
@@ -239,14 +247,22 @@ def get_permission_query_conditions(user=None):
     if "System Manager" in roles:
         return None
 
-    if roles & HR_SCOPE_ROLES:
-        orgs = _resolve_hr_org_scope(user)
-        if not orgs:
-            return "1=0"
-        vals = ", ".join(frappe.db.escape(org) for org in orgs)
-        return f"`tabOrganization`.`name` IN ({vals})"
+    orgs = _resolve_user_org_scope(user)
+    if not orgs:
+        return "1=0"
 
-    return None
+    vals = ", ".join(frappe.db.escape(org) for org in orgs)
+    return f"`tabOrganization`.`name` IN ({vals})"
+
+
+def _get_scope_target_for_permission(doc, ptype: str | None) -> str:
+    ptype = cstr(ptype or "read").strip().lower()
+
+    if ptype == "create":
+        parent_org = cstr(getattr(doc, "parent_organization", "")).strip()
+        return parent_org or VIRTUAL_ROOT
+
+    return cstr(getattr(doc, "name", "")).strip()
 
 
 def has_permission(doc, ptype=None, user=None):
@@ -258,7 +274,8 @@ def has_permission(doc, ptype=None, user=None):
     if "System Manager" in roles:
         return True
 
-    if roles & HR_SCOPE_ROLES and (ptype or "read") in {"read", "report", "export", "print"}:
-        return doc.name in set(_resolve_hr_org_scope(user))
+    target_org = _get_scope_target_for_permission(doc, ptype)
+    if not target_org:
+        return False
 
-    return None
+    return target_org in set(_resolve_user_org_scope(user))

@@ -149,17 +149,48 @@ def has_active_employee_profile(*, user: str, roles: set[str]) -> bool:
     return status == "active"
 
 
+def _has_staff_role_assignment(*, user: str, roles: set[str]) -> bool:
+    normalized_roles = {str(role or "").strip() for role in roles if str(role or "").strip()}
+    if normalized_roles & STAFF_PORTAL_ROLES:
+        return True
+
+    assigned_roles = frappe.get_all(
+        "Has Role",
+        filters={
+            "parent": user,
+            "parenttype": "User",
+            "role": ["in", list(STAFF_PORTAL_ROLES)],
+        },
+        pluck="role",
+        limit=20,
+    )
+    if assigned_roles:
+        return True
+
+    try:
+        user_doc = frappe.get_doc("User", user)
+    except Exception:
+        return False
+
+    return any(
+        (getattr(row, "role", None) or "").strip() in STAFF_PORTAL_ROLES for row in (user_doc.get("roles") or [])
+    )
+
+
 def has_staff_portal_access(*, user: str, roles: set[str]) -> bool:
     # Never block the framework superuser from Desk/Staff portal entry.
     if user == "Administrator":
         return True
 
-    # Explicit staff roles must stay authoritative even if a linked Employee
-    # profile exists with a non-active status.
-    if roles & STAFF_PORTAL_ROLES:
+    has_employee, status = _linked_employee_status(user=user)
+    # A linked non-active employee must not retain staff portal access through
+    # stale role rows; employee access sync is expected to strip them.
+    if has_employee and status != "active":
+        return False
+
+    if _has_staff_role_assignment(user=user, roles=roles):
         return True
 
-    has_employee, status = _linked_employee_status(user=user)
     return has_employee and status == "active"
 
 
@@ -184,7 +215,14 @@ def resolve_default_portal_section(*, allowed_sections: set[str], requested_sect
 
 
 def resolve_login_redirect_path(*, user: str, roles: set[str]) -> str:
-    # Staff access always wins to avoid Desk lockouts for mixed-role users.
+    has_employee, status = _linked_employee_status(user=user)
+    if has_employee and status != "active":
+        return "/login"
+
+    if "Employee" in roles or frappe.db.exists("Has Role", {"parent": user, "parenttype": "User", "role": "Employee"}):
+        return canonical_path_for_section("staff")
+
+    # Staff access wins for active or role-only staff users.
     if has_staff_portal_access(user=user, roles=roles):
         return canonical_path_for_section("staff")
 
@@ -192,6 +230,8 @@ def resolve_login_redirect_path(*, user: str, roles: set[str]) -> str:
         return "/admissions"
 
     sections = resolve_portal_sections(user=user, roles=roles)
+    if not sections:
+        return "/login"
     default_section = resolve_default_portal_section(allowed_sections=sections)
     return canonical_path_for_section(default_section)
 

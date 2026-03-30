@@ -3,9 +3,9 @@ title: "Program Offering: Operational Enrollment Contract"
 slug: program-offering
 category: Enrollment
 doc_order: 2
-version: "1.1.1"
-last_change_date: "2026-03-11"
-summary: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, and activity-booking readiness gates."
+version: "1.2.0"
+last_change_date: "2026-03-26"
+summary: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, activity-booking readiness gates, and self-enrollment readiness."
 seo_title: "Program Offering: Operational Enrollment Contract"
 seo_description: "Define where and when a program is delivered, including AY span, offering courses, basket-group memberships, basket rules, capacity policy, and activity-booking readiness gates."
 ---
@@ -20,6 +20,7 @@ seo_description: "Define where and when a program is delivered, including AY spa
 - Create `Academic Year` records and required `Term` rows for the target school tree.
 - Decide offering seat policy and basket-rule policy before request intake opens.
 - Decide whether any offering course belongs to one or more [**Basket Group**](/docs/en/basket-group/) memberships.
+- Decide whether this offering may be exposed through a [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/) and enable `Allow Self Enroll` when needed.
 
 ## Why It Matters
 
@@ -32,10 +33,13 @@ seo_description: "Define where and when a program is delivered, including AY spa
 Program Offering must be anchored on a leaf (child) school. Ancestor-aware validation is applied for AY and term references.
 </Callout>
 
+For `offering_academic_years`, the Desk picker follows the same rule: when the offering is anchored on a leaf school, Academic Year options may come from that leaf school or any ancestor in its school lineage. Exact-match leaf-only filtering is a bug because it hides valid inherited AY context.
+
 ## Where It Is Used Across the ERP
 
 - [**Program Enrollment Request**](/docs/en/program-enrollment-request/) target (`program_offering`).
 - [**Program Enrollment**](/docs/en/program-enrollment/) canonical spine source (`program`, `school`, `cohort`, AY membership).
+- [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/) target and portal audience anchor for student/guardian course selection.
 - Enrollment engine:
   - loads offering course semantics
   - loads offering basket-group memberships
@@ -44,7 +48,7 @@ Program Offering must be anchored on a leaf (child) school. Ancestor-aware valid
 - Desk tooling and APIs:
   - catalog/non-catalog hydration helpers
   - catalog rows default `required` and `basket_groups` from `Program` metadata
-  - AY-scoped link queries
+  - AY-scoped link queries aligned with ancestor-school validation for leaf offerings
   - activity readiness preview API
 
 ## Lifecycle and Linked Documents
@@ -56,7 +60,19 @@ Program Offering must be anchored on a leaf (child) school. Ancestor-aware valid
 5. Add `offering_course_basket_groups` rows for any offering course that belongs to one or more basket groups.
    In the form, this table is labeled `Enrollment Basket Memberships`.
 6. Configure `enrollment_rules` (`Program Offering Enrollment Rule`) and seat policy.
-7. Move offering lifecycle (`Planned` -> `Active` -> `Archived`) as operations evolve.
+7. Decide whether `Allow Self Enroll` should be enabled for future selection windows.
+8. Move offering lifecycle (`Planned` -> `Active` -> `Archived`) as operations evolve.
+
+### Academic Self-Enrollment Mode (Optional)
+
+When `allow_self_enroll = 1`, staff may launch one or more [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/) records against this offering.
+
+Selection windows:
+
+- are always scoped to one explicit Academic Year from the offering spine
+- pre-create draft `Program Enrollment Request` rows
+- expose those requests on either the student or guardian portal
+- never bypass request validation, approval, or materialization
 
 ### Activity Booking Mode (Optional)
 
@@ -110,6 +126,7 @@ A course not present in Program catalog can appear in offering only when the row
   - `hydrate_catalog_rows(program, course_names)`
   - `hydrate_non_catalog_rows(course_names, exception_reason)`
   - `academic_year_link_query(...)`
+    returns Academic Years from the selected offering school's ancestor chain, ordered by most recent first
   - `create_draft_tuition_invoice(program_offering, account_holder, posting_date, items)`
 
 - **DocType**: `Program Offering` (`ifitwala_ed/schedule/doctype/program_offering/`)

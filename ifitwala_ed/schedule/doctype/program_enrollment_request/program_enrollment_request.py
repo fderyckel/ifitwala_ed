@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import get_link_to_form
 
 from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
 from ifitwala_ed.schedule.enrollment_request_utils import (
@@ -25,11 +26,12 @@ class ProgramEnrollmentRequest(Document):
         target_status = (self.status or "").strip()
         request_kind = (self.request_kind or "Academic").strip() or "Academic"
         if request_kind not in {"Academic", "Activity"}:
-            frappe.throw(_("Invalid Request Kind: {0}").format(request_kind))
+            frappe.throw(_("Invalid Request Kind: {request_kind}.").format(request_kind=request_kind))
         self.request_kind = request_kind
         if request_kind == "Activity" and not self.activity_booking:
             frappe.throw(_("Activity Request Kind requires Activity Booking reference."))
 
+        self._apply_offering_spine()
         self._sync_course_semantics_from_offering()
         self._validate_course_rows()
 
@@ -127,9 +129,14 @@ class ProgramEnrollmentRequest(Document):
         for idx, row in enumerate(self.courses or [], start=1):
             course = (row.course or "").strip()
             if not course:
-                frappe.throw(_("Course row {0}: Course is required.").format(idx))
+                frappe.throw(_("Course row {row_number}: Course is required.").format(row_number=idx))
             if course in seen:
-                frappe.throw(_("Course row {0}: duplicate course {1}.").format(idx, course))
+                frappe.throw(
+                    _("Course row {row_number}: duplicate course {course}.").format(
+                        row_number=idx,
+                        course=course,
+                    )
+                )
             seen.add(course)
 
             semantics = offering_semantics.get(course) or {}
@@ -138,8 +145,12 @@ class ProgramEnrollmentRequest(Document):
 
             if applied_group and applied_group not in allowed_groups:
                 frappe.throw(
-                    _("Course row {0}: Applied Basket Group (Enrollment) {1} is not allowed for course {2}.").format(
-                        idx, applied_group, course
+                    _(
+                        "Course row {row_number}: Applied Basket Group (Enrollment) {basket_group} is not allowed for course {course}."
+                    ).format(
+                        row_number=idx,
+                        basket_group=applied_group,
+                        course=course,
                     )
                 )
 
@@ -149,15 +160,68 @@ class ProgramEnrollmentRequest(Document):
 
             if row.choice_rank and not applied_group:
                 frappe.throw(
-                    _("Course row {0}: Choice Rank requires an Applied Basket Group (Enrollment).").format(idx)
+                    _("Course row {row_number}: Choice Rank requires an Applied Basket Group (Enrollment).").format(
+                        row_number=idx
+                    )
                 )
 
             if (self.status or "").strip() in gate_statuses and len(allowed_groups) > 1 and not applied_group:
                 frappe.throw(
                     _(
-                        "Course row {0}: select an Applied Basket Group (Enrollment) for course {1} before the request can advance."
-                    ).format(idx, course)
+                        "Course row {row_number}: select an Applied Basket Group (Enrollment) for course {course} before the request can advance."
+                    ).format(
+                        row_number=idx,
+                        course=course,
+                    )
                 )
+
+    def _apply_offering_spine(self):
+        if not self.program_offering:
+            return
+
+        offering = frappe.db.get_value(
+            "Program Offering",
+            self.program_offering,
+            ["program", "school"],
+            as_dict=True,
+        )
+        if not offering:
+            frappe.throw(
+                _("Invalid Program Offering {program_offering}.").format(
+                    program_offering=get_link_to_form("Program Offering", self.program_offering)
+                )
+            )
+
+        self.program = offering.get("program")
+        self.school = offering.get("school")
+
+        ay_names = _offering_ay_names(self.program_offering)
+        if not ay_names:
+            frappe.throw(
+                _(
+                    "Program Offering {program_offering} must define at least one Academic Year before requests can be saved."
+                ).format(program_offering=get_link_to_form("Program Offering", self.program_offering))
+            )
+
+        if self.academic_year:
+            if self.academic_year not in ay_names:
+                frappe.throw(
+                    _("Academic Year {academic_year} is not part of Program Offering {program_offering}.").format(
+                        academic_year=get_link_to_form("Academic Year", self.academic_year),
+                        program_offering=get_link_to_form("Program Offering", self.program_offering),
+                    )
+                )
+            return
+
+        if len(ay_names) == 1:
+            self.academic_year = ay_names[0]
+            return
+
+        frappe.throw(
+            _("Please choose an Academic Year from this Program Offering: {academic_years}.").format(
+                academic_years=", ".join(ay_names)
+            )
+        )
 
 
 def _normalize_request_rows(rows):
@@ -185,6 +249,20 @@ def _normalize_request_rows(rows):
         )
     )
     return normalized
+
+
+def _offering_ay_names(offering: str) -> list[str]:
+    if not offering:
+        return []
+    return (
+        frappe.get_all(
+            "Program Offering Academic Year",
+            filters={"parent": offering, "parenttype": "Program Offering"},
+            pluck="academic_year",
+            order_by="idx asc",
+        )
+        or []
+    )
 
 
 @frappe.whitelist()

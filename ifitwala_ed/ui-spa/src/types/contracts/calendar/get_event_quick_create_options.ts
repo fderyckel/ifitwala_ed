@@ -5,6 +5,13 @@ export type SelectOption = {
 	label: string
 }
 
+export type LocationOption = SelectOption & {
+	parent_location?: string | null
+	location_type?: string | null
+	location_type_name?: string | null
+	max_capacity?: number | null
+}
+
 export type AttendeeKindOption = {
 	value: 'employee' | 'student' | 'guardian'
 	label: string
@@ -21,7 +28,10 @@ export type Response = {
 	schools: SelectOption[]
 	teams: SelectOption[]
 	student_groups: SelectOption[]
-	locations: SelectOption[]
+	locations: LocationOption[]
+	locations_by_school: Record<string, LocationOption[]>
+	location_types: SelectOption[]
+	location_types_by_school: Record<string, SelectOption[]>
 	attendee_kinds: AttendeeKindOption[]
 	defaults: {
 		school: string | null

@@ -124,6 +124,11 @@
 		letter-spacing:.05em;
 		font-size:.92rem;
 	}
+	.snip-text,
+	.followup-body{
+		white-space:pre-wrap;
+		word-break:break-word;
+	}
 
 	/* Follow-ups — no inner vertical bar; use subtle top separator */
 	.followups{ margin:.35rem 0 0 0; padding:0; }
@@ -225,7 +230,7 @@
 				<div class="card-body">
 					<div class="snip">
 						<span class="label label-log">Log:</span>
-						<span>{{ frappe.utils.escape_html(r.log_snippet || "") }}</span>
+						<span class="snip-text">{{ frappe.utils.escape_html(r.log_text || "") }}</span>
 					</div>
 
 					{% var cnt = r.follow_up_count || 0; %}
@@ -243,7 +248,7 @@
 					<div class="text-dim">by {{ r.fu_author }}</div>
 				</div>
 				<div class="followup-body">
-					{{ frappe.utils.escape_html(r.follow_up_snippet || "") }}
+					{{ frappe.utils.escape_html(r.follow_up_text || "") }}
 				</div>
 			</li>
 		{% } %}

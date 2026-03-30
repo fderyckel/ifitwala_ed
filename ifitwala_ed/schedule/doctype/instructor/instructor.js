@@ -5,17 +5,13 @@
 
 frappe.ui.form.on("Instructor", {
 	onload(frm) {
-		// restrict employee list to allowed schools
-		frappe.call({
-			method: "ifitwala_ed.utilities.school_tree.get_descendant_schools",
-			args: { user_school: frappe.defaults.get_user_default("school") },
-			callback: function (r) {
-				let allowed = r.message || [];
-				frm.set_query("employee", () => ({
-					filters: { school: ["in", allowed] }
-				}));
-			}
-		});
+		frm.set_query("employee", () => ({
+			query: "ifitwala_ed.schedule.doctype.instructor.instructor.instructor_employee_query",
+			filters: {
+				current_instructor: frm.doc.name || "",
+				current_employee: frm.doc.employee || "",
+			},
+		}));
 	},
 
 });

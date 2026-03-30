@@ -37,7 +37,9 @@ class ReferralCase(Document):
             if r.assignee:
                 has_role = frappe.db.count("Has Role", {"parent": r.assignee, "role": ["in", ("Academic Staff",)]})
                 if not has_role:
-                    frappe.throw(_("Entry assignee must have the Academic Staff role: {0}").format(r.assignee))
+                    frappe.throw(
+                        _("Entry assignee must have the Academic Staff role: {assignee}").format(assignee=r.assignee)
+                    )
 
     def before_save(self):
         """Enforce triage rules and write mirrored timeline entries on authoritative changes."""

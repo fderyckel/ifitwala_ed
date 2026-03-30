@@ -32,6 +32,7 @@ from frappe.utils import getdate, now_datetime, nowdate
 from ifitwala_ed.schedule.schedule_utils import get_effective_schedule_for_ay, get_rotation_dates
 from ifitwala_ed.schedule.student_group_scheduling import get_school_for_student_group
 from ifitwala_ed.school_settings.doctype.term.term import get_current_term
+from ifitwala_ed.utilities.image_utils import apply_preferred_student_images
 
 ATT_CODE_FIELD = "attendance_code"
 ATT_CODE_DOCTYPE = "Student Attendance Code"
@@ -62,7 +63,7 @@ def get_student_group_students(
     extra_select = ", MAX(sp.medical_info) AS medical_info" if with_medical else ""
     extra_join = "LEFT JOIN `tabStudent Patient` sp ON sp.student = s.name" if with_medical else ""
 
-    return frappe.db.sql(
+    rows = frappe.db.sql(
         f"""
         SELECT
             s.name                              AS student,
@@ -82,6 +83,7 @@ def get_student_group_students(
         {"sg": student_group, "limit": page_length, "offset": start},
         as_dict=True,
     )
+    return apply_preferred_student_images(rows, student_field="student", image_field="student_image")
 
 
 @frappe.whitelist()
@@ -257,7 +259,7 @@ def bulk_upsert_attendance(payload=None):
         try:
             payload = frappe.parse_json(payload)
         except Exception as e:
-            frappe.throw(f"Invalid payload JSON: {e}")
+            frappe.throw(_("Invalid payload JSON: {error}").format(error=e))
 
     if not isinstance(payload, list):
         frappe.throw("Payload must be a list of records.")
@@ -268,7 +270,7 @@ def bulk_upsert_attendance(payload=None):
     for row in payload:
         missing = required - set(row.keys())
         if missing:
-            frappe.throw(f"Missing keys {missing} in payload row.")
+            frappe.throw(_("Missing keys {missing_keys} in payload row.").format(missing_keys=missing))
 
     user = frappe.session.user
     roles = set(frappe.get_roles(user))
@@ -403,7 +405,7 @@ def bulk_upsert_attendance(payload=None):
         # Permissions
         ctx = group_ctx.get(grp)
         if not ctx:
-            frappe.throw(f"Unknown student group: {grp}")
+            frappe.throw(_("Unknown student group: {student_group}").format(student_group=grp))
         if not is_admin and not ctx["allowed"]:
             frappe.throw("You don't have rights to record attendance for this group.")
 
@@ -423,7 +425,11 @@ def bulk_upsert_attendance(payload=None):
 
         # Meeting date validation
         if att_date not in ctx["valid_meetings"]:
-            frappe.throw(f"{att_date} is not a meeting day for the group.")
+            frappe.throw(
+                _("Attendance date {attendance_date} is not a meeting day for the group.").format(
+                    attendance_date=att_date
+                )
+            )
 
         # Rotation / schedule lookups
         rotation_day = ctx["rotation_map"].get(att_date)

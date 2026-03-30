@@ -23,6 +23,18 @@ class _CacheStub:
 
 
 class TestStudentLogApi(TestCase):
+    def test_can_create_student_log_for_session_user_accepts_write_permission(self):
+        with (
+            patch.object(student_log_api.frappe, "session", SimpleNamespace(user="coord@example.com")),
+            patch(
+                "ifitwala_ed.api.student_log.frappe.has_permission",
+                side_effect=lambda doctype, ptype="read", user=None: doctype == "Student Log" and ptype == "write",
+            ),
+        ):
+            allowed = student_log_api._can_create_student_log_for_session_user()
+
+        self.assertTrue(allowed)
+
     def test_school_scope_parent_plus_one_includes_self_descendants_and_parent(self):
         with (
             patch("ifitwala_ed.api.student_log.get_descendants_of", return_value=["SCH-A", "SCH-A-1"]),
@@ -105,6 +117,37 @@ class TestStudentLogApi(TestCase):
                 student_log_api.submit_student_log(**payload)
 
         new_doc.assert_not_called()
+
+    def test_submit_student_log_uses_ignore_permissions_when_write_but_not_create(self):
+        payload = {
+            "student": "STU-0001",
+            "log_type": "LTYPE-1",
+            "log": "Observed behavior.",
+            "requires_follow_up": 0,
+            "visible_to_student": 0,
+            "visible_to_guardians": 0,
+        }
+        doc = MagicMock()
+        doc.name = "LOG-0001"
+
+        def _fake_has_permission(doctype, ptype="read", user=None):
+            return doctype == "Student Log" and ptype == "write"
+
+        with (
+            patch.object(student_log_api.frappe, "session", SimpleNamespace(user="coord@example.com")),
+            patch("ifitwala_ed.api.student_log._is_student_in_session_scope", return_value=True),
+            patch("ifitwala_ed.api.student_log._get_student_school", return_value="SCH-A"),
+            patch("ifitwala_ed.api.student_log._is_log_type_allowed_for_student_school", return_value=True),
+            patch("ifitwala_ed.api.student_log.nowdate", return_value="2026-03-26"),
+            patch("ifitwala_ed.api.student_log.nowtime", return_value="09:45:30"),
+            patch("ifitwala_ed.api.student_log.frappe.has_permission", side_effect=_fake_has_permission),
+            patch("ifitwala_ed.api.student_log.frappe.new_doc", return_value=doc),
+        ):
+            result = student_log_api.submit_student_log(**payload)
+
+        doc.insert.assert_called_once_with(ignore_permissions=True)
+        doc.submit.assert_called_once_with()
+        self.assertEqual(result, {"name": "LOG-0001"})
 
     def test_get_student_log_detail_remains_read_only(self):
         log_row = frappe._dict(

@@ -101,12 +101,14 @@
 import { ref, computed, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { FeatherIcon } from 'frappe-ui';
+import { getGuardianPortalIdentity } from '@/lib/services/guardian/guardianPortalService';
 import { getStudentPortalIdentity } from '@/lib/services/student/studentHomeService';
 
 // Reactive state for user menu visibility
 const isUserMenuOpen = ref(false);
 const route = useRoute();
 const studentIdentity = ref(null);
+const guardianIdentity = ref(null);
 const defaultPortal = computed(() => {
 	const raw = window.defaultPortal || 'student';
 	const normalized = String(raw || 'student')
@@ -115,20 +117,58 @@ const defaultPortal = computed(() => {
 	return ['staff', 'student', 'guardian'].includes(normalized) ? normalized : 'student';
 });
 
-const isStudentPortal = computed(() => String(route.path || '').startsWith('/student'));
+const portalSection = computed(() => {
+	const path = String(route.path || '')
+		.trim()
+		.toLowerCase();
+
+	if (path.startsWith('/staff')) {
+		return 'staff';
+	}
+	if (path.startsWith('/guardian')) {
+		return 'guardian';
+	}
+	if (path.startsWith('/student')) {
+		return 'student';
+	}
+
+	return defaultPortal.value;
+});
+
+let identityRequestId = 0;
 
 watch(
-	isStudentPortal,
-	async active => {
-		if (!active) {
-			studentIdentity.value = null;
+	portalSection,
+	async section => {
+		const requestId = ++identityRequestId;
+		studentIdentity.value = null;
+		guardianIdentity.value = null;
+
+		if (section === 'student') {
+			try {
+				const identity = await getStudentPortalIdentity();
+				if (requestId === identityRequestId) {
+					studentIdentity.value = identity;
+				}
+			} catch {
+				if (requestId === identityRequestId) {
+					studentIdentity.value = null;
+				}
+			}
 			return;
 		}
 
-		try {
-			studentIdentity.value = await getStudentPortalIdentity();
-		} catch {
-			studentIdentity.value = null;
+		if (section === 'guardian') {
+			try {
+				const identity = await getGuardianPortalIdentity();
+				if (requestId === identityRequestId) {
+					guardianIdentity.value = identity;
+				}
+			} catch {
+				if (requestId === identityRequestId) {
+					guardianIdentity.value = null;
+				}
+			}
 		}
 	},
 	{ immediate: true }
@@ -136,19 +176,27 @@ watch(
 
 // Get user info from Frappe's session object
 function getSessionUserInfo() {
-	return (
-		window?.frappe?.session?.user_info || {
-			fullname: 'Guest',
-			email: 'guest@example.com',
-		}
-	);
+	const session = window?.frappe?.session || {};
+	const userInfo = session.user_info || {};
+	const email = String(userInfo.email || userInfo.name || session.user || '').trim();
+	const fullname = String(
+		userInfo.fullname || userInfo.full_name || userInfo.name || session.full_name || ''
+	).trim();
+
+	return {
+		fullname,
+		email,
+	};
 }
 
 const user = computed(() => {
 	const userInfo = getSessionUserInfo();
 	const resolvedFullName = (
-		(isStudentPortal.value && studentIdentity.value?.display_name) ||
+		(portalSection.value === 'student' && studentIdentity.value?.display_name) ||
+		(portalSection.value === 'guardian' &&
+			(guardianIdentity.value?.display_name || guardianIdentity.value?.full_name)) ||
 		userInfo.fullname ||
+		userInfo.email ||
 		'Guest'
 	).trim();
 	const nameParts = resolvedFullName.split(' ').filter(Boolean);
@@ -159,9 +207,17 @@ const user = computed(() => {
 
 	return {
 		fullname: resolvedFullName,
-		email: userInfo.email || 'guest@example.com',
+		email:
+			(portalSection.value === 'guardian' ? guardianIdentity.value?.email : null) ||
+			userInfo.email ||
+			'guest@example.com',
 		initials: initials.toUpperCase(),
-		avatarImage: isStudentPortal.value ? studentIdentity.value?.image_url || null : null,
+		avatarImage:
+			portalSection.value === 'student'
+				? studentIdentity.value?.image_url || null
+				: portalSection.value === 'guardian'
+					? guardianIdentity.value?.image_url || null
+					: null,
 	};
 });
 

@@ -222,6 +222,7 @@ def suggest_meeting_slots(
     day_start_time: str | None = None,
     day_end_time: str | None = None,
     school: str | None = None,
+    location_type: str | None = None,
     require_room: object | None = None,
 ):
     return _suggest_meeting_slots(
@@ -232,6 +233,7 @@ def suggest_meeting_slots(
         day_start_time=day_start_time,
         day_end_time=day_end_time,
         school=school,
+        location_type=location_type,
         require_room=require_room,
     )
 
@@ -243,6 +245,7 @@ def suggest_meeting_rooms(
     date: str | None = None,
     start_time: str | None = None,
     end_time: str | None = None,
+    location_type: str | None = None,
     capacity_needed: int | None = None,
     limit: int | None = None,
 ):
@@ -251,6 +254,7 @@ def suggest_meeting_rooms(
         date=date,
         start_time=start_time,
         end_time=end_time,
+        location_type=location_type,
         capacity_needed=capacity_needed,
         limit=limit,
     )

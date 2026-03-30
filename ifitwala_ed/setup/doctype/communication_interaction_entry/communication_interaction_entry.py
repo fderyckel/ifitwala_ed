@@ -75,7 +75,7 @@ class CommunicationInteractionEntry(Document):
             self.audience_type = "Guardian"
         elif "Student" in roles:
             self.audience_type = "Student"
-        elif roles & {"Employee", "Academic Staff", "Academic Admin", "System Manager", "Assistant Admin"}:
+        elif roles & {"Employee", "Academic Staff", "Academic Admin", "System Manager", "Academic Assistant"}:
             self.audience_type = "Staff"
         else:
             self.audience_type = "Community"
@@ -99,7 +99,7 @@ class CommunicationInteractionEntry(Document):
             self._apply_student_qa_constraints(parent)
             return
 
-        frappe.throw(_("Unknown interaction mode: {0}").format(mode))
+        frappe.throw(_("Unknown interaction mode: {interaction_mode}").format(interaction_mode=mode))
 
     def _apply_staff_comments_constraints(self, parent):
         if self.audience_type != "Staff":

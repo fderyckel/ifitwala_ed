@@ -268,8 +268,11 @@ def _build_site_shell_context(*, school, route: str) -> dict:
         "current_year": frappe.utils.now_datetime().year,
         "is_guest_user": is_guest_user,
         "login_url": "/login",
+        "hub_url": "/hub",
         "portal_login_url": "/hub",
-        "other_organizations_url": "/",
+        "schools_url": "/schools",
+        "other_organizations_url": "/schools",
+        "logout_url": "/logout?redirect_to=/schools",
         "inquiry_url": inquiry_url,
         "apply_url": apply_url,
     }
@@ -500,6 +503,38 @@ def _fetch_program_profile(school, program_slug: str, preview: bool):
     return profile, program
 
 
+def _fetch_course_profile(school, course_slug: str, preview: bool):
+    filters = {"school": school.name, "course_slug": course_slug}
+    if not preview:
+        filters["status"] = "Published"
+
+    profile_name = frappe.db.get_value("Course Website Profile", filters, "name")
+    if not profile_name:
+        frappe.throw(
+            _("Course page not found for {0}.").format(course_slug),
+            frappe.DoesNotExistError,
+        )
+
+    profile = frappe.get_doc("Course Website Profile", profile_name)
+    course = frappe.get_doc("Course", profile.course)
+
+    if not preview:
+        if int(getattr(course, "is_published", 0) or 0) != 1:
+            frappe.throw(
+                _("Course not published."),
+                frappe.DoesNotExistError,
+            )
+        if (getattr(course, "school", None) or "") != school.name:
+            frappe.throw(
+                _("Course not offered by this school."),
+                frappe.DoesNotExistError,
+            )
+
+    if preview and profile.status != "Published" and not _preview_allowed(profile):
+        frappe.throw(_("Preview not permitted."), frappe.PermissionError)
+    return profile, course
+
+
 def _fetch_story(school, story_slug: str, preview: bool):
     filters = {"school": school.name, "slug": story_slug}
     if not preview:
@@ -556,6 +591,31 @@ def _build_program_context(*, route: str, school, program_slug: str, preview: bo
         "page": profile,
         "school": school,
         "program": program,
+        "blocks": blocks,
+        "block_scripts": scripts,
+        "seo": seo,
+        "theme": theme,
+        "site_shell": _build_site_shell_context(school=school, route=route),
+        "template": "ifitwala_ed/website/templates/page.html",
+    }
+
+
+def _build_course_context(*, route: str, school, course_slug: str, preview: bool):
+    profile, course = _fetch_course_profile(school, course_slug, preview)
+    blocks, scripts = _build_blocks(page=profile, school=school)
+    seo_profile = _get_seo_profile(profile)
+    description = truncate_text(profile.intro_text or "", 160) if profile.intro_text else None
+    seo = _build_seo_context(
+        route=route,
+        fallback_title=course.course_name or course.name,
+        fallback_description=description,
+        seo_profile=seo_profile,
+    )
+    theme = _build_theme_context(school=school)
+    return {
+        "page": profile,
+        "school": school,
+        "course": course,
         "blocks": blocks,
         "block_scripts": scripts,
         "seo": seo,
@@ -629,7 +689,7 @@ def _resolve_landing_organization():
             "name": ["!=", "All Organizations"],
             "parent_organization": ["in", ["All Organizations", "", None]],
         },
-        ["name", "organization_name", "organization_logo", "lft", "rgt"],
+        ["name", "organization_name", "organization_logo", "default_website_school", "lft", "rgt"],
         as_dict=True,
         order_by="lft asc",
     )
@@ -639,7 +699,7 @@ def _resolve_landing_organization():
     org = frappe.db.get_value(
         "Organization",
         {"archived": 0, "name": ["!=", "All Organizations"]},
-        ["name", "organization_name", "organization_logo", "lft", "rgt"],
+        ["name", "organization_name", "organization_logo", "default_website_school", "lft", "rgt"],
         as_dict=True,
         order_by="lft asc",
     )
@@ -649,7 +709,7 @@ def _resolve_landing_organization():
     return frappe.db.get_value(
         "Organization",
         {"name": "All Organizations"},
-        ["name", "organization_name", "organization_logo", "lft", "rgt"],
+        ["name", "organization_name", "organization_logo", "default_website_school", "lft", "rgt"],
         as_dict=True,
     )
 
@@ -736,11 +796,51 @@ def _build_organization_landing_context(*, route: str):
         },
         "seo": seo,
         "is_guest_user": (frappe.session.user or "Guest") == "Guest",
-        "login_url": "/login?redirect-to=/hub",
+        "login_url": "/login",
+        "hub_url": "/hub",
+        "logout_url": "/logout?redirect_to=/schools",
         "inquiry_url": "/apply/inquiry",
         "current_year": frappe.utils.now_datetime().year,
         "template": "ifitwala_ed/website/templates/organization_landing.html",
     }
+
+
+def _resolve_root_redirect_url() -> str:
+    organization = _resolve_landing_organization() or {}
+    organization_names = _get_descendant_organization_names(organization)
+
+    default_school = (organization.get("default_website_school") or "").strip()
+    if default_school:
+        row = frappe.db.get_value(
+            "School",
+            default_school,
+            ["name", "website_slug", "is_published", "organization"],
+            as_dict=True,
+        )
+        if (
+            row
+            and row.website_slug
+            and int(row.is_published or 0) == 1
+            and (not organization_names or row.organization in organization_names)
+        ):
+            return normalize_route(f"/{SCHOOL_ROUTE_PREFIX}/{row.website_slug}")
+
+    if organization_names:
+        school = frappe.db.get_value(
+            "School",
+            {
+                "organization": ["in", organization_names],
+                "is_published": 1,
+                "website_slug": ["!=", ""],
+            },
+            ["name", "website_slug"],
+            as_dict=True,
+            order_by="lft asc, school_name asc",
+        )
+        if school and school.website_slug:
+            return normalize_route(f"/{SCHOOL_ROUTE_PREFIX}/{school.website_slug}")
+
+    return "/schools"
 
 
 def build_render_context(*, route: str, preview: bool = False):
@@ -749,11 +849,18 @@ def build_render_context(*, route: str, preview: bool = False):
         route = "/"
 
     if route == "/":
-        return _build_organization_landing_context(route=route)
+        return {
+            "redirect_location": _resolve_root_redirect_url(),
+        }
 
     segments = [seg for seg in route.split("/") if seg]
     if not segments:
-        return _build_organization_landing_context(route="/")
+        return {
+            "redirect_location": _resolve_root_redirect_url(),
+        }
+
+    if route == "/schools":
+        return _build_organization_landing_context(route=route)
 
     if segments[0] != SCHOOL_ROUTE_PREFIX:
         frappe.throw(
@@ -762,7 +869,7 @@ def build_render_context(*, route: str, preview: bool = False):
         )
 
     if len(segments) < 2:
-        return _build_organization_landing_context(route="/")
+        return _build_organization_landing_context(route="/schools")
 
     school = resolve_school_from_route(route)
     if not preview and not is_school_public(school):
@@ -786,6 +893,14 @@ def build_render_context(*, route: str, preview: bool = False):
             preview=preview,
         )
 
+    if len(segments) >= 4 and segments[2] == "courses":
+        return _build_course_context(
+            route=route,
+            school=school,
+            course_slug=segments[3],
+            preview=preview,
+        )
+
     if len(segments) >= 3 and segments[2] == "stories":
         if len(segments) == 3:
             try:
@@ -804,5 +919,9 @@ def build_render_context(*, route: str, preview: bool = False):
 
 def render_page(*, route: str, preview: bool = False) -> str:
     context = build_render_context(route=route, preview=preview)
+    redirect_location = (context or {}).pop("redirect_location", None)
+    if redirect_location:
+        frappe.local.flags.redirect_location = redirect_location
+        raise frappe.Redirect
     template = context.pop("template", "ifitwala_ed/website/templates/page.html")
     return frappe.render_template(template, context)

@@ -5,6 +5,13 @@
 
 frappe.ui.form.on("Program", {
 	onload(frm) {
+		frm.set_query("parent_program", () => ({
+			query: "ifitwala_ed.curriculum.doctype.program.program.program_parent_query",
+			filters: {
+				current_program: frm.doc.name || null
+			}
+		}));
+
 		// Filter the child "course" link in the "courses" table
 		frm.set_query("course", "courses", function (doc, cdt, cdn) {
 			const picked = (doc.courses || [])
@@ -125,12 +132,15 @@ frappe.ui.form.on("Program", {
 
 		if (frm.doc.is_published && !frm.doc.archive) {
 			const profiles = await frappe.db.get_list("Program Website Profile", {
-				filters: { program: frm.doc.name, status: "Published" },
-				fields: ["name"],
-				limit: 1
+				filters: { program: frm.doc.name },
+				fields: ["name", "status"],
+				limit: 20
 			});
+			const publishedProfiles = (profiles || []).filter((row) => row.status === "Published");
 			if (!profiles || profiles.length === 0) {
-				warnings.push(__("Program is published but has no published Website Profile."));
+				warnings.push(__("Program is published but no Website Profile has been prepared yet."));
+			} else if (publishedProfiles.length === 0) {
+				warnings.push(__("Program website profiles are prepared, but none are published yet."));
 			}
 		}
 
@@ -142,12 +152,18 @@ frappe.ui.form.on("Program", {
 		}
 
 		_refresh_effective_assessment_categories_hint(frm);
+		_toggle_make_parent_group_action(frm);
+		_apply_root_program_guardrails(frm);
 	}, 300),
 
 	before_save(frm) {
 		// ALLOW multiple schemes (points/binary/criteria/feedback)
 		// Only guard weights if Points is ON.
 		_client_validate_weights_when_points(frm);
+	},
+
+	parent_program(frm) {
+		_handle_parent_program_change(frm);
 	}
 });
 
@@ -363,6 +379,91 @@ function _refresh_effective_assessment_categories_hint(frm) {
 		args: { program: frm.doc.name },
 		callback: (r) => _render_effective_assessment_categories_hint(frm, r.message || null),
 	});
+}
+
+async function _handle_parent_program_change(frm) {
+	const parentProgram = (frm.doc.parent_program || "").trim();
+	if (!parentProgram) {
+		frm.remove_custom_button(__("Make Parent a Group"), __("Actions"));
+		return;
+	}
+
+	const parentRow = await _get_program_row(parentProgram);
+	if (!parentRow || cint(parentRow.is_group) === 1) {
+		_toggle_make_parent_group_action(frm);
+		return;
+	}
+
+	const parentLabel = parentRow.program_name || parentProgram;
+	const shouldPromote = await new Promise(resolve => {
+		frappe.confirm(
+			__(
+				"Parent Program {0} is not marked as Group. Convert it to a Group now so it can own child programs?",
+				[parentLabel]
+			),
+			() => resolve(true),
+			() => resolve(false)
+		);
+	});
+
+	if (!shouldPromote) {
+		frm.set_value("parent_program", "");
+		frappe.msgprint({
+			title: __("Parent Program Cleared"),
+			message: __("Only Group Programs can be used as Parent Program."),
+			indicator: "orange"
+		});
+		return;
+	}
+
+	await _promote_program_to_group(frm, parentProgram, parentLabel);
+}
+
+async function _toggle_make_parent_group_action(frm) {
+	frm.remove_custom_button(__("Make Parent a Group"), __("Actions"));
+
+	const parentProgram = (frm.doc.parent_program || "").trim();
+	if (!parentProgram) return;
+
+	const parentRow = await _get_program_row(parentProgram);
+	if (!parentRow || cint(parentRow.is_group) === 1) return;
+
+	const parentLabel = parentRow.program_name || parentProgram;
+	const $button = frm.add_custom_button(__("Make Parent a Group"), async () => {
+		await _promote_program_to_group(frm, parentProgram, parentLabel);
+	}, __("Actions"));
+	$button.addClass("btn-primary");
+}
+
+async function _promote_program_to_group(frm, program, label) {
+	const response = await frappe.call({
+		method: "ifitwala_ed.curriculum.doctype.program.program.make_program_group",
+		args: { program },
+		freeze: true,
+		freeze_message: __("Updating Parent Program...")
+	});
+
+	if (response?.message?.changed) {
+		frappe.show_alert({
+			indicator: "green",
+			message: __("{0} is now marked as Group.", [label])
+		});
+	}
+
+	await _toggle_make_parent_group_action(frm);
+}
+
+async function _get_program_row(program) {
+	if (!program) return null;
+	const response = await frappe.db.get_value("Program", program, ["program_name", "is_group"]);
+	return response?.message || null;
+}
+
+function _apply_root_program_guardrails(frm) {
+	const isRootProgram = (frm.doc.name || "") === "All Programs";
+	frm.set_df_property("parent_program", "read_only", isRootProgram ? 1 : 0);
+	frm.set_df_property("archive", "read_only", isRootProgram ? 1 : 0);
+	frm.set_df_property("is_group", "read_only", isRootProgram ? 1 : 0);
 }
 
 // NEW: with multi-scheme, only enforce weight rules if Points is enabled.

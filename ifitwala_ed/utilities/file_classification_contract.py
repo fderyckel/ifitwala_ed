@@ -12,6 +12,7 @@ ALLOWED_PRIMARY_SUBJECT_TYPES = {
 
 OPTIONAL_SCHOOL_SUBJECT_TYPES = {
     "Employee",
+    "Guardian",
     "Organization",
 }
 

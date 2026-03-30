@@ -3,7 +3,7 @@
 
 # ifitwala_ed/school_settings/doctype/school_calendar/school_calendar.py
 
-import json
+from datetime import date
 
 import frappe
 from frappe import _
@@ -56,6 +56,7 @@ class SchoolCalendar(Document):
     def validate(self):
         self._sync_school_with_ay()
         self._validate_uniqueness()
+        self._sort_holidays_by_date()
         self._populate_term_table()
 
         self.validate_dates()
@@ -92,7 +93,10 @@ class SchoolCalendar(Document):
 
         if ay_school not in allowed:
             raise ParentRuleViolation(
-                _("School {0} is not within the Academic Year's hierarchy ({1}).").format(self.school, ay_school)
+                _("School {school} is not within the Academic Year's hierarchy ({academic_year_school}).").format(
+                    school=self.school,
+                    academic_year_school=ay_school,
+                )
             )
 
     # ----------------------------------------------------------------
@@ -108,7 +112,10 @@ class SchoolCalendar(Document):
             },
         ):
             frappe.throw(
-                _("A School Calendar for {0} – {1} already exists.").format(self.school, self.academic_year),
+                _("A School Calendar for {school} – {academic_year} already exists.").format(
+                    school=self.school,
+                    academic_year=self.academic_year,
+                ),
                 title=_("Duplicate"),
             )
 
@@ -159,12 +166,31 @@ class SchoolCalendar(Document):
             )
 
     # ----------------------------------------------------------------
+    def _sort_holidays_by_date(self):
+        holidays = list(self.get("holidays") or [])
+        if not holidays:
+            return
+
+        holidays.sort(
+            key=lambda holiday: (
+                1 if not holiday.holiday_date else 0,
+                getdate(holiday.holiday_date) if holiday.holiday_date else date.max,
+                cint(holiday.idx),
+            )
+        )
+
+        for idx, holiday in enumerate(holidays, start=1):
+            holiday.idx = idx
+
+        self.set("holidays", holidays)
+
+    # ----------------------------------------------------------------
     def validate_holiday_uniqueness(self):
         seen = set()
         for h in self.get("holidays"):
             d = getdate(h.holiday_date)
             if d in seen:
-                frappe.throw(_("Duplicate holiday date found: {0}").format(formatdate(d)))
+                frappe.throw(_("Duplicate holiday date found: {holiday_date}").format(holiday_date=formatdate(d)))
             seen.add(d)
 
     def validate_dates(self):
@@ -174,9 +200,9 @@ class SchoolCalendar(Document):
         for day in self.get("holidays"):
             if not (getdate(ay.year_start_date) <= getdate(day.holiday_date) <= getdate(ay.year_end_date)):
                 frappe.throw(
-                    _("The {0} holiday is not within your school's academic year {1}").format(
-                        formatdate(day.holiday_date),
-                        get_link_to_form("Academic Year", self.academic_year),
+                    _("The {holiday_date} holiday is not within your school's academic year {academic_year}").format(
+                        holiday_date=formatdate(day.holiday_date),
+                        academic_year=get_link_to_form("Academic Year", self.academic_year),
                     )
                 )
 
@@ -194,7 +220,11 @@ class SchoolCalendar(Document):
             ch.holiday_date = d
             ch.idx = last_idx + i + 1
 
-        frappe.msgprint(_("Break dates for '{0}' have been successfully added.").format(self.break_description))
+        frappe.msgprint(
+            _("Break dates for '{break_description}' have been successfully added.").format(
+                break_description=self.break_description
+            )
+        )
 
     def validate_break_dates(self):
         ay = frappe.get_doc("Academic Year", self.academic_year)
@@ -210,8 +240,8 @@ class SchoolCalendar(Document):
             and getdate(ay.year_start_date) <= getdate(self.end_of_break) <= getdate(ay.year_end_date)
         ):
             frappe.throw(
-                _("Break must be within the academic year {0}.").format(
-                    get_link_to_form("Academic Year", self.academic_year)
+                _("Break must be within the academic year {academic_year}.").format(
+                    academic_year=get_link_to_form("Academic Year", self.academic_year)
                 )
             )
 
@@ -278,20 +308,24 @@ class SchoolCalendar(Document):
 # ---------------------------------------------------------------------
 @frappe.whitelist()
 def get_events(start, end, filters=None):
-    filters = json.loads(filters) if filters else {}
+    filters = _normalize_calendar_filters(filters)
 
+    school_calendar = filters.get("school_calendar")
     school = filters.get("school")
     academic_year = filters.get("academic_year")
 
-    if not school or not academic_year:
-        frappe.throw(_("School and Academic Year are required."))
+    calendar_filters = {}
+    if school_calendar:
+        calendar_filters["name"] = school_calendar
+    elif school and academic_year:
+        calendar_filters["school"] = school
+        calendar_filters["academic_year"] = academic_year
+    else:
+        return []
 
-    calendar = frappe.get_all(
+    calendar = frappe.get_list(
         "School Calendar",
-        filters={
-            "school": school,
-            "academic_year": academic_year,
-        },
+        filters=calendar_filters,
         pluck="name",
         limit=1,
     )
@@ -318,6 +352,36 @@ def get_events(start, end, filters=None):
         filters=event_filters,
         update={"allDay": 1},
     )
+
+
+def _normalize_calendar_filters(filters) -> dict:
+    parsed = frappe.parse_json(filters) if isinstance(filters, str) else (filters or {})
+    if isinstance(parsed, dict):
+        return {key: value for key, value in parsed.items() if value not in (None, "", [])}
+
+    normalized = {}
+    for entry in parsed or []:
+        fieldname = None
+        value = None
+
+        if isinstance(entry, dict):
+            fieldname = entry.get("fieldname") or entry.get("name")
+            value = entry.get("value")
+        elif isinstance(entry, (list, tuple)):
+            if len(entry) >= 4:
+                fieldname = entry[1]
+                value = entry[3]
+            elif len(entry) >= 3:
+                fieldname = entry[0]
+                value = entry[2]
+            elif len(entry) >= 2:
+                fieldname = entry[0]
+                value = entry[1]
+
+        if fieldname and value not in (None, "", []):
+            normalized[fieldname] = value
+
+    return normalized
 
 
 @frappe.whitelist()

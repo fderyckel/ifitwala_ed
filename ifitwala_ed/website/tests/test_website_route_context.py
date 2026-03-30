@@ -5,6 +5,7 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.www.index import get_context as get_index_context
 from ifitwala_ed.www.website import get_context
 
 
@@ -33,6 +34,29 @@ class TestWebsiteRouteContext(FrappeTestCase):
             route="/schools/test/about",
             preview=True,
         )
+
+    def test_root_index_redirects_when_renderer_requests_redirect(self):
+        original_request = self._set_request_path("/")
+        original_form_dict = self._set_form_dict({})
+        original_redirect = getattr(frappe.local.flags, "redirect_location", None)
+        context = frappe._dict()
+        redirected_to = None
+
+        try:
+            frappe.local.flags.redirect_location = None
+            with patch(
+                "ifitwala_ed.www.index.build_render_context",
+                return_value={"redirect_location": "/schools/demo"},
+            ):
+                with self.assertRaises(frappe.Redirect):
+                    get_index_context(context)
+            redirected_to = frappe.local.flags.redirect_location
+        finally:
+            self._restore_form_dict(original_form_dict)
+            self._restore_request(original_request)
+            frappe.local.flags.redirect_location = original_redirect
+
+        self.assertEqual(redirected_to, "/schools/demo")
 
     def _set_request_path(self, path: str):
         original = getattr(frappe.local, "request", None)

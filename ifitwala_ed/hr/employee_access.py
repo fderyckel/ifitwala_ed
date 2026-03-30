@@ -9,6 +9,7 @@ from frappe.utils import getdate, nowdate
 from frappe.utils.caching import redis_cache
 
 MANAGED_FLAG = "managed_by_ifitwala"  # provenance flag on User.roles children
+BASE_EMPLOYEE_ROLE = "Employee"
 
 
 def _is_active_employee_status(status: str | None) -> bool:
@@ -99,7 +100,12 @@ def _row_is_current(h) -> bool:
 
 def _active_history_rows(emp) -> list[dict]:
     rows = []
-    for h in emp.employee_history or []:
+    history_rows = []
+    if hasattr(emp, "get"):
+        history_rows = emp.get("employee_history") or []
+    else:
+        history_rows = getattr(emp, "employee_history", None) or []
+    for h in history_rows:
         if not h.get("designation"):
             continue
         if not _row_is_current(h):
@@ -133,10 +139,21 @@ def compute_effective_access_from_employee(emp) -> tuple[set[str], str | None]:
     """Union roles from all active rows; pick workspace from highest priority."""
     chunks = [_resolve_row_access(h) for h in _active_history_rows(emp)]
     if not chunks:
-        return _prejoin_access_from_designation(emp)
-    target_roles = set().union(*(c["roles"] for c in chunks))
+        target_roles, workspace = _prejoin_access_from_designation(emp)
+        return {BASE_EMPLOYEE_ROLE, *target_roles}, workspace
+    target_roles = {BASE_EMPLOYEE_ROLE, *(set().union(*(c["roles"] for c in chunks)))}
     best = max(chunks, key=lambda c: int(c.get("priority") or 0))
     return target_roles, best.get("workspace")
+
+
+def _remove_all_user_roles(user_doc) -> list[str]:
+    removed_roles: list[str] = []
+    for role_row in list(user_doc.roles or []):
+        role_name = str(role_row.role or "").strip()
+        if role_name:
+            removed_roles.append(role_name)
+        user_doc.remove(role_row)
+    return sorted(set(removed_roles))
 
 
 def _diff_user_roles(user_doc, target_roles: set[str]):
@@ -149,9 +166,10 @@ def _diff_user_roles(user_doc, target_roles: set[str]):
 def sync_user_access_from_employee(emp, *, notify_role_additions: bool = False):
     """
     Called from Employee.after_save.
-    - Adds/removes only managed roles.
+    - Active employees keep baseline Employee + designation/history-managed roles.
+    - Non-active employees lose all roles and are disabled.
     - Updates default workspace if effective workspace changed.
-    - Optionally notifies the current operator about newly added managed roles.
+    - Optionally notifies the current operator about role additions/removals.
     """
     if not emp.user_id:
         return
@@ -159,11 +177,27 @@ def sync_user_access_from_employee(emp, *, notify_role_additions: bool = False):
     user = frappe.get_doc("User", emp.user_id)
     is_active_employee = _is_active_employee_status(getattr(emp, "employment_status", None))
 
-    # Non-active employees are hard-disabled, but roles stay untouched.
+    # Non-active employees must lose all roles and be disabled.
     if not is_active_employee:
+        removed_roles = _remove_all_user_roles(user)
+        changed = bool(removed_roles)
         if int(user.enabled or 0) != 0:
             user.enabled = 0
+            changed = True
+        if changed:
             user.save(ignore_permissions=True)
+        if notify_role_additions:
+            removed_label = (
+                ", ".join(frappe.bold(role) for role in removed_roles) if removed_roles else _("no assigned roles")
+            )
+            frappe.msgprint(
+                _("Removed all user roles from {user} because the employee is not active: {removed_roles}.").format(
+                    user=frappe.bold(emp.user_id),
+                    removed_roles=removed_label,
+                ),
+                title=_("Employee Access Updated"),
+                indicator="orange",
+            )
         return
 
     target_roles, target_ws = compute_effective_access_from_employee(emp)
@@ -200,9 +234,9 @@ def sync_user_access_from_employee(emp, *, notify_role_additions: bool = False):
 
     if notify_role_additions and added_roles:
         frappe.msgprint(
-            _("Added default role(s) to {0}: {1}.").format(
-                frappe.bold(emp.user_id),
-                ", ".join(frappe.bold(role) for role in added_roles),
+            _("Added default role(s) to {user}: {roles}.").format(
+                user=frappe.bold(emp.user_id),
+                roles=", ".join(frappe.bold(role) for role in added_roles),
             ),
             title=_("Employee Access Updated"),
             indicator="green",

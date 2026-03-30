@@ -34,7 +34,7 @@ ROLE_CLASS_COUNSELOR = "counselor"
 ROLE_CLASS_ADMIN = "admin"
 
 ADMIN_ROLES = {"Academic Admin", "Academic Assistant", "Administrator", "System Manager"}
-COUNSELOR_ROLES = {"Counsellor", "Counselor", "Pastoral Lead", "Learning Support"}
+COUNSELOR_ROLES = {"Counselor", "Pastoral Lead", "Learning Support"}
 INSTRUCTOR_ROLES = {"Instructor", "Academic Staff"}
 
 LATE_SQL = "(LOWER(COALESCE(c.attendance_code_name, '')) LIKE '%%late%%' OR c.attendance_code = 'L')"
@@ -92,7 +92,7 @@ def get(
     """
     mode_value = (mode or "").strip()
     if mode_value not in ALLOWED_MODES:
-        frappe.throw(_("Invalid attendance mode: {0}").format(mode_value))
+        frappe.throw(_("Invalid attendance mode: {mode}.").format(mode=mode_value))
 
     heatmap_mode_value = _normalize_heatmap_mode(heatmap_mode)
     whole_day_value = 1 if cint(whole_day) else 0

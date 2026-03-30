@@ -33,10 +33,14 @@ def _prepare_filters(filters: dict) -> frappe._dict:
     )
 
     if not group:
-        frappe.throw(_("Student Group {0} was not found.").format(f.student_group))
+        frappe.throw(_("Student Group {student_group} was not found.").format(student_group=f.student_group))
 
     if (group.status or "").lower() != "active":
-        frappe.throw(_("Student Group {0} is not Active.").format(group.student_group_name or group.name))
+        frappe.throw(
+            _("Student Group {student_group} is not Active.").format(
+                student_group=group.student_group_name or group.name
+            )
+        )
 
     f._student_group = group
 
@@ -44,8 +48,9 @@ def _prepare_filters(filters: dict) -> frappe._dict:
         schools = get_descendant_schools(f.school) or [f.school]
         if group.school and schools and group.school not in schools:
             frappe.throw(
-                _("Student Group {0} does not belong to School {1}.").format(
-                    group.student_group_name or group.name, f.school
+                _("Student Group {student_group} does not belong to School {school}.").format(
+                    student_group=group.student_group_name or group.name,
+                    school=f.school,
                 )
             )
         f._school_scope = schools
@@ -54,8 +59,9 @@ def _prepare_filters(filters: dict) -> frappe._dict:
         programs = _expand_program_scope(f.program)
         if group.program and programs and group.program not in programs:
             frappe.throw(
-                _("Student Group {0} is not tied to Program {1}.").format(
-                    group.student_group_name or group.name, f.program
+                _("Student Group {student_group} is not tied to Program {program}.").format(
+                    student_group=group.student_group_name or group.name,
+                    program=f.program,
                 )
             )
         f._program_scope = programs

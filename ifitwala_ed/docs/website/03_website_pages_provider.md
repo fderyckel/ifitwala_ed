@@ -94,8 +94,8 @@ These correspond to actual routes.
 
 **Used by**
 
-* `/`
-* `/home`
+* historical note only; current root behavior is handled by the root-school resolver at `/`
+* organization discovery now lives at `/schools`
 
 **Consumes**
 
@@ -123,8 +123,8 @@ These correspond to actual routes.
 
 **Notes**
 
-* No hard-coded school logic
-* School resolution happens here, not in blocks
+* This document section is legacy context only.
+* Current implemented root behavior is doc-owned in `01_architecture_notes.md` and `05_school_slug_vs_page_route.md`.
 
 ---
 
@@ -237,19 +237,22 @@ school
 ```json
 ProgramCard[] = {
   "title": string,
-  "url": string,
-  "intro": string,
-  "image": ImageRef
+  "url": string | null,
+  "intro": string | null,
+  "image": ImageRef,
+  "is_teaser": boolean
 }
 ```
 
 **Rules**
 
-* Only programs with `Program Website Profile.status = "Published"`
 * Program must satisfy `is_published = 1` and `archive = 0`
 * Program must be offered by the school (Program Offering)
 * Ordered by `is_featured desc`, then `lft asc`
-* Intro truncated server-side
+* Published `Program Website Profile` rows render full linked detail cards
+* Draft or missing `Program Website Profile` rows still render teaser cards for published Programs
+* Teaser cards render image/title-only browse surfaces and do not link to a program detail page
+* Intro is truncated server-side and shown only for full linked detail cards
 * Discoverability is school-scoped: navigation should expose a single `Programs` page (`School Website Page.route = "programs"`), and that page renders `program_list` cards that link to each program detail route.
 
 ---
@@ -275,18 +278,58 @@ StaffProfile[] = {
 
 **Rules**
 
-* Filtered by leadership roles
+* Only employees with `Employee.show_on_website = 1`
+* Default grouping resolves from `Designation.default_role_profile = "Academic Admin"` for the current school scope
+* School-scoped designations match the current school; organization-scoped designations (blank `Designation.school`) are also allowed for the same organization
+* A manual designation filter may override the default role-profile grouping
 * Bio is plain text or sanitized HTML
 
 ---
 
-### 4.4 `get_school_staff`
+### 4.4 `get_school_courses`
 
-Same shape as leadership, different filter.
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+CourseCard[] = {
+  "title": string,
+  "url": string,
+  "intro": string,
+  "image": ImageRef,
+  "course_group": string | null,
+  "program_labels": string[]
+}
+```
+
+**Rules**
+
+* Only courses with `Course Website Profile.status = "Published"`
+* Course must satisfy `is_published = 1` and belong to the current school
+* Related program labels are limited to published, non-archived programs offered by the same school
+* Intro text is truncated server-side
+* Discoverability is school-scoped: navigation exposes a `Courses` page (`School Website Page.route = "courses"`), and that page renders `course_catalog` cards that link to each course detail route
 
 ---
 
-### 4.5 `get_school_hero_images`
+### 4.5 `get_school_staff`
+
+Same shape as leadership, different filter.
+
+**Rules**
+
+* Only employees with `Employee.show_on_website = 1`
+* Excludes employees already included in the leadership grouping for the same block render
+* Ordered for stable presentation, not by recent modification time
+
+---
+
+### 4.6 `get_school_hero_images`
 
 **Returns**
 

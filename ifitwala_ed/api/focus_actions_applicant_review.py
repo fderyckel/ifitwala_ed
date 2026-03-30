@@ -272,7 +272,10 @@ def reassign_applicant_review_assignment(
         if not frappe.db.exists("User", {"name": target_user, "enabled": 1}):
             frappe.throw(_("Reassign To User must be an enabled user."), frappe.ValidationError)
         if not frappe.db.exists("Has Role", {"parent": target_user, "role": assigned_to_role}):
-            frappe.throw(_("Reassign To User must have role {0}.").format(assigned_to_role), frappe.ValidationError)
+            frappe.throw(
+                _("Reassign To User must have role {role}.").format(role=assigned_to_role),
+                frappe.ValidationError,
+            )
 
         assignment_doc.assigned_to_user = target_user
         assignment_doc.assigned_to_role = None
