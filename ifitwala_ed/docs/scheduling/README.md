@@ -7,8 +7,9 @@ Read in this order:
 1. `01_scheduling_architecture.md` — canonical scheduling system boundaries, abstract-vs-materialized time model, and enrollment bridge points
 2. `02_student_group_generation_architecture.md` — authoritative sectioning note for how `Student Group` rows are created, populated, linked, and not yet orchestrated
 3. `03_attendance_architecture.md` — authoritative attendance note for ledger truth, meeting-date derivation, scoped read models, and current whole-day vs block constraints
-4. `employee_booking_notes.md` — staff availability fact-table contract
-5. `room_booking_notes.md` — room occupancy fact-table contract
+4. `04_calendar_aggregation_architecture.md` — canonical portal-calendar note for source merge rules, visibility, booking-vs-schedule authority, and location-calendar privacy
+5. `employee_booking_notes.md` — staff availability fact-table contract
+6. `room_booking_notes.md` — room occupancy fact-table contract
 
 Related canonical notes live in:
 
