@@ -274,6 +274,7 @@ def _build_drive_idempotency_key(*, payload: dict, content: bytes) -> str:
     seed_parts = [
         str(payload.get("task_submission") or "").strip(),
         str(payload.get("task") or "").strip(),
+        str(payload.get("material") or "").strip(),
         str(payload.get("student_applicant") or "").strip(),
         str(payload.get("applicant_health_profile") or "").strip(),
         str(payload.get("employee") or "").strip(),
@@ -484,15 +485,12 @@ def upload_supporting_material_file(material: str | None = None, **_kwargs):
 
     filename, content = _get_uploaded_file()
     mime_type_hint = _resolve_upload_mime_type_hint(filename=filename)
-    drive_uploads_api = _load_drive_module("ifitwala_drive.api.uploads")
-    authoritative = _load_drive_module(
-        "ifitwala_ed.integrations.drive.materials"
-    ).build_supporting_material_upload_contract(doc)
+    drive_materials_api = _load_drive_module("ifitwala_drive.api.materials")
 
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
-        create_session_callable=drive_uploads_api.create_upload_session,
+        create_session_callable=drive_materials_api.upload_supporting_material,
         payload={
-            **authoritative,
+            "material": doc.name,
             "filename_original": filename,
             "mime_type_hint": mime_type_hint,
             "expected_size_bytes": len(content),

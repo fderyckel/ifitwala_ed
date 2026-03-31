@@ -1,0 +1,73 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-31 18:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "activity_type",
+  "estimated_minutes",
+  "sequence_index",
+  "student_direction",
+  "teacher_prompt",
+  "resource_note"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "default": "Other",
+   "fieldname": "activity_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Activity Type",
+   "options": "Discuss\nPractice\nRead\nWatch\nWrite\nCollaborate\nCheck for Understanding\nReflect\nAssess\nOther"
+  },
+  {
+   "fieldname": "estimated_minutes",
+   "fieldtype": "Int",
+   "label": "Estimated Minutes"
+  },
+  {
+   "fieldname": "sequence_index",
+   "fieldtype": "Int",
+   "label": "Sequence"
+  },
+  {
+   "fieldname": "student_direction",
+   "fieldtype": "Small Text",
+   "label": "Student Direction"
+  },
+  {
+   "fieldname": "teacher_prompt",
+   "fieldtype": "Small Text",
+   "label": "Teacher Prompt"
+  },
+  {
+   "fieldname": "resource_note",
+   "fieldtype": "Small Text",
+   "label": "Resource Note"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-03-31 18:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Curriculum",
+ "name": "Class Session Activity",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

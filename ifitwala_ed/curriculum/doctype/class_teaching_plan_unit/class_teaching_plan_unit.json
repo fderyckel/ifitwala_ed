@@ -1,0 +1,79 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-31 18:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "unit_plan",
+  "unit_title",
+  "unit_order",
+  "governed_required",
+  "pacing_status",
+  "teacher_focus",
+  "pacing_note"
+ ],
+ "fields": [
+  {
+   "fieldname": "unit_plan",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Unit Plan",
+   "options": "Unit Plan",
+   "read_only": 1
+  },
+  {
+   "fieldname": "unit_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Unit Title",
+   "read_only": 1
+  },
+  {
+   "fieldname": "unit_order",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Unit Order",
+   "read_only": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "governed_required",
+   "fieldtype": "Check",
+   "label": "Governed Required",
+   "read_only": 1
+  },
+  {
+   "default": "Not Started",
+   "fieldname": "pacing_status",
+   "fieldtype": "Select",
+   "label": "Pacing Status",
+   "options": "Not Started\nIn Progress\nCompleted\nHold"
+  },
+  {
+   "fieldname": "teacher_focus",
+   "fieldtype": "Small Text",
+   "label": "Teacher Focus"
+  },
+  {
+   "fieldname": "pacing_note",
+   "fieldtype": "Small Text",
+   "label": "Pacing Note"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-03-31 18:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Curriculum",
+ "name": "Class Teaching Plan Unit",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

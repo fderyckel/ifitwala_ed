@@ -1,17 +1,17 @@
 // ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp, defineComponent, h, nextTick, type App } from 'vue';
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 
-import type { Response as StudentCourseDetailResponse } from '@/types/contracts/student_hub/get_student_course_detail';
+import type { Response as StudentLearningSpaceResponse } from '@/types/contracts/student_learning/get_student_learning_space'
 
-const { getStudentCourseDetailMock, routerReplaceMock } = vi.hoisted(() => ({
-	getStudentCourseDetailMock: vi.fn(),
+const { getStudentLearningSpaceMock, routerReplaceMock } = vi.hoisted(() => ({
+	getStudentLearningSpaceMock: vi.fn(),
 	routerReplaceMock: vi.fn(),
-}));
+}))
 
 vi.mock('vue-router', async () => {
-	const { defineComponent, h } = await import('vue');
+	const { defineComponent, h } = await import('vue')
 
 	return {
 		RouterLink: defineComponent({
@@ -24,189 +24,152 @@ vi.mock('vue-router', async () => {
 				},
 			},
 			setup(_, { slots }) {
-				return () => h('a', {}, slots.default?.());
+				return () => h('a', {}, slots.default?.())
 			},
 		}),
 		useRouter: () => ({
 			replace: routerReplaceMock,
 		}),
-	};
-});
-
-vi.mock('frappe-ui', async () => {
-	const { defineComponent, h } = await import('vue');
-
-	return {
-		FeatherIcon: defineComponent({
-			name: 'FeatherIconStub',
-			setup() {
-				return () => h('svg');
-			},
-		}),
-	};
-});
+	}
+})
 
 vi.mock('@/lib/services/student/studentLearningHubService', () => ({
-	getStudentCourseDetail: getStudentCourseDetailMock,
-}));
+	getStudentLearningSpace: getStudentLearningSpaceMock,
+}))
 
-import CourseDetail from '@/pages/student/CourseDetail.vue';
+import CourseDetail from '@/pages/student/CourseDetail.vue'
 
-const cleanupFns: Array<() => void> = [];
+const cleanupFns: Array<() => void> = []
 
-function buildPayload(): StudentCourseDetailResponse {
+function buildPayload(): StudentLearningSpaceResponse {
 	return {
 		meta: {
-			generated_at: '2026-03-15T10:00:00',
+			generated_at: '2026-03-31T10:00:00',
 			course_id: 'COURSE-1',
 		},
 		course: {
 			course: 'COURSE-1',
 			course_name: 'Biology',
-			course_group: 'Sciences',
+			course_group: 'Science',
 			course_image: '/files/biology.jpg',
-			description: 'Introductory biology course',
-			is_published: 1,
+			description: 'Explore living systems through experiments and field observations.',
 		},
 		access: {
-			student: 'STU-1',
-			academic_years: ['2025-2026'],
-			student_groups: [],
+			student_group_options: [
+				{ student_group: 'GROUP-1', label: 'Biology A' },
+				{ student_group: 'GROUP-2', label: 'Biology B' },
+			],
+			resolved_student_group: 'GROUP-1',
+			class_teaching_plan: 'CLASS-PLAN-00001',
+			course_plan: 'COURSE-PLAN-00001',
 		},
-		deep_link: {
-			requested: {},
-			resolved: {
-				learning_unit: 'UNIT-1',
-				lesson: 'LESSON-1',
-				source: 'lesson',
-			},
+		teaching_plan: {
+			source: 'class_teaching_plan',
+			class_teaching_plan: 'CLASS-PLAN-00001',
+			title: 'Biology A · Semester 1',
+			planning_status: 'Active',
+			course_plan: 'COURSE-PLAN-00001',
 		},
+		message: null,
 		curriculum: {
 			counts: {
 				units: 1,
-				lessons: 1,
-				activities: 0,
-				course_tasks: 0,
-				unit_tasks: 0,
-				lesson_tasks: 0,
-				deliveries: 0,
-				materials: 1,
+				sessions: 2,
 			},
-			course_tasks: [],
-			materials: [
-				{
-					material: 'MAT-1',
-					course: 'COURSE-1',
-					title: 'Chapter summary',
-					material_type: 'Reference Link',
-					reference_url: 'https://example.com/summary',
-					open_url: 'https://example.com/summary',
-					placements: [
-						{
-							placement: 'MAT-PLC-1',
-							anchor_doctype: 'Lesson',
-							anchor_name: 'LESSON-1',
-							origin: 'curriculum',
-							usage_role: 'Reference',
-						},
-					],
-				},
-			],
 			units: [
 				{
-					name: 'UNIT-1',
-					unit_name: 'Unit 1',
+					unit_plan: 'UNIT-PLAN-1',
+					title: 'Cells and Systems',
 					unit_order: 1,
-					is_published: 1,
-					linked_tasks: [],
-					lessons: [
+					sessions: [
 						{
-							name: 'LESSON-1',
-							learning_unit: 'UNIT-1',
-							title: 'Lesson 1',
-							is_published: 1,
-							linked_tasks: [],
-							lesson_activities: [],
+							class_session: 'CLASS-SESSION-1',
+							title: 'Microscope evidence walk',
+							unit_plan: 'UNIT-PLAN-1',
+							session_status: 'Planned',
+							session_date: '2026-04-01',
+							learning_goal: 'Use evidence from microscope observations to compare cell structures.',
+							activities: [
+								{
+									title: 'Observation walk',
+									activity_type: 'Discuss',
+									estimated_minutes: 15,
+									student_direction: 'Rotate through the microscope stations and record two observations.',
+									resource_note: 'Bring your science notebook.',
+								},
+							],
+						},
+						{
+							class_session: 'CLASS-SESSION-2',
+							title: 'Lab write-up',
+							unit_plan: 'UNIT-PLAN-1',
+							session_status: 'Planned',
+							session_date: '2026-04-03',
+							activities: [],
 						},
 					],
 				},
 			],
 		},
-	};
+	}
 }
 
 async function flushUi() {
-	await Promise.resolve();
-	await nextTick();
-	await Promise.resolve();
-	await nextTick();
+	await Promise.resolve()
+	await nextTick()
+	await Promise.resolve()
+	await nextTick()
 }
 
 function mountCourseDetail() {
-	const host = document.createElement('div');
-	document.body.appendChild(host);
+	const host = document.createElement('div')
+	document.body.appendChild(host)
 
 	const app: App = createApp(
 		defineComponent({
 			render() {
-				return h(CourseDetail, { course_id: 'COURSE-1' });
+				return h(CourseDetail, { course_id: 'COURSE-1', student_group: 'GROUP-1' })
 			},
 		})
-	);
+	)
 
-	app.mount(host);
+	app.mount(host)
 	cleanupFns.push(() => {
-		app.unmount();
-		host.remove();
-	});
+		app.unmount()
+		host.remove()
+	})
 }
 
 afterEach(() => {
-	getStudentCourseDetailMock.mockReset();
-	routerReplaceMock.mockReset();
+	getStudentLearningSpaceMock.mockReset()
+	routerReplaceMock.mockReset()
 	while (cleanupFns.length) {
-		cleanupFns.pop()?.();
+		cleanupFns.pop()?.()
 	}
-	document.body.innerHTML = '';
-});
+	document.body.innerHTML = ''
+})
 
 describe('CourseDetail', () => {
-	it('keeps the course detail shell compact on laptop-sized layouts', async () => {
-		getStudentCourseDetailMock.mockResolvedValue(buildPayload());
+	it('renders the class-aware learning space shell', async () => {
+		getStudentLearningSpaceMock.mockResolvedValue(buildPayload())
 
-		mountCourseDetail();
-		await flushUi();
+		mountCourseDetail()
+		await flushUi()
 
-		expect(getStudentCourseDetailMock).toHaveBeenCalledWith({
+		expect(getStudentLearningSpaceMock).toHaveBeenCalledWith({
 			course_id: 'COURSE-1',
-			learning_unit: undefined,
-			lesson: undefined,
-			lesson_instance: undefined,
-		});
+			student_group: 'GROUP-1',
+		})
 
-		const headerImage = document.querySelector('header img');
-		expect(headerImage).toBeTruthy();
-		expect(headerImage?.className).toContain('aspect-square');
-		expect(headerImage?.parentElement?.className).toContain('max-w-[7.5rem]');
+		expect(document.body.textContent).toContain('Learning Space')
+		expect(document.body.textContent).toContain('Biology')
+		expect(document.body.textContent).toContain('Class plan published')
+		expect(document.body.textContent).toContain('Microscope evidence walk')
+		expect(document.body.textContent).toContain('Observation walk')
+		expect(document.body.textContent).not.toContain('Teacher note')
 
-		const contentShell = Array.from(document.querySelectorAll('section')).find(node =>
-			node.className.includes('xl:grid-cols-[minmax(0,18rem),minmax(0,1fr)]')
-		);
-		expect(contentShell).toBeTruthy();
-
-		const sidebar = document.querySelector('aside');
-		expect(sidebar).toBeTruthy();
-		expect(sidebar?.className).not.toContain('sticky');
-
-		const outlineToggle = Array.from(document.querySelectorAll('button')).find(node =>
-			node.textContent?.includes('Show Outline')
-		);
-		expect(outlineToggle).toBeTruthy();
-		expect(outlineToggle?.className).toContain('xl:hidden');
-
-		const outlinePanel = Array.from(document.querySelectorAll('div')).find(node =>
-			node.className.includes('hidden xl:block')
-		);
-		expect(outlinePanel).toBeTruthy();
-	});
-});
+		const headerImage = document.querySelector('header img')
+		expect(headerImage).toBeTruthy()
+		expect(headerImage?.className).toContain('aspect-square')
+	})
+})

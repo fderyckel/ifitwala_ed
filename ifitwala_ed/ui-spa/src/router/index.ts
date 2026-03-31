@@ -68,11 +68,8 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/student/CourseDetail.vue'),
     props: route => ({
       course_id: String(route.params.course_id || ''),
-      learning_unit:
-        typeof route.query.learning_unit === 'string' ? route.query.learning_unit : '',
-      lesson: typeof route.query.lesson === 'string' ? route.query.lesson : '',
-      lesson_instance:
-        typeof route.query.lesson_instance === 'string' ? route.query.lesson_instance : '',
+      student_group:
+        typeof route.query.student_group === 'string' ? route.query.student_group : '',
     }),
     meta: { layout: 'student' },
   },
@@ -108,6 +105,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/staff/professional-development', name: 'staff-professional-development', component: () => import('@/pages/staff/ProfessionalDevelopment.vue'), meta: { layout: 'staff' } },
   { path: '/staff/organization-chart', name: 'staff-organization-chart', component: () => import('@/pages/staff/organization_chart/OrganizationChart.vue'), meta: { layout: 'staff' } },
   { path: '/staff/class/:studentGroup', name: 'ClassHub', component: () => import('@/pages/staff/ClassHub.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/class/:studentGroup/planning', name: 'staff-class-planning', component: () => import('@/pages/staff/ClassPlanning.vue'), meta: { layout: 'staff' } },
 
 	{path: '/staff/morning-brief', name: 'MorningBriefing', component: () => import('@/pages/staff/morning_brief/MorningBriefing.vue'), meta: { layout: 'staff' } },
   { path: '/staff/student-groups', name: 'staff-student-groups', component: () => import('@/pages/staff/schedule/student-groups/StudentGroups.vue'), meta: { layout: 'staff' } },

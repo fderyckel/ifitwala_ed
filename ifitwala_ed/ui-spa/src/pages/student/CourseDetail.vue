@@ -4,600 +4,282 @@
 		<div>
 			<RouterLink
 				:to="{ name: 'student-courses' }"
-				class="inline-flex items-center type-body text-ink/70 transition hover:text-ink"
-				aria-label="Back to courses"
+				class="inline-flex items-center gap-2 type-body text-ink/70 transition hover:text-ink"
 			>
-				<span class="mr-2">←</span>
-				Back to Courses
+				<span>←</span>
+				<span>Back to Courses</span>
 			</RouterLink>
 		</div>
 
-		<div v-if="loading" class="card-surface p-6">
-			<p class="type-body text-ink/70">Loading course space...</p>
-		</div>
-
-		<div
-			v-else-if="errorMessage"
-			class="card-surface border border-flame/30 bg-[var(--flame)]/5 p-6"
+		<section
+			v-if="errorMessage"
+			class="rounded-2xl border border-flame/30 bg-[var(--flame)]/5 px-5 py-4"
 		>
-			<p class="type-body-strong text-flame">Could not load this course.</p>
-			<p class="mt-2 type-caption text-ink/70">{{ errorMessage }}</p>
-		</div>
+			<p class="type-body-strong text-flame">Could not load this learning space.</p>
+			<p class="mt-1 type-caption text-ink/70">{{ errorMessage }}</p>
+		</section>
 
-		<template v-else-if="courseDetail">
+		<section v-else-if="loading && !learningSpace" class="card-surface p-6">
+			<p class="type-body text-ink/70">Loading learning space...</p>
+		</section>
+
+		<template v-else-if="learningSpace">
 			<header class="card-surface overflow-hidden">
-				<div
-					class="grid gap-5 p-5 sm:gap-6 sm:p-6 xl:grid-cols-[minmax(0,9rem),minmax(0,1fr)] xl:items-start"
-				>
+				<div class="grid gap-5 p-5 sm:gap-6 sm:p-6 xl:grid-cols-[minmax(0,9rem),minmax(0,1fr)]">
 					<div class="flex justify-center xl:justify-start">
 						<div
 							class="w-full max-w-[7.5rem] overflow-hidden rounded-2xl border border-line-soft bg-surface-soft shadow-sm sm:max-w-[8.5rem] xl:max-w-[9rem]"
 						>
 							<img
-								:src="courseDetail.course.course_image || PLACEHOLDER"
-								:alt="courseDetail.course.course_name"
+								:src="learningSpace.course.course_image || PLACEHOLDER"
+								:alt="learningSpace.course.course_name"
 								class="aspect-square h-full w-full object-cover"
 								loading="lazy"
 							/>
 						</div>
 					</div>
+
 					<div class="min-w-0">
-						<p class="type-overline text-ink/60">My Course</p>
-						<h1 class="mt-2 type-h1 text-ink">{{ courseDetail.course.course_name }}</h1>
-						<p v-if="courseDetail.course.course_group" class="mt-2 type-caption text-ink/70">
-							{{ courseDetail.course.course_group }}
+						<p class="type-overline text-ink/60">Learning Space</p>
+						<h1 class="mt-2 type-h1 text-ink">{{ learningSpace.course.course_name }}</h1>
+						<p v-if="learningSpace.course.course_group" class="mt-2 type-caption text-ink/70">
+							{{ learningSpace.course.course_group }}
 						</p>
-						<p v-if="courseDetail.course.description" class="mt-4 type-body text-ink/80">
-							{{ courseDetail.course.description }}
+						<p v-if="learningSpace.course.description" class="mt-4 type-body text-ink/80">
+							{{ learningSpace.course.description }}
 						</p>
+
 						<div class="mt-4 flex flex-wrap gap-2">
-							<span class="chip">{{ courseDetail.curriculum.counts.units }} units</span>
-							<span class="chip">{{ courseDetail.curriculum.counts.lessons }} lessons</span>
-							<span class="chip">{{ courseDetail.curriculum.counts.activities }} activities</span>
-							<span class="chip">{{ totalLinkedTasks }} linked tasks</span>
-							<span class="chip">{{ courseDetail.curriculum.counts.materials }} materials</span>
+							<span class="chip">{{ learningSpace.curriculum.counts.units }} units</span>
+							<span class="chip">{{ learningSpace.curriculum.counts.sessions }} sessions</span>
+							<span class="chip">{{ teachingPlanLabel }}</span>
+						</div>
+
+						<div
+							class="mt-5 grid gap-4 rounded-2xl border border-line-soft bg-surface-soft p-4 lg:grid-cols-[minmax(0,1fr),auto]"
+						>
+							<div>
+								<p class="type-caption text-ink/70">Current class</p>
+								<p class="mt-1 type-body-strong text-ink">{{ resolvedClassLabel }}</p>
+								<p class="mt-1 type-caption text-ink/70">
+									Content is resolved for your class first, then shared course plan fallback.
+								</p>
+							</div>
+
+							<label
+								v-if="learningSpace.access.student_group_options.length > 1"
+								class="block space-y-2 lg:min-w-[16rem]"
+							>
+								<span class="type-caption text-ink/70">Switch class</span>
+								<select
+									:value="learningSpace.access.resolved_student_group || ''"
+									class="if-input w-full"
+									@change="handleStudentGroupChange"
+								>
+									<option
+										v-for="option in learningSpace.access.student_group_options"
+										:key="option.student_group"
+										:value="option.student_group"
+									>
+										{{ option.label }}
+									</option>
+								</select>
+							</label>
 						</div>
 					</div>
 				</div>
 			</header>
 
 			<section
+				v-if="learningSpace.message"
+				class="rounded-2xl border border-line-soft bg-surface-soft px-5 py-4"
+			>
+				<p class="type-body text-ink/80">{{ learningSpace.message }}</p>
+			</section>
+
+			<section
 				class="grid gap-6 xl:grid-cols-[minmax(0,18rem),minmax(0,1fr)] 2xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]"
 			>
 				<aside class="space-y-6 xl:self-start">
 					<section class="card-surface p-5">
-						<div class="mb-3 flex items-center justify-between">
-							<h2 class="type-h3 text-ink">Entry Context</h2>
-							<span class="chip">{{ courseDetail.deep_link.resolved.source }}</span>
-						</div>
-						<p class="type-body text-ink/80">{{ deepLinkSummary }}</p>
-						<p
-							v-if="courseDetail.deep_link.resolved.lesson_instance"
-							class="mt-3 rounded-xl border border-line-soft bg-surface-soft p-3 type-caption text-ink/70"
-						>
-							This view was opened from lesson instance
-							{{ courseDetail.deep_link.resolved.lesson_instance }}.
-						</p>
-						<p
-							v-if="courseDetail.access.student_groups.length"
-							class="mt-3 type-caption text-ink/70"
-						>
-							Available in
-							{{ courseDetail.access.student_groups.length }}
-							{{ courseDetail.access.student_groups.length > 1 ? 'groups' : 'group' }}.
-						</p>
-					</section>
-
-					<section class="card-surface p-5">
 						<div class="mb-4 flex items-center justify-between gap-3">
-							<div class="flex items-center gap-2">
-								<h2 class="type-h3 text-ink">Course Map</h2>
-								<span class="chip">{{ lessonSequence.length }} lessons</span>
+							<div>
+								<h2 class="type-h3 text-ink">Unit Backbone</h2>
+								<p class="mt-1 type-caption text-ink/70">
+									Your class follows the shared unit sequence for this course plan.
+								</p>
 							</div>
-							<button
-								type="button"
-								class="if-action xl:hidden"
-								:aria-expanded="isCourseMapOpen ? 'true' : 'false'"
-								@click="isCourseMapOpen = !isCourseMapOpen"
-							>
-								{{ isCourseMapOpen ? 'Hide Outline' : 'Show Outline' }}
-							</button>
+							<span class="chip">{{ learningSpace.curriculum.units.length }}</span>
 						</div>
 
 						<div
-							v-if="!units.length"
-							class="rounded-xl border border-dashed border-line-soft p-4 type-body text-ink/70"
+							v-if="!learningSpace.curriculum.units.length"
+							class="rounded-2xl border border-dashed border-line-soft p-4"
 						>
-							No learning units are available for this course yet.
+							<p class="type-body text-ink/70">No units are available yet.</p>
 						</div>
 
-						<div v-else :class="['space-y-4', isCourseMapOpen ? 'block' : 'hidden xl:block']">
-							<div v-for="unit in units" :key="unit.name" class="space-y-2">
-								<button
-									type="button"
-									class="w-full rounded-2xl border p-4 text-left transition"
-									:class="
-										isActiveUnit(unit.name)
-											? 'border-jacaranda bg-jacaranda/10 shadow-soft'
-											: 'border-line-soft bg-surface-soft hover:border-jacaranda/30'
-									"
-									:aria-expanded="isUnitExpanded(unit.name) ? 'true' : 'false'"
-									@click="toggleUnit(unit)"
-								>
-									<div class="flex items-start justify-between gap-3">
-										<div class="min-w-0">
-											<p class="type-overline text-ink/60">Unit {{ unit.unit_order ?? '—' }}</p>
-											<p class="mt-1 type-body-strong text-ink">{{ unit.unit_name }}</p>
-											<p class="mt-1 type-caption text-ink/70">
-												{{ unit.lessons.length }} lessons
-												<span v-if="unit.estimated_duration">· {{ unit.estimated_duration }}</span>
-											</p>
-										</div>
-										<span
-											class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line-soft bg-white"
-										>
-											<FeatherIcon
-												name="chevron-down"
-												class="h-4 w-4 text-ink/60 transition"
-												:class="{ 'rotate-180': isUnitExpanded(unit.name) }"
-											/>
-										</span>
-									</div>
-								</button>
-
-								<div
-									v-if="unit.lessons.length && isUnitExpanded(unit.name)"
-									class="space-y-2 border-l border-line-soft pl-3"
-								>
-									<button
-										v-for="lesson in unit.lessons"
-										:key="lesson.name"
-										type="button"
-										class="w-full rounded-xl border p-3 text-left transition"
-										:class="
-											isActiveLesson(lesson.name)
-												? 'border-jacaranda bg-white shadow-soft'
-												: 'border-line-soft bg-white/70 hover:border-jacaranda/30'
-										"
-										:aria-current="isActiveLesson(lesson.name) ? 'true' : undefined"
-										@click="openLesson(unit.name, lesson.name)"
-									>
-										<p class="type-body-strong text-ink">{{ lesson.title }}</p>
-										<p class="mt-1 type-caption text-ink/70">
-											{{ lesson.lesson_type || 'Lesson' }}
-											<span v-if="lesson.duration">· {{ lesson.duration }} periods</span>
-											<span v-if="lesson.lesson_activities.length">
-												· {{ lesson.lesson_activities.length }} activities
-											</span>
-										</p>
-									</button>
-								</div>
-							</div>
-						</div>
-					</section>
-
-					<section v-if="courseDetail.curriculum.course_tasks.length" class="card-surface p-5">
-						<div class="mb-4 flex items-center justify-between">
-							<h2 class="type-h3 text-ink">Course-Level Work</h2>
-							<span class="chip">{{ courseDetail.curriculum.course_tasks.length }} items</span>
-						</div>
-
-						<div class="space-y-3">
-							<article
-								v-for="task in courseDetail.curriculum.course_tasks"
-								:key="task.task"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+						<div v-else class="space-y-3">
+							<button
+								v-for="unit in learningSpace.curriculum.units"
+								:key="unit.unit_plan"
+								type="button"
+								class="w-full rounded-2xl border p-4 text-left transition"
+								:class="
+									selectedUnit?.unit_plan === unit.unit_plan
+										? 'border-jacaranda bg-jacaranda/10 shadow-soft'
+										: 'border-line-soft bg-surface-soft hover:border-jacaranda/30'
+								"
+								@click="selectUnit(unit.unit_plan)"
 							>
-								<div class="flex flex-wrap items-center gap-2">
-									<p class="type-body-strong text-ink">{{ task.title }}</p>
-									<span v-if="task.task_type" class="chip">{{ task.task_type }}</span>
-									<span v-if="task.deliveries.length" class="chip">
-										{{ task.deliveries.length }}
-										{{ task.deliveries.length > 1 ? 'deliveries' : 'delivery' }}
-									</span>
-								</div>
-								<div v-if="task.deliveries.length" class="mt-3 space-y-2">
-									<div
-										v-for="delivery in task.deliveries"
-										:key="delivery.task_delivery"
-										class="rounded-xl border border-line-soft bg-white p-3"
-									>
-										<div class="flex flex-wrap gap-2">
-											<span class="chip">{{ delivery.student_group }}</span>
-											<span v-if="delivery.delivery_mode" class="chip">
-												{{ delivery.delivery_mode }}
-											</span>
-										</div>
-										<p class="mt-2 type-caption text-ink/70">
-											{{ deliverySummary(delivery) }}
-										</p>
-										<p v-if="delivery.quiz" class="mt-2 type-caption text-ink/70">
-											{{ quizSummary(delivery) }}
-										</p>
-										<RouterLink
-											v-if="delivery.quiz"
-											:to="quizRoute(delivery)"
-											class="if-action mt-3 inline-flex"
-										>
-											{{ quizActionLabel(delivery) }}
-										</RouterLink>
-									</div>
-								</div>
-							</article>
+								<p class="type-overline text-ink/60">Unit {{ unit.unit_order || '—' }}</p>
+								<p class="mt-1 type-body-strong text-ink">{{ unit.title }}</p>
+								<p class="mt-1 type-caption text-ink/70">{{ unit.sessions.length }} sessions</p>
+							</button>
 						</div>
 					</section>
 				</aside>
 
-				<div class="space-y-6">
-					<section v-if="activeUnit" class="card-surface p-6">
+				<div v-if="selectedUnit" class="space-y-6">
+					<section class="card-surface p-6">
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 							<div>
 								<p class="type-overline text-ink/60">Current Unit</p>
-								<h2 class="mt-2 type-h2 text-ink">{{ activeUnit.unit_name }}</h2>
+								<h2 class="mt-2 type-h2 text-ink">{{ selectedUnit.title }}</h2>
 								<p class="mt-2 type-body text-ink/80">
-									{{ activeUnit.lessons.length }} lessons in this chapter.
+									{{ selectedUnit.sessions.length }}
+									{{ selectedUnit.sessions.length === 1 ? 'session' : 'sessions' }}
+									linked to this unit for your class.
 								</p>
 							</div>
 							<div class="flex flex-wrap gap-2">
-								<span v-if="activeUnit.unit_status" class="chip">{{
-									activeUnit.unit_status
-								}}</span>
-								<span v-if="activeUnit.estimated_duration" class="chip">
-									{{ activeUnit.estimated_duration }}
-								</span>
-								<span v-if="activeUnit.linked_tasks.length" class="chip">
-									{{ activeUnit.linked_tasks.length }} unit tasks
-								</span>
+								<span class="chip">Unit {{ selectedUnit.unit_order || '—' }}</span>
+								<span class="chip">{{ selectedUnit.sessions.length }} sessions</span>
 							</div>
 						</div>
+					</section>
 
-						<p v-if="activeUnit.unit_overview" class="mt-4 type-body text-ink/80">
-							{{ activeUnit.unit_overview }}
-						</p>
+					<section class="grid gap-6 lg:grid-cols-[minmax(0,16rem),minmax(0,1fr)]">
+						<div class="card-surface p-5">
+							<div class="mb-4 flex items-center justify-between gap-3">
+								<div>
+									<h2 class="type-h3 text-ink">Sessions</h2>
+									<p class="mt-1 type-caption text-ink/70">
+										What your class is currently working through in this unit.
+									</p>
+								</div>
+								<span class="chip">{{ selectedUnit.sessions.length }}</span>
+							</div>
 
-						<div
-							v-if="activeUnit.essential_understanding || activeUnit.misconceptions"
-							class="mt-5 grid gap-4 lg:grid-cols-2"
-						>
 							<div
-								v-if="activeUnit.essential_understanding"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+								v-if="!selectedUnit.sessions.length"
+								class="rounded-2xl border border-dashed border-line-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Essential Understanding</p>
-								<p class="mt-2 type-body text-ink/80">
-									{{ activeUnit.essential_understanding }}
+								<p class="type-caption text-ink/70">
+									Your teacher has not published class sessions for this unit yet.
 								</p>
 							</div>
+
+							<div v-else class="space-y-3">
+								<button
+									v-for="session in selectedUnit.sessions"
+									:key="session.class_session"
+									type="button"
+									class="w-full rounded-2xl border p-4 text-left transition"
+									:class="
+										selectedSession?.class_session === session.class_session
+											? 'border-canopy bg-canopy/10 shadow-soft'
+											: 'border-line-soft bg-surface-soft hover:border-canopy/30'
+									"
+									@click="selectSession(session.class_session)"
+								>
+									<p class="type-body-strong text-ink">{{ session.title }}</p>
+									<p class="mt-1 type-caption text-ink/70">
+										{{ session.session_status || 'Planned' }}
+										<span v-if="session.session_date">· {{ session.session_date }}</span>
+									</p>
+								</button>
+							</div>
+						</div>
+
+						<section v-if="selectedSession" class="card-surface p-6">
+							<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+								<div>
+									<p class="type-overline text-ink/60">Selected Session</p>
+									<h2 class="mt-2 type-h2 text-ink">{{ selectedSession.title }}</h2>
+									<p class="mt-2 type-body text-ink/80">
+										{{ selectedSession.session_status || 'Planned' }}
+										<span v-if="selectedSession.session_date"
+											>· {{ selectedSession.session_date }}</span
+										>
+									</p>
+								</div>
+								<div class="flex flex-wrap gap-2">
+									<span class="chip">{{ selectedSession.session_status || 'Planned' }}</span>
+									<span v-if="selectedSession.activities.length" class="chip">
+										{{ selectedSession.activities.length }} activities
+									</span>
+								</div>
+							</div>
+
 							<div
-								v-if="activeUnit.misconceptions"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+								v-if="selectedSession.learning_goal"
+								class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Common Misconceptions</p>
-								<p class="mt-2 type-body text-ink/80">{{ activeUnit.misconceptions }}</p>
+								<p class="type-overline text-ink/60">Learning Goal</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedSession.learning_goal }}</p>
 							</div>
-						</div>
-					</section>
 
-					<section v-if="activeLesson" class="card-surface p-6">
-						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-							<div>
-								<p class="type-overline text-ink/60">Current Lesson</p>
-								<h2 class="mt-2 type-h2 text-ink">{{ activeLesson.title }}</h2>
-								<p class="mt-2 type-body text-ink/80">
-									Lesson {{ activeLessonOrdinal }} of {{ lessonSequence.length }} in this course.
-								</p>
-							</div>
-							<div class="flex flex-wrap gap-2">
-								<span v-if="activeLesson.lesson_type" class="chip">
-									{{ activeLesson.lesson_type }}
-								</span>
-								<span v-if="activeLesson.duration" class="chip">
-									{{ activeLesson.duration }} periods
-								</span>
-								<span v-if="activeLesson.start_date" class="chip">
-									Starts {{ formatLessonDate(activeLesson.start_date) }}
-								</span>
-								<span class="chip"> {{ activeLesson.lesson_activities.length }} activities </span>
-							</div>
-						</div>
-
-						<div class="mt-5 grid gap-3 md:grid-cols-2">
-							<button
-								type="button"
-								class="rounded-2xl border p-4 text-left transition"
-								:class="
-									adjacentLessons.previous
-										? 'border-line-soft bg-surface-soft hover:border-jacaranda/30'
-										: 'cursor-not-allowed border-line-soft bg-surface-soft/60 text-ink/40'
-								"
-								:disabled="!adjacentLessons.previous"
-								@click="goToAdjacent(adjacentLessons.previous)"
-							>
-								<p class="type-overline text-ink/60">Previous Lesson</p>
-								<p class="mt-1 type-body-strong text-ink">
-									{{ adjacentLessons.previous?.lesson.title || 'Start of course' }}
-								</p>
-							</button>
-							<button
-								type="button"
-								class="rounded-2xl border p-4 text-left transition"
-								:class="
-									adjacentLessons.next
-										? 'border-line-soft bg-surface-soft hover:border-jacaranda/30'
-										: 'cursor-not-allowed border-line-soft bg-surface-soft/60 text-ink/40'
-								"
-								:disabled="!adjacentLessons.next"
-								@click="goToAdjacent(adjacentLessons.next)"
-							>
-								<p class="type-overline text-ink/60">Next Lesson</p>
-								<p class="mt-1 type-body-strong text-ink">
-									{{ adjacentLessons.next?.lesson.title || 'End of course' }}
-								</p>
-							</button>
-						</div>
-					</section>
-
-					<section v-if="activeUnit && activeUnit.lessons.length > 1" class="card-surface p-5">
-						<div class="mb-4 flex items-center justify-between">
-							<h2 class="type-h3 text-ink">Lesson Sequence</h2>
-							<span class="chip">{{ activeUnit.lessons.length }} lessons</span>
-						</div>
-						<div class="grid gap-3 lg:grid-cols-2">
-							<button
-								v-for="lesson in activeUnit.lessons"
-								:key="lesson.name"
-								type="button"
-								class="rounded-2xl border p-4 text-left transition"
-								:class="
-									isActiveLesson(lesson.name)
-										? 'border-jacaranda bg-jacaranda/10 shadow-soft'
-										: 'border-line-soft bg-surface-soft hover:border-jacaranda/30'
-								"
-								@click="openLesson(activeUnit.name, lesson.name)"
-							>
-								<p class="type-body-strong text-ink">{{ lesson.title }}</p>
-								<p class="mt-1 type-caption text-ink/70">
-									{{ lesson.lesson_type || 'Lesson' }}
-									<span v-if="lesson.duration">· {{ lesson.duration }} periods</span>
-								</p>
-							</button>
-						</div>
-					</section>
-
-					<section v-if="activeUnit?.linked_tasks.length" class="card-surface p-5">
-						<div class="mb-4 flex items-center justify-between">
-							<h2 class="type-h3 text-ink">Unit Work</h2>
-							<span class="chip">{{ activeUnit.linked_tasks.length }} items</span>
-						</div>
-						<div class="space-y-3">
-							<article
-								v-for="task in activeUnit.linked_tasks"
-								:key="task.task"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-							>
-								<div class="flex flex-wrap items-center gap-2">
-									<p class="type-body-strong text-ink">{{ task.title }}</p>
-									<span v-if="task.task_type" class="chip">{{ task.task_type }}</span>
+							<div class="mt-6 space-y-4">
+								<div class="flex items-center justify-between gap-3">
+									<h3 class="type-h3 text-ink">Session Flow</h3>
+									<span class="chip">{{ selectedSession.activities.length }}</span>
 								</div>
-								<div v-if="task.deliveries.length" class="mt-3 space-y-2">
-									<div
-										v-for="delivery in task.deliveries"
-										:key="delivery.task_delivery"
-										class="rounded-xl border border-line-soft bg-white p-3"
-									>
-										<p class="type-caption text-ink/70">{{ deliverySummary(delivery) }}</p>
-										<p v-if="delivery.quiz" class="mt-2 type-caption text-ink/70">
-											{{ quizSummary(delivery) }}
-										</p>
-										<RouterLink
-											v-if="delivery.quiz"
-											:to="quizRoute(delivery)"
-											class="if-action mt-3 inline-flex"
-										>
-											{{ quizActionLabel(delivery) }}
-										</RouterLink>
-									</div>
-								</div>
-							</article>
-						</div>
-					</section>
-
-					<section v-if="activeLesson?.linked_tasks.length" class="card-surface p-5">
-						<div class="mb-4 flex items-center justify-between">
-							<h2 class="type-h3 text-ink">Lesson Work</h2>
-							<span class="chip">{{ activeLesson.linked_tasks.length }} items</span>
-						</div>
-						<div class="space-y-3">
-							<article
-								v-for="task in activeLesson.linked_tasks"
-								:key="task.task"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-							>
-								<div class="flex flex-wrap items-center gap-2">
-									<p class="type-body-strong text-ink">{{ task.title }}</p>
-									<span v-if="task.task_type" class="chip">{{ task.task_type }}</span>
-								</div>
-								<div v-if="task.deliveries.length" class="mt-3 space-y-2">
-									<div
-										v-for="delivery in task.deliveries"
-										:key="delivery.task_delivery"
-										class="rounded-xl border border-line-soft bg-white p-3"
-									>
-										<p class="type-caption text-ink/70">{{ deliverySummary(delivery) }}</p>
-										<p v-if="delivery.quiz" class="mt-2 type-caption text-ink/70">
-											{{ quizSummary(delivery) }}
-										</p>
-										<RouterLink
-											v-if="delivery.quiz"
-											:to="quizRoute(delivery)"
-											class="if-action mt-3 inline-flex"
-										>
-											{{ quizActionLabel(delivery) }}
-										</RouterLink>
-									</div>
-								</div>
-							</article>
-						</div>
-					</section>
-
-					<section v-if="visibleMaterialGroups.length" class="card-surface p-5">
-						<div class="mb-4 flex items-center justify-between">
-							<h2 class="type-h3 text-ink">Materials</h2>
-							<span class="chip">{{ visibleMaterialsCount }} items</span>
-						</div>
-						<div class="space-y-5">
-							<div v-for="group in visibleMaterialGroups" :key="group.key" class="space-y-3">
-								<div class="flex items-center justify-between">
-									<h3 class="type-body-strong text-ink">{{ group.label }}</h3>
-									<span class="chip">{{ group.items.length }}</span>
-								</div>
-								<div class="grid gap-3 lg:grid-cols-2">
-									<article
-										v-for="item in group.items"
-										:key="item.material"
-										class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-									>
-										<div class="flex flex-wrap items-center gap-2">
-											<p class="type-body-strong text-ink">{{ item.title }}</p>
-											<span class="chip">{{ item.material_type }}</span>
-											<span v-if="item.modality" class="chip">{{ item.modality }}</span>
-										</div>
-										<div class="mt-2 flex flex-wrap gap-2">
-											<span
-												v-for="badge in materialBadges(item)"
-												:key="`${item.material}-${badge}`"
-												class="chip"
-											>
-												{{ badge }}
-											</span>
-										</div>
-										<p v-if="item.description" class="mt-3 type-body text-ink/80">
-											{{ item.description }}
-										</p>
-										<p v-if="item.file_name" class="mt-2 type-caption text-ink/70">
-											{{ item.file_name }}
-											<span v-if="item.file_size">· {{ item.file_size }}</span>
-										</p>
-										<p v-if="primaryPlacementNote(item)" class="mt-2 type-caption text-ink/70">
-											{{ primaryPlacementNote(item) }}
-										</p>
-										<a
-											v-if="item.open_url"
-											:href="item.open_url"
-											target="_blank"
-											rel="noreferrer"
-											class="if-action mt-3 inline-flex"
-										>
-											{{ materialActionLabel(item) }}
-										</a>
-									</article>
-								</div>
-							</div>
-						</div>
-					</section>
-
-					<section v-if="activeLesson" class="card-surface p-5">
-						<div class="mb-4 flex items-center justify-between">
-							<h2 class="type-h3 text-ink">Lesson Activities</h2>
-							<span class="chip">{{ activeLesson.lesson_activities.length }} steps</span>
-						</div>
-
-						<div
-							v-if="!activeLesson.lesson_activities.length"
-							class="rounded-2xl border border-dashed border-line-soft p-4 type-body text-ink/70"
-						>
-							No lesson activities are defined for this lesson yet.
-						</div>
-
-						<div v-else class="space-y-4">
-							<article
-								v-for="(activity, index) in activeLesson.lesson_activities"
-								:key="activity.name"
-								class="rounded-2xl border p-5"
-								:class="
-									activity.is_required
-										? 'border-jacaranda/30 bg-jacaranda/5'
-										: 'border-line-soft bg-surface-soft'
-								"
-							>
-								<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-									<div>
-										<p class="type-overline text-ink/60">Activity {{ index + 1 }}</p>
-										<h3 class="mt-1 type-h3 text-ink">
-											{{ activity.title || activity.activity_type || 'Activity' }}
-										</h3>
-										<p class="mt-1 type-caption text-ink/70">
-											{{ activity.activity_type || 'Planned Activity' }}
-											<span v-if="activity.estimated_duration">
-												· {{ activity.estimated_duration }} minutes
-											</span>
-											<span v-if="activity.is_required">· Required</span>
-										</p>
-									</div>
-									<div class="flex flex-wrap gap-2">
-										<span v-if="activity.is_required" class="chip">Required</span>
-										<span v-if="activity.activity_type" class="chip">
-											{{ activity.activity_type }}
-										</span>
-									</div>
-								</div>
-
-								<p v-if="activityPreview(activity)" class="mt-4 type-body text-ink/80">
-									{{ activityPreview(activity) }}
-								</p>
 
 								<div
-									v-if="activity.reading_content"
-									class="mt-4 rounded-2xl border border-line-soft bg-white p-4"
+									v-if="!selectedSession.activities.length"
+									class="rounded-2xl border border-dashed border-line-soft p-4"
 								>
-									<p class="type-overline text-ink/60">Reading Preview</p>
-									<p class="mt-2 type-body text-ink/80">
-										{{ summarizeRichText(activity.reading_content, 320) }}
+									<p class="type-caption text-ink/70">
+										Activity details have not been published for this session yet.
 									</p>
 								</div>
 
-								<div
-									v-if="activity.discussion_prompt"
-									class="mt-4 rounded-2xl border border-line-soft bg-white p-4"
-								>
-									<p class="type-overline text-ink/60">Discussion Prompt</p>
-									<p class="mt-2 type-body text-ink/80">{{ activity.discussion_prompt }}</p>
-								</div>
-
-								<div
-									v-if="activity.video_url || activity.external_link"
-									class="mt-4 flex flex-wrap gap-3"
-								>
-									<a
-										v-if="activity.video_url"
-										:href="activity.video_url"
-										target="_blank"
-										rel="noreferrer"
-										class="if-action"
+								<div v-else class="space-y-3">
+									<article
+										v-for="activity in selectedSession.activities"
+										:key="`${selectedSession.class_session}-${activity.sequence_index}-${activity.title}`"
+										class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 									>
-										Open Video
-									</a>
-									<a
-										v-if="activity.external_link"
-										:href="activity.external_link"
-										target="_blank"
-										rel="noreferrer"
-										class="if-action"
-									>
-										Open Resource
-									</a>
+										<div class="flex flex-wrap items-center gap-2">
+											<p class="type-body-strong text-ink">{{ activity.title }}</p>
+											<span v-if="activity.activity_type" class="chip">
+												{{ activity.activity_type }}
+											</span>
+											<span v-if="activity.estimated_minutes" class="chip">
+												{{ activity.estimated_minutes }} min
+											</span>
+										</div>
+										<p v-if="activity.student_direction" class="mt-3 type-body text-ink/80">
+											{{ activity.student_direction }}
+										</p>
+										<p v-if="activity.resource_note" class="mt-2 type-caption text-ink/70">
+											{{ activity.resource_note }}
+										</p>
+									</article>
 								</div>
-							</article>
-						</div>
-					</section>
+							</div>
+						</section>
 
-					<section
-						v-else-if="activeUnit"
-						class="card-surface border border-dashed border-line-soft p-5"
-					>
-						<p class="type-body text-ink/70">This unit has no lessons available yet.</p>
+						<section v-else class="card-surface p-6">
+							<p class="type-body text-ink/70">Select a session to view the class flow.</p>
+						</section>
 					</section>
 				</div>
+
+				<section v-else class="card-surface p-6">
+					<p class="type-body text-ink/70">Select a unit to view the sessions for your class.</p>
+				</section>
 			</section>
 		</template>
 	</div>
@@ -605,373 +287,136 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { RouterLink, useRouter } from 'vue-router';
-import { FeatherIcon } from 'frappe-ui';
+import { useRouter } from 'vue-router';
 
-import { formatLocalizedDate, formatLocalizedDateTime } from '@/lib/datetime';
-import {
-	buildLessonSequence,
-	getAdjacentLessonRefs,
-	resolveActiveContext,
-	type CourseLessonRef,
-} from '@/lib/studentCourseDetail';
-import { getStudentCourseDetail } from '@/lib/services/student/studentLearningHubService';
+import { getStudentLearningSpace } from '@/lib/services/student/studentLearningHubService';
 import type {
-	LessonActivity,
-	LearningUnit,
-	Response as StudentCourseDetailResponse,
-	SupportingMaterial,
-	TaskDeliveryRef,
-} from '@/types/contracts/student_hub/get_student_course_detail';
+	Response as StudentLearningSpaceResponse,
+	StudentLearningSession,
+	StudentLearningUnit,
+} from '@/types/contracts/student_learning/get_student_learning_space';
 
-const PLACEHOLDER = '/assets/ifitwala_ed/images/course_placeholder.jpg';
+const PLACEHOLDER =
+	'data:image/svg+xml;charset=UTF-8,' +
+	encodeURIComponent(
+		`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><rect width="600" height="600" fill="#f3ede2"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="#8a7963">Course</text></svg>`
+	);
 
 const props = defineProps<{
 	course_id: string;
-	learning_unit?: string;
-	lesson?: string;
-	lesson_instance?: string;
+	student_group?: string;
 }>();
 
 const router = useRouter();
 
-const courseDetail = ref<StudentCourseDetailResponse | null>(null);
+const learningSpace = ref<StudentLearningSpaceResponse | null>(null);
 const loading = ref(false);
 const errorMessage = ref('');
-const isCourseMapOpen = ref(false);
-const expandedUnitName = ref<string | null>(null);
+const selectedUnitPlan = ref('');
+const selectedSessionId = ref('');
+const loadToken = ref(0);
 
-const units = computed(() => courseDetail.value?.curriculum.units || []);
-const lessonSequence = computed(() => buildLessonSequence(units.value));
-const activeContext = computed(() =>
-	resolveActiveContext(courseDetail.value, {
-		learning_unit: props.learning_unit,
-		lesson: props.lesson,
-	})
-);
-const activeUnit = computed(() => activeContext.value.activeUnit);
-const activeLesson = computed(() => activeContext.value.activeLesson);
-const adjacentLessons = computed(() =>
-	getAdjacentLessonRefs(units.value, activeLesson.value?.name)
-);
-const courseMaterials = computed(() => courseDetail.value?.curriculum.materials || []);
-
-const totalLinkedTasks = computed(() => {
-	if (!courseDetail.value) return 0;
-	const counts = courseDetail.value.curriculum.counts;
-	return counts.course_tasks + counts.unit_tasks + counts.lesson_tasks;
+const selectedUnit = computed<StudentLearningUnit | null>(() => {
+	return (
+		learningSpace.value?.curriculum.units.find(
+			unit => unit.unit_plan === selectedUnitPlan.value
+		) || null
+	);
 });
 
-const activeLessonOrdinal = computed(() => {
-	const target = activeLesson.value?.name;
-	if (!target) return 0;
-	const index = lessonSequence.value.findIndex(ref => ref.lesson.name === target);
-	return index === -1 ? 0 : index + 1;
+const selectedSession = computed<StudentLearningSession | null>(() => {
+	return (
+		selectedUnit.value?.sessions.find(
+			session => session.class_session === selectedSessionId.value
+		) || null
+	);
 });
 
-type VisibleMaterial = SupportingMaterial & {
-	matchedPlacements: SupportingMaterial['placements'];
-};
-
-const activeTaskNames = computed(() => {
-	const names = new Set<string>();
-	for (const task of courseDetail.value?.curriculum.course_tasks || []) {
-		if (task?.task) names.add(task.task);
-	}
-	for (const task of activeUnit.value?.linked_tasks || []) {
-		if (task?.task) names.add(task.task);
-	}
-	for (const task of activeLesson.value?.linked_tasks || []) {
-		if (task?.task) names.add(task.task);
-	}
-	return names;
+const resolvedClassLabel = computed(() => {
+	const resolvedGroup = learningSpace.value?.access.resolved_student_group;
+	if (!resolvedGroup) return 'Class not available';
+	return (
+		learningSpace.value?.access.student_group_options.find(
+			option => option.student_group === resolvedGroup
+		)?.label || resolvedGroup
+	);
 });
 
-const visibleMaterialGroups = computed(() => {
-	const groups = [
-		{ key: 'required', label: 'Required now', items: [] as VisibleMaterial[] },
-		{ key: 'lesson', label: 'This lesson', items: [] as VisibleMaterial[] },
-		{ key: 'task', label: 'Task materials', items: [] as VisibleMaterial[] },
-		{ key: 'unit', label: 'From this unit', items: [] as VisibleMaterial[] },
-		{ key: 'course', label: 'From this course', items: [] as VisibleMaterial[] },
-		{ key: 'class', label: 'Shared in class', items: [] as VisibleMaterial[] },
-	];
-
-	for (const material of courseMaterials.value) {
-		const matchedPlacements = material.placements.filter(placement => {
-			if (placement.anchor_doctype === 'Course') return true;
-			if (placement.anchor_doctype === 'Learning Unit') {
-				return placement.anchor_name === activeUnit.value?.name;
-			}
-			if (placement.anchor_doctype === 'Lesson') {
-				return placement.anchor_name === activeLesson.value?.name;
-			}
-			if (placement.anchor_doctype === 'Task') {
-				return activeTaskNames.value.has(placement.anchor_name);
-			}
-			return false;
-		});
-
-		if (!matchedPlacements.length) continue;
-
-		const item: VisibleMaterial = {
-			...material,
-			matchedPlacements,
-		};
-
-		if (matchedPlacements.some(placement => placement.usage_role === 'Required')) {
-			groups[0].items.push(item);
-			continue;
-		}
-		if (matchedPlacements.some(placement => placement.origin === 'shared_in_class')) {
-			groups[5].items.push(item);
-			continue;
-		}
-		if (matchedPlacements.some(placement => placement.anchor_doctype === 'Task')) {
-			groups[2].items.push(item);
-			continue;
-		}
-		if (matchedPlacements.some(placement => placement.anchor_doctype === 'Lesson')) {
-			groups[1].items.push(item);
-			continue;
-		}
-		if (matchedPlacements.some(placement => placement.anchor_doctype === 'Learning Unit')) {
-			groups[3].items.push(item);
-			continue;
-		}
-		groups[4].items.push(item);
-	}
-
-	return groups.filter(group => group.items.length);
+const teachingPlanLabel = computed(() => {
+	const source = learningSpace.value?.teaching_plan.source;
+	if (source === 'class_teaching_plan') return 'Class plan published';
+	if (source === 'course_plan_fallback') return 'Shared course plan';
+	return 'Planning not published';
 });
 
-const visibleMaterialsCount = computed(() =>
-	visibleMaterialGroups.value.reduce((total, group) => total + group.items.length, 0)
-);
+function applySelection(payload: StudentLearningSpaceResponse) {
+	const currentUnitStillExists = payload.curriculum.units.some(
+		unit => unit.unit_plan === selectedUnitPlan.value
+	);
+	if (!currentUnitStillExists) {
+		selectedUnitPlan.value = payload.curriculum.units[0]?.unit_plan || '';
+	}
 
-const deepLinkSummary = computed(() => {
-	if (!courseDetail.value) return '';
-	const resolved = courseDetail.value.deep_link.resolved;
-	if (resolved.lesson_instance) {
-		return `Opened from lesson instance ${resolved.lesson_instance} and anchored to this lesson flow.`;
+	const unit =
+		payload.curriculum.units.find(row => row.unit_plan === selectedUnitPlan.value) || null;
+	const currentSessionStillExists = !!unit?.sessions.some(
+		session => session.class_session === selectedSessionId.value
+	);
+	if (!currentSessionStillExists) {
+		selectedSessionId.value = unit?.sessions[0]?.class_session || '';
 	}
-	if (resolved.lesson) {
-		return `Opened at lesson ${resolved.lesson} inside the current course structure.`;
-	}
-	if (resolved.learning_unit) {
-		return `Opened at learning unit ${resolved.learning_unit}.`;
-	}
-	return 'Opened at the course level because no deeper context was available.';
-});
+}
 
-async function loadCourseDetail() {
+async function loadLearningSpace() {
+	const ticket = loadToken.value + 1;
+	loadToken.value = ticket;
 	loading.value = true;
 	errorMessage.value = '';
+
 	try {
-		courseDetail.value = await getStudentCourseDetail({
+		const payload = await getStudentLearningSpace({
 			course_id: props.course_id,
-			learning_unit: props.learning_unit || undefined,
-			lesson: props.lesson || undefined,
-			lesson_instance: props.lesson_instance || undefined,
+			student_group: props.student_group || undefined,
 		});
-	} catch (error: unknown) {
-		courseDetail.value = null;
-		if (error instanceof Error && error.message) {
-			errorMessage.value = error.message;
-		} else if (typeof error === 'string' && error) {
-			errorMessage.value = error;
-		} else {
-			errorMessage.value = 'Unable to load this course.';
-		}
+		if (ticket !== loadToken.value) return;
+		learningSpace.value = payload;
+		applySelection(payload);
+	} catch (error) {
+		if (ticket !== loadToken.value) return;
+		learningSpace.value = null;
+		errorMessage.value = error instanceof Error ? error.message : 'Unknown error';
 	} finally {
-		loading.value = false;
+		if (ticket === loadToken.value) {
+			loading.value = false;
+		}
 	}
 }
 
-function summarizeRichText(value?: string | null, maxLength = 220): string {
-	const normalized = String(value || '')
-		.replace(/<[^>]+>/g, ' ')
-		.replace(/\s+/g, ' ')
-		.trim();
-	if (!normalized) return '';
-	if (normalized.length <= maxLength) return normalized;
-	return `${normalized.slice(0, maxLength).trimEnd()}…`;
+function selectUnit(unitPlan: string) {
+	selectedUnitPlan.value = unitPlan;
+	selectedSessionId.value =
+		learningSpace.value?.curriculum.units.find(unit => unit.unit_plan === unitPlan)?.sessions[0]
+			?.class_session || '';
 }
 
-function activityPreview(activity: LessonActivity): string {
-	if (activity.discussion_prompt) return activity.discussion_prompt;
-	if (activity.reading_content) return 'Read the material below before moving to the next step.';
-	if (activity.video_url) return 'Open the linked video as part of this lesson.';
-	if (activity.external_link) return 'Open the linked resource for this lesson.';
-	return '';
+function selectSession(classSession: string) {
+	selectedSessionId.value = classSession;
 }
 
-function formatLessonDate(value?: string | null): string {
-	return formatLocalizedDate(value, { fallback: '' });
-}
-
-function deliverySummary(delivery: TaskDeliveryRef): string {
-	const parts: string[] = [];
-
-	if (delivery.available_from) {
-		parts.push(`Available ${formatLocalizedDateTime(delivery.available_from, { fallback: '' })}`);
-	}
-	if (delivery.due_date) {
-		parts.push(`Due ${formatLocalizedDateTime(delivery.due_date, { fallback: '' })}`);
-	}
-	if (delivery.lock_date) {
-		parts.push(`Locks ${formatLocalizedDateTime(delivery.lock_date, { fallback: '' })}`);
-	}
-	if (delivery.lesson_instance) {
-		parts.push(`Lesson instance ${delivery.lesson_instance}`);
-	}
-
-	return parts.join(' · ') || 'No dated delivery window is available yet.';
-}
-
-function materialActionLabel(material: SupportingMaterial): string {
-	if (material.material_type === 'File') return 'Open File';
-	if (material.modality === 'Watch') return 'Open Video';
-	if (material.modality === 'Listen') return 'Open Audio';
-	return 'Open Link';
-}
-
-function materialBadges(material: VisibleMaterial): string[] {
-	const badges = new Set<string>();
-	for (const placement of material.matchedPlacements) {
-		if (placement.usage_role) badges.add(placement.usage_role);
-		if (placement.origin === 'shared_in_class') badges.add('Shared in class');
-		if (placement.anchor_doctype === 'Task') badges.add('Task');
-		if (placement.anchor_doctype === 'Lesson') badges.add('Lesson');
-		if (placement.anchor_doctype === 'Learning Unit') badges.add('Unit');
-		if (placement.anchor_doctype === 'Course') badges.add('Course');
-	}
-	return Array.from(badges);
-}
-
-function primaryPlacementNote(material: VisibleMaterial): string {
-	const placement =
-		material.matchedPlacements.find(row => row.placement_note) || material.matchedPlacements[0];
-	return placement?.placement_note || '';
-}
-
-function quizSummary(delivery: TaskDeliveryRef): string {
-	if (!delivery.quiz) return '';
-	const parts = [delivery.quiz.status_label];
-	if (delivery.quiz.is_practice && delivery.quiz.percentage != null) {
-		parts.push(`${delivery.quiz.percentage}%`);
-	}
-	if (delivery.quiz.pass_percentage != null) {
-		parts.push(`pass at ${delivery.quiz.pass_percentage}%`);
-	}
-	return parts.join(' · ');
-}
-
-function quizActionLabel(delivery: TaskDeliveryRef): string {
-	if (!delivery.quiz) return 'Open Quiz';
-	if (delivery.quiz.can_continue) return 'Continue Quiz';
-	if (delivery.quiz.can_retry) return 'Retry Quiz';
-	return 'Open Quiz';
-}
-
-function quizRoute(delivery: TaskDeliveryRef) {
-	return {
-		name: 'student-quiz',
-		params: {
-			course_id: props.course_id,
-			task_delivery: delivery.task_delivery,
+async function handleStudentGroupChange(event: Event) {
+	const target = event.target as HTMLSelectElement | null;
+	const value = String(target?.value || '').trim();
+	await router.replace({
+		query: {
+			student_group: value || undefined,
 		},
-		query: buildCourseQuery(activeUnit.value?.name, activeLesson.value?.name),
-	};
-}
-
-function isActiveUnit(unitName: string): boolean {
-	return activeUnit.value?.name === unitName;
-}
-
-function isActiveLesson(lessonName: string): boolean {
-	return activeLesson.value?.name === lessonName;
-}
-
-function isUnitExpanded(unitName: string): boolean {
-	return expandedUnitName.value === unitName;
-}
-
-function buildCourseQuery(learningUnit?: string, lesson?: string): Record<string, string> {
-	const query: Record<string, string> = {};
-	if (learningUnit) query.learning_unit = learningUnit;
-	if (lesson) query.lesson = lesson;
-	return query;
-}
-
-function openUnit(unit: LearningUnit) {
-	expandedUnitName.value = unit.name;
-	const firstLesson = unit.lessons[0];
-	void router.replace({
-		name: 'student-course-detail',
-		params: { course_id: props.course_id },
-		query: buildCourseQuery(unit.name, firstLesson?.name),
 	});
-}
-
-function openLesson(unitName: string, lessonName: string) {
-	expandedUnitName.value = unitName;
-	void router.replace({
-		name: 'student-course-detail',
-		params: { course_id: props.course_id },
-		query: buildCourseQuery(unitName, lessonName),
-	});
-}
-
-function goToAdjacent(target: CourseLessonRef | null) {
-	if (!target) return;
-	openLesson(target.unit.name, target.lesson.name);
-}
-
-function toggleUnit(unit: LearningUnit) {
-	const expanded = isUnitExpanded(unit.name);
-	if (expanded && isActiveUnit(unit.name)) return;
-	if (expanded) {
-		expandedUnitName.value = null;
-		return;
-	}
-	expandedUnitName.value = unit.name;
-	if (!isActiveUnit(unit.name)) {
-		openUnit(unit);
-	}
 }
 
 watch(
-	() => props.course_id,
+	() => [props.course_id, props.student_group],
 	() => {
-		loadCourseDetail();
-	},
-	{ immediate: true }
-);
-
-watch(
-	() => props.lesson_instance,
-	(nextLessonInstance, previousLessonInstance) => {
-		if (!nextLessonInstance || nextLessonInstance === previousLessonInstance) return;
-		loadCourseDetail();
-	}
-);
-
-watch(
-	[units, () => activeUnit.value?.name],
-	([nextUnits, nextActiveUnit]) => {
-		if (!nextUnits.length) {
-			expandedUnitName.value = null;
-			return;
-		}
-		if (nextActiveUnit) {
-			expandedUnitName.value = nextActiveUnit;
-			return;
-		}
-		if (expandedUnitName.value && nextUnits.some(unit => unit.name === expandedUnitName.value)) {
-			return;
-		}
-		expandedUnitName.value = nextUnits[0].name;
+		loadLearningSpace();
 	},
 	{ immediate: true }
 );

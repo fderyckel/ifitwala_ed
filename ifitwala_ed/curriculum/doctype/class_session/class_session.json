@@ -1,0 +1,168 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "CLASS-SESSION-.#####",
+ "creation": "2026-03-31 18:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_identity",
+  "title",
+  "class_teaching_plan",
+  "unit_plan",
+  "column_break_context",
+  "student_group",
+  "course_plan",
+  "course",
+  "academic_year",
+  "session_status",
+  "session_date",
+  "sequence_index",
+  "learning_goal",
+  "teacher_note",
+  "activities"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_identity",
+   "fieldtype": "Section Break",
+   "label": "Class Session"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "class_teaching_plan",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Class Teaching Plan",
+   "options": "Class Teaching Plan",
+   "reqd": 1
+  },
+  {
+   "fieldname": "unit_plan",
+   "fieldtype": "Link",
+   "label": "Unit Plan",
+   "options": "Unit Plan",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_context",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "student_group",
+   "fieldtype": "Link",
+   "label": "Class",
+   "options": "Student Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "course_plan",
+   "fieldtype": "Link",
+   "label": "Course Plan",
+   "options": "Course Plan",
+   "read_only": 1
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Course",
+   "read_only": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "session_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Session Status",
+   "options": "Draft\nPlanned\nIn Progress\nTaught\nChanged\nCanceled"
+  },
+  {
+   "fieldname": "session_date",
+   "fieldtype": "Date",
+   "label": "Session Date"
+  },
+  {
+   "fieldname": "sequence_index",
+   "fieldtype": "Int",
+   "label": "Sequence"
+  },
+  {
+   "fieldname": "learning_goal",
+   "fieldtype": "Small Text",
+   "label": "Learning Goal"
+  },
+  {
+   "fieldname": "teacher_note",
+   "fieldtype": "Text Editor",
+   "label": "Teacher Note"
+  },
+  {
+   "fieldname": "activities",
+   "fieldtype": "Table",
+   "label": "Session Activities",
+   "options": "Class Session Activity"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-31 18:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Curriculum",
+ "name": "Class Session",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "session_date",
+ "sort_order": "ASC",
+ "states": []
+}

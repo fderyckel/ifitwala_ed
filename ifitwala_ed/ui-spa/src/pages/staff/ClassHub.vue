@@ -1,5 +1,23 @@
 <template>
 	<div class="staff-shell space-y-6">
+		<div
+			class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line-soft bg-white/90 px-4 py-3"
+		>
+			<div>
+				<p class="type-body-strong text-ink">Planning for this class now lives in the SPA.</p>
+				<p class="type-caption text-ink/70">
+					Open the class teaching plan to adjust pacing, units, and class sessions without leaving
+					this workflow.
+				</p>
+			</div>
+			<RouterLink
+				:to="{ name: 'staff-class-planning', params: { studentGroup } }"
+				class="if-action inline-flex"
+			>
+				Open Class Planning
+			</RouterLink>
+		</div>
+
 		<ClassHubHeader
 			:header="currentBundle.header"
 			:now="currentBundle.now"

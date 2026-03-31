@@ -1,92 +1,209 @@
-# Curriculum Planning, Teaching, and Task Delivery Contract (Authoritative)
+# Educator-Centered Curriculum, Class Planning, and Session Delivery Contract (Authoritative)
 
-Status: Canonical current-workspace contract
-Code refs: `ifitwala_ed/curriculum/doctype/learning_standards/learning_standards.json`, `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`, `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`
-Test refs: `ifitwala_ed/curriculum/doctype/learning_unit/test_learning_unit.py`, `ifitwala_ed/curriculum/doctype/lesson/test_lesson.py`, `ifitwala_ed/curriculum/doctype/lesson_instance/test_lesson_instance.py`, `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
+Status: Canonical migration contract for the curriculum redesign
+Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/materials.py`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/class_hub.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+Test refs: `ifitwala_ed/curriculum/doctype/learning_unit/test_learning_unit.py`, `ifitwala_ed/curriculum/doctype/lesson/test_lesson.py`, `ifitwala_ed/curriculum/doctype/lesson_instance/test_lesson_instance.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`, `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
 
-This note is the canonical contract for how planned curriculum, taught curriculum, and assessed work connect in the current workspace.
+This note is the authoritative curriculum contract for the redesign direction discussed and approved at the documentation level.
 
-## Current Intent
+During the reset, this note does two jobs:
 
-Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/learning_standards/learning_standards.json`, `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.json`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`
-Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
+1. describe the current workspace reality honestly
+2. lock the approved educator-centered target architecture for implementation
 
-- Planned curriculum lives in `Learning Standards`, `Learning Unit`, `Learning Unit Standard Alignment`, `Lesson`, and `Lesson Activity`.
-- Taught curriculum lives in `Lesson Instance`.
-- Assessed work lives in `Task` and `Task Delivery`.
-- `Task` currently anchors to curriculum through `default_course` plus optional `learning_unit` and `lesson`.
-- `Task Delivery` currently anchors to teaching context through `student_group` plus optional `lesson_instance`.
-- The live schema does not give `Task` or `Task Delivery` a direct field for `Learning Standards` or `Lesson Activity`.
-- The live `Learning Unit` schema stores standards alignment as inline child rows (`Learning Unit Standard Alignment`), not as `Link` rows to the standalone `Learning Standards` master.
+The central correction is explicit:
 
-## Entity Roles
+> No single shared lesson tree may serve at the same time as shared curriculum, class-level planning, and historical record of what happened in class.
+
+## Current Workspace Reality
 
 Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/learning_standards/learning_standards.json`, `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`
-Test refs: None beyond scaffold coverage
+Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/curriculum/materials.py`, `ifitwala_ed/api/courses.py`
+Test refs: `ifitwala_ed/curriculum/doctype/learning_unit/test_learning_unit.py`, `ifitwala_ed/curriculum/doctype/lesson/test_lesson.py`, `ifitwala_ed/curriculum/doctype/lesson_instance/test_lesson_instance.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`, `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
 
-- `Learning Standards` is the standalone standards catalog for framework metadata.
-- `Learning Unit` is the planned unit container inside a `Course`.
-- `Learning Unit Standard Alignment` is the unit-level standards snapshot stored inside `Learning Unit.standards`.
-- `Lesson` is the ordered planned teaching segment inside a learning unit.
-- `Lesson Activity` is the pedagogical atom inside a lesson.
-- `Lesson Instance` is the real taught event for a `Student Group`; it can exist with or without any task.
-- `Task` is the reusable learning-work definition; it can point back to a unit or lesson, but it is not the teaching event itself.
-- `Task Delivery` is the runtime assignment/collection/assessment event; it can point to a `Lesson Instance`, but it does not own curriculum planning.
+- Planned curriculum currently lives in `Course`, `Learning Unit`, `Lesson`, and `Lesson Activity`.
+- Taught curriculum currently lives in `Lesson Instance`.
+- Assessed work currently lives in `Task` and `Task Delivery`.
+- `Lesson` and `Lesson Activity` currently carry more operational teaching detail than the redesigned model should allow in the shared canonical layer.
+- `Lesson Instance` is currently too light to serve as the main educator-facing class session object.
+- `Material Placement` is currently course-scoped and anchored only to `Course`, `Learning Unit`, `Lesson`, and `Task`.
+- Student learning reads in `api/courses.py` are still primarily course-scoped, not class-plan-scoped.
+- Current docs under `ifitwala_ed/docs/docs_md/` that describe `Learning Unit`, `Lesson`, `Lesson Activity`, `Lesson Instance`, `Task`, and `Task Delivery` still describe the live runtime, not the approved target model.
 
-## Linkage Rules
-
-Status: Partial
-Code refs: `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/doctype/task/task.js`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_delivery_service.py`
-Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
-
-1. `Task` requires `default_course`.
-2. `Task.learning_unit` is optional, but when present `task.py` validates that the unit belongs to the same course as the task.
-3. `Task.lesson` is optional, but when present `task.py` validates that the lesson belongs to the selected learning unit and course.
-4. `Task` has no current field for `lesson_activity` or `lesson_instance`.
-5. `Task Delivery` requires `task`, `student_group`, and `delivery_mode`.
-6. `Task Delivery.lesson_instance` is the only explicit taught-curriculum link on the live schema.
-7. `assessment/task_delivery_service.py::resolve_or_create_lesson_instance()` can create an async `Lesson Instance` when explicit lesson/activity context is supplied, but the current `Task Delivery` schema and delivery APIs do not expose `lesson`, `lesson_activity`, or `instance_type`, so that helper is dormant in the normal documented path.
-8. Because of rules 4 and 6, the current authoritative path is:
-   planned curriculum -> `Task` (optional unit/lesson anchor) -> `Task Delivery` -> optional `Lesson Instance`.
-
-## Contract Matrix
+## Approved Design Direction
 
 Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/learning_standards/learning_standards.json`, `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.py`, `ifitwala_ed/curriculum/doctype/lesson/lesson.py`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.py`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_delivery_service.py`, `ifitwala_ed/api/task.py`, `ifitwala_ed/api/class_hub.py`
-Test refs: `ifitwala_ed/curriculum/doctype/learning_unit/test_learning_unit.py`, `ifitwala_ed/curriculum/doctype/lesson/test_lesson.py`, `ifitwala_ed/curriculum/doctype/lesson_instance/test_lesson_instance.py`, `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
+Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/planning.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+Test refs: `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/staff/__tests__/staffTeachingService.test.ts`
 
-| Concern | Current contract | Status | Code refs | Test refs |
-|---|---|---|---|---|
-| Schema / DocType | Planned layer is `Learning Standards`, `Learning Unit`, `Learning Unit Standard Alignment`, `Lesson`, `Lesson Activity`; taught layer is `Lesson Instance`; assessed linkage is `Task` and `Task Delivery`. | Implemented | `curriculum/doctype/*/*.json`, `assessment/doctype/task/task.json`, `assessment/doctype/task_delivery/task_delivery.json` | Scaffold only for most curriculum doctypes |
-| Controller / Workflow logic | Parent-side workflow exists for `Learning Unit`, `Task`, and `Task Delivery`; `Lesson`, `Lesson Activity`, `Learning Standards`, and `Lesson Instance` controllers are empty. | Partial | `curriculum/doctype/learning_unit/learning_unit.py`, `assessment/doctype/task/task.py`, `assessment/doctype/task_delivery/task_delivery.py`, `assessment/task_delivery_service.py` | `assessment/doctype/task_delivery/test_task_delivery.py` |
-| API endpoints | No dedicated curriculum CRUD API is present. Task/runtime linkage is exposed through `api/task.py`, `assessment/task_creation_service.py`, and `assessment/task_delivery_service.py`. Class Hub exposes lesson-instance-shaped payloads. | Partial | `api/task.py`, `assessment/task_creation_service.py`, `assessment/task_delivery_service.py`, `api/class_hub.py` | `assessment/test_task_creation_service.py` |
-| SPA / Desk surfaces | Desk forms exist for curriculum doctypes. `task.js` filters learning units and lessons by course. `learning_unit.js` exposes lesson list/reorder actions. Class Hub reads `lesson_instance`. | Partial | `assessment/doctype/task/task.js`, `curriculum/doctype/learning_unit/learning_unit.js`, `ui-spa/src/pages/staff/ClassHub.vue` | None |
-| Reports / Dashboards / Briefings | Student portfolio and Class Hub can carry lesson-instance or lesson-activity context, but there is no curriculum-to-task analytical contract beyond the existing links. | Partial | `api/student_portfolio.py`, `api/class_hub.py` | None |
-| Scheduler / background jobs | No scheduler-owned curriculum linkage jobs are present in the current workspace. | Implemented | None | None |
-| Tests | Curriculum doctypes mostly have scaffolds only. Runtime task-delivery behavior has actual coverage. | Partial | `curriculum/doctype/*/test_*.py`, `assessment/doctype/task_delivery/test_task_delivery.py` | Same as code refs |
+- The stable shared center of gravity must be the course plan and unit plan, not the daily lesson.
+- A `Course` may own multiple `Course Plan` records, including concurrent plans in the same academic year or cycle where governance requires that.
+- Educator-facing planning must distinguish:
+  - shared intended curriculum
+  - class-level teaching plan
+  - what actually happened in a class session
+- Teacher autonomy in pacing, activities, examples, and resources is normal product behavior, not an edge case.
+- Student and teacher read surfaces must resolve class-owned planning and class sessions first, then shared course-plan content second.
+- Staff curriculum planning and class-session planning must surface in `ui-spa`, not as a Desk-first workflow.
+- Student curriculum and lesson consumption must surface in the LMS/student portal, not as a Desk-shaped curriculum reader.
+- Educator-facing semantics must take precedence over technical naming. Backend names may lag temporarily during implementation, but UI and canonical docs must use educator-centered language.
 
-## Review Guardrails
+## Educator-Centered Domain Model
 
 Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.py`, `ifitwala_ed/curriculum/doctype/learning_unit_standard_alignment/learning_unit_standard_alignment.py`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`
+Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan_unit/class_teaching_plan_unit.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/doctype/class_session_activity/class_session_activity.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`
+Test refs: `ifitwala_ed/ui-spa/src/lib/services/staff/__tests__/staffTeachingService.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
+
+### Shared Curriculum Layer
+
+- **Course**
+  - stable catalog identity
+  - long-lived academic identity reused across years and offerings
+- **Course Plan**
+  - shared intended curriculum for a cycle, year, or approved curriculum revision
+  - department-owned or program-owned
+  - a course may have multiple course plans; each class teaching plan must point to exactly one governing course plan
+- **Unit Plan**
+  - shared unit sequence inside a course plan
+  - owns outcomes, standards alignment, major learning arc, non-negotiables, and common assessment anchors
+  - forms the mandatory shared curricular backbone across class teaching plans linked to the same course plan
+- **Suggested Session Outline**
+  - optional thin shared guidance only
+  - never the required operational source of truth for class-by-class teaching
+
+### Class Teaching Layer
+
+- **Class Teaching Plan**
+  - educator-owned plan for one class or teaching group in one term/cycle
+  - adapts the shared course plan for the class actually being taught
+  - owns pacing, chosen resources, substitutions, adaptations, and local sequencing
+  - co-taught classes should normally use one shared class teaching plan owned by the teaching team
+- **Class Session**
+  - educator-facing session record for one teaching event
+  - one lifecycle object that moves through states such as `draft`, `planned`, `in_progress`, `taught`, `changed`, and `canceled`
+- **Session Activity**
+  - the operational teaching steps inside a class session
+  - owns class-specific activities, timings, teacher moves, and session resources
+
+### Shared and Class-Level Work
+
+- **Reusable Learning Task / Common Assessment**
+  - reusable work definition that may be shared across classes
+  - should anchor to shared curriculum objects, not directly to one class by default
+- **Assigned Work for Class**
+  - runtime assignment of shared or class-authored work to one class
+  - due dates, grading mode, and release policy stay class-scoped
+
+## Ownership and Governance
+
+Status: Planned
+Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.py`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/schedule/doctype/student_group/test_student_group.py`
+
+- Department or program owners should own `Course Plan`, `Unit Plan`, and common assessment baselines.
+- Teachers or teaching teams should own `Class Teaching Plan`, `Class Session`, and most teaching resources.
+- School or program governance may still define non-negotiables such as:
+  - required outcomes
+  - mandatory unit backbone and sequence
+  - required common assessments
+  - required texts or anchor resources
+  - mandatory reporting checkpoints
+- The product must support class-level adaptation without forcing teachers to fork the shared curriculum unnecessarily.
+- Teachers should be able to adapt within a unit and within class sessions, but should not be able to reorder, skip, or replace the governed unit backbone without explicit elevated governance permission.
+
+## Resolution Rules For Read Surfaces
+
+Status: Partial
+Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/class_hub.py`, `ifitwala_ed/curriculum/materials.py`, `ifitwala_ed/assessment/task_delivery_service.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+Test refs: `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/staff/__tests__/staffTeachingService.test.ts`
+
+1. Student and teacher surfaces must resolve class-specific planning first.
+2. Shared course-plan content is fallback context, not the default operational truth when a class-owned object exists.
+3. Class resources and class session activities must never bleed into sibling classes.
+4. Common assessment templates do not imply assignment; class assignment remains explicit.
+5. SPA read paths should prefer one bounded bootstrap endpoint per surface rather than request waterfalls.
+6. Permission checks remain server-side and class-scoped.
+7. Staff planning surfaces and student LMS learning surfaces must remain route-based `ui-spa` experiences with contextual actions, actionable errors, and no silent fallback to Desk.
+
+## Semantic Mapping During Rewrite
+
+Status: Planned
+Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/schedule/doctype/student_group/student_group.json`
+Test refs: None yet for the redesigned vocabulary
+
+| Current code term | Target educator-centered term | Direction |
+|---|---|---|
+| `Course` | Course | Keep |
+| `Learning Unit` | Unit Plan | Replace or rename during redesign |
+| `Lesson` | Suggested Session Outline | Thin shared guidance only, or remove if not needed |
+| `Lesson Activity` | Session Activity | Move out of shared canonical lesson ownership |
+| `Lesson Instance` | Class Session | Promote into core educator-facing runtime object |
+| `Student Group` | Class / Teaching Group | Prefer educator-facing UI labels |
+| `Task` | Reusable Learning Task / Common Assessment | Keep concept, revise anchors and UI semantics |
+| `Task Delivery` | Assigned Work for Class | Keep runtime concept, revise educator-facing naming |
+| `Material Placement` | Resource Share / Teaching Resource Share | Extend to class-owned anchors |
+
+## Guardrails
+
+Status: Planned
+Code refs: `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.py`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.py`, `ifitwala_ed/curriculum/materials.py`, `ifitwala_ed/assessment/task_delivery_service.py`, `ifitwala_ed/api/courses.py`
+Test refs: None yet for the redesigned model
+
+- Do not allow a heavy shared lesson object to become the operational teaching truth again.
+- Do not store class-specific pacing, activity sequence, or teacher-only materials on shared canonical curriculum objects unless they are intentionally shared as baseline guidance.
+- Do not use `Task`, `Task Delivery`, or resource placement as a workaround for missing class-planning objects.
+- Do not split planning truth and enacted truth across unrelated objects without an explicit lifecycle contract.
+- Do not introduce educator-specific planning overlays for co-taught classes in the first implementation; one class should keep one shared planning truth.
+- Keep child-table logic lightweight; class/session business logic must stay on parent doctypes or dedicated services.
+- Preserve multi-tenant isolation and instructor/class visibility rules server-side.
+- Preserve the high-concurrency rule: class and student surfaces must use bounded bootstrap reads, scoped caches, and no uncontrolled refresh loops.
+- Preserve the product rule: curriculum planning should happen where educators already work in the SPA, and student lesson consumption should happen where students already learn in LMS.
+
+## Confirmed Product Decisions
+
+Status: Planned
+Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/schedule/doctype/student_group/student_group.json`
+Test refs: None yet for the redesigned model
+
+The redesign now proceeds with these governance rules locked:
+
+1. A `Course` may have multiple `Course Plan` records, including concurrent plans within the same academic year or cycle where governance requires that. Each `Class Teaching Plan` must link to exactly one governing `Course Plan`.
+2. A co-taught `Student Group` should normally use one shared `Class Teaching Plan` owned by the teaching team. Educator-specific overlays are out of scope for the first implementation, though lightweight private notes may be added later without creating separate planning truth.
+3. `Class Session` is one educator-facing lifecycle object that moves from planning through taught state, rather than separate planned-session and taught-session core doctypes.
+4. The governed subset across `Class Teaching Plan` records linked to the same `Course Plan` includes shared outcomes, the mandatory `Unit Plan` backbone and sequence, required common assessments, and any explicitly governed anchor resources. Pacing inside a unit, `Class Session` design, `Session Activity` sequence, examples, and most class-owned resources remain teacher-controlled unless stricter governance is configured.
+
+## Related Docs
+
+Status: Planned
+Code refs: None
 Test refs: None
 
-- Do not invent a standalone `Learning Unit Standard` DocType. The live workspace has `Learning Standards` plus the child table `Learning Unit Standard Alignment`.
-- Do not document `Lesson Activity` as a direct task/task-delivery field. That link does not exist in the current schema.
-- Do not document `Lesson Instance` as owning tasks. Its own DocType description explicitly forbids that.
-- Keep child-table behavior lightweight. `Lesson Activity` and `Learning Unit Standard Alignment` currently have empty controllers, which matches the repository rule that business logic belongs on parents.
+- `ifitwala_ed/docs/curriculum/02_educator_centered_curriculum_replatform_plan.md`
+- `ifitwala_ed/docs/docs_md/course.md`
+- `ifitwala_ed/docs/docs_md/learning-unit.md`
+- `ifitwala_ed/docs/docs_md/lesson.md`
+- `ifitwala_ed/docs/docs_md/lesson-activity.md`
+- `ifitwala_ed/docs/docs_md/lesson-instance.md`
+- `ifitwala_ed/docs/docs_md/material-placement.md`
+- `ifitwala_ed/docs/docs_md/task.md`
+- `ifitwala_ed/docs/docs_md/task-delivery.md`
 
 ## Technical Notes (IT)
 
-Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.js`, `ifitwala_ed/curriculum/doctype/lesson/lesson.py`, `ifitwala_ed/assessment/task_delivery_service.py`, `ifitwala_ed/api/class_hub.py`
-Test refs: None
+Status: Planned
+Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/planning.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/class_hub.py`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassHub.vue`
+Test refs: `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/staff/__tests__/staffTeachingService.test.ts`
 
-### Current Drift To Preserve In Review
+### Implementation Stance
 
-- `learning_unit.js` exposes a reorder-lessons action that calls `ifitwala_ed.curriculum.doctype.lesson.lesson.reorder_lessons`, but the current `lesson.py` does not define `reorder_lessons()`.
-- `resolve_or_create_lesson_instance()` supports explicit `lesson` and `lesson_activity` context, but the live `Task Delivery` schema and delivery APIs only expose `lesson_instance`.
-- `api/class_hub.py::start_session()` currently returns demo `lesson_instance` data (`LI-DEMO-0001`) instead of creating a persisted `Lesson Instance`.
-- `Learning Standards` is present as a catalog DocType, but `Learning Unit.standards` does not currently link to it by field; the alignment rows duplicate framework metadata inline.
+- This contract locks the target architecture for forward implementation.
+- It does not claim the live schema already matches the target model.
+- Until the replatform lands, current runtime docs remain implementation-accurate for the old stack.
+- The implementation plan for the redesign is tracked in `ifitwala_ed/docs/curriculum/02_educator_centered_curriculum_replatform_plan.md`.
+
+### First Slice Landed
+
+- The educator-centered first slice now exists in code through `Course Plan`, `Unit Plan`, `Class Teaching Plan`, and `Class Session`.
+- Staff planning now has a route-based `ui-spa` surface in `ui-spa/src/pages/staff/ClassPlanning.vue` backed by `ifitwala_ed.api.teaching_plans.get_staff_class_planning_surface`.
+- Student course detail now reads from the class-aware LMS endpoint `ifitwala_ed.api.teaching_plans.get_student_learning_space` and no longer depends on the old lesson-tree page contract.
+- Assessment and resource re-anchoring are still follow-on work; the first slice focuses on the shared curriculum backbone, class teaching plan, and class session lifecycle.
