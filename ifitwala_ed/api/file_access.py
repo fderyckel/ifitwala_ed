@@ -26,6 +26,7 @@ CONTEXT_STUDENT_APPLICANT = "Student Applicant"
 CONTEXT_APPLICANT_INTERVIEW = "Applicant Interview"
 CONTEXT_TASK_SUBMISSION = "Task Submission"
 CONTEXT_STUDENT_PORTFOLIO_ITEM = "Student Portfolio Item"
+CONTEXT_SUPPORTING_MATERIAL = "Supporting Material"
 CONTEXT_STUDENT = "Student"
 CONTEXT_GUARDIAN = "Guardian"
 CONTEXT_EMPLOYEE = "Employee"
@@ -545,6 +546,16 @@ def _resolve_student_context_for_file(file_row: dict) -> tuple[str | None, str |
     return None, None
 
 
+def _resolve_supporting_material_context_for_file(file_row: dict) -> tuple[str | None, str | None]:
+    attached_to_doctype = (file_row.get("attached_to_doctype") or "").strip()
+    attached_to_name = (file_row.get("attached_to_name") or "").strip()
+    if attached_to_doctype != CONTEXT_SUPPORTING_MATERIAL or not attached_to_name:
+        return None, None
+
+    course = frappe.db.get_value(CONTEXT_SUPPORTING_MATERIAL, attached_to_name, "course")
+    return attached_to_name, (course or None)
+
+
 def _assert_internal_student_access(*, user: str, student: str, school: str | None = None) -> None:
     from ifitwala_ed.api import student_portfolio as student_portfolio_api
 
@@ -599,6 +610,25 @@ def _assert_internal_academic_context(
         return
 
     frappe.throw(_("Unsupported academic file context."), frappe.ValidationError)
+
+
+def _assert_internal_material_context(
+    *,
+    file_row: dict,
+    context_doctype: str | None,
+    context_name: str | None,
+    material: str,
+) -> None:
+    resolved_context = (context_doctype or "").strip()
+    resolved_name = (context_name or "").strip()
+    if not resolved_context:
+        return
+    if not resolved_name:
+        frappe.throw(_("Context Name is required."), frappe.ValidationError)
+    if resolved_context != CONTEXT_SUPPORTING_MATERIAL:
+        frappe.throw(_("Unsupported academic file context."), frappe.ValidationError)
+    if resolved_name != material:
+        frappe.throw(_("File does not belong to this material."), frappe.PermissionError)
 
 
 def _assert_portfolio_share_file_access(*, file_name: str, share_token: str, viewer_email: str | None = None) -> None:
@@ -681,16 +711,31 @@ def download_academic_file(
     else:
         file_row = _resolve_any_file_row(file_name)
         user = _require_authenticated_user()
-        student, school = _resolve_student_context_for_file(file_row)
-        if not student:
-            frappe.throw(_("File is missing academic ownership context."), frappe.ValidationError)
-        _assert_internal_academic_context(
-            file_row=file_row,
-            context_doctype=context_doctype,
-            context_name=context_name,
-            student=student,
-        )
-        _assert_internal_student_access(user=user, student=student, school=school)
+        material, material_course = _resolve_supporting_material_context_for_file(file_row)
+        if material:
+            if not material_course:
+                frappe.throw(_("Material file is missing course context."), frappe.ValidationError)
+            _assert_internal_material_context(
+                file_row=file_row,
+                context_doctype=context_doctype,
+                context_name=context_name,
+                material=material,
+            )
+            from ifitwala_ed.curriculum import materials as materials_domain
+
+            if not materials_domain.user_can_read_course_material(user, material_course):
+                frappe.throw(_("You do not have permission to access this file."), frappe.PermissionError)
+        else:
+            student, school = _resolve_student_context_for_file(file_row)
+            if not student:
+                frappe.throw(_("File is missing academic ownership context."), frappe.ValidationError)
+            _assert_internal_academic_context(
+                file_row=file_row,
+                context_doctype=context_doctype,
+                context_name=context_name,
+                student=student,
+            )
+            _assert_internal_student_access(user=user, student=student, school=school)
 
     file_url = (file_row.get("file_url") or "").strip()
     if file_url.startswith(("http://", "https://")):

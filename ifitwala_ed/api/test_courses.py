@@ -193,6 +193,54 @@ class TestCoursesApi(TestCase):
             with self.assertRaises(frappe.PermissionError):
                 courses_api.get_student_course_detail(course_id="COURSE-404")
 
+    def test_get_student_course_detail_includes_materials(self):
+        with (
+            patch("ifitwala_ed.api.courses._require_student_name_for_session_user", return_value="STU-001"),
+            patch(
+                "ifitwala_ed.api.courses._build_student_course_scope",
+                return_value={"COURSE-1": {"academic_years": ["2025-2026"], "student_groups": []}},
+            ),
+            patch(
+                "ifitwala_ed.api.courses._get_course_row",
+                return_value={"name": "COURSE-1", "course_name": "Biology", "is_published": 1},
+            ),
+            patch("ifitwala_ed.api.courses._fetch_course_units", return_value=[]),
+            patch("ifitwala_ed.api.courses._fetch_course_lessons", return_value=[]),
+            patch("ifitwala_ed.api.courses._fetch_lesson_activities", return_value=[]),
+            patch("ifitwala_ed.api.courses._fetch_course_tasks", return_value=[]),
+            patch("ifitwala_ed.api.courses._fetch_task_deliveries_for_course", return_value=[]),
+            patch("ifitwala_ed.api.courses.quiz_service.get_student_delivery_state_map", return_value={}),
+            patch("ifitwala_ed.api.courses._fetch_lesson_instances_for_course", return_value=[]),
+            patch(
+                "ifitwala_ed.api.courses.materials_domain.list_course_materials",
+                return_value=[
+                    {
+                        "material": "MAT-1",
+                        "course": "COURSE-1",
+                        "title": "Study guide",
+                        "material_type": "Reference Link",
+                        "modality": "Read",
+                        "description": "Review this before class.",
+                        "reference_url": "https://example.com/study-guide",
+                        "placements": [
+                            {
+                                "placement": "MAT-PLC-1",
+                                "anchor_doctype": "Lesson",
+                                "anchor_name": "LESSON-1",
+                                "origin": "curriculum",
+                                "usage_role": "Reference",
+                            }
+                        ],
+                    }
+                ],
+            ),
+        ):
+            payload = courses_api.get_student_course_detail(course_id="COURSE-1")
+
+        self.assertEqual(payload["curriculum"]["counts"]["materials"], 1)
+        self.assertEqual(payload["curriculum"]["materials"][0]["material"], "MAT-1")
+        self.assertEqual(payload["curriculum"]["materials"][0]["open_url"], "https://example.com/study-guide")
+
     def test_build_home_orientation_finds_current_and_next_class(self):
         anchor = datetime(2026, 3, 13, 9, 15, 0)
         orientation = courses_api._build_home_orientation(

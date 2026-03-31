@@ -15,7 +15,9 @@ from frappe.utils import get_datetime, now_datetime
 
 from ifitwala_ed.api import course_schedule as course_schedule_api
 from ifitwala_ed.api import portal as portal_api
+from ifitwala_ed.api.file_access import resolve_academic_file_open_url
 from ifitwala_ed.assessment import quiz_service
+from ifitwala_ed.curriculum import materials as materials_domain
 
 COURSE_PLACEHOLDER = "/assets/ifitwala_ed/images/course_placeholder.jpg"
 MAX_SORT_INT = 2_147_483_647
@@ -259,6 +261,34 @@ def _serialize_task(
             _serialize_delivery(delivery, quiz_state=(quiz_state_map or {}).get(delivery.get("name")))
             for delivery in deliveries
         ],
+    }
+
+
+def _serialize_material_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    material_type = entry.get("material_type")
+    open_url = (
+        resolve_academic_file_open_url(
+            file_name=entry.get("file"),
+            file_url=entry.get("file_url"),
+            context_doctype="Supporting Material",
+            context_name=entry.get("material"),
+        )
+        if material_type == materials_domain.MATERIAL_TYPE_FILE
+        else entry.get("reference_url")
+    )
+
+    return {
+        "material": entry.get("material"),
+        "course": entry.get("course"),
+        "title": entry.get("title"),
+        "material_type": material_type,
+        "modality": entry.get("modality"),
+        "description": entry.get("description"),
+        "reference_url": entry.get("reference_url"),
+        "open_url": open_url,
+        "file_name": entry.get("file_name"),
+        "file_size": entry.get("file_size"),
+        "placements": entry.get("placements") or [],
     }
 
 
@@ -1134,6 +1164,7 @@ def get_student_course_detail(
         activities_by_name=maps["activities"],
         lesson_instances_by_name=lesson_instances_by_name,
     )
+    materials = [_serialize_material_entry(entry) for entry in materials_domain.list_course_materials(course_id)]
 
     return {
         "meta": {
@@ -1155,5 +1186,12 @@ def get_student_course_detail(
             "student_groups": course_scope.get("student_groups") or [],
         },
         "deep_link": deep_link,
-        "curriculum": curriculum,
+        "curriculum": {
+            **curriculum,
+            "materials": materials,
+            "counts": {
+                **(curriculum.get("counts") or {}),
+                "materials": len(materials),
+            },
+        },
     }

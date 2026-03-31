@@ -475,6 +475,36 @@ def upload_task_resource(task: str | None = None, row_name: str | None = None, *
 
 
 @frappe.whitelist()
+def upload_supporting_material_file(material: str | None = None, **_kwargs):
+    material = material or _get_form_arg("material") or frappe.form_dict.get("docname")
+    doc = _require_clean_saved_doc(
+        _require_doc("Supporting Material", material),
+        action_label=_("Upload Supporting Material"),
+    )
+
+    filename, content = _get_uploaded_file()
+    mime_type_hint = _resolve_upload_mime_type_hint(filename=filename)
+    drive_uploads_api = _load_drive_module("ifitwala_drive.api.uploads")
+    authoritative = _load_drive_module(
+        "ifitwala_ed.integrations.drive.materials"
+    ).build_supporting_material_upload_contract(doc)
+
+    _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_uploads_api.create_upload_session,
+        payload={
+            **authoritative,
+            "filename_original": filename,
+            "mime_type_hint": mime_type_hint,
+            "expected_size_bytes": len(content),
+            "upload_source": "SPA",
+        },
+        content=content,
+    )
+    _ensure_file_on_disk(file_doc)
+    return _response_payload(file_doc)
+
+
+@frappe.whitelist()
 def upload_school_logo(school: str | None = None, **_kwargs):
     school = school or _get_form_arg("school") or frappe.form_dict.get("docname")
     doc = _require_clean_saved_doc(_require_doc("School", school), action_label=_("Upload School Logo"))

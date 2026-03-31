@@ -48,8 +48,10 @@ export type Response = {
 			unit_tasks: number
 			lesson_tasks: number
 			deliveries: number
+			materials: number
 		}
 		course_tasks: TaskRef[]
+		materials: SupportingMaterial[]
 		units: LearningUnit[]
 	}
 }
@@ -136,4 +138,28 @@ export type QuizDeliveryState = {
 	passed: number
 	pass_percentage?: number | null
 	time_limit_minutes?: number | null
+}
+
+export type MaterialPlacementRef = {
+	placement: string
+	anchor_doctype: 'Course' | 'Learning Unit' | 'Lesson' | 'Task'
+	anchor_name: string
+	origin: 'curriculum' | 'task' | 'shared_in_class'
+	usage_role?: 'Required' | 'Reference' | 'Template' | 'Example' | null
+	placement_note?: string | null
+	placement_order?: number | null
+}
+
+export type SupportingMaterial = {
+	material: string
+	course: string
+	title: string
+	material_type: 'File' | 'Reference Link'
+	modality?: 'Read' | 'Watch' | 'Listen' | 'Use' | null
+	description?: string | null
+	reference_url?: string | null
+	open_url?: string | null
+	file_name?: string | null
+	file_size?: string | null
+	placements: MaterialPlacementRef[]
 }

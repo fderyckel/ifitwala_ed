@@ -3,9 +3,9 @@ title: "Lesson Activity: Pedagogical Atom Inside a Lesson"
 slug: lesson-activity
 category: Curriculum
 doc_order: 7
-version: "1.0.0"
-last_change_date: "2026-03-12"
-summary: "Capture the smallest planned activity inside a lesson, including type, content prompts, requiredness, and estimated duration."
+version: "1.1.0"
+last_change_date: "2026-03-31"
+summary: "Capture the smallest planned activity inside a lesson, including type, content prompts, requiredness, and estimated duration, without turning lesson flow into the reusable materials library."
 seo_title: "Lesson Activity: Pedagogical Atom Inside a Lesson"
 seo_description: "Capture the smallest planned activity inside a lesson, including type, content prompts, requiredness, and estimated duration."
 ---
@@ -18,7 +18,7 @@ Test refs: None
 
 `Lesson Activity` is the smallest planned instructional step inside a `Lesson`. It stores the activity type plus optional content such as reading text, a video URL, an external link, or a discussion prompt.
 
-Current workspace note: `Lesson Activity` is a child table, not a standalone planning workflow. It can be referenced from `Lesson Instance`, but neither `Task` nor `Task Delivery` links to it directly in the live schema.
+Current workspace note: `Lesson Activity` is a child table, not a standalone planning workflow. It can be referenced from `Lesson Instance`, but neither `Task` nor `Task Delivery` links to it directly in the live schema, and reusable supporting materials now live outside the lesson body in the materials domain.
 
 ## Before You Start (Prerequisites)
 
@@ -40,6 +40,7 @@ Test refs: None
 - Can be referenced by [**Lesson Instance**](/docs/en/lesson-instance/) through `lesson_activity`.
 - Student portfolio APIs accept lesson-activity context in reflection payloads.
 - The current task stack does not expose `lesson_activity` on `Task` or `Task Delivery`.
+- Reusable files and reusable reference links should use the materials domain instead of duplicating lesson-activity links.
 
 ## Lifecycle and Linked Documents
 
@@ -61,6 +62,7 @@ Test refs: None
 - [**Lesson**](/docs/en/lesson/)
 - [**Lesson Instance**](/docs/en/lesson-instance/)
 - [**Task**](/docs/en/task/)
+- [**Supporting Material**](/docs/en/supporting-material/)
 - [**Task Delivery**](/docs/en/task-delivery/)
 
 ## Technical Notes (IT)
@@ -82,8 +84,10 @@ Test refs: None
 - This row belongs to `Lesson.lesson_activities`.
 - The child controller is intentionally empty, keeping business logic on the parent or downstream runtime doctypes.
 - `lesson_activity` can be used as taught-context metadata through `Lesson Instance`, but not as a direct task-delivery anchor today.
+- Video and external links inside lesson activities remain lesson-flow content unless the teacher intentionally creates a reusable supporting material.
 
 ### Current Constraints To Preserve In Review
 
 - Do not move task or delivery business logic into this child table.
 - Do not document this row as a required runtime object; lessons and lesson instances can exist without it.
+- Do not repurpose this child table into the reusable materials system.

@@ -230,6 +230,67 @@ class TestGovernedUploadTaskFlows(TestCase):
         sync_user_image.assert_called_once_with("EMP-0001", original_url="/private/files/employee-photo.png")
         self.assertEqual(payload["file"], "FILE-EMP-0001")
 
+    def test_upload_supporting_material_file_uses_authoritative_drive_contract(self):
+        doc = _FakeDoc(name="MAT-0001", course="COURSE-1")
+        drive_uploads_api = SimpleNamespace(create_upload_session=object())
+        materials_integration = SimpleNamespace(
+            build_supporting_material_upload_contract=lambda _doc: {
+                "owner_doctype": "Supporting Material",
+                "owner_name": "MAT-0001",
+                "attached_doctype": "Supporting Material",
+                "attached_name": "MAT-0001",
+                "organization": "ORG-0001",
+                "school": "SCH-0001",
+                "primary_subject_type": "Organization",
+                "primary_subject_id": "ORG-0001",
+                "data_class": "academic",
+                "purpose": "general_reference",
+                "retention_policy": "until_program_end_plus_1y",
+                "slot": "material_file",
+                "course": "COURSE-1",
+            }
+        )
+        file_doc = SimpleNamespace(
+            name="FILE-MAT-0001",
+            file_url="/private/files/materials/worksheet.pdf",
+            file_name="worksheet.pdf",
+            file_size=2048,
+        )
+
+        with _governed_uploads_module() as governed_uploads:
+            with (
+                patch.object(governed_uploads, "_require_doc", return_value=doc),
+                patch.object(governed_uploads, "_require_clean_saved_doc", return_value=doc),
+                patch.object(
+                    governed_uploads,
+                    "_get_uploaded_file",
+                    return_value=("worksheet.pdf", b"worksheet-content"),
+                ),
+                patch.object(
+                    governed_uploads,
+                    "_load_drive_module",
+                    side_effect=lambda module_name: (
+                        drive_uploads_api if module_name == "ifitwala_drive.api.uploads" else materials_integration
+                    ),
+                ),
+                patch.object(governed_uploads, "_ensure_file_on_disk"),
+                patch.object(
+                    governed_uploads,
+                    "_drive_upload_and_finalize",
+                    return_value=({"upload_session_id": "DUS-MAT-1"}, {"file_id": "FILE-MAT-0001"}, file_doc),
+                ) as bridge,
+            ):
+                payload = governed_uploads.upload_supporting_material_file(material="MAT-0001")
+
+        bridge.assert_called_once()
+        self.assertIs(bridge.call_args.kwargs["create_session_callable"], drive_uploads_api.create_upload_session)
+        self.assertEqual(bridge.call_args.kwargs["payload"]["owner_doctype"], "Supporting Material")
+        self.assertEqual(bridge.call_args.kwargs["payload"]["owner_name"], "MAT-0001")
+        self.assertEqual(bridge.call_args.kwargs["payload"]["slot"], "material_file")
+        self.assertEqual(bridge.call_args.kwargs["payload"]["upload_source"], "SPA")
+        self.assertEqual(bridge.call_args.kwargs["payload"]["expected_size_bytes"], len(b"worksheet-content"))
+        self.assertEqual(payload["file"], "FILE-MAT-0001")
+
     def test_sync_linked_employee_user_image_uses_preferred_variant(self):
         user_doc = _FakeDoc(user_image=None, flags=SimpleNamespace(ignore_permissions=False))
 

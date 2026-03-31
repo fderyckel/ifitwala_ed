@@ -55,6 +55,7 @@
 							<span class="chip">{{ courseDetail.curriculum.counts.lessons }} lessons</span>
 							<span class="chip">{{ courseDetail.curriculum.counts.activities }} activities</span>
 							<span class="chip">{{ totalLinkedTasks }} linked tasks</span>
+							<span class="chip">{{ courseDetail.curriculum.counts.materials }} materials</span>
 						</div>
 					</div>
 				</div>
@@ -439,6 +440,62 @@
 						</div>
 					</section>
 
+					<section v-if="visibleMaterialGroups.length" class="card-surface p-5">
+						<div class="mb-4 flex items-center justify-between">
+							<h2 class="type-h3 text-ink">Materials</h2>
+							<span class="chip">{{ visibleMaterialsCount }} items</span>
+						</div>
+						<div class="space-y-5">
+							<div v-for="group in visibleMaterialGroups" :key="group.key" class="space-y-3">
+								<div class="flex items-center justify-between">
+									<h3 class="type-body-strong text-ink">{{ group.label }}</h3>
+									<span class="chip">{{ group.items.length }}</span>
+								</div>
+								<div class="grid gap-3 lg:grid-cols-2">
+									<article
+										v-for="item in group.items"
+										:key="item.material"
+										class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+									>
+										<div class="flex flex-wrap items-center gap-2">
+											<p class="type-body-strong text-ink">{{ item.title }}</p>
+											<span class="chip">{{ item.material_type }}</span>
+											<span v-if="item.modality" class="chip">{{ item.modality }}</span>
+										</div>
+										<div class="mt-2 flex flex-wrap gap-2">
+											<span
+												v-for="badge in materialBadges(item)"
+												:key="`${item.material}-${badge}`"
+												class="chip"
+											>
+												{{ badge }}
+											</span>
+										</div>
+										<p v-if="item.description" class="mt-3 type-body text-ink/80">
+											{{ item.description }}
+										</p>
+										<p v-if="item.file_name" class="mt-2 type-caption text-ink/70">
+											{{ item.file_name }}
+											<span v-if="item.file_size">· {{ item.file_size }}</span>
+										</p>
+										<p v-if="primaryPlacementNote(item)" class="mt-2 type-caption text-ink/70">
+											{{ primaryPlacementNote(item) }}
+										</p>
+										<a
+											v-if="item.open_url"
+											:href="item.open_url"
+											target="_blank"
+											rel="noreferrer"
+											class="if-action mt-3 inline-flex"
+										>
+											{{ materialActionLabel(item) }}
+										</a>
+									</article>
+								</div>
+							</div>
+						</div>
+					</section>
+
 					<section v-if="activeLesson" class="card-surface p-5">
 						<div class="mb-4 flex items-center justify-between">
 							<h2 class="type-h3 text-ink">Lesson Activities</h2>
@@ -563,6 +620,7 @@ import type {
 	LessonActivity,
 	LearningUnit,
 	Response as StudentCourseDetailResponse,
+	SupportingMaterial,
 	TaskDeliveryRef,
 } from '@/types/contracts/student_hub/get_student_course_detail';
 
@@ -596,6 +654,7 @@ const activeLesson = computed(() => activeContext.value.activeLesson);
 const adjacentLessons = computed(() =>
 	getAdjacentLessonRefs(units.value, activeLesson.value?.name)
 );
+const courseMaterials = computed(() => courseDetail.value?.curriculum.materials || []);
 
 const totalLinkedTasks = computed(() => {
 	if (!courseDetail.value) return 0;
@@ -609,6 +668,86 @@ const activeLessonOrdinal = computed(() => {
 	const index = lessonSequence.value.findIndex(ref => ref.lesson.name === target);
 	return index === -1 ? 0 : index + 1;
 });
+
+type VisibleMaterial = SupportingMaterial & {
+	matchedPlacements: SupportingMaterial['placements'];
+};
+
+const activeTaskNames = computed(() => {
+	const names = new Set<string>();
+	for (const task of courseDetail.value?.curriculum.course_tasks || []) {
+		if (task?.task) names.add(task.task);
+	}
+	for (const task of activeUnit.value?.linked_tasks || []) {
+		if (task?.task) names.add(task.task);
+	}
+	for (const task of activeLesson.value?.linked_tasks || []) {
+		if (task?.task) names.add(task.task);
+	}
+	return names;
+});
+
+const visibleMaterialGroups = computed(() => {
+	const groups = [
+		{ key: 'required', label: 'Required now', items: [] as VisibleMaterial[] },
+		{ key: 'lesson', label: 'This lesson', items: [] as VisibleMaterial[] },
+		{ key: 'task', label: 'Task materials', items: [] as VisibleMaterial[] },
+		{ key: 'unit', label: 'From this unit', items: [] as VisibleMaterial[] },
+		{ key: 'course', label: 'From this course', items: [] as VisibleMaterial[] },
+		{ key: 'class', label: 'Shared in class', items: [] as VisibleMaterial[] },
+	];
+
+	for (const material of courseMaterials.value) {
+		const matchedPlacements = material.placements.filter(placement => {
+			if (placement.anchor_doctype === 'Course') return true;
+			if (placement.anchor_doctype === 'Learning Unit') {
+				return placement.anchor_name === activeUnit.value?.name;
+			}
+			if (placement.anchor_doctype === 'Lesson') {
+				return placement.anchor_name === activeLesson.value?.name;
+			}
+			if (placement.anchor_doctype === 'Task') {
+				return activeTaskNames.value.has(placement.anchor_name);
+			}
+			return false;
+		});
+
+		if (!matchedPlacements.length) continue;
+
+		const item: VisibleMaterial = {
+			...material,
+			matchedPlacements,
+		};
+
+		if (matchedPlacements.some(placement => placement.usage_role === 'Required')) {
+			groups[0].items.push(item);
+			continue;
+		}
+		if (matchedPlacements.some(placement => placement.origin === 'shared_in_class')) {
+			groups[5].items.push(item);
+			continue;
+		}
+		if (matchedPlacements.some(placement => placement.anchor_doctype === 'Task')) {
+			groups[2].items.push(item);
+			continue;
+		}
+		if (matchedPlacements.some(placement => placement.anchor_doctype === 'Lesson')) {
+			groups[1].items.push(item);
+			continue;
+		}
+		if (matchedPlacements.some(placement => placement.anchor_doctype === 'Learning Unit')) {
+			groups[3].items.push(item);
+			continue;
+		}
+		groups[4].items.push(item);
+	}
+
+	return groups.filter(group => group.items.length);
+});
+
+const visibleMaterialsCount = computed(() =>
+	visibleMaterialGroups.value.reduce((total, group) => total + group.items.length, 0)
+);
 
 const deepLinkSummary = computed(() => {
 	if (!courseDetail.value) return '';
@@ -688,6 +827,32 @@ function deliverySummary(delivery: TaskDeliveryRef): string {
 	}
 
 	return parts.join(' · ') || 'No dated delivery window is available yet.';
+}
+
+function materialActionLabel(material: SupportingMaterial): string {
+	if (material.material_type === 'File') return 'Open File';
+	if (material.modality === 'Watch') return 'Open Video';
+	if (material.modality === 'Listen') return 'Open Audio';
+	return 'Open Link';
+}
+
+function materialBadges(material: VisibleMaterial): string[] {
+	const badges = new Set<string>();
+	for (const placement of material.matchedPlacements) {
+		if (placement.usage_role) badges.add(placement.usage_role);
+		if (placement.origin === 'shared_in_class') badges.add('Shared in class');
+		if (placement.anchor_doctype === 'Task') badges.add('Task');
+		if (placement.anchor_doctype === 'Lesson') badges.add('Lesson');
+		if (placement.anchor_doctype === 'Learning Unit') badges.add('Unit');
+		if (placement.anchor_doctype === 'Course') badges.add('Course');
+	}
+	return Array.from(badges);
+}
+
+function primaryPlacementNote(material: VisibleMaterial): string {
+	const placement =
+		material.matchedPlacements.find(row => row.placement_note) || material.matchedPlacements[0];
+	return placement?.placement_note || '';
 }
 
 function quizSummary(delivery: TaskDeliveryRef): string {

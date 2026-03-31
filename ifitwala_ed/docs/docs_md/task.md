@@ -3,9 +3,9 @@ title: "Task: The Reusable Learning and Assessment Blueprint"
 slug: task
 category: Assessment
 doc_order: 4
-version: "1.2.0"
-last_change_date: "2026-03-12"
-summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
+version: "1.3.0"
+last_change_date: "2026-03-31"
+summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and task-specific supporting materials."
 seo_title: "Task: The Reusable Learning and Assessment Blueprint"
 seo_description: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
 ---
@@ -18,7 +18,7 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.p
 
 `Task` is the reusable definition layer for learning work. It holds author intent, instructions, and default assessment behavior, but it is not itself assigned to a class.
 
-Current workspace note: the task definition model is in place, but downstream launch paths are still split between the direct delivery service and the create-task overlay transaction. That split is documented here so later implementation work does not hide the mismatch.
+Current workspace note: the task definition model is in place, downstream launch paths are still split between the direct delivery service and the create-task overlay transaction, and task materials now live in the separate `Supporting Material` plus `Material Placement` domain instead of competing with lesson content.
 
 ## Before You Start (Prerequisites)
 
@@ -41,6 +41,7 @@ Test refs: None
 - [**Task Rubric Version**](/docs/en/task-rubric-version/) snapshots `Task Template Criterion` rows at delivery launch.
 - [**Task Outcome**](/docs/en/task-outcome/), [**Task Submission**](/docs/en/task-submission/), and [**Task Contribution**](/docs/en/task-contribution/) inherit delivery/task context.
 - Staff portal planning uses the create-task overlay at `ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`.
+- Task-specific reusable materials are shared through [**Supporting Material**](/docs/en/supporting-material/) and [**Material Placement**](/docs/en/material-placement/).
 - `ifitwala_ed/api/task.py` exposes `search_tasks`, `get_task_for_delivery`, and `create_task_delivery`.
 - Some analytics and briefing readers still reference legacy `Task` plus `Task Student` style paths:
   - `ifitwala_ed/api/student_overview_dashboard.py`
@@ -102,9 +103,10 @@ Test refs: `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 - `Task` is the reusable definition artifact. It is not the grading fact table.
 - `task.py` enforces curriculum alignment, duplicate criterion guards, and coherent default grading configuration.
 - `task.js` filters `learning_unit` and `lesson` choices by course context, clears stale curriculum links when course changes, and replaces generic Task resource uploads with the governed Task-resource action.
-- `task.py` now treats `attachments` as a compatibility display surface only: new file-backed rows must resolve to a governed `File` plus active `Drive Binding`.
+- `task.py` now treats `attachments` as a legacy compatibility surface only: new reusable task materials live in `Supporting Material` and are shared onto the task through `Material Placement`.
 - The current task schema stops at `lesson`; it does not currently expose `lesson_activity` or `lesson_instance`.
 - `assessment/task_creation_service.py` supports the overlay path that creates both `Task` and `Task Delivery` in one transaction.
+- The task overlay keeps teachers in-context after task creation so they can add task materials without leaving the workflow.
 
 ### Current Drift To Preserve In Review
 

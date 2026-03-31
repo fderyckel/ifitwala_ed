@@ -90,8 +90,28 @@ function buildPayload(): StudentCourseDetailResponse {
 				unit_tasks: 0,
 				lesson_tasks: 0,
 				deliveries: 0,
+				materials: 1,
 			},
 			course_tasks: [],
+			materials: [
+				{
+					material: 'MAT-1',
+					course: 'COURSE-1',
+					title: 'Chapter summary',
+					material_type: 'Reference Link',
+					reference_url: 'https://example.com/summary',
+					open_url: 'https://example.com/summary',
+					placements: [
+						{
+							placement: 'MAT-PLC-1',
+							anchor_doctype: 'Lesson',
+							anchor_name: 'LESSON-1',
+							origin: 'curriculum',
+							usage_role: 'Reference',
+						},
+					],
+				},
+			],
 			units: [
 				{
 					name: 'UNIT-1',

@@ -11,6 +11,7 @@ from ifitwala_ed.api.file_access import (
     build_admissions_file_open_url,
     build_employee_file_open_url,
     build_guardian_file_open_url,
+    download_academic_file,
     download_employee_file,
     download_guardian_file,
     resolve_academic_file_open_url,
@@ -236,4 +237,55 @@ class TestFileAccessUrlContracts(FrappeTestCase):
                     file="FILE-EMP-1",
                     context_doctype="Employee",
                     context_name="EMP-0001",
+                )
+
+    def test_download_academic_file_streams_supporting_material_for_scoped_student(self):
+        file_row = {
+            "name": "FILE-MAT-1",
+            "file_url": "/private/files/Courses/COURSE-1/material.pdf",
+            "file_name": "material.pdf",
+            "is_private": 1,
+            "attached_to_doctype": "Supporting Material",
+            "attached_to_name": "MAT-1",
+        }
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="student@example.com"),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="COURSE-1"),
+            patch("ifitwala_ed.curriculum.materials.user_can_read_course_material", return_value=True),
+            patch("ifitwala_ed.api.file_access._read_file_bytes", return_value=b"material-bytes"),
+        ):
+            frappe.local.response = {}
+            download_academic_file(
+                file="FILE-MAT-1",
+                context_doctype="Supporting Material",
+                context_name="MAT-1",
+            )
+
+        self.assertEqual(frappe.local.response.get("type"), "download")
+        self.assertEqual(frappe.local.response.get("filename"), "material.pdf")
+        self.assertEqual(frappe.local.response.get("filecontent"), b"material-bytes")
+
+    def test_download_academic_file_denies_supporting_material_outside_scope(self):
+        file_row = {
+            "name": "FILE-MAT-1",
+            "file_url": "/private/files/Courses/COURSE-1/material.pdf",
+            "file_name": "material.pdf",
+            "is_private": 1,
+            "attached_to_doctype": "Supporting Material",
+            "attached_to_name": "MAT-1",
+        }
+
+        with (
+            patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
+            patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="student@example.com"),
+            patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="COURSE-1"),
+            patch("ifitwala_ed.curriculum.materials.user_can_read_course_material", return_value=False),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                download_academic_file(
+                    file="FILE-MAT-1",
+                    context_doctype="Supporting Material",
+                    context_name="MAT-1",
                 )
