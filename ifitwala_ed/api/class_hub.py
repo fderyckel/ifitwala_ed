@@ -162,7 +162,7 @@ def _build_bundle(
             "location": "Room 204",
         },
         "session": {
-            "lesson_instance": None,
+            "class_session": None,
             "status": "none",
             "live_success_criteria": "Draft a hypothesis using clear evidence.",
         },
@@ -254,29 +254,29 @@ def start_session(
 ) -> Dict[str, Any]:
     _assert_instructor(student_group)
     return {
-        "lesson_instance": "LI-DEMO-0001",
+        "class_session": "CLASS-SESSION-DEMO-0001",
         "status": "active",
         "started_at": nowdate(),
     }
 
 
 @frappe.whitelist()
-def end_session(lesson_instance: str) -> Dict[str, Any]:
-    if not lesson_instance:
-        frappe.throw("lesson_instance is required")
+def end_session(class_session: str) -> Dict[str, Any]:
+    if not class_session:
+        frappe.throw("class_session is required")
     if frappe.session.user == "Guest":
         frappe.throw(_("Login required"))
     return {
-        "lesson_instance": lesson_instance,
+        "class_session": class_session,
         "status": "ended",
         "ended_at": nowdate(),
     }
 
 
 @frappe.whitelist()
-def save_signals(lesson_instance: str, signals_json: str) -> Dict[str, Any]:
-    if not lesson_instance:
-        frappe.throw("lesson_instance is required")
+def save_signals(class_session: str, signals_json: str) -> Dict[str, Any]:
+    if not class_session:
+        frappe.throw("class_session is required")
     if frappe.session.user == "Guest":
         frappe.throw(_("Login required"))
 
@@ -288,7 +288,7 @@ def save_signals(lesson_instance: str, signals_json: str) -> Dict[str, Any]:
     if not isinstance(signals, list):
         frappe.throw("signals_json must be a JSON list")
 
-    return {"lesson_instance": lesson_instance, "saved": len(signals)}
+    return {"class_session": class_session, "saved": len(signals)}
 
 
 @frappe.whitelist()

@@ -4,8 +4,6 @@ from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
 
-import frappe
-
 from ifitwala_ed.api import courses as courses_api
 
 
@@ -87,159 +85,6 @@ class TestCoursesApi(TestCase):
         self.assertEqual(payload["learning"]["next_learning_step"]["kind"], "course")
         self.assertEqual(payload["learning"]["next_learning_step"]["title"], "History")
         self.assertEqual(payload["learning"]["accessible_courses_count"], 2)
-
-    def test_resolve_deep_link_context_uses_lesson_instance_activity_parent(self):
-        result = courses_api._resolve_deep_link_context(
-            requested_learning_unit=None,
-            requested_lesson=None,
-            requested_lesson_instance="LI-1",
-            units_by_name={"LU-1": {"name": "LU-1", "unit_order": 1, "lessons": [{"name": "LESSON-1"}]}},
-            lessons_by_name={"LESSON-1": {"name": "LESSON-1", "learning_unit": "LU-1"}},
-            activities_by_name={"ACT-1": {"name": "ACT-1", "lesson": "LESSON-1"}},
-            lesson_instances_by_name={
-                "LI-1": {
-                    "name": "LI-1",
-                    "lesson": None,
-                    "lesson_activity": "ACT-1",
-                    "student_group": "GROUP-1",
-                }
-            },
-        )
-
-        self.assertEqual(result["resolved"]["source"], "lesson_instance")
-        self.assertEqual(result["resolved"]["lesson_instance"], "LI-1")
-        self.assertEqual(result["resolved"]["lesson"], "LESSON-1")
-        self.assertEqual(result["resolved"]["learning_unit"], "LU-1")
-
-    def test_build_curriculum_payload_buckets_tasks_by_anchor(self):
-        curriculum, _maps = courses_api._build_curriculum_payload(
-            units=[{"name": "LU-1", "unit_name": "Unit 1", "unit_order": 1}],
-            lessons=[
-                {
-                    "name": "LESSON-1",
-                    "learning_unit": "LU-1",
-                    "title": "Lesson 1",
-                    "lesson_order": 1,
-                }
-            ],
-            activities=[
-                {
-                    "name": "ACT-1",
-                    "lesson": "LESSON-1",
-                    "title": "Read",
-                    "activity_type": "Reading",
-                    "lesson_activity_order": 1,
-                }
-            ],
-            tasks=[
-                {"name": "TASK-COURSE", "title": "Course task", "task_type": "Assignment"},
-                {
-                    "name": "TASK-UNIT",
-                    "title": "Unit task",
-                    "task_type": "Assignment",
-                    "learning_unit": "LU-1",
-                },
-                {
-                    "name": "TASK-LESSON",
-                    "title": "Lesson task",
-                    "task_type": "Quiz",
-                    "lesson": "LESSON-1",
-                },
-            ],
-            deliveries=[
-                {"name": "TD-1", "task": "TASK-UNIT", "student_group": "GROUP-1"},
-                {"name": "TD-2", "task": "TASK-LESSON", "student_group": "GROUP-1"},
-            ],
-        )
-
-        self.assertEqual(curriculum["counts"]["units"], 1)
-        self.assertEqual(curriculum["counts"]["lessons"], 1)
-        self.assertEqual(curriculum["counts"]["activities"], 1)
-        self.assertEqual(curriculum["counts"]["course_tasks"], 1)
-        self.assertEqual(curriculum["counts"]["unit_tasks"], 1)
-        self.assertEqual(curriculum["counts"]["lesson_tasks"], 1)
-        self.assertEqual(curriculum["counts"]["deliveries"], 2)
-        self.assertEqual(len(curriculum["course_tasks"]), 1)
-        self.assertEqual(len(curriculum["units"][0]["linked_tasks"]), 1)
-        self.assertEqual(len(curriculum["units"][0]["lessons"][0]["linked_tasks"]), 1)
-
-    def test_build_curriculum_payload_carries_quiz_state_on_delivery_refs(self):
-        curriculum, _maps = courses_api._build_curriculum_payload(
-            units=[],
-            lessons=[],
-            activities=[],
-            tasks=[{"name": "TASK-QUIZ", "title": "Quiz", "task_type": "Quiz"}],
-            deliveries=[{"name": "TD-QUIZ", "task": "TASK-QUIZ", "student_group": "GROUP-1"}],
-            quiz_state_map={
-                "TD-QUIZ": {
-                    "status_label": "In Progress",
-                    "can_continue": 1,
-                    "attempts_used": 1,
-                    "passed": 0,
-                    "is_practice": 1,
-                }
-            },
-        )
-
-        delivery_ref = curriculum["course_tasks"][0]["deliveries"][0]
-        self.assertEqual(delivery_ref["quiz"]["status_label"], "In Progress")
-        self.assertEqual(delivery_ref["quiz"]["can_continue"], 1)
-
-    def test_get_student_course_detail_rejects_out_of_scope_course(self):
-        with (
-            patch("ifitwala_ed.api.courses._require_student_name_for_session_user", return_value="STU-001"),
-            patch("ifitwala_ed.api.courses._build_student_course_scope", return_value={}),
-        ):
-            with self.assertRaises(frappe.PermissionError):
-                courses_api.get_student_course_detail(course_id="COURSE-404")
-
-    def test_get_student_course_detail_includes_materials(self):
-        with (
-            patch("ifitwala_ed.api.courses._require_student_name_for_session_user", return_value="STU-001"),
-            patch(
-                "ifitwala_ed.api.courses._build_student_course_scope",
-                return_value={"COURSE-1": {"academic_years": ["2025-2026"], "student_groups": []}},
-            ),
-            patch(
-                "ifitwala_ed.api.courses._get_course_row",
-                return_value={"name": "COURSE-1", "course_name": "Biology", "is_published": 1},
-            ),
-            patch("ifitwala_ed.api.courses._fetch_course_units", return_value=[]),
-            patch("ifitwala_ed.api.courses._fetch_course_lessons", return_value=[]),
-            patch("ifitwala_ed.api.courses._fetch_lesson_activities", return_value=[]),
-            patch("ifitwala_ed.api.courses._fetch_course_tasks", return_value=[]),
-            patch("ifitwala_ed.api.courses._fetch_task_deliveries_for_course", return_value=[]),
-            patch("ifitwala_ed.api.courses.quiz_service.get_student_delivery_state_map", return_value={}),
-            patch("ifitwala_ed.api.courses._fetch_lesson_instances_for_course", return_value=[]),
-            patch(
-                "ifitwala_ed.api.courses.materials_domain.list_course_materials",
-                return_value=[
-                    {
-                        "material": "MAT-1",
-                        "course": "COURSE-1",
-                        "title": "Study guide",
-                        "material_type": "Reference Link",
-                        "modality": "Read",
-                        "description": "Review this before class.",
-                        "reference_url": "https://example.com/study-guide",
-                        "placements": [
-                            {
-                                "placement": "MAT-PLC-1",
-                                "anchor_doctype": "Lesson",
-                                "anchor_name": "LESSON-1",
-                                "origin": "curriculum",
-                                "usage_role": "Reference",
-                            }
-                        ],
-                    }
-                ],
-            ),
-        ):
-            payload = courses_api.get_student_course_detail(course_id="COURSE-1")
-
-        self.assertEqual(payload["curriculum"]["counts"]["materials"], 1)
-        self.assertEqual(payload["curriculum"]["materials"][0]["material"], "MAT-1")
-        self.assertEqual(payload["curriculum"]["materials"][0]["open_url"], "https://example.com/study-guide")
 
     def test_build_home_orientation_finds_current_and_next_class(self):
         anchor = datetime(2026, 3, 13, 9, 15, 0)
@@ -377,7 +222,7 @@ class TestCoursesApi(TestCase):
                         "due_date": "2026-03-14 09:00:00",
                         "learning_unit": "LU-1",
                         "lesson": "LESSON-1",
-                        "lesson_instance": "LI-1",
+                        "class_session": "CLASS-SESSION-1",
                         "submission_status": "Not Submitted",
                         "grading_status": "Not Started",
                         "has_submission": 0,
@@ -393,4 +238,8 @@ class TestCoursesApi(TestCase):
         self.assertIn("work_board", payload["learning"])
         self.assertIn("timeline", payload["learning"])
         self.assertEqual(payload["learning"]["work_board"]["now"][0]["task_delivery"], "TD-1")
+        self.assertEqual(
+            payload["learning"]["work_board"]["now"][0]["href"]["query"]["student_group"],
+            "GROUP-1",
+        )
         self.assertEqual(payload["learning"]["timeline"][0]["items"][0]["kind"], "scheduled_class")

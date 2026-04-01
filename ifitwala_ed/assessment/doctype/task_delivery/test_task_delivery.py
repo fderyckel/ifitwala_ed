@@ -19,7 +19,6 @@ class TestTaskDelivery(TestCase):
         }
         task_delivery_service.get_eligible_students = Mock(return_value=["STU-1", "STU-2"])
         task_delivery_service.bulk_create_outcomes = Mock(return_value=2)
-        task_delivery_service.resolve_or_create_lesson_instance = Mock(return_value=None)
 
         with stubbed_frappe(extra_modules={"ifitwala_ed.assessment.task_delivery_service": task_delivery_service}):
             module = import_fresh("ifitwala_ed.assessment.doctype.task_delivery.task_delivery")
@@ -56,7 +55,6 @@ class TestTaskDelivery(TestCase):
         task_delivery_service.get_delivery_context = lambda student_group: {}
         task_delivery_service.get_eligible_students = Mock(return_value=[])
         task_delivery_service.bulk_create_outcomes = Mock(return_value=0)
-        task_delivery_service.resolve_or_create_lesson_instance = Mock(return_value=None)
 
         with stubbed_frappe(extra_modules={"ifitwala_ed.assessment.task_delivery_service": task_delivery_service}):
             module = import_fresh("ifitwala_ed.assessment.doctype.task_delivery.task_delivery")
@@ -71,7 +69,6 @@ class TestTaskDelivery(TestCase):
         task_delivery_service.get_delivery_context = lambda student_group: {}
         task_delivery_service.get_eligible_students = Mock(return_value=[])
         task_delivery_service.bulk_create_outcomes = Mock(return_value=0)
-        task_delivery_service.resolve_or_create_lesson_instance = Mock(return_value=None)
 
         with stubbed_frappe(extra_modules={"ifitwala_ed.assessment.task_delivery_service": task_delivery_service}):
             module = import_fresh("ifitwala_ed.assessment.doctype.task_delivery.task_delivery")
@@ -87,7 +84,6 @@ class TestTaskDelivery(TestCase):
         task_delivery_service.get_delivery_context = lambda student_group: {}
         task_delivery_service.get_eligible_students = Mock(return_value=[])
         task_delivery_service.bulk_create_outcomes = Mock(return_value=0)
-        task_delivery_service.resolve_or_create_lesson_instance = Mock(return_value=None)
 
         with stubbed_frappe(extra_modules={"ifitwala_ed.assessment.task_delivery_service": task_delivery_service}):
             module = import_fresh("ifitwala_ed.assessment.doctype.task_delivery.task_delivery")
@@ -113,3 +109,34 @@ class TestTaskDelivery(TestCase):
         self.assertEqual(delivery.max_points, 12)
         self.assertIsNone(delivery.rubric_version)
         self.assertIsNone(delivery.rubric_scoring_strategy)
+
+    def test_validate_class_session_context_rejects_other_student_group(self):
+        task_delivery_service = types.ModuleType("ifitwala_ed.assessment.task_delivery_service")
+        task_delivery_service.get_delivery_context = lambda student_group: {}
+        task_delivery_service.get_eligible_students = Mock(return_value=[])
+        task_delivery_service.bulk_create_outcomes = Mock(return_value=0)
+
+        with stubbed_frappe(
+            extra_modules={"ifitwala_ed.assessment.task_delivery_service": task_delivery_service}
+        ) as frappe:
+            frappe.db.get_value = Mock(
+                return_value={
+                    "name": "CLASS-SESSION-1",
+                    "student_group": "GROUP-2",
+                    "course": "COURSE-1",
+                    "academic_year": "AY-2025-2026",
+                }
+            )
+            module = import_fresh("ifitwala_ed.assessment.doctype.task_delivery.task_delivery")
+
+        delivery = module.TaskDelivery()
+        delivery.class_session = "CLASS-SESSION-1"
+        delivery.student_group = "GROUP-1"
+        delivery.course = "COURSE-1"
+        delivery.academic_year = "AY-2025-2026"
+        delivery._has_field = Mock(
+            side_effect=lambda fieldname: fieldname in {"class_session", "course", "academic_year"}
+        )
+
+        with self.assertRaises(StubValidationError):
+            delivery._validate_class_session_context()

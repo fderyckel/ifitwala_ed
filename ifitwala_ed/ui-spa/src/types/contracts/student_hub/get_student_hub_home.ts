@@ -85,7 +85,7 @@ export type WorkItem = {
 	require_grading: number
 	learning_unit?: string | null
 	lesson?: string | null
-	lesson_instance?: string | null
+	class_session?: string | null
 	available_from?: string | null
 	due_date?: string | null
 	lock_date?: string | null

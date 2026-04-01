@@ -16,7 +16,7 @@ export type Request = {
 	program_enrollment?: string
 	activity_booking?: string
 	lesson?: string
-	lesson_instance?: string
+	class_session?: string
 	lesson_activity?: string
 	task_delivery?: string
 	task_submission?: string

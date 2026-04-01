@@ -10,19 +10,19 @@ type BundlePayload = {
 }
 
 type StartSessionResponse = {
-  lesson_instance: string
+  class_session: string
   status: 'active'
   started_at?: string | null
 }
 
 type EndSessionResponse = {
-  lesson_instance: string
+  class_session: string
   status: 'ended'
   ended_at?: string | null
 }
 
 type SaveSignalsResponse = {
-  lesson_instance: string
+  class_session: string
   saved: number
 }
 
@@ -82,13 +82,13 @@ export function createClassHubService() {
     return startSessionResource.submit(payload)
   }
 
-  async function endSession(lessonInstance: string) {
-    return endSessionResource.submit({ lesson_instance: lessonInstance })
+  async function endSession(classSession: string) {
+    return endSessionResource.submit({ class_session: classSession })
   }
 
-  async function saveSignals(lessonInstance: string, signals: ClassHubSignal[]) {
+  async function saveSignals(classSession: string, signals: ClassHubSignal[]) {
     return saveSignalsResource.submit({
-      lesson_instance: lessonInstance,
+      class_session: classSession,
       signals_json: JSON.stringify(signals || []),
     })
   }

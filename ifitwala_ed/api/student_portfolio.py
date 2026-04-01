@@ -685,7 +685,7 @@ def create_reflection_entry(payload=None, **kwargs):
             "program_enrollment": program_enrollment or None,
             "activity_booking": data.get("activity_booking"),
             "lesson": data.get("lesson"),
-            "lesson_instance": data.get("lesson_instance"),
+            "class_session": data.get("class_session"),
             "lesson_activity": data.get("lesson_activity"),
             "task_delivery": data.get("task_delivery"),
             "task_submission": task_submission or None,

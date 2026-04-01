@@ -23,7 +23,7 @@ This plan also assumes the canonical product-surface decision is locked:
 ## Locked Design Rules
 
 Status: Planned
-Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/schedule/doctype/student_group/student_group.json`
+Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/schedule/doctype/student_group/student_group.json`
 Test refs: None yet
 
 This plan now proceeds with the following locked design rules:
@@ -103,7 +103,7 @@ Files likely to change or be retired:
 - `ifitwala_ed/curriculum/doctype/learning_unit/*`
 - `ifitwala_ed/curriculum/doctype/lesson/*`
 - `ifitwala_ed/curriculum/doctype/lesson_activity/*`
-- `ifitwala_ed/curriculum/doctype/lesson_instance/*`
+- retired `ifitwala_ed/curriculum/doctype/lesson_instance/*`
 - workspace/sidebar entries that expose the old curriculum stack
 
 ## Workstream 3: Class Planning And Session Lifecycle
@@ -139,7 +139,7 @@ Key file owners likely to change:
 
 ## Workstream 4: Assessment And Work Delivery Reframe
 
-Status: Planned
+Status: Partial
 Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`, `ifitwala_ed/api/task.py`, `ifitwala_ed/api/gradebook.py`
 Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/assessment/test_task_delivery_service.py`, `ifitwala_ed/api/test_gradebook.py`
 
@@ -155,6 +155,12 @@ Required changes:
 - Unify the split launch path between `task_creation_service.py` and `task_delivery_service.py`.
 - Update educator-facing labels in overlays and gradebook surfaces.
 
+Implementation progress:
+
+- `Task Delivery` now optionally links to `Class Session` instead of `Lesson Instance`.
+- delivery validation now checks that a selected `Class Session` belongs to the same class, course, and academic year.
+- implicit lesson-instance creation from delivery flows has been removed.
+
 Files likely to change:
 
 - `ifitwala_ed/assessment/doctype/task/*`
@@ -167,7 +173,7 @@ Files likely to change:
 
 ## Workstream 5: Resource And Material Model Reset
 
-Status: Planned
+Status: Partial
 Code refs: `ifitwala_ed/curriculum/doctype/material_placement/material_placement.json`, `ifitwala_ed/curriculum/doctype/material_placement/material_placement.py`, `ifitwala_ed/curriculum/materials.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/courses.py`
 Test refs: `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`, `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/api/test_courses.py`
 
@@ -209,6 +215,11 @@ Required changes:
 - Keep a single bounded bootstrap payload for the student surface.
 - Rewrite the LMS/student course page around the educator-centered class-aware learning-space payload.
 - Ensure the student LMS view favors current class sessions and unit backbone context over the old lesson tree.
+
+Implementation progress:
+
+- the old `get_student_course_detail` lesson-tree bootstrap has been removed from `ifitwala_ed/api/courses.py`
+- student home/work-board links now carry class context into the LMS route through `student_group`
 
 Files likely to change:
 
@@ -287,8 +298,8 @@ New test families likely required:
 
 ## Workstream 10: Retirement Of The Old Lesson-Centric Model
 
-Status: Planned
-Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/*`, `ifitwala_ed/curriculum/doctype/lesson/*`, `ifitwala_ed/curriculum/doctype/lesson_activity/*`, `ifitwala_ed/curriculum/doctype/lesson_instance/*`, `ifitwala_ed/curriculum/doctype/material_placement/*`
+Status: Partial
+Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/*`, `ifitwala_ed/curriculum/doctype/lesson/*`, `ifitwala_ed/curriculum/doctype/lesson_activity/*`, `ifitwala_ed/curriculum/doctype/material_placement/*`
 Test refs: all suites that still assume the old model
 
 Because there is no production legacy requirement:
@@ -297,6 +308,12 @@ Because there is no production legacy requirement:
 - do not preserve misleading doctypes purely to avoid rename work
 - remove obsolete fields, APIs, docs, and SPA routes once replacements land
 - prefer one clear educator-centered workflow path over dual-model coexistence
+
+Implementation progress:
+
+- `Lesson Instance` has been removed from the live codebase
+- the old student lesson-tree API path has been removed
+- published docs are being rewritten so the retired object remains documented only as a deprecation note
 
 ## Recommended Execution Order
 

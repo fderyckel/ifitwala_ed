@@ -3,8 +3,8 @@ title: "Learning Unit: Planned Curriculum Container Inside a Course"
 slug: learning-unit
 category: Curriculum
 doc_order: 5
-version: "1.1.0"
-last_change_date: "2026-03-23"
+version: "1.2.0"
+last_change_date: "2026-04-01"
 summary: "Plan a course-level unit with sequence, pedagogy, standards alignment, and lesson structure, then optionally anchor reusable tasks to it."
 seo_title: "Learning Unit: Planned Curriculum Container Inside a Course"
 seo_description: "Plan a course-level unit with sequence, pedagogy, standards alignment, and lesson structure, then optionally anchor reusable tasks to it."
@@ -38,7 +38,7 @@ Test refs: None
 - Parent context for [**Lesson**](/docs/en/lesson/) rows.
 - Optional curriculum anchor for [**Task**](/docs/en/task/) through `Task.learning_unit`.
 - Surfaced as a top-level planning DocType in the Curriculum workspace.
-- The live `Task Delivery` schema does not point to `Learning Unit` directly; runtime teaching context starts later at [**Lesson Instance**](/docs/en/lesson-instance/).
+- The live `Task Delivery` schema does not point to `Learning Unit` directly; runtime teaching context now starts later at [**Class Session**](/docs/en/class-session/).
 
 ## Lifecycle and Linked Documents
 

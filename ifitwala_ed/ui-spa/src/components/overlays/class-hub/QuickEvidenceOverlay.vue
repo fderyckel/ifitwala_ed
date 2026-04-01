@@ -162,7 +162,7 @@ const props = defineProps<{
 	zIndex?: number;
 	overlayId?: string | null;
 	student_group: string;
-	lesson_instance?: string | null;
+	class_session?: string | null;
 	students?: StudentOption[];
 	preselected_students?: StudentOption[];
 }>();
@@ -223,7 +223,7 @@ async function submit() {
 
 	const payload: ClassHubQuickEvidencePayload = {
 		student_group: props.student_group,
-		lesson_instance: props.lesson_instance ?? null,
+		class_session: props.class_session ?? null,
 		students: selectedStudents.value,
 		evidence_type: evidenceType.value,
 		text: evidenceType.value === 'text' ? evidenceText.value.trim() : null,

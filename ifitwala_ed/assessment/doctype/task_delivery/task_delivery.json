@@ -37,7 +37,7 @@
   "course",
   "academic_year",
   "school",
-  "lesson_instance",
+  "class_session",
   "amended_from"
  ],
  "fields": [
@@ -237,10 +237,10 @@
    "options": "School"
   },
   {
-   "fieldname": "lesson_instance",
+   "fieldname": "class_session",
    "fieldtype": "Link",
-   "label": "Lesson Instance",
-   "options": "Lesson Instance"
+   "label": "Class Session",
+   "options": "Class Session"
   },
   {
    "fieldname": "amended_from",
@@ -257,7 +257,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-13 13:26:48.439504",
+ "modified": "2026-04-01 11:20:00.000000",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Delivery",

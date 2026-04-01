@@ -3,8 +3,8 @@ title: "Student Group: Operational Teaching Group Contract"
 slug: student-group
 category: Schedule
 doc_order: 1
-version: "1.0.3"
-last_change_date: "2026-03-29"
+version: "1.0.4"
+last_change_date: "2026-04-01"
 summary: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, attendance scope, and downstream teaching materialization."
 seo_title: "Student Group: Operational Teaching Group Contract"
 seo_description: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, and attendance scope."
@@ -40,7 +40,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 ## Where It Is Used Across the ERP
 
 - [**Task Delivery**](/docs/en/task-delivery/) targets a specific `Student Group`.
-- [**Lesson Instance**](/docs/en/lesson-instance/) uses `Student Group` as the taught-session context.
+- [**Class Session**](/docs/en/class-session/) uses `Student Group` as the live class-session context.
 - Scheduling materialization rebuilds `Employee Booking` rows from active Student Group schedule rows.
 - Student-group schedule changes invalidate meeting-date projections and related teaching schedule context.
 - Instructor log rebuilding and referral/access sync use the group’s instructor and student membership tables.
@@ -84,7 +84,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 - [**Program Offering**](/docs/en/program-offering/)
 - [**Program Enrollment**](/docs/en/program-enrollment/)
 - [**Task Delivery**](/docs/en/task-delivery/)
-- [**Lesson Instance**](/docs/en/lesson-instance/)
+- [**Class Session**](/docs/en/class-session/)
 
 ## Technical Notes (IT)
 
@@ -178,4 +178,4 @@ Current workspace note: when a selected Program Offering has exactly one Academi
   - this page
   - [**Program Offering**](/docs/en/program-offering/)
   - [**Task Delivery**](/docs/en/task-delivery/)
-  - [**Lesson Instance**](/docs/en/lesson-instance/)
+  - [**Class Session**](/docs/en/class-session/)

@@ -11,7 +11,6 @@ from ifitwala_ed.assessment.task_delivery_service import (
     bulk_create_outcomes,
     get_delivery_context,
     get_eligible_students,
-    resolve_or_create_lesson_instance,
 )
 
 
@@ -21,8 +20,8 @@ class TaskDelivery(Document):
         context = get_delivery_context(self.student_group)
         self._stamp_context(context)
         self._validate_task_course_alignment(context)
+        self._validate_class_session_context()
         self._apply_quiz_defaults()
-        self._maybe_link_lesson_instance()
 
     def validate(self):
         self._enforce_post_submit_immutability()
@@ -121,27 +120,31 @@ class TaskDelivery(Document):
         if task_course and delivery_course and task_course != delivery_course:
             frappe.throw(_("Task course does not match the delivery course."))
 
-    def _maybe_link_lesson_instance(self):
-        if self.lesson_instance:
+    def _validate_class_session_context(self):
+        if not self._has_field("class_session") or not getattr(self, "class_session", None):
             return
 
-        explicit = self._explicit_lesson_context()
-        if not explicit:
-            return
+        session = frappe.db.get_value(
+            "Class Session",
+            self.class_session,
+            ["name", "student_group", "course", "academic_year"],
+            as_dict=True,
+        )
+        if not session:
+            frappe.throw(_("Class Session not found."))
 
-        lesson_instance = resolve_or_create_lesson_instance(self, explicit)
-        if lesson_instance:
-            self.lesson_instance = lesson_instance
+        if session.get("student_group") and session.get("student_group") != self.student_group:
+            frappe.throw(_("Selected class session does not belong to this class."))
 
-    def _explicit_lesson_context(self):
-        context = {}
-        if self._has_field("lesson") and getattr(self, "lesson", None):
-            context["lesson"] = self.lesson
-        if self._has_field("lesson_activity") and getattr(self, "lesson_activity", None):
-            context["lesson_activity"] = self.lesson_activity
-        if self._has_field("instance_type") and getattr(self, "instance_type", None):
-            context["instance_type"] = self.instance_type
-        return context or None
+        if self._has_field("course") and session.get("course") and session.get("course") != self.course:
+            frappe.throw(_("Selected class session does not belong to this course."))
+
+        if (
+            self._has_field("academic_year")
+            and session.get("academic_year")
+            and session.get("academic_year") != getattr(self, "academic_year", None)
+        ):
+            frappe.throw(_("Selected class session does not belong to this academic year."))
 
     def _apply_delivery_mode_defaults(self):
         if not self.delivery_mode:

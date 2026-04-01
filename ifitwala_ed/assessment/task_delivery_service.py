@@ -127,48 +127,6 @@ def bulk_create_outcomes(delivery, students, context=None):
     return len(values)
 
 
-def resolve_or_create_lesson_instance(delivery, explicit_context=None):
-    if delivery.lesson_instance:
-        return delivery.lesson_instance
-
-    context = explicit_context or {}
-    if not context:
-        return None
-
-    lesson = context.get("lesson")
-    lesson_activity = context.get("lesson_activity")
-    if not lesson and not lesson_activity:
-        return None
-
-    instance_type = context.get("instance_type") or "Async Learning Event"
-    filters = {
-        "student_group": delivery.student_group,
-        "instance_type": instance_type,
-    }
-    if lesson:
-        filters["lesson"] = lesson
-    if lesson_activity:
-        filters["lesson_activity"] = lesson_activity
-
-    existing = frappe.db.get_value("Lesson Instance", filters, "name")
-    if existing:
-        return existing
-
-    doc = frappe.get_doc(
-        {
-            "doctype": "Lesson Instance",
-            "lesson": lesson,
-            "lesson_activity": lesson_activity,
-            "student_group": delivery.student_group,
-            "instance_type": instance_type,
-            "created_from": "Task_delivery",
-            "created_by": frappe.session.user,
-        }
-    )
-    doc.insert(ignore_permissions=True)
-    return doc.name
-
-
 def _initial_statuses(delivery):
     if delivery.delivery_mode == "Assign Only":
         return "Not Required", "Not Applicable"
@@ -208,7 +166,7 @@ def create_delivery(payload):
         "lock_date",
         # "group_submission", # Explicitly commented out/handled above
         "allow_late_submission",
-        "lesson_instance",
+        "class_session",
     }
     for field, value in payload.items():
         if field in allowed_fields:

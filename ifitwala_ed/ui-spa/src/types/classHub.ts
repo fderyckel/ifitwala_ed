@@ -18,7 +18,7 @@ export type ClassHubBundle = {
     location?: string | null
   }
   session: {
-    lesson_instance?: string | null
+    class_session?: string | null
     status: 'none' | 'active' | 'ended'
     live_success_criteria?: string | null
   }
@@ -74,7 +74,7 @@ export type ClassHubSignal = {
 
 export type ClassHubQuickEvidencePayload = {
   student_group: string
-  lesson_instance?: string | null
+  class_session?: string | null
   students: string[]
   evidence_type: 'text' | 'link'
   text?: string | null

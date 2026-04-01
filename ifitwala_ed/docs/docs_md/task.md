@@ -3,8 +3,8 @@ title: "Task: The Reusable Learning and Assessment Blueprint"
 slug: task
 category: Assessment
 doc_order: 4
-version: "1.3.0"
-last_change_date: "2026-03-31"
+version: "1.4.0"
+last_change_date: "2026-04-01"
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and task-specific supporting materials."
 seo_title: "Task: The Reusable Learning and Assessment Blueprint"
 seo_description: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
@@ -69,7 +69,7 @@ Test refs: None
 - [**Task Delivery**](/docs/en/task-delivery/)
 - [**Learning Unit**](/docs/en/learning-unit/)
 - [**Lesson**](/docs/en/lesson/)
-- [**Lesson Instance**](/docs/en/lesson-instance/)
+- [**Class Session**](/docs/en/class-session/)
 - [**Task Template Criterion**](/docs/en/task-template-criterion/)
 - [**Task Rubric Version**](/docs/en/task-rubric-version/)
 - [**Task Outcome**](/docs/en/task-outcome/)
@@ -104,7 +104,7 @@ Test refs: `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 - `task.py` enforces curriculum alignment, duplicate criterion guards, and coherent default grading configuration.
 - `task.js` filters `learning_unit` and `lesson` choices by course context, clears stale curriculum links when course changes, and replaces generic Task resource uploads with the governed Task-resource action.
 - `task.py` now treats `attachments` as a legacy compatibility surface only: new reusable task materials live in `Supporting Material` and are shared onto the task through `Material Placement`.
-- The current task schema stops at `lesson`; it does not currently expose `lesson_activity` or `lesson_instance`.
+- The current task schema stops at `lesson`; it does not currently expose `lesson_activity` or `class_session`.
 - `assessment/task_creation_service.py` supports the overlay path that creates both `Task` and `Task Delivery` in one transaction.
 - The task overlay keeps teachers in-context after task creation so they can add task materials without leaving the workflow.
 

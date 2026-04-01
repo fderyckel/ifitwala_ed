@@ -3,8 +3,8 @@ title: "Lesson: Ordered Planned Teaching Segment Within a Unit"
 slug: lesson
 category: Curriculum
 doc_order: 6
-version: "1.0.0"
-last_change_date: "2026-03-12"
+version: "1.1.0"
+last_change_date: "2026-04-01"
 summary: "Define a planned lesson within a learning unit, add lesson activities, and optionally use the lesson as the deepest curriculum anchor on a reusable task."
 seo_title: "Lesson: Ordered Planned Teaching Segment Within a Unit"
 seo_description: "Define a planned lesson within a learning unit, add lesson activities, and optionally use the lesson as the deepest curriculum anchor on a reusable task."
@@ -18,7 +18,7 @@ Test refs: None (scaffold only: `ifitwala_ed/curriculum/doctype/lesson/test_less
 
 `Lesson` is the ordered planned teaching segment inside a `Learning Unit`. It can hold type, date, duration, and a child table of `Lesson Activity` rows.
 
-Current workspace note: `Lesson` is the deepest planned-curriculum record that `Task` can link to directly. `Task Delivery` does not store `lesson`; it stores only optional `lesson_instance`.
+Current workspace note: `Lesson` remains a planned-curriculum record during the replatform. Runtime class delivery now lives in [**Class Session**](/docs/en/class-session/), and `Task Delivery` no longer stores `lesson_instance`.
 
 ## Before You Start (Prerequisites)
 
@@ -33,12 +33,12 @@ Test refs: None
 ## Where It Is Used Across the ERP
 
 Status: Partial
-Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.json`, `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.js`
+Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.js`
 Test refs: None
 
 - Child of [**Learning Unit**](/docs/en/learning-unit/).
 - Optional curriculum anchor for [**Task**](/docs/en/task/) through `Task.lesson`.
-- Optional planning reference for [**Lesson Instance**](/docs/en/lesson-instance/) through `Lesson Instance.lesson`.
+- Legacy planned anchor that may still help educators map shared lesson guidance to a live [**Class Session**](/docs/en/class-session/), though the live session model no longer depends on it.
 - Read and ordered from the Learning Unit form helpers in `learning_unit.js`.
 
 ## Lifecycle and Linked Documents
@@ -60,7 +60,7 @@ Test refs: None
 
 - [**Learning Unit**](/docs/en/learning-unit/)
 - [**Lesson Activity**](/docs/en/lesson-activity/)
-- [**Lesson Instance**](/docs/en/lesson-instance/)
+- [**Class Session**](/docs/en/class-session/)
 - [**Task**](/docs/en/task/)
 - [**Task Delivery**](/docs/en/task-delivery/)
 
@@ -90,4 +90,4 @@ Test refs: None (scaffold only: `ifitwala_ed/curriculum/doctype/lesson/test_less
 ### Current Constraints To Preserve In Review
 
 - Do not document lesson ordering as server-enforced beyond the stored `lesson_order` field; there is no live `reorder_lessons()` server implementation in `lesson.py`.
-- Do not document `Lesson` as the runtime delivery row. That role belongs to `Lesson Instance` and `Task Delivery`.
+- Do not document `Lesson` as the runtime delivery row. That role now belongs to `Class Session`, with `Task Delivery` as optional class-assigned work.

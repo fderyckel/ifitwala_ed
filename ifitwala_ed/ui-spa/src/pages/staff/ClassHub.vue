@@ -135,7 +135,7 @@ function openStudent(student: ClassHubBundle['students'][number]) {
 		student: student.student,
 		student_name: student.student_name,
 		student_group: currentBundle.value.header.student_group,
-		lesson_instance: currentBundle.value.session.lesson_instance ?? null,
+		class_session: currentBundle.value.session.class_session ?? null,
 		can_create_student_log: currentBundle.value.permissions.can_create_student_log,
 	});
 }
@@ -247,7 +247,7 @@ function openStudentLogQuickCreate(student?: { student: string; student_name: st
 function openQuickEvidence() {
 	overlay.open('class-hub-quick-evidence', {
 		student_group: currentBundle.value.header.student_group,
-		lesson_instance: currentBundle.value.session.lesson_instance ?? null,
+		class_session: currentBundle.value.session.class_session ?? null,
 		students: currentBundle.value.students.map(student => ({
 			student: student.student,
 			student_name: student.student_name,
@@ -258,7 +258,7 @@ function openQuickEvidence() {
 function openQuickCFU() {
 	overlay.open('class-hub-quick-cfu', {
 		student_group: currentBundle.value.header.student_group,
-		lesson_instance: currentBundle.value.session.lesson_instance ?? null,
+		class_session: currentBundle.value.session.class_session ?? null,
 		students: currentBundle.value.students.map(student => ({
 			student: student.student,
 			student_name: student.student_name,
@@ -282,7 +282,7 @@ async function handleStartSession() {
 			...currentBundle.value,
 			session: {
 				...currentBundle.value.session,
-				lesson_instance: res.lesson_instance,
+				class_session: res.class_session,
 				status: 'active',
 			},
 		};
@@ -294,14 +294,14 @@ async function handleStartSession() {
 
 async function handleEndSession() {
 	actionMessage.value = '';
-	const lessonInstance = currentBundle.value.session.lesson_instance;
-	if (!lessonInstance) {
+	const classSession = currentBundle.value.session.class_session;
+	if (!classSession) {
 		actionMessage.value = 'Start a session before ending it.';
 		return;
 	}
 
 	try {
-		await service.endSession(lessonInstance);
+		await service.endSession(classSession);
 		bundle.value = {
 			...currentBundle.value,
 			session: {
@@ -342,7 +342,7 @@ function buildDemoBundle(studentGroupValue: string): ClassHubBundle {
 			location: 'Room 204',
 		},
 		session: {
-			lesson_instance: null,
+			class_session: null,
 			status: 'none',
 			live_success_criteria: 'Draft a hypothesis using evidence.',
 		},

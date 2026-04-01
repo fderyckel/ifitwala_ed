@@ -167,7 +167,7 @@ const props = defineProps<{
 	zIndex?: number;
 	overlayId?: string | null;
 	student_group: string;
-	lesson_instance?: string | null;
+	class_session?: string | null;
 	students?: StudentOption[];
 }>();
 
@@ -198,7 +198,7 @@ function emitClose() {
 async function submit() {
 	errorMessage.value = '';
 
-	if (!props.lesson_instance) {
+	if (!props.class_session) {
 		errorMessage.value = 'Start a session before saving CFU signals.';
 		return;
 	}
@@ -221,7 +221,7 @@ async function submit() {
 	}));
 
 	try {
-		await service.saveSignals(props.lesson_instance, payload);
+		await service.saveSignals(props.class_session, payload);
 		emitClose();
 	} catch (err) {
 		errorMessage.value = 'Unable to save right now.';

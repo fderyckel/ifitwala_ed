@@ -189,7 +189,7 @@ const props = defineProps<{
 	student: string;
 	student_name: string;
 	student_group: string;
-	lesson_instance?: string | null;
+	class_session?: string | null;
 	can_create_student_log?: boolean;
 }>();
 
@@ -220,7 +220,7 @@ function emitClose() {
 
 async function saveSnapshot() {
 	errorMessage.value = '';
-	if (!props.lesson_instance) {
+	if (!props.class_session) {
 		errorMessage.value = 'Start a session before saving snapshots.';
 		return;
 	}
@@ -238,7 +238,7 @@ async function saveSnapshot() {
 	];
 
 	try {
-		await service.saveSignals(props.lesson_instance, payload);
+		await service.saveSignals(props.class_session, payload);
 		emitClose();
 	} catch (err) {
 		errorMessage.value = 'Unable to save right now.';
@@ -249,7 +249,7 @@ async function saveSnapshot() {
 function openQuickEvidence() {
 	overlay.replaceTop('class-hub-quick-evidence', {
 		student_group: props.student_group,
-		lesson_instance: props.lesson_instance ?? null,
+		class_session: props.class_session ?? null,
 		preselected_students: [
 			{
 				student: props.student,
