@@ -13,7 +13,6 @@ def _material_placement_module():
     materials_stub.MATERIAL_ALLOWED_ANCHORS = {
         "Course Plan",
         "Unit Plan",
-        "Lesson",
         "Class Teaching Plan",
         "Class Session",
         "Task",
@@ -40,11 +39,11 @@ def _material_placement_module():
 
 
 class TestMaterialPlacement(TestCase):
-    def test_validate_anchor_rejects_unsupported_anchor_type(self):
+    def test_validate_anchor_rejects_legacy_lesson_anchor(self):
         with _material_placement_module() as module:
             placement = module.MaterialPlacement()
-            placement.anchor_doctype = "Lesson Activity"
-            placement.anchor_name = "ACT-1"
+            placement.anchor_doctype = "Lesson"
+            placement.anchor_name = "LESSON-1"
 
             with self.assertRaises(StubValidationError):
                 placement._validate_anchor()

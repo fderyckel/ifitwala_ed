@@ -8,21 +8,34 @@ import type {
 	StaffPlanningActivity,
 	StaffPlanningMaterial,
 } from '@/types/contracts/staff_teaching/get_staff_class_planning_surface'
+import type {
+	Response as GetStaffCoursePlanIndexResponse,
+} from '@/types/contracts/staff_teaching/get_staff_course_plan_index'
+import type {
+	Request as GetStaffCoursePlanSurfaceRequest,
+	Response as GetStaffCoursePlanSurfaceResponse,
+} from '@/types/contracts/staff_teaching/get_staff_course_plan_surface'
 
 const METHODS = {
-	getSurface: 'ifitwala_ed.api.teaching_plans.get_staff_class_planning_surface',
+	getClassPlanningSurface: 'ifitwala_ed.api.teaching_plans.get_staff_class_planning_surface',
+	getCoursePlanIndex: 'ifitwala_ed.api.teaching_plans.list_staff_course_plans',
+	getCoursePlanSurface: 'ifitwala_ed.api.teaching_plans.get_staff_course_plan_surface',
 	createPlan: 'ifitwala_ed.api.teaching_plans.create_class_teaching_plan',
 	savePlan: 'ifitwala_ed.api.teaching_plans.save_class_teaching_plan',
 	saveUnit: 'ifitwala_ed.api.teaching_plans.save_class_teaching_plan_unit',
 	saveSession: 'ifitwala_ed.api.teaching_plans.save_class_session',
 	createPlanningReferenceMaterial:
-		'ifitwala_ed.api.teaching_plans.create_class_planning_reference_material',
+		'ifitwala_ed.api.teaching_plans.create_planning_reference_material',
 	uploadPlanningMaterialFile:
-		'ifitwala_ed.api.teaching_plans.upload_class_planning_material_file',
-	removePlanningMaterial: 'ifitwala_ed.api.teaching_plans.remove_class_planning_material',
+		'ifitwala_ed.api.teaching_plans.upload_planning_material_file',
+	removePlanningMaterial: 'ifitwala_ed.api.teaching_plans.remove_planning_material',
 } as const
 
-export type PlanningMaterialAnchorDoctype = 'Class Teaching Plan' | 'Class Session'
+export type PlanningMaterialAnchorDoctype =
+	| 'Course Plan'
+	| 'Unit Plan'
+	| 'Class Teaching Plan'
+	| 'Class Session'
 
 export type CreateClassTeachingPlanRequest = {
 	student_group: string
@@ -83,7 +96,7 @@ export type SaveClassSessionResponse = {
 	session_status?: string | null
 }
 
-export type CreateClassPlanningReferenceMaterialRequest = {
+export type CreatePlanningReferenceMaterialRequest = {
 	anchor_doctype: PlanningMaterialAnchorDoctype
 	anchor_name: string
 	title: string
@@ -94,14 +107,14 @@ export type CreateClassPlanningReferenceMaterialRequest = {
 	placement_note?: string
 }
 
-export type CreateClassPlanningReferenceMaterialResponse = {
+export type CreatePlanningReferenceMaterialResponse = {
 	anchor_doctype: PlanningMaterialAnchorDoctype
 	anchor_name: string
 	placement: string
 	resource: StaffPlanningMaterial
 }
 
-export type UploadClassPlanningMaterialFileRequest = {
+export type UploadPlanningMaterialFileRequest = {
 	anchor_doctype: PlanningMaterialAnchorDoctype
 	anchor_name: string
 	title: string
@@ -112,20 +125,20 @@ export type UploadClassPlanningMaterialFileRequest = {
 	placement_note?: string
 }
 
-export type UploadClassPlanningMaterialFileResponse = {
+export type UploadPlanningMaterialFileResponse = {
 	anchor_doctype: PlanningMaterialAnchorDoctype
 	anchor_name: string
 	placement: string
 	resource: StaffPlanningMaterial
 }
 
-export type RemoveClassPlanningMaterialRequest = {
+export type RemovePlanningMaterialRequest = {
 	anchor_doctype: PlanningMaterialAnchorDoctype
 	anchor_name: string
 	placement: string
 }
 
-export type RemoveClassPlanningMaterialResponse = {
+export type RemovePlanningMaterialResponse = {
 	anchor_doctype: PlanningMaterialAnchorDoctype
 	anchor_name: string
 	placement: string
@@ -167,7 +180,17 @@ function csrfToken(): string {
 export async function getStaffClassPlanningSurface(
 	payload: GetStaffClassPlanningSurfaceRequest
 ): Promise<GetStaffClassPlanningSurfaceResponse> {
-	return apiMethod<GetStaffClassPlanningSurfaceResponse>(METHODS.getSurface, payload)
+	return apiMethod<GetStaffClassPlanningSurfaceResponse>(METHODS.getClassPlanningSurface, payload)
+}
+
+export async function getStaffCoursePlanIndex(): Promise<GetStaffCoursePlanIndexResponse> {
+	return apiMethod<GetStaffCoursePlanIndexResponse>(METHODS.getCoursePlanIndex)
+}
+
+export async function getStaffCoursePlanSurface(
+	payload: GetStaffCoursePlanSurfaceRequest
+): Promise<GetStaffCoursePlanSurfaceResponse> {
+	return apiMethod<GetStaffCoursePlanSurfaceResponse>(METHODS.getCoursePlanSurface, payload)
 }
 
 export async function createClassTeachingPlan(
@@ -198,18 +221,18 @@ export async function saveClassSession(
 	})
 }
 
-export async function createClassPlanningReferenceMaterial(
-	payload: CreateClassPlanningReferenceMaterialRequest
-): Promise<CreateClassPlanningReferenceMaterialResponse> {
-	return apiMethod<CreateClassPlanningReferenceMaterialResponse>(
+export async function createPlanningReferenceMaterial(
+	payload: CreatePlanningReferenceMaterialRequest
+): Promise<CreatePlanningReferenceMaterialResponse> {
+	return apiMethod<CreatePlanningReferenceMaterialResponse>(
 		METHODS.createPlanningReferenceMaterial,
 		payload
 	)
 }
 
-export async function uploadClassPlanningMaterialFile(
-	payload: UploadClassPlanningMaterialFileRequest
-): Promise<UploadClassPlanningMaterialFileResponse> {
+export async function uploadPlanningMaterialFile(
+	payload: UploadPlanningMaterialFileRequest
+): Promise<UploadPlanningMaterialFileResponse> {
 	const formData = new FormData()
 	formData.append('anchor_doctype', payload.anchor_doctype)
 	formData.append('anchor_name', payload.anchor_name)
@@ -235,11 +258,11 @@ export async function uploadClassPlanningMaterialFile(
 			serverMessages.join('\n') || data?.message || response.statusText || 'Upload failed.'
 		)
 	}
-	return (data?.message ?? data) as UploadClassPlanningMaterialFileResponse
+	return (data?.message ?? data) as UploadPlanningMaterialFileResponse
 }
 
-export async function removeClassPlanningMaterial(
-	payload: RemoveClassPlanningMaterialRequest
-): Promise<RemoveClassPlanningMaterialResponse> {
-	return apiMethod<RemoveClassPlanningMaterialResponse>(METHODS.removePlanningMaterial, payload)
+export async function removePlanningMaterial(
+	payload: RemovePlanningMaterialRequest
+): Promise<RemovePlanningMaterialResponse> {
+	return apiMethod<RemovePlanningMaterialResponse>(METHODS.removePlanningMaterial, payload)
 }

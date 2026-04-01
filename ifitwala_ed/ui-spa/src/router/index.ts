@@ -104,6 +104,22 @@ const routes: RouteRecordRaw[] = [
   { path: '/staff/portfolio', name: 'staff-portfolio', component: () => import('@/pages/staff/StaffPortfolioFeed.vue'), meta: { layout: 'staff', portal: 'Staff' } },
   { path: '/staff/professional-development', name: 'staff-professional-development', component: () => import('@/pages/staff/ProfessionalDevelopment.vue'), meta: { layout: 'staff' } },
   { path: '/staff/organization-chart', name: 'staff-organization-chart', component: () => import('@/pages/staff/organization_chart/OrganizationChart.vue'), meta: { layout: 'staff' } },
+  {
+    path: '/staff/course-plans',
+    name: 'staff-course-plan-index',
+    component: () => import('@/pages/staff/CoursePlanIndex.vue'),
+    meta: { layout: 'staff' },
+  },
+  {
+    path: '/staff/course-plans/:coursePlan',
+    name: 'staff-course-plan',
+    component: () => import('@/pages/staff/CoursePlanWorkspace.vue'),
+    props: route => ({
+      coursePlan: String(route.params.coursePlan || ''),
+      unitPlan: typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
+    }),
+    meta: { layout: 'staff' },
+  },
   { path: '/staff/class/:studentGroup', name: 'ClassHub', component: () => import('@/pages/staff/ClassHub.vue'), meta: { layout: 'staff' } },
   { path: '/staff/class/:studentGroup/planning', name: 'staff-class-planning', component: () => import('@/pages/staff/ClassPlanning.vue'), meta: { layout: 'staff' } },
 

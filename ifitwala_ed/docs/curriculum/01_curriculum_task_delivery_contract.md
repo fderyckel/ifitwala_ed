@@ -26,7 +26,7 @@ Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`, `ifitwa
 - Legacy planned-curriculum doctypes `Lesson` and `Lesson Activity` still exist in the workspace as optional shared guidance, but they are no longer paired with a `Lesson Instance` runtime object.
 - `Lesson Instance` has been removed from the live schema and runtime code.
 - Assessed work still lives in `Task` and `Task Delivery`, but `Task Delivery` is now anchored to `Class Teaching Plan` and may also soft-link to `Class Session`.
-- `Material Placement` now supports class-aware anchors across `Course Plan`, `Unit Plan`, `Lesson`, `Class Teaching Plan`, `Class Session`, and `Task`.
+- `Material Placement` now supports educator-centered anchors across `Course Plan`, `Unit Plan`, `Class Teaching Plan`, `Class Session`, and `Task`.
 - Student LMS reads now use `ifitwala_ed.api.teaching_plans.get_student_learning_space`; the old lesson-tree bootstrap in `api/courses.py` has been retired.
 - Published docs under `ifitwala_ed/docs/docs_md/` are now being rewritten to reflect the class-session model and to mark `Lesson Instance` as retired.
 
@@ -206,8 +206,9 @@ Test refs: `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearnin
 
 - The educator-centered first slice now exists in code through `Course Plan`, `Unit Plan`, `Class Teaching Plan`, and `Class Session`.
 - Staff planning now has a route-based `ui-spa` surface in `ui-spa/src/pages/staff/ClassPlanning.vue` backed by `ifitwala_ed.api.teaching_plans.get_staff_class_planning_surface`.
+- Staff governed curriculum planning now has route-based `ui-spa` surfaces in `ui-spa/src/pages/staff/CoursePlanIndex.vue` and `ui-spa/src/pages/staff/CoursePlanWorkspace.vue` backed by `ifitwala_ed.api.teaching_plans.list_staff_course_plans` and `ifitwala_ed.api.teaching_plans.get_staff_course_plan_surface`.
 - Student course detail now reads from the class-aware LMS endpoint `ifitwala_ed.api.teaching_plans.get_student_learning_space` and no longer depends on the old lesson-tree page contract.
 - `Lesson Instance` has been retired from code. `Task Delivery`, Class Hub contracts, student reflections, and student-home work items now use `Class Session`.
 - Assigned work now requires `Class Teaching Plan`, with optional `Class Session` context under that class plan.
 - The class-aware resource read model now surfaces shared course-plan resources, class-owned resources, unit resources, session resources, and task materials inside the staff planning SPA and student LMS learning space.
-- Staff can now create and remove class-wide and session-specific resources directly inside the class-planning SPA without leaving the planning workflow.
+- Staff can now create and remove shared course-plan resources, shared unit resources, class-wide resources, and session-specific resources directly inside the staff planning SPA without leaving the planning workflow.

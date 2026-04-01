@@ -398,6 +398,12 @@ const quickActions = [
 		to: { name: 'staff-gradebook' },
 		capability: 'quick_action_gradebook',
 	},
+	{
+		label: 'Course Plans',
+		caption: 'Open the governed curriculum backbone and shared resources',
+		icon: 'layers',
+		to: { name: 'staff-course-plan-index' },
+	},
 ];
 
 function isQuickActionVisible(action: { capability?: string }) {

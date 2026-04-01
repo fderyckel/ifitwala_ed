@@ -13,11 +13,13 @@ vi.mock('@/resources/frappe', () => ({
 }))
 
 import {
-	createClassPlanningReferenceMaterial,
+	createPlanningReferenceMaterial,
 	getStaffClassPlanningSurface,
-	removeClassPlanningMaterial,
+	getStaffCoursePlanIndex,
+	getStaffCoursePlanSurface,
+	removePlanningMaterial,
 	saveClassSession,
-	uploadClassPlanningMaterialFile,
+	uploadPlanningMaterialFile,
 } from '@/lib/services/staff/staffTeachingService'
 
 describe('staffTeachingService', () => {
@@ -31,7 +33,7 @@ describe('staffTeachingService', () => {
 	it('uses the canonical method for planning link resources', async () => {
 		apiMethodMock.mockResolvedValue({ placement: 'MAT-PLC-1' })
 
-		await createClassPlanningReferenceMaterial({
+		await createPlanningReferenceMaterial({
 			anchor_doctype: 'Class Teaching Plan',
 			anchor_name: 'CLASS-PLAN-1',
 			title: 'Starter article',
@@ -39,7 +41,7 @@ describe('staffTeachingService', () => {
 		})
 
 		expect(apiMethodMock).toHaveBeenCalledWith(
-			'ifitwala_ed.api.teaching_plans.create_class_planning_reference_material',
+			'ifitwala_ed.api.teaching_plans.create_planning_reference_material',
 			{
 				anchor_doctype: 'Class Teaching Plan',
 				anchor_name: 'CLASS-PLAN-1',
@@ -69,6 +71,38 @@ describe('staffTeachingService', () => {
 		)
 	})
 
+	it('uses the canonical method for the shared course plan index', async () => {
+		apiMethodMock.mockResolvedValue({ course_plans: [] })
+
+		await getStaffCoursePlanIndex()
+
+		expect(apiMethodMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.teaching_plans.list_staff_course_plans'
+		)
+	})
+
+	it('uses the canonical method for the shared course plan workspace', async () => {
+		apiMethodMock.mockResolvedValue({
+			course_plan: { course_plan: 'COURSE-PLAN-1', can_manage_resources: 1 },
+			resources: { course_plan_resources: [] },
+			curriculum: { units: [], unit_count: 0 },
+			resolved: { unit_plan: null },
+		})
+
+		await getStaffCoursePlanSurface({
+			course_plan: 'COURSE-PLAN-1',
+			unit_plan: 'UNIT-1',
+		})
+
+		expect(apiMethodMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.teaching_plans.get_staff_course_plan_surface',
+			{
+				course_plan: 'COURSE-PLAN-1',
+				unit_plan: 'UNIT-1',
+			}
+		)
+	})
+
 	it('uploads planning resource files through the class-planning endpoint', async () => {
 		fetchMock.mockResolvedValue({
 			ok: true,
@@ -83,7 +117,7 @@ describe('staffTeachingService', () => {
 		Object.assign(window, { csrf_token: 'csrf-123' })
 
 		const file = new File(['worksheet'], 'organizer.pdf', { type: 'application/pdf' })
-		await uploadClassPlanningMaterialFile({
+		await uploadPlanningMaterialFile({
 			anchor_doctype: 'Class Session',
 			anchor_name: 'CLASS-SESSION-1',
 			title: 'Graphic organizer',
@@ -92,7 +126,7 @@ describe('staffTeachingService', () => {
 		})
 
 		expect(fetchMock).toHaveBeenCalledWith(
-			'/api/method/ifitwala_ed.api.teaching_plans.upload_class_planning_material_file',
+			'/api/method/ifitwala_ed.api.teaching_plans.upload_planning_material_file',
 			expect.objectContaining({
 				method: 'POST',
 				credentials: 'same-origin',
@@ -105,14 +139,14 @@ describe('staffTeachingService', () => {
 	it('uses the canonical method when removing planning resources', async () => {
 		apiMethodMock.mockResolvedValue({ removed: 1 })
 
-		await removeClassPlanningMaterial({
+		await removePlanningMaterial({
 			anchor_doctype: 'Class Session',
 			anchor_name: 'CLASS-SESSION-1',
 			placement: 'MAT-PLC-1',
 		})
 
 		expect(apiMethodMock).toHaveBeenCalledWith(
-			'ifitwala_ed.api.teaching_plans.remove_class_planning_material',
+			'ifitwala_ed.api.teaching_plans.remove_planning_material',
 			{
 				anchor_doctype: 'Class Session',
 				anchor_name: 'CLASS-SESSION-1',

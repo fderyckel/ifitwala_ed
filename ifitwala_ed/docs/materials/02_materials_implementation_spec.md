@@ -1,8 +1,8 @@
 ## Materials Implementation Spec
 
 Status: Canonical implementation spec
-Code refs: `ifitwala_ed/api/courses.py`, `ifitwala_ed/api/file_access.py`, `ifitwala_ed/integrations/drive/bridge.py`, `ifitwala_ed/utilities/governed_uploads.py`
-Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/api/test_file_access.py`
+Code refs: `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/file_access.py`, `ifitwala_ed/integrations/drive/bridge.py`, `ifitwala_ed/utilities/governed_uploads.py`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_file_access.py`
 
 This document defines the implementation contract for the v1 materials slice.
 
@@ -17,14 +17,15 @@ Implemented in v1:
 - reusable `Supporting Material` domain object
 - contextual `Material Placement`
 - task-overlay authoring for reference links and governed file uploads
-- student LMS materials shelf in course detail
+- staff shared course-plan and unit resource authoring
+- staff class-plan and class-session resource authoring
+- student LMS materials shelf in the class-aware learning space
 - Drive-safe open/download URLs for file-backed materials
 
 Not implemented in v1:
 
 - Drive existing-file picker
-- Class Hub quick-share
-- dedicated lesson/unit materials authoring UI beyond direct Desk record access
+- dedicated class-hub quick-share entry point
 
 ## Domain Model
 
@@ -79,9 +80,10 @@ Placement responsibilities:
 
 Allowed v1 anchors:
 
-- `Course`
-- `Learning Unit`
-- `Lesson`
+- `Course Plan`
+- `Unit Plan`
+- `Class Teaching Plan`
+- `Class Session`
 - `Task`
 
 ## Validation Rules
@@ -118,7 +120,8 @@ Status: Locked
 Code refs: `ifitwala_ed/api/file_access.py`
 Test refs: `ifitwala_ed/api/test_file_access.py`
 
-File-backed material opens use `download_academic_file` with `context_doctype = Supporting Material`.
+File-backed material opens resolve through `resolve_academic_file_open_url` using `Material Placement`
+context when a placement exists and `Supporting Material` when the material is opened directly.
 
 Server-side access must allow:
 
@@ -160,26 +163,23 @@ The overlay must support:
 
 The task is created first because governed file upload requires a saved business owner and the material placement requires a saved task anchor.
 
-## Student Course Detail Contract
+## Student Learning Space Contract
 
 Status: Locked
-Code refs: `ifitwala_ed/api/courses.py`, `ifitwala_ed/ui-spa/src/types/contracts/student_hub/get_student_course_detail.ts`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
-Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
+Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
-`get_student_course_detail` remains the single bounded bootstrap for the LMS course view.
+`get_student_learning_space` is the single bounded bootstrap for the LMS class learning view.
 
-The response is extended with a materials collection containing:
+The response carries class-aware materials inside the same bounded payload:
 
-- canonical material fields
-- secure open URL
-- all visible placements in the course
+- course-plan resources
+- unit resources
+- class-plan resources
+- class-session resources
+- task materials
 
-The SPA computes the active materials shelf from:
-
-- course context
-- active unit
-- active lesson
-- task anchors visible in that lesson or unit context
+The SPA resolves the active materials shelf from the current class context rather than rebuilding it through lesson-based client logic.
 
 ## Compatibility Rule
 
@@ -197,19 +197,19 @@ Status: Locked
 Code refs: `ifitwala_ed/api/materials.py`, `ifitwala_ed/curriculum/doctype/supporting_material/supporting_material.py`
 Test refs: `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`
 
-- Removing a task, lesson, unit, or course share deletes the placement only.
+- Removing a course-plan, unit-plan, class-plan, class-session, or task share deletes the placement only.
 - The underlying material remains available for reuse until explicitly archived or deleted.
 - A material with active placements cannot be hard-deleted.
 
 ## Delivery Status
 
 Status: Partial
-Code refs: `ifitwala_ed/api/materials.py`, `ifitwala_ed/curriculum/doctype/supporting_material/supporting_material.py`, `ifitwala_ed/curriculum/doctype/material_placement/material_placement.py`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
-Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
+Code refs: `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/curriculum/doctype/supporting_material/supporting_material.py`, `ifitwala_ed/curriculum/doctype/material_placement/material_placement.py`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
 V1 is considered complete when:
 
 - teachers can add file and link materials from the task overlay
-- students can open those materials from the course LMS
+- students can open those materials from the class-aware LMS learning space
 - governed file reads remain permission-safe
 - docs and code stay aligned on the lesson vs materials boundary

@@ -38,6 +38,12 @@ def _teaching_plans_module():
     planning_domain = ModuleType("ifitwala_ed.curriculum.planning")
     planning_domain.normalize_text = lambda value: str(value or "").strip()
     planning_domain.normalize_long_text = lambda value: value
+    planning_domain.get_course_plan_row = lambda course_plan: {
+        "name": course_plan,
+        "title": course_plan,
+        "course": "COURSE-1",
+        "school": "SCH-1",
+    }
     planning_domain.get_student_group_row = lambda student_group: {"name": student_group, "course": "COURSE-1"}
     planning_domain.get_unit_plan_rows = lambda course_plan: []
     planning_domain.replace_session_activities = lambda doc, activities: None
@@ -58,6 +64,7 @@ def _teaching_plans_module():
         frappe.db.exists = lambda *args, **kwargs: False
         frappe.db.get_value = lambda *args, **kwargs: None
         frappe.get_all = lambda *args, **kwargs: []
+        frappe.get_list = lambda *args, **kwargs: []
         yield import_fresh("ifitwala_ed.api.teaching_plans")
 
 
@@ -277,7 +284,136 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(class_plan_row["name"], "CLASS-PLAN-1")
         self.assertEqual(get_all.call_args.kwargs["filters"]["planning_status"], "Active")
 
-    def test_create_class_planning_reference_material_uses_class_owned_origin(self):
+    def test_build_staff_course_plan_bundle_includes_selected_unit_and_resources(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(
+                    module,
+                    "_resolve_planning_resource_anchor",
+                    return_value={
+                        "anchor_doctype": "Course Plan",
+                        "anchor_name": "COURSE-PLAN-1",
+                        "can_manage_resources": 1,
+                    },
+                ),
+                patch.object(
+                    module.planning,
+                    "get_course_plan_row",
+                    return_value={
+                        "name": "COURSE-PLAN-1",
+                        "title": "Biology Plan",
+                        "course": "COURSE-1",
+                        "school": "SCH-1",
+                        "academic_year": "2026-2027",
+                        "cycle_label": "Semester 1",
+                        "plan_status": "Active",
+                    },
+                ),
+                patch.object(
+                    module.planning,
+                    "get_unit_plan_rows",
+                    return_value=[
+                        {
+                            "name": "UNIT-1",
+                            "title": "Cells and Systems",
+                            "unit_order": 10,
+                        }
+                    ],
+                ),
+                patch.object(
+                    module,
+                    "_build_unit_lookup",
+                    return_value={
+                        "UNIT-1": {
+                            "title": "Cells and Systems",
+                            "unit_order": 10,
+                            "standards": [],
+                            "shared_reflections": [],
+                            "class_reflections": [],
+                        }
+                    },
+                ),
+                patch.object(
+                    module,
+                    "_fetch_material_map",
+                    return_value={
+                        ("Course Plan", "COURSE-PLAN-1"): [{"material": "MAT-COURSE", "title": "Scope and sequence"}],
+                        ("Unit Plan", "UNIT-1"): [{"material": "MAT-UNIT", "title": "Lab handout"}],
+                    },
+                ),
+                patch.object(
+                    module.frappe,
+                    "get_doc",
+                    return_value=SimpleNamespace(
+                        name="COURSE-PLAN-1",
+                        summary="Shared course summary",
+                        check_permission=lambda ptype: None,
+                    ),
+                ),
+                patch.object(
+                    module.frappe.db,
+                    "get_value",
+                    return_value={"course_name": "Biology", "course_group": "Science"},
+                ),
+            ):
+                payload = module._build_staff_course_plan_bundle("COURSE-PLAN-1")
+
+        self.assertEqual(payload["resolved"]["unit_plan"], "UNIT-1")
+        self.assertEqual(payload["course_plan"]["can_manage_resources"], 1)
+        self.assertEqual(payload["resources"]["course_plan_resources"][0]["title"], "Scope and sequence")
+        self.assertEqual(payload["curriculum"]["units"][0]["shared_resources"][0]["title"], "Lab handout")
+
+    def test_list_staff_course_plans_serializes_manage_flag(self):
+        with _teaching_plans_module() as module:
+            rows = [
+                {
+                    "name": "COURSE-PLAN-1",
+                    "title": "Biology Plan",
+                    "course": "COURSE-1",
+                    "school": "SCH-1",
+                    "academic_year": "2026-2027",
+                    "cycle_label": "Semester 1",
+                    "plan_status": "Active",
+                },
+                {
+                    "name": "COURSE-PLAN-2",
+                    "title": "Biology Plan B",
+                    "course": "COURSE-2",
+                    "school": "SCH-1",
+                    "academic_year": "2026-2027",
+                    "cycle_label": "Semester 2",
+                    "plan_status": "Draft",
+                },
+            ]
+
+            def fake_get_doc(doctype, name):
+                if name == "COURSE-PLAN-1":
+                    return SimpleNamespace(check_permission=lambda ptype: None)
+
+                def deny(_ptype):
+                    raise module.frappe.PermissionError("blocked")
+
+                return SimpleNamespace(check_permission=deny)
+
+            with (
+                patch.object(module.frappe, "get_list", return_value=rows),
+                patch.object(
+                    module.frappe,
+                    "get_all",
+                    return_value=[
+                        {"name": "COURSE-1", "course_name": "Biology", "course_group": "Science"},
+                        {"name": "COURSE-2", "course_name": "Biology B", "course_group": "Science"},
+                    ],
+                ),
+                patch.object(module.frappe, "get_doc", side_effect=fake_get_doc),
+            ):
+                payload = module.list_staff_course_plans()
+
+        self.assertEqual(len(payload["course_plans"]), 2)
+        self.assertEqual(payload["course_plans"][0]["can_manage_resources"], 1)
+        self.assertEqual(payload["course_plans"][1]["can_manage_resources"], 0)
+
+    def test_create_planning_reference_material_uses_class_owned_origin(self):
         with _teaching_plans_module() as module:
             with (
                 patch.object(
@@ -301,7 +437,7 @@ class TestTeachingPlansApi(TestCase):
                     return_value={"material": "MAT-1", "title": "Starter article"},
                 ),
             ):
-                payload = module.create_class_planning_reference_material(
+                payload = module.create_planning_reference_material(
                     {
                         "anchor_doctype": "Class Teaching Plan",
                         "anchor_name": "CLASS-PLAN-1",
@@ -323,7 +459,7 @@ class TestTeachingPlansApi(TestCase):
             origin="shared_in_class",
         )
 
-    def test_remove_class_planning_material_deletes_anchor_placement(self):
+    def test_remove_planning_material_deletes_anchor_placement(self):
         with _teaching_plans_module() as module:
             with (
                 patch.object(
@@ -336,7 +472,7 @@ class TestTeachingPlansApi(TestCase):
                     "delete_anchor_material_placement",
                 ) as delete_placement,
             ):
-                payload = module.remove_class_planning_material(
+                payload = module.remove_planning_material(
                     {
                         "anchor_doctype": "Class Session",
                         "anchor_name": "CLASS-SESSION-1",

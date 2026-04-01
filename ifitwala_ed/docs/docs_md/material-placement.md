@@ -3,7 +3,7 @@ title: "Material Placement: Shared Context For Supporting Materials"
 slug: material-placement
 category: Curriculum
 doc_order: 9
-version: "1.3.0"
+version: "1.4.0"
 last_change_date: "2026-04-01"
 summary: "Place reusable supporting materials into shared plans, class plans, sessions, and tasks without duplicating the underlying material."
 seo_title: "Material Placement: Shared Context For Supporting Materials"
@@ -28,7 +28,6 @@ Test refs: `ifitwala_ed/curriculum/doctype/material_placement/test_material_plac
 - Choose a valid curriculum anchor:
   - `Course Plan`
   - `Unit Plan`
-  - `Lesson`
   - `Class Teaching Plan`
   - `Class Session`
   - `Task`
@@ -37,11 +36,12 @@ Test refs: `ifitwala_ed/curriculum/doctype/material_placement/test_material_plac
 ## Where It Is Used Across The ERP
 
 Status: Partial
-Code refs: `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+Code refs: `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
 Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`
 
 - Task-overlay authoring creates task placements.
 - Staff planning now creates and removes class-wide and session-specific placements inline from the class-planning SPA.
+- Shared course planning now creates and removes course-plan and unit-plan placements inline from the shared curriculum workspace.
 - The staff class-planning SPA and the student LMS learning space both read placements through the bounded teaching-plan payload.
 - File access still resolves on the material owner, but open URLs are now placement-aware so class-owned materials stay scoped to the right class/session context.
 
@@ -63,8 +63,9 @@ Code refs: None (documentation cross-reference section)
 Test refs: `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`
 
 - [**Supporting Material**](/docs/en/supporting-material/)
+- [**Unit Plan**](/docs/en/unit-plan/)
+- [**Class Session**](/docs/en/class-session/)
 - [**Task**](/docs/en/task/)
-- [**Lesson Activity**](/docs/en/lesson-activity/)
 
 ## Technical Notes (IT)
 

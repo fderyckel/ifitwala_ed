@@ -185,7 +185,6 @@ Required changes:
 - Support anchors for the redesigned educator model:
   - `Course Plan`
   - `Unit Plan`
-  - optional `Suggested Session Outline`
   - `Class Teaching Plan`
   - `Class Session`
   - `Task`
@@ -194,10 +193,11 @@ Required changes:
 
 Implementation progress:
 
-- `Material Placement` now supports `Course Plan`, `Unit Plan`, `Lesson`, `Class Teaching Plan`, `Class Session`, and `Task`.
+- `Material Placement` now supports `Course Plan`, `Unit Plan`, `Class Teaching Plan`, `Class Session`, and `Task`.
 - material/file access now resolves through placement-aware class or plan context instead of course-only material reads.
 - staff planning and student LMS payloads now include shared plan resources, class-owned resources, unit resources, session resources, and task materials inside the bounded bootstrap response.
 - staff can now create and remove class-wide and session-specific resources directly from `ui-spa/src/pages/staff/ClassPlanning.vue`.
+- staff can now create and remove shared course-plan and shared unit resources directly from `ui-spa/src/pages/staff/CoursePlanWorkspace.vue`.
 
 Files likely to change:
 

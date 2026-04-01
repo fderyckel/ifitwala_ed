@@ -1,7 +1,7 @@
 ## Materials Guideline
 
 Status: Canonical guideline
-Code refs: `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/api/class_hub.py`, `ifitwala_ed/docs/files_and_policies/files_03_implementation.md`
+Code refs: `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/docs/files_and_policies/files_03_implementation.md`
 Test refs: None
 
 This document is the product and architecture guideline for learning materials in Ifitwala_Ed.
@@ -56,16 +56,17 @@ Test refs: None
 ## Placement Model
 
 Status: Locked
-Code refs: `ifitwala_ed/api/courses.py`, `ifitwala_ed/docs/spa/classhub/class_hub_proposal.md`
+Code refs: `ifitwala_ed/curriculum/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/materials.py`
 Test refs: None
 
 Materials are reusable objects that can be placed into one or more curriculum contexts.
 
 Valid placement targets:
 
-- `Course`
-- `Learning Unit`
-- `Lesson`
+- `Course Plan`
+- `Unit Plan`
+- `Class Teaching Plan`
+- `Class Session`
 - `Task`
 
 Each placement carries usage context such as:
@@ -75,44 +76,45 @@ Each placement carries usage context such as:
 - teacher note
 - ordering
 
-Removing a material from a lesson, task, or unit means unsharing that placement. It does not delete the underlying material.
+Removing a material from a plan, class, session, or task means unsharing that placement. It does not delete the underlying material.
 
 ## Class Sharing Rule
 
 Status: Locked
-Code refs: `ifitwala_ed/api/class_hub.py`, `ifitwala_ed/docs/spa/classhub/class_hub_proposal.md`
+Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/curriculum/materials.py`
 Test refs: None
 
 Class-shared materials always persist.
 
 Class sharing must resolve to a real curriculum anchor:
 
-- persist to the linked `Lesson` when session context has a lesson
-- otherwise persist to the current `Learning Unit`
+- persist to `Class Session` when the resource is specific to one planned/taught class session
+- otherwise persist to the `Class Teaching Plan`
 
 Retain `shared_in_class` as origin metadata. Do not create a session-only materials library.
 
 ## Student LMS Rule
 
 Status: Locked
-Code refs: `ifitwala_ed/api/courses.py`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
 Test refs: None
 
 Students need one clear materials shelf inside the course LMS.
 
 That shelf must aggregate the materials shared through:
 
-- the current learning unit
-- the current lesson
+- the current class session
+- the class teaching plan
+- the current unit plan
+- the governing course plan
 - the tasks visible in that course context
-- persistent class shares
 
 The LMS should never force students to hunt across tasks and lessons just to find supporting materials.
 
 ## Teacher Authoring Rule
 
 Status: Locked
-Code refs: `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/api/class_hub.py`
+Code refs: `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`
 Test refs: None
 
 Teachers should add materials where they already work.
@@ -120,8 +122,8 @@ Teachers should add materials where they already work.
 Priority entry points:
 
 - task overlay
-- lesson and unit planning surfaces
-- class hub quick-share
+- class teaching plan and class session planning
+- shared course plan and unit planning
 
 The task overlay is the first required product-quality authoring surface because it already owns the teacher’s assignment creation flow.
 
@@ -170,13 +172,13 @@ Do not:
 ## Current Delivery Expectation
 
 Status: Partial
-Code refs: `ifitwala_ed/api/courses.py`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
+Code refs: `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
 Test refs: None
 
 The first implemented slice should prove the contract in real workflows:
 
 - first-class material objects and placements
 - task-overlay authoring for file and link materials
-- student LMS materials shelf inside course detail
-
-Lesson/unit authoring improvements and Class Hub quick-share can follow once the shared domain is stable.
+- shared course-plan and unit resource authoring in the staff SPA
+- class-plan and class-session resource authoring in the staff SPA
+- student LMS materials shelf inside the class-aware learning space

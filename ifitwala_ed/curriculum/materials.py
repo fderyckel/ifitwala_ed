@@ -16,12 +16,11 @@ MATERIAL_ORIGINS = {"curriculum", "task", "shared_in_class"}
 MATERIAL_ALLOWED_ANCHORS = {
     "Course Plan",
     "Unit Plan",
-    "Lesson",
     "Class Teaching Plan",
     "Class Session",
     "Task",
 }
-MATERIAL_SHARED_ANCHORS = {"Course Plan", "Unit Plan", "Lesson", "Task"}
+MATERIAL_SHARED_ANCHORS = {"Course Plan", "Unit Plan", "Task"}
 MATERIAL_CLASS_OWNED_ANCHORS = {"Class Teaching Plan", "Class Session"}
 MATERIAL_FILE_SLOT = "material_file"
 MATERIAL_BINDING_ROLE = "general_reference"
@@ -61,7 +60,6 @@ def resolve_anchor_context(anchor_doctype: str, anchor_name: str) -> dict[str, s
     fields_by_doctype = {
         "Course Plan": ["name", "course"],
         "Unit Plan": ["name", "course", "course_plan"],
-        "Lesson": ["name", "course", "unit_plan"],
         "Class Teaching Plan": ["name", "student_group", "course_plan", "course", "academic_year"],
         "Class Session": [
             "name",
@@ -91,15 +89,6 @@ def resolve_anchor_context(anchor_doctype: str, anchor_name: str) -> dict[str, s
     elif anchor_doctype == "Unit Plan":
         course = context.get("course")
         context["unit_plan"] = anchor_name
-    elif anchor_doctype == "Lesson":
-        course = context.get("course")
-        if not course and context.get("unit_plan"):
-            course = _normalize_text(frappe.db.get_value("Unit Plan", context.get("unit_plan"), "course"))
-        if context.get("unit_plan"):
-            context["course_plan"] = (
-                _normalize_text(frappe.db.get_value("Unit Plan", context.get("unit_plan"), "course_plan")) or None
-            )
-        context["lesson"] = anchor_name
     elif anchor_doctype == "Class Teaching Plan":
         course = context.get("course")
         context["class_teaching_plan"] = anchor_name
@@ -596,7 +585,7 @@ def _material_placement_scope_sql(
 
     if shared_courses:
         conditions.append(
-            f"({table_alias}.anchor_doctype in ('Course Plan', 'Unit Plan', 'Lesson', 'Task') AND {table_alias}.course in ({_sql_in_list(shared_courses)}))"
+            f"({table_alias}.anchor_doctype in ('Course Plan', 'Unit Plan', 'Task') AND {table_alias}.course in ({_sql_in_list(shared_courses)}))"
         )
     if class_groups:
         group_list = _sql_in_list(class_groups)

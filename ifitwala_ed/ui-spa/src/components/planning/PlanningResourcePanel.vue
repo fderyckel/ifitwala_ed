@@ -18,7 +18,18 @@
 		</div>
 
 		<template v-else>
-			<section class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-5">
+			<div
+				v-if="!canManageResources"
+				class="mt-5 rounded-2xl border border-line-soft bg-surface-soft px-4 py-4"
+			>
+				<p class="type-body-strong text-ink">Resources are visible here, but editing is locked.</p>
+				<p class="mt-1 type-caption text-ink/70">{{ readOnlyMessageToUse }}</p>
+			</div>
+
+			<section
+				v-if="canManageResources"
+				class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-5"
+			>
 				<div class="flex flex-wrap gap-2">
 					<button
 						type="button"
@@ -174,7 +185,7 @@
 								Open
 							</a>
 							<Button
-								v-if="resource.placement"
+								v-if="resource.placement && canManageResources"
 								appearance="secondary"
 								:loading="removingPlacement === resource.placement"
 								@click="removeResource(resource.placement)"
@@ -194,9 +205,9 @@ import { computed, reactive, ref } from 'vue';
 import { Button, FormControl, toast } from 'frappe-ui';
 
 import {
-	createClassPlanningReferenceMaterial,
-	removeClassPlanningMaterial,
-	uploadClassPlanningMaterialFile,
+	createPlanningReferenceMaterial,
+	removePlanningMaterial,
+	uploadPlanningMaterialFile,
 	type PlanningMaterialAnchorDoctype,
 } from '@/lib/services/staff/staffTeachingService';
 import type { StaffPlanningMaterial } from '@/types/contracts/staff_teaching/get_staff_class_planning_surface';
@@ -209,6 +220,8 @@ const props = defineProps<{
 	description: string;
 	emptyMessage: string;
 	blockedMessage: string;
+	canManage?: boolean;
+	readOnlyMessage?: string;
 	resources: StaffPlanningMaterial[];
 }>();
 
@@ -246,7 +259,15 @@ const usageRoleOptions = [
 	{ label: 'Example', value: 'Example' },
 ];
 
+const canManageResources = computed(() => props.canManage !== false);
+const readOnlyMessageToUse = computed(
+	() =>
+		props.readOnlyMessage ||
+		'You can review the shared resources here, but only approved staff can edit this planning layer.'
+);
+
 const canSubmit = computed(() => {
+	if (!canManageResources.value) return false;
 	if (!props.anchorName?.trim()) return false;
 	if (!form.title.trim()) return false;
 	return composerMode.value === 'link'
@@ -280,6 +301,10 @@ async function addResource() {
 		toast.error(props.blockedMessage);
 		return;
 	}
+	if (!canManageResources.value) {
+		toast.error(readOnlyMessageToUse.value);
+		return;
+	}
 	if (!canSubmit.value) {
 		errorMessage.value =
 			composerMode.value === 'link'
@@ -292,7 +317,7 @@ async function addResource() {
 	errorMessage.value = '';
 	try {
 		if (composerMode.value === 'link') {
-			await createClassPlanningReferenceMaterial({
+			await createPlanningReferenceMaterial({
 				anchor_doctype: props.anchorDoctype,
 				anchor_name: props.anchorName,
 				title: form.title.trim(),
@@ -303,7 +328,7 @@ async function addResource() {
 				placement_note: form.placement_note.trim() || undefined,
 			});
 		} else if (selectedFile.value) {
-			await uploadClassPlanningMaterialFile({
+			await uploadPlanningMaterialFile({
 				anchor_doctype: props.anchorDoctype,
 				anchor_name: props.anchorName,
 				title: form.title.trim(),
@@ -329,10 +354,14 @@ async function addResource() {
 
 async function removeResource(placement: string) {
 	if (!props.anchorName || !placement) return;
+	if (!canManageResources.value) {
+		toast.error(readOnlyMessageToUse.value);
+		return;
+	}
 	removingPlacement.value = placement;
 	errorMessage.value = '';
 	try {
-		await removeClassPlanningMaterial({
+		await removePlanningMaterial({
 			anchor_doctype: props.anchorDoctype,
 			anchor_name: props.anchorName,
 			placement,

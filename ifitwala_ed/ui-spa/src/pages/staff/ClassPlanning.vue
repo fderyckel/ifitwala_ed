@@ -185,6 +185,20 @@
 							>
 								{{ planPending ? 'Saving...' : 'Save Plan Overview' }}
 							</button>
+
+							<RouterLink
+								v-if="surface.teaching_plan?.course_plan"
+								:to="{
+									name: 'staff-course-plan',
+									params: { coursePlan: surface.teaching_plan.course_plan },
+									query: {
+										unit_plan: selectedUnit?.unit_plan || undefined,
+									},
+								}"
+								class="if-action if-action--subtle"
+							>
+								Open Shared Course Plan
+							</RouterLink>
 						</div>
 					</section>
 
