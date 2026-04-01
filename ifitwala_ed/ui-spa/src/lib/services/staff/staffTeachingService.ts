@@ -7,6 +7,8 @@ import type {
 	Response as GetStaffClassPlanningSurfaceResponse,
 	StaffPlanningActivity,
 	StaffPlanningMaterial,
+	StaffPlanningReflection,
+	StaffPlanningStandard,
 } from '@/types/contracts/staff_teaching/get_staff_class_planning_surface'
 import type {
 	Response as GetStaffCoursePlanIndexResponse,
@@ -21,6 +23,8 @@ const METHODS = {
 	getCoursePlanIndex: 'ifitwala_ed.api.teaching_plans.list_staff_course_plans',
 	getCoursePlanSurface: 'ifitwala_ed.api.teaching_plans.get_staff_course_plan_surface',
 	createPlan: 'ifitwala_ed.api.teaching_plans.create_class_teaching_plan',
+	saveCoursePlan: 'ifitwala_ed.api.teaching_plans.save_course_plan',
+	saveGovernedUnit: 'ifitwala_ed.api.teaching_plans.save_unit_plan',
 	savePlan: 'ifitwala_ed.api.teaching_plans.save_class_teaching_plan',
 	saveUnit: 'ifitwala_ed.api.teaching_plans.save_class_teaching_plan_unit',
 	saveSession: 'ifitwala_ed.api.teaching_plans.save_class_session',
@@ -45,6 +49,48 @@ export type CreateClassTeachingPlanRequest = {
 export type CreateClassTeachingPlanResponse = {
 	class_teaching_plan: string
 	student_group: string
+}
+
+export type SaveCoursePlanRequest = {
+	course_plan: string
+	title: string
+	academic_year?: string | null
+	cycle_label?: string | null
+	plan_status?: string | null
+	summary?: string | null
+}
+
+export type SaveCoursePlanResponse = {
+	course_plan: string
+	plan_status?: string | null
+}
+
+export type SaveGovernedUnitPlanRequest = {
+	course_plan: string
+	unit_plan?: string
+	title: string
+	program?: string | null
+	unit_code?: string | null
+	unit_order?: number | null
+	unit_status?: string | null
+	version?: string | null
+	duration?: string | null
+	estimated_duration?: string | null
+	is_published?: number | boolean | null
+	overview?: string | null
+	essential_understanding?: string | null
+	misconceptions?: string | null
+	content?: string | null
+	skills?: string | null
+	concepts?: string | null
+	standards: StaffPlanningStandard[]
+	reflections: StaffPlanningReflection[]
+}
+
+export type SaveGovernedUnitPlanResponse = {
+	course_plan: string
+	unit_plan: string
+	unit_order?: number | null
 }
 
 export type SaveClassTeachingPlanRequest = {
@@ -197,6 +243,23 @@ export async function createClassTeachingPlan(
 	payload: CreateClassTeachingPlanRequest
 ): Promise<CreateClassTeachingPlanResponse> {
 	return apiMethod<CreateClassTeachingPlanResponse>(METHODS.createPlan, payload)
+}
+
+export async function saveCoursePlan(
+	payload: SaveCoursePlanRequest
+): Promise<SaveCoursePlanResponse> {
+	return apiMethod<SaveCoursePlanResponse>(METHODS.saveCoursePlan, payload)
+}
+
+export async function saveGovernedUnitPlan(
+	payload: SaveGovernedUnitPlanRequest
+): Promise<SaveGovernedUnitPlanResponse> {
+	const { standards, reflections, ...rest } = payload
+	return apiMethod<SaveGovernedUnitPlanResponse>(METHODS.saveGovernedUnit, {
+		...rest,
+		standards_json: JSON.stringify(standards || []),
+		reflections_json: JSON.stringify(reflections || []),
+	})
 }
 
 export async function saveClassTeachingPlan(

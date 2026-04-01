@@ -17,6 +17,15 @@ def normalize_long_text(value: str | None) -> str | None:
     return text or None
 
 
+def normalize_flag(value) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    text = normalize_text(value)
+    if not text:
+        return 0
+    return 1 if text in {"1", "true", "True", "yes", "Yes"} else 0
+
+
 def get_course_plan_row(course_plan: str) -> dict:
     row = frappe.db.get_value(
         "Course Plan",
@@ -168,3 +177,59 @@ def replace_session_activities(doc, rows: Iterable[dict] | None) -> None:
             }
         )
     doc.set("activities", sanitized)
+
+
+def replace_unit_plan_standards(doc, rows: Iterable[dict] | None) -> None:
+    sanitized: list[dict] = []
+    for row in rows or []:
+        payload = {
+            "framework_name": normalize_text((row or {}).get("framework_name")) or None,
+            "framework_version": normalize_text((row or {}).get("framework_version")) or None,
+            "subject_area": normalize_text((row or {}).get("subject_area")) or None,
+            "program": normalize_text((row or {}).get("program")) or None,
+            "strand": normalize_text((row or {}).get("strand")) or None,
+            "substrand": normalize_text((row or {}).get("substrand")) or None,
+            "standard_code": normalize_text((row or {}).get("standard_code")) or None,
+            "standard_description": normalize_long_text((row or {}).get("standard_description")),
+            "coverage_level": normalize_text((row or {}).get("coverage_level")) or None,
+            "alignment_strength": normalize_text((row or {}).get("alignment_strength")) or None,
+            "alignment_type": normalize_text((row or {}).get("alignment_type")) or None,
+            "notes": normalize_long_text((row or {}).get("notes")),
+        }
+        if not any(payload.values()):
+            continue
+        sanitized.append(payload)
+    doc.set("standards", sanitized)
+
+
+def replace_unit_plan_reflections(doc, rows: Iterable[dict] | None, *, course_plan_row: dict | None = None) -> None:
+    defaults = course_plan_row or {}
+    default_year = normalize_text(defaults.get("academic_year")) or None
+    default_school = normalize_text(defaults.get("school")) or None
+
+    sanitized: list[dict] = []
+    for row in rows or []:
+        payload = {
+            "academic_year": normalize_text((row or {}).get("academic_year")) or default_year,
+            "school": normalize_text((row or {}).get("school")) or default_school,
+            "prior_to_the_unit": normalize_long_text((row or {}).get("prior_to_the_unit")),
+            "during_the_unit": normalize_long_text((row or {}).get("during_the_unit")),
+            "what_work_well": normalize_long_text((row or {}).get("what_work_well")),
+            "what_didnt_work_well": normalize_long_text((row or {}).get("what_didnt_work_well")),
+            "changes_suggestions": normalize_long_text((row or {}).get("changes_suggestions")),
+        }
+        if not any(
+            payload.get(fieldname)
+            for fieldname in (
+                "academic_year",
+                "school",
+                "prior_to_the_unit",
+                "during_the_unit",
+                "what_work_well",
+                "what_didnt_work_well",
+                "changes_suggestions",
+            )
+        ):
+            continue
+        sanitized.append(payload)
+    doc.set("reflections", sanitized)

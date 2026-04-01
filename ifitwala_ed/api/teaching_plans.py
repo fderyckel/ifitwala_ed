@@ -41,6 +41,20 @@ def _normalize_payload(value) -> dict[str, Any]:
     return value
 
 
+def _normalize_rows_payload(value, *, label: str) -> list[dict[str, Any]]:
+    if value in (None, ""):
+        return []
+    rows = frappe.parse_json(value) if isinstance(value, str) else value
+    if not isinstance(rows, list):
+        frappe.throw(_("{label} must be a list.").format(label=label))
+    normalized: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            frappe.throw(_("{label} rows must be objects.").format(label=label))
+        normalized.append(row)
+    return normalized
+
+
 def _require_logged_in_user() -> str:
     user = frappe.session.user
     if not user or user == "Guest":
@@ -1024,6 +1038,129 @@ def save_class_session(
         "class_session": doc.name,
         "class_teaching_plan": class_teaching_plan,
         "session_status": doc.session_status,
+    }
+
+
+@frappe.whitelist()
+def save_course_plan(payload=None, **kwargs) -> dict[str, Any]:
+    data = _normalize_payload(payload if payload is not None else kwargs)
+    course_plan = planning.normalize_text(data.get("course_plan"))
+    if not course_plan:
+        frappe.throw(_("Course Plan is required."))
+
+    doc = frappe.get_doc("Course Plan", course_plan)
+    doc.check_permission("write")
+
+    doc.title = data.get("title")
+    doc.academic_year = data.get("academic_year")
+    doc.cycle_label = data.get("cycle_label")
+    doc.plan_status = data.get("plan_status")
+    doc.summary = data.get("summary")
+    doc.save(ignore_permissions=True)
+
+    return {
+        "course_plan": doc.name,
+        "plan_status": doc.plan_status,
+    }
+
+
+@frappe.whitelist()
+def save_unit_plan(
+    payload=None,
+    *,
+    course_plan: str | None = None,
+    unit_plan: str | None = None,
+    title: str | None = None,
+    program: str | None = None,
+    unit_code: str | None = None,
+    unit_order: int | None = None,
+    unit_status: str | None = None,
+    version: str | None = None,
+    duration: str | None = None,
+    estimated_duration: str | None = None,
+    is_published: int | None = None,
+    overview: str | None = None,
+    essential_understanding: str | None = None,
+    misconceptions: str | None = None,
+    content: str | None = None,
+    skills: str | None = None,
+    concepts: str | None = None,
+    standards_json: str | None = None,
+    reflections_json: str | None = None,
+    **kwargs,
+) -> dict[str, Any]:
+    data = _normalize_payload(payload if payload is not None else kwargs)
+    course_plan_name = planning.normalize_text(course_plan or data.get("course_plan"))
+    unit_plan_name = planning.normalize_text(unit_plan or data.get("unit_plan"))
+    title = title if title is not None else data.get("title")
+    program = program if program is not None else data.get("program")
+    unit_code = unit_code if unit_code is not None else data.get("unit_code")
+    unit_order = unit_order if unit_order is not None else data.get("unit_order")
+    unit_status = unit_status if unit_status is not None else data.get("unit_status")
+    version = version if version is not None else data.get("version")
+    duration = duration if duration is not None else data.get("duration")
+    estimated_duration = estimated_duration if estimated_duration is not None else data.get("estimated_duration")
+    is_published = is_published if is_published is not None else data.get("is_published")
+    overview = overview if overview is not None else data.get("overview")
+    essential_understanding = (
+        essential_understanding if essential_understanding is not None else data.get("essential_understanding")
+    )
+    misconceptions = misconceptions if misconceptions is not None else data.get("misconceptions")
+    content = content if content is not None else data.get("content")
+    skills = skills if skills is not None else data.get("skills")
+    concepts = concepts if concepts is not None else data.get("concepts")
+    standards_json = standards_json if standards_json is not None else data.get("standards_json")
+    reflections_json = reflections_json if reflections_json is not None else data.get("reflections_json")
+
+    if unit_plan_name:
+        doc = frappe.get_doc("Unit Plan", unit_plan_name)
+        doc.check_permission("write")
+        course_plan_row = planning.get_course_plan_row(doc.course_plan)
+    else:
+        if not course_plan_name:
+            frappe.throw(_("Course Plan is required."))
+        course_plan_doc = frappe.get_doc("Course Plan", course_plan_name)
+        course_plan_doc.check_permission("write")
+        course_plan_row = planning.get_course_plan_row(course_plan_name)
+        doc = frappe.new_doc("Unit Plan")
+        doc.course_plan = course_plan_name
+
+    doc.title = title
+    doc.program = program
+    doc.unit_code = unit_code
+    doc.unit_order = int(unit_order) if unit_order not in (None, "") else None
+    if unit_status not in (None, ""):
+        doc.unit_status = unit_status
+    doc.version = version
+    doc.duration = duration
+    doc.estimated_duration = estimated_duration
+    doc.is_published = planning.normalize_flag(is_published)
+    doc.overview = overview
+    doc.essential_understanding = essential_understanding
+    doc.misconceptions = misconceptions
+    doc.content = content
+    doc.skills = skills
+    doc.concepts = concepts
+
+    planning.replace_unit_plan_standards(
+        doc,
+        _normalize_rows_payload(standards_json, label=_("Standards")),
+    )
+    planning.replace_unit_plan_reflections(
+        doc,
+        _normalize_rows_payload(reflections_json, label=_("Reflections")),
+        course_plan_row=course_plan_row,
+    )
+
+    if doc.is_new():
+        doc.insert(ignore_permissions=True)
+    else:
+        doc.save(ignore_permissions=True)
+
+    return {
+        "course_plan": doc.course_plan,
+        "unit_plan": doc.name,
+        "unit_order": doc.unit_order,
     }
 
 

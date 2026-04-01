@@ -126,7 +126,10 @@ Required changes:
 Implementation progress:
 
 - first route-based staff planning surface landed in `ui-spa/src/pages/staff/ClassPlanning.vue`
+- shared governed curriculum workspace landed in `ui-spa/src/pages/staff/CoursePlanWorkspace.vue`
 - staff bootstrap and mutations landed in `ifitwala_ed.api.teaching_plans`
+- `Course Plan` fields and governed `Unit Plan` fields, standards, and shared reflections can now be edited from the shared workspace
+- new `Unit Plan` rows can now be created from the shared workspace without falling back to Desk
 - `Class Hub` now links directly into the planning surface
 
 Key file owners likely to change:

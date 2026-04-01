@@ -38,15 +38,19 @@ def _teaching_plans_module():
     planning_domain = ModuleType("ifitwala_ed.curriculum.planning")
     planning_domain.normalize_text = lambda value: str(value or "").strip()
     planning_domain.normalize_long_text = lambda value: value
+    planning_domain.normalize_flag = lambda value: 1 if str(value or "").strip() in {"1", "True", "true"} else 0
     planning_domain.get_course_plan_row = lambda course_plan: {
         "name": course_plan,
         "title": course_plan,
         "course": "COURSE-1",
         "school": "SCH-1",
+        "academic_year": "2026-2027",
     }
     planning_domain.get_student_group_row = lambda student_group: {"name": student_group, "course": "COURSE-1"}
     planning_domain.get_unit_plan_rows = lambda course_plan: []
     planning_domain.replace_session_activities = lambda doc, activities: None
+    planning_domain.replace_unit_plan_standards = lambda doc, rows: doc.set("standards", rows)
+    planning_domain.replace_unit_plan_reflections = lambda doc, rows, course_plan_row=None: doc.set("reflections", rows)
 
     governed_uploads = ModuleType("ifitwala_ed.utilities.governed_uploads")
     governed_uploads.upload_supporting_material_file = lambda material: None
@@ -412,6 +416,113 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(len(payload["course_plans"]), 2)
         self.assertEqual(payload["course_plans"][0]["can_manage_resources"], 1)
         self.assertEqual(payload["course_plans"][1]["can_manage_resources"], 0)
+
+    def test_save_course_plan_updates_governed_fields(self):
+        with _teaching_plans_module() as module:
+            saved = {"count": 0}
+
+            class CoursePlanDoc:
+                def __init__(self):
+                    self.name = "COURSE-PLAN-1"
+                    self.title = "Old title"
+                    self.academic_year = None
+                    self.cycle_label = None
+                    self.plan_status = "Draft"
+                    self.summary = None
+
+                def check_permission(self, ptype):
+                    self.checked = ptype
+
+                def save(self, ignore_permissions=False):
+                    saved["count"] += 1
+                    saved["ignore_permissions"] = ignore_permissions
+
+            doc = CoursePlanDoc()
+
+            with patch.object(module.frappe, "get_doc", return_value=doc):
+                payload = module.save_course_plan(
+                    {
+                        "course_plan": "COURSE-PLAN-1",
+                        "title": "Biology Plan",
+                        "academic_year": "2026-2027",
+                        "cycle_label": "Semester 1",
+                        "plan_status": "Active",
+                        "summary": "Shared scope and sequence",
+                    }
+                )
+
+        self.assertEqual(doc.title, "Biology Plan")
+        self.assertEqual(doc.plan_status, "Active")
+        self.assertEqual(saved["count"], 1)
+        self.assertEqual(payload["course_plan"], "COURSE-PLAN-1")
+
+    def test_save_unit_plan_creates_new_unit_with_child_rows(self):
+        with _teaching_plans_module() as module:
+            inserted = {"count": 0}
+
+            class FakeUnitDoc:
+                def __init__(self):
+                    self.name = "UNIT-PLAN-NEW"
+                    self.course_plan = None
+                    self.title = None
+                    self.program = None
+                    self.unit_code = None
+                    self.unit_order = None
+                    self.unit_status = "Draft"
+                    self.version = None
+                    self.duration = None
+                    self.estimated_duration = None
+                    self.is_published = 0
+                    self.overview = None
+                    self.essential_understanding = None
+                    self.misconceptions = None
+                    self.content = None
+                    self.skills = None
+                    self.concepts = None
+                    self.standards = []
+                    self.reflections = []
+
+                def set(self, fieldname, value):
+                    setattr(self, fieldname, value)
+
+                def is_new(self):
+                    return True
+
+                def insert(self, ignore_permissions=False):
+                    inserted["count"] += 1
+                    inserted["ignore_permissions"] = ignore_permissions
+
+            course_plan_doc = SimpleNamespace(check_permission=lambda ptype: None)
+            unit_doc = FakeUnitDoc()
+
+            def fake_get_doc(doctype, name):
+                if doctype == "Course Plan":
+                    return course_plan_doc
+                raise AssertionError(f"Unexpected get_doc call: {doctype} {name}")
+
+            with (
+                patch.object(module.frappe, "get_doc", side_effect=fake_get_doc),
+                patch.object(module.frappe, "new_doc", return_value=unit_doc),
+            ):
+                payload = module.save_unit_plan(
+                    {
+                        "course_plan": "COURSE-PLAN-1",
+                        "title": "Cells and Systems",
+                        "unit_order": 10,
+                        "is_published": 1,
+                        "overview": "Shared unit overview",
+                        "standards_json": [{"standard_code": "STD-1"}],
+                        "reflections_json": [{"prior_to_the_unit": "Start with microscope norms."}],
+                    }
+                )
+
+        self.assertEqual(unit_doc.course_plan, "COURSE-PLAN-1")
+        self.assertEqual(unit_doc.title, "Cells and Systems")
+        self.assertEqual(unit_doc.is_published, 1)
+        self.assertEqual(unit_doc.standards, [{"standard_code": "STD-1"}])
+        self.assertEqual(unit_doc.reflections, [{"prior_to_the_unit": "Start with microscope norms."}])
+        self.assertEqual(inserted["count"], 1)
+        self.assertEqual(payload["unit_plan"], "UNIT-PLAN-NEW")
 
     def test_create_planning_reference_material_uses_class_owned_origin(self):
         with _teaching_plans_module() as module:

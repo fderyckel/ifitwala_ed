@@ -18,6 +18,8 @@ import {
 	getStaffCoursePlanIndex,
 	getStaffCoursePlanSurface,
 	removePlanningMaterial,
+	saveCoursePlan,
+	saveGovernedUnitPlan,
 	saveClassSession,
 	uploadPlanningMaterialFile,
 } from '@/lib/services/staff/staffTeachingService'
@@ -101,6 +103,70 @@ describe('staffTeachingService', () => {
 				unit_plan: 'UNIT-1',
 			}
 		)
+	})
+
+	it('uses the canonical method for saving a shared course plan', async () => {
+		apiMethodMock.mockResolvedValue({ course_plan: 'COURSE-PLAN-1', plan_status: 'Active' })
+
+		await saveCoursePlan({
+			course_plan: 'COURSE-PLAN-1',
+			title: 'Biology Plan',
+			academic_year: '2026-2027',
+			cycle_label: 'Semester 1',
+			plan_status: 'Active',
+			summary: 'Shared scope and sequence',
+		})
+
+		expect(apiMethodMock).toHaveBeenCalledWith('ifitwala_ed.api.teaching_plans.save_course_plan', {
+			course_plan: 'COURSE-PLAN-1',
+			title: 'Biology Plan',
+			academic_year: '2026-2027',
+			cycle_label: 'Semester 1',
+			plan_status: 'Active',
+			summary: 'Shared scope and sequence',
+		})
+	})
+
+	it('serializes standards and reflections when saving a governed unit plan', async () => {
+		apiMethodMock.mockResolvedValue({ unit_plan: 'UNIT-1', course_plan: 'COURSE-PLAN-1' })
+
+		await saveGovernedUnitPlan({
+			course_plan: 'COURSE-PLAN-1',
+			unit_plan: 'UNIT-1',
+			title: 'Cells and Systems',
+			unit_order: 10,
+			standards: [
+				{
+					standard_code: 'STD-1',
+					standard_description: 'Explain how cells function.',
+				},
+			],
+			reflections: [
+				{
+					academic_year: '2026-2027',
+					prior_to_the_unit: 'Start with microscope norms.',
+				},
+			],
+		})
+
+		expect(apiMethodMock).toHaveBeenCalledWith('ifitwala_ed.api.teaching_plans.save_unit_plan', {
+			course_plan: 'COURSE-PLAN-1',
+			unit_plan: 'UNIT-1',
+			title: 'Cells and Systems',
+			unit_order: 10,
+			standards_json: JSON.stringify([
+				{
+					standard_code: 'STD-1',
+					standard_description: 'Explain how cells function.',
+				},
+			]),
+			reflections_json: JSON.stringify([
+				{
+					academic_year: '2026-2027',
+					prior_to_the_unit: 'Start with microscope norms.',
+				},
+			]),
+		})
 	})
 
 	it('uploads planning resource files through the class-planning endpoint', async () => {
