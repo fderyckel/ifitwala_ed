@@ -27,6 +27,7 @@ CONTEXT_APPLICANT_INTERVIEW = "Applicant Interview"
 CONTEXT_TASK_SUBMISSION = "Task Submission"
 CONTEXT_STUDENT_PORTFOLIO_ITEM = "Student Portfolio Item"
 CONTEXT_SUPPORTING_MATERIAL = "Supporting Material"
+CONTEXT_MATERIAL_PLACEMENT = "Material Placement"
 CONTEXT_STUDENT = "Student"
 CONTEXT_GUARDIAN = "Guardian"
 CONTEXT_EMPLOYEE = "Employee"
@@ -618,17 +619,30 @@ def _assert_internal_material_context(
     context_doctype: str | None,
     context_name: str | None,
     material: str,
-) -> None:
+) -> str | None:
     resolved_context = (context_doctype or "").strip()
     resolved_name = (context_name or "").strip()
     if not resolved_context:
-        return
+        return None
     if not resolved_name:
         frappe.throw(_("Context Name is required."), frappe.ValidationError)
-    if resolved_context != CONTEXT_SUPPORTING_MATERIAL:
-        frappe.throw(_("Unsupported academic file context."), frappe.ValidationError)
-    if resolved_name != material:
-        frappe.throw(_("File does not belong to this material."), frappe.PermissionError)
+    if resolved_context == CONTEXT_SUPPORTING_MATERIAL:
+        if resolved_name != material:
+            frappe.throw(_("File does not belong to this material."), frappe.PermissionError)
+        return None
+    if resolved_context == CONTEXT_MATERIAL_PLACEMENT:
+        placement = frappe.db.get_value(
+            "Material Placement",
+            resolved_name,
+            ["name", "supporting_material"],
+            as_dict=True,
+        )
+        if not placement:
+            frappe.throw(_("Material placement not found."), frappe.DoesNotExistError)
+        if (placement.get("supporting_material") or "").strip() != material:
+            frappe.throw(_("File does not belong to this material placement."), frappe.PermissionError)
+        return resolved_name
+    frappe.throw(_("Unsupported academic file context."), frappe.ValidationError)
 
 
 def _assert_portfolio_share_file_access(*, file_name: str, share_token: str, viewer_email: str | None = None) -> None:
@@ -715,15 +729,30 @@ def download_academic_file(
         if material:
             if not material_course:
                 frappe.throw(_("Material file is missing course context."), frappe.ValidationError)
-            _assert_internal_material_context(
+            from ifitwala_ed.curriculum import materials as materials_domain
+
+            placement_name = _assert_internal_material_context(
                 file_row=file_row,
                 context_doctype=context_doctype,
                 context_name=context_name,
                 material=material,
             )
-            from ifitwala_ed.curriculum import materials as materials_domain
-
-            if not materials_domain.user_can_read_course_material(user, material_course):
+            if placement_name:
+                placement_row = frappe.db.get_value(
+                    "Material Placement",
+                    placement_name,
+                    ["anchor_doctype", "anchor_name"],
+                    as_dict=True,
+                )
+                if not placement_row:
+                    frappe.throw(_("Material placement not found."), frappe.DoesNotExistError)
+                if not materials_domain.user_can_read_material_anchor(
+                    user,
+                    placement_row.get("anchor_doctype"),
+                    placement_row.get("anchor_name"),
+                ):
+                    frappe.throw(_("You do not have permission to access this file."), frappe.PermissionError)
+            elif not materials_domain.user_can_read_supporting_material(user, material, course=material_course):
                 frappe.throw(_("You do not have permission to access this file."), frappe.PermissionError)
         else:
             student, school = _resolve_student_context_for_file(file_row)

@@ -10,12 +10,28 @@
   "title",
   "course_plan",
   "course",
+  "program",
   "column_break_meta",
   "school",
+  "unit_code",
   "unit_order",
   "unit_status",
+  "version",
+  "duration",
+  "estimated_duration",
+  "is_published",
+  "pedagogy_section",
   "overview",
-  "essential_understanding"
+  "essential_understanding",
+  "misconceptions",
+  "standards_alignment_section",
+  "standards",
+  "content_skills_concepts",
+  "content",
+  "skills",
+  "concepts",
+  "reflections_section",
+  "reflections"
  ],
  "fields": [
   {
@@ -46,6 +62,12 @@
    "read_only": 1
   },
   {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "options": "Program"
+  },
+  {
    "fieldname": "column_break_meta",
    "fieldtype": "Column Break"
   },
@@ -55,6 +77,11 @@
    "label": "School",
    "options": "School",
    "read_only": 1
+  },
+  {
+   "fieldname": "unit_code",
+   "fieldtype": "Data",
+   "label": "Unit Code"
   },
   {
    "fieldname": "unit_order",
@@ -70,20 +97,99 @@
    "options": "Draft\nActive\nArchived"
   },
   {
+   "fieldname": "version",
+   "fieldtype": "Data",
+   "label": "Version"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Data",
+   "label": "Duration (in weeks)"
+  },
+  {
+   "description": "e.g., 3 weeks or 8 GLH",
+   "fieldname": "estimated_duration",
+   "fieldtype": "Data",
+   "label": "Estimated Duration"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "label": "Is Published"
+  },
+  {
+   "fieldname": "pedagogy_section",
+   "fieldtype": "Section Break",
+   "label": "Pedagogy"
+  },
+  {
    "fieldname": "overview",
    "fieldtype": "Text Editor",
-   "label": "Overview"
+   "label": "Unit Overview & Rationale"
   },
   {
    "fieldname": "essential_understanding",
    "fieldtype": "Text Editor",
    "label": "Essential Understanding"
+  },
+  {
+   "description": "Likely misunderstandings students may have during the unit with relation to skills, content and concepts.",
+   "fieldname": "misconceptions",
+   "fieldtype": "Text Editor",
+   "label": "Misconceptions"
+  },
+  {
+   "fieldname": "standards_alignment_section",
+   "fieldtype": "Section Break",
+   "label": "Standards Alignment"
+  },
+  {
+   "fieldname": "standards",
+   "fieldtype": "Table",
+   "label": "Standards",
+   "options": "Learning Unit Standard Alignment"
+  },
+  {
+   "fieldname": "content_skills_concepts",
+   "fieldtype": "Section Break",
+   "label": "Content, Skills & Concepts"
+  },
+  {
+   "description": "Students will know this content.",
+   "fieldname": "content",
+   "fieldtype": "Text Editor",
+   "label": "Content"
+  },
+  {
+   "description": "Students will develop these skills.",
+   "fieldname": "skills",
+   "fieldtype": "Text Editor",
+   "label": "Skills"
+  },
+  {
+   "description": "Students will grasp these concepts.",
+   "fieldname": "concepts",
+   "fieldtype": "Text Editor",
+   "label": "Concepts"
+  },
+  {
+   "fieldname": "reflections_section",
+   "fieldtype": "Section Break",
+   "label": "Reflections"
+  },
+  {
+   "bold": 1,
+   "fieldname": "reflections",
+   "fieldtype": "Table",
+   "label": "Reflections",
+   "options": "Curriculum Planning Reflection"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-31 18:00:00.000000",
+ "modified": "2026-04-01 18:05:00.000000",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Unit Plan",

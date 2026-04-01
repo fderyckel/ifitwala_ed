@@ -8,7 +8,7 @@
  "field_order": [
   "section_break_2pph",
   "course",
-  "learning_unit",
+  "unit_plan",
   "lesson_type",
   "column_break_pb8x",
   "title",
@@ -27,13 +27,13 @@
    "label": "Core"
   },
   {
-   "fieldname": "learning_unit",
+   "fieldname": "unit_plan",
    "fieldtype": "Link",
    "in_filter": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Learning Unit",
-   "options": "Learning Unit",
+   "label": "Unit Plan",
+   "options": "Unit Plan",
    "reqd": 1
   },
   {
@@ -101,7 +101,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-15 14:50:02.555839",
+ "modified": "2026-04-01 19:20:00.000000",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Lesson",

@@ -14,6 +14,58 @@ export type StudentLearningActivity = {
 	resource_note?: string | null
 }
 
+export type StudentLearningStandard = {
+	framework_name?: string | null
+	framework_version?: string | null
+	subject_area?: string | null
+	program?: string | null
+	strand?: string | null
+	substrand?: string | null
+	standard_code?: string | null
+	standard_description?: string | null
+	coverage_level?: string | null
+	alignment_strength?: string | null
+	alignment_type?: string | null
+	notes?: string | null
+}
+
+export type StudentLearningMaterial = {
+	material: string
+	title: string
+	material_type?: 'File' | 'Reference Link' | null
+	modality?: string | null
+	description?: string | null
+	reference_url?: string | null
+	open_url?: string | null
+	file_name?: string | null
+	file_size?: string | null
+	placement?: string | null
+	origin?: string | null
+	usage_role?: string | null
+	placement_note?: string | null
+	placement_order?: number | null
+}
+
+export type StudentAssignedWork = {
+	task_delivery: string
+	task: string
+	title: string
+	task_type?: string | null
+	unit_plan?: string | null
+	lesson?: string | null
+	class_session?: string | null
+	delivery_mode?: string | null
+	grading_mode?: string | null
+	available_from?: string | null
+	due_date?: string | null
+	lock_date?: string | null
+	submission_status?: string | null
+	grading_status?: string | null
+	is_complete?: number
+	is_published?: number
+	materials: StudentLearningMaterial[]
+}
+
 export type StudentLearningSession = {
 	class_session: string
 	title: string
@@ -23,12 +75,28 @@ export type StudentLearningSession = {
 	sequence_index?: number | null
 	learning_goal?: string | null
 	activities: StudentLearningActivity[]
+	resources: StudentLearningMaterial[]
+	assigned_work: StudentAssignedWork[]
 }
 
 export type StudentLearningUnit = {
 	unit_plan: string
 	title: string
 	unit_order?: number | null
+	program?: string | null
+	unit_code?: string | null
+	unit_status?: string | null
+	version?: string | null
+	duration?: string | null
+	estimated_duration?: string | null
+	overview?: string | null
+	essential_understanding?: string | null
+	content?: string | null
+	skills?: string | null
+	concepts?: string | null
+	standards: StudentLearningStandard[]
+	shared_resources: StudentLearningMaterial[]
+	assigned_work: StudentAssignedWork[]
 	sessions: StudentLearningSession[]
 }
 
@@ -62,11 +130,17 @@ export type Response = {
 		course_plan?: string | null
 	}
 	message?: string | null
+	resources: {
+		shared_resources: StudentLearningMaterial[]
+		class_resources: StudentLearningMaterial[]
+		general_assigned_work: StudentAssignedWork[]
+	}
 	curriculum: {
 		units: StudentLearningUnit[]
 		counts: {
 			units: number
 			sessions: number
+			assigned_work: number
 		}
 	}
 }

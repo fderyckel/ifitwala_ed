@@ -3,11 +3,11 @@ title: "Material Placement: Shared Context For Supporting Materials"
 slug: material-placement
 category: Curriculum
 doc_order: 9
-version: "1.0.2"
-last_change_date: "2026-03-31"
-summary: "Place reusable supporting materials into course, unit, lesson, and task contexts without duplicating the underlying material."
+version: "1.3.0"
+last_change_date: "2026-04-01"
+summary: "Place reusable supporting materials into shared plans, class plans, sessions, and tasks without duplicating the underlying material."
 seo_title: "Material Placement: Shared Context For Supporting Materials"
-seo_description: "Place reusable supporting materials into course, unit, lesson, and task contexts without duplicating the underlying material."
+seo_description: "Place reusable supporting materials into shared plans, units, class sessions, and tasks without duplicating the underlying material."
 ---
 
 ## Material Placement: Shared Context For Supporting Materials
@@ -26,21 +26,24 @@ Test refs: `ifitwala_ed/curriculum/doctype/material_placement/test_material_plac
 
 - Create the `Supporting Material` first.
 - Choose a valid curriculum anchor:
-  - `Course`
-  - `Learning Unit`
+  - `Course Plan`
+  - `Unit Plan`
   - `Lesson`
+  - `Class Teaching Plan`
+  - `Class Session`
   - `Task`
 - Keep the anchor inside the same authoritative course as the material.
 
 ## Where It Is Used Across The ERP
 
 Status: Partial
-Code refs: `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
-Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`
+Code refs: `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`
 
 - Task-overlay authoring creates task placements.
-- The student course LMS reads placements to build the visible materials shelf.
-- File access still resolves on the material owner, while placement only defines context and visibility.
+- Staff planning now creates and removes class-wide and session-specific placements inline from the class-planning SPA.
+- The staff class-planning SPA and the student LMS learning space both read placements through the bounded teaching-plan payload.
+- File access still resolves on the material owner, but open URLs are now placement-aware so class-owned materials stay scoped to the right class/session context.
 
 ## Lifecycle And Linked Documents
 
@@ -87,10 +90,10 @@ Test refs: `ifitwala_ed/curriculum/doctype/material_placement/test_material_plac
 - Placement does not duplicate the underlying material.
 - Placement course must match the authoritative course on both the material and the anchor.
 - Duplicate share of the same material into the same anchor is rejected.
-- Desk read/list visibility follows the placement course, and curriculum coordinators are read-only by default.
+- Shared-plan resources are course-readable, while class-owned placements are now scoped through the class plan or class session anchor.
 
 ### Current Constraints To Preserve In Review
 
 - Removing a placement means unshare, not delete.
 - Do not use placement as a fake session-only library.
-- Keep class-shared persistence anchored onto real curriculum objects.
+- Keep class-shared persistence anchored onto real curriculum objects such as `Class Teaching Plan` or `Class Session`.

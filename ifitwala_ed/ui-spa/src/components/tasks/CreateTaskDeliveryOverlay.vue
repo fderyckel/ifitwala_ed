@@ -201,6 +201,18 @@
 											>
 												No classes available for your role yet.
 											</p>
+
+											<div
+												v-if="props.prefillUnitPlan || props.prefillClassSession"
+												class="mt-3 flex flex-wrap gap-2"
+											>
+												<span v-if="props.prefillUnitPlan" class="chip">
+													Unit {{ props.prefillUnitPlan }}
+												</span>
+												<span v-if="props.prefillClassSession" class="chip">
+													Session {{ props.prefillClassSession }}
+												</span>
+											</div>
 										</div>
 									</section>
 
@@ -648,6 +660,9 @@ const props = defineProps<{
 	open: boolean;
 	zIndex?: number;
 	prefillStudentGroup?: string | null;
+	prefillClassTeachingPlan?: string | null;
+	prefillClassSession?: string | null;
+	prefillUnitPlan?: string | null;
 	prefillDueDate?: string | null;
 	prefillAvailableFrom?: string | null;
 }>();
@@ -1249,6 +1264,9 @@ async function submit() {
 	const payload: CreateTaskDeliveryInput = {
 		title: form.title.trim(),
 		student_group: form.student_group,
+		class_teaching_plan: props.prefillClassTeachingPlan || undefined,
+		class_session: props.prefillClassSession || undefined,
+		unit_plan: props.prefillUnitPlan || undefined,
 		delivery_mode: form.delivery_mode,
 		allow_late_submission:
 			form.delivery_mode === 'Assign Only' ? 0 : form.allow_late_submission ? 1 : 0,

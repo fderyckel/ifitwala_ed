@@ -43,6 +43,16 @@ def _materials_module(*, roles: list[str], instructor_groups: list[str], coordin
 
 
 class TestMaterialsPermissions(TestCase):
+    def test_resolve_material_origin_marks_class_owned_anchors_as_shared_in_class(self):
+        with _materials_module(
+            roles=["Instructor"],
+            instructor_groups=["SG-1"],
+        ) as materials:
+            self.assertEqual(materials.resolve_material_origin("Class Teaching Plan"), "shared_in_class")
+            self.assertEqual(materials.resolve_material_origin("Class Session"), "shared_in_class")
+            self.assertEqual(materials.resolve_material_origin("Task"), "task")
+            self.assertEqual(materials.resolve_material_origin("Unit Plan"), "curriculum")
+
     def test_get_material_permission_query_conditions_includes_instructor_and_coordinator_courses(self):
         with _materials_module(
             roles=["Instructor", "Curriculum Coordinator"],

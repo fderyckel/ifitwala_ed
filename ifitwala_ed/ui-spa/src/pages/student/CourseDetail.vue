@@ -52,6 +52,9 @@
 						<div class="mt-4 flex flex-wrap gap-2">
 							<span class="chip">{{ learningSpace.curriculum.counts.units }} units</span>
 							<span class="chip">{{ learningSpace.curriculum.counts.sessions }} sessions</span>
+							<span class="chip"
+								>{{ learningSpace.curriculum.counts.assigned_work }} assigned work</span
+							>
 							<span class="chip">{{ teachingPlanLabel }}</span>
 						</div>
 
@@ -95,6 +98,113 @@
 				class="rounded-2xl border border-line-soft bg-surface-soft px-5 py-4"
 			>
 				<p class="type-body text-ink/80">{{ learningSpace.message }}</p>
+			</section>
+
+			<section
+				v-if="
+					learningSpace.resources.shared_resources.length ||
+					learningSpace.resources.class_resources.length ||
+					learningSpace.resources.general_assigned_work.length
+				"
+				class="grid gap-4 xl:grid-cols-3"
+			>
+				<article v-if="learningSpace.resources.class_resources.length" class="card-surface p-5">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="type-overline text-ink/60">Your Class</p>
+							<h2 class="mt-1 type-h3 text-ink">Class Resources</h2>
+						</div>
+						<span class="chip">{{ learningSpace.resources.class_resources.length }}</span>
+					</div>
+					<div class="mt-4 space-y-3">
+						<article
+							v-for="resource in learningSpace.resources.class_resources"
+							:key="resource.placement || resource.material"
+							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+						>
+							<div class="flex items-start justify-between gap-3">
+								<div class="min-w-0">
+									<p class="type-body-strong text-ink">{{ resource.title }}</p>
+									<p v-if="resource.description" class="mt-1 type-caption text-ink/70">
+										{{ resource.description }}
+									</p>
+								</div>
+								<span v-if="resource.usage_role" class="chip">{{ resource.usage_role }}</span>
+							</div>
+							<a
+								v-if="resource.open_url"
+								:href="resource.open_url"
+								target="_blank"
+								rel="noreferrer"
+								class="mt-3 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
+							>
+								Open resource
+							</a>
+						</article>
+					</div>
+				</article>
+
+				<article v-if="learningSpace.resources.shared_resources.length" class="card-surface p-5">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="type-overline text-ink/60">Shared Plan</p>
+							<h2 class="mt-1 type-h3 text-ink">Course Plan Resources</h2>
+						</div>
+						<span class="chip">{{ learningSpace.resources.shared_resources.length }}</span>
+					</div>
+					<div class="mt-4 space-y-3">
+						<article
+							v-for="resource in learningSpace.resources.shared_resources"
+							:key="resource.placement || resource.material"
+							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+						>
+							<p class="type-body-strong text-ink">{{ resource.title }}</p>
+							<p v-if="resource.description" class="mt-1 type-caption text-ink/70">
+								{{ resource.description }}
+							</p>
+							<a
+								v-if="resource.open_url"
+								:href="resource.open_url"
+								target="_blank"
+								rel="noreferrer"
+								class="mt-3 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
+							>
+								Open resource
+							</a>
+						</article>
+					</div>
+				</article>
+
+				<article
+					v-if="learningSpace.resources.general_assigned_work.length"
+					class="card-surface p-5"
+				>
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="type-overline text-ink/60">Assigned Work</p>
+							<h2 class="mt-1 type-h3 text-ink">Class-wide Tasks</h2>
+						</div>
+						<span class="chip">{{ learningSpace.resources.general_assigned_work.length }}</span>
+					</div>
+					<div class="mt-4 space-y-3">
+						<article
+							v-for="item in learningSpace.resources.general_assigned_work"
+							:key="item.task_delivery"
+							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+						>
+							<div class="flex flex-wrap items-center gap-2">
+								<p class="type-body-strong text-ink">{{ item.title }}</p>
+								<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
+								<span v-if="item.submission_status" class="chip">{{
+									item.submission_status
+								}}</span>
+							</div>
+							<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
+								Due {{ item.due_date }}
+							</p>
+						</article>
+					</div>
+				</article>
 			</section>
 
 			<section
@@ -155,6 +265,169 @@
 							<div class="flex flex-wrap gap-2">
 								<span class="chip">Unit {{ selectedUnit.unit_order || '—' }}</span>
 								<span class="chip">{{ selectedUnit.sessions.length }} sessions</span>
+								<span v-if="selectedUnit.duration" class="chip">{{ selectedUnit.duration }}</span>
+								<span v-if="selectedUnit.estimated_duration" class="chip">
+									{{ selectedUnit.estimated_duration }}
+								</span>
+							</div>
+						</div>
+					</section>
+
+					<section class="card-surface p-6">
+						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+							<div>
+								<p class="type-overline text-ink/60">Unit Focus</p>
+								<h2 class="mt-1 type-h3 text-ink">What this unit is about</h2>
+								<p class="mt-2 type-body text-ink/80">
+									This is the shared unit plan your class is working through.
+								</p>
+							</div>
+							<div class="flex flex-wrap gap-2">
+								<span v-if="selectedUnit.unit_status" class="chip">
+									{{ selectedUnit.unit_status }}
+								</span>
+								<span v-if="selectedUnit.version" class="chip">{{ selectedUnit.version }}</span>
+								<span v-if="selectedUnit.standards.length" class="chip">
+									{{ selectedUnit.standards.length }} standards
+								</span>
+							</div>
+						</div>
+
+						<div class="mt-6 grid gap-4 xl:grid-cols-2">
+							<article
+								v-if="selectedUnit.overview"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Overview and Rationale</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.overview }}</p>
+							</article>
+							<article
+								v-if="selectedUnit.essential_understanding"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Essential Understanding</p>
+								<p class="mt-2 type-body text-ink/80">
+									{{ selectedUnit.essential_understanding }}
+								</p>
+							</article>
+							<article
+								v-if="selectedUnit.content"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Content</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.content }}</p>
+							</article>
+							<article
+								v-if="selectedUnit.skills"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Skills</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.skills }}</p>
+							</article>
+							<article
+								v-if="selectedUnit.concepts"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4 xl:col-span-2"
+							>
+								<p class="type-overline text-ink/60">Concepts</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.concepts }}</p>
+							</article>
+						</div>
+
+						<div v-if="selectedUnit.standards.length" class="mt-6 space-y-3">
+							<div class="flex items-center justify-between gap-3">
+								<h3 class="type-h3 text-ink">Standards Alignment</h3>
+								<span class="chip">{{ selectedUnit.standards.length }}</span>
+							</div>
+							<div class="grid gap-3">
+								<article
+									v-for="standard in selectedUnit.standards"
+									:key="`${selectedUnit.unit_plan}-${standard.standard_code}-${standard.standard_description}`"
+									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+								>
+									<div class="flex flex-wrap items-center gap-2">
+										<p class="type-body-strong text-ink">
+											{{ standard.standard_code || 'Standard' }}
+										</p>
+										<span v-if="standard.coverage_level" class="chip">
+											{{ standard.coverage_level }}
+										</span>
+									</div>
+									<p v-if="standard.standard_description" class="mt-2 type-body text-ink/80">
+										{{ standard.standard_description }}
+									</p>
+								</article>
+							</div>
+						</div>
+
+						<div v-if="selectedUnit.shared_resources.length" class="mt-6 space-y-3">
+							<div class="flex items-center justify-between gap-3">
+								<h3 class="type-h3 text-ink">Unit Resources</h3>
+								<span class="chip">{{ selectedUnit.shared_resources.length }}</span>
+							</div>
+							<div class="grid gap-3">
+								<article
+									v-for="resource in selectedUnit.shared_resources"
+									:key="resource.placement || resource.material"
+									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0">
+											<p class="type-body-strong text-ink">{{ resource.title }}</p>
+											<p v-if="resource.description" class="mt-1 type-caption text-ink/70">
+												{{ resource.description }}
+											</p>
+										</div>
+										<span v-if="resource.usage_role" class="chip">{{ resource.usage_role }}</span>
+									</div>
+									<a
+										v-if="resource.open_url"
+										:href="resource.open_url"
+										target="_blank"
+										rel="noreferrer"
+										class="mt-3 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
+									>
+										Open resource
+									</a>
+								</article>
+							</div>
+						</div>
+
+						<div v-if="selectedUnit.assigned_work.length" class="mt-6 space-y-3">
+							<div class="flex items-center justify-between gap-3">
+								<h3 class="type-h3 text-ink">Assigned Work In This Unit</h3>
+								<span class="chip">{{ selectedUnit.assigned_work.length }}</span>
+							</div>
+							<div class="grid gap-3">
+								<article
+									v-for="item in selectedUnit.assigned_work"
+									:key="item.task_delivery"
+									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+								>
+									<div class="flex flex-wrap items-center gap-2">
+										<p class="type-body-strong text-ink">{{ item.title }}</p>
+										<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
+										<span v-if="item.submission_status" class="chip">{{
+											item.submission_status
+										}}</span>
+										<span v-if="item.grading_status" class="chip">{{ item.grading_status }}</span>
+									</div>
+									<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
+										Due {{ item.due_date }}
+									</p>
+									<div v-if="item.materials.length" class="mt-3 flex flex-wrap gap-2">
+										<a
+											v-for="resource in item.materials"
+											:key="resource.placement || resource.material"
+											v-if="resource.open_url"
+											:href="resource.open_url"
+											target="_blank"
+											rel="noreferrer"
+											class="inline-flex rounded-full border border-line-soft px-3 py-1 text-xs font-medium text-jacaranda transition hover:border-jacaranda/40"
+										>
+											{{ resource.title }}
+										</a>
+									</div>
+								</article>
 							</div>
 						</div>
 					</section>
@@ -265,6 +538,59 @@
 										</p>
 										<p v-if="activity.resource_note" class="mt-2 type-caption text-ink/70">
 											{{ activity.resource_note }}
+										</p>
+									</article>
+								</div>
+							</div>
+
+							<div v-if="selectedSession.resources.length" class="mt-6 space-y-3">
+								<div class="flex items-center justify-between gap-3">
+									<h3 class="type-h3 text-ink">Session Resources</h3>
+									<span class="chip">{{ selectedSession.resources.length }}</span>
+								</div>
+								<div class="grid gap-3">
+									<article
+										v-for="resource in selectedSession.resources"
+										:key="resource.placement || resource.material"
+										class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+									>
+										<p class="type-body-strong text-ink">{{ resource.title }}</p>
+										<p v-if="resource.description" class="mt-1 type-caption text-ink/70">
+											{{ resource.description }}
+										</p>
+										<a
+											v-if="resource.open_url"
+											:href="resource.open_url"
+											target="_blank"
+											rel="noreferrer"
+											class="mt-3 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
+										>
+											Open resource
+										</a>
+									</article>
+								</div>
+							</div>
+
+							<div v-if="selectedSession.assigned_work.length" class="mt-6 space-y-3">
+								<div class="flex items-center justify-between gap-3">
+									<h3 class="type-h3 text-ink">Assigned Work For This Session</h3>
+									<span class="chip">{{ selectedSession.assigned_work.length }}</span>
+								</div>
+								<div class="grid gap-3">
+									<article
+										v-for="item in selectedSession.assigned_work"
+										:key="item.task_delivery"
+										class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+									>
+										<div class="flex flex-wrap items-center gap-2">
+											<p class="type-body-strong text-ink">{{ item.title }}</p>
+											<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
+											<span v-if="item.submission_status" class="chip">{{
+												item.submission_status
+											}}</span>
+										</div>
+										<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
+											Due {{ item.due_date }}
 										</p>
 									</article>
 								</div>

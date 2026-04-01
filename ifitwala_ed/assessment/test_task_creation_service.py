@@ -28,6 +28,7 @@ class _FakeTask:
     def __init__(self):
         self.name = "TASK-0001"
         self.insert_calls = 0
+        self.unit_plan = None
 
     def insert(self):
         self.insert_calls += 1
@@ -61,8 +62,26 @@ class TestTaskCreationService(TestCase):
         with stubbed_frappe() as frappe:
             frappe.db.savepoint = lambda name: None
             frappe.db.rollback = lambda save_point=None: None
-            frappe.db.get_value = lambda doctype, name, fieldname: "COURSE-1"
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Student Group":
+                    return "COURSE-1"
+                if doctype == "Class Teaching Plan":
+                    return {
+                        "name": "CLASS-PLAN-1",
+                        "student_group": "GRP-1",
+                        "course_plan": "COURSE-PLAN-1",
+                        "course": "COURSE-1",
+                        "academic_year": "AY-2025-2026",
+                        "planning_status": "Active",
+                    }
+                return "COURSE-1"
+
+            frappe.db.get_value = fake_get_value
             frappe.db.count = lambda doctype, filters=None: 3
+            frappe.get_all = lambda doctype, **kwargs: (
+                [{"name": "CLASS-PLAN-1"}] if doctype == "Class Teaching Plan" else []
+            )
             frappe.get_meta = lambda doctype: {
                 "Task": _Meta({"task_type": "Homework\nQuiz"}),
                 "Task Delivery": _Meta({"delivery_mode": "Assign Only\nCollect Work\nAssess"}),
@@ -74,6 +93,8 @@ class TestTaskCreationService(TestCase):
             payload = module.create_task_and_delivery(
                 title="Homework 11",
                 student_group="GRP-1",
+                class_teaching_plan="CLASS-PLAN-1",
+                unit_plan="UNIT-1",
                 delivery_mode="Assess",
                 grading_mode="Points",
                 max_points="20",
@@ -82,8 +103,10 @@ class TestTaskCreationService(TestCase):
             )
 
         self.assertEqual(task.insert_calls, 1)
+        self.assertEqual(task.unit_plan, "UNIT-1")
         self.assertEqual(delivery.task, "TASK-0001")
         self.assertEqual(delivery.student_group, "GRP-1")
+        self.assertEqual(delivery.class_teaching_plan, "CLASS-PLAN-1")
         self.assertEqual(delivery.group_submission, 0)
         self.assertEqual(delivery.allow_late_submission, 1)
         self.assertEqual(delivery.insert_calls, [True])

@@ -12,7 +12,12 @@
   "governed_required",
   "pacing_status",
   "teacher_focus",
-  "pacing_note"
+  "pacing_note",
+  "prior_to_the_unit",
+  "during_the_unit",
+  "what_work_well",
+  "what_didnt_work_well",
+  "changes_suggestions"
  ],
  "fields": [
   {
@@ -60,13 +65,38 @@
    "fieldname": "pacing_note",
    "fieldtype": "Small Text",
    "label": "Pacing Note"
+  },
+  {
+   "fieldname": "prior_to_the_unit",
+   "fieldtype": "Text Editor",
+   "label": "Prior To The Unit"
+  },
+  {
+   "fieldname": "during_the_unit",
+   "fieldtype": "Text Editor",
+   "label": "During The Unit"
+  },
+  {
+   "fieldname": "what_work_well",
+   "fieldtype": "Text Editor",
+   "label": "What Worked Well"
+  },
+  {
+   "fieldname": "what_didnt_work_well",
+   "fieldtype": "Text Editor",
+   "label": "What Didn't Work Well"
+  },
+  {
+   "fieldname": "changes_suggestions",
+   "fieldtype": "Text Editor",
+   "label": "Changes & Suggestions"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-03-31 18:00:00.000000",
+ "modified": "2026-04-01 18:05:00.000000",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Class Teaching Plan Unit",

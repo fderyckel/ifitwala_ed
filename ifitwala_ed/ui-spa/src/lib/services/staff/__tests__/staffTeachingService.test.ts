@@ -1,23 +1,59 @@
 // ui-spa/src/lib/services/staff/__tests__/staffTeachingService.test.ts
 
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const { apiMethodMock } = vi.hoisted(() => ({
 	apiMethodMock: vi.fn(),
 }))
+
+const fetchMock = vi.fn()
 
 vi.mock('@/resources/frappe', () => ({
 	apiMethod: apiMethodMock,
 }))
 
 import {
+	createClassPlanningReferenceMaterial,
 	getStaffClassPlanningSurface,
+	removeClassPlanningMaterial,
 	saveClassSession,
+	uploadClassPlanningMaterialFile,
 } from '@/lib/services/staff/staffTeachingService'
 
 describe('staffTeachingService', () => {
+	afterEach(() => {
+		apiMethodMock.mockReset()
+		fetchMock.mockReset()
+		vi.unstubAllGlobals()
+		delete (window as Window & { csrf_token?: string }).csrf_token
+	})
+
+	it('uses the canonical method for planning link resources', async () => {
+		apiMethodMock.mockResolvedValue({ placement: 'MAT-PLC-1' })
+
+		await createClassPlanningReferenceMaterial({
+			anchor_doctype: 'Class Teaching Plan',
+			anchor_name: 'CLASS-PLAN-1',
+			title: 'Starter article',
+			reference_url: 'https://example.com/article',
+		})
+
+		expect(apiMethodMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.teaching_plans.create_class_planning_reference_material',
+			{
+				anchor_doctype: 'Class Teaching Plan',
+				anchor_name: 'CLASS-PLAN-1',
+				title: 'Starter article',
+				reference_url: 'https://example.com/article',
+			}
+		)
+	})
+
 	it('uses the canonical method for the staff planning surface', async () => {
-		apiMethodMock.mockResolvedValue({ curriculum: { units: [], session_count: 0 } })
+		apiMethodMock.mockResolvedValue({
+			resources: { shared_resources: [], class_resources: [], general_assigned_work: [] },
+			curriculum: { units: [], session_count: 0, assigned_work_count: 0 },
+		})
 
 		await getStaffClassPlanningSurface({
 			student_group: 'GROUP-1',
@@ -29,6 +65,58 @@ describe('staffTeachingService', () => {
 			{
 				student_group: 'GROUP-1',
 				class_teaching_plan: 'CLASS-PLAN-1',
+			}
+		)
+	})
+
+	it('uploads planning resource files through the class-planning endpoint', async () => {
+		fetchMock.mockResolvedValue({
+			ok: true,
+			json: vi.fn().mockResolvedValue({
+				message: {
+					placement: 'MAT-PLC-1',
+					resource: { material: 'MAT-1', title: 'Graphic organizer' },
+				},
+			}),
+		})
+		vi.stubGlobal('fetch', fetchMock)
+		Object.assign(window, { csrf_token: 'csrf-123' })
+
+		const file = new File(['worksheet'], 'organizer.pdf', { type: 'application/pdf' })
+		await uploadClassPlanningMaterialFile({
+			anchor_doctype: 'Class Session',
+			anchor_name: 'CLASS-SESSION-1',
+			title: 'Graphic organizer',
+			file,
+			modality: 'Use',
+		})
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/method/ifitwala_ed.api.teaching_plans.upload_class_planning_material_file',
+			expect.objectContaining({
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'X-Frappe-CSRF-Token': 'csrf-123' },
+				body: expect.any(FormData),
+			})
+		)
+	})
+
+	it('uses the canonical method when removing planning resources', async () => {
+		apiMethodMock.mockResolvedValue({ removed: 1 })
+
+		await removeClassPlanningMaterial({
+			anchor_doctype: 'Class Session',
+			anchor_name: 'CLASS-SESSION-1',
+			placement: 'MAT-PLC-1',
+		})
+
+		expect(apiMethodMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.teaching_plans.remove_class_planning_material',
+			{
+				anchor_doctype: 'Class Session',
+				anchor_name: 'CLASS-SESSION-1',
+				placement: 'MAT-PLC-1',
 			}
 		)
 	})

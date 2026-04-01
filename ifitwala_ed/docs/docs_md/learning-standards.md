@@ -3,8 +3,8 @@ title: "Learning Standards: Standards Catalog for Curriculum Taxonomy"
 slug: learning-standards
 category: Curriculum
 doc_order: 3
-version: "1.0.0"
-last_change_date: "2026-03-12"
+version: "1.1.0"
+last_change_date: "2026-04-01"
 summary: "Catalog standards-framework rows for curriculum taxonomy, even though current task and unit flows do not yet link to this master directly."
 seo_title: "Learning Standards: Standards Catalog for Curriculum Taxonomy"
 seo_description: "Catalog standards-framework rows for curriculum taxonomy, even though current task and unit flows do not yet link to this master directly."
@@ -18,7 +18,7 @@ Test refs: None
 
 `Learning Standards` is the standalone standards catalog for framework metadata such as framework name, subject area, strand, substrand, code, and description.
 
-Current workspace note: this master exists, but `Learning Unit` does not currently link to it by field. Unit-level standards are still stored inline via `Learning Unit Standard Alignment`, and neither `Task` nor `Task Delivery` references `Learning Standards` directly.
+Current workspace note: this master exists, but `Unit Plan` does not currently link to it by field. Unit-level standards are still stored inline via `Learning Unit Standard Alignment`, and neither `Task` nor `Task Delivery` references `Learning Standards` directly.
 
 ## Before You Start (Prerequisites)
 
@@ -49,7 +49,7 @@ Test refs: None
 
 1. Create the standards catalog row with framework and taxonomy metadata.
 2. Use it as the reference vocabulary for curriculum planning and future mastery-tracking work.
-3. When documenting a `Learning Unit` today, re-enter the relevant framework metadata inside `Learning Unit Standard Alignment` rows because the current schema does not link those rows back to this master.
+3. When documenting a `Unit Plan` today, re-enter the relevant framework metadata inside `Learning Unit Standard Alignment` rows because the current schema does not link those rows back to this master.
 
 ## Related Docs
 
@@ -57,7 +57,7 @@ Status: Implemented
 Code refs: None (documentation cross-reference section)
 Test refs: None
 
-- [**Learning Unit**](/docs/en/learning-unit/)
+- [**Unit Plan**](/docs/en/unit-plan/)
 - [**Learning Unit Standard Alignment**](/docs/en/learning-unit-standard-alignment/)
 - [**Lesson**](/docs/en/lesson/)
 - [**Task**](/docs/en/task/)
@@ -84,5 +84,5 @@ Test refs: None
 
 ### Current Constraints To Preserve In Review
 
-- Do not claim that `Learning Unit` rows point to `Learning Standards`; they currently do not.
+- Do not claim that `Unit Plan` rows point to `Learning Standards`; they currently do not.
 - Do not claim that standards mastery is aggregated through this DocType in the current gradebook contract.

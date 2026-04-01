@@ -202,7 +202,7 @@ import type { StudentQuizAttemptResponse } from '@/types/contracts/student_quiz/
 const props = defineProps<{
 	course_id: string;
 	task_delivery: string;
-	learning_unit?: string;
+	unit_plan?: string;
 	lesson?: string;
 }>();
 
@@ -221,7 +221,7 @@ const backRoute = computed(() => ({
 	name: 'student-course-detail',
 	params: { course_id: props.course_id },
 	query: {
-		learning_unit: props.learning_unit || undefined,
+		unit_plan: props.unit_plan || undefined,
 		lesson: props.lesson || undefined,
 	},
 }));

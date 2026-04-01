@@ -10,8 +10,8 @@ from ifitwala_ed.curriculum.materials import (
     normalize_material_origin,
     normalize_material_usage_role,
     resolve_anchor_course,
-    user_can_manage_course_material,
-    user_can_read_course_material,
+    user_can_manage_material_anchor,
+    user_can_read_material_anchor,
 )
 
 
@@ -88,11 +88,12 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
     if not doc:
         return True
 
-    course = (getattr(doc, "course", None) or "").strip()
-    if not course:
+    anchor_doctype = (getattr(doc, "anchor_doctype", None) or "").strip()
+    anchor_name = (getattr(doc, "anchor_name", None) or "").strip()
+    if not anchor_doctype or not anchor_name:
         return False
 
     if ptype in {"read", "select", "report", "print", "email", "share", "export", None}:
-        return user_can_read_course_material(user, course)
+        return user_can_read_material_anchor(user, anchor_doctype, anchor_name)
 
-    return user_can_manage_course_material(user, course)
+    return user_can_manage_material_anchor(user, anchor_doctype, anchor_name)

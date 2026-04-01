@@ -7,6 +7,7 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.assessment.check_flags import to_check_value
+from ifitwala_ed.assessment.task_delivery_service import resolve_planning_context
 
 V1_GRADING_MODES = {"None", "Completion", "Binary", "Points"}
 
@@ -26,6 +27,9 @@ def _validate_payload(payload: dict) -> dict:
         "task_type",
         "is_template",
         "student_group",
+        "class_teaching_plan",
+        "class_session",
+        "unit_plan",
         "delivery_mode",
         "available_from",
         "due_date",
@@ -95,6 +99,9 @@ def _validate_payload(payload: dict) -> dict:
         "task_type": task_type,
         "is_template": payload.get("is_template"),
         "student_group": student_group,
+        "class_teaching_plan": payload.get("class_teaching_plan"),
+        "class_session": payload.get("class_session"),
+        "unit_plan": payload.get("unit_plan"),
         "delivery_mode": delivery_mode,
         "available_from": payload.get("available_from"),
         "due_date": payload.get("due_date"),
@@ -125,6 +132,9 @@ def create_task_and_delivery(
     lock_date=None,
     allow_late_submission=None,
     group_submission=None,
+    class_teaching_plan=None,
+    class_session=None,
+    unit_plan=None,
     grading_mode=None,
     max_points=None,
     grade_scale=None,
@@ -151,6 +161,9 @@ def create_task_and_delivery(
         "task_type": task_type,
         "is_template": is_template,
         "student_group": student_group,
+        "class_teaching_plan": class_teaching_plan,
+        "class_session": class_session,
+        "unit_plan": unit_plan,
         "delivery_mode": delivery_mode,
         "available_from": available_from,
         "due_date": due_date,
@@ -174,6 +187,18 @@ def create_task_and_delivery(
     task = None
     delivery = None
     try:
+        planning_context = resolve_planning_context(
+            data["student_group"],
+            data.get("class_teaching_plan"),
+            data.get("class_session"),
+        )
+
+        resolved_unit_plan = (data.get("unit_plan") or "").strip() or None
+        session_unit_plan = (planning_context.get("unit_plan") or "").strip() or None
+        if resolved_unit_plan and session_unit_plan and resolved_unit_plan != session_unit_plan:
+            frappe.throw(_("Selected class session does not belong to the chosen Unit Plan."))
+        resolved_unit_plan = resolved_unit_plan or session_unit_plan
+
         task = frappe.new_doc("Task")
         task.title = data["title"]
 
@@ -197,6 +222,8 @@ def create_task_and_delivery(
             frappe.throw(_("Student group is missing a course."))
 
         task.default_course = course
+        if resolved_unit_plan:
+            task.unit_plan = resolved_unit_plan
         task.default_delivery_mode = data["delivery_mode"]
         task.default_grading_mode = (
             "Points"
@@ -215,7 +242,10 @@ def create_task_and_delivery(
         delivery = frappe.new_doc("Task Delivery")
         delivery.task = task.name
         delivery.student_group = data["student_group"]
+        delivery.class_teaching_plan = planning_context["class_teaching_plan"]
         delivery.delivery_mode = data["delivery_mode"]
+        if planning_context.get("class_session"):
+            delivery.class_session = planning_context["class_session"]
 
         if data.get("available_from"):
             delivery.available_from = data["available_from"]

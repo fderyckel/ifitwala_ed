@@ -5,13 +5,13 @@
 
 frappe.ui.form.on("Task", {
 	setup(frm) {
-		set_learning_unit_query(frm);
+		set_unit_plan_query(frm);
 		set_lesson_query(frm);
 		set_quiz_question_bank_query(frm);
 	},
 
 	refresh(frm) {
-		set_learning_unit_query(frm);
+		set_unit_plan_query(frm);
 		set_lesson_query(frm);
 		set_quiz_question_bank_query(frm);
 		frm.trigger("setup_governed_resource_upload");
@@ -29,7 +29,7 @@ frappe.ui.form.on("Task", {
 		enforce_quiz_defaults(frm);
 	},
 
-	learning_unit(frm) {
+	unit_plan(frm) {
 		reset_lesson_field(frm);
 	},
 
@@ -91,8 +91,8 @@ function get_course_value(frm) {
 	return (frm.doc.course || frm.doc.default_course || "").trim();
 }
 
-function set_learning_unit_query(frm) {
-	frm.set_query("learning_unit", () => {
+function set_unit_plan_query(frm) {
+	frm.set_query("unit_plan", () => {
 		const course = get_course_value(frm);
 		if (!course) {
 			return {};
@@ -103,9 +103,9 @@ function set_learning_unit_query(frm) {
 
 function set_lesson_query(frm) {
 	frm.set_query("lesson", () => {
-		const learning_unit = (frm.doc.learning_unit || "").trim();
-		if (learning_unit) {
-			return { filters: { learning_unit } };
+		const unit_plan = (frm.doc.unit_plan || "").trim();
+		if (unit_plan) {
+			return { filters: { unit_plan } };
 		}
 
 		const course = get_course_value(frm);
@@ -127,13 +127,13 @@ function set_quiz_question_bank_query(frm) {
 }
 
 function reset_curriculum_fields(frm) {
-	if (frm.doc.learning_unit) {
-		frm.set_value("learning_unit", null);
+	if (frm.doc.unit_plan) {
+		frm.set_value("unit_plan", null);
 	}
 	if (frm.doc.lesson) {
 		frm.set_value("lesson", null);
 	}
-	set_learning_unit_query(frm);
+	set_unit_plan_query(frm);
 	set_lesson_query(frm);
 }
 

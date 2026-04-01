@@ -44,8 +44,27 @@ def get_student_group_row(student_group: str) -> dict:
 def get_unit_plan_rows(course_plan: str) -> list[dict]:
     return frappe.get_all(
         "Unit Plan",
-        filters={"course_plan": course_plan},
-        fields=["name", "title", "unit_order", "overview", "essential_understanding", "unit_status"],
+        filters={"course_plan": course_plan, "unit_status": ["!=", "Archived"]},
+        fields=[
+            "name",
+            "title",
+            "course_plan",
+            "course",
+            "program",
+            "unit_code",
+            "unit_order",
+            "unit_status",
+            "version",
+            "duration",
+            "estimated_duration",
+            "is_published",
+            "overview",
+            "essential_understanding",
+            "misconceptions",
+            "content",
+            "skills",
+            "concepts",
+        ],
         order_by="unit_order asc, creation asc",
         limit=0,
     )
@@ -102,6 +121,11 @@ def sync_class_teaching_plan_units(doc) -> None:
                 "pacing_status": getattr(cached, "pacing_status", None) or "Not Started",
                 "teacher_focus": getattr(cached, "teacher_focus", None),
                 "pacing_note": getattr(cached, "pacing_note", None),
+                "prior_to_the_unit": getattr(cached, "prior_to_the_unit", None),
+                "during_the_unit": getattr(cached, "during_the_unit", None),
+                "what_work_well": getattr(cached, "what_work_well", None),
+                "what_didnt_work_well": getattr(cached, "what_didnt_work_well", None),
+                "changes_suggestions": getattr(cached, "changes_suggestions", None),
             }
         )
 

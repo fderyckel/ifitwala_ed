@@ -71,16 +71,38 @@ function buildPayload(): StudentLearningSpaceResponse {
 			course_plan: 'COURSE-PLAN-00001',
 		},
 		message: null,
+		resources: {
+			shared_resources: [],
+			class_resources: [],
+			general_assigned_work: [],
+		},
 		curriculum: {
 			counts: {
 				units: 1,
 				sessions: 2,
+				assigned_work: 0,
 			},
 			units: [
 				{
 					unit_plan: 'UNIT-PLAN-1',
 					title: 'Cells and Systems',
 					unit_order: 1,
+					duration: '4 weeks',
+					estimated_duration: '12 GLH',
+					overview: 'Investigate how cell structures work together inside living systems.',
+					essential_understanding: 'Structure and function are linked in living systems.',
+					content: 'Cell structures and microscopy evidence',
+					skills: 'Observation, note-taking, comparison',
+					concepts: 'Structure, function, systems',
+					shared_resources: [],
+					assigned_work: [],
+					standards: [
+						{
+							standard_code: 'STD-1',
+							standard_description: 'Explain how specialized cells contribute to a system.',
+							coverage_level: 'Introduced',
+						},
+					],
 					sessions: [
 						{
 							class_session: 'CLASS-SESSION-1',
@@ -89,6 +111,8 @@ function buildPayload(): StudentLearningSpaceResponse {
 							session_status: 'Planned',
 							session_date: '2026-04-01',
 							learning_goal: 'Use evidence from microscope observations to compare cell structures.',
+							resources: [],
+							assigned_work: [],
 							activities: [
 								{
 									title: 'Observation walk',
@@ -105,6 +129,8 @@ function buildPayload(): StudentLearningSpaceResponse {
 							unit_plan: 'UNIT-PLAN-1',
 							session_status: 'Planned',
 							session_date: '2026-04-03',
+							resources: [],
+							assigned_work: [],
 							activities: [],
 						},
 					],
@@ -164,6 +190,8 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Learning Space')
 		expect(document.body.textContent).toContain('Biology')
 		expect(document.body.textContent).toContain('Class plan published')
+		expect(document.body.textContent).toContain('What this unit is about')
+		expect(document.body.textContent).toContain('Structure and function are linked in living systems.')
 		expect(document.body.textContent).toContain('Microscope evidence walk')
 		expect(document.body.textContent).toContain('Observation walk')
 		expect(document.body.textContent).not.toContain('Teacher note')

@@ -9,6 +9,7 @@
   "section_break_tbyy",
   "task",
   "student_group",
+  "class_teaching_plan",
   "column_break_sdwu",
   "delivery_mode",
   "requires_submission",
@@ -59,6 +60,13 @@
    "fieldtype": "Link",
    "label": "Student Group",
    "options": "Student Group",
+   "reqd": 1
+  },
+  {
+   "fieldname": "class_teaching_plan",
+   "fieldtype": "Link",
+   "label": "Class Teaching Plan",
+   "options": "Class Teaching Plan",
    "reqd": 1
   },
   {
@@ -257,7 +265,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-01 11:20:00.000000",
+ "modified": "2026-04-01 21:00:00.000000",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Delivery",

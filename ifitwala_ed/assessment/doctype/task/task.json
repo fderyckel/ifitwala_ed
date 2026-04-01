@@ -16,7 +16,7 @@
   "is_template",
   "column_break_annk",
   "default_course",
-  "learning_unit",
+  "unit_plan",
   "lesson",
   "section_break_haua",
   "instructions",
@@ -66,10 +66,10 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "learning_unit",
+   "fieldname": "unit_plan",
    "fieldtype": "Link",
-   "label": "Learning Unit",
-   "options": "Learning Unit"
+   "label": "Unit Plan",
+   "options": "Unit Plan"
   },
   {
    "fieldname": "lesson",
@@ -239,7 +239,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-13 13:28:58.333663",
+ "modified": "2026-04-01 19:20:00.000000",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task",

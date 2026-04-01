@@ -20,6 +20,7 @@ class TaskDelivery(Document):
         context = get_delivery_context(self.student_group)
         self._stamp_context(context)
         self._validate_task_course_alignment(context)
+        self._validate_class_teaching_plan_context()
         self._validate_class_session_context()
         self._apply_quiz_defaults()
 
@@ -75,6 +76,8 @@ class TaskDelivery(Document):
             frappe.throw(_("Task is required for Task Delivery."))
         if not self.student_group:
             frappe.throw(_("Student Group is required for Task Delivery."))
+        if self._has_field("class_teaching_plan") and not getattr(self, "class_teaching_plan", None):
+            frappe.throw(_("Class Teaching Plan is required for Task Delivery."))
 
     def _stamp_context(self, context):
         field_map = {
@@ -120,6 +123,35 @@ class TaskDelivery(Document):
         if task_course and delivery_course and task_course != delivery_course:
             frappe.throw(_("Task course does not match the delivery course."))
 
+    def _validate_class_teaching_plan_context(self):
+        if not self._has_field("class_teaching_plan"):
+            return
+
+        class_teaching_plan = (getattr(self, "class_teaching_plan", None) or "").strip()
+        if not class_teaching_plan:
+            frappe.throw(_("Class Teaching Plan is required for Task Delivery."))
+
+        plan = frappe.db.get_value(
+            "Class Teaching Plan",
+            class_teaching_plan,
+            ["name", "student_group", "course", "academic_year", "planning_status"],
+            as_dict=True,
+        )
+        if not plan:
+            frappe.throw(_("Class Teaching Plan not found."))
+        if (plan.get("planning_status") or "").strip() == "Archived":
+            frappe.throw(_("Archived Class Teaching Plans cannot receive new assigned work."))
+        if plan.get("student_group") and plan.get("student_group") != self.student_group:
+            frappe.throw(_("Selected Class Teaching Plan does not belong to this class."))
+        if self._has_field("course") and plan.get("course") and plan.get("course") != self.course:
+            frappe.throw(_("Selected Class Teaching Plan does not belong to this course."))
+        if (
+            self._has_field("academic_year")
+            and plan.get("academic_year")
+            and plan.get("academic_year") != getattr(self, "academic_year", None)
+        ):
+            frappe.throw(_("Selected Class Teaching Plan does not belong to this academic year."))
+
     def _validate_class_session_context(self):
         if not self._has_field("class_session") or not getattr(self, "class_session", None):
             return
@@ -127,11 +159,18 @@ class TaskDelivery(Document):
         session = frappe.db.get_value(
             "Class Session",
             self.class_session,
-            ["name", "student_group", "course", "academic_year"],
+            ["name", "class_teaching_plan", "student_group", "course", "academic_year"],
             as_dict=True,
         )
         if not session:
             frappe.throw(_("Class Session not found."))
+
+        if (
+            self._has_field("class_teaching_plan")
+            and session.get("class_teaching_plan")
+            and session.get("class_teaching_plan") != getattr(self, "class_teaching_plan", None)
+        ):
+            frappe.throw(_("Selected class session does not belong to this Class Teaching Plan."))
 
         if session.get("student_group") and session.get("student_group") != self.student_group:
             frappe.throw(_("Selected class session does not belong to this class."))

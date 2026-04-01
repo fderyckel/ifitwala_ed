@@ -37,3 +37,23 @@ class TestTaskDeliveryService(TestCase):
                 "limit": 0,
             },
         )
+
+    def test_resolve_planning_context_uses_active_class_plan_when_missing(self):
+        with stubbed_frappe() as frappe:
+            frappe.get_all = lambda doctype, **kwargs: (
+                [{"name": "CLASS-PLAN-1"}] if doctype == "Class Teaching Plan" else []
+            )
+            frappe.db.get_value = lambda doctype, name, fields=None, as_dict=False: {
+                "name": "CLASS-PLAN-1",
+                "student_group": "GRP-1",
+                "course_plan": "COURSE-PLAN-1",
+                "course": "COURSE-1",
+                "academic_year": "AY-2025-2026",
+                "planning_status": "Active",
+            }
+
+            module = import_fresh("ifitwala_ed.assessment.task_delivery_service")
+            context = module.resolve_planning_context("GRP-1")
+
+        self.assertEqual(context["class_teaching_plan"], "CLASS-PLAN-1")
+        self.assertEqual(context["course_plan"], "COURSE-PLAN-1")

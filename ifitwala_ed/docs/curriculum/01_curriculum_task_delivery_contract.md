@@ -2,7 +2,7 @@
 
 Status: Canonical migration contract for the curriculum redesign
 Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/materials.py`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/class_hub.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
-Test refs: `ifitwala_ed/curriculum/doctype/learning_unit/test_learning_unit.py`, `ifitwala_ed/curriculum/doctype/lesson/test_lesson.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`, `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/api/test_teaching_plans.py`
+Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`, `ifitwala_ed/curriculum/doctype/lesson/test_lesson.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`, `ifitwala_ed/curriculum/test_materials.py`, `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/api/test_teaching_plans.py`
 
 This note is the authoritative curriculum contract for the redesign direction discussed and approved at the documentation level.
 
@@ -18,14 +18,15 @@ The central correction is explicit:
 ## Current Workspace Reality
 
 Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/courses.py`
-Test refs: `ifitwala_ed/curriculum/doctype/learning_unit/test_learning_unit.py`, `ifitwala_ed/curriculum/doctype/lesson/test_lesson.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`, `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_courses.py`
+Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/courses.py`
+Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`, `ifitwala_ed/curriculum/doctype/lesson/test_lesson.py`, `ifitwala_ed/curriculum/doctype/material_placement/test_material_placement.py`, `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_courses.py`
 
 - The educator-centered runtime now lives in `Course Plan`, `Unit Plan`, `Class Teaching Plan`, and `Class Session`.
-- Legacy planned-curriculum doctypes `Learning Unit`, `Lesson`, and `Lesson Activity` still exist in the workspace, but they are no longer paired with a `Lesson Instance` runtime object.
+- `Learning Unit` has been retired from the live codebase; its carried curriculum fields and standards/reflection child tables now live on `Unit Plan`.
+- Legacy planned-curriculum doctypes `Lesson` and `Lesson Activity` still exist in the workspace as optional shared guidance, but they are no longer paired with a `Lesson Instance` runtime object.
 - `Lesson Instance` has been removed from the live schema and runtime code.
-- Assessed work still lives in `Task` and `Task Delivery`, but `Task Delivery` now soft-links to `Class Session` instead of `Lesson Instance`.
-- `Material Placement` is still course-scoped and still needs the planned resource-model reset.
+- Assessed work still lives in `Task` and `Task Delivery`, but `Task Delivery` is now anchored to `Class Teaching Plan` and may also soft-link to `Class Session`.
+- `Material Placement` now supports class-aware anchors across `Course Plan`, `Unit Plan`, `Lesson`, `Class Teaching Plan`, `Class Session`, and `Task`.
 - Student LMS reads now use `ifitwala_ed.api.teaching_plans.get_student_learning_space`; the old lesson-tree bootstrap in `api/courses.py` has been retired.
 - Published docs under `ifitwala_ed/docs/docs_md/` are now being rewritten to reflect the class-session model and to mark `Lesson Instance` as retired.
 
@@ -45,7 +46,7 @@ Test refs: `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearnin
 - Student and teacher read surfaces must resolve class-owned planning and class sessions first, then shared course-plan content second.
 - Staff curriculum planning and class-session planning must surface in `ui-spa`, not as a Desk-first workflow.
 - Student curriculum and lesson consumption must surface in the LMS/student portal, not as a Desk-shaped curriculum reader.
-- Educator-facing semantics must take precedence over technical naming. Backend names may lag temporarily during implementation, but UI and canonical docs must use educator-centered language.
+- Educator-facing semantics must take precedence over technical naming. Remaining technical legacy should be limited to internal child-table names or migration helpers, not live teacher-facing curriculum objects.
 
 ## Educator-Centered Domain Model
 
@@ -96,7 +97,7 @@ Test refs: `ifitwala_ed/ui-spa/src/lib/services/staff/__tests__/staffTeachingSer
 ## Ownership and Governance
 
 Status: Planned
-Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.py`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.py`
+Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.py`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.py`
 Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/schedule/doctype/student_group/test_student_group.py`
 
 - Department or program owners should own `Course Plan`, `Unit Plan`, and common assessment baselines.
@@ -127,13 +128,13 @@ Test refs: `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearnin
 ## Semantic Mapping During Rewrite
 
 Status: Planned
-Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/learning_unit.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/schedule/doctype/student_group/student_group.json`
+Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/schedule/doctype/student_group/student_group.json`
 Test refs: None yet for the redesigned vocabulary
 
 | Current code term | Target educator-centered term | Direction |
 |---|---|---|
 | `Course` | Course | Keep |
-| `Learning Unit` | Unit Plan | Replace or rename during redesign |
+| `Learning Unit` | Unit Plan | Completed |
 | `Lesson` | Suggested Session Outline | Thin shared guidance only, or remove if not needed |
 | `Lesson Activity` | Session Activity | Move out of shared canonical lesson ownership |
 | `Lesson Instance` | Class Session | Promote into core educator-facing runtime object |
@@ -179,7 +180,7 @@ Test refs: None
 
 - `ifitwala_ed/docs/curriculum/02_educator_centered_curriculum_replatform_plan.md`
 - `ifitwala_ed/docs/docs_md/course.md`
-- `ifitwala_ed/docs/docs_md/learning-unit.md`
+- `ifitwala_ed/docs/docs_md/unit-plan.md`
 - `ifitwala_ed/docs/docs_md/lesson.md`
 - `ifitwala_ed/docs/docs_md/lesson-activity.md`
 - `ifitwala_ed/docs/docs_md/class-session.md`
@@ -206,5 +207,7 @@ Test refs: `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearnin
 - The educator-centered first slice now exists in code through `Course Plan`, `Unit Plan`, `Class Teaching Plan`, and `Class Session`.
 - Staff planning now has a route-based `ui-spa` surface in `ui-spa/src/pages/staff/ClassPlanning.vue` backed by `ifitwala_ed.api.teaching_plans.get_staff_class_planning_surface`.
 - Student course detail now reads from the class-aware LMS endpoint `ifitwala_ed.api.teaching_plans.get_student_learning_space` and no longer depends on the old lesson-tree page contract.
-- `Lesson Instance` has been retired from code. `Task Delivery`, Class Hub contracts, student reflections, and student-home work items now use `Class Session` instead.
-- Assessment and resource re-anchoring are still follow-on work; the current implementation covers class-session anchoring, but the resource model reset still remains.
+- `Lesson Instance` has been retired from code. `Task Delivery`, Class Hub contracts, student reflections, and student-home work items now use `Class Session`.
+- Assigned work now requires `Class Teaching Plan`, with optional `Class Session` context under that class plan.
+- The class-aware resource read model now surfaces shared course-plan resources, class-owned resources, unit resources, session resources, and task materials inside the staff planning SPA and student LMS learning space.
+- Staff can now create and remove class-wide and session-specific resources directly inside the class-planning SPA without leaving the planning workflow.

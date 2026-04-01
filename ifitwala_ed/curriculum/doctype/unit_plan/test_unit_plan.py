@@ -1,13 +1,13 @@
-# Copyright (c) 2024, fdR and Contributors
+# Copyright (c) 2026, François de Ryckel and Contributors
 # See license.txt
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.curriculum.doctype.learning_unit.learning_unit import get_program_subtree_scope
+from ifitwala_ed.curriculum.doctype.unit_plan.unit_plan import get_program_subtree_scope
 
 
-class TestLearningUnit(FrappeTestCase):
+class TestUnitPlan(FrappeTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
 

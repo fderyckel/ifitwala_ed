@@ -47,7 +47,7 @@ This plan now proceeds with the following locked design rules:
 ## Workstream 1: Semantics And Documentation
 
 Status: Partial
-Code refs: `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/docs_md/course.md`, `ifitwala_ed/docs/docs_md/learning-unit.md`, `ifitwala_ed/docs/docs_md/lesson.md`, `ifitwala_ed/docs/docs_md/lesson-activity.md`, `ifitwala_ed/docs/docs_md/lesson-instance.md`, `ifitwala_ed/docs/docs_md/material-placement.md`, `ifitwala_ed/docs/docs_md/task.md`, `ifitwala_ed/docs/docs_md/task-delivery.md`, `ifitwala_ed/docs/docs_md/student-group.md`
+Code refs: `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/docs_md/course.md`, `ifitwala_ed/docs/docs_md/unit-plan.md`, `ifitwala_ed/docs/docs_md/lesson.md`, `ifitwala_ed/docs/docs_md/lesson-activity.md`, `ifitwala_ed/docs/docs_md/lesson-instance.md`, `ifitwala_ed/docs/docs_md/material-placement.md`, `ifitwala_ed/docs/docs_md/task.md`, `ifitwala_ed/docs/docs_md/task-delivery.md`, `ifitwala_ed/docs/docs_md/student-group.md`
 Test refs: None
 
 Required changes:
@@ -65,7 +65,7 @@ Required changes:
 Follow-on docs to update during implementation:
 
 - `ifitwala_ed/docs/docs_md/course.md`
-- `ifitwala_ed/docs/docs_md/learning-unit.md`
+- `ifitwala_ed/docs/docs_md/unit-plan.md`
 - `ifitwala_ed/docs/docs_md/lesson.md`
 - `ifitwala_ed/docs/docs_md/lesson-activity.md`
 - `ifitwala_ed/docs/docs_md/lesson-instance.md`
@@ -84,7 +84,7 @@ Recommended target objects:
 
 - keep `Course`
 - add `Course Plan`
-- replace or rename `Learning Unit` into `Unit Plan`
+- `Learning Unit` has been retired and replaced by `Unit Plan`
 - replace the heavy shared `Lesson` concept with optional `Suggested Session Outline`
 - add `Class Teaching Plan`
 - replace `Lesson Instance` with `Class Session`
@@ -100,7 +100,7 @@ Recommended stance:
 
 Files likely to change or be retired:
 
-- `ifitwala_ed/curriculum/doctype/learning_unit/*`
+- retired `ifitwala_ed/curriculum/doctype/learning_unit/*`
 - `ifitwala_ed/curriculum/doctype/lesson/*`
 - `ifitwala_ed/curriculum/doctype/lesson_activity/*`
 - retired `ifitwala_ed/curriculum/doctype/lesson_instance/*`
@@ -151,15 +151,17 @@ Required changes:
   - `Unit Plan`
   - optional `Suggested Session Outline`
 - Reframe `Task Delivery` as class-scoped assigned work, not as a surrogate teaching-plan object.
-- Decide whether class-assigned work links to `Class Teaching Plan`, `Class Session`, or both.
+- Require class-assigned work to link to `Class Teaching Plan`, with optional `Class Session` context.
 - Unify the split launch path between `task_creation_service.py` and `task_delivery_service.py`.
 - Update educator-facing labels in overlays and gradebook surfaces.
 
 Implementation progress:
 
-- `Task Delivery` now optionally links to `Class Session` instead of `Lesson Instance`.
-- delivery validation now checks that a selected `Class Session` belongs to the same class, course, and academic year.
+- `Task Delivery` now requires `Class Teaching Plan` and may also link to `Class Session`.
+- delivery validation now checks that a selected `Class Teaching Plan` belongs to the same class, course, and academic year.
+- `Class Session` validation now also checks that the session belongs to the same `Class Teaching Plan`.
 - implicit lesson-instance creation from delivery flows has been removed.
+- task-creation flows now accept planning context so reusable tasks can inherit `Unit Plan` when launched from class planning.
 
 Files likely to change:
 
@@ -190,11 +192,21 @@ Required changes:
 - Ensure student and teacher read paths resolve class/session resources before shared plan resources.
 - Preserve governed file access through the existing file-governance boundary.
 
+Implementation progress:
+
+- `Material Placement` now supports `Course Plan`, `Unit Plan`, `Lesson`, `Class Teaching Plan`, `Class Session`, and `Task`.
+- material/file access now resolves through placement-aware class or plan context instead of course-only material reads.
+- staff planning and student LMS payloads now include shared plan resources, class-owned resources, unit resources, session resources, and task materials inside the bounded bootstrap response.
+- staff can now create and remove class-wide and session-specific resources directly from `ui-spa/src/pages/staff/ClassPlanning.vue`.
+
 Files likely to change:
 
 - `ifitwala_ed/curriculum/materials.py`
 - `ifitwala_ed/curriculum/doctype/material_placement/*`
 - `ifitwala_ed/api/materials.py`
+- `ifitwala_ed/api/teaching_plans.py`
+- `ifitwala_ed/ui-spa/src/components/planning/PlanningResourcePanel.vue`
+- `ifitwala_ed/ui-spa/src/lib/services/staff/staffTeachingService.ts`
 - `ifitwala_ed/api/courses.py`
 - any student or class read contracts that serialize materials
 
@@ -299,7 +311,7 @@ New test families likely required:
 ## Workstream 10: Retirement Of The Old Lesson-Centric Model
 
 Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/learning_unit/*`, `ifitwala_ed/curriculum/doctype/lesson/*`, `ifitwala_ed/curriculum/doctype/lesson_activity/*`, `ifitwala_ed/curriculum/doctype/material_placement/*`
+Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/*`, `ifitwala_ed/curriculum/doctype/lesson/*`, `ifitwala_ed/curriculum/doctype/lesson_activity/*`, `ifitwala_ed/curriculum/doctype/material_placement/*`
 Test refs: all suites that still assume the old model
 
 Because there is no production legacy requirement:
@@ -311,6 +323,7 @@ Because there is no production legacy requirement:
 
 Implementation progress:
 
+- `Learning Unit` has been removed from the live codebase
 - `Lesson Instance` has been removed from the live codebase
 - the old student lesson-tree API path has been removed
 - published docs are being rewritten so the retired object remains documented only as a deprecation note

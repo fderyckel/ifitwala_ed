@@ -11,6 +11,9 @@ export type CreateTaskDeliveryInput = {
 	instructions?: string;
 	task_type?: string;
 	student_group: string;
+	class_teaching_plan?: string;
+	class_session?: string;
+	unit_plan?: string;
 	delivery_mode: 'Assign Only' | 'Collect Work' | 'Assess';
 	available_from?: string;
 	due_date?: string;

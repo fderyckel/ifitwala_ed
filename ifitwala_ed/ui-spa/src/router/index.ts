@@ -80,8 +80,8 @@ const routes: RouteRecordRaw[] = [
     props: route => ({
       course_id: String(route.params.course_id || ''),
       task_delivery: String(route.params.task_delivery || ''),
-      learning_unit:
-        typeof route.query.learning_unit === 'string' ? route.query.learning_unit : '',
+      unit_plan:
+        typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
       lesson: typeof route.query.lesson === 'string' ? route.query.lesson : '',
     }),
     meta: { layout: 'student' },

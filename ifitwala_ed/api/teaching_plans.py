@@ -8,8 +8,11 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
+from ifitwala_ed.api.file_access import resolve_academic_file_open_url
 from ifitwala_ed.api.student_groups import TRIAGE_ROLES, _instructor_group_names
+from ifitwala_ed.curriculum import materials as materials_domain
 from ifitwala_ed.curriculum import planning
+from ifitwala_ed.utilities import governed_uploads
 
 
 def _serialize_scalar(value: Any) -> Any:
@@ -22,11 +25,32 @@ def _serialize_scalar(value: Any) -> Any:
     return value
 
 
+def _normalize_payload(value) -> dict[str, Any]:
+    if isinstance(value, str):
+        value = frappe.parse_json(value)
+    if not isinstance(value, dict):
+        frappe.throw(_("Payload must be a dict."))
+    return value
+
+
 def _require_logged_in_user() -> str:
     user = frappe.session.user
     if not user or user == "Guest":
         frappe.throw(_("You need to sign in to continue."), frappe.AuthenticationError)
     return user
+
+
+def _resolve_planning_resource_anchor(anchor_doctype: str, anchor_name: str) -> dict[str, Any]:
+    anchor_doctype = planning.normalize_text(anchor_doctype)
+    anchor_name = planning.normalize_text(anchor_name)
+    if anchor_doctype not in materials_domain.MATERIAL_CLASS_OWNED_ANCHORS:
+        frappe.throw(_("Class planning resources must be attached to a class plan or class session."))
+    context = materials_domain.resolve_anchor_context(anchor_doctype, anchor_name)
+    student_group = planning.normalize_text(context.get("student_group"))
+    if not student_group:
+        frappe.throw(_("This resource context is missing its class."))
+    _assert_staff_group_access(student_group)
+    return context
 
 
 def _assert_staff_group_access(student_group: str) -> None:
@@ -87,6 +111,124 @@ def _serialize_class_teaching_plan_row(row: dict) -> dict[str, Any]:
         "course_plan": row.get("course_plan"),
         "planning_status": row.get("planning_status"),
     }
+
+
+def _serialize_material_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    placement = (entry.get("placements") or [{}])[0]
+    material_type = entry.get("material_type")
+    if material_type == materials_domain.MATERIAL_TYPE_FILE:
+        open_url = resolve_academic_file_open_url(
+            file_name=entry.get("file"),
+            file_url=entry.get("file_url"),
+            context_doctype="Material Placement" if placement.get("placement") else "Supporting Material",
+            context_name=placement.get("placement") or entry.get("material"),
+        )
+    else:
+        open_url = entry.get("reference_url")
+
+    return {
+        "material": entry.get("material"),
+        "title": entry.get("title"),
+        "material_type": material_type,
+        "modality": entry.get("modality"),
+        "description": entry.get("description"),
+        "reference_url": entry.get("reference_url"),
+        "open_url": open_url,
+        "file_name": entry.get("file_name"),
+        "file_size": entry.get("file_size"),
+        "placement": placement.get("placement"),
+        "origin": placement.get("origin"),
+        "usage_role": placement.get("usage_role"),
+        "placement_note": placement.get("placement_note"),
+        "placement_order": placement.get("placement_order"),
+    }
+
+
+def _reload_anchor_material(anchor_doctype: str, anchor_name: str, material_name: str) -> dict[str, Any]:
+    rows = materials_domain.list_anchor_materials(anchor_doctype, anchor_name)
+    created = next((row for row in rows if row.get("material") == material_name), None)
+    if not created:
+        frappe.throw(_("Material was created but could not be reloaded."))
+    return _serialize_material_entry(created)
+
+
+def _fetch_material_map(anchor_refs: list[tuple[str, str]]) -> dict[tuple[str, str], list[dict[str, Any]]]:
+    material_map = materials_domain.list_materials_for_anchors(anchor_refs)
+    return {anchor: [_serialize_material_entry(entry) for entry in entries] for anchor, entries in material_map.items()}
+
+
+def _fetch_assigned_work(
+    class_teaching_plan: str,
+    *,
+    audience: str = "staff",
+    student_name: str | None = None,
+) -> list[dict[str, Any]]:
+    rows = frappe.db.sql(
+        """
+        SELECT
+            td.name AS task_delivery,
+            td.task,
+            td.class_session,
+            td.delivery_mode,
+            td.grading_mode,
+            td.available_from,
+            td.due_date,
+            td.lock_date,
+            t.title,
+            t.task_type,
+            t.unit_plan,
+            t.lesson
+        FROM `tabTask Delivery` td
+        INNER JOIN `tabTask` t ON t.name = td.task
+        WHERE td.class_teaching_plan = %(class_teaching_plan)s
+          AND td.docstatus = 1
+        ORDER BY COALESCE(td.due_date, td.available_from, td.creation) ASC, td.creation ASC
+        """,
+        {"class_teaching_plan": class_teaching_plan},
+        as_dict=True,
+    )
+    if not rows:
+        return []
+
+    task_materials = _fetch_material_map([("Task", row.get("task")) for row in rows if row.get("task")])
+    outcomes_by_delivery: dict[str, dict[str, Any]] = {}
+    if audience == "student" and student_name:
+        outcome_rows = frappe.get_all(
+            "Task Outcome",
+            filters={
+                "student": student_name,
+                "task_delivery": ["in", [row["task_delivery"] for row in rows if row.get("task_delivery")] or [""]],
+            },
+            fields=["task_delivery", "submission_status", "grading_status", "is_complete", "is_published"],
+            limit=0,
+        )
+        outcomes_by_delivery = {row.get("task_delivery"): row for row in outcome_rows or [] if row.get("task_delivery")}
+
+    payload = []
+    for row in rows:
+        item = {
+            "task_delivery": row.get("task_delivery"),
+            "task": row.get("task"),
+            "title": row.get("title") or row.get("task"),
+            "task_type": row.get("task_type"),
+            "unit_plan": row.get("unit_plan"),
+            "lesson": row.get("lesson"),
+            "class_session": row.get("class_session"),
+            "delivery_mode": row.get("delivery_mode"),
+            "grading_mode": row.get("grading_mode"),
+            "available_from": _serialize_scalar(row.get("available_from")),
+            "due_date": _serialize_scalar(row.get("due_date")),
+            "lock_date": _serialize_scalar(row.get("lock_date")),
+            "materials": task_materials.get(("Task", row.get("task")), []),
+        }
+        if audience == "student":
+            outcome = outcomes_by_delivery.get(row.get("task_delivery"), {})
+            item["submission_status"] = outcome.get("submission_status")
+            item["grading_status"] = outcome.get("grading_status")
+            item["is_complete"] = int(outcome.get("is_complete") or 0) if outcome else 0
+            item["is_published"] = int(outcome.get("is_published") or 0) if outcome else 0
+        payload.append(item)
+    return payload
 
 
 def _fetch_class_sessions(class_teaching_plan: str, audience: str = "staff") -> list[dict[str, Any]]:
@@ -160,6 +302,8 @@ def _fetch_class_sessions(class_teaching_plan: str, audience: str = "staff") -> 
             "sequence_index": session.get("sequence_index"),
             "learning_goal": session.get("learning_goal"),
             "activities": activities_by_parent.get(session.get("name"), []),
+            "resources": [],
+            "assigned_work": [],
         }
         if audience == "staff":
             session_payload["teacher_note"] = session.get("teacher_note")
@@ -167,11 +311,190 @@ def _fetch_class_sessions(class_teaching_plan: str, audience: str = "staff") -> 
     return payload
 
 
-def _fetch_unit_lookup(course_plan: str) -> dict[str, dict[str, Any]]:
-    return {row["name"]: row for row in planning.get_unit_plan_rows(course_plan) if row.get("name")}
+def _serialize_standards_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    fields = (
+        "framework_name",
+        "framework_version",
+        "subject_area",
+        "program",
+        "strand",
+        "substrand",
+        "standard_code",
+        "standard_description",
+        "coverage_level",
+        "alignment_strength",
+        "alignment_type",
+        "notes",
+    )
+    return [{fieldname: row.get(fieldname) for fieldname in fields} for row in rows or []]
 
 
-def _serialize_backbone_units(class_teaching_plan: str, audience: str = "staff") -> list[dict[str, Any]]:
+def _serialize_reflection_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    fields = (
+        "academic_year",
+        "school",
+        "prior_to_the_unit",
+        "during_the_unit",
+        "what_work_well",
+        "what_didnt_work_well",
+        "changes_suggestions",
+    )
+    return [{fieldname: row.get(fieldname) for fieldname in fields} for row in rows or []]
+
+
+def _has_reflection_content(row: dict[str, Any]) -> bool:
+    return any(
+        planning.normalize_text(row.get(fieldname))
+        for fieldname in (
+            "prior_to_the_unit",
+            "during_the_unit",
+            "what_work_well",
+            "what_didnt_work_well",
+            "changes_suggestions",
+        )
+    )
+
+
+def _fetch_unit_child_rows(
+    child_doctype: str,
+    unit_names: list[str],
+    *,
+    parentfield: str,
+    fields: list[str],
+) -> dict[str, list[dict[str, Any]]]:
+    if not unit_names:
+        return {}
+
+    rows = frappe.get_all(
+        child_doctype,
+        filters={
+            "parent": ["in", unit_names],
+            "parenttype": "Unit Plan",
+            "parentfield": parentfield,
+        },
+        fields=["parent", *fields],
+        order_by="parent asc, idx asc",
+        limit=0,
+    )
+    rows_by_parent: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows or []:
+        parent = row.get("parent")
+        if parent:
+            rows_by_parent[parent].append(row)
+    return rows_by_parent
+
+
+def _build_unit_lookup(course_plan: str, audience: str = "staff") -> dict[str, dict[str, Any]]:
+    unit_rows = planning.get_unit_plan_rows(course_plan)
+    unit_names = [row["name"] for row in unit_rows if row.get("name")]
+    if not unit_names:
+        return {}
+
+    standards_rows = _fetch_unit_child_rows(
+        "Learning Unit Standard Alignment",
+        unit_names,
+        parentfield="standards",
+        fields=[
+            "framework_name",
+            "framework_version",
+            "subject_area",
+            "program",
+            "strand",
+            "substrand",
+            "standard_code",
+            "standard_description",
+            "coverage_level",
+            "alignment_strength",
+            "alignment_type",
+            "notes",
+        ],
+    )
+    reflection_rows = _fetch_unit_child_rows(
+        "Curriculum Planning Reflection",
+        unit_names,
+        parentfield="reflections",
+        fields=[
+            "academic_year",
+            "school",
+            "prior_to_the_unit",
+            "during_the_unit",
+            "what_work_well",
+            "what_didnt_work_well",
+            "changes_suggestions",
+        ],
+    )
+
+    class_reflections_by_unit: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    if audience == "staff":
+        rows = frappe.db.sql(
+            """
+            SELECT
+                cpu.unit_plan,
+                ctp.name AS class_teaching_plan,
+                ctp.title AS class_teaching_plan_title,
+                ctp.student_group,
+                ctp.academic_year,
+                sg.student_group_name,
+                sg.student_group_abbreviation,
+                cpu.prior_to_the_unit,
+                cpu.during_the_unit,
+                cpu.what_work_well,
+                cpu.what_didnt_work_well,
+                cpu.changes_suggestions
+            FROM `tabClass Teaching Plan Unit` cpu
+            INNER JOIN `tabClass Teaching Plan` ctp ON ctp.name = cpu.parent
+            LEFT JOIN `tabStudent Group` sg ON sg.name = ctp.student_group
+            WHERE cpu.parenttype = 'Class Teaching Plan'
+              AND cpu.parentfield = 'units'
+              AND ctp.course_plan = %(course_plan)s
+              AND cpu.unit_plan IN %(unit_plans)s
+            ORDER BY cpu.unit_plan ASC, ctp.modified DESC, ctp.creation DESC
+            """,
+            {"course_plan": course_plan, "unit_plans": tuple(unit_names)},
+            as_dict=True,
+        )
+        for row in rows or []:
+            if not _has_reflection_content(row):
+                continue
+            unit_plan = row.get("unit_plan")
+            if not unit_plan:
+                continue
+            class_reflections_by_unit[unit_plan].append(
+                {
+                    "class_teaching_plan": row.get("class_teaching_plan"),
+                    "student_group": row.get("student_group"),
+                    "class_label": row.get("student_group_name")
+                    or row.get("student_group_abbreviation")
+                    or row.get("class_teaching_plan_title")
+                    or row.get("student_group"),
+                    "academic_year": row.get("academic_year"),
+                    "prior_to_the_unit": row.get("prior_to_the_unit"),
+                    "during_the_unit": row.get("during_the_unit"),
+                    "what_work_well": row.get("what_work_well"),
+                    "what_didnt_work_well": row.get("what_didnt_work_well"),
+                    "changes_suggestions": row.get("changes_suggestions"),
+                }
+            )
+
+    lookup: dict[str, dict[str, Any]] = {}
+    for row in unit_rows:
+        unit_name = row.get("name")
+        if not unit_name:
+            continue
+        lookup[unit_name] = {
+            **row,
+            "standards": _serialize_standards_rows(standards_rows.get(unit_name, [])),
+            "shared_reflections": _serialize_reflection_rows(reflection_rows.get(unit_name, [])),
+            "class_reflections": class_reflections_by_unit.get(unit_name, []),
+        }
+    return lookup
+
+
+def _serialize_backbone_units(
+    class_teaching_plan: str,
+    unit_lookup: dict[str, dict[str, Any]],
+    audience: str = "staff",
+) -> list[dict[str, Any]]:
     rows = frappe.get_all(
         "Class Teaching Plan Unit",
         filters={
@@ -187,24 +510,120 @@ def _serialize_backbone_units(class_teaching_plan: str, audience: str = "staff")
             "pacing_status",
             "teacher_focus",
             "pacing_note",
+            "prior_to_the_unit",
+            "during_the_unit",
+            "what_work_well",
+            "what_didnt_work_well",
+            "changes_suggestions",
         ],
         order_by="unit_order asc, idx asc",
         limit=0,
     )
     payload = []
     for row in rows:
+        unit_meta = unit_lookup.get(row.get("unit_plan"), {})
         unit_payload = {
             "unit_plan": row.get("unit_plan"),
-            "title": row.get("unit_title"),
-            "unit_order": row.get("unit_order"),
+            "title": unit_meta.get("title") or row.get("unit_title"),
+            "unit_order": row.get("unit_order") or unit_meta.get("unit_order"),
+            "program": unit_meta.get("program"),
+            "unit_code": unit_meta.get("unit_code"),
+            "unit_status": unit_meta.get("unit_status"),
+            "version": unit_meta.get("version"),
+            "duration": unit_meta.get("duration"),
+            "estimated_duration": unit_meta.get("estimated_duration"),
+            "overview": unit_meta.get("overview"),
+            "essential_understanding": unit_meta.get("essential_understanding"),
+            "content": unit_meta.get("content"),
+            "skills": unit_meta.get("skills"),
+            "concepts": unit_meta.get("concepts"),
+            "standards": unit_meta.get("standards", []),
+            "shared_resources": [],
+            "assigned_work": [],
         }
         if audience == "staff":
             unit_payload["governed_required"] = int(row.get("governed_required") or 0)
             unit_payload["pacing_status"] = row.get("pacing_status")
             unit_payload["teacher_focus"] = row.get("teacher_focus")
             unit_payload["pacing_note"] = row.get("pacing_note")
+            unit_payload["is_published"] = int(unit_meta.get("is_published") or 0)
+            unit_payload["misconceptions"] = unit_meta.get("misconceptions")
+            unit_payload["shared_reflections"] = unit_meta.get("shared_reflections", [])
+            unit_payload["class_reflections"] = unit_meta.get("class_reflections", [])
+            unit_payload["prior_to_the_unit"] = row.get("prior_to_the_unit")
+            unit_payload["during_the_unit"] = row.get("during_the_unit")
+            unit_payload["what_work_well"] = row.get("what_work_well")
+            unit_payload["what_didnt_work_well"] = row.get("what_didnt_work_well")
+            unit_payload["changes_suggestions"] = row.get("changes_suggestions")
         payload.append(unit_payload)
     return payload
+
+
+def _index_sessions_by_name(units: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    lookup: dict[str, dict[str, Any]] = {}
+    for unit in units:
+        for session in unit.get("sessions") or []:
+            if session.get("class_session"):
+                lookup[session["class_session"]] = session
+    return lookup
+
+
+def _attach_resources_and_work(
+    *,
+    units: list[dict[str, Any]],
+    course_plan: str | None = None,
+    class_teaching_plan: str | None = None,
+    assigned_work: list[dict[str, Any]] | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    anchor_refs: list[tuple[str, str]] = []
+    if course_plan:
+        anchor_refs.append(("Course Plan", course_plan))
+    if class_teaching_plan:
+        anchor_refs.append(("Class Teaching Plan", class_teaching_plan))
+
+    for unit in units:
+        unit_plan = unit.get("unit_plan")
+        if unit_plan:
+            anchor_refs.append(("Unit Plan", unit_plan))
+        for session in unit.get("sessions") or []:
+            if session.get("class_session"):
+                anchor_refs.append(("Class Session", session["class_session"]))
+
+    materials_by_anchor = _fetch_material_map(anchor_refs)
+    session_lookup = _index_sessions_by_name(units)
+    for unit in units:
+        unit["shared_resources"] = materials_by_anchor.get(("Unit Plan", unit.get("unit_plan")), [])
+        for session in unit.get("sessions") or []:
+            session["resources"] = materials_by_anchor.get(("Class Session", session.get("class_session")), [])
+
+    for item in assigned_work or []:
+        resolved_unit_plan = planning.normalize_text(item.get("unit_plan"))
+        if not resolved_unit_plan and item.get("class_session"):
+            resolved_unit_plan = planning.normalize_text(
+                (session_lookup.get(item.get("class_session")) or {}).get("unit_plan")
+            )
+            item["unit_plan"] = resolved_unit_plan or item.get("unit_plan")
+
+        if resolved_unit_plan:
+            for unit in units:
+                if planning.normalize_text(unit.get("unit_plan")) == resolved_unit_plan:
+                    unit.setdefault("assigned_work", []).append(item)
+                    break
+        if item.get("class_session") and item["class_session"] in session_lookup:
+            session_lookup[item["class_session"]].setdefault("assigned_work", []).append(item)
+
+    return {
+        "shared_resources": materials_by_anchor.get(("Course Plan", course_plan), []) if course_plan else [],
+        "class_resources": materials_by_anchor.get(("Class Teaching Plan", class_teaching_plan), [])
+        if class_teaching_plan
+        else [],
+        "general_assigned_work": [
+            item
+            for item in (assigned_work or [])
+            if not planning.normalize_text(item.get("unit_plan"))
+            and not planning.normalize_text(item.get("class_session"))
+        ],
+    }
 
 
 def _resolve_staff_plan(
@@ -259,15 +678,32 @@ def _build_staff_bundle(student_group: str, class_teaching_plan: str | None = No
 
     if not resolved_plan:
         payload["teaching_plan"] = None
-        payload["curriculum"] = {"units": [], "session_count": 0}
+        payload["resources"] = {"shared_resources": [], "class_resources": [], "general_assigned_work": []}
+        payload["curriculum"] = {"units": [], "session_count": 0, "assigned_work_count": 0}
         return payload
 
     doc = frappe.get_doc("Class Teaching Plan", resolved_plan)
-    unit_rows = _serialize_backbone_units(doc.name, audience="staff")
+    unit_lookup = _build_unit_lookup(doc.course_plan, audience="staff")
+    unit_rows = _serialize_backbone_units(doc.name, unit_lookup, audience="staff")
     sessions = _fetch_class_sessions(doc.name, audience="staff")
+    assigned_work = _fetch_assigned_work(doc.name, audience="staff")
     sessions_by_unit: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for session in sessions:
         sessions_by_unit[session.get("unit_plan")].append(session)
+
+    decorated_units = [
+        {
+            **row,
+            "sessions": sessions_by_unit.get(row.get("unit_plan"), []),
+        }
+        for row in unit_rows
+    ]
+    resource_bundle = _attach_resources_and_work(
+        units=decorated_units,
+        course_plan=doc.course_plan,
+        class_teaching_plan=doc.name,
+        assigned_work=assigned_work,
+    )
 
     payload["teaching_plan"] = {
         "class_teaching_plan": doc.name,
@@ -277,15 +713,11 @@ def _build_staff_bundle(student_group: str, class_teaching_plan: str | None = No
         "team_note": doc.team_note,
     }
     payload["resolved"]["course_plan"] = doc.course_plan
+    payload["resources"] = resource_bundle
     payload["curriculum"] = {
-        "units": [
-            {
-                **row,
-                "sessions": sessions_by_unit.get(row.get("unit_plan"), []),
-            }
-            for row in unit_rows
-        ],
+        "units": decorated_units,
         "session_count": len(sessions),
+        "assigned_work_count": len(assigned_work),
     }
     return payload
 
@@ -340,6 +772,11 @@ def save_class_teaching_plan_unit(
     pacing_status: str | None = None,
     teacher_focus: str | None = None,
     pacing_note: str | None = None,
+    prior_to_the_unit: str | None = None,
+    during_the_unit: str | None = None,
+    what_work_well: str | None = None,
+    what_didnt_work_well: str | None = None,
+    changes_suggestions: str | None = None,
 ) -> dict[str, Any]:
     plan_name = planning.normalize_text(class_teaching_plan)
     doc = frappe.get_doc("Class Teaching Plan", plan_name)
@@ -357,6 +794,11 @@ def save_class_teaching_plan_unit(
         matched.pacing_status = pacing_status
     matched.teacher_focus = planning.normalize_long_text(teacher_focus)
     matched.pacing_note = planning.normalize_long_text(pacing_note)
+    matched.prior_to_the_unit = planning.normalize_long_text(prior_to_the_unit)
+    matched.during_the_unit = planning.normalize_long_text(during_the_unit)
+    matched.what_work_well = planning.normalize_long_text(what_work_well)
+    matched.what_didnt_work_well = planning.normalize_long_text(what_didnt_work_well)
+    matched.changes_suggestions = planning.normalize_long_text(changes_suggestions)
     doc.save(ignore_permissions=True)
     return {
         "class_teaching_plan": doc.name,
@@ -410,6 +852,107 @@ def save_class_session(
         "class_session": doc.name,
         "class_teaching_plan": class_teaching_plan,
         "session_status": doc.session_status,
+    }
+
+
+@frappe.whitelist()
+def create_class_planning_reference_material(payload=None, **kwargs) -> dict[str, Any]:
+    data = _normalize_payload(payload if payload is not None else kwargs)
+    context = _resolve_planning_resource_anchor(data.get("anchor_doctype"), data.get("anchor_name"))
+    title = planning.normalize_text(data.get("title"))
+    if not title:
+        frappe.throw(_("Title is required."))
+
+    material, placement = materials_domain.create_reference_material(
+        anchor_doctype=context["anchor_doctype"],
+        anchor_name=context["anchor_name"],
+        title=title,
+        reference_url=data.get("reference_url"),
+        description=data.get("description"),
+        modality=data.get("modality"),
+        usage_role=data.get("usage_role"),
+        placement_note=data.get("placement_note"),
+        origin=materials_domain.resolve_material_origin(context["anchor_doctype"]),
+    )
+    return {
+        "anchor_doctype": context["anchor_doctype"],
+        "anchor_name": context["anchor_name"],
+        "placement": placement.name,
+        "resource": _reload_anchor_material(context["anchor_doctype"], context["anchor_name"], material.name),
+    }
+
+
+@frappe.whitelist()
+def upload_class_planning_material_file(
+    anchor_doctype: str | None = None,
+    anchor_name: str | None = None,
+    title: str | None = None,
+    description: str | None = None,
+    modality: str | None = None,
+    usage_role: str | None = None,
+    placement_note: str | None = None,
+) -> dict[str, Any]:
+    anchor_doctype = anchor_doctype or frappe.form_dict.get("anchor_doctype")
+    anchor_name = anchor_name or frappe.form_dict.get("anchor_name")
+    title = title or frappe.form_dict.get("title")
+    description = description if description is not None else frappe.form_dict.get("description")
+    modality = modality if modality is not None else frappe.form_dict.get("modality")
+    usage_role = usage_role if usage_role is not None else frappe.form_dict.get("usage_role")
+    placement_note = placement_note if placement_note is not None else frappe.form_dict.get("placement_note")
+
+    context = _resolve_planning_resource_anchor(anchor_doctype, anchor_name)
+    title = planning.normalize_text(title)
+    if not title:
+        frappe.throw(_("Title is required."))
+
+    frappe.db.savepoint("upload_class_planning_material_file")
+    try:
+        material = materials_domain.create_file_material_record(
+            anchor_doctype=context["anchor_doctype"],
+            anchor_name=context["anchor_name"],
+            title=title,
+            description=description,
+            modality=modality,
+        )
+        governed_uploads.upload_supporting_material_file(material=material.name)
+        placement = materials_domain.create_material_placement(
+            supporting_material=material.name,
+            anchor_doctype=context["anchor_doctype"],
+            anchor_name=context["anchor_name"],
+            usage_role=usage_role,
+            placement_note=placement_note,
+            origin=materials_domain.resolve_material_origin(context["anchor_doctype"]),
+        )
+    except Exception:
+        frappe.db.rollback(save_point="upload_class_planning_material_file")
+        raise
+
+    return {
+        "anchor_doctype": context["anchor_doctype"],
+        "anchor_name": context["anchor_name"],
+        "placement": placement.name,
+        "resource": _reload_anchor_material(context["anchor_doctype"], context["anchor_name"], material.name),
+    }
+
+
+@frappe.whitelist()
+def remove_class_planning_material(payload=None, **kwargs) -> dict[str, Any]:
+    data = _normalize_payload(payload if payload is not None else kwargs)
+    context = _resolve_planning_resource_anchor(data.get("anchor_doctype"), data.get("anchor_name"))
+    placement = planning.normalize_text(data.get("placement"))
+    if not placement:
+        frappe.throw(_("Placement is required."))
+
+    materials_domain.delete_anchor_material_placement(
+        placement,
+        anchor_doctype=context["anchor_doctype"],
+        anchor_name=context["anchor_name"],
+    )
+    return {
+        "anchor_doctype": context["anchor_doctype"],
+        "anchor_name": context["anchor_name"],
+        "placement": placement,
+        "removed": 1,
     }
 
 
@@ -495,16 +1038,27 @@ def get_student_learning_space(course_id: str, student_group: str | None = None)
     message = None
     units_payload: list[dict[str, Any]] = []
     resolved_course_plan = None
+    resources_payload = {"shared_resources": [], "class_resources": [], "general_assigned_work": []}
+    assigned_work_count = 0
 
     if class_plan_row:
         doc = frappe.get_doc("Class Teaching Plan", class_plan_row["name"])
         resolved_course_plan = doc.course_plan
-        unit_rows = _serialize_backbone_units(doc.name, audience="student")
+        unit_lookup = _build_unit_lookup(doc.course_plan, audience="student")
+        unit_rows = _serialize_backbone_units(doc.name, unit_lookup, audience="student")
         sessions = _fetch_class_sessions(doc.name, audience="student")
+        assigned_work = _fetch_assigned_work(doc.name, audience="student", student_name=student_name)
         sessions_by_unit: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for session in sessions:
             sessions_by_unit[session.get("unit_plan")].append(session)
         units_payload = [{**row, "sessions": sessions_by_unit.get(row.get("unit_plan"), [])} for row in unit_rows]
+        resources_payload = _attach_resources_and_work(
+            units=units_payload,
+            course_plan=doc.course_plan,
+            class_teaching_plan=doc.name,
+            assigned_work=assigned_work,
+        )
+        assigned_work_count = len(assigned_work)
     else:
         course_plans = frappe.get_all(
             "Course Plan",
@@ -515,19 +1069,34 @@ def get_student_learning_space(course_id: str, student_group: str | None = None)
         )
         if len(course_plans) == 1:
             resolved_course_plan = course_plans[0]["name"]
+            unit_lookup = _build_unit_lookup(resolved_course_plan, audience="student")
             units_payload = [
                 {
                     "unit_plan": row.get("name"),
                     "title": row.get("title"),
                     "unit_order": row.get("unit_order"),
-                    "governed_required": 1,
-                    "pacing_status": "Not Started",
-                    "teacher_focus": None,
-                    "pacing_note": None,
+                    "program": row.get("program"),
+                    "unit_code": row.get("unit_code"),
+                    "unit_status": row.get("unit_status"),
+                    "version": row.get("version"),
+                    "duration": row.get("duration"),
+                    "estimated_duration": row.get("estimated_duration"),
+                    "overview": row.get("overview"),
+                    "essential_understanding": row.get("essential_understanding"),
+                    "content": row.get("content"),
+                    "skills": row.get("skills"),
+                    "concepts": row.get("concepts"),
+                    "standards": row.get("standards", []),
+                    "shared_resources": [],
+                    "assigned_work": [],
                     "sessions": [],
                 }
-                for row in planning.get_unit_plan_rows(resolved_course_plan)
+                for row in unit_lookup.values()
             ]
+            resources_payload = _attach_resources_and_work(
+                units=units_payload,
+                course_plan=resolved_course_plan,
+            )
             message = _("Your teacher has not published a class teaching plan yet. Showing the shared course plan.")
         else:
             message = _(
@@ -562,11 +1131,13 @@ def get_student_learning_space(course_id: str, student_group: str | None = None)
             "course_plan": resolved_course_plan,
         },
         "message": message,
+        "resources": resources_payload,
         "curriculum": {
             "units": units_payload,
             "counts": {
                 "units": len(units_payload),
                 "sessions": sum(len(unit.get("sessions") or []) for unit in units_payload),
+                "assigned_work": assigned_work_count,
             },
         },
     }

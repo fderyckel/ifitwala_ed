@@ -10,7 +10,14 @@ from ifitwala_ed.tests.frappe_stubs import StubValidationError, import_fresh, st
 @contextmanager
 def _material_placement_module():
     materials_stub = ModuleType("ifitwala_ed.curriculum.materials")
-    materials_stub.MATERIAL_ALLOWED_ANCHORS = {"Course", "Learning Unit", "Lesson", "Task"}
+    materials_stub.MATERIAL_ALLOWED_ANCHORS = {
+        "Course Plan",
+        "Unit Plan",
+        "Lesson",
+        "Class Teaching Plan",
+        "Class Session",
+        "Task",
+    }
     materials_stub.get_material_permission_query_conditions = lambda user=None, table_alias="", manage_only=False: (
         f"{table_alias}.course in ('COURSE-1')"
     )
@@ -19,11 +26,11 @@ def _material_placement_module():
     )
     materials_stub.normalize_material_usage_role = lambda value: str(value or "").strip() or "Reference"
     materials_stub.resolve_anchor_course = lambda anchor_doctype, anchor_name: "COURSE-1"
-    materials_stub.user_can_manage_course_material = lambda user, course: (
-        course == "COURSE-1" and user == "teacher@example.com"
+    materials_stub.user_can_manage_material_anchor = lambda user, anchor_doctype, anchor_name: (
+        user == "teacher@example.com"
     )
-    materials_stub.user_can_read_course_material = lambda user, course: (
-        course == "COURSE-1" and user in {"teacher@example.com", "coordinator@example.com"}
+    materials_stub.user_can_read_material_anchor = lambda user, anchor_doctype, anchor_name: (
+        user in {"teacher@example.com", "coordinator@example.com"}
     )
 
     with stubbed_frappe(extra_modules={"ifitwala_ed.curriculum.materials": materials_stub}) as frappe:
@@ -78,7 +85,8 @@ class TestMaterialPlacement(TestCase):
     def test_has_permission_keeps_coordinator_read_only(self):
         with _material_placement_module() as module:
             placement = module.MaterialPlacement()
-            placement.course = "COURSE-1"
+            placement.anchor_doctype = "Task"
+            placement.anchor_name = "TASK-1"
 
             self.assertTrue(module.has_permission(placement, ptype="read", user="coordinator@example.com"))
             self.assertFalse(module.has_permission(placement, ptype="write", user="coordinator@example.com"))

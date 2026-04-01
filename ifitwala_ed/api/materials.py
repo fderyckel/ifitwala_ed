@@ -20,12 +20,13 @@ def _normalize_payload(value) -> dict[str, Any]:
 
 def _serialize_material(entry: dict[str, Any]) -> dict[str, Any]:
     material_type = entry.get("material_type")
+    first_placement = (entry.get("placements") or [{}])[0]
     if material_type == materials_domain.MATERIAL_TYPE_FILE:
         open_url = resolve_academic_file_open_url(
             file_name=entry.get("file"),
             file_url=entry.get("file_url"),
-            context_doctype="Supporting Material",
-            context_name=entry.get("material"),
+            context_doctype="Material Placement" if first_placement.get("placement") else "Supporting Material",
+            context_name=first_placement.get("placement") or entry.get("material"),
         )
     else:
         open_url = entry.get("reference_url")

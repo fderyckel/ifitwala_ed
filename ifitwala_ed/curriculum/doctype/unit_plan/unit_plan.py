@@ -6,6 +6,7 @@ from __future__ import annotations
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils.nestedset import get_descendants_of
 
 from ifitwala_ed.curriculum import planning
 
@@ -14,8 +15,17 @@ class UnitPlan(Document):
     def before_validate(self):
         self.title = planning.normalize_text(self.title)
         self.course_plan = planning.normalize_text(self.course_plan)
+        self.program = planning.normalize_text(getattr(self, "program", None)) or None
+        self.unit_code = planning.normalize_text(getattr(self, "unit_code", None)) or None
+        self.version = planning.normalize_text(getattr(self, "version", None)) or None
+        self.duration = planning.normalize_text(getattr(self, "duration", None)) or None
+        self.estimated_duration = planning.normalize_text(getattr(self, "estimated_duration", None)) or None
         self.overview = planning.normalize_long_text(self.overview)
         self.essential_understanding = planning.normalize_long_text(self.essential_understanding)
+        self.misconceptions = planning.normalize_long_text(getattr(self, "misconceptions", None))
+        self.content = planning.normalize_long_text(getattr(self, "content", None))
+        self.skills = planning.normalize_long_text(getattr(self, "skills", None))
+        self.concepts = planning.normalize_long_text(getattr(self, "concepts", None))
 
     def before_insert(self):
         if not int(self.unit_order or 0):
@@ -54,3 +64,13 @@ class UnitPlan(Document):
 
     def on_update(self):
         planning.sync_all_class_teaching_plans(self.course_plan)
+
+
+@frappe.whitelist()
+def get_program_subtree_scope(program: str):
+    program = planning.normalize_text(program)
+    if not program:
+        frappe.throw(_("Program is required."), frappe.ValidationError)
+
+    descendants = get_descendants_of("Program", program) or []
+    return [program, *descendants]

@@ -15,6 +15,76 @@ export type StaffPlanningActivity = {
 	resource_note?: string | null
 }
 
+export type StaffPlanningStandard = {
+	framework_name?: string | null
+	framework_version?: string | null
+	subject_area?: string | null
+	program?: string | null
+	strand?: string | null
+	substrand?: string | null
+	standard_code?: string | null
+	standard_description?: string | null
+	coverage_level?: string | null
+	alignment_strength?: string | null
+	alignment_type?: string | null
+	notes?: string | null
+}
+
+export type StaffPlanningMaterial = {
+	material: string
+	title: string
+	material_type?: 'File' | 'Reference Link' | null
+	modality?: string | null
+	description?: string | null
+	reference_url?: string | null
+	open_url?: string | null
+	file_name?: string | null
+	file_size?: string | null
+	placement?: string | null
+	origin?: string | null
+	usage_role?: string | null
+	placement_note?: string | null
+	placement_order?: number | null
+}
+
+export type StaffAssignedWork = {
+	task_delivery: string
+	task: string
+	title: string
+	task_type?: string | null
+	unit_plan?: string | null
+	lesson?: string | null
+	class_session?: string | null
+	delivery_mode?: string | null
+	grading_mode?: string | null
+	available_from?: string | null
+	due_date?: string | null
+	lock_date?: string | null
+	materials: StaffPlanningMaterial[]
+}
+
+export type StaffPlanningReflection = {
+	academic_year?: string | null
+	school?: string | null
+	prior_to_the_unit?: string | null
+	during_the_unit?: string | null
+	what_work_well?: string | null
+	what_didnt_work_well?: string | null
+	changes_suggestions?: string | null
+}
+
+export type StaffPlanningClassReflection = {
+	class_teaching_plan: string
+	student_group?: string | null
+	class_label: string
+	academic_year?: string | null
+	prior_to_the_unit?: string | null
+	during_the_unit?: string | null
+	what_work_well?: string | null
+	what_didnt_work_well?: string | null
+	changes_suggestions?: string | null
+}
+
 export type StaffPlanningSession = {
 	class_session: string
 	title: string
@@ -25,16 +95,41 @@ export type StaffPlanningSession = {
 	learning_goal?: string | null
 	teacher_note?: string | null
 	activities: StaffPlanningActivity[]
+	resources: StaffPlanningMaterial[]
+	assigned_work: StaffAssignedWork[]
 }
 
 export type StaffPlanningUnit = {
 	unit_plan: string
 	title: string
 	unit_order?: number | null
+	program?: string | null
+	unit_code?: string | null
+	unit_status?: string | null
+	version?: string | null
+	duration?: string | null
+	estimated_duration?: string | null
+	is_published?: number
+	overview?: string | null
+	essential_understanding?: string | null
+	misconceptions?: string | null
+	content?: string | null
+	skills?: string | null
+	concepts?: string | null
+	standards: StaffPlanningStandard[]
+	shared_resources: StaffPlanningMaterial[]
+	assigned_work: StaffAssignedWork[]
+	shared_reflections?: StaffPlanningReflection[]
+	class_reflections?: StaffPlanningClassReflection[]
 	governed_required: number
 	pacing_status?: string | null
 	teacher_focus?: string | null
 	pacing_note?: string | null
+	prior_to_the_unit?: string | null
+	during_the_unit?: string | null
+	what_work_well?: string | null
+	what_didnt_work_well?: string | null
+	changes_suggestions?: string | null
 	sessions: StaffPlanningSession[]
 }
 
@@ -75,8 +170,14 @@ export type Response = {
 		planning_status?: string | null
 		team_note?: string | null
 	}
+	resources: {
+		shared_resources: StaffPlanningMaterial[]
+		class_resources: StaffPlanningMaterial[]
+		general_assigned_work: StaffAssignedWork[]
+	}
 	curriculum: {
 		units: StaffPlanningUnit[]
 		session_count: number
+		assigned_work_count: number
 	}
 }

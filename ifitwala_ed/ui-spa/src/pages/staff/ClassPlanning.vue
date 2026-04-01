@@ -25,6 +25,9 @@
 					<span class="chip">{{ surface?.group.course || 'Course pending' }}</span>
 					<span class="chip">{{ surface?.curriculum.units.length || 0 }} units</span>
 					<span class="chip">{{ surface?.curriculum.session_count || 0 }} sessions</span>
+					<span class="chip"
+						>{{ surface?.curriculum.assigned_work_count || 0 }} assigned work</span
+					>
 					<span v-if="surface?.teaching_plan?.planning_status" class="chip">
 						{{ surface.teaching_plan.planning_status }}
 					</span>
@@ -238,13 +241,17 @@
 								<p class="type-overline text-ink/60">Selected Unit</p>
 								<h2 class="mt-2 type-h2 text-ink">{{ selectedUnit.title }}</h2>
 								<p class="mt-2 type-body text-ink/80">
-									Plan pacing and teacher focus for this class without breaking the shared course
-									sequence.
+									Plan pacing, class reflections, and teaching focus for this class without
+									breaking the shared course sequence.
 								</p>
 							</div>
 							<div class="flex flex-wrap gap-2">
 								<span class="chip">Unit {{ selectedUnit.unit_order || '—' }}</span>
 								<span class="chip">{{ selectedUnit.sessions.length }} sessions</span>
+								<span v-if="selectedUnit.duration" class="chip">{{ selectedUnit.duration }}</span>
+								<span v-if="selectedUnit.estimated_duration" class="chip">
+									{{ selectedUnit.estimated_duration }}
+								</span>
 								<span class="chip">{{ unitForm.pacing_status || 'Not Started' }}</span>
 							</div>
 						</div>
@@ -280,6 +287,65 @@
 							/>
 						</label>
 
+						<div class="mt-6 space-y-4">
+							<div>
+								<p class="type-overline text-ink/60">Class Reflection</p>
+								<p class="mt-1 type-caption text-ink/70">
+									Record what this class needed before, during, and after the unit. These
+									reflections are rolled up into the broader unit view for staff.
+								</p>
+							</div>
+
+							<div class="grid gap-4 xl:grid-cols-2">
+								<label class="block space-y-2">
+									<span class="type-caption text-ink/70">Prior to the unit</span>
+									<textarea
+										v-model="unitForm.prior_to_the_unit"
+										rows="4"
+										class="if-input min-h-[7rem] w-full resize-y"
+										placeholder="What this class needed before starting the unit"
+									/>
+								</label>
+								<label class="block space-y-2">
+									<span class="type-caption text-ink/70">During the unit</span>
+									<textarea
+										v-model="unitForm.during_the_unit"
+										rows="4"
+										class="if-input min-h-[7rem] w-full resize-y"
+										placeholder="What changed or surfaced while teaching the unit"
+									/>
+								</label>
+								<label class="block space-y-2">
+									<span class="type-caption text-ink/70">What worked well</span>
+									<textarea
+										v-model="unitForm.what_work_well"
+										rows="4"
+										class="if-input min-h-[7rem] w-full resize-y"
+										placeholder="Approaches, resources, or structures that worked"
+									/>
+								</label>
+								<label class="block space-y-2">
+									<span class="type-caption text-ink/70">What didn’t work well</span>
+									<textarea
+										v-model="unitForm.what_didnt_work_well"
+										rows="4"
+										class="if-input min-h-[7rem] w-full resize-y"
+										placeholder="Where this class struggled or the plan broke down"
+									/>
+								</label>
+							</div>
+
+							<label class="block space-y-2">
+								<span class="type-caption text-ink/70">Changes and suggestions</span>
+								<textarea
+									v-model="unitForm.changes_suggestions"
+									rows="4"
+									class="if-input min-h-[7rem] w-full resize-y"
+									placeholder="What should change the next time this unit is taught"
+								/>
+							</label>
+						</div>
+
 						<div class="mt-4 flex flex-wrap gap-3">
 							<button
 								type="button"
@@ -296,14 +362,282 @@
 					</section>
 
 					<section class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
+						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+							<div>
+								<p class="type-overline text-ink/60">Shared Unit Plan</p>
+								<h2 class="mt-1 type-h3 text-ink">Curriculum backbone for all classes</h2>
+								<p class="mt-2 type-body text-ink/80">
+									This is the governed unit context inherited from the course plan, enriched by
+									reflections from teaching teams.
+								</p>
+							</div>
+							<div class="flex flex-wrap gap-2">
+								<span v-if="selectedUnit.unit_status" class="chip">
+									{{ selectedUnit.unit_status }}
+								</span>
+								<span v-if="selectedUnit.version" class="chip">{{ selectedUnit.version }}</span>
+								<span class="chip">{{ selectedUnit.standards.length }} standards</span>
+								<span v-if="selectedUnit.class_reflections?.length" class="chip">
+									{{ selectedUnit.class_reflections.length }} class reflections
+								</span>
+							</div>
+						</div>
+
+						<div class="mt-6 grid gap-4 xl:grid-cols-2">
+							<article
+								v-if="selectedUnit.overview"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Overview and Rationale</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.overview }}</p>
+							</article>
+							<article
+								v-if="selectedUnit.essential_understanding"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Essential Understanding</p>
+								<p class="mt-2 type-body text-ink/80">
+									{{ selectedUnit.essential_understanding }}
+								</p>
+							</article>
+							<article
+								v-if="selectedUnit.content"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Content</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.content }}</p>
+							</article>
+							<article
+								v-if="selectedUnit.skills"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Skills</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.skills }}</p>
+							</article>
+							<article
+								v-if="selectedUnit.concepts"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Concepts</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.concepts }}</p>
+							</article>
+							<article
+								v-if="selectedUnit.misconceptions"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Likely Misconceptions</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.misconceptions }}</p>
+							</article>
+						</div>
+
+						<div v-if="selectedUnit.standards.length" class="mt-6 space-y-3">
+							<div class="flex items-center justify-between gap-3">
+								<h3 class="type-h3 text-ink">Standards Alignment</h3>
+								<span class="chip">{{ selectedUnit.standards.length }}</span>
+							</div>
+							<div class="grid gap-3">
+								<article
+									v-for="standard in selectedUnit.standards"
+									:key="`${selectedUnit.unit_plan}-${standard.standard_code}-${standard.standard_description}`"
+									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+								>
+									<div class="flex flex-wrap items-center gap-2">
+										<p class="type-body-strong text-ink">
+											{{ standard.standard_code || 'Standard' }}
+										</p>
+										<span v-if="standard.coverage_level" class="chip">
+											{{ standard.coverage_level }}
+										</span>
+										<span v-if="standard.alignment_strength" class="chip">
+											{{ standard.alignment_strength }}
+										</span>
+									</div>
+									<p v-if="standard.standard_description" class="mt-2 type-body text-ink/80">
+										{{ standard.standard_description }}
+									</p>
+									<p
+										v-if="standard.framework_name || standard.strand || standard.substrand"
+										class="mt-2 type-caption text-ink/70"
+									>
+										{{
+											[standard.framework_name, standard.strand, standard.substrand]
+												.filter(Boolean)
+												.join(' · ')
+										}}
+									</p>
+								</article>
+							</div>
+						</div>
+
+						<div v-if="selectedUnit.shared_reflections?.length" class="mt-6 space-y-3">
+							<div class="flex items-center justify-between gap-3">
+								<h3 class="type-h3 text-ink">Shared Curriculum Reflections</h3>
+								<span class="chip">{{ selectedUnit.shared_reflections.length }}</span>
+							</div>
+							<div class="grid gap-3 xl:grid-cols-2">
+								<article
+									v-for="(reflection, index) in selectedUnit.shared_reflections"
+									:key="`${selectedUnit.unit_plan}-shared-${index}`"
+									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+								>
+									<p class="type-caption text-ink/70">
+										{{ reflection.academic_year || 'Shared unit reflection' }}
+									</p>
+									<p v-if="reflection.prior_to_the_unit" class="mt-2 type-body text-ink/80">
+										{{ reflection.prior_to_the_unit }}
+									</p>
+									<p v-if="reflection.during_the_unit" class="mt-2 type-body text-ink/80">
+										{{ reflection.during_the_unit }}
+									</p>
+									<p v-if="reflection.what_work_well" class="mt-2 type-caption text-ink/70">
+										Worked well: {{ reflection.what_work_well }}
+									</p>
+									<p v-if="reflection.changes_suggestions" class="mt-2 type-caption text-ink/70">
+										Next change: {{ reflection.changes_suggestions }}
+									</p>
+								</article>
+							</div>
+						</div>
+
+						<div v-if="selectedUnit.class_reflections?.length" class="mt-6 space-y-3">
+							<div class="flex items-center justify-between gap-3">
+								<h3 class="type-h3 text-ink">What Other Classes Learned</h3>
+								<span class="chip">{{ selectedUnit.class_reflections.length }}</span>
+							</div>
+							<div class="grid gap-3 xl:grid-cols-2">
+								<article
+									v-for="reflection in selectedUnit.class_reflections"
+									:key="`${selectedUnit.unit_plan}-${reflection.class_teaching_plan}`"
+									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+								>
+									<div class="flex flex-wrap items-center gap-2">
+										<p class="type-body-strong text-ink">{{ reflection.class_label }}</p>
+										<span v-if="reflection.academic_year" class="chip">
+											{{ reflection.academic_year }}
+										</span>
+									</div>
+									<p v-if="reflection.prior_to_the_unit" class="mt-2 type-body text-ink/80">
+										{{ reflection.prior_to_the_unit }}
+									</p>
+									<p v-if="reflection.during_the_unit" class="mt-2 type-body text-ink/80">
+										{{ reflection.during_the_unit }}
+									</p>
+									<p v-if="reflection.what_work_well" class="mt-2 type-caption text-ink/70">
+										Worked well: {{ reflection.what_work_well }}
+									</p>
+									<p v-if="reflection.what_didnt_work_well" class="mt-2 type-caption text-ink/70">
+										Watch for: {{ reflection.what_didnt_work_well }}
+									</p>
+									<p v-if="reflection.changes_suggestions" class="mt-2 type-caption text-ink/70">
+										Next change: {{ reflection.changes_suggestions }}
+									</p>
+								</article>
+							</div>
+						</div>
+
+						<div v-if="selectedUnit.shared_resources.length" class="mt-6 space-y-3">
+							<div class="flex items-center justify-between gap-3">
+								<h3 class="type-h3 text-ink">Shared Unit Resources</h3>
+								<span class="chip">{{ selectedUnit.shared_resources.length }}</span>
+							</div>
+							<div class="grid gap-3">
+								<article
+									v-for="resource in selectedUnit.shared_resources"
+									:key="resource.placement || resource.material"
+									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0">
+											<p class="type-body-strong text-ink">{{ resource.title }}</p>
+											<p v-if="resource.description" class="mt-1 type-caption text-ink/70">
+												{{ resource.description }}
+											</p>
+										</div>
+										<span v-if="resource.usage_role" class="chip">{{ resource.usage_role }}</span>
+									</div>
+									<a
+										v-if="resource.open_url"
+										:href="resource.open_url"
+										target="_blank"
+										rel="noreferrer"
+										class="mt-3 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
+									>
+										Open resource
+									</a>
+								</article>
+							</div>
+						</div>
+					</section>
+
+					<section class="grid gap-6 xl:grid-cols-2">
+						<PlanningResourcePanel
+							anchor-doctype="Class Teaching Plan"
+							:anchor-name="surface.teaching_plan.class_teaching_plan"
+							eyebrow="Class-Owned Resources"
+							title="Shared across this class plan"
+							description="Keep class-wide links, files, and exemplars where the teaching team already plans."
+							empty-message="No class-wide resources shared yet."
+							blocked-message="Create the class teaching plan before sharing class resources."
+							:resources="surface.resources.class_resources"
+							@changed="loadSurface"
+						/>
+
+						<article class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
+							<div class="flex items-center justify-between gap-3">
+								<div>
+									<p class="type-overline text-ink/60">Assigned Work</p>
+									<h2 class="mt-1 type-h3 text-ink">Not tied to one unit or session</h2>
+								</div>
+								<span class="chip">{{ surface.resources.general_assigned_work.length }}</span>
+							</div>
+
+							<div
+								v-if="!surface.resources.general_assigned_work.length"
+								class="mt-5 rounded-2xl border border-dashed border-line-soft px-4 py-4"
+							>
+								<p class="type-caption text-ink/70">
+									No class-wide assigned work yet. Launch assigned work from a unit or session when
+									it is ready.
+								</p>
+							</div>
+
+							<div v-else class="mt-5 space-y-3">
+								<article
+									v-for="item in surface.resources.general_assigned_work"
+									:key="item.task_delivery"
+									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+								>
+									<div class="flex flex-wrap items-center gap-2">
+										<p class="type-body-strong text-ink">{{ item.title }}</p>
+										<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
+										<span v-if="item.delivery_mode" class="chip">{{ item.delivery_mode }}</span>
+									</div>
+									<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
+										Due {{ item.due_date }}
+									</p>
+								</article>
+							</div>
+						</article>
+					</section>
+
+					<section class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 							<div>
 								<p class="type-overline text-ink/60">Class Sessions</p>
 								<h2 class="mt-1 type-h3 text-ink">Plan what this class will actually do</h2>
 							</div>
-							<button type="button" class="if-action" @click="startNewSession">
-								New Class Session
-							</button>
+							<div class="flex flex-wrap gap-3">
+								<button
+									type="button"
+									class="if-action if-action--subtle"
+									@click="openAssignedWorkOverlay"
+								>
+									Create Assigned Work
+								</button>
+								<button type="button" class="if-action" @click="startNewSession">
+									New Class Session
+								</button>
+							</div>
 						</div>
 
 						<div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,16rem),minmax(0,1fr)]">
@@ -539,6 +873,94 @@
 										Start New Session Draft
 									</button>
 								</div>
+
+								<div
+									v-if="selectedUnit.assigned_work.length"
+									class="space-y-3 border-t border-line-soft pt-4"
+								>
+									<div class="flex items-center justify-between gap-3">
+										<div>
+											<p class="type-overline text-ink/60">Assigned Work In This Unit</p>
+											<p class="type-caption text-ink/70">
+												Reusable tasks delivered to this class for the selected unit.
+											</p>
+										</div>
+										<span class="chip">{{ selectedUnit.assigned_work.length }}</span>
+									</div>
+									<div class="space-y-3">
+										<article
+											v-for="item in selectedUnit.assigned_work"
+											:key="item.task_delivery"
+											class="rounded-2xl border border-line-soft bg-white p-4"
+										>
+											<div class="flex flex-wrap items-center gap-2">
+												<p class="type-body-strong text-ink">{{ item.title }}</p>
+												<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
+												<span v-if="item.delivery_mode" class="chip">{{
+													item.delivery_mode
+												}}</span>
+											</div>
+											<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
+												Due {{ item.due_date }}
+											</p>
+										</article>
+									</div>
+								</div>
+
+								<div class="space-y-3 border-t border-line-soft pt-4">
+									<div class="grid gap-6 xl:grid-cols-2">
+										<PlanningResourcePanel
+											anchor-doctype="Class Session"
+											:anchor-name="selectedSessionId || null"
+											eyebrow="Session Resources"
+											title="Materials for this class session"
+											description="Share the exact files and links students should open from the selected session."
+											empty-message="No session resources shared yet."
+											blocked-message="Create or select a class session before sharing session resources."
+											:resources="selectedSessionResources"
+											@changed="loadSurface"
+										/>
+
+										<article
+											class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
+										>
+											<div class="flex items-center justify-between gap-3">
+												<div>
+													<p class="type-overline text-ink/60">Session Assigned Work</p>
+													<p class="type-caption text-ink/70">
+														Assignments launched from the selected class session.
+													</p>
+												</div>
+												<span class="chip">{{ selectedSessionAssignedWork.length }}</span>
+											</div>
+
+											<div
+												v-if="!selectedSessionAssignedWork.length"
+												class="mt-5 rounded-2xl border border-dashed border-line-soft px-4 py-4"
+											>
+												<p class="type-caption text-ink/70">
+													No assigned work is tied to this session yet.
+												</p>
+											</div>
+
+											<div v-else class="mt-5 space-y-3">
+												<article
+													v-for="item in selectedSessionAssignedWork"
+													:key="item.task_delivery"
+													class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+												>
+													<div class="flex flex-wrap items-center gap-2">
+														<p class="type-body-strong text-ink">{{ item.title }}</p>
+														<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
+													</div>
+													<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
+														Due {{ item.due_date }}
+													</p>
+												</article>
+											</div>
+										</article>
+									</div>
+								</div>
 							</div>
 						</div>
 					</section>
@@ -557,6 +979,8 @@ import { computed, reactive, ref, watch } from 'vue';
 import { toast } from 'frappe-ui';
 import { useRoute, useRouter } from 'vue-router';
 
+import PlanningResourcePanel from '@/components/planning/PlanningResourcePanel.vue';
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import {
 	createClassTeachingPlan,
 	getStaffClassPlanningSurface,
@@ -577,6 +1001,7 @@ type EditableActivity = StaffPlanningActivity & {
 
 const route = useRoute();
 const router = useRouter();
+const overlay = useOverlayStack();
 
 const surface = ref<StaffClassPlanningSurfaceResponse | null>(null);
 const loading = ref(false);
@@ -602,6 +1027,11 @@ const unitForm = reactive({
 	pacing_status: 'Not Started',
 	teacher_focus: '',
 	pacing_note: '',
+	prior_to_the_unit: '',
+	during_the_unit: '',
+	what_work_well: '',
+	what_didnt_work_well: '',
+	changes_suggestions: '',
 });
 
 const sessionForm = reactive({
@@ -623,6 +1053,20 @@ const requestedPlan = computed(() =>
 const selectedUnit = computed<StaffPlanningUnit | null>(() => {
 	return (
 		surface.value?.curriculum.units.find(unit => unit.unit_plan === selectedUnitPlan.value) || null
+	);
+});
+
+const selectedSessionResources = computed(() => {
+	return (
+		selectedUnit.value?.sessions.find(session => session.class_session === selectedSessionId.value)
+			?.resources || []
+	);
+});
+
+const selectedSessionAssignedWork = computed(() => {
+	return (
+		selectedUnit.value?.sessions.find(session => session.class_session === selectedSessionId.value)
+			?.assigned_work || []
 	);
 });
 
@@ -648,6 +1092,11 @@ function syncUnitForm(unit: StaffPlanningUnit | null) {
 	unitForm.pacing_status = unit?.pacing_status || 'Not Started';
 	unitForm.teacher_focus = unit?.teacher_focus || '';
 	unitForm.pacing_note = unit?.pacing_note || '';
+	unitForm.prior_to_the_unit = unit?.prior_to_the_unit || '';
+	unitForm.during_the_unit = unit?.during_the_unit || '';
+	unitForm.what_work_well = unit?.what_work_well || '';
+	unitForm.what_didnt_work_well = unit?.what_didnt_work_well || '';
+	unitForm.changes_suggestions = unit?.changes_suggestions || '';
 }
 
 function syncSessionForm(session: StaffPlanningSession | null) {
@@ -682,6 +1131,19 @@ function selectSession(classSession: string) {
 		selectedUnit.value?.sessions.find(row => row.class_session === classSession) || null;
 	selectedSessionId.value = session?.class_session || '';
 	syncSessionForm(session);
+}
+
+function openAssignedWorkOverlay() {
+	if (!surface.value?.teaching_plan?.class_teaching_plan) {
+		toast.error('Create the class teaching plan before assigning work.');
+		return;
+	}
+	overlay.open('create-task', {
+		prefillStudentGroup: studentGroup.value,
+		prefillClassTeachingPlan: surface.value.teaching_plan.class_teaching_plan,
+		prefillUnitPlan: selectedUnit.value?.unit_plan || null,
+		prefillClassSession: selectedSessionId.value || null,
+	});
 }
 
 function applySurfaceSelection(payload: StaffClassPlanningSurfaceResponse) {
@@ -793,11 +1255,16 @@ async function handleSaveUnit() {
 			pacing_status: unitForm.pacing_status,
 			teacher_focus: unitForm.teacher_focus,
 			pacing_note: unitForm.pacing_note,
+			prior_to_the_unit: unitForm.prior_to_the_unit,
+			during_the_unit: unitForm.during_the_unit,
+			what_work_well: unitForm.what_work_well,
+			what_didnt_work_well: unitForm.what_didnt_work_well,
+			changes_suggestions: unitForm.changes_suggestions,
 		});
 		await loadSurface();
-		toast.success('Unit pacing updated for this class.');
+		toast.success('Unit plan updated for this class.');
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : 'Could not save the unit pacing.');
+		toast.error(error instanceof Error ? error.message : 'Could not save the class unit plan.');
 	} finally {
 		unitPending.value = false;
 	}

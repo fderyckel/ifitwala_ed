@@ -83,7 +83,7 @@ export type WorkItem = {
 	delivery_mode?: string | null
 	requires_submission: number
 	require_grading: number
-	learning_unit?: string | null
+	unit_plan?: string | null
 	lesson?: string | null
 	class_session?: string | null
 	available_from?: string | null
