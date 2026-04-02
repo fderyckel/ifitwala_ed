@@ -24,6 +24,7 @@
 			:session="currentBundle.session"
 			@start="handleStartSession"
 			@quick-evidence="openQuickEvidence"
+			@pick-student="openWheelPicker"
 			@end="handleEndSession"
 		/>
 
@@ -263,6 +264,28 @@ function openQuickCFU() {
 			student: student.student,
 			student_name: student.student_name,
 		})),
+	});
+}
+
+function openWheelPicker() {
+	overlay.open('class-hub-wheel-picker', {
+		source_label: 'Class Hub',
+		student_group: currentBundle.value.header.student_group,
+		title: currentBundle.value.header.title,
+		class_session: currentBundle.value.session.class_session ?? null,
+		can_create_student_log: currentBundle.value.permissions.can_create_student_log,
+		students: currentBundle.value.students.map(student => ({
+			student: student.student,
+			student_name: student.student_name,
+		})),
+		now: {
+			date_iso: queryDate.value,
+			date_label: currentBundle.value.now.date_label,
+			block_number: queryBlock.value,
+			block_label: currentBundle.value.now.block_label ?? null,
+			time_range: currentBundle.value.now.time_range ?? null,
+			location: currentBundle.value.now.location ?? null,
+		},
 	});
 }
 

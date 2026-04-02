@@ -13,6 +13,7 @@ vi.mock('@/resources/frappe', () => ({
 }))
 
 import {
+	createCoursePlan,
 	createPlanningReferenceMaterial,
 	getStaffClassPlanningSurface,
 	getStaffCoursePlanIndex,
@@ -74,12 +75,41 @@ describe('staffTeachingService', () => {
 	})
 
 	it('uses the canonical method for the shared course plan index', async () => {
-		apiMethodMock.mockResolvedValue({ course_plans: [] })
+		apiMethodMock.mockResolvedValue({
+			access: { can_create_course_plans: 1, create_block_reason: null },
+			course_options: [],
+			course_plans: [],
+		})
 
 		await getStaffCoursePlanIndex()
 
 		expect(apiMethodMock).toHaveBeenCalledWith(
 			'ifitwala_ed.api.teaching_plans.list_staff_course_plans'
+		)
+	})
+
+	it('uses the canonical method for creating a shared course plan', async () => {
+		apiMethodMock.mockResolvedValue({ course_plan: 'COURSE-PLAN-1', course: 'COURSE-1' })
+
+		await createCoursePlan({
+			course: 'COURSE-1',
+			title: 'Biology Plan',
+			academic_year: '2026-2027',
+			cycle_label: 'Semester 1',
+			plan_status: 'Draft',
+			summary: 'Shared scope and sequence',
+		})
+
+		expect(apiMethodMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.teaching_plans.create_course_plan',
+			{
+				course: 'COURSE-1',
+				title: 'Biology Plan',
+				academic_year: '2026-2027',
+				cycle_label: 'Semester 1',
+				plan_status: 'Draft',
+				summary: 'Shared scope and sequence',
+			}
 		)
 	})
 

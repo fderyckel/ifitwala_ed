@@ -195,6 +195,9 @@
 							<div class="flex flex-wrap items-center gap-2">
 								<p class="type-body-strong text-ink">{{ item.title }}</p>
 								<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
+								<span v-if="item.quiz_state?.status_label" class="chip">
+									{{ item.quiz_state.status_label }}
+								</span>
 								<span v-if="item.submission_status" class="chip">{{
 									item.submission_status
 								}}</span>
@@ -202,6 +205,11 @@
 							<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
 								Due {{ item.due_date }}
 							</p>
+							<div v-if="isQuizAssignedWork(item)" class="mt-3">
+								<RouterLink :to="quizRouteFor(item)" class="if-action">
+									{{ quizActionLabel(item) }}
+								</RouterLink>
+							</div>
 						</article>
 					</div>
 				</article>
@@ -406,6 +414,9 @@
 									<div class="flex flex-wrap items-center gap-2">
 										<p class="type-body-strong text-ink">{{ item.title }}</p>
 										<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
+										<span v-if="item.quiz_state?.status_label" class="chip">
+											{{ item.quiz_state.status_label }}
+										</span>
 										<span v-if="item.submission_status" class="chip">{{
 											item.submission_status
 										}}</span>
@@ -426,6 +437,11 @@
 										>
 											{{ resource.title }}
 										</a>
+									</div>
+									<div v-if="isQuizAssignedWork(item)" class="mt-3">
+										<RouterLink :to="quizRouteFor(item)" class="if-action">
+											{{ quizActionLabel(item) }}
+										</RouterLink>
 									</div>
 								</article>
 							</div>
@@ -585,6 +601,9 @@
 										<div class="flex flex-wrap items-center gap-2">
 											<p class="type-body-strong text-ink">{{ item.title }}</p>
 											<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
+											<span v-if="item.quiz_state?.status_label" class="chip">
+												{{ item.quiz_state.status_label }}
+											</span>
 											<span v-if="item.submission_status" class="chip">{{
 												item.submission_status
 											}}</span>
@@ -592,6 +611,11 @@
 										<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
 											Due {{ item.due_date }}
 										</p>
+										<div v-if="isQuizAssignedWork(item)" class="mt-3">
+											<RouterLink :to="quizRouteFor(item)" class="if-action">
+												{{ quizActionLabel(item) }}
+											</RouterLink>
+										</div>
 									</article>
 								</div>
 							</div>
@@ -618,6 +642,7 @@ import { useRouter } from 'vue-router';
 import { getStudentLearningSpace } from '@/lib/services/student/studentLearningHubService';
 import type {
 	Response as StudentLearningSpaceResponse,
+	StudentAssignedWork,
 	StudentLearningSession,
 	StudentLearningUnit,
 } from '@/types/contracts/student_learning/get_student_learning_space';
@@ -631,6 +656,8 @@ const PLACEHOLDER =
 const props = defineProps<{
 	course_id: string;
 	student_group?: string;
+	unit_plan?: string;
+	class_session?: string;
 }>();
 
 const router = useRouter();
@@ -676,19 +703,39 @@ const teachingPlanLabel = computed(() => {
 });
 
 function applySelection(payload: StudentLearningSpaceResponse) {
+	const requestedSession = String(props.class_session || '').trim();
+	const requestedUnit = String(props.unit_plan || '').trim();
+	const requestedSessionUnit = requestedSession
+		? payload.curriculum.units.find(unit =>
+				unit.sessions.some(session => session.class_session === requestedSession)
+			)
+		: null;
+
 	const currentUnitStillExists = payload.curriculum.units.some(
 		unit => unit.unit_plan === selectedUnitPlan.value
 	);
-	if (!currentUnitStillExists) {
+	if (requestedSessionUnit) {
+		selectedUnitPlan.value = requestedSessionUnit.unit_plan;
+	} else if (
+		requestedUnit &&
+		payload.curriculum.units.some(unit => unit.unit_plan === requestedUnit)
+	) {
+		selectedUnitPlan.value = requestedUnit;
+	} else if (!currentUnitStillExists) {
 		selectedUnitPlan.value = payload.curriculum.units[0]?.unit_plan || '';
 	}
 
 	const unit =
 		payload.curriculum.units.find(row => row.unit_plan === selectedUnitPlan.value) || null;
+	const requestedSessionStillExists = !!unit?.sessions.some(
+		session => session.class_session === requestedSession
+	);
 	const currentSessionStillExists = !!unit?.sessions.some(
 		session => session.class_session === selectedSessionId.value
 	);
-	if (!currentSessionStillExists) {
+	if (requestedSessionStillExists) {
+		selectedSessionId.value = requestedSession;
+	} else if (!currentSessionStillExists) {
 		selectedSessionId.value = unit?.sessions[0]?.class_session || '';
 	}
 }
@@ -729,6 +776,37 @@ function selectSession(classSession: string) {
 	selectedSessionId.value = classSession;
 }
 
+function isQuizAssignedWork(item: StudentAssignedWork) {
+	return (item.task_type || '').trim() === 'Quiz';
+}
+
+function quizActionLabel(item: StudentAssignedWork) {
+	if (!isQuizAssignedWork(item)) return 'Open task';
+	if (item.quiz_state?.can_continue) return 'Continue quiz';
+	if (item.quiz_state?.can_retry) return 'Retry quiz';
+	if (item.quiz_state?.can_start) {
+		return Number(item.quiz_state.attempts_used || 0) > 0 ? 'Start next attempt' : 'Start quiz';
+	}
+	if (item.quiz_state?.latest_attempt) return 'Review quiz';
+	return 'Open quiz';
+}
+
+function quizRouteFor(item: StudentAssignedWork) {
+	return {
+		name: 'student-quiz',
+		params: {
+			course_id: props.course_id,
+			task_delivery: item.task_delivery,
+		},
+		query: {
+			student_group: learningSpace.value?.access.resolved_student_group || undefined,
+			unit_plan: item.unit_plan || selectedUnitPlan.value || undefined,
+			class_session: item.class_session || selectedSessionId.value || undefined,
+			lesson: item.lesson || undefined,
+		},
+	};
+}
+
 async function handleStudentGroupChange(event: Event) {
 	const target = event.target as HTMLSelectElement | null;
 	const value = String(target?.value || '').trim();
@@ -740,7 +818,7 @@ async function handleStudentGroupChange(event: Event) {
 }
 
 watch(
-	() => [props.course_id, props.student_group],
+	() => [props.course_id, props.student_group, props.unit_plan, props.class_session],
 	() => {
 		loadLearningSpace();
 	},

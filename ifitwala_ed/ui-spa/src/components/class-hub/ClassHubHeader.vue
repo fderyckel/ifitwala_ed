@@ -47,6 +47,13 @@
 				<button
 					type="button"
 					class="rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-jacaranda/60"
+					@click="$emit('pick-student')"
+				>
+					Pick Student
+				</button>
+				<button
+					type="button"
+					class="rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-jacaranda/60"
 					@click="$emit('end')"
 				>
 					End Session
@@ -88,6 +95,7 @@ defineProps<{
 defineEmits<{
 	(e: 'start'): void;
 	(e: 'quick-evidence'): void;
+	(e: 'pick-student'): void;
 	(e: 'end'): void;
 }>();
 </script>

@@ -32,7 +32,8 @@ This is the Figma structure you must follow strictly.
 
   1. **Start/Resume Session**
   2. **Quick Evidence**
-  3. **End Session**
+  3. **Pick Student**
+  4. **End Session**
 
 ### Section A — TODAY (max 3 lines)
 
@@ -271,6 +272,31 @@ Teacher selects:
 
 * **Proposal:** add `lesson_instance` (Link Lesson Instance) to Task Submission.
   This is a small, high-value join for analytics and “today’s evidence” retrieval.
+
+---
+
+### Feature 6B — Pick Student wheel
+
+**Purpose:** help teachers choose a student fairly during live teaching without leaving context.
+
+**Primary surface:** Class Hub header action.
+**Secondary surface:** Staff Home quick action that resolves the teacher's current class from schedule truth.
+
+**Behavior rules:**
+
+* names come from active `Student Group Student` child rows
+* selection language stays teacher/student friendly: use **Pick Student** / **Selected Student**, not winner/loser language
+* the wheel uses secure browser randomness, then animates to the chosen student
+* subtle confetti / celebration is allowed, but the look must remain premium and classroom-appropriate
+* a checkbox controls whether picked names stay removed until reset
+* default is **off**; independent picks remain allowed unless the teacher opts into removal
+* persistence is class-scoped and session-scoped in the SPA for v1; no new server schema is required
+
+**Post-pick actions:**
+
+* Open Student
+* Add evidence
+* Add note (when Student Log permission allows it)
 
 ---
 

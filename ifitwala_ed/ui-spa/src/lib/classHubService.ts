@@ -1,5 +1,10 @@
 import { createResource } from 'frappe-ui'
-import type { ClassHubBundle, ClassHubQuickEvidencePayload, ClassHubSignal } from '@/types/classHub'
+import type {
+  ClassHubBundle,
+  ClassHubQuickEvidencePayload,
+  ClassHubSignal,
+  ClassHubWheelResolution,
+} from '@/types/classHub'
 
 type ResourceResponse<T> = T | { message: T }
 
@@ -74,6 +79,13 @@ export function createClassHubService() {
     transform: unwrapMessage,
   })
 
+  const currentPickerContextResource = createResource<ClassHubWheelResolution>({
+    url: 'ifitwala_ed.api.class_hub.resolve_current_picker_context',
+    method: 'POST',
+    auto: false,
+    transform: unwrapMessage,
+  })
+
   async function getBundle(payload: BundlePayload) {
     return bundleResource.submit(payload)
   }
@@ -99,16 +111,22 @@ export function createClassHubService() {
     })
   }
 
+  async function resolveCurrentPickerContext() {
+    return currentPickerContextResource.submit({})
+  }
+
   return {
     bundleResource,
     startSessionResource,
     endSessionResource,
     saveSignalsResource,
     quickEvidenceResource,
+    currentPickerContextResource,
     getBundle,
     startSession,
     endSession,
     saveSignals,
     quickEvidence,
+    resolveCurrentPickerContext,
   }
 }

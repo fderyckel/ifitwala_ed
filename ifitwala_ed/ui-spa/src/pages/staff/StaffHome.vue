@@ -60,6 +60,29 @@
 				<h3 class="px-1 type-h3 text-canopy">Quick Actions</h3>
 
 				<div class="grid min-w-0 gap-3">
+					<button
+						v-if="userCapabilities.quick_action_pick_student"
+						type="button"
+						class="action-tile group w-full min-w-0"
+						@click="openPickStudent"
+					>
+						<div class="action-tile__icon shrink-0">
+							<FeatherIcon name="disc" class="h-6 w-6" />
+						</div>
+						<div class="flex-1 min-w-0">
+							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+								Pick student
+							</p>
+							<p class="truncate type-caption text-slate-token/70">
+								Choose who answers next in your live class
+							</p>
+						</div>
+						<FeatherIcon
+							name="chevron-right"
+							class="h-4 w-4 shrink-0 text-slate-token/40 transition-colors group-hover:text-jacaranda"
+						/>
+					</button>
+
 					<!-- Create task uses overlay stack (single overlay system) -->
 					<button
 						v-if="userCapabilities.quick_action_create_task"
@@ -414,6 +437,7 @@ function isQuickActionVisible(action: { capability?: string }) {
 const visibleQuickActions = computed(() => quickActions.filter(isQuickActionVisible));
 const hasVisibleQuickActions = computed(
 	() =>
+		Boolean(userCapabilities.value.quick_action_pick_student) ||
 		Boolean(userCapabilities.value.quick_action_create_task) ||
 		Boolean(userCapabilities.value.quick_action_create_event) ||
 		Boolean(userCapabilities.value.quick_action_student_log) ||
@@ -876,6 +900,14 @@ function openCreateTask() {
 		prefillStudentGroup: null,
 		prefillDueDate: null,
 		prefillAvailableFrom: null,
+	});
+}
+
+function openPickStudent() {
+	overlay.open('class-hub-wheel-picker', {
+		source_label: 'Staff Home',
+		resolve_current_class: true,
+		class_session: null,
 	});
 }
 

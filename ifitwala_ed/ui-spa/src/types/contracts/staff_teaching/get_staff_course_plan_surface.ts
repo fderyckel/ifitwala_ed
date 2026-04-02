@@ -8,6 +8,66 @@ import type {
 export type Request = {
 	course_plan: string
 	unit_plan?: string
+	quiz_question_bank?: string
+}
+
+export type StaffCoursePlanLessonActivity = {
+	title?: string | null
+	activity_type?: string | null
+	lesson_activity_order?: number | null
+	reading_content?: string | null
+	video_url?: string | null
+	external_link?: string | null
+	discussion_prompt?: string | null
+	is_required?: number
+	estimated_duration?: number | null
+}
+
+export type StaffCoursePlanLesson = {
+	lesson: string
+	course?: string | null
+	unit_plan: string
+	title: string
+	lesson_type?: string | null
+	lesson_order?: number | null
+	is_published?: number
+	start_date?: string | null
+	duration?: number | null
+	activities: StaffCoursePlanLessonActivity[]
+}
+
+export type StaffCoursePlanQuizQuestionOption = {
+	option_text?: string | null
+	is_correct?: number
+}
+
+export type StaffCoursePlanQuizQuestion = {
+	quiz_question?: string | null
+	title: string
+	question_type: string
+	is_published?: number
+	prompt?: string | null
+	accepted_answers?: string | null
+	explanation?: string | null
+	options: StaffCoursePlanQuizQuestionOption[]
+}
+
+export type StaffCoursePlanQuizQuestionBankSummary = {
+	quiz_question_bank: string
+	bank_title: string
+	course?: string | null
+	is_published?: number
+	question_count?: number
+	published_question_count?: number
+}
+
+export type StaffCoursePlanQuizQuestionBank = {
+	quiz_question_bank: string
+	bank_title: string
+	course?: string | null
+	is_published?: number
+	description?: string | null
+	questions: StaffCoursePlanQuizQuestion[]
 }
 
 export type StaffCoursePlanUnit = {
@@ -53,6 +113,7 @@ export type Response = {
 	}
 	resolved: {
 		unit_plan?: string | null
+		quiz_question_bank?: string | null
 	}
 	resources: {
 		course_plan_resources: StaffPlanningMaterial[]
@@ -60,5 +121,10 @@ export type Response = {
 	curriculum: {
 		units: StaffCoursePlanUnit[]
 		unit_count: number
+		selected_unit_lessons: StaffCoursePlanLesson[]
+	}
+	assessment: {
+		quiz_question_banks: StaffCoursePlanQuizQuestionBankSummary[]
+		selected_quiz_question_bank?: StaffCoursePlanQuizQuestionBank | null
 	}
 }

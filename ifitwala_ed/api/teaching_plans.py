@@ -10,8 +10,10 @@ from frappe.utils import now_datetime
 
 from ifitwala_ed.api.file_access import resolve_academic_file_open_url
 from ifitwala_ed.api.student_groups import TRIAGE_ROLES, _instructor_group_names
+from ifitwala_ed.assessment import quiz_service
 from ifitwala_ed.curriculum import materials as materials_domain
 from ifitwala_ed.curriculum import planning
+from ifitwala_ed.curriculum.doctype.lesson import lesson as lesson_controller
 from ifitwala_ed.utilities import governed_uploads
 
 PLANNING_RESOURCE_ANCHORS = {
@@ -21,6 +23,8 @@ PLANNING_RESOURCE_ANCHORS = {
     "Class Session",
 }
 GOVERNED_PLANNING_RESOURCE_ANCHORS = {"Course Plan", "Unit Plan"}
+COURSE_PLAN_CREATOR_ROLES = {"System Manager", "Academic Admin", "Curriculum Coordinator"}
+COURSE_PLAN_GLOBAL_CREATOR_ROLES = {"System Manager", "Academic Admin"}
 
 
 def _serialize_scalar(value: Any) -> Any:
@@ -170,6 +174,64 @@ def _serialize_class_teaching_plan_row(row: dict) -> dict[str, Any]:
     }
 
 
+def _serialize_course_option(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "course": row.get("name"),
+        "course_name": row.get("course_name") or row.get("name"),
+        "course_group": row.get("course_group"),
+        "school": row.get("school"),
+        "status": row.get("status"),
+    }
+
+
+def _can_create_course_plans(user: str, roles: set[str]) -> bool:
+    return user == "Administrator" or bool(roles & COURSE_PLAN_CREATOR_ROLES)
+
+
+def _list_creatable_course_rows(user: str, roles: set[str]) -> list[dict[str, Any]]:
+    if not _can_create_course_plans(user, roles):
+        return []
+
+    filters: dict[str, Any] = {"status": ["!=", "Discontinued"]}
+    if not (user == "Administrator" or roles & COURSE_PLAN_GLOBAL_CREATOR_ROLES):
+        course_names = sorted(
+            {
+                planning.normalize_text(course)
+                for course in (materials_domain._get_coordinator_course_names(user) or [])
+                if planning.normalize_text(course)
+            }
+        )
+        if not course_names:
+            return []
+        filters["name"] = ["in", course_names]
+
+    return frappe.get_all(
+        "Course",
+        filters=filters,
+        fields=["name", "course_name", "course_group", "school", "status"],
+        order_by="course_name asc, name asc",
+        limit=0,
+    )
+
+
+def _build_course_plan_creation_access(user: str, roles: set[str]) -> dict[str, Any]:
+    can_create = _can_create_course_plans(user, roles)
+    course_rows = _list_creatable_course_rows(user, roles)
+
+    if not can_create:
+        reason = _("Only curriculum leaders can create shared course plans.")
+    elif not course_rows:
+        reason = _("No active courses are available for shared curriculum planning yet.")
+    else:
+        reason = None
+
+    return {
+        "can_create_course_plans": int(can_create),
+        "create_block_reason": reason,
+        "course_options": [_serialize_course_option(row) for row in course_rows],
+    }
+
+
 def _serialize_material_entry(entry: dict[str, Any]) -> dict[str, Any]:
     placement = (entry.get("placements") or [{}])[0]
     material_type = entry.get("material_type")
@@ -201,6 +263,226 @@ def _serialize_material_entry(entry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _fetch_selected_unit_lessons(unit_plan: str | None) -> list[dict[str, Any]]:
+    unit_name = planning.normalize_text(unit_plan)
+    if not unit_name:
+        return []
+
+    lessons = frappe.get_all(
+        "Lesson",
+        filters={"unit_plan": unit_name},
+        fields=[
+            "name",
+            "course",
+            "unit_plan",
+            "title",
+            "lesson_type",
+            "lesson_order",
+            "is_published",
+            "start_date",
+            "duration",
+        ],
+        order_by="lesson_order asc, title asc, creation asc",
+        limit=0,
+    )
+    if not lessons:
+        return []
+
+    lesson_names = [row["name"] for row in lessons if row.get("name")]
+    activity_rows = frappe.get_all(
+        "Lesson Activity",
+        filters={
+            "parent": ["in", lesson_names],
+            "parenttype": "Lesson",
+            "parentfield": "lesson_activities",
+        },
+        fields=[
+            "parent",
+            "title",
+            "activity_type",
+            "lesson_activity_order",
+            "reading_content",
+            "video_url",
+            "external_link",
+            "discussion_prompt",
+            "is_required",
+            "estimated_duration",
+            "idx",
+        ],
+        order_by="parent asc, lesson_activity_order asc, idx asc",
+        limit=0,
+    )
+    activities_by_parent: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in activity_rows or []:
+        parent = row.get("parent")
+        if not parent:
+            continue
+        activities_by_parent[parent].append(
+            {
+                "title": row.get("title"),
+                "activity_type": row.get("activity_type"),
+                "lesson_activity_order": row.get("lesson_activity_order"),
+                "reading_content": row.get("reading_content"),
+                "video_url": row.get("video_url"),
+                "external_link": row.get("external_link"),
+                "discussion_prompt": row.get("discussion_prompt"),
+                "is_required": int(row.get("is_required") or 0),
+                "estimated_duration": row.get("estimated_duration"),
+            }
+        )
+
+    payload: list[dict[str, Any]] = []
+    for row in lessons:
+        payload.append(
+            {
+                "lesson": row.get("name"),
+                "course": row.get("course"),
+                "unit_plan": row.get("unit_plan"),
+                "title": row.get("title") or row.get("name"),
+                "lesson_type": row.get("lesson_type"),
+                "lesson_order": row.get("lesson_order"),
+                "is_published": int(row.get("is_published") or 0),
+                "start_date": _serialize_scalar(row.get("start_date")),
+                "duration": row.get("duration"),
+                "activities": activities_by_parent.get(row.get("name"), []),
+            }
+        )
+    return payload
+
+
+def _fetch_course_quiz_question_banks(course: str | None) -> list[dict[str, Any]]:
+    course_name = planning.normalize_text(course)
+    if not course_name:
+        return []
+
+    rows = frappe.get_all(
+        "Quiz Question Bank",
+        filters={"course": course_name},
+        fields=["name", "bank_title", "course", "is_published"],
+        order_by="bank_title asc, creation asc",
+        limit=0,
+    )
+    if not rows:
+        return []
+
+    counts = {
+        row.get("question_bank"): row
+        for row in frappe.db.sql(
+            """
+            SELECT
+                question_bank,
+                COUNT(name) AS question_count,
+                SUM(CASE WHEN COALESCE(is_published, 0) = 1 THEN 1 ELSE 0 END) AS published_question_count
+            FROM `tabQuiz Question`
+            WHERE question_bank IN %(question_banks)s
+            GROUP BY question_bank
+            """,
+            {"question_banks": tuple(row["name"] for row in rows)},
+            as_dict=True,
+        )
+        or []
+    }
+
+    payload: list[dict[str, Any]] = []
+    for row in rows:
+        count_row = counts.get(row.get("name"), {})
+        payload.append(
+            {
+                "quiz_question_bank": row.get("name"),
+                "bank_title": row.get("bank_title") or row.get("name"),
+                "course": row.get("course"),
+                "is_published": int(row.get("is_published") or 0),
+                "question_count": int(count_row.get("question_count") or 0),
+                "published_question_count": int(count_row.get("published_question_count") or 0),
+            }
+        )
+    return payload
+
+
+def _fetch_selected_quiz_question_bank(
+    question_bank: str | None,
+    *,
+    expected_course: str | None = None,
+) -> dict[str, Any] | None:
+    question_bank_name = planning.normalize_text(question_bank)
+    if not question_bank_name:
+        return None
+
+    bank = frappe.db.get_value(
+        "Quiz Question Bank",
+        question_bank_name,
+        ["name", "bank_title", "course", "is_published", "description"],
+        as_dict=True,
+    )
+    if not bank:
+        frappe.throw(_("Selected quiz question bank was not found."), frappe.DoesNotExistError)
+
+    course_name = planning.normalize_text(expected_course)
+    if course_name and planning.normalize_text(bank.get("course")) != course_name:
+        frappe.throw(_("Selected quiz question bank does not belong to this course."), frappe.PermissionError)
+
+    question_rows = frappe.get_all(
+        "Quiz Question",
+        filters={"question_bank": question_bank_name},
+        fields=[
+            "name",
+            "question_bank",
+            "title",
+            "question_type",
+            "is_published",
+            "prompt",
+            "accepted_answers",
+            "explanation",
+        ],
+        order_by="modified asc, name asc",
+        limit=0,
+    )
+    question_names = [row["name"] for row in question_rows if row.get("name")]
+    option_rows = frappe.get_all(
+        "Quiz Question Option",
+        filters={
+            "parent": ["in", question_names or [""]],
+            "parenttype": "Quiz Question",
+            "parentfield": "options",
+        },
+        fields=["parent", "option_text", "is_correct", "idx"],
+        order_by="parent asc, idx asc",
+        limit=0,
+    )
+    options_by_parent: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in option_rows or []:
+        parent = row.get("parent")
+        if not parent:
+            continue
+        options_by_parent[parent].append(
+            {
+                "option_text": row.get("option_text"),
+                "is_correct": int(row.get("is_correct") or 0),
+            }
+        )
+
+    return {
+        "quiz_question_bank": bank.get("name"),
+        "bank_title": bank.get("bank_title") or bank.get("name"),
+        "course": bank.get("course"),
+        "is_published": int(bank.get("is_published") or 0),
+        "description": bank.get("description"),
+        "questions": [
+            {
+                "quiz_question": row.get("name"),
+                "title": row.get("title") or row.get("name"),
+                "question_type": row.get("question_type"),
+                "is_published": int(row.get("is_published") or 0),
+                "prompt": row.get("prompt"),
+                "accepted_answers": row.get("accepted_answers"),
+                "explanation": row.get("explanation"),
+                "options": options_by_parent.get(row.get("name"), []),
+            }
+            for row in question_rows
+        ],
+    }
+
+
 def _reload_anchor_material(anchor_doctype: str, anchor_name: str, material_name: str) -> dict[str, Any]:
     rows = materials_domain.list_anchor_materials(anchor_doctype, anchor_name)
     created = next((row for row in rows if row.get("material") == material_name), None)
@@ -224,6 +506,7 @@ def _fetch_assigned_work(
         """
         SELECT
             td.name AS task_delivery,
+            td.name AS delivery_name,
             td.task,
             td.class_session,
             td.delivery_mode,
@@ -231,6 +514,11 @@ def _fetch_assigned_work(
             td.available_from,
             td.due_date,
             td.lock_date,
+            td.quiz_question_bank,
+            td.quiz_question_count,
+            td.quiz_time_limit_minutes,
+            td.quiz_max_attempts,
+            td.quiz_pass_percentage,
             t.title,
             t.task_type,
             t.unit_plan,
@@ -249,6 +537,7 @@ def _fetch_assigned_work(
 
     task_materials = _fetch_material_map([("Task", row.get("task")) for row in rows if row.get("task")])
     outcomes_by_delivery: dict[str, dict[str, Any]] = {}
+    quiz_state_by_delivery: dict[str, dict[str, Any]] = {}
     if audience == "student" and student_name:
         outcome_rows = frappe.get_all(
             "Task Outcome",
@@ -260,6 +549,26 @@ def _fetch_assigned_work(
             limit=0,
         )
         outcomes_by_delivery = {row.get("task_delivery"): row for row in outcome_rows or [] if row.get("task_delivery")}
+        deliveries_for_state = [
+            {
+                "name": row.get("task_delivery"),
+                "task": row.get("task"),
+                "delivery_mode": row.get("delivery_mode"),
+                "quiz_question_bank": row.get("quiz_question_bank"),
+                "quiz_question_count": row.get("quiz_question_count"),
+                "quiz_time_limit_minutes": row.get("quiz_time_limit_minutes"),
+                "quiz_max_attempts": row.get("quiz_max_attempts"),
+                "quiz_pass_percentage": row.get("quiz_pass_percentage"),
+            }
+            for row in rows
+            if row.get("task_delivery")
+        ]
+        tasks_by_name = {row.get("task"): {"task_type": row.get("task_type")} for row in rows if row.get("task")}
+        quiz_state_by_delivery = quiz_service.get_student_delivery_state_map(
+            student=student_name,
+            deliveries=deliveries_for_state,
+            tasks_by_name=tasks_by_name,
+        )
 
     payload = []
     for row in rows:
@@ -284,6 +593,7 @@ def _fetch_assigned_work(
             item["grading_status"] = outcome.get("grading_status")
             item["is_complete"] = int(outcome.get("is_complete") or 0) if outcome else 0
             item["is_published"] = int(outcome.get("is_published") or 0) if outcome else 0
+            item["quiz_state"] = quiz_state_by_delivery.get(row.get("task_delivery"))
         payload.append(item)
     return payload
 
@@ -816,7 +1126,11 @@ def _build_staff_bundle(student_group: str, class_teaching_plan: str | None = No
     return payload
 
 
-def _build_staff_course_plan_bundle(course_plan: str, unit_plan: str | None = None) -> dict[str, Any]:
+def _build_staff_course_plan_bundle(
+    course_plan: str,
+    unit_plan: str | None = None,
+    quiz_question_bank: str | None = None,
+) -> dict[str, Any]:
     context = _resolve_planning_resource_anchor("Course Plan", course_plan, ptype="read")
     course_plan_row = planning.get_course_plan_row(context["anchor_name"])
     course_plan_doc = frappe.get_doc("Course Plan", context["anchor_name"])
@@ -839,6 +1153,16 @@ def _build_staff_course_plan_bundle(course_plan: str, unit_plan: str | None = No
         frappe.throw(_("Selected unit plan does not belong to this course plan."), frappe.PermissionError)
     if not selected_unit and units:
         selected_unit = units[0].get("unit_plan")
+    selected_unit_lessons = _fetch_selected_unit_lessons(selected_unit)
+
+    quiz_question_banks = _fetch_course_quiz_question_banks(course_plan_row.get("course"))
+    selected_quiz_question_bank = planning.normalize_text(quiz_question_bank)
+    if selected_quiz_question_bank and not any(
+        row.get("quiz_question_bank") == selected_quiz_question_bank for row in quiz_question_banks
+    ):
+        frappe.throw(_("Selected quiz question bank does not belong to this course."), frappe.PermissionError)
+    if not selected_quiz_question_bank and quiz_question_banks:
+        selected_quiz_question_bank = quiz_question_banks[0].get("quiz_question_bank")
 
     return {
         "meta": {
@@ -855,6 +1179,7 @@ def _build_staff_course_plan_bundle(course_plan: str, unit_plan: str | None = No
         ),
         "resolved": {
             "unit_plan": selected_unit or None,
+            "quiz_question_bank": selected_quiz_question_bank or None,
         },
         "resources": {
             "course_plan_resources": materials_by_anchor.get(("Course Plan", course_plan_doc.name), []),
@@ -862,6 +1187,14 @@ def _build_staff_course_plan_bundle(course_plan: str, unit_plan: str | None = No
         "curriculum": {
             "units": units,
             "unit_count": len(units),
+            "selected_unit_lessons": selected_unit_lessons,
+        },
+        "assessment": {
+            "quiz_question_banks": quiz_question_banks,
+            "selected_quiz_question_bank": _fetch_selected_quiz_question_bank(
+                selected_quiz_question_bank,
+                expected_course=course_plan_row.get("course"),
+            ),
         },
     }
 
@@ -873,12 +1206,23 @@ def get_staff_class_planning_surface(student_group: str, class_teaching_plan: st
 
 
 @frappe.whitelist()
-def get_staff_course_plan_surface(course_plan: str, unit_plan: str | None = None) -> dict[str, Any]:
-    return _build_staff_course_plan_bundle(course_plan, unit_plan=unit_plan)
+def get_staff_course_plan_surface(
+    course_plan: str,
+    unit_plan: str | None = None,
+    quiz_question_bank: str | None = None,
+) -> dict[str, Any]:
+    return _build_staff_course_plan_bundle(
+        course_plan,
+        unit_plan=unit_plan,
+        quiz_question_bank=quiz_question_bank,
+    )
 
 
 @frappe.whitelist()
 def list_staff_course_plans() -> dict[str, Any]:
+    user = _require_logged_in_user()
+    roles = set(frappe.get_roles(user))
+    creation_access = _build_course_plan_creation_access(user, roles)
     rows = frappe.get_list(
         "Course Plan",
         filters={"plan_status": ["!=", "Archived"]},
@@ -910,7 +1254,49 @@ def list_staff_course_plans() -> dict[str, Any]:
         "meta": {
             "generated_at": _serialize_scalar(now_datetime()),
         },
+        "access": {
+            "can_create_course_plans": creation_access["can_create_course_plans"],
+            "create_block_reason": creation_access["create_block_reason"],
+        },
+        "course_options": creation_access["course_options"],
         "course_plans": payload,
+    }
+
+
+@frappe.whitelist()
+def create_course_plan(payload=None, **kwargs) -> dict[str, Any]:
+    user = _require_logged_in_user()
+    roles = set(frappe.get_roles(user))
+    if not _can_create_course_plans(user, roles):
+        frappe.throw(_("Only curriculum leaders can create shared course plans."), frappe.PermissionError)
+
+    data = _normalize_payload(payload if payload is not None else kwargs)
+    course_name = planning.normalize_text(data.get("course"))
+    if not course_name:
+        frappe.throw(_("Course is required."))
+
+    allowed_courses = {row.get("name"): row for row in _list_creatable_course_rows(user, roles) if row.get("name")}
+    course_row = allowed_courses.get(course_name)
+    if not course_row:
+        frappe.throw(_("You cannot create a shared course plan for this course."), frappe.PermissionError)
+
+    doc = frappe.new_doc("Course Plan")
+    doc.course = course_name
+    doc.title = planning.normalize_text(data.get("title")) or _("{course_name} Plan").format(
+        course_name=course_row.get("course_name") or course_name
+    )
+    doc.academic_year = planning.normalize_text(data.get("academic_year")) or None
+    doc.cycle_label = planning.normalize_text(data.get("cycle_label")) or None
+    if data.get("plan_status") not in (None, ""):
+        doc.plan_status = data.get("plan_status")
+    doc.summary = planning.normalize_long_text(data.get("summary"))
+    doc.insert(ignore_permissions=True)
+
+    return {
+        "course_plan": doc.name,
+        "course": doc.course,
+        "title": doc.title,
+        "plan_status": doc.plan_status,
     }
 
 
@@ -1161,6 +1547,110 @@ def save_unit_plan(
         "course_plan": doc.course_plan,
         "unit_plan": doc.name,
         "unit_order": doc.unit_order,
+    }
+
+
+@frappe.whitelist()
+def save_lesson_outline(
+    payload=None,
+    *,
+    unit_plan: str | None = None,
+    lesson: str | None = None,
+    title: str | None = None,
+    lesson_type: str | None = None,
+    lesson_order: int | None = None,
+    is_published: int | None = None,
+    start_date: str | None = None,
+    duration: int | None = None,
+    activities_json: str | None = None,
+    **kwargs,
+) -> dict[str, Any]:
+    data = _normalize_payload(payload if payload is not None else kwargs)
+    unit_plan_name = planning.normalize_text(unit_plan or data.get("unit_plan"))
+    lesson_name = planning.normalize_text(lesson or data.get("lesson"))
+    title = title if title is not None else data.get("title")
+    lesson_type = lesson_type if lesson_type is not None else data.get("lesson_type")
+    lesson_order = lesson_order if lesson_order is not None else data.get("lesson_order")
+    is_published = is_published if is_published is not None else data.get("is_published")
+    start_date = start_date if start_date is not None else data.get("start_date")
+    duration = duration if duration is not None else data.get("duration")
+    activities_json = activities_json if activities_json is not None else data.get("activities_json")
+
+    if lesson_name:
+        doc = frappe.get_doc("Lesson", lesson_name)
+        unit_doc = frappe.get_doc("Unit Plan", doc.unit_plan)
+        unit_doc.check_permission("write")
+        if unit_plan_name and planning.normalize_text(doc.unit_plan) != unit_plan_name:
+            frappe.throw(_("Lesson does not belong to the selected unit plan."), frappe.PermissionError)
+    else:
+        if not unit_plan_name:
+            frappe.throw(_("Unit Plan is required."))
+        unit_doc = frappe.get_doc("Unit Plan", unit_plan_name)
+        unit_doc.check_permission("write")
+        doc = frappe.new_doc("Lesson")
+        doc.unit_plan = unit_doc.name
+        doc.course = unit_doc.course
+
+    doc.unit_plan = unit_doc.name
+    doc.course = unit_doc.course
+    doc.title = title
+    if lesson_type not in (None, ""):
+        doc.lesson_type = lesson_type
+    doc.lesson_order = (
+        int(lesson_order)
+        if lesson_order not in (None, "")
+        else (doc.lesson_order or planning.next_lesson_order(unit_doc.name))
+    )
+    doc.is_published = planning.normalize_flag(is_published)
+    doc.start_date = start_date or None
+    doc.duration = int(duration) if duration not in (None, "") else None
+    planning.replace_lesson_activities(
+        doc,
+        _normalize_rows_payload(activities_json, label=_("Lesson activities")),
+    )
+
+    if doc.is_new():
+        doc.insert(ignore_permissions=True)
+    else:
+        doc.save(ignore_permissions=True)
+
+    return {
+        "lesson": doc.name,
+        "unit_plan": doc.unit_plan,
+        "lesson_order": doc.lesson_order,
+    }
+
+
+@frappe.whitelist()
+def reorder_unit_lessons(unit_plan: str, lesson_names=None) -> dict[str, Any]:
+    unit_plan_name = planning.normalize_text(unit_plan)
+    if not unit_plan_name:
+        frappe.throw(_("Unit Plan is required."))
+    unit_doc = frappe.get_doc("Unit Plan", unit_plan_name)
+    unit_doc.check_permission("write")
+    return lesson_controller.reorder_lessons(unit_plan=unit_doc.name, lesson_names=lesson_names)
+
+
+@frappe.whitelist()
+def remove_lesson_outline(lesson: str) -> dict[str, Any]:
+    lesson_name = planning.normalize_text(lesson)
+    if not lesson_name:
+        frappe.throw(_("Lesson is required."))
+
+    doc = frappe.get_doc("Lesson", lesson_name)
+    unit_doc = frappe.get_doc("Unit Plan", doc.unit_plan)
+    unit_doc.check_permission("write")
+
+    if frappe.db.exists("Task", {"lesson": lesson_name}):
+        frappe.throw(
+            _("This lesson is already linked to a task. Remove the task anchor before deleting the lesson."),
+            frappe.ValidationError,
+        )
+
+    doc.delete(ignore_permissions=True)
+    return {
+        "lesson": lesson_name,
+        "removed": 1,
     }
 
 

@@ -3,9 +3,9 @@ title: "Course Plan: Shared Curriculum Version For A Course"
 slug: course-plan
 category: Curriculum
 doc_order: 4
-version: "1.0.0"
-last_change_date: "2026-04-01"
-summary: "Define the governed shared curriculum version for a course, including cycle labeling, publication status, and shared summary context that unit plans inherit."
+version: "1.3.0"
+last_change_date: "2026-04-02"
+summary: "Define the governed shared curriculum version for a course, including SPA-first creation from the course-plan index, cycle labeling, publication status, shared summary context, and the governed workspace used to author units, quiz banks, and assignment-ready curriculum assets."
 seo_title: "Course Plan: Shared Curriculum Version For A Course"
 seo_description: "Define the governed shared curriculum version for a course, including the shared summary and the unit-plan backbone inherited by linked classes."
 ---
@@ -13,8 +13,8 @@ seo_description: "Define the governed shared curriculum version for a course, in
 ## Course Plan: Shared Curriculum Version For A Course
 
 Status: Implemented
-Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/course_plan/course_plan.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`
-Test refs: `ifitwala_ed/api/test_teaching_plans.py`
+Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/course_plan/course_plan.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/quiz.py`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanIndex.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.py`, `ifitwala_ed/ui-spa/src/lib/services/staff/__tests__/staffTeachingService.test.ts`
 
 `Course Plan` is the governed shared curriculum version for a `Course`. It defines the academic-year or cycle-level planning record that owns the `Unit Plan` backbone and the shared summary educators see before they begin class-level adaptation.
 
@@ -27,16 +27,18 @@ Test refs: None
 - Link the plan to an existing `Course`.
 - Decide whether the plan needs an academic-year label, cycle label, or both.
 - Prepare the shared summary and non-negotiables the curriculum team wants all linked classes to inherit.
+- Staff can start the plan directly from the staff course-plan index in the SPA; a separate Desk-first creation step is no longer required.
 
 ## Where It Is Used Across The ERP
 
 Status: Implemented
-Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`
-Test refs: `ifitwala_ed/api/test_teaching_plans.py`
+Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanIndex.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/lib/services/staff/__tests__/staffTeachingService.test.ts`
 
 - Parent planning context for [**Unit Plan**](/docs/en/unit-plan/) rows.
 - Governing curriculum selection for [**Class Teaching Plan**](/docs/en/class-teaching-plan/) records.
-- Shared curriculum workspace in the staff SPA for editing summary, status, and governed unit sequence.
+- Shared curriculum workspace in the staff SPA for editing summary, status, governed unit sequence, and course quiz banks.
+- Launch point for prefilled assignment flows from published shared lesson outlines and published quiz banks.
 - Shared course-level resource anchor through `Material Placement`.
 
 ## Lifecycle And Linked Documents
@@ -46,10 +48,13 @@ Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.py`, `ifitwal
 Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 
 1. Create the course plan under a `Course`.
+   Staff can now do this directly from the course-plan index in the SPA.
 2. Set the shared title, cycle metadata, and summary that explain the plan’s shared intent.
 3. Add one or more `Unit Plan` rows as the governed backbone for linked classes.
 4. Staff can edit the shared course-plan fields directly from the staff course-plan workspace in the SPA.
-5. Class teaching plans then inherit one selected course plan and adapt delivery without mutating the shared plan.
+5. The same SPA workspace also surfaces course-level quiz-bank authoring for the linked course.
+6. Published shared lesson outlines and published quiz banks can hand off into the existing task-delivery overlay without creating a second assignment workflow.
+7. Class teaching plans then inherit one selected course plan and adapt delivery without mutating the shared plan.
 
 ## Related Docs
 
@@ -60,13 +65,14 @@ Test refs: None
 - [**Unit Plan**](/docs/en/unit-plan/)
 - [**Class Teaching Plan**](/docs/en/class-teaching-plan/)
 - [**Class Session**](/docs/en/class-session/)
+- [**Quiz Question Bank**](/docs/en/quiz-question-bank/)
 - [**Task**](/docs/en/task/)
 
 ## Technical Notes (IT)
 
 Status: Implemented
-Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/course_plan/course_plan.py`, `ifitwala_ed/api/teaching_plans.py`
-Test refs: `ifitwala_ed/api/test_teaching_plans.py`
+Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`, `ifitwala_ed/curriculum/doctype/course_plan/course_plan.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/quiz.py`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.py`
 
 ### Schema And Controller Snapshot
 
@@ -77,6 +83,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`
   - `course` (`Link` -> `Course`)
 - **Operational/public methods**:
   - `list_staff_course_plans()` (whitelisted)
+  - `create_course_plan(...)` (whitelisted)
   - `get_staff_course_plan_surface(course_plan, unit_plan=None)` (whitelisted)
   - `save_course_plan(...)` (whitelisted)
 
@@ -85,7 +92,11 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 - `Course Plan` is the shared curriculum version record for a course, not a class-owned delivery record.
 - Each `Class Teaching Plan` must point to exactly one governing `Course Plan`.
 - Shared course-plan resources live on `Material Placement` with `anchor_doctype = Course Plan`.
+- The staff course-plan index bootstraps both existing plans and create-ready course options in one bounded payload.
+- New course-plan creation now starts from the staff SPA index and routes directly into the course-plan workspace.
 - The staff course-plan workspace uses one bounded bootstrap payload and explicit save mutations rather than client waterfalls.
+- Quiz banks remain course-level assessment assets in the current schema, but the staff course-plan workspace is the current SPA authoring surface for them.
+- Assignment handoff from the course-plan workspace must stay prefilled into the canonical task-delivery overlay rather than creating a parallel assignment path.
 
 ### Current Constraints To Preserve In Review
 

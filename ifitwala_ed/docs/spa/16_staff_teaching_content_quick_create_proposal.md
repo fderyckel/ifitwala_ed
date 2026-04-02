@@ -1,7 +1,7 @@
 # Staff Teaching Content Quick-Create Proposal
 
 Status: Proposed
-Code refs: `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/docs/spa/01_spa_architecture_and_rules.md`, `ifitwala_ed/docs/spa/03_overlay_and_workflow.md`, `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/materials/01_materials_guideline.md`, `ifitwala_ed/docs/materials/02_materials_implementation_spec.md`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.json`, `ifitwala_ed/curriculum/doctype/supporting_material/supporting_material.json`, `ifitwala_ed/curriculum/doctype/material_placement/material_placement.json`, `ifitwala_ed/api/student_groups.py`, `ifitwala_ed/api/materials.py`
+Code refs: `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/docs/spa/01_spa_architecture_and_rules.md`, `ifitwala_ed/docs/spa/03_overlay_and_workflow.md`, `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/curriculum/03_curriculum_materials_and_resource_contract.md`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.json`, `ifitwala_ed/curriculum/doctype/supporting_material/supporting_material.json`, `ifitwala_ed/curriculum/doctype/material_placement/material_placement.json`, `ifitwala_ed/api/student_groups.py`, `ifitwala_ed/api/materials.py`
 Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/api/test_file_access.py` for current materials behavior; none for the proposed overlay or proposed teacher-adaptation layer
 
 This document proposes a Staff Home quick action for teacher-facing lesson, lesson-activity, and material authoring, plus the product architecture needed to support teacher-specific adaptation across student groups without breaking shared curriculum.
@@ -35,7 +35,7 @@ At the same time, the product must preserve a critical distinction:
 ## Current workspace facts that constrain the design
 
 Status: Proposed
-Code refs: `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/docs/spa/03_overlay_and_workflow.md`, `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/materials/01_materials_guideline.md`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.json`, `ifitwala_ed/curriculum/doctype/material_placement/material_placement.json`
+Code refs: `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/docs/spa/03_overlay_and_workflow.md`, `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/curriculum/03_curriculum_materials_and_resource_contract.md`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_instance/lesson_instance.json`, `ifitwala_ed/curriculum/doctype/material_placement/material_placement.json`
 Test refs: `ifitwala_ed/api/test_courses.py`
 
 1. Staff Home quick actions already use the canonical overlay stack. Any new teacher authoring action should follow the same overlay discipline.
@@ -62,7 +62,7 @@ Implication:
 ## Core product decision
 
 Status: Proposed
-Code refs: `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/materials/01_materials_guideline.md`, `ifitwala_ed/docs/docs_md/lesson.md`, `ifitwala_ed/docs/docs_md/supporting-material.md`
+Code refs: `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/curriculum/03_curriculum_materials_and_resource_contract.md`, `ifitwala_ed/docs/docs_md/lesson.md`, `ifitwala_ed/docs/docs_md/supporting-material.md`
 Test refs: None
 
 The system should separate four layers clearly:
@@ -219,7 +219,7 @@ Material mode should explicitly explain that materials are reusable and separate
 ## Recommended interaction model for teacher adaptation
 
 Status: Proposed
-Code refs: `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/materials/01_materials_guideline.md`, `ifitwala_ed/docs/docs_md/lesson-instance.md`, `ifitwala_ed/docs/docs_md/material-placement.md`
+Code refs: `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/curriculum/03_curriculum_materials_and_resource_contract.md`, `ifitwala_ed/docs/docs_md/lesson-instance.md`, `ifitwala_ed/docs/docs_md/material-placement.md`
 Test refs: None
 
 ### Shared curriculum vs local adaptation
@@ -329,7 +329,7 @@ This preserves the current planned-vs-taught distinction instead of collapsing t
 ## Rejected design paths
 
 Status: Proposed
-Code refs: `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/materials/01_materials_guideline.md`, `ifitwala_ed/docs/spa/classhub/class_hub_proposal.md`
+Code refs: `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`, `ifitwala_ed/docs/curriculum/03_curriculum_materials_and_resource_contract.md`, `ifitwala_ed/docs/spa/classhub/class_hub_proposal.md`
 Test refs: None
 
 ### 1. One shared lesson tree for every group
@@ -420,7 +420,7 @@ Recommended empty-state copy examples:
 ## Permission, scope, and concurrency expectations
 
 Status: Proposed
-Code refs: `ifitwala_ed/api/student_groups.py`, `ifitwala_ed/docs/high_concurrency_contract.md`, `ifitwala_ed/docs/materials/02_materials_implementation_spec.md`
+Code refs: `ifitwala_ed/api/student_groups.py`, `ifitwala_ed/docs/high_concurrency_contract.md`, `ifitwala_ed/docs/curriculum/03_curriculum_materials_and_resource_contract.md`
 Test refs: `ifitwala_ed/api/test_file_access.py`
 
 Any future implementation should follow these rules:
@@ -434,7 +434,7 @@ Any future implementation should follow these rules:
 ## Implementation sequence after approval
 
 Status: Proposed
-Code refs: `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/docs/spa/03_overlay_and_workflow.md`, `ifitwala_ed/docs/materials/02_materials_implementation_spec.md`
+Code refs: `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/docs/spa/03_overlay_and_workflow.md`, `ifitwala_ed/docs/curriculum/03_curriculum_materials_and_resource_contract.md`
 Test refs: None
 
 Recommended sequence:

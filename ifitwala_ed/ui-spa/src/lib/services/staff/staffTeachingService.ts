@@ -16,18 +16,25 @@ import type {
 import type {
 	Request as GetStaffCoursePlanSurfaceRequest,
 	Response as GetStaffCoursePlanSurfaceResponse,
+	StaffCoursePlanLessonActivity,
+	StaffCoursePlanQuizQuestion,
 } from '@/types/contracts/staff_teaching/get_staff_course_plan_surface'
 
 const METHODS = {
 	getClassPlanningSurface: 'ifitwala_ed.api.teaching_plans.get_staff_class_planning_surface',
 	getCoursePlanIndex: 'ifitwala_ed.api.teaching_plans.list_staff_course_plans',
 	getCoursePlanSurface: 'ifitwala_ed.api.teaching_plans.get_staff_course_plan_surface',
+	createCoursePlan: 'ifitwala_ed.api.teaching_plans.create_course_plan',
 	createPlan: 'ifitwala_ed.api.teaching_plans.create_class_teaching_plan',
 	saveCoursePlan: 'ifitwala_ed.api.teaching_plans.save_course_plan',
 	saveGovernedUnit: 'ifitwala_ed.api.teaching_plans.save_unit_plan',
+	saveLessonOutline: 'ifitwala_ed.api.teaching_plans.save_lesson_outline',
+	reorderUnitLessons: 'ifitwala_ed.api.teaching_plans.reorder_unit_lessons',
+	removeLessonOutline: 'ifitwala_ed.api.teaching_plans.remove_lesson_outline',
 	savePlan: 'ifitwala_ed.api.teaching_plans.save_class_teaching_plan',
 	saveUnit: 'ifitwala_ed.api.teaching_plans.save_class_teaching_plan_unit',
 	saveSession: 'ifitwala_ed.api.teaching_plans.save_class_session',
+	saveQuizQuestionBank: 'ifitwala_ed.api.quiz.save_question_bank',
 	createPlanningReferenceMaterial:
 		'ifitwala_ed.api.teaching_plans.create_planning_reference_material',
 	uploadPlanningMaterialFile:
@@ -49,6 +56,22 @@ export type CreateClassTeachingPlanRequest = {
 export type CreateClassTeachingPlanResponse = {
 	class_teaching_plan: string
 	student_group: string
+}
+
+export type CreateCoursePlanRequest = {
+	course: string
+	title?: string | null
+	academic_year?: string | null
+	cycle_label?: string | null
+	plan_status?: string | null
+	summary?: string | null
+}
+
+export type CreateCoursePlanResponse = {
+	course_plan: string
+	course: string
+	title: string
+	plan_status?: string | null
 }
 
 export type SaveCoursePlanRequest = {
@@ -91,6 +114,43 @@ export type SaveGovernedUnitPlanResponse = {
 	course_plan: string
 	unit_plan: string
 	unit_order?: number | null
+}
+
+export type SaveLessonOutlineRequest = {
+	unit_plan: string
+	lesson?: string
+	title: string
+	lesson_type?: string | null
+	lesson_order?: number | null
+	is_published?: number | boolean | null
+	start_date?: string | null
+	duration?: number | null
+	activities: StaffCoursePlanLessonActivity[]
+}
+
+export type SaveLessonOutlineResponse = {
+	lesson: string
+	unit_plan: string
+	lesson_order?: number | null
+}
+
+export type ReorderUnitLessonsRequest = {
+	unit_plan: string
+	lesson_names: string[]
+}
+
+export type ReorderUnitLessonsResponse = {
+	updated: number
+	order_step: number
+}
+
+export type RemoveLessonOutlineRequest = {
+	lesson: string
+}
+
+export type RemoveLessonOutlineResponse = {
+	lesson: string
+	removed: number
 }
 
 export type SaveClassTeachingPlanRequest = {
@@ -140,6 +200,21 @@ export type SaveClassSessionResponse = {
 	class_session: string
 	class_teaching_plan: string
 	session_status?: string | null
+}
+
+export type SaveQuizQuestionBankRequest = {
+	course_plan: string
+	quiz_question_bank?: string
+	bank_title: string
+	description?: string | null
+	is_published?: number | boolean | null
+	questions: StaffCoursePlanQuizQuestion[]
+}
+
+export type SaveQuizQuestionBankResponse = {
+	quiz_question_bank: string
+	course?: string | null
+	is_published?: number
 }
 
 export type CreatePlanningReferenceMaterialRequest = {
@@ -239,6 +314,12 @@ export async function getStaffCoursePlanSurface(
 	return apiMethod<GetStaffCoursePlanSurfaceResponse>(METHODS.getCoursePlanSurface, payload)
 }
 
+export async function createCoursePlan(
+	payload: CreateCoursePlanRequest
+): Promise<CreateCoursePlanResponse> {
+	return apiMethod<CreateCoursePlanResponse>(METHODS.createCoursePlan, payload)
+}
+
 export async function createClassTeachingPlan(
 	payload: CreateClassTeachingPlanRequest
 ): Promise<CreateClassTeachingPlanResponse> {
@@ -262,6 +343,28 @@ export async function saveGovernedUnitPlan(
 	})
 }
 
+export async function saveLessonOutline(
+	payload: SaveLessonOutlineRequest
+): Promise<SaveLessonOutlineResponse> {
+	const { activities, ...rest } = payload
+	return apiMethod<SaveLessonOutlineResponse>(METHODS.saveLessonOutline, {
+		...rest,
+		activities_json: JSON.stringify(activities || []),
+	})
+}
+
+export async function reorderUnitLessons(
+	payload: ReorderUnitLessonsRequest
+): Promise<ReorderUnitLessonsResponse> {
+	return apiMethod<ReorderUnitLessonsResponse>(METHODS.reorderUnitLessons, payload)
+}
+
+export async function removeLessonOutline(
+	payload: RemoveLessonOutlineRequest
+): Promise<RemoveLessonOutlineResponse> {
+	return apiMethod<RemoveLessonOutlineResponse>(METHODS.removeLessonOutline, payload)
+}
+
 export async function saveClassTeachingPlan(
 	payload: SaveClassTeachingPlanRequest
 ): Promise<SaveClassTeachingPlanResponse> {
@@ -281,6 +384,16 @@ export async function saveClassSession(
 	return apiMethod<SaveClassSessionResponse>(METHODS.saveSession, {
 		...rest,
 		activities_json: JSON.stringify(activities || []),
+	})
+}
+
+export async function saveQuizQuestionBank(
+	payload: SaveQuizQuestionBankRequest
+): Promise<SaveQuizQuestionBankResponse> {
+	const { questions, ...rest } = payload
+	return apiMethod<SaveQuizQuestionBankResponse>(METHODS.saveQuizQuestionBank, {
+		...rest,
+		questions_json: JSON.stringify(questions || []),
 	})
 }
 

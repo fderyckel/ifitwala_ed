@@ -34,6 +34,7 @@ def _teaching_plans_module():
     materials_domain.create_file_material_record = lambda **kwargs: SimpleNamespace(name="MAT-1")
     materials_domain.create_material_placement = lambda **kwargs: SimpleNamespace(name="MAT-PLC-1")
     materials_domain.delete_anchor_material_placement = lambda *args, **kwargs: None
+    materials_domain._get_coordinator_course_names = lambda user: []
 
     planning_domain = ModuleType("ifitwala_ed.curriculum.planning")
     planning_domain.normalize_text = lambda value: str(value or "").strip()
@@ -49,11 +50,16 @@ def _teaching_plans_module():
     planning_domain.get_student_group_row = lambda student_group: {"name": student_group, "course": "COURSE-1"}
     planning_domain.get_unit_plan_rows = lambda course_plan: []
     planning_domain.replace_session_activities = lambda doc, activities: None
+    planning_domain.replace_lesson_activities = lambda doc, rows: doc.set("lesson_activities", rows)
     planning_domain.replace_unit_plan_standards = lambda doc, rows: doc.set("standards", rows)
     planning_domain.replace_unit_plan_reflections = lambda doc, rows, course_plan_row=None: doc.set("reflections", rows)
+    planning_domain.next_lesson_order = lambda unit_plan: 10
 
     governed_uploads = ModuleType("ifitwala_ed.utilities.governed_uploads")
     governed_uploads.upload_supporting_material_file = lambda material: None
+
+    quiz_service = ModuleType("ifitwala_ed.assessment.quiz_service")
+    quiz_service.get_student_delivery_state_map = lambda **kwargs: {}
 
     with stubbed_frappe(
         extra_modules={
@@ -61,18 +67,96 @@ def _teaching_plans_module():
             "ifitwala_ed.api.file_access": file_access_api,
             "ifitwala_ed.curriculum.materials": materials_domain,
             "ifitwala_ed.curriculum.planning": planning_domain,
+            "ifitwala_ed.assessment.quiz_service": quiz_service,
             "ifitwala_ed.utilities.governed_uploads": governed_uploads,
         }
     ) as frappe:
         frappe.db.sql = lambda *args, **kwargs: []
         frappe.db.exists = lambda *args, **kwargs: False
         frappe.db.get_value = lambda *args, **kwargs: None
+        frappe.delete_doc = lambda *args, **kwargs: None
         frappe.get_all = lambda *args, **kwargs: []
         frappe.get_list = lambda *args, **kwargs: []
         yield import_fresh("ifitwala_ed.api.teaching_plans")
 
 
 class TestTeachingPlansApi(TestCase):
+    def test_fetch_assigned_work_includes_quiz_launch_state_for_students(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(
+                    module.frappe.db,
+                    "sql",
+                    return_value=[
+                        {
+                            "task_delivery": "TDL-1",
+                            "delivery_name": "TDL-1",
+                            "task": "TASK-1",
+                            "class_session": "SESSION-1",
+                            "delivery_mode": "Assign Only",
+                            "grading_mode": "None",
+                            "available_from": None,
+                            "due_date": "2026-04-10 09:00:00",
+                            "lock_date": None,
+                            "quiz_question_bank": "QBK-1",
+                            "quiz_question_count": 10,
+                            "quiz_time_limit_minutes": 20,
+                            "quiz_max_attempts": 2,
+                            "quiz_pass_percentage": 70,
+                            "title": "Cells Checkpoint",
+                            "task_type": "Quiz",
+                            "unit_plan": "UNIT-1",
+                            "lesson": "LESSON-1",
+                        }
+                    ],
+                ),
+                patch.object(module, "_fetch_material_map", return_value={}),
+                patch.object(
+                    module.frappe,
+                    "get_all",
+                    return_value=[
+                        {
+                            "task_delivery": "TDL-1",
+                            "submission_status": "Submitted",
+                            "grading_status": "Not Applicable",
+                            "is_complete": 1,
+                            "is_published": 0,
+                        }
+                    ],
+                ),
+                patch.object(
+                    module.quiz_service,
+                    "get_student_delivery_state_map",
+                    return_value={
+                        "TDL-1": {
+                            "is_practice": 1,
+                            "attempts_used": 1,
+                            "max_attempts": 2,
+                            "can_start": 0,
+                            "can_continue": 1,
+                            "can_retry": 0,
+                            "latest_attempt": "QAT-1",
+                            "status_label": "In Progress",
+                            "score": None,
+                            "percentage": None,
+                            "passed": 0,
+                            "pass_percentage": 70,
+                            "time_limit_minutes": 20,
+                        }
+                    },
+                ),
+            ):
+                payload = module._fetch_assigned_work(
+                    "CLASS-PLAN-1",
+                    audience="student",
+                    student_name="STU-1",
+                )
+
+        self.assertEqual(payload[0]["task_delivery"], "TDL-1")
+        self.assertEqual(payload[0]["submission_status"], "Submitted")
+        self.assertEqual(payload[0]["quiz_state"]["can_continue"], 1)
+        self.assertEqual(payload[0]["quiz_state"]["status_label"], "In Progress")
+
     def test_build_unit_lookup_includes_shared_and_class_reflections_for_staff(self):
         with _teaching_plans_module() as module:
             with (
@@ -367,6 +451,101 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["resources"]["course_plan_resources"][0]["title"], "Scope and sequence")
         self.assertEqual(payload["curriculum"]["units"][0]["shared_resources"][0]["title"], "Lab handout")
 
+    def test_build_staff_course_plan_bundle_includes_lessons_and_quiz_bank_detail(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(
+                    module,
+                    "_resolve_planning_resource_anchor",
+                    return_value={
+                        "anchor_doctype": "Course Plan",
+                        "anchor_name": "COURSE-PLAN-1",
+                        "can_manage_resources": 1,
+                    },
+                ),
+                patch.object(
+                    module.planning,
+                    "get_course_plan_row",
+                    return_value={
+                        "name": "COURSE-PLAN-1",
+                        "title": "Biology Plan",
+                        "course": "COURSE-1",
+                        "school": "SCH-1",
+                        "academic_year": "2026-2027",
+                        "cycle_label": "Semester 1",
+                        "plan_status": "Active",
+                    },
+                ),
+                patch.object(
+                    module.planning,
+                    "get_unit_plan_rows",
+                    return_value=[{"name": "UNIT-1", "title": "Cells and Systems", "unit_order": 10}],
+                ),
+                patch.object(
+                    module,
+                    "_build_unit_lookup",
+                    return_value={
+                        "UNIT-1": {
+                            "title": "Cells and Systems",
+                            "unit_order": 10,
+                            "standards": [],
+                            "shared_reflections": [],
+                            "class_reflections": [],
+                        }
+                    },
+                ),
+                patch.object(module, "_fetch_material_map", return_value={}),
+                patch.object(
+                    module,
+                    "_fetch_selected_unit_lessons",
+                    return_value=[{"lesson": "LESSON-1", "title": "Microscope setup", "activities": []}],
+                ),
+                patch.object(
+                    module,
+                    "_fetch_course_quiz_question_banks",
+                    return_value=[
+                        {
+                            "quiz_question_bank": "QBK-1",
+                            "bank_title": "Cells Check-in",
+                            "question_count": 5,
+                            "published_question_count": 4,
+                            "is_published": 1,
+                        }
+                    ],
+                ),
+                patch.object(
+                    module,
+                    "_fetch_selected_quiz_question_bank",
+                    return_value={
+                        "quiz_question_bank": "QBK-1",
+                        "bank_title": "Cells Check-in",
+                        "questions": [{"quiz_question": "QQ-1", "title": "Where is the nucleus?", "options": []}],
+                    },
+                ),
+                patch.object(
+                    module.frappe,
+                    "get_doc",
+                    return_value=SimpleNamespace(
+                        name="COURSE-PLAN-1",
+                        summary="Shared course summary",
+                        check_permission=lambda ptype: None,
+                    ),
+                ),
+                patch.object(
+                    module.frappe.db,
+                    "get_value",
+                    return_value={"course_name": "Biology", "course_group": "Science"},
+                ),
+            ):
+                payload = module._build_staff_course_plan_bundle("COURSE-PLAN-1")
+
+        self.assertEqual(payload["curriculum"]["selected_unit_lessons"][0]["lesson"], "LESSON-1")
+        self.assertEqual(payload["assessment"]["quiz_question_banks"][0]["quiz_question_bank"], "QBK-1")
+        self.assertEqual(
+            payload["assessment"]["selected_quiz_question_bank"]["questions"][0]["quiz_question"],
+            "QQ-1",
+        )
+
     def test_list_staff_course_plans_serializes_manage_flag(self):
         with _teaching_plans_module() as module:
             rows = [
@@ -414,8 +593,97 @@ class TestTeachingPlansApi(TestCase):
                 payload = module.list_staff_course_plans()
 
         self.assertEqual(len(payload["course_plans"]), 2)
+        self.assertEqual(payload["access"]["can_create_course_plans"], 0)
         self.assertEqual(payload["course_plans"][0]["can_manage_resources"], 1)
         self.assertEqual(payload["course_plans"][1]["can_manage_resources"], 0)
+
+    def test_list_staff_course_plans_includes_creation_options_for_curriculum_coordinator(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(module.frappe, "get_roles", return_value=["Curriculum Coordinator"]),
+                patch.object(module.materials_domain, "_get_coordinator_course_names", return_value=["COURSE-1"]),
+                patch.object(module.frappe, "get_list", return_value=[]),
+                patch.object(
+                    module.frappe,
+                    "get_all",
+                    return_value=[
+                        {
+                            "name": "COURSE-1",
+                            "course_name": "Biology",
+                            "course_group": "Science",
+                            "school": "SCH-1",
+                            "status": "Active",
+                        }
+                    ],
+                ),
+            ):
+                payload = module.list_staff_course_plans()
+
+        self.assertEqual(payload["access"]["can_create_course_plans"], 1)
+        self.assertIsNone(payload["access"]["create_block_reason"])
+        self.assertEqual(payload["course_options"][0]["course"], "COURSE-1")
+        self.assertEqual(payload["course_options"][0]["course_name"], "Biology")
+
+    def test_create_course_plan_creates_shared_plan_for_allowed_course(self):
+        with _teaching_plans_module() as module:
+            inserted = {"count": 0}
+
+            class CoursePlanDoc:
+                def __init__(self):
+                    self.name = "COURSE-PLAN-1"
+                    self.course = None
+                    self.title = None
+                    self.academic_year = None
+                    self.cycle_label = None
+                    self.plan_status = "Draft"
+                    self.summary = None
+
+                def insert(self, ignore_permissions=False):
+                    inserted["count"] += 1
+                    inserted["ignore_permissions"] = ignore_permissions
+
+            doc = CoursePlanDoc()
+
+            with (
+                patch.object(module.frappe, "get_roles", return_value=["Curriculum Coordinator"]),
+                patch.object(module.materials_domain, "_get_coordinator_course_names", return_value=["COURSE-1"]),
+                patch.object(
+                    module.frappe,
+                    "get_all",
+                    return_value=[
+                        {
+                            "name": "COURSE-1",
+                            "course_name": "Biology",
+                            "course_group": "Science",
+                            "school": "SCH-1",
+                            "status": "Active",
+                        }
+                    ],
+                ),
+                patch.object(module.frappe, "new_doc", return_value=doc),
+            ):
+                payload = module.create_course_plan(
+                    {
+                        "course": "COURSE-1",
+                        "academic_year": "2026-2027",
+                        "cycle_label": "Semester 1",
+                        "summary": "Shared scope and sequence",
+                    }
+                )
+
+        self.assertEqual(doc.course, "COURSE-1")
+        self.assertEqual(doc.title, "Biology Plan")
+        self.assertEqual(doc.academic_year, "2026-2027")
+        self.assertEqual(doc.cycle_label, "Semester 1")
+        self.assertEqual(doc.summary, "Shared scope and sequence")
+        self.assertEqual(inserted["count"], 1)
+        self.assertEqual(payload["course_plan"], "COURSE-PLAN-1")
+        self.assertEqual(payload["course"], "COURSE-1")
+
+    def test_create_course_plan_rejects_users_without_shared_plan_permission(self):
+        with _teaching_plans_module() as module:
+            with self.assertRaises(module.frappe.PermissionError):
+                module.create_course_plan({"course": "COURSE-1"})
 
     def test_save_course_plan_updates_governed_fields(self):
         with _teaching_plans_module() as module:
@@ -523,6 +791,105 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(unit_doc.reflections, [{"prior_to_the_unit": "Start with microscope norms."}])
         self.assertEqual(inserted["count"], 1)
         self.assertEqual(payload["unit_plan"], "UNIT-PLAN-NEW")
+
+    def test_save_lesson_outline_creates_lesson_with_activities(self):
+        with _teaching_plans_module() as module:
+            inserted = {"count": 0}
+
+            class FakeLessonDoc:
+                def __init__(self):
+                    self.name = "LESSON-1"
+                    self.unit_plan = None
+                    self.course = None
+                    self.title = None
+                    self.lesson_type = None
+                    self.lesson_order = None
+                    self.is_published = 0
+                    self.start_date = None
+                    self.duration = None
+                    self.lesson_activities = []
+
+                def set(self, fieldname, value):
+                    setattr(self, fieldname, value)
+
+                def is_new(self):
+                    return True
+
+                def insert(self, ignore_permissions=False):
+                    inserted["count"] += 1
+                    inserted["ignore_permissions"] = ignore_permissions
+
+            unit_doc = SimpleNamespace(
+                name="UNIT-1",
+                course="COURSE-1",
+                check_permission=lambda ptype: None,
+            )
+            lesson_doc = FakeLessonDoc()
+
+            def fake_get_doc(doctype, name):
+                if doctype == "Unit Plan":
+                    return unit_doc
+                raise AssertionError(f"Unexpected get_doc call: {doctype} {name}")
+
+            with (
+                patch.object(module.frappe, "get_doc", side_effect=fake_get_doc),
+                patch.object(module.frappe, "new_doc", return_value=lesson_doc),
+            ):
+                payload = module.save_lesson_outline(
+                    {
+                        "unit_plan": "UNIT-1",
+                        "title": "Microscope setup",
+                        "lesson_type": "Instruction",
+                        "lesson_order": 20,
+                        "is_published": 1,
+                        "duration": 2,
+                        "activities_json": [
+                            {
+                                "title": "Observe the slide",
+                                "activity_type": "Discussion",
+                                "lesson_activity_order": 10,
+                            }
+                        ],
+                    }
+                )
+
+        self.assertEqual(lesson_doc.unit_plan, "UNIT-1")
+        self.assertEqual(lesson_doc.course, "COURSE-1")
+        self.assertEqual(lesson_doc.title, "Microscope setup")
+        self.assertEqual(lesson_doc.lesson_activities[0]["title"], "Observe the slide")
+        self.assertEqual(inserted["count"], 1)
+        self.assertEqual(payload["lesson"], "LESSON-1")
+
+    def test_remove_lesson_outline_deletes_unlinked_lesson(self):
+        with _teaching_plans_module() as module:
+            deleted = {"count": 0}
+
+            class LessonDoc:
+                def __init__(self):
+                    self.unit_plan = "UNIT-1"
+
+                def delete(self, ignore_permissions=False):
+                    deleted["count"] += 1
+                    deleted["ignore_permissions"] = ignore_permissions
+
+            lesson_doc = LessonDoc()
+            unit_doc = SimpleNamespace(check_permission=lambda ptype: None)
+
+            def fake_get_doc(doctype, name):
+                if doctype == "Lesson":
+                    return lesson_doc
+                if doctype == "Unit Plan":
+                    return unit_doc
+                raise AssertionError(f"Unexpected get_doc call: {doctype} {name}")
+
+            with (
+                patch.object(module.frappe, "get_doc", side_effect=fake_get_doc),
+                patch.object(module.frappe.db, "exists", return_value=False),
+            ):
+                payload = module.remove_lesson_outline("LESSON-1")
+
+        self.assertEqual(payload["removed"], 1)
+        self.assertEqual(deleted["count"], 1)
 
     def test_create_planning_reference_material_uses_class_owned_origin(self):
         with _teaching_plans_module() as module:

@@ -74,13 +74,28 @@ function buildPayload(): StudentLearningSpaceResponse {
 		resources: {
 			shared_resources: [],
 			class_resources: [],
-			general_assigned_work: [],
+			general_assigned_work: [
+				{
+					task_delivery: 'TDL-QUIZ-1',
+					task: 'TASK-QUIZ-1',
+					title: 'Cell Structure Checkpoint',
+					task_type: 'Quiz',
+					unit_plan: 'UNIT-PLAN-1',
+					class_session: 'CLASS-SESSION-1',
+					submission_status: 'Submitted',
+					quiz_state: {
+						can_continue: 1,
+						status_label: 'In Progress',
+					},
+					materials: [],
+				},
+			],
 		},
 		curriculum: {
 			counts: {
 				units: 1,
 				sessions: 2,
-				assigned_work: 0,
+				assigned_work: 1,
 			},
 			units: [
 				{
@@ -95,7 +110,22 @@ function buildPayload(): StudentLearningSpaceResponse {
 					skills: 'Observation, note-taking, comparison',
 					concepts: 'Structure, function, systems',
 					shared_resources: [],
-					assigned_work: [],
+					assigned_work: [
+						{
+							task_delivery: 'TDL-QUIZ-1',
+							task: 'TASK-QUIZ-1',
+							title: 'Cell Structure Checkpoint',
+							task_type: 'Quiz',
+							unit_plan: 'UNIT-PLAN-1',
+							class_session: 'CLASS-SESSION-1',
+							submission_status: 'Submitted',
+							quiz_state: {
+								can_continue: 1,
+								status_label: 'In Progress',
+							},
+							materials: [],
+						},
+					],
 					standards: [
 						{
 							standard_code: 'STD-1',
@@ -194,6 +224,8 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Structure and function are linked in living systems.')
 		expect(document.body.textContent).toContain('Microscope evidence walk')
 		expect(document.body.textContent).toContain('Observation walk')
+		expect(document.body.textContent).toContain('Continue quiz')
+		expect(document.body.textContent).toContain('Cell Structure Checkpoint')
 		expect(document.body.textContent).not.toContain('Teacher note')
 
 		const headerImage = document.querySelector('header img')

@@ -1154,6 +1154,7 @@ function openAssignedWorkOverlay() {
 	}
 	overlay.open('create-task', {
 		prefillStudentGroup: studentGroup.value,
+		prefillCourse: surface.value.group.course,
 		prefillClassTeachingPlan: surface.value.teaching_plan.class_teaching_plan,
 		prefillUnitPlan: selectedUnit.value?.unit_plan || null,
 		prefillClassSession: selectedSessionId.value || null,

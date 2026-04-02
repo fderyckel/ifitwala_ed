@@ -3,18 +3,18 @@ title: "Lesson: Ordered Planned Teaching Segment Within a Unit"
 slug: lesson
 category: Curriculum
 doc_order: 6
-version: "1.2.0"
-last_change_date: "2026-04-01"
-summary: "Define a planned lesson within a unit plan, add lesson activities, and optionally use the lesson as the deepest curriculum anchor on a reusable task."
+version: "1.3.0"
+last_change_date: "2026-04-02"
+summary: "Define a planned lesson within a unit plan, add thin lesson activities, and optionally use the lesson as the deepest curriculum anchor on a reusable task."
 seo_title: "Lesson: Ordered Planned Teaching Segment Within a Unit"
 seo_description: "Define a planned lesson within a unit plan, add lesson activities, and optionally use the lesson as the deepest curriculum anchor on a reusable task."
 ---
 
 ## Lesson: Ordered Planned Teaching Segment Within a Unit
 
-Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.py`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.js`
-Test refs: None (scaffold only: `ifitwala_ed/curriculum/doctype/lesson/test_lesson.py`)
+Status: Implemented
+Code refs: `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/assessment/doctype/task/task.py`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 
 `Lesson` is the ordered planned teaching segment inside a `Unit Plan`. It can hold type, date, duration, and a child table of `Lesson Activity` rows.
 
@@ -32,25 +32,27 @@ Test refs: None
 
 ## Where It Is Used Across the ERP
 
-Status: Partial
-Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.js`
-Test refs: None
+Status: Implemented
+Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 
 - Child of [**Unit Plan**](/docs/en/unit-plan/).
 - Optional curriculum anchor for [**Task**](/docs/en/task/) through `Task.lesson`.
 - Legacy planned anchor that may still help educators map shared lesson guidance to a live [**Class Session**](/docs/en/class-session/), though the live session model no longer depends on it.
-- Read and ordered from the Unit Plan form helpers in `unit_plan.js`.
+- Editable and ordered from the staff course-plan workspace in `ui-spa`.
+- Desk unit-form helpers still exist, but they are no longer the only authoring path.
 
 ## Lifecycle and Linked Documents
 
-Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/assessment/doctype/task/task.py`
-Test refs: None (scaffold only: `ifitwala_ed/curriculum/doctype/lesson/test_lesson.py`)
+Status: Implemented
+Code refs: `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/assessment/doctype/task/task.py`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 
 1. Create the lesson under a `Unit Plan` with required `title`.
 2. Set planning metadata such as `lesson_type`, `start_date`, `duration`, and `is_published`.
 3. Add `Lesson Activity` rows to break the lesson into pedagogical steps.
-4. Optionally anchor reusable `Task` rows to this lesson. Runtime delivery then happens separately through `Task Delivery`.
+4. Staff can create, update, reorder, and remove lesson outlines from the shared course-plan workspace.
+5. Optionally anchor reusable `Task` rows to this lesson. Runtime delivery then happens separately through `Task Delivery`.
 
 ## Related Docs
 
@@ -66,9 +68,9 @@ Test refs: None
 
 ## Technical Notes (IT)
 
-Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.py`, `ifitwala_ed/assessment/doctype/task/task.py`
-Test refs: None (scaffold only: `ifitwala_ed/curriculum/doctype/lesson/test_lesson.py`)
+Status: Implemented
+Code refs: `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/assessment/doctype/task/task.py`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 
 ### Schema and Controller Snapshot
 
@@ -83,11 +85,12 @@ Test refs: None (scaffold only: `ifitwala_ed/curriculum/doctype/lesson/test_less
 
 ### Current Contract
 
-- `Lesson` remains a planned record. The controller stays lightweight and now exposes lesson reordering for the Unit Plan desk workflow.
+- `Lesson` remains a planned record. The controller stays lightweight and now exposes lesson reordering that the SPA authoring endpoint also reuses.
 - `Task._validate_curriculum_alignment()` checks that any selected lesson belongs to the selected unit plan and course context before a task is saved.
 - If `Lesson.course` is blank, `Task` validation can still derive course alignment through the lesson's linked unit plan.
+- `ifitwala_ed.api.teaching_plans.save_lesson_outline` now owns SPA lesson saves and lesson-activity replacement.
 
 ### Current Constraints To Preserve In Review
 
-- `lesson.py` now exposes `reorder_lessons(unit_plan, lesson_names)` for the Unit Plan desk workflow; keep that contract aligned with the form helper.
+- `lesson.py` now exposes `reorder_lessons(unit_plan, lesson_names)` for both the staff SPA and the remaining Desk helper.
 - Do not document `Lesson` as the runtime delivery row. That role now belongs to `Class Session`, with `Task Delivery` as optional class-assigned work.

@@ -12,9 +12,22 @@ export type CoursePlanIndexRow = {
 	can_manage_resources: number
 }
 
+export type CoursePlanIndexCourseOption = {
+	course: string
+	course_name: string
+	course_group?: string | null
+	school?: string | null
+	status?: string | null
+}
+
 export type Response = {
 	meta: {
 		generated_at: string
 	}
+	access: {
+		can_create_course_plans: number
+		create_block_reason?: string | null
+	}
+	course_options: CoursePlanIndexCourseOption[]
 	course_plans: CoursePlanIndexRow[]
 }

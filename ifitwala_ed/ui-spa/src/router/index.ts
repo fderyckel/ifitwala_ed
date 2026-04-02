@@ -70,6 +70,9 @@ const routes: RouteRecordRaw[] = [
       course_id: String(route.params.course_id || ''),
       student_group:
         typeof route.query.student_group === 'string' ? route.query.student_group : '',
+      unit_plan: typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
+      class_session:
+        typeof route.query.class_session === 'string' ? route.query.class_session : '',
     }),
     meta: { layout: 'student' },
   },
@@ -80,8 +83,12 @@ const routes: RouteRecordRaw[] = [
     props: route => ({
       course_id: String(route.params.course_id || ''),
       task_delivery: String(route.params.task_delivery || ''),
+      student_group:
+        typeof route.query.student_group === 'string' ? route.query.student_group : '',
       unit_plan:
         typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
+      class_session:
+        typeof route.query.class_session === 'string' ? route.query.class_session : '',
       lesson: typeof route.query.lesson === 'string' ? route.query.lesson : '',
     }),
     meta: { layout: 'student' },
@@ -117,6 +124,8 @@ const routes: RouteRecordRaw[] = [
     props: route => ({
       coursePlan: String(route.params.coursePlan || ''),
       unitPlan: typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
+      quizQuestionBank:
+        typeof route.query.quiz_question_bank === 'string' ? route.query.quiz_question_bank : '',
     }),
     meta: { layout: 'staff' },
   },

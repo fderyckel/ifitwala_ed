@@ -111,6 +111,25 @@
 											/>
 										</div>
 
+										<div
+											v-if="
+												props.prefillLessonLabel ||
+												props.prefillQuizQuestionBankLabel ||
+												props.prefillUnitPlan
+											"
+											class="flex flex-wrap gap-2"
+										>
+											<span v-if="props.prefillUnitPlan" class="chip">
+												Unit {{ props.prefillUnitPlan }}
+											</span>
+											<span v-if="props.prefillLessonLabel" class="chip">
+												Lesson {{ props.prefillLessonLabel }}
+											</span>
+											<span v-if="props.prefillQuizQuestionBankLabel" class="chip">
+												Quiz {{ props.prefillQuizQuestionBankLabel }}
+											</span>
+										</div>
+
 										<div v-if="isQuizTask" class="grid gap-4 md:grid-cols-2">
 											<div class="space-y-1">
 												<label class="type-label">Question bank</label>
@@ -122,6 +141,10 @@
 													option-value="value"
 													placeholder="Select a quiz bank"
 												/>
+												<p v-if="!quizBankOptions.length" class="type-caption text-ink/70">
+													No published quiz banks are available yet. Build one in the shared
+													course-plan workspace first.
+												</p>
 											</div>
 											<div class="space-y-1">
 												<label class="type-label">Questions per attempt</label>
@@ -660,9 +683,16 @@ const props = defineProps<{
 	open: boolean;
 	zIndex?: number;
 	prefillStudentGroup?: string | null;
+	prefillCourse?: string | null;
 	prefillClassTeachingPlan?: string | null;
 	prefillClassSession?: string | null;
 	prefillUnitPlan?: string | null;
+	prefillLesson?: string | null;
+	prefillLessonLabel?: string | null;
+	prefillQuizQuestionBank?: string | null;
+	prefillQuizQuestionBankLabel?: string | null;
+	prefillTitle?: string | null;
+	prefillTaskType?: string | null;
 	prefillDueDate?: string | null;
 	prefillAvailableFrom?: string | null;
 }>();
@@ -934,7 +964,9 @@ watch(
 		if (!isGroupLocked.value) {
 			groupResource.submit({});
 		}
-		quizBankResource.submit({});
+		quizBankResource.submit({
+			course: props.prefillCourse || undefined,
+		});
 	},
 	{ immediate: true }
 );
@@ -954,10 +986,10 @@ onBeforeUnmount(() => {
 
 function initializeForm() {
 	createdTask.value = null;
-	form.title = '';
+	form.title = props.prefillTitle || '';
 	form.instructions = '';
-	form.task_type = '';
-	form.quiz_question_bank = '';
+	form.task_type = props.prefillTaskType || '';
+	form.quiz_question_bank = props.prefillQuizQuestionBank || '';
 	form.quiz_question_count = '';
 	form.quiz_time_limit_minutes = '';
 	form.quiz_max_attempts = '';
@@ -1267,6 +1299,7 @@ async function submit() {
 		class_teaching_plan: props.prefillClassTeachingPlan || undefined,
 		class_session: props.prefillClassSession || undefined,
 		unit_plan: props.prefillUnitPlan || undefined,
+		lesson: props.prefillLesson || undefined,
 		delivery_mode: form.delivery_mode,
 		allow_late_submission:
 			form.delivery_mode === 'Assign Only' ? 0 : form.allow_late_submission ? 1 : 0,

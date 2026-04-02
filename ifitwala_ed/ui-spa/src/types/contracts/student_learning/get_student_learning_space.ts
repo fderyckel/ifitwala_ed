@@ -46,6 +46,22 @@ export type StudentLearningMaterial = {
 	placement_order?: number | null
 }
 
+export type StudentQuizDeliveryState = {
+	is_practice?: number
+	attempts_used?: number
+	max_attempts?: number | null
+	can_start?: number
+	can_continue?: number
+	can_retry?: number
+	latest_attempt?: string | null
+	status_label?: string | null
+	score?: number | null
+	percentage?: number | null
+	passed?: number
+	pass_percentage?: number | null
+	time_limit_minutes?: number | null
+}
+
 export type StudentAssignedWork = {
 	task_delivery: string
 	task: string
@@ -63,6 +79,7 @@ export type StudentAssignedWork = {
 	grading_status?: string | null
 	is_complete?: number
 	is_published?: number
+	quiz_state?: StudentQuizDeliveryState | null
 	materials: StudentLearningMaterial[]
 }
 

@@ -8,6 +8,7 @@ from frappe import _
 
 from ifitwala_ed.api import courses as courses_api
 from ifitwala_ed.assessment import quiz_service
+from ifitwala_ed.curriculum import planning
 
 
 @frappe.whitelist()
@@ -26,6 +27,44 @@ def list_question_banks(course: str | None = None):
         order_by="bank_title asc, name asc",
         limit=200,
     )
+
+
+@frappe.whitelist()
+def save_question_bank(payload=None, **kwargs):
+    data = _normalize_payload(payload, kwargs)
+    course_plan = planning.normalize_text(data.get("course_plan"))
+    question_bank_name = planning.normalize_text(
+        data.get("quiz_question_bank") or data.get("question_bank") or data.get("name")
+    )
+    if question_bank_name:
+        bank_doc = frappe.get_doc("Quiz Question Bank", question_bank_name)
+        _require_course_plan_write_access(course_plan, expected_course=bank_doc.course)
+    else:
+        course_row = _require_course_plan_write_access(course_plan)
+        bank_doc = frappe.new_doc("Quiz Question Bank")
+        bank_doc.course = course_row.get("course")
+
+    bank_title = planning.normalize_text(data.get("bank_title"))
+    if not bank_title:
+        frappe.throw(_("Bank Title is required."))
+
+    bank_doc.bank_title = bank_title
+    bank_doc.description = planning.normalize_long_text(data.get("description"))
+    bank_doc.is_published = planning.normalize_flag(data.get("is_published"))
+
+    if bank_doc.is_new():
+        bank_doc.insert(ignore_permissions=True)
+    else:
+        bank_doc.save(ignore_permissions=True)
+
+    question_rows = _normalize_rows_payload(data.get("questions_json") or data.get("questions"), label=_("Questions"))
+    _sync_question_bank_questions(bank_doc.name, question_rows)
+
+    return {
+        "quiz_question_bank": bank_doc.name,
+        "course": bank_doc.course,
+        "is_published": int(bank_doc.is_published or 0),
+    }
 
 
 @frappe.whitelist()
@@ -70,6 +109,85 @@ def _normalize_payload(payload, kwargs):
     return data
 
 
+def _normalize_rows_payload(value, *, label: str) -> list[dict]:
+    if value in (None, ""):
+        return []
+    rows = frappe.parse_json(value) if isinstance(value, str) else value
+    if not isinstance(rows, list):
+        frappe.throw(_("{label} must be a list.").format(label=label))
+    normalized: list[dict] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            frappe.throw(_("{label} rows must be objects.").format(label=label))
+        normalized.append(row)
+    return normalized
+
+
+def _normalize_question_options(question_type: str, rows) -> list[dict]:
+    options: list[dict] = []
+    for row in _normalize_rows_payload(rows, label=_("Options")):
+        option_text = planning.normalize_long_text(row.get("option_text"))
+        if not option_text:
+            continue
+        options.append(
+            {
+                "option_text": option_text,
+                "is_correct": planning.normalize_flag(row.get("is_correct")),
+            }
+        )
+    if question_type == "True / False" and not options:
+        options = [
+            {"option_text": "True", "is_correct": 1},
+            {"option_text": "False", "is_correct": 0},
+        ]
+    return options
+
+
+def _sync_question_bank_questions(question_bank: str, rows: list[dict]) -> None:
+    existing_names = set(
+        frappe.get_all(
+            "Quiz Question",
+            filters={"question_bank": question_bank},
+            pluck="name",
+            limit=0,
+        )
+    )
+    retained: set[str] = set()
+
+    for row in rows:
+        question_name = planning.normalize_text(row.get("quiz_question") or row.get("question") or row.get("name"))
+        if question_name:
+            doc = frappe.get_doc("Quiz Question", question_name)
+            if planning.normalize_text(doc.question_bank) != question_bank:
+                frappe.throw(_("Quiz question does not belong to the selected bank."), frappe.PermissionError)
+        else:
+            doc = frappe.new_doc("Quiz Question")
+            doc.question_bank = question_bank
+
+        doc.title = planning.normalize_text(row.get("title"))
+        doc.question_type = planning.normalize_text(row.get("question_type"))
+        doc.is_published = planning.normalize_flag(row.get("is_published"))
+        doc.prompt = row.get("prompt")
+        doc.accepted_answers = planning.normalize_long_text(row.get("accepted_answers"))
+        doc.explanation = planning.normalize_long_text(row.get("explanation"))
+        doc.set("options", _normalize_question_options(doc.question_type, row.get("options")))
+
+        if doc.is_new():
+            doc.insert(ignore_permissions=True)
+        else:
+            doc.save(ignore_permissions=True)
+        retained.add(doc.name)
+
+    stale_names = existing_names - retained
+    for question_name in stale_names:
+        if frappe.db.exists("Quiz Attempt Item", {"quiz_question": question_name}):
+            frappe.throw(
+                _("This quiz question has already been used in student attempts. Unpublish it instead of removing it."),
+                frappe.ValidationError,
+            )
+        frappe.delete_doc("Quiz Question", question_name, ignore_permissions=True)
+
+
 def _require_student_scope(task_delivery: str) -> str:
     student = courses_api._require_student_name_for_session_user()
     delivery = frappe.db.get_value("Task Delivery", task_delivery, ["course"], as_dict=True) or {}
@@ -92,3 +210,16 @@ def _require_student_for_attempt(attempt: str) -> str:
 def _can_manage_quizzes() -> bool:
     roles = set(frappe.get_roles(frappe.session.user))
     return bool(roles & {"System Manager", "Academic Admin", "Instructor", "Curriculum Coordinator"})
+
+
+def _require_course_plan_write_access(course_plan: str, *, expected_course: str | None = None) -> dict:
+    course_plan_name = planning.normalize_text(course_plan)
+    if not course_plan_name:
+        frappe.throw(_("Course Plan is required."))
+    doc = frappe.get_doc("Course Plan", course_plan_name)
+    doc.check_permission("write")
+    course_row = planning.get_course_plan_row(course_plan_name)
+    expected_course_name = planning.normalize_text(expected_course)
+    if expected_course_name and planning.normalize_text(course_row.get("course")) != expected_course_name:
+        frappe.throw(_("Course Plan does not govern this quiz question bank."), frappe.PermissionError)
+    return course_row

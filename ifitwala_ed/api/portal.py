@@ -130,6 +130,7 @@ def _build_staff_home_capabilities(roles: set[str], user: str | None = None) -> 
         "staff_policy_library": bool(roles & set(POLICY_LIBRARY_ROLES)),
         "quick_action_create_task": has_instructor_role,
         "quick_action_gradebook": has_instructor_role,
+        "quick_action_pick_student": has_instructor_role,
         "quick_action_student_log": has_academic_staff_role,
         "quick_action_create_meeting": can_create_meeting,
         "quick_action_create_school_event": can_create_school_event,

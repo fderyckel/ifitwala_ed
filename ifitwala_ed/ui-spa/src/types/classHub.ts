@@ -1,5 +1,44 @@
 export type ClassHubOverlay = 'QuickCFU' | 'QuickEvidence' | 'StudentContext' | 'TaskReview'
 
+export type ClassHubWheelStudent = {
+  student: string
+  student_name: string
+}
+
+export type ClassHubWheelNow = {
+  date_iso?: string | null
+  date_label: string
+  block_number?: number | null
+  block_label?: string | null
+  time_range?: string | null
+  location?: string | null
+}
+
+export type ClassHubWheelContext = {
+  student_group: string
+  title: string
+  academic_year?: string | null
+  course?: string | null
+  permissions: {
+    can_create_student_log: boolean
+  }
+  now: ClassHubWheelNow
+  students: ClassHubWheelStudent[]
+}
+
+export type ClassHubWheelResolution = {
+  status: 'ready' | 'multiple_current' | 'no_current_class' | 'unavailable'
+  message?: string | null
+  contexts: ClassHubWheelContext[]
+  next_class?: {
+    student_group: string
+    title: string
+    academic_year?: string | null
+    course?: string | null
+    now: ClassHubWheelNow
+  } | null
+}
+
 export type ClassHubBundle = {
   header: {
     student_group: string

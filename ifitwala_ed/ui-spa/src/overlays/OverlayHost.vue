@@ -58,6 +58,7 @@ import StaffPolicyCampaignOverlay from '@/overlays/staff/StaffPolicyCampaignOver
 import ProfessionalDevelopmentRequestOverlay from '@/overlays/staff/ProfessionalDevelopmentRequestOverlay.vue';
 import ProfessionalDevelopmentCompletionOverlay from '@/overlays/staff/ProfessionalDevelopmentCompletionOverlay.vue';
 import StudentContextOverlay from '@/components/overlays/class-hub/StudentContextOverlay.vue';
+import WheelPickerOverlay from '@/components/overlays/class-hub/WheelPickerOverlay.vue';
 import QuickEvidenceOverlay from '@/components/overlays/class-hub/QuickEvidenceOverlay.vue';
 import QuickCFUOverlay from '@/components/overlays/class-hub/QuickCFUOverlay.vue';
 import TaskReviewOverlay from '@/components/overlays/class-hub/TaskReviewOverlay.vue';
@@ -206,6 +207,8 @@ function resolveComponent(type: OverlayType) {
 			return FocusRouterOverlay;
 		case 'class-hub-student-context':
 			return StudentContextOverlay;
+		case 'class-hub-wheel-picker':
+			return WheelPickerOverlay;
 		case 'class-hub-quick-evidence':
 			return QuickEvidenceOverlay;
 		case 'class-hub-quick-cfu':

@@ -3,9 +3,9 @@ title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 slug: unit-plan
 category: Curriculum
 doc_order: 5
-version: "1.1.0"
-last_change_date: "2026-04-01"
-summary: "Define the shared unit backbone for a course plan, including standards alignment, pedagogy, and reflections that class teaching plans inherit."
+version: "1.3.0"
+last_change_date: "2026-04-02"
+summary: "Define the shared unit backbone for a course plan, including standards alignment, pedagogy, reflections, and thin lesson outlines that class teaching plans inherit and can assign from."
 seo_title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 seo_description: "Define the shared unit backbone for a course plan, including standards alignment, pedagogy, and reflections that class teaching plans inherit."
 ---
@@ -50,9 +50,11 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 1. Create the unit under a `Course Plan` with required `title`.
 2. Capture the shared pedagogy, durations, misconceptions, content, skills, concepts, and inline standards alignment.
 3. Add shared `Curriculum Planning Reflection` rows when the curriculum team wants unit-level planning history.
-4. Staff can edit and save the governed unit directly from the shared `ui-spa` course-plan workspace.
-5. Class teaching plans inherit the governed unit sequence automatically.
-6. Teachers then adapt pacing, sessions, and class-owned reflections without changing the shared unit backbone.
+4. Add thin shared `Lesson` outlines when the department wants common lesson guidance without turning delivery into one rigid runtime tree.
+5. Published lesson outlines can prefill the canonical task-delivery overlay so teachers can assign from shared guidance without re-entering the lesson anchor.
+6. Staff can edit and save the governed unit directly from the shared `ui-spa` course-plan workspace.
+7. Class teaching plans inherit the governed unit sequence automatically.
+8. Teachers then adapt pacing, sessions, and class-owned reflections without changing the shared unit backbone.
 
 ## Related Docs
 
@@ -99,8 +101,10 @@ Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`
 - `Unit Plan` owns ordering within a `Course Plan` through `unit_order`.
 - `unit_plan.py` normalizes the carried curriculum fields and repairs `unit_order` collisions in steps of 10.
 - `ifitwala_ed.api.teaching_plans.save_unit_plan` now owns SPA-side governed unit mutations, including inline standards and shared reflection rows.
+- `ifitwala_ed.api.teaching_plans.save_lesson_outline` now owns SPA-side lesson-outline mutations for the selected unit.
+- Published lesson outlines in the course-plan workspace can prefill the existing task-delivery overlay with both `unit_plan` and `lesson` context.
 - Desk List View expands parent-program filters to the full descendant program subtree before fetching rows.
-- `unit_plan.js` provides lesson-list, lesson-create, and lesson-reorder actions from the unit form.
+- `unit_plan.js` still exposes Desk lesson helpers, but the staff course-plan workspace is now the primary SPA lesson authoring surface.
 - `Task.unit_plan` and `Lesson.unit_plan` now point to this doctype directly.
 
 ### Current Constraints To Preserve In Review
