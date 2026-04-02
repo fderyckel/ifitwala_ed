@@ -24,7 +24,7 @@ export type Response = {
 		image_url?: string | null
 	}
 	learning: {
-		 today_classes: TodayClass[]
+		today_classes: TodayClass[]
 		next_learning_step?: NextLearningStep | null
 		accessible_courses_count: number
 		selected_year?: string | null

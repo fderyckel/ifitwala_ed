@@ -65,10 +65,30 @@
 								class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 shadow-soft"
 								role="alert"
 							>
-								<p class="type-body-strong text-rose-900">Action blocked</p>
-								<p class="mt-1 whitespace-pre-wrap type-caption text-rose-900/80">
-									{{ errorMessage }}
-								</p>
+								<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+									<div class="min-w-0">
+										<p class="type-body-strong text-rose-900">Action blocked</p>
+										<p class="mt-1 whitespace-pre-wrap type-caption text-rose-900/80">
+											{{ errorMessage }}
+										</p>
+										<p
+											v-if="showStudentConflictRecovery"
+											class="mt-2 type-caption text-rose-900/70"
+										>
+											The form is still open. Use the common time finder to pick the next free slot
+											for this group.
+										</p>
+									</div>
+									<button
+										v-if="showStudentConflictRecovery"
+										type="button"
+										class="inline-flex items-center justify-center rounded-full bg-rose-900 px-4 py-2 type-button-label text-white transition hover:bg-rose-950 disabled:cursor-not-allowed disabled:bg-rose-300"
+										:disabled="submitting || slotLoading"
+										@click="recoverFromStudentConflict"
+									>
+										Find common times
+									</button>
+								</div>
 							</div>
 
 							<div class="rounded-2xl border border-border/70 bg-white p-3 shadow-soft">
@@ -354,7 +374,10 @@
 										</p>
 									</div>
 
-									<div class="rounded-2xl border border-border/70 bg-white p-4 shadow-soft">
+									<div
+										ref="commonTimesSection"
+										class="rounded-2xl border border-border/70 bg-white p-4 shadow-soft"
+									>
 										<div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
 											<div class="space-y-1">
 												<h3 class="type-h3 text-ink">Common time finder</h3>
@@ -930,7 +953,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import {
 	Dialog,
 	DialogPanel,
@@ -994,11 +1017,13 @@ const zIndex = computed(() => props.zIndex ?? 60);
 const optionsLoading = ref(false);
 const submitting = ref(false);
 const errorMessage = ref<string | null>(null);
+const errorCode = ref<string | null>(null);
 const attendeePanelMessage = ref<string | null>(null);
 
 const options = ref<EventQuickCreateOptionsResponse | null>(null);
 const activeType = ref<EventType>('meeting');
 const initialFocus = ref<HTMLElement | null>(null);
+const commonTimesSection = ref<HTMLElement | null>(null);
 
 const attendeeSearchQuery = ref('');
 const attendeeSearchLoading = ref(false);
@@ -1243,6 +1268,12 @@ const availableSearchResults = computed(() =>
 
 const roomCapacityTarget = computed(() => selectedAttendees.value.length + 1);
 const showRoomAssistant = computed(() => meetingForm.meeting_format !== 'virtual');
+const showStudentConflictRecovery = computed(
+	() =>
+		activeType.value === 'meeting' &&
+		Boolean(errorMessage.value) &&
+		errorCode.value === 'StudentAvailabilityConflictError'
+);
 
 const exactMatchSummary = computed(() => {
 	if (!showRoomAssistant.value) {
@@ -1359,6 +1390,124 @@ function coerceDurationMinutes(value: string | number) {
 	return parsed;
 }
 
+function parseOverlayServerMessages(raw: unknown): string | null {
+	if (typeof raw !== 'string' || !raw.trim()) {
+		return null;
+	}
+
+	try {
+		const entries = JSON.parse(raw);
+		if (!Array.isArray(entries)) return raw.trim();
+		const lines = entries
+			.map(entry => {
+				if (typeof entry !== 'string') return String(entry || '');
+				try {
+					const payload = JSON.parse(entry);
+					return typeof payload?.message === 'string' ? payload.message : entry;
+				} catch {
+					return entry;
+				}
+			})
+			.filter(line => typeof line === 'string' && line.trim());
+		return lines.length ? lines.join('\n') : null;
+	} catch {
+		return raw.trim();
+	}
+}
+
+function extractOverlayErrorMessage(error: unknown, fallback = 'Unable to create event.') {
+	if (!error) return fallback;
+	if (typeof error === 'string' && error.trim()) return error;
+
+	const maybe = error as Record<string, unknown> & {
+		response?: Record<string, unknown>;
+	};
+	const serverMessage =
+		parseOverlayServerMessages(maybe.response?._server_messages) ||
+		parseOverlayServerMessages(maybe._server_messages) ||
+		parseOverlayServerMessages(maybe.response?._messages) ||
+		parseOverlayServerMessages(maybe._messages);
+	if (serverMessage) return serverMessage;
+
+	const candidates = [
+		maybe.response?.message,
+		maybe.message,
+		maybe.response?.statusText,
+		maybe.response?.exception,
+		maybe.exception,
+		maybe.response?.exc,
+		maybe.exc,
+	];
+	for (const candidate of candidates) {
+		if (typeof candidate === 'string' && candidate.trim()) {
+			return candidate;
+		}
+		if (
+			candidate &&
+			typeof candidate === 'object' &&
+			'message' in candidate &&
+			typeof (candidate as Record<string, unknown>).message === 'string' &&
+			(candidate as Record<string, unknown>).message
+		) {
+			return String((candidate as Record<string, unknown>).message);
+		}
+	}
+
+	return fallback;
+}
+
+function normalizeOverlayErrorCode(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const normalized = value.trim();
+	return normalized || null;
+}
+
+function extractOverlayErrorCode(
+	error: unknown,
+	message: string | null = typeof error === 'string' ? error : null
+) {
+	if (error && typeof error === 'object') {
+		const maybe = error as Record<string, unknown> & {
+			response?: Record<string, unknown>;
+		};
+		const responseMessage = maybe.response?.message;
+		const candidates = [
+			maybe.code,
+			maybe.excType,
+			maybe.exc_type,
+			maybe.response?.exc_type,
+			maybe.response?.excType,
+			typeof responseMessage === 'object' && responseMessage
+				? (responseMessage as Record<string, unknown>).code
+				: null,
+		];
+		for (const candidate of candidates) {
+			const code = normalizeOverlayErrorCode(candidate);
+			if (code) return code;
+		}
+	}
+
+	const effectiveMessage =
+		typeof message === 'string' ? message : extractOverlayErrorMessage(error, '');
+	return effectiveMessage.startsWith('Student availability conflict')
+		? 'StudentAvailabilityConflictError'
+		: null;
+}
+
+function clearErrorState() {
+	errorMessage.value = null;
+	errorCode.value = null;
+}
+
+function setErrorState(message: string | null, code: string | null = null) {
+	if (!message) {
+		clearErrorState();
+		return;
+	}
+	errorMessage.value = message;
+	errorCode.value = code;
+}
+
 function resetSlotSuggestions() {
 	slotSearchPerformed.value = false;
 	slotSuggestions.value = [];
@@ -1381,7 +1530,7 @@ function resetAttendeeSearchState() {
 }
 
 function resetOverlayState() {
-	errorMessage.value = null;
+	clearErrorState();
 	options.value = null;
 	resetAttendeeSearchState();
 	selectedAttendees.value = [];
@@ -1459,7 +1608,7 @@ function initializeActiveType() {
 
 function setMeetingFormat(nextFormat: MeetingFormat) {
 	meetingForm.meeting_format = nextFormat;
-	errorMessage.value = null;
+	clearErrorState();
 	if (nextFormat === 'virtual') {
 		meetingForm.location = '';
 		resetRoomSuggestions();
@@ -1471,7 +1620,7 @@ function setActiveType(nextType: string) {
 	const allowed = safeType === 'meeting' ? hasMeetingAccess.value : hasSchoolEventAccess.value;
 	if (!allowed || !canSwitchType.value) return;
 	activeType.value = safeType;
-	errorMessage.value = null;
+	clearErrorState();
 }
 
 function updateMeetingField(field: keyof typeof meetingForm, value: unknown) {
@@ -1480,7 +1629,7 @@ function updateMeetingField(field: keyof typeof meetingForm, value: unknown) {
 		return;
 	}
 	(meetingForm as Record<string, string>)[field] = String(value || '').trim();
-	errorMessage.value = null;
+	clearErrorState();
 	if (field === 'team') {
 		attendeePanelMessage.value = null;
 	}
@@ -1488,12 +1637,12 @@ function updateMeetingField(field: keyof typeof meetingForm, value: unknown) {
 
 function updateSchoolEventField(field: keyof typeof schoolEventForm, value: unknown) {
 	(schoolEventForm as Record<string, unknown>)[field] = String(value || '').trim();
-	errorMessage.value = null;
+	clearErrorState();
 }
 
 function updateAttendeeSearchQuery(value: unknown) {
 	attendeeSearchQuery.value = String(value || '').trimStart();
-	errorMessage.value = null;
+	clearErrorState();
 }
 
 function attendeeKindLabel(kind: MeetingAttendeeKind) {
@@ -1566,6 +1715,7 @@ function applyLockedTeamAttendees(attendees: MeetingAttendee[]) {
 }
 
 function addAttendee(attendee: MeetingAttendee) {
+	clearErrorState();
 	const added = mergeSelectedAttendees([attendee]);
 	attendeePanelMessage.value = added
 		? `${attendee.label} added to the meeting.`
@@ -1577,6 +1727,7 @@ function removeAttendee(userId: string) {
 		attendeePanelMessage.value = 'Team attendees are locked by the current entry context.';
 		return;
 	}
+	clearErrorState();
 	selectedAttendees.value = selectedAttendees.value.filter(attendee => attendee.value !== userId);
 	attendeePanelMessage.value = null;
 }
@@ -1606,8 +1757,7 @@ async function runAttendeeSearch() {
 		if (requestSeq !== attendeeSearchRequestSeq) return;
 		attendeeSearchResults.value = [];
 		attendeeSearchNotes.value = [];
-		errorMessage.value =
-			error instanceof Error ? error.message : 'Unable to search for meeting attendees.';
+		setErrorState(extractOverlayErrorMessage(error, 'Unable to search for meeting attendees.'));
 	} finally {
 		if (requestSeq === attendeeSearchRequestSeq) {
 			attendeeSearchLoading.value = false;
@@ -1618,13 +1768,13 @@ async function runAttendeeSearch() {
 async function addTeamAttendees(optionsArg?: { auto?: boolean }) {
 	if (teamHydrating.value) return;
 	if (!meetingForm.team) {
-		errorMessage.value = 'Choose a team before loading team attendees.';
+		setErrorState('Choose a team before loading team attendees.');
 		return;
 	}
 	if (optionsArg?.auto && teamHydratedFor.value === meetingForm.team) return;
 
 	teamHydrating.value = true;
-	errorMessage.value = null;
+	clearErrorState();
 
 	try {
 		const response = await getMeetingTeamAttendees({ team: meetingForm.team });
@@ -1649,7 +1799,7 @@ async function addTeamAttendees(optionsArg?: { auto?: boolean }) {
 			void runAttendeeSearch();
 		}
 	} catch (error) {
-		errorMessage.value = error instanceof Error ? error.message : 'Unable to load team attendees.';
+		setErrorState(extractOverlayErrorMessage(error, 'Unable to load team attendees.'));
 	} finally {
 		teamHydrating.value = false;
 	}
@@ -1761,12 +1911,16 @@ function validateSchoolEvent() {
 async function findCommonTimes() {
 	if (slotLoading.value) return;
 
-	errorMessage.value = validateCommonTimeRequest();
-	if (errorMessage.value) return;
+	const validationError = validateCommonTimeRequest();
+	if (validationError) {
+		setErrorState(validationError);
+		return;
+	}
+	clearErrorState();
 
 	const duration = coerceDurationMinutes(meetingForm.duration_minutes);
 	if (!duration) {
-		errorMessage.value = 'Duration must be between 15 and 240 minutes.';
+		setErrorState('Duration must be between 15 and 240 minutes.');
 		return;
 	}
 
@@ -1802,8 +1956,7 @@ async function findCommonTimes() {
 		}
 	} catch (error) {
 		if (requestSeq !== slotRequestSeq) return;
-		errorMessage.value =
-			error instanceof Error ? error.message : 'Unable to rank common meeting times.';
+		setErrorState(extractOverlayErrorMessage(error, 'Unable to rank common meeting times.'));
 	} finally {
 		if (requestSeq === slotRequestSeq) {
 			slotLoading.value = false;
@@ -1837,6 +1990,7 @@ function fallbackRoomSummary(slot: MeetingSlotSuggestion) {
 }
 
 async function applySuggestedSlot(slot: MeetingSlotSuggestion) {
+	clearErrorState();
 	meetingForm.date = slot.date;
 	meetingForm.start_time = slot.start_time;
 	meetingForm.end_time = slot.end_time;
@@ -1859,8 +2013,12 @@ async function applySuggestedSlot(slot: MeetingSlotSuggestion) {
 async function findRoomSuggestions() {
 	if (roomLoading.value) return;
 
-	errorMessage.value = validateRoomRequest();
-	if (errorMessage.value) return;
+	const validationError = validateRoomRequest();
+	if (validationError) {
+		setErrorState(validationError);
+		return;
+	}
+	clearErrorState();
 
 	roomLoading.value = true;
 	roomSearchPerformed.value = true;
@@ -1886,8 +2044,7 @@ async function findRoomSuggestions() {
 		}
 	} catch (error) {
 		if (requestSeq !== roomRequestSeq) return;
-		errorMessage.value =
-			error instanceof Error ? error.message : 'Unable to suggest meeting rooms.';
+		setErrorState(extractOverlayErrorMessage(error, 'Unable to suggest meeting rooms.'));
 	} finally {
 		if (requestSeq === roomRequestSeq) {
 			roomLoading.value = false;
@@ -1896,15 +2053,24 @@ async function findRoomSuggestions() {
 }
 
 function applySuggestedRoom(room: MeetingRoomSuggestion) {
+	clearErrorState();
 	meetingForm.location = room.value;
 	if (room.location_type) {
 		meetingForm.location_type = room.location_type;
 	}
 }
 
+async function recoverFromStudentConflict() {
+	if (slotLoading.value) return;
+	clearErrorState();
+	await nextTick();
+	commonTimesSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	await findCommonTimes();
+}
+
 async function loadOptions() {
 	optionsLoading.value = true;
-	errorMessage.value = null;
+	clearErrorState();
 
 	try {
 		const payload = await getEventQuickCreateOptions();
@@ -1913,7 +2079,7 @@ async function loadOptions() {
 		initializeForms();
 
 		if (!payload.can_create_meeting && !payload.can_create_school_event) {
-			errorMessage.value = 'You do not have permission to create meetings or school events.';
+			setErrorState('You do not have permission to create meetings or school events.');
 			return;
 		}
 
@@ -1921,8 +2087,7 @@ async function loadOptions() {
 			await addTeamAttendees({ auto: true });
 		}
 	} catch (error) {
-		errorMessage.value =
-			error instanceof Error ? error.message : 'Unable to load create-event options.';
+		setErrorState(extractOverlayErrorMessage(error, 'Unable to load create-event options.'));
 	} finally {
 		optionsLoading.value = false;
 	}
@@ -1931,8 +2096,13 @@ async function loadOptions() {
 async function submit() {
 	if (submitting.value) return;
 
-	errorMessage.value = activeType.value === 'meeting' ? validateMeeting() : validateSchoolEvent();
-	if (errorMessage.value) return;
+	const validationError =
+		activeType.value === 'meeting' ? validateMeeting() : validateSchoolEvent();
+	if (validationError) {
+		setErrorState(validationError);
+		return;
+	}
+	clearErrorState();
 
 	submitting.value = true;
 	const clientRequestId = makeClientRequestId();
@@ -1978,7 +2148,8 @@ async function submit() {
 		emitClose('programmatic');
 		emit('done', result);
 	} catch (error) {
-		errorMessage.value = error instanceof Error ? error.message : 'Unable to create event.';
+		const message = extractOverlayErrorMessage(error, 'Unable to create event.');
+		setErrorState(message, extractOverlayErrorCode(error, message));
 	} finally {
 		submitting.value = false;
 	}

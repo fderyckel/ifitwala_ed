@@ -107,6 +107,8 @@ Code refs:
 - `ifitwala_ed/api/calendar_core.py`
 - `ifitwala_ed/api/room_utilization.py`
 - `ifitwala_ed/setup/doctype/meeting/meeting.py`
+- `ifitwala_ed/api/student_calendar.py`
+- `ifitwala_ed/ui-spa/src/components/calendar/StudentCalendar.vue`
 - `ifitwala_ed/docs/scheduling/employee_booking_notes.md`
 - `ifitwala_ed/docs/scheduling/room_booking_notes.md`
 - `ifitwala_ed/docs/concurrency_01_proposal.md`
@@ -126,12 +128,14 @@ Rules:
 6. Student availability is derived from school timetable room slots plus known meetings and school events.
 7. `create_meeting_quick(...)` must reject a requested slot when any invited student is already busy under that same student-availability model, even if the user skips slot suggestions.
 8. Guardian availability is limited to known school-side meetings and school events and must be surfaced with an explicit note.
-9. For in-person and hybrid meeting quick create, exact common-time matches are room-aware: a slot only remains in the exact-match list when the selected host-school scope has at least one free room for that time.
-10. Room availability is authoritative from `Location Booking` via `find_room_conflicts(...)`.
-11. Room ranking is filtered by host-school descendant scope, ancestor-shared locations, optional `location_type`, and attendee-capacity threshold, then sorted to prefer the smallest adequate room before larger rooms.
-12. Manual location pickers in the overlay must switch with the selected host school and must not present sibling-school rooms outside the canonical shared-location scope.
-13. When room-aware ranking is requested, each slot payload may include `suggested_room` and `available_room_count` so the overlay can prefill the best room without extra per-slot requests.
-14. None of these quick-create workflows enqueue background jobs today because the request path is bounded and aggregated; if the search bounds expand materially, the concurrency docs above must be revisited before widening them.
+9. When `create_meeting_quick(...)` rejects a slot because of student availability, the overlay must stay open, preserve the drafted meeting state, show the server-owned conflict reason inline, and offer `Find common times` as the immediate recovery action.
+10. For in-person and hybrid meeting quick create, exact common-time matches are room-aware: a slot only remains in the exact-match list when the selected host-school scope has at least one free room for that time.
+11. Room availability is authoritative from `Location Booking` via `find_room_conflicts(...)`.
+12. Room ranking is filtered by host-school descendant scope, ancestor-shared locations, optional `location_type`, and attendee-capacity threshold, then sorted to prefer the smallest adequate room before larger rooms.
+13. Manual location pickers in the overlay must switch with the selected host school and must not present sibling-school rooms outside the canonical shared-location scope.
+14. When room-aware ranking is requested, each slot payload may include `suggested_room` and `available_room_count` so the overlay can prefill the best room without extra per-slot requests.
+15. Successful meeting writes must invalidate affected student calendar views through mutation-owned cache invalidation plus the user-scoped realtime event, so an already-open student calendar does not wait for TTL expiry.
+16. None of these quick-create workflows enqueue background jobs today because the request path is bounded and aggregated; if the search bounds expand materially, the concurrency docs above must be revisited before widening them.
 
 ## 5. School Event Workflow Contract
 
@@ -205,13 +209,21 @@ Test refs:
   - attendee search: `60s`
   - slot suggestions: `60s`
   - room suggestions: `60s`
+- Save-time student conflicts:
+  - the overlay stays open
+  - drafted attendee and timing state remains intact
+  - the inline error can trigger `Find common times` immediately
 - Room-aware slot ranking:
   - exact matches in in-person/hybrid mode require at least one free room in the selected host-school scope
   - slot payloads can carry `suggested_room` and `available_room_count`
 - Idempotency:
   - `create_meeting_quick(...)` and `create_school_event_quick(...)` use Redis-backed idempotency keys with `QUICK_CREATE_IDEMPOTENCY_TTL_SECONDS = 900`.
 - Overlay close contract:
-  - the overlay closes immediately after semantic success and relies on `SIGNAL_CALENDAR_INVALIDATE` from the calendar UI service for refresh.
+  - the overlay closes immediately after semantic success and relies on `SIGNAL_CALENDAR_INVALIDATE` from the calendar UI service for same-session calendar refresh.
+  - blocked saves keep the overlay open and surface inline recovery instead of closing or clearing the form.
+- Student calendar refresh contract:
+  - meeting writes invalidate student-feed cache in the mutation path
+  - affected student users receive `student_calendar:invalidate` after commit so open student portals refresh without manual action
 - Current entry-point reality:
   - Staff Home is wired.
   - explicit team-mode SPA entry points are not wired yet.

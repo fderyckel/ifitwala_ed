@@ -117,8 +117,8 @@ Exit criteria:
 ## Phase 3: Today cockpit and server-curated work board
 
 Status: Implemented
-Code refs: `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/types/contracts/student_hub/get_student_hub_home.ts`, `ifitwala_ed/api/course_schedule.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/docs/docs_md/task-delivery.md`, `ifitwala_ed/docs/docs_md/task-outcome.md`
-Test refs: `ifitwala_ed/api/test_courses.py`
+Code refs: `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/Courses.vue`, `ifitwala_ed/ui-spa/src/types/contracts/student_hub/get_student_hub_home.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student_hub/get_student_courses_data.ts`, `ifitwala_ed/api/course_schedule.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/docs/docs_md/task-delivery.md`, `ifitwala_ed/docs/docs_md/task-outcome.md`
+Test refs: `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/Courses.test.ts`
 
 Goal: turn Home into a calm daily routing surface without requiring strong self-management up front.
 

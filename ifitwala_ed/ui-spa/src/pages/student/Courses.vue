@@ -119,8 +119,8 @@ const selectedYear = ref<string | null>(null);
 const PLACEHOLDER = '/assets/ifitwala_ed/images/course_placeholder.jpg';
 
 // If an image fails to load (404, etc.), swap to placeholder once
-function imgFallback(e) {
-	const el = e?.target;
+function imgFallback(e: Event) {
+	const el = e?.target as HTMLImageElement | null;
 	// Ensure it's an <img>, and avoid infinite loop by checking current src
 	if (!el || el.tagName !== 'IMG') return;
 	// If already the placeholder, do nothing
@@ -164,7 +164,7 @@ async function fetchData() {
 		) {
 			selectedYear.value = response?.selected_year ?? null;
 		}
-	} catch (e) {
+	} catch (e: unknown) {
 		console.error(e);
 		error.value = 'An unexpected error occurred while fetching courses.';
 	} finally {

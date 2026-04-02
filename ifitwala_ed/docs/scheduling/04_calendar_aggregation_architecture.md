@@ -18,8 +18,8 @@ Code refs:
 Test refs:
 - `ifitwala_ed/api/test_portal_calendar.py`
 - `ifitwala_ed/api/test_calendar.py`
+- `ifitwala_ed/api/test_student_calendar.py`
 - `ifitwala_ed/api/test_room_utilization.py`
-- no dedicated automated coverage was found for `ifitwala_ed/api/student_calendar.py` in the inspected test set
 
 This document is authoritative for:
 
@@ -184,8 +184,9 @@ Code refs:
 - `ifitwala_ed/api/student_calendar.py`
 - `ifitwala_ed/schedule/schedule_utils.py`
 - `ifitwala_ed/api/calendar_core.py`
+- `ifitwala_ed/setup/doctype/meeting/meeting.py`
 Test refs:
-- no dedicated automated coverage was found for this module in the inspected test set
+- `ifitwala_ed/api/test_student_calendar.py`
 
 `get_student_calendar(...)` is a separate read model for the logged-in student.
 
@@ -237,6 +238,17 @@ portal user (`Student.student_email`).
 
 Keep student-meeting support in this note, the module docstring, and direct automated tests
 aligned in the same change.
+
+### 4.5 Student-feed cache invalidation is mutation-owned
+
+Student calendar payloads are cached per student and window in Redis.
+
+When a `Meeting` write changes affected student participants, the mutation path must:
+
+1. invalidate the student-feed cache for each affected student
+2. publish a user-scoped `student_calendar:invalidate` realtime event after commit
+
+The SPA is not the owner of student-feed cache invalidation.
 
 ---
 
@@ -364,7 +376,7 @@ The current authoritative source rules are:
 | Surface | Class / teaching source | Meeting source | School-event source | Holiday source | Availability truth |
 | --- | --- | --- | --- | --- | --- |
 | Staff calendar | `Employee Booking` | `Meeting` + `Meeting Participant` | `School Event` with source-specific visibility | `Staff Calendar` then `School Calendar` fallback | not this feed; use booking tables |
-| Student calendar | `Student Group` schedule expansion | not implemented in inspected code | `School Event` audience checks | `School Calendar` via enrolled-group schedules | not this feed; use canonical domain reads |
+| Student calendar | `Student Group` schedule expansion | `Meeting` + `Meeting Participant` | `School Event` audience checks | `School Calendar` via enrolled-group schedules | not this feed; use canonical domain reads |
 | Location calendar | none | none directly; only redacted room occupancy labels | none directly; only redacted room occupancy labels | none | `Location Booking` |
 
 This asymmetry is deliberate current reality and must be preserved unless architecture is explicitly changed.
@@ -391,6 +403,7 @@ Current runtime already applies bounded read-model rules:
 - one aggregated student calendar endpoint
 - one bounded location calendar endpoint
 - Redis-backed caching for staff and student feeds
+- mutation-owned invalidation plus user-scoped realtime refresh for affected student calendar writes
 
 Refactors must preserve:
 
@@ -412,6 +425,7 @@ Code refs:
 - `ifitwala_ed/api/calendar_details.py`
 Test refs:
 - `ifitwala_ed/api/test_portal_calendar.py`
+- `ifitwala_ed/api/test_student_calendar.py`
 - `ifitwala_ed/api/test_room_utilization.py`
 
 ### 10.1 Staff and student class feeds do not share one source of truth
@@ -428,6 +442,7 @@ Do not assume the same event-id semantics, missing-event semantics, or occupancy
 
 - meeting aggregation in the student feed
 - student-calendar cache invalidation helpers
+- student-calendar realtime invalidation fan-out
 
 Changes to student calendar aggregation still require explicit verification instead of relying
 only on adjacent staff-calendar tests.

@@ -96,6 +96,7 @@ import { DatesSetArg, EventClickArg } from '@fullcalendar/core';
 import { FeatherIcon, createResource } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { socket } from '@/lib/socket';
 
 import '@/styles/fullcalendar/core.css';
 import '@/styles/fullcalendar/daygrid.css';
@@ -104,6 +105,8 @@ import '@/styles/fullcalendar/list.css';
 import '@/styles/fullcalendar/ifitwala-fullcalendar.css';
 
 type StudentCalendarSource = 'student_group' | 'meeting' | 'school_event' | 'holiday';
+
+const STUDENT_CALENDAR_INVALIDATE_EVENT = 'student_calendar:invalidate';
 
 const props = defineProps<{
 	autoRefreshInterval?: number;
@@ -393,9 +396,10 @@ function handleEventClick(info: EventClickArg) {
 }
 
 let intervalHandle: number | null = null;
+let realtimeRefreshTimer: number | null = null;
 const cleanupFns: Array<() => void> = [];
 
-function maybeAutoRefresh(reason: 'interval' | 'visibility') {
+function maybeAutoRefresh(reason: 'interval' | 'visibility' | 'realtime') {
 	if (!currentRange.value) return;
 	if (reason === 'visibility' && document.visibilityState !== 'visible') return;
 	calendarResource.fetch();
@@ -408,12 +412,28 @@ function setupIntervals() {
 	cleanupFns.push(() => document.removeEventListener('visibilitychange', onVisibility));
 }
 
+function scheduleRealtimeRefresh() {
+	if (!currentRange.value || realtimeRefreshTimer !== null) return;
+	realtimeRefreshTimer = window.setTimeout(() => {
+		realtimeRefreshTimer = null;
+		maybeAutoRefresh('realtime');
+	}, 200);
+}
+
+function setupRealtimeRefresh() {
+	const onInvalidate = () => scheduleRealtimeRefresh();
+	socket.on(STUDENT_CALENDAR_INVALIDATE_EVENT, onInvalidate);
+	cleanupFns.push(() => socket.off(STUDENT_CALENDAR_INVALIDATE_EVENT, onInvalidate));
+}
+
 onMounted(() => {
 	setupIntervals();
+	setupRealtimeRefresh();
 });
 
 onBeforeUnmount(() => {
 	cleanupFns.forEach(fn => fn());
-	if (intervalHandle) clearInterval(intervalHandle);
+	if (intervalHandle !== null) clearInterval(intervalHandle);
+	if (realtimeRefreshTimer !== null) clearTimeout(realtimeRefreshTimer);
 });
 </script>
