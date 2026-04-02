@@ -67,6 +67,12 @@ Governance rule:
 
 belong to the shared plan layer unless an explicit design says otherwise.
 
+Ownership rule:
+
+- instructors attached to at least one `Student Group` for a course may create and edit the shared `Course Plan`, `Unit Plan`, lesson outlines, quiz banks, and shared curriculum resources for that course
+- curriculum coordinators and academic administrators may also manage shared curriculum for the courses they govern
+- shared curriculum is course-team owned; it is not limited to a coordinator-only workflow
+
 ## Class Planning Layer
 
 Status: Implemented
@@ -127,7 +133,9 @@ Status: Implemented
 Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/curriculum/planning.py`, `ifitwala_ed/assessment/task_delivery_service.py`
 Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/assessment/test_task_delivery_service.py`
 
-- Teachers manage planning only for classes they teach or administratively manage.
+- Instructors manage class planning for the classes they teach.
+- Instructors listed on at least one `Student Group` for a course may also create and edit that course's shared curriculum.
+- Shared curriculum authority is resolved from the `Student Group Instructor` relationship to `Student Group.course`, with administrative curriculum roles layered on top.
 - Students read only the curriculum resolved for their own class context.
 - Shared curriculum does not imply permission to read class-owned notes or class-owned resources.
 - All scope enforcement stays server-side.
@@ -177,5 +185,6 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/assessment/tes
 - `get_student_learning_space` is the student bootstrap. Do not rebuild the student curriculum reader on `api/courses.py` lesson-tree payloads.
 - `get_staff_class_planning_surface`, `list_staff_course_plans`, and `get_staff_course_plan_surface` are the staff read-model owners for curriculum planning.
 - `create_course_plan` is the canonical mutation for starting a new governed course plan from the SPA index.
+- Shared course-plan editing rights are not derived from static DocType role writes; they are resolved from active teaching assignments on `Student Group`.
 - `Task Delivery` remains the live doctype name. Educator-facing language can evolve, but workflow invariants and schema claims must be grounded in the current files.
 - Any future change that alters plan ownership, read-order, or class-scoped assignment rules must update this document and the LMS/resource contracts in the same change.

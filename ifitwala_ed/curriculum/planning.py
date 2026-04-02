@@ -5,7 +5,10 @@ from collections.abc import Iterable
 import frappe
 from frappe import _
 
+from ifitwala_ed.api import student_groups as student_groups_api
+
 ORDER_STEP = 10
+CURRICULUM_GLOBAL_MANAGER_ROLES = {"System Manager", "Academic Admin", "Administrator"}
 
 
 def normalize_text(value: str | None) -> str:
@@ -24,6 +27,131 @@ def normalize_flag(value) -> int:
     if not text:
         return 0
     return 1 if text in {"1", "true", "True", "yes", "Yes"} else 0
+
+
+def user_has_global_curriculum_access(user: str, roles: Iterable[str] | None = None) -> bool:
+    user = normalize_text(user)
+    if not user or user == "Guest":
+        return False
+    role_set = set(roles or frappe.get_roles(user) or [])
+    return user == "Administrator" or bool(role_set & CURRICULUM_GLOBAL_MANAGER_ROLES)
+
+
+def get_instructor_course_names(user: str) -> list[str]:
+    user = normalize_text(user)
+    if not user or user == "Guest":
+        return []
+
+    group_names = list(student_groups_api._instructor_group_names(user) or [])
+    if not group_names:
+        return []
+
+    return sorted(
+        {
+            normalize_text(course)
+            for course in (
+                frappe.get_all(
+                    "Student Group",
+                    filters={"name": ["in", group_names]},
+                    pluck="course",
+                    limit=0,
+                )
+                or []
+            )
+            if normalize_text(course)
+        }
+    )
+
+
+def get_coordinator_course_names(user: str) -> list[str]:
+    user = normalize_text(user)
+    if not user or user == "Guest":
+        return []
+
+    employee = normalize_text(frappe.db.get_value("Employee", {"user_id": user, "employment_status": "Active"}, "name"))
+    if not employee:
+        return []
+
+    rows = frappe.db.sql(
+        """
+        SELECT DISTINCT pcr.course
+        FROM `tabProgram Coordinator` pc
+        JOIN `tabProgram Course` pcr ON pcr.parent = pc.parent
+        WHERE pc.parenttype = 'Program'
+          AND pc.parentfield = 'program_coordinators'
+          AND pcr.parenttype = 'Program'
+          AND pcr.parentfield = 'courses'
+          AND pc.coordinator = %(employee)s
+        """,
+        {"employee": employee},
+        as_dict=True,
+    )
+    return sorted({normalize_text(row.get("course")) for row in rows or [] if normalize_text(row.get("course"))})
+
+
+def get_curriculum_manageable_course_names(user: str, roles: Iterable[str] | None = None) -> list[str]:
+    user = normalize_text(user)
+    if not user or user == "Guest":
+        return []
+
+    role_set = set(roles or frappe.get_roles(user) or [])
+    courses = set(get_instructor_course_names(user))
+    if "Curriculum Coordinator" in role_set or user_has_global_curriculum_access(user, role_set):
+        courses.update(get_coordinator_course_names(user))
+    return sorted(course for course in courses if course)
+
+
+def user_can_read_course_curriculum(user: str, course: str, roles: Iterable[str] | None = None) -> bool:
+    user = normalize_text(user)
+    course = normalize_text(course)
+    if not user or user == "Guest" or not course:
+        return False
+
+    role_set = set(roles or frappe.get_roles(user) or [])
+    if user_has_global_curriculum_access(user, role_set):
+        return True
+
+    return course in set(get_curriculum_manageable_course_names(user, role_set))
+
+
+def user_can_manage_course_curriculum(user: str, course: str, roles: Iterable[str] | None = None) -> bool:
+    return user_can_read_course_curriculum(user, course, roles)
+
+
+def assert_can_read_course_curriculum(
+    user: str,
+    course: str,
+    roles: Iterable[str] | None = None,
+    *,
+    action_label: str | None = None,
+) -> None:
+    if user_can_read_course_curriculum(user, course, roles):
+        return
+
+    if action_label:
+        frappe.throw(
+            _("You do not have access to {0}.").format(action_label),
+            frappe.PermissionError,
+        )
+    frappe.throw(_("You do not have access to this course curriculum."), frappe.PermissionError)
+
+
+def assert_can_manage_course_curriculum(
+    user: str,
+    course: str,
+    roles: Iterable[str] | None = None,
+    *,
+    action_label: str | None = None,
+) -> None:
+    if user_can_manage_course_curriculum(user, course, roles):
+        return
+
+    if action_label:
+        frappe.throw(
+            _("You do not have access to {0}.").format(action_label),
+            frappe.PermissionError,
+        )
+    frappe.throw(_("You do not have access to manage this course curriculum."), frappe.PermissionError)
 
 
 def get_course_plan_row(course_plan: str) -> dict:

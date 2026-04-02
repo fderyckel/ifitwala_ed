@@ -3,8 +3,8 @@ title: "Student Group: Operational Teaching Group Contract"
 slug: student-group
 category: Schedule
 doc_order: 1
-version: "1.0.4"
-last_change_date: "2026-04-01"
+version: "1.0.5"
+last_change_date: "2026-04-02"
 summary: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, attendance scope, and downstream teaching materialization."
 seo_title: "Student Group: Operational Teaching Group Contract"
 seo_description: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, and attendance scope."
@@ -43,7 +43,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 - [**Class Session**](/docs/en/class-session/) uses `Student Group` as the live class-session context.
 - Scheduling materialization rebuilds `Employee Booking` rows from active Student Group schedule rows.
 - Student-group schedule changes invalidate meeting-date projections and related teaching schedule context.
-- Instructor log rebuilding and referral/access sync use the group’s instructor and student membership tables.
+- Instructor log history sync and referral/access sync use the group’s instructor and student membership tables.
 
 ## Lifecycle and Linked Documents
 
@@ -62,6 +62,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
    - overlap, capacity, and room checks run
    - for course-based groups only, non-instructional or mismatched schedule blocks raise warnings only
 7. On later saves, active-student changes, instructor changes, and schedule changes trigger downstream sync and materialization updates.
+   Instructor membership changes also open or close durable `Instructor Log` history rows for affected instructors.
 
 ### Naming Rules
 
@@ -135,7 +136,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
   - course-based groups scheduled in non-instructional blocks such as recess, assembly, and lunch-style blocks
   - course-based groups scheduled in block types that do not match course teaching, for example a course group scheduled in an activity block
 - `validate_location_conflicts_absolute()` expands abstract schedule rows into real datetimes via rotation dates, then checks governed room conflicts against materialized bookings.
-- `before_save()` and `after_save()` compute change deltas for students, instructors, and schedule rows so downstream sync stays bounded.
+- `before_save()` and `after_save()` compute change deltas for students, instructors, and schedule rows so downstream sync stays bounded, including durable Instructor Log history updates.
 - `on_update()` rebuilds employee bookings only for active groups that actually have schedule rows.
 
 ### Operational Queries and Public Methods

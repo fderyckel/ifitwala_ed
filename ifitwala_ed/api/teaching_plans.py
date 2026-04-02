@@ -23,8 +23,6 @@ PLANNING_RESOURCE_ANCHORS = {
     "Class Session",
 }
 GOVERNED_PLANNING_RESOURCE_ANCHORS = {"Course Plan", "Unit Plan"}
-COURSE_PLAN_CREATOR_ROLES = {"System Manager", "Academic Admin", "Curriculum Coordinator"}
-COURSE_PLAN_GLOBAL_CREATOR_ROLES = {"System Manager", "Academic Admin"}
 
 
 def _serialize_scalar(value: Any) -> Any:
@@ -66,14 +64,6 @@ def _require_logged_in_user() -> str:
     return user
 
 
-def _doc_permission_flag(doc, ptype: str) -> int:
-    try:
-        doc.check_permission(ptype)
-        return 1
-    except frappe.PermissionError:
-        return 0
-
-
 def _resolve_planning_resource_anchor(anchor_doctype: str, anchor_name: str, *, ptype: str = "write") -> dict[str, Any]:
     anchor_doctype = planning.normalize_text(anchor_doctype)
     anchor_name = planning.normalize_text(anchor_name)
@@ -83,9 +73,15 @@ def _resolve_planning_resource_anchor(anchor_doctype: str, anchor_name: str, *, 
         )
     context = materials_domain.resolve_anchor_context(anchor_doctype, anchor_name)
     if anchor_doctype in GOVERNED_PLANNING_RESOURCE_ANCHORS:
-        doc = frappe.get_doc(anchor_doctype, anchor_name)
-        doc.check_permission(ptype)
-        context["can_manage_resources"] = _doc_permission_flag(doc, "write")
+        course = planning.normalize_text(context.get("course"))
+        if not course:
+            frappe.throw(_("This shared curriculum resource is missing its course."))
+        user, roles = _assert_course_curriculum_access(
+            course,
+            ptype=ptype,
+            action_label=_("this shared curriculum resource"),
+        )
+        context["can_manage_resources"] = int(planning.user_can_manage_course_curriculum(user, course, roles))
         return context
 
     student_group = planning.normalize_text(context.get("student_group"))
@@ -103,6 +99,25 @@ def _assert_staff_group_access(student_group: str) -> None:
         return
     if student_group not in _instructor_group_names(user):
         frappe.throw(_("You do not have access to this class."), frappe.PermissionError)
+
+
+def _assert_course_curriculum_access(
+    course: str,
+    *,
+    ptype: str = "write",
+    action_label: str | None = None,
+) -> tuple[str, set[str]]:
+    user = _require_logged_in_user()
+    roles = set(frappe.get_roles(user))
+    course_name = planning.normalize_text(course)
+    if not course_name:
+        frappe.throw(_("Course is required for this curriculum action."))
+
+    if ptype == "write":
+        planning.assert_can_manage_course_curriculum(user, course_name, roles, action_label=action_label)
+    else:
+        planning.assert_can_read_course_curriculum(user, course_name, roles, action_label=action_label)
+    return user, roles
 
 
 def _require_student_name() -> str:
@@ -184,23 +199,10 @@ def _serialize_course_option(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _can_create_course_plans(user: str, roles: set[str]) -> bool:
-    return user == "Administrator" or bool(roles & COURSE_PLAN_CREATOR_ROLES)
-
-
 def _list_creatable_course_rows(user: str, roles: set[str]) -> list[dict[str, Any]]:
-    if not _can_create_course_plans(user, roles):
-        return []
-
     filters: dict[str, Any] = {"status": ["!=", "Discontinued"]}
-    if not (user == "Administrator" or roles & COURSE_PLAN_GLOBAL_CREATOR_ROLES):
-        course_names = sorted(
-            {
-                planning.normalize_text(course)
-                for course in (materials_domain._get_coordinator_course_names(user) or [])
-                if planning.normalize_text(course)
-            }
-        )
+    if not planning.user_has_global_curriculum_access(user, roles):
+        course_names = planning.get_curriculum_manageable_course_names(user, roles)
         if not course_names:
             return []
         filters["name"] = ["in", course_names]
@@ -215,18 +217,18 @@ def _list_creatable_course_rows(user: str, roles: set[str]) -> list[dict[str, An
 
 
 def _build_course_plan_creation_access(user: str, roles: set[str]) -> dict[str, Any]:
-    can_create = _can_create_course_plans(user, roles)
     course_rows = _list_creatable_course_rows(user, roles)
+    can_create = int(bool(course_rows))
 
-    if not can_create:
-        reason = _("Only curriculum leaders can create shared course plans.")
-    elif not course_rows:
-        reason = _("No active courses are available for shared curriculum planning yet.")
+    if not course_rows:
+        reason = _(
+            "You need an active teaching assignment or curriculum leadership access before you can start a shared course plan."
+        )
     else:
         reason = None
 
     return {
-        "can_create_course_plans": int(can_create),
+        "can_create_course_plans": can_create,
         "create_block_reason": reason,
         "course_options": [_serialize_course_option(row) for row in course_rows],
     }
@@ -1223,13 +1225,28 @@ def list_staff_course_plans() -> dict[str, Any]:
     user = _require_logged_in_user()
     roles = set(frappe.get_roles(user))
     creation_access = _build_course_plan_creation_access(user, roles)
-    rows = frappe.get_list(
-        "Course Plan",
-        filters={"plan_status": ["!=", "Archived"]},
-        fields=["name", "title", "course", "school", "academic_year", "cycle_label", "plan_status"],
-        order_by="modified desc, creation desc",
-        limit=0,
-    )
+    filters: dict[str, Any] = {"plan_status": ["!=", "Archived"]}
+    if planning.user_has_global_curriculum_access(user, roles):
+        rows = frappe.get_list(
+            "Course Plan",
+            filters=filters,
+            fields=["name", "title", "course", "school", "academic_year", "cycle_label", "plan_status"],
+            order_by="modified desc, creation desc",
+            limit=0,
+        )
+    else:
+        managed_courses = planning.get_curriculum_manageable_course_names(user, roles)
+        if managed_courses:
+            filters["course"] = ["in", managed_courses]
+            rows = frappe.get_list(
+                "Course Plan",
+                filters=filters,
+                fields=["name", "title", "course", "school", "academic_year", "cycle_label", "plan_status"],
+                order_by="modified desc, creation desc",
+                limit=0,
+            )
+        else:
+            rows = []
     course_names = sorted({row.get("course") for row in rows if row.get("course")})
     course_map = {
         row.get("name"): row
@@ -1242,12 +1259,11 @@ def list_staff_course_plans() -> dict[str, Any]:
     }
     payload = []
     for row in rows or []:
-        doc = frappe.get_doc("Course Plan", row.get("name"))
         payload.append(
             _serialize_course_plan_summary(
                 row,
                 course_row=course_map.get(row.get("course")),
-                can_manage_resources=_doc_permission_flag(doc, "write"),
+                can_manage_resources=int(planning.user_can_manage_course_curriculum(user, row.get("course"), roles)),
             )
         )
     return {
@@ -1267,15 +1283,19 @@ def list_staff_course_plans() -> dict[str, Any]:
 def create_course_plan(payload=None, **kwargs) -> dict[str, Any]:
     user = _require_logged_in_user()
     roles = set(frappe.get_roles(user))
-    if not _can_create_course_plans(user, roles):
-        frappe.throw(_("Only curriculum leaders can create shared course plans."), frappe.PermissionError)
-
     data = _normalize_payload(payload if payload is not None else kwargs)
     course_name = planning.normalize_text(data.get("course"))
     if not course_name:
         frappe.throw(_("Course is required."))
 
     allowed_courses = {row.get("name"): row for row in _list_creatable_course_rows(user, roles) if row.get("name")}
+    if not allowed_courses:
+        frappe.throw(
+            _(
+                "You need an active teaching assignment or curriculum leadership access before you can start a shared course plan."
+            ),
+            frappe.PermissionError,
+        )
     course_row = allowed_courses.get(course_name)
     if not course_row:
         frappe.throw(_("You cannot create a shared course plan for this course."), frappe.PermissionError)
@@ -1435,7 +1455,11 @@ def save_course_plan(payload=None, **kwargs) -> dict[str, Any]:
         frappe.throw(_("Course Plan is required."))
 
     doc = frappe.get_doc("Course Plan", course_plan)
-    doc.check_permission("write")
+    _assert_course_curriculum_access(
+        doc.course,
+        ptype="write",
+        action_label=_("update this shared course plan"),
+    )
 
     doc.title = data.get("title")
     doc.academic_year = data.get("academic_year")
@@ -1500,14 +1524,21 @@ def save_unit_plan(
 
     if unit_plan_name:
         doc = frappe.get_doc("Unit Plan", unit_plan_name)
-        doc.check_permission("write")
         course_plan_row = planning.get_course_plan_row(doc.course_plan)
+        _assert_course_curriculum_access(
+            course_plan_row.get("course"),
+            ptype="write",
+            action_label=_("update this unit plan"),
+        )
     else:
         if not course_plan_name:
             frappe.throw(_("Course Plan is required."))
-        course_plan_doc = frappe.get_doc("Course Plan", course_plan_name)
-        course_plan_doc.check_permission("write")
         course_plan_row = planning.get_course_plan_row(course_plan_name)
+        _assert_course_curriculum_access(
+            course_plan_row.get("course"),
+            ptype="write",
+            action_label=_("create a unit plan for this course"),
+        )
         doc = frappe.new_doc("Unit Plan")
         doc.course_plan = course_plan_name
 
@@ -1579,14 +1610,22 @@ def save_lesson_outline(
     if lesson_name:
         doc = frappe.get_doc("Lesson", lesson_name)
         unit_doc = frappe.get_doc("Unit Plan", doc.unit_plan)
-        unit_doc.check_permission("write")
+        _assert_course_curriculum_access(
+            unit_doc.course,
+            ptype="write",
+            action_label=_("update this lesson outline"),
+        )
         if unit_plan_name and planning.normalize_text(doc.unit_plan) != unit_plan_name:
             frappe.throw(_("Lesson does not belong to the selected unit plan."), frappe.PermissionError)
     else:
         if not unit_plan_name:
             frappe.throw(_("Unit Plan is required."))
         unit_doc = frappe.get_doc("Unit Plan", unit_plan_name)
-        unit_doc.check_permission("write")
+        _assert_course_curriculum_access(
+            unit_doc.course,
+            ptype="write",
+            action_label=_("create a lesson outline for this unit"),
+        )
         doc = frappe.new_doc("Lesson")
         doc.unit_plan = unit_doc.name
         doc.course = unit_doc.course
@@ -1627,7 +1666,11 @@ def reorder_unit_lessons(unit_plan: str, lesson_names=None) -> dict[str, Any]:
     if not unit_plan_name:
         frappe.throw(_("Unit Plan is required."))
     unit_doc = frappe.get_doc("Unit Plan", unit_plan_name)
-    unit_doc.check_permission("write")
+    _assert_course_curriculum_access(
+        unit_doc.course,
+        ptype="write",
+        action_label=_("reorder lesson outlines for this unit"),
+    )
     return lesson_controller.reorder_lessons(unit_plan=unit_doc.name, lesson_names=lesson_names)
 
 
@@ -1639,7 +1682,11 @@ def remove_lesson_outline(lesson: str) -> dict[str, Any]:
 
     doc = frappe.get_doc("Lesson", lesson_name)
     unit_doc = frappe.get_doc("Unit Plan", doc.unit_plan)
-    unit_doc.check_permission("write")
+    _assert_course_curriculum_access(
+        unit_doc.course,
+        ptype="write",
+        action_label=_("remove this lesson outline"),
+    )
 
     if frappe.db.exists("Task", {"lesson": lesson_name}):
         frappe.throw(

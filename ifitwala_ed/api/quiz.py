@@ -16,9 +16,26 @@ def list_question_banks(course: str | None = None):
     if not _can_manage_quizzes():
         frappe.throw(_("Not permitted."), frappe.PermissionError)
 
+    user = frappe.session.user
+    roles = set(frappe.get_roles(user) or [])
     filters: dict[str, object] = {"is_published": 1}
-    if course:
-        filters["course"] = course
+    course_name = planning.normalize_text(course)
+    if planning.user_has_global_curriculum_access(user, roles):
+        if course_name:
+            filters["course"] = course_name
+    elif course_name:
+        planning.assert_can_read_course_curriculum(
+            user,
+            course_name,
+            roles,
+            action_label=_("view quiz banks for this course"),
+        )
+        filters["course"] = course_name
+    else:
+        managed_courses = planning.get_curriculum_manageable_course_names(user, roles)
+        if not managed_courses:
+            return []
+        filters["course"] = ["in", managed_courses]
 
     return frappe.get_all(
         "Quiz Question Bank",
@@ -216,9 +233,13 @@ def _require_course_plan_write_access(course_plan: str, *, expected_course: str 
     course_plan_name = planning.normalize_text(course_plan)
     if not course_plan_name:
         frappe.throw(_("Course Plan is required."))
-    doc = frappe.get_doc("Course Plan", course_plan_name)
-    doc.check_permission("write")
     course_row = planning.get_course_plan_row(course_plan_name)
+    planning.assert_can_manage_course_curriculum(
+        frappe.session.user,
+        course_row.get("course"),
+        frappe.get_roles(frappe.session.user) or [],
+        action_label=_("manage quiz banks for this course"),
+    )
     expected_course_name = planning.normalize_text(expected_course)
     if expected_course_name and planning.normalize_text(course_row.get("course")) != expected_course_name:
         frappe.throw(_("Course Plan does not govern this quiz question bank."), frappe.PermissionError)

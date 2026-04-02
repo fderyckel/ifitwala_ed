@@ -14,4 +14,24 @@ frappe.ui.form.on("Instructor", {
 		}));
 	},
 
+	async refresh(frm) {
+		if (frm.is_new() || frm.__instructor_log_sync_in_flight) {
+			return;
+		}
+
+		frm.__instructor_log_sync_in_flight = true;
+		try {
+			const { message } = await frappe.call({
+				method: "ifitwala_ed.schedule.doctype.instructor.instructor.get_instructor_log",
+				args: { instructor: frm.doc.name },
+			});
+
+			if (message?.changed) {
+				await frm.reload_doc();
+			}
+		} finally {
+			frm.__instructor_log_sync_in_flight = false;
+		}
+	},
+
 });

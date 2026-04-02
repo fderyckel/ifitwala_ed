@@ -17,6 +17,12 @@ class TestQuizApi(TestCase):
         planning_stub.normalize_text = lambda value: str(value or "").strip()
         planning_stub.normalize_long_text = lambda value: str(value or "").strip() or None
         planning_stub.normalize_flag = lambda value: 1 if str(value or "").strip() in {"1", "True", "true"} else 0
+        planning_stub.user_has_global_curriculum_access = lambda user, roles=None: False
+        planning_stub.get_curriculum_manageable_course_names = lambda user, roles=None: ["COURSE-1"]
+        planning_stub.user_can_read_course_curriculum = lambda user, course, roles=None: course == "COURSE-1"
+        planning_stub.user_can_manage_course_curriculum = lambda user, course, roles=None: course == "COURSE-1"
+        planning_stub.assert_can_read_course_curriculum = lambda user, course, roles=None, action_label=None: None
+        planning_stub.assert_can_manage_course_curriculum = lambda user, course, roles=None, action_label=None: None
         planning_stub.get_course_plan_row = lambda course_plan: {
             "name": course_plan,
             "course": "COURSE-1",
@@ -98,10 +104,6 @@ class TestQuizApi(TestCase):
     def test_save_question_bank_creates_bank_and_questions(self):
         created = {"bank": 0, "question": 0}
 
-        class CoursePlanDoc:
-            def check_permission(self, ptype):
-                self.checked = ptype
-
         class FakeBankDoc:
             def __init__(self):
                 self.name = "QBK-1"
@@ -140,11 +142,6 @@ class TestQuizApi(TestCase):
         bank_doc = FakeBankDoc()
         question_docs = [FakeQuestionDoc(), FakeQuestionDoc()]
 
-        def fake_get_doc(doctype, name):
-            if doctype == "Course Plan":
-                return CoursePlanDoc()
-            raise AssertionError(f"Unexpected get_doc call: {doctype} {name}")
-
         def fake_new_doc(doctype):
             if doctype == "Quiz Question Bank":
                 return bank_doc
@@ -153,7 +150,6 @@ class TestQuizApi(TestCase):
             raise AssertionError(f"Unexpected new_doc call: {doctype}")
 
         with (
-            patch.object(self.quiz_api.frappe, "get_doc", side_effect=fake_get_doc),
             patch.object(self.quiz_api.frappe, "new_doc", side_effect=fake_new_doc),
             patch.object(self.quiz_api.frappe, "get_all", return_value=[]),
         ):
@@ -190,3 +186,17 @@ class TestQuizApi(TestCase):
         self.assertEqual(created["bank"], 1)
         self.assertEqual(created["question"], 2)
         self.assertEqual(payload["quiz_question_bank"], "QBK-1")
+
+    def test_list_question_banks_filters_to_manageable_instructor_courses(self):
+        with (
+            patch.object(self.quiz_api.frappe, "get_roles", return_value=["Instructor"]),
+            patch.object(
+                self.quiz_api.frappe,
+                "get_all",
+                return_value=[{"name": "QBK-1", "bank_title": "Cells", "course": "COURSE-1"}],
+            ) as get_all,
+        ):
+            payload = self.quiz_api.list_question_banks()
+
+        self.assertEqual(payload[0]["course"], "COURSE-1")
+        self.assertEqual(get_all.call_args.kwargs["filters"]["course"], ["in", ["COURSE-1"]])

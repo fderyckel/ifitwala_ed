@@ -750,16 +750,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				to: { name: 'staff-attendance-ledger' },
 				capability: 'analytics_attendance',
 			},
-			{
-				label: 'Late Arrivals',
-				to: '/analytics/operations/late-arrivals',
-				capability: 'analytics_attendance',
-			},
-			{
-				label: 'Duty Coverage',
-				to: '/analytics/operations/duty-coverage',
-				capability: 'analytics_attendance_admin',
-			},
 		],
 	},
 	{
@@ -772,11 +762,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				to: { name: 'staff-student-overview' },
 				capability: 'analytics_student_overview',
 			},
-			{
-				label: 'Assessment Trends',
-				to: '/analytics/academic/assessment-trends',
-				capability: 'analytics_attendance',
-			},
 		],
 	},
 	{
@@ -787,11 +772,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			{
 				label: 'Student Log Analytics',
 				to: { name: 'staff-student-log-analytics' },
-				capability: 'analytics_wellbeing',
-			},
-			{
-				label: 'Counseling Caseload',
-				to: '/analytics/wellbeing/counseling-caseload',
 				capability: 'analytics_wellbeing',
 			},
 		],
@@ -853,11 +833,6 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			{
 				label: 'Inquiries Analytics',
 				to: { name: 'staff-inquiry-analytics' },
-				capability: 'analytics_admissions',
-			},
-			{
-				label: 'Survey Results',
-				to: '/analytics/engagement/survey-results',
 				capability: 'analytics_admissions',
 			},
 		],

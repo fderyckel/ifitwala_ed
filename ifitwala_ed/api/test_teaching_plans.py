@@ -40,6 +40,14 @@ def _teaching_plans_module():
     planning_domain.normalize_text = lambda value: str(value or "").strip()
     planning_domain.normalize_long_text = lambda value: value
     planning_domain.normalize_flag = lambda value: 1 if str(value or "").strip() in {"1", "True", "true"} else 0
+    planning_domain.user_has_global_curriculum_access = lambda user, roles=None: False
+    planning_domain.get_instructor_course_names = lambda user: []
+    planning_domain.get_coordinator_course_names = lambda user: []
+    planning_domain.get_curriculum_manageable_course_names = lambda user, roles=None: []
+    planning_domain.user_can_read_course_curriculum = lambda user, course, roles=None: False
+    planning_domain.user_can_manage_course_curriculum = lambda user, course, roles=None: False
+    planning_domain.assert_can_read_course_curriculum = lambda user, course, roles=None, action_label=None: None
+    planning_domain.assert_can_manage_course_curriculum = lambda user, course, roles=None, action_label=None: None
     planning_domain.get_course_plan_row = lambda course_plan: {
         "name": course_plan,
         "title": course_plan,
@@ -569,16 +577,13 @@ class TestTeachingPlansApi(TestCase):
                 },
             ]
 
-            def fake_get_doc(doctype, name):
-                if name == "COURSE-PLAN-1":
-                    return SimpleNamespace(check_permission=lambda ptype: None)
-
-                def deny(_ptype):
-                    raise module.frappe.PermissionError("blocked")
-
-                return SimpleNamespace(check_permission=deny)
-
             with (
+                patch.object(module.planning, "user_has_global_curriculum_access", return_value=True),
+                patch.object(
+                    module.planning,
+                    "user_can_manage_course_curriculum",
+                    side_effect=lambda user, course, roles=None: course == "COURSE-1",
+                ),
                 patch.object(module.frappe, "get_list", return_value=rows),
                 patch.object(
                     module.frappe,
@@ -588,12 +593,10 @@ class TestTeachingPlansApi(TestCase):
                         {"name": "COURSE-2", "course_name": "Biology B", "course_group": "Science"},
                     ],
                 ),
-                patch.object(module.frappe, "get_doc", side_effect=fake_get_doc),
             ):
                 payload = module.list_staff_course_plans()
 
         self.assertEqual(len(payload["course_plans"]), 2)
-        self.assertEqual(payload["access"]["can_create_course_plans"], 0)
         self.assertEqual(payload["course_plans"][0]["can_manage_resources"], 1)
         self.assertEqual(payload["course_plans"][1]["can_manage_resources"], 0)
 
@@ -601,7 +604,7 @@ class TestTeachingPlansApi(TestCase):
         with _teaching_plans_module() as module:
             with (
                 patch.object(module.frappe, "get_roles", return_value=["Curriculum Coordinator"]),
-                patch.object(module.materials_domain, "_get_coordinator_course_names", return_value=["COURSE-1"]),
+                patch.object(module.planning, "get_curriculum_manageable_course_names", return_value=["COURSE-1"]),
                 patch.object(module.frappe, "get_list", return_value=[]),
                 patch.object(
                     module.frappe,
@@ -624,6 +627,31 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["course_options"][0]["course"], "COURSE-1")
         self.assertEqual(payload["course_options"][0]["course_name"], "Biology")
 
+    def test_list_staff_course_plans_includes_creation_options_for_instructor_courses(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(module.frappe, "get_roles", return_value=["Instructor"]),
+                patch.object(module.planning, "get_curriculum_manageable_course_names", return_value=["COURSE-1"]),
+                patch.object(module.frappe, "get_list", return_value=[]),
+                patch.object(
+                    module.frappe,
+                    "get_all",
+                    return_value=[
+                        {
+                            "name": "COURSE-1",
+                            "course_name": "Biology",
+                            "course_group": "Science",
+                            "school": "SCH-1",
+                            "status": "Active",
+                        }
+                    ],
+                ),
+            ):
+                payload = module.list_staff_course_plans()
+
+        self.assertEqual(payload["access"]["can_create_course_plans"], 1)
+        self.assertEqual(payload["course_options"][0]["course"], "COURSE-1")
+
     def test_create_course_plan_creates_shared_plan_for_allowed_course(self):
         with _teaching_plans_module() as module:
             inserted = {"count": 0}
@@ -645,8 +673,8 @@ class TestTeachingPlansApi(TestCase):
             doc = CoursePlanDoc()
 
             with (
-                patch.object(module.frappe, "get_roles", return_value=["Curriculum Coordinator"]),
-                patch.object(module.materials_domain, "_get_coordinator_course_names", return_value=["COURSE-1"]),
+                patch.object(module.frappe, "get_roles", return_value=["Instructor"]),
+                patch.object(module.planning, "get_curriculum_manageable_course_names", return_value=["COURSE-1"]),
                 patch.object(
                     module.frappe,
                     "get_all",
@@ -692,6 +720,7 @@ class TestTeachingPlansApi(TestCase):
             class CoursePlanDoc:
                 def __init__(self):
                     self.name = "COURSE-PLAN-1"
+                    self.course = "COURSE-1"
                     self.title = "Old title"
                     self.academic_year = None
                     self.cycle_label = None
@@ -873,7 +902,7 @@ class TestTeachingPlansApi(TestCase):
                     deleted["ignore_permissions"] = ignore_permissions
 
             lesson_doc = LessonDoc()
-            unit_doc = SimpleNamespace(check_permission=lambda ptype: None)
+            unit_doc = SimpleNamespace(course="COURSE-1", check_permission=lambda ptype: None)
 
             def fake_get_doc(doctype, name):
                 if doctype == "Lesson":
