@@ -136,6 +136,50 @@ class TestPolicyAcknowledgement(FrappeTestCase):
             duplicate.insert(ignore_permissions=True)
         frappe.set_user("Administrator")
 
+    def test_populate_policy_acknowledgement_evidence_records_clause_snapshot(self):
+        self.policy_version.db_set("is_active", 0, update_modified=False)
+        version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": self.policy.name,
+                "version_label": "v2",
+                "based_on_version": self.policy_version.name,
+                "change_summary": "Added acknowledgement clauses.",
+                "policy_text": "<p>Immutable acknowledgement policy text updated.</p>",
+                "acknowledgement_clauses": [
+                    {"clause_text": "I have read the handbook.", "is_required": 1},
+                    {"clause_text": "I agree to optional reminders.", "is_required": 0},
+                ],
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Policy Version", version.name))
+
+        ack = frappe.get_doc(
+            {
+                "doctype": "Policy Acknowledgement",
+                "policy_version": version.name,
+                "acknowledged_by": self.staff_user.name,
+                "acknowledged_for": "Staff",
+                "context_doctype": "Employee",
+                "context_name": self.employee.name,
+            }
+        )
+        clause_name = version.acknowledgement_clauses[0].name
+        policy_ack_controller.populate_policy_acknowledgement_evidence(
+            ack,
+            typed_signature_name="Policy Ack",
+            attestation_confirmed=1,
+            checked_clause_names=[clause_name],
+        )
+
+        snapshot = frappe.parse_json(ack.acknowledgement_clause_snapshot)
+        self.assertEqual(ack.typed_signature_name, "Policy Ack")
+        self.assertEqual(int(ack.attestation_confirmed or 0), 1)
+        self.assertEqual(len(snapshot), 2)
+        self.assertTrue(bool(snapshot[0].get("is_checked")))
+        self.assertFalse(bool(snapshot[1].get("is_checked")))
+
     def test_guardian_context_organizations_include_student_applicant_links(self):
         doc = policy_ack_controller.PolicyAcknowledgement.__new__(policy_ack_controller.PolicyAcknowledgement)
         doc.context_doctype = "Guardian"

@@ -1,6 +1,7 @@
 # ifitwala_ed/api/test_courses.py
 
 from datetime import datetime
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -8,6 +9,81 @@ from ifitwala_ed.api import courses as courses_api
 
 
 class TestCoursesApi(TestCase):
+    def test_get_courses_data_includes_learning_space_readiness(self):
+        with (
+            patch.object(courses_api.frappe, "session", SimpleNamespace(user="student@example.com")),
+            patch.object(courses_api.frappe, "get_roles", return_value=["Student"]),
+            patch.object(courses_api, "_get_student_name_for_user", return_value="STU-001"),
+            patch.object(courses_api, "_get_academic_years", return_value=["2025-2026"]),
+            patch.object(
+                courses_api,
+                "_build_student_course_scope",
+                return_value={
+                    "COURSE-1": {
+                        "student_groups": [
+                            {
+                                "student_group": "GROUP-1",
+                                "student_group_name": "Biology A",
+                                "academic_year": "2025-2026",
+                            }
+                        ]
+                    },
+                    "COURSE-2": {"student_groups": []},
+                    "COURSE-3": {
+                        "student_groups": [
+                            {
+                                "student_group": "GROUP-3",
+                                "student_group_name": "History A",
+                                "academic_year": "2025-2026",
+                            }
+                        ]
+                    },
+                },
+            ),
+            patch.object(
+                courses_api,
+                "_get_courses_for_year",
+                return_value=[
+                    {
+                        "course": "COURSE-1",
+                        "course_name": "Biology",
+                        "course_group": "Science",
+                        "course_image": "/files/biology.jpg",
+                        "href": {"name": "student-course-detail", "params": {"course_id": "COURSE-1"}},
+                    },
+                    {
+                        "course": "COURSE-2",
+                        "course_name": "Design",
+                        "course_group": "Arts",
+                        "course_image": "/files/design.jpg",
+                        "href": {"name": "student-course-detail", "params": {"course_id": "COURSE-2"}},
+                    },
+                    {
+                        "course": "COURSE-3",
+                        "course_name": "History",
+                        "course_group": "Humanities",
+                        "course_image": "/files/history.jpg",
+                        "href": {"name": "student-course-detail", "params": {"course_id": "COURSE-3"}},
+                    },
+                ],
+            ),
+            patch.object(courses_api, "_fetch_active_class_plan_groups", return_value={"GROUP-1"}),
+            patch.object(
+                courses_api,
+                "_fetch_active_course_plan_counts",
+                return_value={"COURSE-1": 0, "COURSE-2": 1, "COURSE-3": 0},
+            ),
+        ):
+            payload = courses_api.get_courses_data("2025-2026")
+
+        self.assertEqual(payload["courses"][0]["learning_space"]["status"], "ready")
+        self.assertEqual(payload["courses"][0]["learning_space"]["cta_label"], "Open class")
+        self.assertEqual(payload["courses"][1]["learning_space"]["status"], "shared_plan_only")
+        self.assertEqual(payload["courses"][1]["learning_space"]["cta_label"], "Open shared plan")
+        self.assertEqual(payload["courses"][2]["learning_space"]["status"], "awaiting_class_plan")
+        self.assertEqual(payload["courses"][2]["learning_space"]["can_open"], 0)
+        self.assertIsNone(payload["courses"][2]["href"])
+
     def test_get_student_hub_home_prefers_today_class_for_next_step(self):
         anchor = datetime(2026, 3, 12, 8, 45, 0)
         with (
@@ -85,6 +161,69 @@ class TestCoursesApi(TestCase):
         self.assertEqual(payload["learning"]["next_learning_step"]["kind"], "course")
         self.assertEqual(payload["learning"]["next_learning_step"]["title"], "History")
         self.assertEqual(payload["learning"]["accessible_courses_count"], 2)
+
+    def test_get_student_hub_home_prefers_first_openable_course_when_first_course_is_blocked(self):
+        with (
+            patch("ifitwala_ed.api.courses._require_student_name_for_session_user", return_value="STU-001"),
+            patch(
+                "ifitwala_ed.api.courses._build_student_courses_payload",
+                return_value=(
+                    {
+                        "selected_year": "2025-2026",
+                        "courses": [
+                            {
+                                "course": "COURSE-1",
+                                "course_name": "Biology",
+                                "href": None,
+                                "learning_space": {
+                                    "status": "awaiting_class_assignment",
+                                    "status_label": "Class Assignment Pending",
+                                    "summary": "Your class is still being assigned.",
+                                    "cta_label": "Not ready yet",
+                                    "can_open": 0,
+                                    "href": None,
+                                },
+                            },
+                            {
+                                "course": "COURSE-2",
+                                "course_name": "History",
+                                "href": {"name": "student-course-detail", "params": {"course_id": "COURSE-2"}},
+                                "learning_space": {
+                                    "status": "shared_plan_only",
+                                    "status_label": "Shared Plan",
+                                    "summary": "Open the shared course plan for now.",
+                                    "cta_label": "Open shared plan",
+                                    "can_open": 1,
+                                    "href": {
+                                        "name": "student-course-detail",
+                                        "params": {"course_id": "COURSE-2"},
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    {"COURSE-1": {}, "COURSE-2": {}},
+                ),
+            ),
+            patch(
+                "ifitwala_ed.api.courses.portal_api.get_student_portal_identity",
+                return_value={"display_name": "Amina", "student": "STU-001", "user": "student@example.com"},
+            ),
+            patch(
+                "ifitwala_ed.api.courses.course_schedule_api.get_today_courses",
+                return_value={"date": "2026-03-12", "weekday": "Thursday", "courses": []},
+            ),
+            patch(
+                "ifitwala_ed.api.courses._fetch_student_hub_task_rows",
+                return_value=[],
+            ),
+        ):
+            payload = courses_api.get_student_hub_home()
+
+        self.assertEqual(payload["learning"]["next_learning_step"]["title"], "History")
+        self.assertEqual(payload["learning"]["next_learning_step"]["cta_label"], "Open shared plan")
+        self.assertEqual(payload["learning"]["next_learning_step"]["status_label"], "Shared Plan")
+        self.assertEqual(payload["learning"]["next_learning_step"]["can_open"], 1)
 
     def test_build_home_orientation_finds_current_and_next_class(self):
         anchor = datetime(2026, 3, 13, 9, 15, 0)

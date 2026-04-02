@@ -38,6 +38,7 @@ Current product behavior:
 - shared course-plan content is fallback only
 - the student sees explicit unavailable or fallback messaging instead of silent failure
 - the server resolves `learning.focus`, `learning.next_actions`, `learning.selected_context`, and `learning.unit_navigation`
+- the student page stays learning-first and does not expose shared-plan management labels
 
 ## Curriculum Read Model In The LMS
 
@@ -51,11 +52,11 @@ The student learning space currently renders:
 - next actions
 - unit journey
 - class sessions inside each unit
+- session resources inside the selected class experience
+- assigned work in its own student-facing zone
 - unit resources
-- session resources
 - class-wide resources
 - shared course-plan resources
-- assigned work
 
 This is the live LMS model.
 

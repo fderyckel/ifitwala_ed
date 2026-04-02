@@ -3,6 +3,10 @@
 import { apiMethod } from '@/resources/frappe'
 
 import type {
+	Request as GetStudentCoursesDataRequest,
+	Response as GetStudentCoursesDataResponse,
+} from '@/types/contracts/student_hub/get_student_courses_data'
+import type {
 	Request as GetStudentHubHomeRequest,
 	Response as GetStudentHubHomeResponse,
 } from '@/types/contracts/student_hub/get_student_hub_home'
@@ -12,7 +16,14 @@ import type {
 } from '@/types/contracts/student_learning/get_student_learning_space'
 
 const HOME_METHOD = 'ifitwala_ed.api.courses.get_student_hub_home'
+const COURSES_METHOD = 'ifitwala_ed.api.courses.get_courses_data'
 const LEARNING_SPACE_METHOD = 'ifitwala_ed.api.teaching_plans.get_student_learning_space'
+
+export async function getStudentCoursesData(
+	payload: GetStudentCoursesDataRequest = {}
+): Promise<GetStudentCoursesDataResponse> {
+	return apiMethod<GetStudentCoursesDataResponse>(COURSES_METHOD, payload)
+}
 
 export async function getStudentHubHome(
 	payload: GetStudentHubHomeRequest = {}

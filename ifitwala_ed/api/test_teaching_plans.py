@@ -170,6 +170,7 @@ class TestTeachingPlansApi(TestCase):
         with _teaching_plans_module() as module:
             with (
                 patch.object(module, "_require_student_name", return_value="STU-1"),
+                patch.object(module, "_assert_student_course_access", return_value=None),
                 patch.object(
                     module,
                     "_resolve_student_group_options",
@@ -295,6 +296,71 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["learning"]["selected_context"]["class_session"], "SESSION-1")
         self.assertEqual(payload["learning"]["next_actions"][0]["kind"], "quiz")
         self.assertIn("Cell Structure Checkpoint", payload["learning"]["next_actions"][0]["label"])
+
+    def test_get_student_learning_space_falls_back_to_shared_course_plan_without_active_class(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(module, "_require_student_name", return_value="STU-1"),
+                patch.object(module, "_assert_student_course_access", return_value=None),
+                patch.object(module, "_resolve_student_group_options", return_value=[]),
+                patch.object(
+                    module.frappe.db,
+                    "get_value",
+                    return_value={
+                        "name": "COURSE-1",
+                        "course_name": "Biology",
+                        "course_group": "Science",
+                        "description": "Course description",
+                        "course_image": "/files/biology.jpg",
+                    },
+                ),
+                patch.object(
+                    module.frappe,
+                    "get_all",
+                    return_value=[{"name": "COURSE-PLAN-1", "title": "Shared Biology Plan"}],
+                ),
+                patch.object(
+                    module,
+                    "_build_unit_lookup",
+                    return_value={
+                        "UNIT-1": {
+                            "name": "UNIT-1",
+                            "title": "Cells and Systems",
+                            "unit_order": 10,
+                            "program": "IB MYP",
+                            "unit_code": "BIO-1",
+                            "unit_status": "Published",
+                            "version": "1",
+                            "duration": "4 weeks",
+                            "estimated_duration": "16 hours",
+                            "overview": "Shared unit overview",
+                            "essential_understanding": "Systems work together.",
+                            "content": "Cells",
+                            "skills": "Observe",
+                            "concepts": "Systems",
+                            "standards": [],
+                        }
+                    },
+                ),
+                patch.object(
+                    module,
+                    "_attach_resources_and_work",
+                    return_value={
+                        "shared_resources": [],
+                        "class_resources": [],
+                        "general_assigned_work": [],
+                    },
+                ),
+                patch.object(module, "now_datetime", return_value=datetime(2026, 4, 2, 9, 0, 0)),
+            ):
+                payload = module.get_student_learning_space("COURSE-1")
+
+        self.assertEqual(payload["teaching_plan"]["source"], "course_plan_fallback")
+        self.assertEqual(payload["access"]["student_group_options"], [])
+        self.assertIsNone(payload["access"]["resolved_student_group"])
+        self.assertEqual(payload["access"]["course_plan"], "COURSE-PLAN-1")
+        self.assertEqual(payload["curriculum"]["counts"]["units"], 1)
+        self.assertIn("Showing the shared course plan", payload["message"])
 
     def test_build_unit_lookup_includes_shared_and_class_reflections_for_staff(self):
         with _teaching_plans_module() as module:

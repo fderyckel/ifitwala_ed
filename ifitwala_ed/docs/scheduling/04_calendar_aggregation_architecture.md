@@ -223,23 +223,20 @@ Student holiday entries are built by:
 
 This is a group-schedule-derived holiday model, not a generic school-root calendar lookup.
 
-### 4.4 Known drift
+### 4.4 Student meetings are participant-driven
 
-The module docstring says the student calendar aggregates:
+The student calendar now aggregates:
 
 - classes
 - school events
 - meetings
-
-But the inspected implementation currently aggregates:
-
-- classes
-- school events
 - holidays
 
-No meeting collection path was found in this module.
+Meeting rows are collected from `Meeting Participant.participant` against the student's
+portal user (`Student.student_email`).
 
-Do not document student-meeting support as implemented until code and tests exist.
+Keep student-meeting support in this note, the module docstring, and direct automated tests
+aligned in the same change.
 
 ---
 
@@ -427,18 +424,20 @@ Do not assume the same event-id semantics, missing-event semantics, or occupancy
 
 ### 10.2 Student calendar coverage is weaker
 
-In the inspected test set, no dedicated automated coverage was found for `student_calendar.py`.
+`student_calendar.py` now has direct automated coverage for:
 
-That raises the refactor bar:
+- meeting aggregation in the student feed
+- student-calendar cache invalidation helpers
 
-- changes to student calendar aggregation need explicit verification
-- code changes should add direct coverage rather than relying on adjacent staff-calendar tests
+Changes to student calendar aggregation still require explicit verification instead of relying
+only on adjacent staff-calendar tests.
 
-### 10.3 Feed docs must not overstate student-meeting support
+### 10.3 Feed docs must stay aligned with student-meeting support
 
-The implementation/documentation mismatch in `student_calendar.py` must be treated as drift.
+Student-meeting support is implemented.
 
-If student meetings are later added, this note and the module contract should be updated in the same change.
+If the participant join, source visibility rules, or cache ownership change, update this note and
+the module contract in the same change.
 
 ---
 

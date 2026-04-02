@@ -26,6 +26,92 @@ from ifitwala_ed.api.calendar import (
 from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
 
 CACHE_TTL = 600  # 10 minutes
+STUDENT_CALENDAR_INVALIDATE_EVENT = "student_calendar:invalidate"
+
+
+def _resolve_student_rows(
+    *,
+    student: str | None = None,
+    user: str | None = None,
+    users: list[str] | None = None,
+) -> list[frappe._dict]:
+    student_rows: dict[str, frappe._dict] = {}
+
+    student_value = (student or "").strip()
+    if student_value:
+        row = frappe.db.get_value("Student", student_value, ["name", "student_email"], as_dict=True)
+        if row:
+            student_rows[row.get("name") or student_value] = frappe._dict(row)
+        else:
+            student_rows[student_value] = frappe._dict({"name": student_value, "student_email": None})
+
+    candidate_users = {(user or "").strip()} if user else set()
+    candidate_users.update((candidate or "").strip() for candidate in (users or []) if candidate)
+    candidate_users.discard("")
+
+    if candidate_users:
+        rows = frappe.get_all(
+            "Student",
+            filters={"student_email": ["in", sorted(candidate_users)]},
+            fields=["name", "student_email"],
+            limit=max(len(candidate_users), 1),
+        )
+        for row in rows:
+            if row.name:
+                student_rows[row.name] = row
+
+    return list(student_rows.values())
+
+
+def invalidate_student_calendar_cache(
+    *,
+    student: str | None = None,
+    user: str | None = None,
+    users: list[str] | None = None,
+) -> None:
+    rows = _resolve_student_rows(student=student, user=user, users=users)
+    if not rows:
+        return
+
+    cache = frappe.cache()
+    for row in rows:
+        student_name = (row.get("name") or "").strip()
+        if not student_name:
+            continue
+        for key in cache.get_keys(f"ifw:stud-cal:{student_name}:*"):
+            cache.delete_value(key)
+
+
+def refresh_student_calendar_views(
+    *,
+    student: str | None = None,
+    user: str | None = None,
+    users: list[str] | None = None,
+    source: str | None = None,
+    source_name: str | None = None,
+) -> None:
+    rows = _resolve_student_rows(student=student, user=user, users=users)
+    if not rows:
+        return
+
+    invalidate_student_calendar_cache(student=student, user=user, users=users)
+
+    payload = {"source": (source or "calendar").strip() or "calendar"}
+    if (source_name or "").strip():
+        payload["source_name"] = source_name.strip()
+
+    seen_users: set[str] = set()
+    for row in rows:
+        student_user = (row.get("student_email") or "").strip()
+        if not student_user or student_user in seen_users:
+            continue
+        seen_users.add(student_user)
+        frappe.publish_realtime(
+            STUDENT_CALENDAR_INVALIDATE_EVENT,
+            message=payload,
+            user=student_user,
+            after_commit=True,
+        )
 
 
 @frappe.whitelist()
@@ -72,6 +158,9 @@ def get_student_calendar(
 
     # B) School Events
     events.extend(_fetch_school_events(student, enrolled_groups, window_start, window_end, tzinfo))
+
+    # C) Meetings
+    events.extend(_fetch_meetings(user, student, window_start, window_end, tzinfo))
 
     # D) Holidays
     # Determine applicable calendars from enrolled groups

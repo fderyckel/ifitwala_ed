@@ -132,6 +132,30 @@
 			</p>
 
 			<div class="mt-3 rounded-xl border border-ink/10 bg-white p-3 space-y-3">
+				<div
+					v-if="policy?.acknowledgement_clauses?.length"
+					class="space-y-3 border-b border-ink/10 pb-3"
+				>
+					<div class="type-caption text-ink/70">Acknowledgement clauses</div>
+					<label
+						v-for="clause in policy?.acknowledgement_clauses || []"
+						:key="clause.name"
+						class="flex items-start gap-3 rounded-xl border border-ink/10 px-3 py-3"
+					>
+						<input
+							:checked="checkedClauseNames.includes(clause.name)"
+							type="checkbox"
+							class="mt-1 h-4 w-4"
+							:disabled="busy || policy?.is_acknowledged"
+							@change="toggleClause(clause.name, $event)"
+						/>
+						<span class="type-meta text-ink/80">
+							{{ clause.clause_text }}
+							<span v-if="clause.is_required" class="text-rose-700">*</span>
+						</span>
+					</label>
+				</div>
+
 				<div class="type-caption text-ink/70">
 					Expected signer name:
 					<span class="type-body-strong text-ink">{{ expectedSignerLabel }}</span>
@@ -187,7 +211,7 @@
 				<button
 					type="button"
 					class="btn btn-primary"
-					:disabled="busy || submittedOnce || !canAcknowledge"
+					:disabled="busy || submittedOnce"
 					@click="acknowledgePolicy"
 				>
 					{{ busy ? 'Signing…' : 'Sign and acknowledge policy' }}
@@ -227,6 +251,7 @@ const actionError = ref<string | null>(null);
 const typedSignatureName = ref('');
 const attestationConfirmed = ref(false);
 const signatureTouched = ref(false);
+const checkedClauseNames = ref<string[]>([]);
 const activeTab = ref<'changes' | 'full'>('changes');
 
 const nowLabel = computed(() => formatLocalizedDateTime(new Date(), { includeWeekday: true }));
@@ -279,12 +304,10 @@ const isTypedSignatureMatch = computed(() => {
 	return expected ? typed === expected : true;
 });
 
-const canAcknowledge = computed(() => {
-	return (
-		Boolean(policy.value?.policy_version) &&
-		!policy.value?.is_acknowledged &&
-		isTypedSignatureMatch.value &&
-		attestationConfirmed.value
+const hasRequiredClausesChecked = computed(() => {
+	const checked = new Set(checkedClauseNames.value);
+	return (policy.value?.acknowledgement_clauses || []).every(
+		clause => !clause.is_required || checked.has(clause.name)
 	);
 });
 
@@ -299,6 +322,7 @@ watch(
 		typedSignatureName.value = '';
 		attestationConfirmed.value = false;
 		signatureTouched.value = false;
+		checkedClauseNames.value = [];
 		activeTab.value = (nextPolicy?.diff_html || '').trim() ? 'changes' : 'full';
 	},
 	{ immediate: true, deep: false }
@@ -356,6 +380,14 @@ function errorMessage(err: unknown): string {
 	return __('Please try again.');
 }
 
+function toggleClause(clauseName: string, event: Event) {
+	const checked = (event.target as HTMLInputElement).checked;
+	const next = new Set(checkedClauseNames.value);
+	if (checked) next.add(clauseName);
+	else next.delete(clauseName);
+	checkedClauseNames.value = Array.from(next);
+}
+
 async function acknowledgePolicy() {
 	if (busy.value || submittedOnce.value) return;
 	actionError.value = null;
@@ -380,6 +412,10 @@ async function acknowledgePolicy() {
 		actionError.value = __('Confirm the legal attestation before signing.');
 		return;
 	}
+	if (!hasRequiredClausesChecked.value) {
+		actionError.value = __('Check every required acknowledgement clause before signing.');
+		return;
+	}
 
 	busy.value = true;
 	submittedOnce.value = true;
@@ -389,6 +425,7 @@ async function acknowledgePolicy() {
 			client_request_id: newClientRequestId('policy_ack'),
 			typed_signature_name: typedSignatureName.value.trim(),
 			attestation_confirmed: attestationConfirmed.value ? 1 : 0,
+			checked_clause_names: checkedClauseNames.value,
 		};
 		const response = await focusService.acknowledgeStaffPolicy(payload);
 		if (!response?.ok) throw new Error(__('Unable to acknowledge policy.'));

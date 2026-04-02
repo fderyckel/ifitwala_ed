@@ -15,6 +15,7 @@ from frappe.utils.caching import redis_cache
 
 from ifitwala_ed.api.calendar_core import (
     _coerce_time,
+    _course_meta_map,
     _resolve_employee_for_user,
     _system_tzinfo,
     _to_system_datetime,
@@ -38,6 +39,10 @@ MAX_SLOT_SEARCH_DAYS = 14
 SLOT_INCREMENT_MINUTES = 15
 DEFAULT_DAY_START_TIME = "08:00:00"
 DEFAULT_DAY_END_TIME = "17:00:00"
+
+
+class StudentAvailabilityConflictError(frappe.ValidationError):
+    pass
 
 
 def _split_select_options(raw: str | None) -> list[str]:
@@ -1189,6 +1194,275 @@ def _dedupe_busy_windows(
     return deduped
 
 
+def _format_conflict_reason(prefix: str, title: str, start_dt, end_dt) -> str:
+    label = _safe_text(title) or prefix
+    return _("{prefix}: {title} ({slot})").format(
+        prefix=prefix,
+        title=label,
+        slot=_format_slot_label(get_datetime(start_dt), get_datetime(end_dt)),
+    )
+
+
+def _collect_student_schedule_conflict_labels(
+    contexts: list[dict],
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[str, set[str]]:
+    group_to_users: dict[str, set[str]] = defaultdict(set)
+    for ctx in contexts:
+        if ctx.get("kind") != "student":
+            continue
+        for group_name in ctx.get("student_groups") or set():
+            group_to_users[group_name].add(ctx["user"])
+
+    if not group_to_users:
+        return {}
+
+    group_rows = frappe.get_all(
+        "Student Group",
+        filters={"name": ["in", list(group_to_users.keys())]},
+        fields=["name", "student_group_name", "course"],
+        limit=max(len(group_to_users), 1),
+    )
+    group_meta = {row.name: row for row in group_rows if row.name}
+    course_map = _course_meta_map(row.course for row in group_rows if row.course)
+
+    reasons_by_user: dict[str, set[str]] = defaultdict(set)
+    start_date = window_start.date()
+    end_date = window_end.date()
+    for group_name, users in group_to_users.items():
+        meta = group_meta.get(group_name)
+        course = course_map.get(meta.course) if meta and meta.course else None
+        title = (course.course_name if course else None) or (meta.student_group_name if meta else None) or group_name
+        for slot in iter_student_group_room_slots(group_name, start_date, end_date):
+            slot_start = get_datetime(slot.get("start"))
+            slot_end = get_datetime(slot.get("end"))
+            if not slot_start or not slot_end or not _overlaps(slot_start, slot_end, window_start, window_end):
+                continue
+            reason = _format_conflict_reason(_("Class"), title, slot_start, slot_end)
+            for user_id in users:
+                reasons_by_user[user_id].add(reason)
+
+    return reasons_by_user
+
+
+def _collect_student_meeting_conflict_labels(
+    contexts: list[dict],
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[str, set[str]]:
+    users = [ctx["user"] for ctx in contexts if ctx.get("kind") == "student" and ctx.get("user")]
+    if not users:
+        return {}
+
+    rows = frappe.db.sql(
+        """
+        SELECT
+            mp.participant,
+            m.meeting_name,
+            m.from_datetime,
+            m.to_datetime
+        FROM `tabMeeting Participant` mp
+        INNER JOIN `tabMeeting` m ON m.name = mp.parent
+        WHERE
+            mp.parenttype = 'Meeting'
+            AND mp.participant IN %(users)s
+            AND m.docstatus < 2
+            AND COALESCE(m.status, 'Scheduled') != 'Cancelled'
+            AND m.from_datetime < %(window_end)s
+            AND m.to_datetime > %(window_start)s
+        """,
+        {
+            "users": tuple(users),
+            "window_start": window_start,
+            "window_end": window_end,
+        },
+        as_dict=True,
+    )
+    if not rows:
+        return {}
+
+    reasons_by_user: dict[str, set[str]] = defaultdict(set)
+    for row in rows:
+        participant = _safe_text(row.get("participant"))
+        if not participant:
+            continue
+        reasons_by_user[participant].add(
+            _format_conflict_reason(
+                _("Meeting"),
+                _safe_text(row.get("meeting_name")) or _("Meeting"),
+                row.get("from_datetime"),
+                row.get("to_datetime"),
+            )
+        )
+
+    return reasons_by_user
+
+
+def _collect_student_school_event_conflict_labels(
+    contexts: list[dict],
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[str, set[str]]:
+    student_contexts = [ctx for ctx in contexts if ctx.get("kind") == "student"]
+    if not student_contexts:
+        return {}
+
+    rows = frappe.db.sql(
+        """
+        SELECT
+            name,
+            subject,
+            school,
+            starts_on,
+            ends_on
+        FROM `tabSchool Event`
+        WHERE
+            docstatus < 2
+            AND starts_on < %(window_end)s
+            AND ends_on > %(window_start)s
+        """,
+        {"window_start": window_start, "window_end": window_end},
+        as_dict=True,
+    )
+    if not rows:
+        return {}
+
+    event_names = [row.get("name") for row in rows if row.get("name")]
+    participant_rows = frappe.get_all(
+        "School Event Participant",
+        filters={"parent": ["in", event_names]},
+        fields=["parent", "participant"],
+        limit=max(len(event_names) * 3, 20),
+    )
+    participant_map: dict[str, set[str]] = defaultdict(set)
+    for row in participant_rows:
+        if row.parent and row.participant:
+            participant_map[row.parent].add(row.participant)
+
+    audience_rows = frappe.get_all(
+        "School Event Audience",
+        filters={"parent": ["in", event_names]},
+        fields=["parent", "audience_type", "student_group"],
+        limit=max(len(event_names) * 3, 20),
+    )
+    audience_map: dict[str, list[dict]] = defaultdict(list)
+    for row in audience_rows:
+        if row.parent:
+            audience_map[row.parent].append(row)
+
+    student_lineage_map = {
+        ctx["user"]: set(_school_lineage(ctx.get("school") or "")) for ctx in student_contexts if ctx.get("user")
+    }
+    reasons_by_user: dict[str, set[str]] = defaultdict(set)
+    for row in rows:
+        event_name = _safe_text(row.get("name"))
+        if not event_name:
+            continue
+
+        reason = _format_conflict_reason(
+            _("School event"),
+            _safe_text(row.get("subject")) or _("School Event"),
+            row.get("starts_on"),
+            row.get("ends_on"),
+        )
+        for user_id in participant_map.get(event_name) or set():
+            reasons_by_user[user_id].add(reason)
+
+        event_school = _safe_text(row.get("school"))
+        for audience in audience_map.get(event_name) or []:
+            audience_type = _safe_text(audience.get("audience_type"))
+            student_group = _safe_text(audience.get("student_group"))
+
+            if audience_type in {"All Students", "Whole School Community"}:
+                for ctx in student_contexts:
+                    lineage = student_lineage_map.get(ctx["user"]) or set()
+                    if event_school and lineage and event_school not in lineage:
+                        continue
+                    reasons_by_user[ctx["user"]].add(reason)
+                continue
+
+            if audience_type == "Students in Student Group" and student_group:
+                for ctx in student_contexts:
+                    if student_group in (ctx.get("student_groups") or set()):
+                        reasons_by_user[ctx["user"]].add(reason)
+
+    return reasons_by_user
+
+
+def _summarize_conflict_reasons(reasons: set[str]) -> str:
+    ordered = sorted(reason for reason in reasons if _safe_text(reason))
+    if not ordered:
+        return _("Another school commitment in the selected window.")
+    if len(ordered) <= 3:
+        return "; ".join(ordered)
+    return _("{visible}; and {remaining} more.").format(
+        visible="; ".join(ordered[:3]),
+        remaining=len(ordered) - 3,
+    )
+
+
+def _assert_students_available_for_meeting(
+    *,
+    attendees: list[dict],
+    organizer_user: str,
+    window_start: datetime,
+    window_end: datetime,
+) -> None:
+    if not attendees or not window_start or not window_end or window_end <= window_start:
+        return
+
+    contexts = [ctx for ctx in _resolve_attendee_contexts(attendees, organizer_user) if ctx.get("kind") == "student"]
+    if not contexts:
+        return
+
+    busy_by_user: dict[str, list[tuple[datetime, datetime]]] = defaultdict(list)
+    _collect_student_busy_windows(contexts, window_start, window_end, busy_by_user)
+    _collect_meeting_busy_windows(contexts, window_start, window_end, busy_by_user)
+    _collect_school_event_busy_windows(contexts, window_start, window_end, busy_by_user)
+    busy_by_user = _dedupe_busy_windows(busy_by_user)
+    reasons_by_user = defaultdict(set)
+    for reason_map in (
+        _collect_student_schedule_conflict_labels(contexts, window_start, window_end),
+        _collect_student_meeting_conflict_labels(contexts, window_start, window_end),
+        _collect_student_school_event_conflict_labels(contexts, window_start, window_end),
+    ):
+        for user_id, reasons in (reason_map or {}).items():
+            reasons_by_user[user_id].update(reasons or set())
+
+    blocked_lines: list[str] = []
+    for ctx in contexts:
+        user_id = _safe_text(ctx.get("user"))
+        if not any(
+            _overlaps(window_start, window_end, busy_start, busy_end)
+            for busy_start, busy_end in (busy_by_user.get(user_id) or [])
+        ):
+            continue
+        blocked_lines.append(
+            _("{student}: {reasons}").format(
+                student=_safe_text(ctx.get("label")) or user_id,
+                reasons=_summarize_conflict_reasons(reasons_by_user.get(user_id) or set()),
+            )
+        )
+
+    if not blocked_lines:
+        return
+
+    frappe.throw(
+        "\n".join(
+            [
+                _("Student availability conflict for {slot}.").format(
+                    slot=_format_slot_label(window_start, window_end),
+                ),
+                _("These students already have school commitments in that window:"),
+                *blocked_lines,
+                _("Choose another time or use Find common times first."),
+            ]
+        ),
+        StudentAvailabilityConflictError,
+    )
+
+
 def _build_slot_payload(
     start_dt: datetime,
     end_dt: datetime,
@@ -1886,6 +2160,17 @@ def create_meeting_quick(
         frappe.throw(_("Start time and end time are required."), frappe.ValidationError)
 
     attendee_rows = _parse_attendee_list(participants)
+    proposed_date = _coerce_date_required(meeting_date, _("Meeting date"))
+    proposed_start_time = _coerce_time_required(start_value, _("Start time"))
+    proposed_end_time = _coerce_time_required(end_value, _("End time"))
+    proposed_start = _combine_date_and_time_local(proposed_date, proposed_start_time)
+    proposed_end = _combine_date_and_time_local(proposed_date, proposed_end_time)
+    _assert_students_available_for_meeting(
+        attendees=attendee_rows,
+        organizer_user=user,
+        window_start=proposed_start,
+        window_end=proposed_end,
+    )
     participant_users = [row["user"] for row in attendee_rows if row.get("user")]
     meeting_participants = _resolve_meeting_participants(
         organizer_user=user,

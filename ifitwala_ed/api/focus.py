@@ -130,12 +130,14 @@ def acknowledge_staff_policy(
     client_request_id: str | None = None,
     typed_signature_name: str | None = None,
     attestation_confirmed: int | str | bool | None = None,
+    checked_clause_names=None,
 ):
     return _acknowledge_staff_policy(
         focus_item_id=focus_item_id,
         client_request_id=client_request_id,
         typed_signature_name=typed_signature_name,
         attestation_confirmed=attestation_confirmed,
+        checked_clause_names=checked_clause_names,
     )
 
 

@@ -3,9 +3,9 @@ title: "Policy Version: Legal Text Snapshot and Activation Gate"
 slug: policy-version
 category: Governance
 doc_order: 2
-version: "1.5.0"
-last_change_date: "2026-03-26"
-summary: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version becomes active or acknowledged."
+version: "1.6.0"
+last_change_date: "2026-04-02"
+summary: "Store immutable policy text versions, version-scoped acknowledgement clauses, enforce amendment chains with stored diffs, and lock legal text once a version becomes active or acknowledged."
 seo_title: "Policy Version: Legal Text Snapshot and Activation Gate"
 seo_description: "Store immutable policy text versions, enforce amendment chains with stored diffs, and lock legal text once a version is active or acknowledged."
 ---
@@ -25,6 +25,7 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
 - Parent `institutional_policy` must exist and be active.
 - `version_label` must be unique per institutional policy.
 - `policy_text` must be non-empty.
+- `acknowledgement_clauses` may define version-scoped required or optional checkboxes shown during acknowledgement.
 - For every new version after the first, `based_on_version` is required.
 - `based_on_version` must point to a version under the same `institutional_policy`.
 - `change_summary` is required before activating an amended version (draft amendments can be saved while summary is pending).
@@ -38,11 +39,12 @@ seo_description: "Store immutable policy text versions, enforce amendment chains
 - Runtime visibility is scope-enforced server-side through parent policy scope:
   - parent policy organization must be in user organization lineage (`self + parents`)
   - if parent policy is school-scoped, policy school must be in user school lineage (`self + parents`)
-- `policy_text` is editable only while Draft (`is_active = 0`) and no acknowledgements exist.
+- `policy_text` and `acknowledgement_clauses` are editable only while Draft (`is_active = 0`) and no acknowledgements exist.
 - Lifecycle is controlled by `is_active` (not DocType submit/cancel workflow).
 - Once a version is activated, `policy_text` is permanently lock-protected (`text_locked = 1`) even if later deactivated.
+- Once a version is activated, acknowledgement clause definitions are also lock-protected for that version.
 - Once any acknowledgement exists for a version:
-  - legal/core fields are lock-protected (`policy_text`, `version_label`, `institutional_policy`, amendment/diff metadata).
+  - legal/core fields are lock-protected (`policy_text`, `version_label`, `institutional_policy`, amendment/diff metadata, acknowledgement clause definitions).
   - only `System Manager` with explicit `flags.override_reason` can override, and override is comment-audited.
 - Deletion is blocked.
 
@@ -115,6 +117,7 @@ Use a new version row for policy changes. Keep old versions for audit continuity
   - `based_on_version` (Link -> Policy Version)
   - `change_summary` (Small Text; required for activation when amended)
   - `policy_text` (Text Editor, required)
+  - `acknowledgement_clauses` (Table -> `Policy Version Acknowledgement Clause`)
   - `diff_html` (Text Editor; server-generated, read-only)
   - `change_stats` (Small Text JSON; server-generated, read-only)
   - `text_locked` (Check; hidden server lock flag)
@@ -142,7 +145,7 @@ Use a new version row for policy changes. Keep old versions for audit continuity
 Runtime controller rules:
 - Policy version management requires policy-admin roles (`System Manager`, `Organization Admin`, `Accounts Manager`, `Admission Manager`, `Academic Admin`, `HR Manager`).
 - `approved_by` options are filtered by a server link query so only write-capable users in valid policy scope are selectable.
-- `policy_text` becomes append-only once version is active or acknowledged; edits then require creating a new version.
+- `policy_text` and acknowledgement clause definitions become append-only once version is active or acknowledged; edits then require creating a new version.
 - Amended versions are first-class artifacts with human `change_summary` and stored paragraph diff (`diff_html` + `change_stats`).
 - Policy admins may manage versions for parent policies rooted in their organization or descendant organizations; non-admin read/list visibility remains enforced through parent policy scope.
 

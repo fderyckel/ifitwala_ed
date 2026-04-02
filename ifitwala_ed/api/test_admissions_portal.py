@@ -856,6 +856,29 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertTrue(bool(target))
         self.assertEqual(target.get("expected_signature_name"), expected_name)
 
+    def test_get_applicant_policies_includes_acknowledgement_clauses(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy applies_to storage is required for applicant policy tests.")
+
+        version = self._create_required_applicant_policy_version(
+            organization=self.organization,
+            school=self.school,
+            acknowledgement_clauses=[
+                {"clause_text": "I confirm the information is accurate.", "is_required": 1},
+                {"clause_text": "I agree to optional reminders.", "is_required": 0},
+            ],
+        )
+
+        frappe.set_user(self.applicant_user)
+        payload = get_applicant_policies(student_applicant=self.applicant.name)
+        target = next((row for row in (payload.get("policies") or []) if row.get("policy_version") == version), None)
+
+        self.assertTrue(bool(target))
+        clauses = target.get("acknowledgement_clauses") or []
+        self.assertEqual(len(clauses), 2)
+        self.assertEqual(clauses[0].get("clause_text"), "I confirm the information is accurate.")
+        self.assertTrue(bool(clauses[0].get("is_required")))
+
     def test_acknowledge_policy_requires_attestation_confirmation(self):
         if not _policy_schema_available():
             self.skipTest("Institutional Policy applies_to storage is required for applicant policy tests.")
@@ -881,6 +904,29 @@ class TestSubmitApplication(FrappeTestCase):
                 policy_version=self.policy_version,
                 typed_signature_name="Wrong Name",
                 attestation_confirmed=1,
+            )
+
+    def test_acknowledge_policy_requires_required_clauses(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy applies_to storage is required for applicant policy tests.")
+
+        version = self._create_required_applicant_policy_version(
+            organization=self.organization,
+            school=self.school,
+            acknowledgement_clauses=[
+                {"clause_text": "I confirm the information is accurate.", "is_required": 1},
+            ],
+        )
+        frappe.set_user(self.applicant_user)
+        expected_name = f"{self.applicant.first_name} {self.applicant.last_name}".strip()
+
+        with self.assertRaises(frappe.ValidationError):
+            acknowledge_policy(
+                student_applicant=self.applicant.name,
+                policy_version=version,
+                typed_signature_name=expected_name,
+                attestation_confirmed=1,
+                checked_clause_names=[],
             )
 
     def test_acknowledge_policy_creates_row_for_valid_signature(self):
@@ -1628,6 +1674,7 @@ class TestSubmitApplication(FrappeTestCase):
         organization: str,
         school: str,
         admissions_acknowledgement_mode: str | None = None,
+        acknowledgement_clauses: list[dict] | None = None,
     ) -> str:
         ensure_policy_audience_records()
         policy_payload = {
@@ -1654,6 +1701,7 @@ class TestSubmitApplication(FrappeTestCase):
                 "institutional_policy": policy.name,
                 "version_label": "v1",
                 "policy_text": "<p>Applicant consent text.</p>",
+                "acknowledgement_clauses": acknowledgement_clauses or [],
                 "is_active": 1,
             }
         ).insert(ignore_permissions=True)

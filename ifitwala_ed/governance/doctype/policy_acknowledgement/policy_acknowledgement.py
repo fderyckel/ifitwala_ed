@@ -1,5 +1,7 @@
 # ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.py
 
+import json
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -30,6 +32,130 @@ ACK_CONTEXT_MAP = {
 }
 
 
+def _normalize_clause_text(value: str | None) -> str:
+    return " ".join((value or "").strip().split())
+
+
+def _parse_checked_clause_names(checked_clause_names) -> set[str]:
+    raw = checked_clause_names or []
+    if isinstance(raw, str):
+        stripped = raw.strip()
+        if not stripped:
+            return set()
+        try:
+            raw = frappe.parse_json(stripped)
+        except Exception:
+            raw = [stripped]
+
+    if raw is None:
+        return set()
+    if not isinstance(raw, (list, tuple, set)):
+        raw = [raw]
+
+    normalized: set[str] = set()
+    for value in raw:
+        candidate = (value or "").strip()
+        if candidate:
+            normalized.add(candidate)
+    return normalized
+
+
+def get_policy_version_acknowledgement_clauses(policy_version: str | None) -> list[dict]:
+    policy_version = (policy_version or "").strip()
+    if not policy_version:
+        return []
+
+    return get_policy_version_acknowledgement_clauses_map([policy_version]).get(policy_version, [])
+
+
+def get_policy_version_acknowledgement_clauses_map(
+    policy_versions: list[str] | tuple[str, ...] | set[str],
+) -> dict[str, list[dict]]:
+    normalized_versions = sorted({(value or "").strip() for value in (policy_versions or []) if (value or "").strip()})
+    if not normalized_versions:
+        return {}
+
+    rows = frappe.get_all(
+        "Policy Version Acknowledgement Clause",
+        filters={
+            "parent": ["in", tuple(normalized_versions)],
+            "parenttype": "Policy Version",
+            "parentfield": "acknowledgement_clauses",
+        },
+        fields=["name", "parent", "clause_text", "is_required", "idx"],
+        order_by="parent asc, idx asc",
+        limit=0,
+    )
+    clauses_by_version: dict[str, list[dict]] = {version: [] for version in normalized_versions}
+    for row in rows:
+        name = (row.get("name") or "").strip()
+        parent = (row.get("parent") or "").strip()
+        if not name:
+            continue
+        clauses_by_version.setdefault(parent, []).append(
+            {
+                "name": name,
+                "clause_text": _normalize_clause_text(row.get("clause_text")),
+                "is_required": bool(cint(row.get("is_required"))),
+                "idx": cint(row.get("idx")),
+            }
+        )
+    return clauses_by_version
+
+
+def build_acknowledgement_clause_snapshot(
+    *,
+    policy_version: str | None,
+    checked_clause_names=None,
+) -> str:
+    clauses = get_policy_version_acknowledgement_clauses(policy_version)
+    checked_names = _parse_checked_clause_names(checked_clause_names)
+    allowed_names = {clause["name"] for clause in clauses}
+
+    unknown_names = sorted(checked_names - allowed_names)
+    if unknown_names:
+        frappe.throw(_("Acknowledgement clause selection is invalid."), frappe.ValidationError)
+
+    if not clauses:
+        return ""
+
+    missing_required = [
+        clause["clause_text"] for clause in clauses if clause["is_required"] and clause["name"] not in checked_names
+    ]
+    if missing_required:
+        frappe.throw(
+            _("Review and check every required acknowledgement clause before signing."),
+            frappe.ValidationError,
+        )
+
+    snapshot = [
+        {
+            "clause_name": clause["name"],
+            "clause_text": clause["clause_text"],
+            "is_required": clause["is_required"],
+            "is_checked": clause["name"] in checked_names,
+            "idx": clause["idx"],
+        }
+        for clause in clauses
+    ]
+    return json.dumps(snapshot, sort_keys=True, separators=(",", ":"))
+
+
+def populate_policy_acknowledgement_evidence(
+    ack_doc: Document,
+    *,
+    typed_signature_name: str | None = None,
+    attestation_confirmed: int | str | bool | None = None,
+    checked_clause_names=None,
+) -> None:
+    ack_doc.typed_signature_name = " ".join((typed_signature_name or "").strip().split())
+    ack_doc.attestation_confirmed = 1 if cint(attestation_confirmed) else 0
+    ack_doc.acknowledgement_clause_snapshot = build_acknowledgement_clause_snapshot(
+        policy_version=ack_doc.policy_version,
+        checked_clause_names=checked_clause_names,
+    )
+
+
 class PolicyAcknowledgement(Document):
     def before_insert(self):
         self._validate_policy_version()
@@ -37,6 +163,7 @@ class PolicyAcknowledgement(Document):
         self._validate_context()
         self._validate_role_for_acknowledgement()
         self._validate_unique_acknowledgement()
+        self._validate_evidence_payload()
         self.acknowledged_at = now_datetime()
 
     def before_save(self):
@@ -110,6 +237,22 @@ class PolicyAcknowledgement(Document):
         is_active = frappe.db.get_value("Policy Version", self.policy_version, "is_active")
         if not is_active:
             frappe.throw(_("Policy Version must be active to acknowledge."))
+
+    def _validate_evidence_payload(self):
+        self.typed_signature_name = " ".join((self.typed_signature_name or "").strip().split())
+        self.attestation_confirmed = 1 if cint(self.attestation_confirmed) else 0
+
+        snapshot = (self.acknowledgement_clause_snapshot or "").strip()
+        if not snapshot:
+            self.acknowledgement_clause_snapshot = ""
+            return
+
+        try:
+            parsed_snapshot = frappe.parse_json(snapshot)
+        except Exception:
+            parsed_snapshot = None
+        if not isinstance(parsed_snapshot, list):
+            frappe.throw(_("Acknowledgement clause snapshot is invalid."), frappe.ValidationError)
 
     def _validate_acknowledged_by(self):
         if self.acknowledged_by != frappe.session.user:

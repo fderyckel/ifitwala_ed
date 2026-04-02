@@ -124,13 +124,14 @@ Rules:
 4. Slot suggestion requests are bounded to 20 attendees, 14 days, and 15-minute increments.
 5. Employee availability is authoritative from `Employee Booking`.
 6. Student availability is derived from school timetable room slots plus known meetings and school events.
-7. Guardian availability is limited to known school-side meetings and school events and must be surfaced with an explicit note.
-8. For in-person and hybrid meeting quick create, exact common-time matches are room-aware: a slot only remains in the exact-match list when the selected host-school scope has at least one free room for that time.
-9. Room availability is authoritative from `Location Booking` via `find_room_conflicts(...)`.
-10. Room ranking is filtered by host-school descendant scope, ancestor-shared locations, optional `location_type`, and attendee-capacity threshold, then sorted to prefer the smallest adequate room before larger rooms.
-11. Manual location pickers in the overlay must switch with the selected host school and must not present sibling-school rooms outside the canonical shared-location scope.
-12. When room-aware ranking is requested, each slot payload may include `suggested_room` and `available_room_count` so the overlay can prefill the best room without extra per-slot requests.
-13. None of these quick-create workflows enqueue background jobs today because the request path is bounded and aggregated; if the search bounds expand materially, the concurrency docs above must be revisited before widening them.
+7. `create_meeting_quick(...)` must reject a requested slot when any invited student is already busy under that same student-availability model, even if the user skips slot suggestions.
+8. Guardian availability is limited to known school-side meetings and school events and must be surfaced with an explicit note.
+9. For in-person and hybrid meeting quick create, exact common-time matches are room-aware: a slot only remains in the exact-match list when the selected host-school scope has at least one free room for that time.
+10. Room availability is authoritative from `Location Booking` via `find_room_conflicts(...)`.
+11. Room ranking is filtered by host-school descendant scope, ancestor-shared locations, optional `location_type`, and attendee-capacity threshold, then sorted to prefer the smallest adequate room before larger rooms.
+12. Manual location pickers in the overlay must switch with the selected host school and must not present sibling-school rooms outside the canonical shared-location scope.
+13. When room-aware ranking is requested, each slot payload may include `suggested_room` and `available_room_count` so the overlay can prefill the best room without extra per-slot requests.
+14. None of these quick-create workflows enqueue background jobs today because the request path is bounded and aggregated; if the search bounds expand materially, the concurrency docs above must be revisited before widening them.
 
 ## 5. School Event Workflow Contract
 

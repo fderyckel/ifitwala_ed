@@ -138,6 +138,12 @@ Execution notes:
 - Student agency is intentionally light in this phase: continue work from the top strip, choose from `Now`, or open the dated timeline into course context.
 - The board remains a planning layer, not a second grading system.
 - Student shell now includes a route-aware secondary context sidebar for non-course student routes, so each main student area exposes local shortcuts without adding extra top-level navigation churn.
+- Student course cards and the Home fallback course CTA now expose one server-owned learning-space readiness state before navigation:
+  - `ready`
+  - `shared_plan_only`
+  - `awaiting_class_assignment`
+  - `awaiting_class_plan`
+- Entry surfaces now show the reason inline and only keep navigation active when the learning space is actually openable. This prevents students from clicking into a known unavailable course shell just to discover that it is not ready.
 
 Exit criteria:
 

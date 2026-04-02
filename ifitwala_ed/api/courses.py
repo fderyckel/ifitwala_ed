@@ -26,6 +26,7 @@ NOW_WINDOW_DAYS = 2
 SOON_WINDOW_DAYS = 7
 DONE_SUBMISSION_STATUSES = {"Submitted", "Late", "Resubmitted"}
 DONE_GRADING_STATUSES = {"Finalized", "Released"}
+OPENABLE_LEARNING_SPACE_STATUSES = {"ready", "shared_plan_only"}
 
 
 def _serialize_scalar(value: Any) -> Any:
@@ -192,6 +193,164 @@ def _build_student_course_scope(student_name: str) -> dict[str, dict[str, Any]]:
     return scope
 
 
+def _student_groups_for_course_year(scope_entry: dict[str, Any], academic_year: str | None) -> list[dict[str, Any]]:
+    rows = list(scope_entry.get("student_groups") or [])
+    selected_year = str(academic_year or "").strip()
+    if not selected_year:
+        return rows
+
+    matching = [row for row in rows if str(row.get("academic_year") or "").strip() == selected_year]
+    if matching:
+        return matching
+
+    return [row for row in rows if not str(row.get("academic_year") or "").strip()]
+
+
+def _fetch_active_class_plan_groups(student_groups: list[str]) -> set[str]:
+    names = sorted({str(name or "").strip() for name in student_groups if str(name or "").strip()})
+    if not names:
+        return set()
+
+    rows = frappe.get_all(
+        "Class Teaching Plan",
+        filters={"student_group": ["in", names], "planning_status": "Active"},
+        fields=["student_group"],
+        limit=0,
+    )
+    return {str(row.get("student_group") or "").strip() for row in rows if str(row.get("student_group") or "").strip()}
+
+
+def _fetch_active_course_plan_counts(course_ids: list[str]) -> dict[str, int]:
+    names = sorted({str(name or "").strip() for name in course_ids if str(name or "").strip()})
+    if not names:
+        return {}
+
+    rows = frappe.db.sql(
+        """
+        SELECT
+            course,
+            COUNT(*) AS active_plan_count
+        FROM `tabCourse Plan`
+        WHERE course IN %(courses)s
+          AND plan_status = 'Active'
+        GROUP BY course
+        """,
+        {"courses": tuple(names)},
+        as_dict=True,
+    )
+    return {str(row.get("course") or "").strip(): int(row.get("active_plan_count") or 0) for row in rows or []}
+
+
+def _serialize_course_learning_space(
+    course_id: str,
+    *,
+    academic_year: str | None,
+    scope_entry: dict[str, Any] | None,
+    class_plan_groups: set[str],
+    course_plan_counts: dict[str, int],
+) -> dict[str, Any]:
+    relevant_groups = _student_groups_for_course_year(scope_entry or {}, academic_year)
+    relevant_group_names = [
+        str(row.get("student_group") or "").strip()
+        for row in relevant_groups
+        if str(row.get("student_group") or "").strip()
+    ]
+    default_group = relevant_group_names[0] if relevant_group_names else None
+    has_class_plan = any(group in class_plan_groups for group in relevant_group_names)
+    has_shared_plan = course_plan_counts.get(course_id, 0) == 1
+
+    if has_class_plan:
+        status = "ready"
+        source = "class_teaching_plan"
+        status_label = _("Class Ready")
+        summary = _("Open your class learning space.")
+        cta_label = _("Open class")
+    elif has_shared_plan:
+        status = "shared_plan_only"
+        source = "course_plan_fallback"
+        status_label = _("Shared Plan")
+        if relevant_group_names:
+            summary = _("Your class plan is not published yet. Open the shared course plan for now.")
+        else:
+            summary = _("Your class is still being assigned. Open the shared course plan for now.")
+        cta_label = _("Open shared plan")
+    elif relevant_group_names:
+        status = "awaiting_class_plan"
+        source = "unavailable"
+        status_label = _("Class Plan Pending")
+        summary = _(
+            "Your teacher has not published this class learning space yet. Check with your teacher if this should already be available."
+        )
+        cta_label = _("Not ready yet")
+    else:
+        status = "awaiting_class_assignment"
+        source = "unavailable"
+        status_label = _("Class Assignment Pending")
+        summary = _(
+            "Your class is still being assigned. Check with your academic office if this should already be available."
+        )
+        cta_label = _("Not ready yet")
+
+    can_open = int(status in OPENABLE_LEARNING_SPACE_STATUSES)
+    href = _build_course_href(course_id, student_group=default_group) if can_open else None
+    return {
+        "source": source,
+        "status": status,
+        "status_label": status_label,
+        "summary": summary,
+        "cta_label": cta_label,
+        "can_open": can_open,
+        "href": href,
+    }
+
+
+def _attach_course_learning_space_state(
+    courses: list[dict[str, Any]],
+    *,
+    academic_year: str | None,
+    scope: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    course_ids = [
+        str(course.get("course") or "").strip() for course in courses if str(course.get("course") or "").strip()
+    ]
+    scoped_groups: list[str] = []
+    for course in courses:
+        course_id = str(course.get("course") or "").strip()
+        if not course_id:
+            continue
+        relevant_groups = _student_groups_for_course_year(scope.get(course_id) or {}, academic_year)
+        scoped_groups.extend(
+            str(row.get("student_group") or "").strip()
+            for row in relevant_groups
+            if str(row.get("student_group") or "").strip()
+        )
+
+    class_plan_groups = _fetch_active_class_plan_groups(scoped_groups)
+    course_plan_counts = _fetch_active_course_plan_counts(course_ids)
+
+    enriched: list[dict[str, Any]] = []
+    for course in courses:
+        course_id = str(course.get("course") or "").strip()
+        if not course_id:
+            enriched.append(course)
+            continue
+        learning_space = _serialize_course_learning_space(
+            course_id,
+            academic_year=academic_year,
+            scope_entry=scope.get(course_id),
+            class_plan_groups=class_plan_groups,
+            course_plan_counts=course_plan_counts,
+        )
+        enriched.append(
+            {
+                **course,
+                "href": learning_space.get("href"),
+                "learning_space": learning_space,
+            }
+        )
+    return enriched
+
+
 def _get_courses_for_year(student_name: str, academic_year: str) -> list[dict]:
     rows = frappe.db.sql(
         """
@@ -227,6 +386,25 @@ def _get_courses_for_year(student_name: str, academic_year: str) -> list[dict]:
             }
         )
     return courses
+
+
+def _build_student_courses_payload(
+    student_name: str, academic_year: str | None = None
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    years = _get_academic_years(student_name)
+    selected = academic_year
+    if not selected or selected not in years:
+        selected = years[0] if years else None
+
+    scope = _build_student_course_scope(student_name)
+    courses = _get_courses_for_year(student_name, selected) if selected else []
+    courses = _attach_course_learning_space_state(courses, academic_year=selected, scope=scope)
+
+    return {
+        "academic_years": years,
+        "selected_year": selected,
+        "courses": courses,
+    }, scope
 
 
 def _coerce_datetime(value: Any) -> datetime | None:
@@ -585,17 +763,8 @@ def get_courses_data(academic_year: str | None = None) -> dict:
             "error": _("No student profile linked to this login yet."),
         }
 
-    years = _get_academic_years(student_name)
-    selected = academic_year
-    if not selected or selected not in years:
-        selected = years[0] if years else None
-
-    courses = _get_courses_for_year(student_name, selected) if selected else []
-    return {
-        "academic_years": years,
-        "selected_year": selected,
-        "courses": courses,
-    }
+    payload, _scope = _build_student_courses_payload(student_name, academic_year)
+    return payload
 
 
 @frappe.whitelist()
@@ -605,8 +774,7 @@ def get_student_hub_home() -> dict[str, Any]:
 
     identity = portal_api.get_student_portal_identity()
     schedule = course_schedule_api.get_today_courses()
-    course_data = get_courses_data()
-    scope = _build_student_course_scope(student_name)
+    course_data, scope = _build_student_courses_payload(student_name)
     accessible_course_count = len(scope)
     student_groups = sorted(
         {
@@ -627,6 +795,9 @@ def get_student_hub_home() -> dict[str, Any]:
     next_title = None
     next_subtitle = None
     next_kind = None
+    next_cta_label = None
+    next_status_label = None
+    next_can_open = 0
 
     if orientation.get("current_class"):
         first = orientation["current_class"]
@@ -636,6 +807,8 @@ def get_student_hub_home() -> dict[str, Any]:
         next_title = first.get("course_name") or first.get("course")
         next_subtitle = "Continue from your current class"
         next_kind = "scheduled_class"
+        next_cta_label = "Open class"
+        next_can_open = int(bool(next_route))
     elif orientation.get("next_class"):
         first = orientation["next_class"]
         next_route = first.get("href") or _build_course_href(
@@ -644,6 +817,8 @@ def get_student_hub_home() -> dict[str, Any]:
         next_title = first.get("course_name") or first.get("course")
         next_subtitle = "Prepare for your next class"
         next_kind = "scheduled_class"
+        next_cta_label = "Prepare"
+        next_can_open = int(bool(next_route))
     elif work_board["now"]:
         first = work_board["now"][0]
         next_route = first.get("href") or _build_course_href(
@@ -652,12 +827,24 @@ def get_student_hub_home() -> dict[str, Any]:
         next_title = first.get("title") or first.get("task")
         next_subtitle = first.get("lane_reason") or "Continue your current work"
         next_kind = "course"
+        next_cta_label = "Open now"
+        next_can_open = int(bool(next_route))
     elif courses:
-        first = courses[0]
-        next_route = first.get("href") or _build_course_href(first.get("course"))
+        first = next(
+            (course for course in courses if int((course.get("learning_space") or {}).get("can_open") or 0) == 1),
+            courses[0],
+        )
+        learning_space = first.get("learning_space") or {}
+        default_route = (
+            _build_course_href(first.get("course")) if int(learning_space.get("can_open") or 0) == 1 else None
+        )
+        next_route = learning_space.get("href") or first.get("href") or default_route
         next_title = first.get("course_name") or first.get("course")
-        next_subtitle = "Open your course space"
+        next_subtitle = learning_space.get("summary") or "Open your course space"
         next_kind = "course"
+        next_cta_label = learning_space.get("cta_label") or ("Open course" if next_route else "Not ready yet")
+        next_status_label = learning_space.get("status_label")
+        next_can_open = int(learning_space.get("can_open")) if "can_open" in learning_space else int(bool(next_route))
 
     return {
         "meta": {
@@ -674,8 +861,11 @@ def get_student_hub_home() -> dict[str, Any]:
                     "title": next_title,
                     "subtitle": next_subtitle,
                     "href": next_route,
+                    "cta_label": next_cta_label,
+                    "status_label": next_status_label,
+                    "can_open": next_can_open,
                 }
-                if next_route and next_title and next_kind
+                if next_title and next_kind
                 else None
             ),
             "accessible_courses_count": accessible_course_count,

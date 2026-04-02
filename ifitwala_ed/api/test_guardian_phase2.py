@@ -71,6 +71,30 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
         self.assertEqual(result["acknowledgement_name"], "ACK-0001")
         get_doc_mock.assert_not_called()
 
+    def test_acknowledge_guardian_policy_requires_attestation(self):
+        with (
+            patch("ifitwala_ed.api.guardian_policy.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch(
+                "ifitwala_ed.api.guardian_policy._resolve_guardian_scope",
+                return_value=("GRD-0001", [{"student": "STU-1"}]),
+            ),
+            patch(
+                "ifitwala_ed.api.guardian_policy._get_guardian_policy_rows",
+                return_value=[{"policy_version": "VER-1"}],
+            ),
+            patch("ifitwala_ed.api.guardian_policy.frappe.db.get_value", return_value=None),
+            patch(
+                "ifitwala_ed.api.guardian_policy._expected_guardian_signature_name",
+                return_value="Amina Example Guardian",
+            ),
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                acknowledge_guardian_policy(
+                    "VER-1",
+                    typed_signature_name="Amina Example Guardian",
+                    attestation_confirmed=0,
+                )
+
     def test_acknowledge_guardian_policy_creates_acknowledgement_when_missing(self):
         acknowledgement_doc = Mock()
         acknowledgement_doc.name = "ACK-0002"
@@ -86,13 +110,29 @@ class TestGuardianPolicyPhase2(FrappeTestCase):
                 return_value=[{"policy_version": "VER-1"}],
             ),
             patch("ifitwala_ed.api.guardian_policy.frappe.db.get_value", return_value=None),
+            patch(
+                "ifitwala_ed.api.guardian_policy._expected_guardian_signature_name",
+                return_value="Amina Example Guardian",
+            ),
+            patch("ifitwala_ed.api.guardian_policy.populate_policy_acknowledgement_evidence") as evidence_mock,
             patch("ifitwala_ed.api.guardian_policy.frappe.get_doc", return_value=acknowledgement_doc) as get_doc_mock,
         ):
-            result = acknowledge_guardian_policy("VER-1")
+            result = acknowledge_guardian_policy(
+                "VER-1",
+                typed_signature_name="Amina Example Guardian",
+                attestation_confirmed=1,
+                checked_clause_names=["CLAUSE-1"],
+            )
 
         self.assertEqual(result["status"], "acknowledged")
         self.assertEqual(result["acknowledgement_name"], "ACK-0002")
         acknowledgement_doc.insert.assert_called_once_with()
+        evidence_mock.assert_called_once_with(
+            acknowledgement_doc,
+            typed_signature_name="Amina Example Guardian",
+            attestation_confirmed=1,
+            checked_clause_names=["CLAUSE-1"],
+        )
         payload = get_doc_mock.call_args.args[0]
         self.assertEqual(payload["acknowledged_for"], "Guardian")
         self.assertEqual(payload["context_name"], "GRD-0001")

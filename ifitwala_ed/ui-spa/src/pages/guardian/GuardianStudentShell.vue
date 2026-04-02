@@ -3,13 +3,30 @@
 	<div class="space-y-6">
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-				<div>
-					<p class="type-caption text-ink/70">Guardian portal</p>
-					<h1 class="type-h1 text-ink">{{ brief?.student.full_name || 'Student' }}</h1>
-					<p class="type-body text-ink/70">
-						{{ brief?.student.school || 'School unavailable' }} ·
-						{{ studentId || 'Unknown student' }}
-					</p>
+				<div class="flex items-center gap-4">
+					<div
+						class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-line-soft bg-surface-soft"
+					>
+						<img
+							v-if="brief?.student.student_image_url"
+							:src="brief.student.student_image_url"
+							:alt="brief.student.full_name"
+							class="h-full w-full object-cover"
+							loading="lazy"
+						/>
+						<span v-else class="type-h3 text-ink/50">{{ studentInitials }}</span>
+					</div>
+					<div>
+						<p class="type-caption text-ink/70">Guardian portal</p>
+						<h1 class="type-h1 text-ink">{{ brief?.student.full_name || 'Student' }}</h1>
+						<p class="type-body text-ink/70">
+							{{ brief?.student.school || 'School unavailable' }} ·
+							{{ studentId || 'Unknown student' }}
+						</p>
+						<p class="mt-1 type-caption text-ink/60">
+							Current themes, next experiences, and simple ways to support at home.
+						</p>
+					</div>
 				</div>
 				<div class="flex items-center gap-2">
 					<RouterLink :to="{ name: 'guardian-home' }" class="if-action">
@@ -126,6 +143,26 @@
 							</article>
 
 							<article
+								v-if="course.current_session"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Next class experience</p>
+								<p class="mt-2 type-body-strong text-ink">{{ course.current_session.title }}</p>
+								<p
+									v-if="course.current_session.session_date"
+									class="mt-2 type-caption text-ink/70"
+								>
+									{{ course.current_session.session_date }}
+								</p>
+								<p
+									v-if="course.current_session.learning_goal"
+									class="mt-2 type-caption text-ink/70"
+								>
+									{{ course.current_session.learning_goal }}
+								</p>
+							</article>
+
+							<article
 								v-if="course.upcoming_experiences.length"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
@@ -151,7 +188,7 @@
 								v-if="course.dinner_prompt"
 								class="rounded-2xl border border-line-soft bg-white p-4"
 							>
-								<p class="type-overline text-ink/60">Dinner discussion</p>
+								<p class="type-overline text-ink/60">Talk at home</p>
 								<p class="mt-2 type-body text-ink/80">{{ course.dinner_prompt }}</p>
 							</article>
 
@@ -159,7 +196,7 @@
 								v-if="course.support_resources?.length"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Useful resources</p>
+								<p class="type-overline text-ink/60">Helpful at home</p>
 								<div class="mt-3 space-y-3">
 									<div
 										v-for="resource in course.support_resources"
@@ -202,6 +239,13 @@ const brief = ref<GuardianStudentLearningBriefResponse | null>(null);
 
 const studentId = computed(() => String(route.params.student_id || ''));
 const courseBriefs = computed(() => brief.value?.course_briefs ?? []);
+const studentInitials = computed(() => {
+	const parts = String(brief.value?.student.full_name || 'Student')
+		.split(/\s+/)
+		.filter(Boolean)
+		.slice(0, 2);
+	return parts.map(part => part[0]?.toUpperCase() || '').join('') || '?';
+});
 
 async function loadBrief() {
 	loading.value = true;

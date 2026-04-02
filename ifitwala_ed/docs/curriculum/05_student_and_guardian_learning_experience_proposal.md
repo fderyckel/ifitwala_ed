@@ -1,12 +1,25 @@
 # Student And Guardian Curriculum Experience Proposal
 
-Status: Partially implemented
+Status: Implemented with ongoing polish
 Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/guardian_home.py`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`, `ifitwala_ed/ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts`, `ifitwala_ed/ui-spa/src/types/contracts/guardian/get_guardian_home_snapshot.ts`, `ifitwala_ed/docs/curriculum/04_curriculum_lms_and_quiz_contract.md`, `ifitwala_ed/docs/spa/guardian_portal/01_guardian_product.md`, `ifitwala_ed/docs/spa/guardian_portal/03_visibility_contract.md`, `ifitwala_ed/docs/high_concurrency_contract.md`
 Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_guardian_home.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
 
 This document defines the current target shape for curriculum visibility in the student portal and the guardian portal.
 
 The student learning-first LMS framing, guardian home `learning_highlights`, and guardian child learning brief are now implemented. Remaining refinements should extend this direction rather than reopen the older curriculum-tree or timeline-first shapes.
+
+## Current Product State
+
+Status: Implemented
+Code refs: `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
+Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
+
+Current live behavior:
+
+- the student course page leads with `Learning Focus`, `Next Actions`, `This Unit`, `Session Journey`, a dedicated `Assigned Work` zone, and scoped resources
+- student-facing surfaces now hide shared-plan management labels and raw planning-state language
+- guardian home uses `learning_highlights` cards with a family-safe current theme, upcoming step, and a talk-at-home prompt
+- the guardian child brief now foregrounds current theme, next class experience, upcoming learning experiences, and helpful-at-home resources
 
 ## Why This Proposal Exists
 

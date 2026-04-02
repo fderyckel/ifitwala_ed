@@ -55,10 +55,9 @@
 
 						<div class="mt-4 flex flex-wrap gap-2">
 							<span class="chip">{{ resolvedClassLabel }}</span>
-							<span class="chip">{{ teachingPlanLabel }}</span>
 							<span class="chip">{{ learningSpace.curriculum.counts.units }} units</span>
 							<span class="chip"
-								>{{ learningSpace.curriculum.counts.assigned_work }} assigned work</span
+								>{{ learningSpace.curriculum.counts.assigned_work }} assignments</span
 							>
 						</div>
 
@@ -69,8 +68,8 @@
 								<p class="type-caption text-ink/70">Current class</p>
 								<p class="mt-1 type-body-strong text-ink">{{ resolvedClassLabel }}</p>
 								<p class="mt-1 type-caption text-ink/70">
-									This page prioritizes what your class is learning now and what needs attention
-									next.
+									Everything here is already filtered for your class, your current unit, and your
+									next steps.
 								</p>
 							</div>
 
@@ -132,12 +131,12 @@
 						</article>
 
 						<article class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-							<p class="type-overline text-ink/60">Current Session</p>
+							<p class="type-overline text-ink/60">Next Class Experience</p>
 							<p class="mt-2 type-body-strong text-ink">
 								{{
 									learningFocus.current_session?.title ||
 									selectedSession?.title ||
-									'Next session coming soon'
+									'Your next class will appear here soon'
 								}}
 							</p>
 							<p class="mt-2 type-caption text-ink/70">
@@ -191,6 +190,9 @@
 							</div>
 							<p v-if="action.supporting_text" class="mt-2 type-caption text-ink/70">
 								{{ action.supporting_text }}
+							</p>
+							<p v-if="nextActionContext(action)" class="mt-1 type-caption text-ink/60">
+								{{ nextActionContext(action) }}
 							</p>
 							<div class="mt-3">
 								<RouterLink
@@ -371,8 +373,7 @@
 								>
 									<p class="type-body-strong text-ink">{{ session.title }}</p>
 									<p class="mt-1 type-caption text-ink/70">
-										{{ session.session_status || 'Planned' }}
-										<span v-if="session.session_date">· {{ session.session_date }}</span>
+										{{ sessionTimingLabel(session) }}
 									</p>
 								</button>
 							</div>
@@ -381,17 +382,16 @@
 						<section v-if="selectedSession" class="card-surface p-6">
 							<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 								<div>
-									<p class="type-overline text-ink/60">Selected Session</p>
+									<p class="type-overline text-ink/60">Selected Class Experience</p>
 									<h2 class="mt-2 type-h2 text-ink">{{ selectedSession.title }}</h2>
 									<p class="mt-2 type-body text-ink/80">
-										{{ selectedSession.session_status || 'Planned' }}
-										<span v-if="selectedSession.session_date"
-											>· {{ selectedSession.session_date }}</span
-										>
+										{{ sessionTimingLabel(selectedSession) }}
 									</p>
 								</div>
 								<div class="flex flex-wrap gap-2">
-									<span class="chip">{{ selectedSession.session_status || 'Planned' }}</span>
+									<span v-if="selectedSession.session_date" class="chip">
+										{{ selectedSession.session_date }}
+									</span>
 									<span v-if="selectedSession.activities.length" class="chip">
 										{{ selectedSession.activities.length }} activities
 									</span>
@@ -446,9 +446,40 @@
 								</div>
 							</div>
 
+							<div v-if="selectedSession.resources.length" class="mt-6 space-y-3">
+								<div class="flex items-center justify-between gap-3">
+									<h3 class="type-h3 text-ink">Resources for this session</h3>
+									<span class="chip">{{ selectedSession.resources.length }}</span>
+								</div>
+								<div class="grid gap-3 lg:grid-cols-2">
+									<article
+										v-for="resource in selectedSession.resources"
+										:key="resource.placement || resource.material"
+										class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+									>
+										<p class="type-body-strong text-ink">{{ resource.title }}</p>
+										<p v-if="resource.description" class="mt-2 type-caption text-ink/70">
+											{{ resource.description }}
+										</p>
+										<p v-if="resource.placement_note" class="mt-2 type-caption text-ink/60">
+											{{ resource.placement_note }}
+										</p>
+										<a
+											v-if="resource.open_url"
+											:href="resource.open_url"
+											target="_blank"
+											rel="noreferrer"
+											class="mt-3 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
+										>
+											Open resource
+										</a>
+									</article>
+								</div>
+							</div>
+
 							<div v-if="selectedSession.assigned_work.length" class="mt-6 space-y-3">
 								<div class="flex items-center justify-between gap-3">
-									<h3 class="type-h3 text-ink">Linked work</h3>
+									<h3 class="type-h3 text-ink">Work connected to this class</h3>
 									<span class="chip">{{ selectedSession.assigned_work.length }}</span>
 								</div>
 								<div class="grid gap-3">
@@ -490,6 +521,71 @@
 						Select a unit to view the learning journey for this course.
 					</p>
 				</section>
+			</section>
+
+			<section v-if="selectedUnit || displayedAssignedWork.length" class="card-surface p-6">
+				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+					<div>
+						<p class="type-overline text-ink/60">Assigned Work</p>
+						<h2 class="mt-2 type-h2 text-ink">Keep track of what needs to be done</h2>
+						<p class="mt-2 type-body text-ink/80">
+							{{
+								selectedUnit
+									? `This work is connected to ${selectedUnit.title}.`
+									: 'Published work for this course will appear here.'
+							}}
+						</p>
+					</div>
+					<span class="chip">{{ displayedAssignedWork.length }}</span>
+				</div>
+
+				<div
+					v-if="!displayedAssignedWork.length"
+					class="mt-5 rounded-2xl border border-dashed border-line-soft p-4"
+				>
+					<p class="type-body text-ink/70">
+						No assigned work is published for this unit right now.
+					</p>
+				</div>
+
+				<div v-else class="mt-5 grid gap-3 xl:grid-cols-2">
+					<article
+						v-for="item in displayedAssignedWork"
+						:key="item.task_delivery"
+						class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+					>
+						<div class="flex flex-wrap items-center gap-2">
+							<p class="type-body-strong text-ink">{{ item.title }}</p>
+							<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
+							<span v-if="assignedWorkStatusLabel(item)" class="chip">
+								{{ assignedWorkStatusLabel(item) }}
+							</span>
+						</div>
+						<p v-if="assignedWorkTimingLabel(item)" class="mt-2 type-caption text-ink/70">
+							{{ assignedWorkTimingLabel(item) }}
+						</p>
+						<p v-if="assignedWorkContextLine(item)" class="mt-1 type-caption text-ink/60">
+							{{ assignedWorkContextLine(item) }}
+						</p>
+						<div class="mt-3 flex flex-wrap gap-2">
+							<RouterLink
+								v-if="isQuizAssignedWork(item)"
+								:to="quizRouteFor(item)"
+								class="if-action"
+							>
+								{{ quizActionLabel(item) }}
+							</RouterLink>
+							<button
+								v-else-if="item.class_session || item.unit_plan"
+								type="button"
+								class="if-action"
+								@click="focusAssignedWork(item)"
+							>
+								Show in this course
+							</button>
+						</div>
+					</article>
+				</div>
 			</section>
 
 			<section
@@ -640,6 +736,13 @@ const selectedSession = computed<StudentLearningSession | null>(() => {
 	);
 });
 
+const displayedAssignedWork = computed<StudentAssignedWork[]>(() => {
+	if (selectedUnit.value) {
+		return dedupeAssignedWork(selectedUnit.value.assigned_work || []);
+	}
+	return dedupeAssignedWork(learningSpace.value?.resources.general_assigned_work || []);
+});
+
 const resolvedClassLabel = computed(() => {
 	const resolvedGroup = learningSpace.value?.access.resolved_student_group;
 	if (!resolvedGroup) return 'Class not available';
@@ -648,13 +751,6 @@ const resolvedClassLabel = computed(() => {
 			option => option.student_group === resolvedGroup
 		)?.label || resolvedGroup
 	);
-});
-
-const teachingPlanLabel = computed(() => {
-	const source = learningSpace.value?.teaching_plan.source;
-	if (source === 'class_teaching_plan') return 'Class plan published';
-	if (source === 'course_plan_fallback') return 'Shared course plan';
-	return 'Planning not published';
 });
 
 function applySelection(payload: StudentLearningSpaceResponse) {
@@ -747,6 +843,51 @@ function isQuizAssignedWork(item: StudentAssignedWork) {
 	return (item.task_type || '').trim() === 'Quiz';
 }
 
+function dedupeAssignedWork(items: StudentAssignedWork[]) {
+	const seen = new Set<string>();
+	return items.filter(item => {
+		const key = String(item.task_delivery || '').trim();
+		if (!key || seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+}
+
+function findUnitByPlan(unitPlan?: string | null) {
+	const target = String(unitPlan || '').trim();
+	if (!target) return null;
+	return learningSpace.value?.curriculum.units.find(unit => unit.unit_plan === target) || null;
+}
+
+function findSessionById(classSession?: string | null) {
+	const target = String(classSession || '').trim();
+	if (!target) return null;
+	for (const unit of learningSpace.value?.curriculum.units || []) {
+		const session = unit.sessions.find(row => row.class_session === target);
+		if (session) return session;
+	}
+	return null;
+}
+
+function sessionTimingLabel(session: StudentLearningSession) {
+	return session.session_date || 'Details coming soon';
+}
+
+function nextActionContext(action: StudentLearningNextAction) {
+	const session = findSessionById(action.class_session);
+	if (session) {
+		return session.session_date ? `${session.title} · ${session.session_date}` : session.title;
+	}
+	const unit = findUnitByPlan(action.unit_plan);
+	return unit?.title || '';
+}
+
+function humanizeLabel(value?: string | null) {
+	const text = String(value || '').trim();
+	if (!text) return '';
+	return text.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
 function quizActionLabel(item: StudentAssignedWork) {
 	if (!isQuizAssignedWork(item)) return 'Open task';
 	if (item.quiz_state?.can_continue) return 'Continue quiz';
@@ -795,12 +936,43 @@ function nextActionChip(action: StudentLearningNextAction) {
 	return 'Assigned work';
 }
 
+function assignedWorkStatusLabel(item: StudentAssignedWork) {
+	if (item.quiz_state?.status_label) return item.quiz_state.status_label;
+	if (item.is_complete) return 'Completed';
+	return humanizeLabel(item.submission_status || item.grading_status || '');
+}
+
+function assignedWorkTimingLabel(item: StudentAssignedWork) {
+	if (item.due_date) return `Due ${item.due_date}`;
+	if (item.available_from) return `Available ${item.available_from}`;
+	return '';
+}
+
+function assignedWorkContextLine(item: StudentAssignedWork) {
+	const session = findSessionById(item.class_session);
+	if (session) {
+		return session.session_date ? `${session.title} · ${session.session_date}` : session.title;
+	}
+	const unit = findUnitByPlan(item.unit_plan);
+	if (unit) return `In ${unit.title}`;
+	return '';
+}
+
 function handleNextAction(action: StudentLearningNextAction) {
 	if (action.unit_plan) {
 		selectUnit(action.unit_plan);
 	}
 	if (action.class_session) {
 		selectSession(action.class_session);
+	}
+}
+
+function focusAssignedWork(item: StudentAssignedWork) {
+	if (item.unit_plan) {
+		selectUnit(item.unit_plan);
+	}
+	if (item.class_session) {
+		selectSession(item.class_session);
 	}
 }
 

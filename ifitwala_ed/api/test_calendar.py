@@ -168,6 +168,87 @@ class TestCalendarApi(TestCase):
             ],
         )
 
+    def test_assert_students_available_for_meeting_blocks_busy_students(self):
+        window_start = datetime(2026, 2, 1, 9, 0, 0)
+        window_end = datetime(2026, 2, 1, 10, 0, 0)
+
+        def _seed_busy(contexts, start, end, busy_by_user):
+            busy_by_user["student@example.com"].append((window_start, window_end))
+
+        with (
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._resolve_attendee_contexts",
+                return_value=[
+                    {
+                        "user": "student@example.com",
+                        "kind": "student",
+                        "label": "Student Example",
+                    }
+                ],
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._collect_student_busy_windows",
+                side_effect=_seed_busy,
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_meeting_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_school_event_busy_windows"),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._collect_student_schedule_conflict_labels",
+                return_value={"student@example.com": {"Class: Biology (Sun 1 Feb 2026 09:00 - 10:00)"}},
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_student_meeting_conflict_labels", return_value={}),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._collect_student_school_event_conflict_labels", return_value={}
+            ),
+        ):
+            with self.assertRaises(frappe.ValidationError) as exc:
+                calendar_quick_create._assert_students_available_for_meeting(
+                    attendees=[{"user": "student@example.com", "kind": "student"}],
+                    organizer_user="staff@example.com",
+                    window_start=window_start,
+                    window_end=window_end,
+                )
+
+        self.assertIn("Student Example", str(exc.exception))
+        self.assertIn("Class: Biology", str(exc.exception))
+
+    def test_create_meeting_quick_checks_student_availability_before_insert(self):
+        cache = _DummyCache()
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc") as mocked_get_doc,
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location", return_value=None),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._get_quick_create_scope",
+                return_value={
+                    "base_school": "SCHOOL-1",
+                    "school_scope": ["SCHOOL-1"],
+                    "student_scope": ["SCHOOL-1"],
+                    "is_admin_like": False,
+                },
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._assert_students_available_for_meeting",
+                side_effect=frappe.ValidationError("Student busy"),
+            ) as mocked_student_check,
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                create_meeting_quick(
+                    client_request_id="req-busy-student",
+                    meeting_name="Weekly Check-in",
+                    date="2026-02-01",
+                    start_time="09:00",
+                    end_time="10:00",
+                    school="SCHOOL-1",
+                    participants=[{"user": "student@example.com", "kind": "student", "label": "Student Example"}],
+                )
+
+        mocked_student_check.assert_called_once()
+        mocked_get_doc.assert_not_called()
+
     def test_create_school_event_quick_defaults_custom_users_to_session_user(self):
         cache = _DummyCache()
         captured_payloads = []

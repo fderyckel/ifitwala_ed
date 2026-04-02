@@ -180,8 +180,30 @@ function buildPayload(): StudentLearningSpaceResponse {
 							session_status: 'Planned',
 							session_date: '2026-04-01',
 							learning_goal: 'Use evidence from microscope observations to compare cell structures.',
-							resources: [],
-							assigned_work: [],
+							resources: [
+								{
+									material: 'MAT-1',
+									title: 'Microscope guide',
+									description: 'Use this guide during the station walk.',
+									open_url: '/files/microscope-guide.pdf',
+								},
+							],
+							assigned_work: [
+								{
+									task_delivery: 'TDL-QUIZ-1',
+									task: 'TASK-QUIZ-1',
+									title: 'Cell Structure Checkpoint',
+									task_type: 'Quiz',
+									unit_plan: 'UNIT-PLAN-1',
+									class_session: 'CLASS-SESSION-1',
+									submission_status: 'Submitted',
+									quiz_state: {
+										can_continue: 1,
+										status_label: 'In Progress',
+									},
+									materials: [],
+								},
+							],
 							activities: [
 								{
 									title: 'Observation walk',
@@ -258,15 +280,19 @@ describe('CourseDetail', () => {
 
 		expect(document.body.textContent).toContain('Learning Space')
 		expect(document.body.textContent).toContain('Biology')
-		expect(document.body.textContent).toContain('Class plan published')
 		expect(document.body.textContent).toContain('Learning Focus')
 		expect(document.body.textContent).toContain('What to do next')
 		expect(document.body.textContent).toContain('This Unit')
+		expect(document.body.textContent).toContain('Assigned Work')
+		expect(document.body.textContent).toContain('Resources for this session')
+		expect(document.body.textContent).toContain('Work connected to this class')
 		expect(document.body.textContent).toContain('Structure and function are linked in living systems.')
 		expect(document.body.textContent).toContain('Microscope evidence walk')
 		expect(document.body.textContent).toContain('Observation walk')
 		expect(document.body.textContent).toContain('Continue Cell Structure Checkpoint')
 		expect(document.body.textContent).toContain('Cell Structure Checkpoint')
+		expect(document.body.textContent).not.toContain('Class plan published')
+		expect(document.body.textContent).not.toContain('Planning not published')
 		expect(document.body.textContent).not.toContain('Teacher note')
 
 		const headerImage = document.querySelector('header img')

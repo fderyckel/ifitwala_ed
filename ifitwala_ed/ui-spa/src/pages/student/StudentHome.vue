@@ -78,15 +78,33 @@
 					</div>
 				</div>
 
-				<RouterLink
+				<div
 					v-else-if="nextLearningStep"
-					:to="linkFor(nextLearningStep.href)"
-					class="mt-5 block rounded-2xl border border-line-soft bg-surface-soft p-5 transition hover:shadow-soft"
+					class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-5"
 				>
-					<p class="type-overline text-ink/60">Continue Learning</p>
-					<p class="mt-1 type-h3 text-ink">{{ nextLearningStep.title }}</p>
-					<p class="mt-2 type-body text-ink/70">{{ nextLearningStep.subtitle }}</p>
-				</RouterLink>
+					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+						<div>
+							<p class="type-overline text-ink/60">Continue Learning</p>
+							<div class="mt-1 flex flex-wrap items-center gap-2">
+								<p class="type-h3 text-ink">{{ nextLearningStep.title }}</p>
+								<span v-if="nextLearningStep.status_label" class="chip">
+									{{ nextLearningStep.status_label }}
+								</span>
+							</div>
+							<p class="mt-2 type-body text-ink/70">{{ nextLearningStep.subtitle }}</p>
+						</div>
+						<RouterLink
+							v-if="nextLearningStep.can_open && nextLearningStep.href"
+							:to="linkFor(nextLearningStep.href)"
+							class="if-action"
+						>
+							{{ nextLearningStepButtonLabel }}
+						</RouterLink>
+						<button v-else type="button" class="if-action cursor-not-allowed opacity-60" disabled>
+							{{ nextLearningStepButtonLabel }}
+						</button>
+					</div>
+				</div>
 
 				<div v-else class="mt-5 rounded-2xl border border-dashed border-line-soft p-5">
 					<p class="type-body text-ink/70">No classes or work items are available yet.</p>
@@ -343,6 +361,9 @@ const daySummary = computed(() => {
 const orientationTitle = computed(() => {
 	if (currentClass.value) return 'You are in class';
 	if (nextClass.value) return 'Next class is coming up';
+	if (nextLearningStep.value && !nextLearningStep.value.can_open) {
+		return 'A course is still being prepared';
+	}
 	if (nextLearningStep.value) return 'Continue your learning';
 	return 'Your Hub is clear';
 });
@@ -384,6 +405,10 @@ const boardLanes = computed(() => [
 		items: workBoard.value.done,
 	},
 ]);
+
+const nextLearningStepButtonLabel = computed(() => {
+	return nextLearningStep.value?.cta_label || 'Open course';
+});
 
 async function loadHome() {
 	loadingHome.value = true;

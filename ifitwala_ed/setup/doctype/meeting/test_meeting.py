@@ -7,8 +7,12 @@ from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
 
+import frappe
+
 from ifitwala_ed.setup.doctype.meeting.meeting import (
     _combine_date_and_time,
+    _invalidate_student_calendar_caches_for_participants,
+    _participant_user_ids,
     get_academic_year_for_date,
 )
 
@@ -37,3 +41,34 @@ class TestMeeting(TestCase):
         mock_get_all.return_value = [{"name": "AY-2025"}]
         result = get_academic_year_for_date("SCH-1", "2026-02-01")
         self.assertEqual(result, "AY-2025")
+
+    def test_participant_user_ids_include_previous_rows_when_requested(self):
+        doc = frappe._dict(
+            participants=[frappe._dict(participant="student.current@example.com")],
+        )
+        doc.get_doc_before_save = lambda: frappe._dict(
+            participants=[frappe._dict(participant="student.previous@example.com")]
+        )
+
+        self.assertEqual(
+            _participant_user_ids(doc, include_previous=True),
+            {"student.current@example.com", "student.previous@example.com"},
+        )
+
+    @patch("ifitwala_ed.api.student_calendar.refresh_student_calendar_views")
+    def test_invalidate_student_calendar_caches_for_participants_uses_previous_and_current_users(self, mocked):
+        doc = frappe._dict(
+            name="MTG-0001",
+            participants=[frappe._dict(participant="student.current@example.com")],
+        )
+        doc.get_doc_before_save = lambda: frappe._dict(
+            participants=[frappe._dict(participant="student.previous@example.com")]
+        )
+
+        _invalidate_student_calendar_caches_for_participants(doc, include_previous=True)
+
+        mocked.assert_called_once_with(
+            users=["student.current@example.com", "student.previous@example.com"],
+            source="meeting",
+            source_name="MTG-0001",
+        )

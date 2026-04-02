@@ -166,6 +166,24 @@ def _build_policy_diff_html(previous_text: str | None, current_text: str | None)
     )
 
 
+def _normalize_acknowledgement_clause_text(value: str | None) -> str:
+    return re.sub(r"\s+", " ", (value or "").strip())
+
+
+def _serialize_acknowledgement_clauses(doc: Document | None) -> list[tuple[str, str, int]]:
+    rows = getattr(doc, "acknowledgement_clauses", None) or []
+    serialized: list[tuple[str, str, int]] = []
+    for row in rows:
+        serialized.append(
+            (
+                (getattr(row, "name", None) or "").strip(),
+                _normalize_acknowledgement_clause_text(getattr(row, "clause_text", None)),
+                cint(getattr(row, "is_required", 0)),
+            )
+        )
+    return serialized
+
+
 def _policy_version_write_roles() -> set[str]:
     meta = frappe.get_meta("Policy Version")
     roles: set[str] = set()
@@ -301,6 +319,7 @@ class PolicyVersion(Document):
         self._validate_parent_policy()
         self._validate_unique_version_label()
         self._validate_policy_text_required()
+        self._validate_acknowledgement_clauses()
         self._validate_amendment_chain(require_for_existing_policy=True)
         self._validate_change_summary_requirement()
         self._sync_text_lock_state(before=None, has_ack=False)
@@ -314,6 +333,7 @@ class PolicyVersion(Document):
         has_ack = self._has_acknowledgements() if before else False
 
         self._validate_policy_text_required()
+        self._validate_acknowledgement_clauses()
         self._validate_unique_version_label()
         self._validate_amendment_chain(require_for_existing_policy=self.is_new())
         self._validate_change_summary_requirement()
@@ -321,6 +341,7 @@ class PolicyVersion(Document):
         if before:
             self._enforce_immutability(before)
             self._enforce_policy_text_lock(before, has_ack=has_ack)
+            self._enforce_acknowledgement_clause_lock(before, has_ack=has_ack)
             self._enforce_ack_lock(before, has_ack=has_ack)
 
         self._sync_text_lock_state(before=before, has_ack=has_ack)
@@ -358,6 +379,12 @@ class PolicyVersion(Document):
         if exists:
             frappe.throw(_("Version Label must be unique per Institutional Policy."))
 
+    def _validate_acknowledgement_clauses(self):
+        for row in self.get("acknowledgement_clauses") or []:
+            row.clause_text = _normalize_acknowledgement_clause_text(row.clause_text)
+            if not row.clause_text:
+                frappe.throw(_("Acknowledgement clause text cannot be empty."))
+
     def _enforce_immutability(self, before):
         if before.institutional_policy != self.institutional_policy:
             frappe.throw(_("Institutional Policy is immutable once set."))
@@ -376,6 +403,22 @@ class PolicyVersion(Document):
                 )
             )
 
+    def _acknowledgement_clauses_changed(self, before) -> bool:
+        return _serialize_acknowledgement_clauses(before) != _serialize_acknowledgement_clauses(self)
+
+    def _enforce_acknowledgement_clause_lock(self, before, *, has_ack: bool):
+        if not self._acknowledgement_clauses_changed(before):
+            return
+        if has_ack:
+            return
+        if cint(before.get("is_active")) or cint(before.get("text_locked")):
+            frappe.throw(
+                _(
+                    "Acknowledgement Clauses are immutable once a Policy Version is active or acknowledged. "
+                    "Create a new Policy Version amendment."
+                )
+            )
+
     def _enforce_ack_lock(self, before, *, has_ack: bool):
         if not has_ack:
             return
@@ -390,7 +433,9 @@ class PolicyVersion(Document):
             "change_stats",
             "text_locked",
         )
-        if all(before.get(f) == self.get(f) for f in locked_fields):
+        if all(before.get(f) == self.get(f) for f in locked_fields) and not self._acknowledgement_clauses_changed(
+            before
+        ):
             return
 
         override_reason = getattr(self.flags, "override_reason", None)

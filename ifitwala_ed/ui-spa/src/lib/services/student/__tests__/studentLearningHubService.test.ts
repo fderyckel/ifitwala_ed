@@ -11,11 +11,27 @@ vi.mock('@/resources/frappe', () => ({
 }))
 
 import {
+	getStudentCoursesData,
 	getStudentHubHome,
 	getStudentLearningSpace,
 } from '@/lib/services/student/studentLearningHubService'
 
 describe('studentLearningHubService', () => {
+	it('uses canonical method + direct payload for courses', async () => {
+		apiMethodMock.mockResolvedValue({ courses: [] })
+
+		await getStudentCoursesData({
+			academic_year: '2025-2026',
+		})
+
+		expect(apiMethodMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.courses.get_courses_data',
+			{
+				academic_year: '2025-2026',
+			}
+		)
+	})
+
 	it('uses canonical method + empty payload for home', async () => {
 		apiMethodMock.mockResolvedValue({ learning: { today_classes: [] } })
 

@@ -131,6 +131,14 @@ def _require_student_name() -> str:
     return student_name
 
 
+def _assert_student_course_access(student_name: str, course_id: str) -> None:
+    from ifitwala_ed.api import courses as courses_api
+
+    scope = courses_api._build_student_course_scope(student_name)
+    if course_id not in scope:
+        frappe.throw(_("You do not have access to this course."), frappe.PermissionError)
+
+
 def _assert_student_group_membership(student_name: str, student_group: str) -> None:
     allowed = frappe.db.exists(
         "Student Group Student",
@@ -1299,9 +1307,8 @@ def _build_student_learning_space_payload(
     if not course_id:
         frappe.throw(_("Course is required."), frappe.ValidationError)
 
+    _assert_student_course_access(student_name, course_id)
     group_options = _resolve_student_group_options(student_name, course_id)
-    if not group_options:
-        frappe.throw(_("No class is available for this course yet."), frappe.PermissionError)
 
     selected_group, class_plan_row = _resolve_student_plan(course_id, group_options, student_group)
     if selected_group:
@@ -1378,11 +1385,21 @@ def _build_student_learning_space_payload(
                 units=units_payload,
                 course_plan=resolved_course_plan,
             )
-            message = _("Your teacher has not published a class teaching plan yet. Showing the shared course plan.")
+            if group_options:
+                message = _("Your teacher has not published a class teaching plan yet. Showing the shared course plan.")
+            else:
+                message = _(
+                    "Your class is not available yet. Showing the shared course plan while your class is being assigned."
+                )
         else:
-            message = _(
-                "Your learning space is not available yet because the class teaching plan has not been published."
-            )
+            if group_options:
+                message = _(
+                    "Your learning space is not available yet because the class teaching plan has not been published. Check with your teacher if this class should already be available."
+                )
+            else:
+                message = _(
+                    "Your learning space is not available yet because your class is still being assigned and no shared course plan is published yet. Check with your teacher or academic office if this course should already be available."
+                )
 
     return {
         "meta": {
@@ -2250,7 +2267,7 @@ def _resolve_student_plan(course_id: str, student_groups: list[dict[str, Any]], 
         )
         class_plan_row = rows[0] if rows else None
 
-    return selected_group, class_plan_row
+    return selected_group or None, class_plan_row
 
 
 @frappe.whitelist()

@@ -68,7 +68,10 @@ export type NextLearningStep = {
 	kind: 'scheduled_class' | 'course'
 	title: string
 	subtitle: string
-	href: RouteTarget
+	href?: RouteTarget | null
+	cta_label?: string | null
+	status_label?: string | null
+	can_open?: number
 }
 
 export type WorkItem = {
