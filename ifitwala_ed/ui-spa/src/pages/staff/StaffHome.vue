@@ -417,13 +417,6 @@ const showPickStudentQuickAction = computed(
 /* QUICK ACTIONS ------------------------------------------------ */
 const quickActions = [
 	{
-		label: 'My Growth',
-		caption: 'Requests, budgets, and completion follow-through',
-		icon: 'book-open',
-		to: { name: 'staff-professional-development' },
-		capability: 'staff_professional_development',
-	},
-	{
 		label: 'Update Gradebook',
 		caption: 'Capture evidence, notes, and marks',
 		icon: 'edit-3',
@@ -787,14 +780,9 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 			},
 			{ label: 'Leave Balance', to: '/analytics/staff/leave-balance', capability: 'analytics_hr' },
 			{
-				label: 'Training Progress',
-				to: '/analytics/staff/training-progress',
-				capability: 'analytics_hr',
-			},
-			{
-				label: 'Evaluations Summary',
-				to: '/analytics/staff/evaluations-summary',
-				capability: 'analytics_hr',
+				label: 'My Growth',
+				to: { name: 'staff-professional-development' },
+				capability: 'staff_professional_development',
 			},
 		],
 	},

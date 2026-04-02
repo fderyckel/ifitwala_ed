@@ -104,7 +104,7 @@ import HistoryDialog from '@/components/analytics/HistoryDialog.vue';
 
 const cleanupFns: Array<() => void> = [];
 
-function mountDialog() {
+function mountDialog(overrides: Record<string, unknown> = {}) {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
 
@@ -116,6 +116,7 @@ function mountDialog() {
 					title: 'Clinic Volume',
 					subtitle: 'Student patient visits over time',
 					method: 'ifitwala_ed.api.morning_brief.get_clinic_visits_trend',
+					...overrides,
 				});
 			},
 		})
@@ -157,6 +158,22 @@ describe('HistoryDialog', () => {
 		expect(document.body.textContent).toContain('Ifitwala Secondary School + 2 schools');
 		expect(document.body.textContent).not.toContain('Loading...');
 		expect(document.body.querySelector('[data-analytics-chart="1"]')).not.toBeNull();
+	});
+
+	it('preserves the card school context while the history payload is empty', async () => {
+		mocks.resourceState.data = {
+			message: {
+				data: [],
+			},
+		};
+
+		mountDialog({
+			initialSchool: 'Ifitwala Secondary School + 2 schools',
+		});
+		await nextTick();
+
+		expect(document.body.textContent).toContain('Ifitwala Secondary School + 2 schools');
+		expect(document.body.textContent).not.toContain('Loading...');
 	});
 
 	it('shows an actionable error when the history fetch fails', async () => {

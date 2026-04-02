@@ -264,6 +264,7 @@ const props = defineProps<{
 	color?: string;
 	params?: Record<string, any>;
 	title?: string;
+	initialSchool?: string;
 	comments?: HistoryComment[];
 	loadingComments?: boolean;
 	rangeOptions?: ReadonlyArray<{ label: string; value: string }>;
@@ -326,8 +327,13 @@ const errorMessage = computed(() => {
 	return __('Unable to load history.');
 });
 const schoolName = computed(() => {
+	const resolvedSchool =
+		(typeof payload.value?.school === 'string' && payload.value.school.trim()) ||
+		(typeof props.initialSchool === 'string' && props.initialSchool.trim()) ||
+		'';
+	if (resolvedSchool) return resolvedSchool;
 	if (errorMessage.value) return __('Unavailable');
-	return payload.value?.school || __('Loading...');
+	return __('Loading...');
 });
 const totalPoints = computed(() => payload.value?.data?.length || 0);
 const totalCount = computed(() => {
