@@ -137,7 +137,7 @@ def list_attendance_codes(show_in_attendance_tool: int | None = 1) -> List[Dict[
 
     records = frappe.db.get_all(
         ATT_CODE_DOCTYPE,
-        fields=["name", "attendance_code", "attendance_code_name", "display_order", "color"],
+        fields=["name", "attendance_code", "attendance_code_name", "display_order", "color", "is_default"],
         filters=filters,
         order_by="display_order asc, attendance_code_name asc",
     )

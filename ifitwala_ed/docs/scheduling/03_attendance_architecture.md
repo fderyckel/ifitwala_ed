@@ -320,6 +320,10 @@ It provides:
 - filter bootstrap context
 - group context with weekend days, meeting dates, recorded dates, and default selected date
 - roster context with students, previous status hints, existing attendance map, and scheduled blocks
+- fresh-install attendance code defaults: `Present`, `Absent`, `Late`, `Informed Absence`, `Field Trip`
+- those seeded defaults are report-visible; `Present`, `Absent`, `Late`, and `Field Trip` are shown in the attendance tool by default, while `Informed Absence` starts hidden there
+- `Present` is the only default code on a fresh install
+- `count_as_present = 1` for `Present`, `Late`, and `Field Trip`; `Absent` and `Informed Absence` remain non-present
 
 This is a bounded bootstrap/read-model design and must stay aligned with `docs/high_concurrency_contract.md`.
 

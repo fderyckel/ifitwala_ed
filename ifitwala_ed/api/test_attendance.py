@@ -93,13 +93,79 @@ class TestAttendanceApi(TestCase):
         }
         mock_programs.return_value = [{"name": "PROG-1", "program_name": "Program 1"}]
         mock_groups.return_value = [{"name": "SG-ONLY", "student_group_name": "Only Group"}]
-        mock_codes.return_value = [{"name": "P", "attendance_code": "P", "attendance_code_name": "Present"}]
+        mock_codes.return_value = [
+            {
+                "name": "P",
+                "attendance_code": "P",
+                "attendance_code_name": "Present",
+                "is_default": 1,
+            }
+        ]
 
         payload = student_attendance.fetch_attendance_tool_bootstrap()
 
         self.assertEqual(payload["default_student_group"], "SG-ONLY")
         self.assertEqual(payload["default_code"], "P")
         self.assertEqual(payload["attendance_codes"][0]["attendance_code_name"], "Present")
+
+    @patch("ifitwala_ed.api.student_attendance._cached_context", side_effect=lambda _k, _r, builder: builder())
+    @patch("ifitwala_ed.api.student_attendance.list_attendance_codes")
+    @patch("ifitwala_ed.api.student_attendance.fetch_portal_student_groups")
+    @patch("ifitwala_ed.api.student_attendance.fetch_active_programs")
+    @patch("ifitwala_ed.api.student_attendance.fetch_school_filter_context")
+    def test_fetch_attendance_tool_bootstrap_falls_back_to_all_codes_when_tool_filter_is_empty(
+        self,
+        mock_school_context,
+        mock_programs,
+        mock_groups,
+        mock_codes,
+        _mock_cached,
+    ):
+        mock_school_context.return_value = {
+            "default_school": "SCH-1",
+            "schools": [{"name": "SCH-1", "school_name": "School 1"}],
+        }
+        mock_programs.return_value = [{"name": "PROG-1", "program_name": "Program 1"}]
+        mock_groups.return_value = [{"name": "SG-1", "student_group_name": "Group 1"}]
+        mock_codes.side_effect = [
+            [],
+            [{"name": "P", "attendance_code": "P", "attendance_code_name": "Present"}],
+        ]
+
+        payload = student_attendance.fetch_attendance_tool_bootstrap()
+
+        self.assertEqual(payload["default_code"], "P")
+        self.assertEqual(payload["attendance_codes"][0]["attendance_code"], "P")
+        self.assertEqual(mock_codes.call_count, 2)
+        self.assertEqual(mock_codes.call_args_list[1].kwargs, {"show_in_attendance_tool": None})
+
+    @patch("ifitwala_ed.api.student_attendance._cached_context", side_effect=lambda _k, _r, builder: builder())
+    @patch("ifitwala_ed.api.student_attendance.list_attendance_codes")
+    @patch("ifitwala_ed.api.student_attendance.fetch_portal_student_groups")
+    @patch("ifitwala_ed.api.student_attendance.fetch_active_programs")
+    @patch("ifitwala_ed.api.student_attendance.fetch_school_filter_context")
+    def test_fetch_attendance_tool_bootstrap_prefers_code_marked_default(
+        self,
+        mock_school_context,
+        mock_programs,
+        mock_groups,
+        mock_codes,
+        _mock_cached,
+    ):
+        mock_school_context.return_value = {
+            "default_school": "SCH-1",
+            "schools": [{"name": "SCH-1", "school_name": "School 1"}],
+        }
+        mock_programs.return_value = [{"name": "PROG-1", "program_name": "Program 1"}]
+        mock_groups.return_value = [{"name": "SG-1", "student_group_name": "Group 1"}]
+        mock_codes.return_value = [
+            {"name": "A", "attendance_code": "A", "attendance_code_name": "Absent", "is_default": 0},
+            {"name": "P", "attendance_code": "P", "attendance_code_name": "Present", "is_default": 1},
+        ]
+
+        payload = student_attendance.fetch_attendance_tool_bootstrap()
+
+        self.assertEqual(payload["default_code"], "P")
 
     @patch("ifitwala_ed.api.student_attendance.attendance_recorded_dates")
     @patch("ifitwala_ed.api.student_attendance.get_meeting_dates")

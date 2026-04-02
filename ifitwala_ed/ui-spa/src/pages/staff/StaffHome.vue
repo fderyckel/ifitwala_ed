@@ -61,7 +61,7 @@
 
 				<div class="grid min-w-0 gap-3">
 					<button
-						v-if="userCapabilities.quick_action_pick_student"
+						v-if="showPickStudentQuickAction"
 						type="button"
 						class="action-tile group w-full min-w-0"
 						@click="openPickStudent"
@@ -350,6 +350,7 @@ import { FeatherIcon, toast } from 'frappe-ui';
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue';
 import FocusListCard from '@/components/focus/FocusListCard.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { createClassHubService } from '@/lib/classHubService';
 import {
 	getStaffHomeHeader,
 	listFocusItems,
@@ -384,10 +385,14 @@ import {
 
 /* USER --------------------------------------------------------- */
 const userDoc = ref<StaffHomeHeader | null>(null);
+const classHubService = createClassHubService();
+const pickStudentHasCurrentClass = ref(false);
+const pickStudentAvailabilityLoading = ref(false);
 
 onMounted(async () => {
 	try {
 		userDoc.value = await getStaffHomeHeader();
+		await refreshPickStudentQuickActionAvailability();
 	} catch (err) {
 		console.error('[StaffHome] Failed to load header:', err);
 	}
@@ -403,6 +408,10 @@ const firstName = computed(() => {
 
 const userCapabilities = computed<Record<string, boolean>>(
 	() => userDoc.value?.capabilities ?? {}
+);
+const showPickStudentQuickAction = computed(
+	() =>
+		Boolean(userCapabilities.value.quick_action_pick_student) && pickStudentHasCurrentClass.value
 );
 
 /* QUICK ACTIONS ------------------------------------------------ */
@@ -437,7 +446,7 @@ function isQuickActionVisible(action: { capability?: string }) {
 const visibleQuickActions = computed(() => quickActions.filter(isQuickActionVisible));
 const hasVisibleQuickActions = computed(
 	() =>
-		Boolean(userCapabilities.value.quick_action_pick_student) ||
+		showPickStudentQuickAction.value ||
 		Boolean(userCapabilities.value.quick_action_create_task) ||
 		Boolean(userCapabilities.value.quick_action_create_event) ||
 		Boolean(userCapabilities.value.quick_action_student_log) ||
@@ -558,9 +567,33 @@ let disposeOrgCommunicationInvalidate: (() => void) | null = null;
 // Avoids global spam if student_log:invalidate is emitted from other surfaces.
 const pendingStudentLogSavedToast = ref(false);
 
+async function refreshPickStudentQuickActionAvailability() {
+	if (!userCapabilities.value.quick_action_pick_student) {
+		pickStudentHasCurrentClass.value = false;
+		return;
+	}
+
+	if (pickStudentAvailabilityLoading.value) return;
+
+	pickStudentAvailabilityLoading.value = true;
+	try {
+		const payload = await classHubService.resolveCurrentPickerContext();
+		pickStudentHasCurrentClass.value =
+			payload.status === 'ready' || payload.status === 'multiple_current';
+	} catch (err) {
+		pickStudentHasCurrentClass.value = false;
+		console.error('[StaffHome] Failed to resolve current class for pick student:', err);
+	} finally {
+		pickStudentAvailabilityLoading.value = false;
+	}
+}
+
 function onVisibilityChange() {
 	if (document.visibilityState === 'visible' && shouldRefreshOnVisibility()) {
 		refreshFocus('visibility');
+	}
+	if (document.visibilityState === 'visible') {
+		void refreshPickStudentQuickActionAvailability();
 	}
 }
 
@@ -608,6 +641,7 @@ onMounted(async () => {
 		focusTimer = setInterval(() => {
 			if (document.visibilityState === 'visible') {
 				refreshFocus('interval');
+				void refreshPickStudentQuickActionAvailability();
 			}
 		}, FOCUS_POLL_MS);
 	}
