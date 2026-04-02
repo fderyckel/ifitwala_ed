@@ -581,9 +581,7 @@
 												v-if="criterion.levels && criterion.levels.length"
 												type="select"
 												size="sm"
-												:options="criterion.levels"
-												option-label="level"
-												option-value="level"
+												:options="criterionLevelOptions(criterion)"
 												placeholder="Level Achieved"
 												:model-value="
 													getCriterionState(student.task_student, criterion.assessment_criteria)
@@ -766,6 +764,7 @@ const filters = reactive({
 const defaultSchool = ref<string | null>(null);
 const schools = ref<FetchSchoolFilterContextResponse['schools']>([]);
 const schoolsLoading = ref(false);
+const routeGroupResolving = ref(false);
 
 const groups = ref<GroupSummary[]>([]);
 const groupsLoading = ref(false);
@@ -859,7 +858,7 @@ async function loadSchoolContext() {
 }
 
 // 2. Groups Loader
-async function loadGroups() {
+async function loadGroups(options: { skipRouteGroupSync?: boolean } = {}) {
 	groupsLoading.value = true;
 	try {
 		const rows = await gradebookService.fetchGroups({
@@ -876,7 +875,9 @@ async function loadGroups() {
 		}
 		groups.value = rows;
 
-		applyRouteGroupFromQuery();
+		if (!options.skipRouteGroupSync) {
+			await applyRouteGroupFromQuery();
+		}
 	} catch (error) {
 		console.error('Failed to load student groups', error);
 		showDangerToast('Could not load student groups');
@@ -950,11 +951,21 @@ async function syncRoster() {
 /* COMPUTED - FILTER OPTIONS & DERIVED DATA ---------------------- */
 
 const schoolOptions = computed(() => {
-	const base = schools.value.map(s => ({ school_name: s.school_name || s.name, name: s.name }));
+	const base = schools.value.map(s => ({
+		label: s.school_name || s.name,
+		value: s.name,
+	}));
 	if (defaultSchool.value) return base;
 	// If no default school (admin global), add All option
-	return [{ school_name: 'All Schools', name: null }, ...base];
+	return [{ label: 'All Schools', value: null }, ...base];
 });
+
+function criterionLevelOptions(criterion: CriterionPayload) {
+	return (criterion.levels || []).map(level => ({
+		label: level.level,
+		value: level.level,
+	}));
+}
 
 // Derived Groups: Filter raw groups list by top bar selections
 const derivedGroups = computed(() => {
@@ -1120,6 +1131,13 @@ function resetFilters() {
 	void loadGroups();
 }
 
+function syncFiltersToGroup(group: GroupSummary) {
+	filters.school = group.school || null;
+	filters.academic_year = group.academic_year || null;
+	filters.program = group.program || null;
+	filters.course = group.course || null;
+}
+
 // Downstream Clearing Logic
 // Watch derivedGroups: if selectedGroup is no longer in it, deselect.
 watch(derivedGroups, newList => {
@@ -1204,14 +1222,44 @@ function currentRouteStudentGroup(): string | null {
 
 const pendingRouteGroup = ref<string | null>(currentRouteStudentGroup());
 
-function applyRouteGroupFromQuery() {
+async function findRouteGroup(target: string) {
+	const rows = await gradebookService.fetchGroups({
+		search: target,
+		limit: 20,
+	});
+	return rows.find(row => row.name === target) || null;
+}
+
+async function applyRouteGroupFromQuery() {
 	const target = pendingRouteGroup.value;
-	if (!target || !groups.value.length) return;
-	const match = groups.value.find(row => row.name === target);
-	if (match) {
-		selectedGroup.value = match;
-		// IMPORTANT: If group is loaded from URL, we should try to set filters to match it
-		// so it's not hidden. But simple logic: don't force School filter change yet.
+	if (!target || routeGroupResolving.value) return;
+
+	routeGroupResolving.value = true;
+	try {
+		const visibleMatch = groups.value.find(row => row.name === target);
+		if (visibleMatch) {
+			syncFiltersToGroup(visibleMatch);
+			selectedGroup.value = visibleMatch;
+			pendingRouteGroup.value = null;
+			return;
+		}
+
+		const resolvedMatch = await findRouteGroup(target);
+		if (!resolvedMatch) {
+			pendingRouteGroup.value = null;
+			showDangerToast('Linked student group is no longer available.');
+			return;
+		}
+
+		syncFiltersToGroup(resolvedMatch);
+		await loadGroups({ skipRouteGroupSync: true });
+		selectedGroup.value = groups.value.find(row => row.name === target) || resolvedMatch;
+		pendingRouteGroup.value = null;
+	} catch (error) {
+		console.error('Failed to resolve linked student group', error);
+		showDangerToast('Could not load the linked student group');
+	} finally {
+		routeGroupResolving.value = false;
 	}
 }
 
@@ -1322,7 +1370,7 @@ watch(
 	() => {
 		pendingRouteGroup.value = currentRouteStudentGroup();
 		if (pendingRouteGroup.value) {
-			applyRouteGroupFromQuery();
+			void applyRouteGroupFromQuery();
 		}
 	}
 );
