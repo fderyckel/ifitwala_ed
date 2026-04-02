@@ -52,6 +52,8 @@ Rules:
 3. Recent task-result rows appear only when `Task Outcome.is_published = 1`.
 4. Attendance rows on Guardian Home are exception-focused and limited to linked students.
 5. The family attendance surface may read only linked-student rows from `Student Attendance`, `Student Attendance Code`, and `Course`.
+6. `learning_highlights` and guardian child learning briefs may expose only guardian-safe summaries of current unit themes, upcoming learning experiences, next published learning step, and family discussion prompts.
+7. Guardian curriculum briefings must not expose teacher notes, class reflections, pacing notes, staff prompts, or raw daily activity detail.
 
 ## 3. Policy Visibility
 

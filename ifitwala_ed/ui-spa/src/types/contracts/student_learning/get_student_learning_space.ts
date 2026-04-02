@@ -117,6 +117,38 @@ export type StudentLearningUnit = {
 	sessions: StudentLearningSession[]
 }
 
+export type StudentLearningFocus = {
+	current_unit?: {
+		unit_plan: string
+		title: string
+	} | null
+	current_session?: {
+		class_session: string
+		title: string
+		session_date?: string | null
+		learning_goal?: string | null
+	} | null
+	statement?: string | null
+}
+
+export type StudentLearningNextAction = {
+	kind: 'assigned_work' | 'quiz' | 'session'
+	label: string
+	supporting_text?: string | null
+	task_delivery?: string | null
+	class_session?: string | null
+	unit_plan?: string | null
+}
+
+export type StudentLearningNavigationUnit = {
+	unit_plan: string
+	title: string
+	unit_order?: number | null
+	session_count: number
+	assigned_work_count: number
+	is_current: number
+}
+
 export type Response = {
 	meta: {
 		generated_at: string
@@ -147,6 +179,15 @@ export type Response = {
 		course_plan?: string | null
 	}
 	message?: string | null
+	learning: {
+		focus: StudentLearningFocus
+		next_actions: StudentLearningNextAction[]
+		selected_context: {
+			unit_plan?: string | null
+			class_session?: string | null
+		}
+		unit_navigation: StudentLearningNavigationUnit[]
+	}
 	resources: {
 		shared_resources: StudentLearningMaterial[]
 		class_resources: StudentLearningMaterial[]

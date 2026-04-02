@@ -22,6 +22,7 @@ Current response contract:
 - `access`
 - `teaching_plan`
 - `message`
+- `learning`
 - `resources`
 - `curriculum.units`
 
@@ -36,6 +37,7 @@ Current product behavior:
 - class-aware planning is the primary student reality
 - shared course-plan content is fallback only
 - the student sees explicit unavailable or fallback messaging instead of silent failure
+- the server resolves `learning.focus`, `learning.next_actions`, `learning.selected_context`, and `learning.unit_navigation`
 
 ## Curriculum Read Model In The LMS
 
@@ -45,7 +47,9 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/pag
 
 The student learning space currently renders:
 
-- unit backbone
+- learning focus
+- next actions
+- unit journey
 - class sessions inside each unit
 - unit resources
 - session resources

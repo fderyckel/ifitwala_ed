@@ -11,6 +11,7 @@ from ifitwala_ed.api.guardian_home import (
     _find_forbidden_keys,
     _resolve_chip_status,
     get_guardian_home_snapshot,
+    get_guardian_student_learning_brief,
 )
 
 
@@ -33,6 +34,7 @@ class TestGuardianHome(FrappeTestCase):
         self.assertEqual(payload["zones"]["attention_needed"], [])
         self.assertEqual(payload["zones"]["preparation_and_support"], [])
         self.assertEqual(payload["zones"]["recent_activity"], [])
+        self.assertEqual(payload["zones"]["learning_highlights"], [])
         self.assertEqual(
             payload["counts"],
             {
@@ -144,6 +146,15 @@ class TestGuardianHome(FrappeTestCase):
         recent_activity = [
             {"type": "communication", "communication": "COMM-1", "date": "2026-02-01", "title": "School message"}
         ]
+        learning_highlights = [
+            {
+                "student": "STU-0001",
+                "student_name": "Amina Example",
+                "course": "COURSE-1",
+                "course_name": "Biology",
+                "unit_title": "Cells and Systems",
+            }
+        ]
 
         with (
             patch("ifitwala_ed.api.guardian_home.frappe.session", frappe._dict({"user": "guardian@example.com"})),
@@ -161,6 +172,7 @@ class TestGuardianHome(FrappeTestCase):
             patch("ifitwala_ed.api.guardian_home._build_communication_bundle", return_value=communication_bundle),
             patch("ifitwala_ed.api.guardian_home._build_preparation_items", return_value=prep_items),
             patch("ifitwala_ed.api.guardian_home._build_recent_activity", return_value=recent_activity),
+            patch("ifitwala_ed.api.guardian_home._build_learning_highlights", return_value=learning_highlights),
             patch("ifitwala_ed.api.guardian_home._assert_no_internal_schedule_keys") as leakage_mock,
         ):
             payload = get_guardian_home_snapshot(anchor_date="2026-02-02", school_days=7)
@@ -170,6 +182,7 @@ class TestGuardianHome(FrappeTestCase):
         self.assertEqual(payload["zones"]["family_timeline"], family_timeline)
         self.assertEqual(payload["zones"]["preparation_and_support"], prep_items)
         self.assertEqual(payload["zones"]["recent_activity"], recent_activity)
+        self.assertEqual(payload["zones"]["learning_highlights"], learning_highlights)
         self.assertEqual(payload["counts"]["unread_communications"], 3)
         self.assertEqual(payload["counts"]["unread_visible_student_logs"], 1)
         self.assertEqual(payload["counts"]["upcoming_due_tasks"], 2)
@@ -249,3 +262,39 @@ class TestGuardianHome(FrappeTestCase):
         _assert_no_internal_schedule_keys(payload=payload, debug_mode=False, debug_warnings=warnings)
         self.assertEqual(len(warnings), 1)
         self.assertIn("guardian_home_forbidden_keys_detected", warnings[0])
+
+    def test_guardian_student_learning_brief_rejects_non_linked_student(self):
+        with patch(
+            "ifitwala_ed.api.guardian_home._resolve_guardian_scope",
+            return_value=(
+                "GRD-0001",
+                [{"student": "STU-0001", "full_name": "Amina Example", "school": "School One"}],
+            ),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                get_guardian_student_learning_brief("STU-9999")
+
+    def test_guardian_student_learning_brief_serializes_course_briefs(self):
+        child = {"student": "STU-0001", "full_name": "Amina Example", "school": "School One"}
+        course_briefs = [{"course": "COURSE-1", "course_name": "Biology"}]
+
+        with (
+            patch("ifitwala_ed.api.guardian_home.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch(
+                "ifitwala_ed.api.guardian_home._resolve_guardian_scope",
+                return_value=("GRD-0001", [child]),
+            ),
+            patch(
+                "ifitwala_ed.api.guardian_home._build_guardian_student_course_briefs",
+                return_value=course_briefs,
+            ),
+            patch(
+                "ifitwala_ed.api.guardian_home.now_datetime",
+                return_value=frappe.utils.get_datetime("2026-02-02 08:00:00"),
+            ),
+        ):
+            payload = get_guardian_student_learning_brief("STU-0001")
+
+        self.assertEqual(payload["meta"]["guardian"]["name"], "GRD-0001")
+        self.assertEqual(payload["student"]["student"], "STU-0001")
+        self.assertEqual(payload["course_briefs"], course_briefs)

@@ -83,6 +83,61 @@
 		<template v-else>
 			<section class="card-surface p-5">
 				<div class="mb-4 flex items-center justify-between">
+					<div>
+						<h2 class="type-h3 text-ink">Learning Highlights</h2>
+						<p class="mt-1 type-caption text-ink/70">
+							Big themes and good dinner-table prompts for each child.
+						</p>
+					</div>
+					<span class="chip">{{ learningHighlights.length }}</span>
+				</div>
+				<div v-if="!learningHighlights.length" class="type-body text-ink/70">
+					Learning highlights will appear here once class plans are available.
+				</div>
+				<div v-else class="grid gap-4 lg:grid-cols-2">
+					<article
+						v-for="highlight in learningHighlights"
+						:key="`${highlight.student}-${highlight.course}`"
+						class="rounded-xl border border-line-soft bg-surface-soft p-4"
+					>
+						<div class="flex items-start justify-between gap-3">
+							<div>
+								<RouterLink
+									:to="{ name: 'guardian-student', params: { student_id: highlight.student } }"
+									class="type-body-strong text-jacaranda hover:underline"
+								>
+									{{ highlight.student_name || childName(highlight.student) }}
+								</RouterLink>
+								<p class="mt-1 type-caption text-ink/60">
+									{{ highlight.course_name || 'Current course' }}
+									<span v-if="highlight.class_label">· {{ highlight.class_label }}</span>
+								</p>
+							</div>
+							<span v-if="highlight.unit_title" class="chip">{{ highlight.unit_title }}</span>
+						</div>
+
+						<p v-if="highlight.focus_statement" class="mt-3 type-body text-ink/80">
+							{{ highlight.focus_statement }}
+						</p>
+						<p v-if="highlight.next_step" class="mt-3 type-caption text-ink/70">
+							Next: {{ highlight.next_step }}
+							<span v-if="highlight.next_step_supporting_text">
+								· {{ highlight.next_step_supporting_text }}
+							</span>
+						</p>
+						<div
+							v-if="highlight.dinner_prompt"
+							class="mt-4 rounded-lg border border-line-soft bg-white p-3"
+						>
+							<p class="type-overline text-ink/60">Dinner discussion</p>
+							<p class="mt-2 type-body text-ink/80">{{ highlight.dinner_prompt }}</p>
+						</div>
+					</article>
+				</div>
+			</section>
+
+			<section class="card-surface p-5">
+				<div class="mb-4 flex items-center justify-between">
 					<h2 class="type-h3 text-ink">Family Timeline</h2>
 				</div>
 				<div v-if="!familyTimeline.length" class="type-body text-ink/70">
@@ -274,6 +329,7 @@ const familyTimeline = computed(() => snapshot.value?.zones.family_timeline ?? [
 const attentionItems = computed(() => snapshot.value?.zones.attention_needed ?? []);
 const prepItems = computed(() => snapshot.value?.zones.preparation_and_support ?? []);
 const recentActivity = computed(() => snapshot.value?.zones.recent_activity ?? []);
+const learningHighlights = computed(() => snapshot.value?.zones.learning_highlights ?? []);
 
 const quickLinks = [
 	{

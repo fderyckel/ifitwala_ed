@@ -21,6 +21,7 @@ export type Response = {
 		attention_needed: AttentionItem[]
 		preparation_and_support: PrepItem[]
 		recent_activity: RecentActivityItem[]
+		learning_highlights: LearningHighlight[]
 	}
 	counts: {
 		unread_communications: number
@@ -111,6 +112,19 @@ export type PrepItem = {
 }
 
 export type RecentActivityItem = PublishedResultItem | StudentLogItem | CommunicationItem
+
+export type LearningHighlight = {
+	student: string
+	student_name?: string | null
+	course?: string | null
+	course_name?: string | null
+	class_label?: string | null
+	unit_title?: string | null
+	focus_statement?: string | null
+	next_step?: string | null
+	next_step_supporting_text?: string | null
+	dinner_prompt?: string | null
+}
 
 export type PublishedResultItem = {
 	type: 'task_result'

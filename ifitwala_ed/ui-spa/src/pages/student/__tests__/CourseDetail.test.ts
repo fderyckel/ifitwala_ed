@@ -71,6 +71,45 @@ function buildPayload(): StudentLearningSpaceResponse {
 			course_plan: 'COURSE-PLAN-00001',
 		},
 		message: null,
+		learning: {
+			focus: {
+				current_unit: {
+					unit_plan: 'UNIT-PLAN-1',
+					title: 'Cells and Systems',
+				},
+				current_session: {
+					class_session: 'CLASS-SESSION-1',
+					title: 'Microscope evidence walk',
+					session_date: '2026-04-01',
+					learning_goal: 'Use evidence from microscope observations to compare cell structures.',
+				},
+				statement: 'Use evidence from microscope observations to compare cell structures.',
+			},
+			next_actions: [
+				{
+					kind: 'quiz',
+					label: 'Continue Cell Structure Checkpoint',
+					supporting_text: 'In Progress',
+					task_delivery: 'TDL-QUIZ-1',
+					class_session: 'CLASS-SESSION-1',
+					unit_plan: 'UNIT-PLAN-1',
+				},
+			],
+			selected_context: {
+				unit_plan: 'UNIT-PLAN-1',
+				class_session: 'CLASS-SESSION-1',
+			},
+			unit_navigation: [
+				{
+					unit_plan: 'UNIT-PLAN-1',
+					title: 'Cells and Systems',
+					unit_order: 1,
+					session_count: 2,
+					assigned_work_count: 1,
+					is_current: 1,
+				},
+			],
+		},
 		resources: {
 			shared_resources: [],
 			class_resources: [],
@@ -220,11 +259,13 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Learning Space')
 		expect(document.body.textContent).toContain('Biology')
 		expect(document.body.textContent).toContain('Class plan published')
-		expect(document.body.textContent).toContain('What this unit is about')
+		expect(document.body.textContent).toContain('Learning Focus')
+		expect(document.body.textContent).toContain('What to do next')
+		expect(document.body.textContent).toContain('This Unit')
 		expect(document.body.textContent).toContain('Structure and function are linked in living systems.')
 		expect(document.body.textContent).toContain('Microscope evidence walk')
 		expect(document.body.textContent).toContain('Observation walk')
-		expect(document.body.textContent).toContain('Continue quiz')
+		expect(document.body.textContent).toContain('Continue Cell Structure Checkpoint')
 		expect(document.body.textContent).toContain('Cell Structure Checkpoint')
 		expect(document.body.textContent).not.toContain('Teacher note')
 

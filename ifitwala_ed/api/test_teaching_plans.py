@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import datetime
 from types import ModuleType, SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
@@ -164,6 +165,136 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload[0]["submission_status"], "Submitted")
         self.assertEqual(payload[0]["quiz_state"]["can_continue"], 1)
         self.assertEqual(payload[0]["quiz_state"]["status_label"], "In Progress")
+
+    def test_get_student_learning_space_includes_focus_and_next_actions(self):
+        with _teaching_plans_module() as module:
+            with (
+                patch.object(module, "_require_student_name", return_value="STU-1"),
+                patch.object(
+                    module,
+                    "_resolve_student_group_options",
+                    return_value=[{"student_group": "GROUP-1", "label": "Biology A"}],
+                ),
+                patch.object(
+                    module,
+                    "_resolve_student_plan",
+                    return_value=(
+                        "GROUP-1",
+                        {
+                            "name": "CLASS-PLAN-1",
+                            "title": "Biology A",
+                            "planning_status": "Active",
+                        },
+                    ),
+                ),
+                patch.object(module, "_assert_student_group_membership", return_value=None),
+                patch.object(
+                    module.frappe.db,
+                    "get_value",
+                    return_value={
+                        "name": "COURSE-1",
+                        "course_name": "Biology",
+                        "course_group": "Science",
+                        "description": "Course description",
+                        "course_image": "/files/biology.jpg",
+                    },
+                ),
+                patch.object(
+                    module.frappe,
+                    "get_doc",
+                    return_value=SimpleNamespace(name="CLASS-PLAN-1", course_plan="COURSE-PLAN-1"),
+                ),
+                patch.object(module, "_build_unit_lookup", return_value={}),
+                patch.object(
+                    module,
+                    "_serialize_backbone_units",
+                    return_value=[
+                        {
+                            "unit_plan": "UNIT-1",
+                            "title": "Cells and Systems",
+                            "unit_order": 10,
+                            "overview": "Shared unit overview",
+                            "essential_understanding": "Systems work together.",
+                            "content": "Cells",
+                            "skills": "Observe",
+                            "concepts": "Systems",
+                            "standards": [],
+                            "shared_resources": [],
+                            "assigned_work": [],
+                        }
+                    ],
+                ),
+                patch.object(
+                    module,
+                    "_fetch_class_sessions",
+                    return_value=[
+                        {
+                            "class_session": "SESSION-1",
+                            "title": "Microscope evidence walk",
+                            "unit_plan": "UNIT-1",
+                            "session_status": "Planned",
+                            "session_date": "2026-04-04",
+                            "learning_goal": "Use microscope evidence to compare cells.",
+                            "activities": [],
+                            "resources": [],
+                            "assigned_work": [],
+                        }
+                    ],
+                ),
+                patch.object(
+                    module,
+                    "_fetch_assigned_work",
+                    return_value=[
+                        {
+                            "task_delivery": "TDL-1",
+                            "task": "TASK-1",
+                            "title": "Cell Structure Checkpoint",
+                            "task_type": "Quiz",
+                            "unit_plan": "UNIT-1",
+                            "class_session": "SESSION-1",
+                            "due_date": "2026-04-05 09:00:00",
+                            "quiz_state": {
+                                "can_continue": 1,
+                                "status_label": "In Progress",
+                            },
+                            "materials": [],
+                        }
+                    ],
+                ),
+                patch.object(
+                    module,
+                    "_attach_resources_and_work",
+                    return_value={
+                        "shared_resources": [],
+                        "class_resources": [],
+                        "general_assigned_work": [
+                            {
+                                "task_delivery": "TDL-1",
+                                "task": "TASK-1",
+                                "title": "Cell Structure Checkpoint",
+                                "task_type": "Quiz",
+                                "unit_plan": "UNIT-1",
+                                "class_session": "SESSION-1",
+                                "due_date": "2026-04-05 09:00:00",
+                                "quiz_state": {
+                                    "can_continue": 1,
+                                    "status_label": "In Progress",
+                                },
+                                "materials": [],
+                            }
+                        ],
+                    },
+                ),
+                patch.object(module, "now_datetime", return_value=datetime(2026, 4, 2, 9, 0, 0)),
+            ):
+                payload = module.get_student_learning_space("COURSE-1", "GROUP-1")
+
+        self.assertEqual(payload["learning"]["focus"]["current_unit"]["unit_plan"], "UNIT-1")
+        self.assertEqual(payload["learning"]["focus"]["current_session"]["class_session"], "SESSION-1")
+        self.assertEqual(payload["learning"]["selected_context"]["unit_plan"], "UNIT-1")
+        self.assertEqual(payload["learning"]["selected_context"]["class_session"], "SESSION-1")
+        self.assertEqual(payload["learning"]["next_actions"][0]["kind"], "quiz")
+        self.assertIn("Cell Structure Checkpoint", payload["learning"]["next_actions"][0]["label"])
 
     def test_build_unit_lookup_includes_shared_and_class_reflections_for_staff(self):
         with _teaching_plans_module() as module:

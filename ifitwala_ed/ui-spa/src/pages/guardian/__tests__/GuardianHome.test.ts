@@ -163,6 +163,20 @@ describe('GuardianHome', () => {
 						published_by: 'Teacher One',
 					},
 				],
+				learning_highlights: [
+					{
+						student: 'STU-1',
+						student_name: 'Amina Example',
+						course: 'COURSE-1',
+						course_name: 'Biology',
+						class_label: 'Biology A',
+						unit_title: 'Cells and Systems',
+						focus_statement: 'Students are comparing how cell structures work together.',
+						next_step: 'Complete Cell Structure Checkpoint',
+						next_step_supporting_text: 'Due 2026-03-14',
+						dinner_prompt: 'Ask how this unit connects to structure and function in living systems.',
+					},
+				],
 			},
 			counts: {
 				unread_communications: 2,
@@ -178,6 +192,9 @@ describe('GuardianHome', () => {
 		expect(getGuardianHomeSnapshotMock).toHaveBeenCalledWith({ school_days: 7 })
 		const text = document.body.textContent || ''
 		expect(text).toContain('Family Snapshot')
+		expect(text).toContain('Learning Highlights')
+		expect(text).toContain('Students are comparing how cell structures work together.')
+		expect(text).toContain('Dinner discussion')
 		expect(text).toContain('Unread communications')
 		expect(text).toContain('2')
 		expect(text).toContain('Family Timeline')

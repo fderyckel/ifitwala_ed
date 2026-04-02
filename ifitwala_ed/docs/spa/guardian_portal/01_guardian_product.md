@@ -30,6 +30,7 @@ Rules:
 3. The portal answers three questions first: what is happening, what needs attention, and what needs preparation.
 4. The portal is an awareness surface, not a live gradebook or a staff tool.
 5. Any curriculum-aware expansion must stay a family briefing layer, not a second student LMS.
+6. Curriculum visibility now includes `learning_highlights` on Guardian Home and a child-level learning brief on `/guardian/students/:student_id`.
 
 ## 2. User Model And Interaction Model
 
@@ -87,8 +88,8 @@ Surface matrix:
 
 | Route | Surface | Status | Purpose |
 | --- | --- | --- | --- |
-| `/guardian` | Guardian Home | Implemented | Family snapshot with counts, quick links, and four briefing zones. |
-| `/guardian/students/:student_id` | Guardian Student Shell | Implemented | Child-specific read view derived from the same guardian snapshot payload. |
+| `/guardian` | Guardian Home | Implemented | Family snapshot with counts, quick links, and five briefing zones including learning highlights. |
+| `/guardian/students/:student_id` | Guardian Student Shell | Implemented | Child-specific learning brief with course themes, upcoming experiences, and home-support prompts. |
 | `/guardian/course-selection` | Guardian Course Selection | Implemented | Family-first academic self-enrollment board for linked children. |
 | `/guardian/course-selection/:selection_window/:student_id` | Guardian Course Selection Detail | Implemented | Child-specific course-choice editor for one invited selection window. |
 | `/guardian/activities` | Guardian Activities | Implemented | Family-first activity booking and management flow. |
