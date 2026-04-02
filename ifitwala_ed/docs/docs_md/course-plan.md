@@ -3,7 +3,7 @@ title: "Course Plan: Shared Curriculum Version For A Course"
 slug: course-plan
 category: Curriculum
 doc_order: 4
-version: "1.3.0"
+version: "1.3.2"
 last_change_date: "2026-04-02"
 summary: "Define the governed shared curriculum version for a course, including SPA-first creation from the course-plan index, cycle labeling, publication status, shared summary context, and the governed workspace used to author units, quiz banks, and assignment-ready curriculum assets."
 seo_title: "Course Plan: Shared Curriculum Version For A Course"
@@ -25,9 +25,11 @@ Code refs: `ifitwala_ed/curriculum/doctype/course_plan/course_plan.json`
 Test refs: None
 
 - Link the plan to an existing `Course`.
-- Decide whether the plan needs an academic-year label, cycle label, or both.
+- Decide whether the plan needs an `Academic Year` link, cycle label, or both.
 - Prepare the shared summary and non-negotiables the curriculum team wants all linked classes to inherit.
 - Staff can start the plan directly from the staff course-plan index in the SPA; a separate Desk-first creation step is no longer required.
+- When the plan is year-bound, the staff SPA now selects `Academic Year` from real `Academic Year` records scoped to the linked course school instead of accepting free text.
+- Desk `Text Editor` fields surfaced in this workspace now keep their rich formatting in the staff SPA instead of flattening content into plain text.
 
 ## Where It Is Used Across The ERP
 
@@ -94,6 +96,8 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.
 - Shared course-plan resources live on `Material Placement` with `anchor_doctype = Course Plan`.
 - The staff course-plan index bootstraps both existing plans and create-ready course options in one bounded payload.
 - New course-plan creation now starts from the staff SPA index and routes directly into the course-plan workspace.
+- Course-plan `academic_year` in the staff SPA is now chosen from actual `Academic Year` docs resolved for the selected course school scope; create/update mutations reject out-of-scope changes while preserving unchanged legacy values.
+- The staff course-plan workspace now edits and renders Desk `Text Editor` fields as Desk-compatible rich text, including course summary, governed unit rich-text fields, lesson reading content, and quiz question prompt/explanation.
 - The staff course-plan workspace uses one bounded bootstrap payload and explicit save mutations rather than client waterfalls.
 - Quiz banks remain course-level assessment assets in the current schema, but the staff course-plan workspace is the current SPA authoring surface for them.
 - Assignment handoff from the course-plan workspace must stay prefilled into the canonical task-delivery overlay rather than creating a parallel assignment path.

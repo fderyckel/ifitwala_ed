@@ -70,6 +70,22 @@ export type StaffCoursePlanQuizQuestionBank = {
 	questions: StaffCoursePlanQuizQuestion[]
 }
 
+export type StaffCoursePlanAcademicYearOption = {
+	value: string
+	label: string
+	school?: string | null
+	year_start_date?: string | null
+	year_end_date?: string | null
+}
+
+export type StaffCoursePlanProgramOption = {
+	value: string
+	label: string
+	parent_program?: string | null
+	is_group?: number
+	archived?: number
+}
+
 export type StaffCoursePlanUnit = {
 	unit_plan: string
 	title: string
@@ -117,6 +133,10 @@ export type Response = {
 	}
 	resources: {
 		course_plan_resources: StaffPlanningMaterial[]
+	}
+	field_options: {
+		academic_years: StaffCoursePlanAcademicYearOption[]
+		programs: StaffCoursePlanProgramOption[]
 	}
 	curriculum: {
 		units: StaffCoursePlanUnit[]

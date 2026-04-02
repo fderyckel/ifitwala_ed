@@ -648,6 +648,16 @@ class TestTeachingPlansApi(TestCase):
                     "get_value",
                     return_value={"course_name": "Biology", "course_group": "Science"},
                 ),
+                patch.object(
+                    module,
+                    "_fetch_academic_year_options_for_schools",
+                    return_value={
+                        "SCH-1": [
+                            {"value": "2026-2027", "label": "2026-2027", "school": "SCH-1"},
+                        ]
+                    },
+                ),
+                patch.object(module, "_fetch_program_options_for_course", return_value=[]),
             ):
                 payload = module._build_staff_course_plan_bundle("COURSE-PLAN-1")
 
@@ -728,6 +738,28 @@ class TestTeachingPlansApi(TestCase):
                     },
                 ),
                 patch.object(
+                    module,
+                    "_fetch_academic_year_options_for_schools",
+                    return_value={
+                        "SCH-1": [
+                            {"value": "2026-2027", "label": "2026-2027", "school": "SCH-1"},
+                        ]
+                    },
+                ),
+                patch.object(
+                    module,
+                    "_fetch_program_options_for_course",
+                    return_value=[
+                        {
+                            "value": "MYP",
+                            "label": "MYP",
+                            "parent_program": None,
+                            "is_group": 0,
+                            "archived": 0,
+                        }
+                    ],
+                ),
+                patch.object(
                     module.frappe,
                     "get_doc",
                     return_value=SimpleNamespace(
@@ -746,6 +778,8 @@ class TestTeachingPlansApi(TestCase):
 
         self.assertEqual(payload["curriculum"]["selected_unit_lessons"][0]["lesson"], "LESSON-1")
         self.assertEqual(payload["assessment"]["quiz_question_banks"][0]["quiz_question_bank"], "QBK-1")
+        self.assertEqual(payload["field_options"]["academic_years"][0]["value"], "2026-2027")
+        self.assertEqual(payload["field_options"]["programs"][0]["value"], "MYP")
         self.assertEqual(
             payload["assessment"]["selected_quiz_question_bank"]["questions"][0]["quiz_question"],
             "QQ-1",
@@ -781,6 +815,7 @@ class TestTeachingPlansApi(TestCase):
                     "user_can_manage_course_curriculum",
                     side_effect=lambda user, course, roles=None: course == "COURSE-1",
                 ),
+                patch.object(module, "_fetch_academic_year_options_for_schools", return_value={}),
                 patch.object(module.frappe, "get_list", return_value=rows),
                 patch.object(
                     module.frappe,
@@ -802,6 +837,15 @@ class TestTeachingPlansApi(TestCase):
             with (
                 patch.object(module.frappe, "get_roles", return_value=["Curriculum Coordinator"]),
                 patch.object(module.planning, "get_curriculum_manageable_course_names", return_value=["COURSE-1"]),
+                patch.object(
+                    module,
+                    "_fetch_academic_year_options_for_schools",
+                    return_value={
+                        "SCH-1": [
+                            {"value": "2026-2027", "label": "2026-2027", "school": "SCH-1"},
+                        ]
+                    },
+                ),
                 patch.object(module.frappe, "get_list", return_value=[]),
                 patch.object(
                     module.frappe,
@@ -823,12 +867,22 @@ class TestTeachingPlansApi(TestCase):
         self.assertIsNone(payload["access"]["create_block_reason"])
         self.assertEqual(payload["course_options"][0]["course"], "COURSE-1")
         self.assertEqual(payload["course_options"][0]["course_name"], "Biology")
+        self.assertEqual(payload["course_options"][0]["academic_year_options"][0]["value"], "2026-2027")
 
     def test_list_staff_course_plans_includes_creation_options_for_instructor_courses(self):
         with _teaching_plans_module() as module:
             with (
                 patch.object(module.frappe, "get_roles", return_value=["Instructor"]),
                 patch.object(module.planning, "get_curriculum_manageable_course_names", return_value=["COURSE-1"]),
+                patch.object(
+                    module,
+                    "_fetch_academic_year_options_for_schools",
+                    return_value={
+                        "SCH-1": [
+                            {"value": "2026-2027", "label": "2026-2027", "school": "SCH-1"},
+                        ]
+                    },
+                ),
                 patch.object(module.frappe, "get_list", return_value=[]),
                 patch.object(
                     module.frappe,
@@ -872,6 +926,7 @@ class TestTeachingPlansApi(TestCase):
             with (
                 patch.object(module.frappe, "get_roles", return_value=["Instructor"]),
                 patch.object(module.planning, "get_curriculum_manageable_course_names", return_value=["COURSE-1"]),
+                patch.object(module, "_validate_course_plan_academic_year"),
                 patch.object(
                     module.frappe,
                     "get_all",
@@ -918,6 +973,7 @@ class TestTeachingPlansApi(TestCase):
                 def __init__(self):
                     self.name = "COURSE-PLAN-1"
                     self.course = "COURSE-1"
+                    self.school = "SCH-1"
                     self.title = "Old title"
                     self.academic_year = None
                     self.cycle_label = None
@@ -933,7 +989,10 @@ class TestTeachingPlansApi(TestCase):
 
             doc = CoursePlanDoc()
 
-            with patch.object(module.frappe, "get_doc", return_value=doc):
+            with (
+                patch.object(module, "_validate_course_plan_academic_year"),
+                patch.object(module.frappe, "get_doc", return_value=doc),
+            ):
                 payload = module.save_course_plan(
                     {
                         "course_plan": "COURSE-PLAN-1",
@@ -949,6 +1008,22 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(doc.plan_status, "Active")
         self.assertEqual(saved["count"], 1)
         self.assertEqual(payload["course_plan"], "COURSE-PLAN-1")
+
+    def test_save_course_plan_rejects_academic_year_outside_course_school_scope(self):
+        with _teaching_plans_module() as module:
+            with self.assertRaises(module.frappe.ValidationError):
+                with (
+                    patch.object(module, "_academic_year_scope_for_school", return_value=["SCH-1"]),
+                    patch.object(
+                        module.frappe.db,
+                        "get_value",
+                        return_value={"name": "2026-2027", "school": "SCH-OTHER"},
+                    ),
+                ):
+                    module._validate_course_plan_academic_year(
+                        course_school="SCH-1",
+                        academic_year="2026-2027",
+                    )
 
     def test_save_unit_plan_creates_new_unit_with_child_rows(self):
         with _teaching_plans_module() as module:
@@ -995,6 +1070,7 @@ class TestTeachingPlansApi(TestCase):
                 raise AssertionError(f"Unexpected get_doc call: {doctype} {name}")
 
             with (
+                patch.object(module, "_validate_course_program_link"),
                 patch.object(module.frappe, "get_doc", side_effect=fake_get_doc),
                 patch.object(module.frappe, "new_doc", return_value=unit_doc),
             ):
@@ -1017,6 +1093,16 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(unit_doc.reflections, [{"prior_to_the_unit": "Start with microscope norms."}])
         self.assertEqual(inserted["count"], 1)
         self.assertEqual(payload["unit_plan"], "UNIT-PLAN-NEW")
+
+    def test_validate_course_program_link_rejects_unlinked_program(self):
+        with _teaching_plans_module() as module:
+            with self.assertRaises(module.frappe.ValidationError):
+                with patch.object(
+                    module.frappe.db,
+                    "exists",
+                    side_effect=lambda doctype, filters=None: doctype == "Program",
+                ):
+                    module._validate_course_program_link(course="COURSE-1", program="MYP")
 
     def test_save_lesson_outline_creates_lesson_with_activities(self):
         with _teaching_plans_module() as module:

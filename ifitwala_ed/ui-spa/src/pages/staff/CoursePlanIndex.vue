@@ -138,13 +138,29 @@
 					<div class="grid gap-4 lg:grid-cols-2">
 						<label class="block space-y-2">
 							<span class="type-caption text-ink/70">Academic Year</span>
-							<input
+							<select
 								v-model="createForm.academic_year"
-								type="text"
 								class="if-input w-full"
-								:disabled="createPending"
-								placeholder="e.g. 2026-2027"
-							/>
+								:disabled="createPending || !selectedCourseAcademicYearOptions.length"
+							>
+								<option value="">Optional academic year</option>
+								<option
+									v-for="option in selectedCourseAcademicYearOptions"
+									:key="option.value"
+									:value="option.value"
+								>
+									{{ option.label }}
+								</option>
+							</select>
+							<p class="type-caption text-ink/60">
+								{{
+									createForm.course
+										? selectedCourseAcademicYearOptions.length
+											? 'Only Academic Year records in this course school scope are available here.'
+											: 'No Academic Year records are available for this course school yet.'
+										: 'Choose a course first to load Academic Year records.'
+								}}
+							</p>
 						</label>
 
 						<label class="block space-y-2">
@@ -278,6 +294,12 @@ const createForm = reactive({
 
 const coursePlans = computed(() => surface.value?.course_plans || []);
 const courseOptions = computed(() => surface.value?.course_options || []);
+const selectedCourseOption = computed(
+	() => courseOptions.value.find(option => option.course === createForm.course) || null
+);
+const selectedCourseAcademicYearOptions = computed(
+	() => selectedCourseOption.value?.academic_year_options || []
+);
 const visibleCourseOptions = computed(() => {
 	const query = courseSearch.value.trim().toLowerCase();
 	if (!query) return courseOptions.value;
@@ -358,6 +380,14 @@ watch(
 		const previousDefault = defaultTitleForCourse(previousCourse);
 		if (!createForm.title.trim() || createForm.title.trim() === previousDefault) {
 			createForm.title = nextDefault;
+		}
+		if (
+			createForm.academic_year &&
+			!selectedCourseAcademicYearOptions.value.some(
+				option => option.value === createForm.academic_year
+			)
+		) {
+			createForm.academic_year = '';
 		}
 		createError.value = '';
 	}

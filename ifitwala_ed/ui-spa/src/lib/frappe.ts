@@ -9,6 +9,22 @@ const AUTH_ERROR_PATTERNS = [
 	'session expired',
 ]
 
+const FRAPPE_TRANSPORT_KEYS = new Set([
+	'message',
+	'docs',
+	'docinfo',
+	'exc',
+	'exception',
+	'_server_messages',
+	'_debug_messages',
+	'_error_message',
+	'_exc_source',
+	'home_page',
+	'full_name',
+	'freeze',
+	'freeze_message',
+])
+
 async function resolveCsrfToken(): Promise<string> {
 	if (typeof window !== 'undefined') {
 		const browserWindow = window as Window & { csrf_token?: string }
@@ -63,6 +79,24 @@ function redirectToLoginIfNeeded() {
 	window.location.assign(loginPath)
 }
 
+function isCanonicalFrappeEnvelope(value: unknown): value is { message: unknown } {
+	if (!value || typeof value !== 'object' || Array.isArray(value) || !('message' in value)) {
+		return false
+	}
+
+	const keys = Object.keys(value as Record<string, unknown>)
+	if (!keys.length || keys.some((key) => !FRAPPE_TRANSPORT_KEYS.has(key))) {
+		return false
+	}
+
+	if (keys.some((key) => key !== 'message')) {
+		return true
+	}
+
+	const message = (value as { message: unknown }).message
+	return message !== null && typeof message === 'object'
+}
+
 /**
  * Transport Contract (LOCKED)
  * ------------------------------------------------------------
@@ -76,10 +110,12 @@ function redirectToLoginIfNeeded() {
  * Client variance (real-world):
  * - Some stacks wrap: { data: { message: T } }
  * - frappe-ui's frappeRequest may already return T (message-unwrapped)
+ * - some domain payloads legitimately include a top-level `message` field
  *
  * This boundary:
  * - Normalizes exactly once.
  * - Returns ONLY T.
+ * - Treats only transport-only objects as Frappe envelopes.
  * - Throws loudly on null/undefined and obvious server error shapes.
  */
 function unwrapTransport<T>(res: unknown): T {
@@ -96,7 +132,7 @@ function unwrapTransport<T>(res: unknown): T {
 	}
 
 	// Standard Frappe envelope
-	if (typeof root === 'object' && 'message' in root) {
+	if (isCanonicalFrappeEnvelope(root)) {
 		return (root as { message: T }).message
 	}
 

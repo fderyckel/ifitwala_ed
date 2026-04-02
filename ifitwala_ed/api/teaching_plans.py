@@ -197,14 +197,256 @@ def _serialize_class_teaching_plan_row(row: dict) -> dict[str, Any]:
     }
 
 
-def _serialize_course_option(row: dict[str, Any]) -> dict[str, Any]:
+def _serialize_course_option(
+    row: dict[str, Any], *, academic_year_options: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
     return {
         "course": row.get("name"),
         "course_name": row.get("course_name") or row.get("name"),
         "course_group": row.get("course_group"),
         "school": row.get("school"),
         "status": row.get("status"),
+        "academic_year_options": academic_year_options or [],
     }
+
+
+def _serialize_academic_year_option(row: dict[str, Any]) -> dict[str, Any]:
+    name = planning.normalize_text(row.get("name"))
+    return {
+        "value": name,
+        "label": name,
+        "school": planning.normalize_text(row.get("school")) or None,
+        "year_start_date": _serialize_scalar(row.get("year_start_date")),
+        "year_end_date": _serialize_scalar(row.get("year_end_date")),
+    }
+
+
+def _serialize_program_option(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "value": row.get("name"),
+        "label": row.get("program_name") or row.get("name"),
+        "parent_program": row.get("parent_program"),
+        "is_group": int(row.get("is_group") or 0),
+        "archived": int(row.get("archive") or 0),
+    }
+
+
+def _academic_year_scope_for_school(school: str | None) -> list[str]:
+    from ifitwala_ed.utilities.school_tree import get_school_scope_for_academic_year
+
+    school_name = planning.normalize_text(school)
+    if not school_name:
+        return []
+
+    scope = [
+        planning.normalize_text(scope_school)
+        for scope_school in (get_school_scope_for_academic_year(school_name) or [])
+        if planning.normalize_text(scope_school)
+    ]
+    return scope or [school_name]
+
+
+def _fetch_academic_year_options_for_schools(
+    schools: list[str] | tuple[str, ...],
+    *,
+    pinned_years: dict[str, str] | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    normalized_schools = [
+        school_name for school_name in {planning.normalize_text(school) for school in (schools or [])} if school_name
+    ]
+    if not normalized_schools:
+        return {}
+
+    scope_by_school = {school_name: _academic_year_scope_for_school(school_name) for school_name in normalized_schools}
+    query_schools = sorted(
+        {
+            scope_school
+            for scope in scope_by_school.values()
+            for scope_school in scope
+            if planning.normalize_text(scope_school)
+        }
+    )
+    pinned_year_names = sorted(
+        {
+            planning.normalize_text(academic_year)
+            for academic_year in (pinned_years or {}).values()
+            if planning.normalize_text(academic_year)
+        }
+    )
+
+    rows = frappe.get_all(
+        "Academic Year",
+        filters={"school": ["in", query_schools]} if query_schools else {"name": ["in", [""]]},
+        fields=["name", "school", "year_start_date", "year_end_date"],
+        order_by="year_start_date desc, name desc",
+        limit=0,
+    )
+    if pinned_year_names:
+        pinned_rows = frappe.get_all(
+            "Academic Year",
+            filters={"name": ["in", pinned_year_names]},
+            fields=["name", "school", "year_start_date", "year_end_date"],
+            order_by="year_start_date desc, name desc",
+            limit=0,
+        )
+        rows_by_name = {planning.normalize_text(row.get("name")): row for row in rows or []}
+        for row in pinned_rows or []:
+            name = planning.normalize_text(row.get("name"))
+            if name and name not in rows_by_name:
+                rows.append(row)
+                rows_by_name[name] = row
+
+    rows_by_school: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    rows_by_name: dict[str, dict[str, Any]] = {}
+    for row in rows or []:
+        school_name = planning.normalize_text(row.get("school"))
+        record_name = planning.normalize_text(row.get("name"))
+        if not record_name:
+            continue
+        if school_name:
+            rows_by_school[school_name].append(row)
+        rows_by_name[record_name] = row
+
+    options_by_school: dict[str, list[dict[str, Any]]] = {}
+    for school_name, scope in scope_by_school.items():
+        seen: set[str] = set()
+        options: list[dict[str, Any]] = []
+        for scope_school in scope:
+            for row in rows_by_school.get(scope_school, []):
+                record_name = planning.normalize_text(row.get("name"))
+                if not record_name or record_name in seen:
+                    continue
+                options.append(_serialize_academic_year_option(row))
+                seen.add(record_name)
+
+        pinned_name = planning.normalize_text((pinned_years or {}).get(school_name))
+        pinned_row = rows_by_name.get(pinned_name)
+        if pinned_name and pinned_row and pinned_name not in seen:
+            options.append(_serialize_academic_year_option(pinned_row))
+
+        options_by_school[school_name] = options
+
+    return options_by_school
+
+
+def _fetch_program_options_for_course(
+    course: str | None,
+    *,
+    pinned_programs: list[str] | tuple[str, ...] | None = None,
+) -> list[dict[str, Any]]:
+    course_name = planning.normalize_text(course)
+    pinned_names = {
+        planning.normalize_text(program_name)
+        for program_name in (pinned_programs or [])
+        if planning.normalize_text(program_name)
+    }
+    linked_program_names = (
+        frappe.get_all(
+            "Program Course",
+            filters={"course": course_name},
+            pluck="parent",
+            distinct=True,
+            limit=0,
+        )
+        if course_name
+        else []
+    )
+    program_names = {
+        planning.normalize_text(program_name)
+        for program_name in linked_program_names
+        if planning.normalize_text(program_name)
+    }
+    program_names.update(pinned_names)
+    if not program_names:
+        return []
+
+    rows = frappe.get_all(
+        "Program",
+        filters={"name": ["in", sorted(program_names)]},
+        fields=["name", "program_name", "parent_program", "is_group", "archive", "lft"],
+        order_by="lft asc, name asc",
+        limit=0,
+    )
+    payload: list[dict[str, Any]] = []
+    for row in rows or []:
+        name = planning.normalize_text(row.get("name"))
+        if int(row.get("archive") or 0) and name not in pinned_names:
+            continue
+        payload.append(_serialize_program_option(row))
+    return payload
+
+
+def _validate_course_plan_academic_year(
+    *,
+    course_school: str | None,
+    academic_year: str | None,
+    previous_academic_year: str | None = None,
+) -> None:
+    academic_year_name = planning.normalize_text(academic_year)
+    if not academic_year_name:
+        return
+    if academic_year_name == planning.normalize_text(previous_academic_year):
+        return
+
+    row = frappe.db.get_value("Academic Year", academic_year_name, ["name", "school"], as_dict=True)
+    if not row:
+        frappe.throw(
+            _("Academic Year {academic_year} was not found.").format(academic_year=academic_year_name),
+            frappe.ValidationError,
+        )
+
+    school_name = planning.normalize_text(course_school)
+    if not school_name:
+        return
+
+    allowed_scope = set(_academic_year_scope_for_school(school_name))
+    academic_year_school = planning.normalize_text(row.get("school"))
+    if allowed_scope and academic_year_school not in allowed_scope:
+        frappe.throw(
+            _(
+                "Academic Year {academic_year} is not available for school {school}. Choose an academic year from this course's school scope."
+            ).format(academic_year=academic_year_name, school=school_name),
+            frappe.ValidationError,
+        )
+
+
+def _validate_course_program_link(
+    *,
+    course: str | None,
+    program: str | None,
+    previous_program: str | None = None,
+) -> None:
+    program_name = planning.normalize_text(program)
+    if not program_name:
+        return
+    if program_name == planning.normalize_text(previous_program):
+        return
+
+    if not frappe.db.exists("Program", program_name):
+        frappe.throw(
+            _("Program {program} was not found.").format(program=program_name),
+            frappe.ValidationError,
+        )
+
+    course_name = planning.normalize_text(course)
+    if course_name and not frappe.db.exists(
+        "Program Course",
+        {
+            "parent": program_name,
+            "parenttype": "Program",
+            "parentfield": "courses",
+            "course": course_name,
+        },
+    ):
+        frappe.throw(
+            _(
+                "Program {program} is not linked to course {course}. Choose a program that already includes this course."
+            ).format(
+                program=program_name,
+                course=course_name,
+            ),
+            frappe.ValidationError,
+        )
 
 
 def _list_creatable_course_rows(user: str, roles: set[str]) -> list[dict[str, Any]]:
@@ -227,6 +469,13 @@ def _list_creatable_course_rows(user: str, roles: set[str]) -> list[dict[str, An
 def _build_course_plan_creation_access(user: str, roles: set[str]) -> dict[str, Any]:
     course_rows = _list_creatable_course_rows(user, roles)
     can_create = int(bool(course_rows))
+    academic_year_options_by_school = _fetch_academic_year_options_for_schools(
+        [
+            planning.normalize_text(row.get("school"))
+            for row in course_rows
+            if planning.normalize_text(row.get("school"))
+        ]
+    )
 
     if not course_rows:
         reason = _(
@@ -238,7 +487,16 @@ def _build_course_plan_creation_access(user: str, roles: set[str]) -> dict[str, 
     return {
         "can_create_course_plans": can_create,
         "create_block_reason": reason,
-        "course_options": [_serialize_course_option(row) for row in course_rows],
+        "course_options": [
+            _serialize_course_option(
+                row,
+                academic_year_options=academic_year_options_by_school.get(
+                    planning.normalize_text(row.get("school")),
+                    [],
+                ),
+            )
+            for row in course_rows
+        ],
     }
 
 
@@ -1569,6 +1827,15 @@ def _build_staff_course_plan_bundle(
     if not selected_unit and units:
         selected_unit = units[0].get("unit_plan")
     selected_unit_lessons = _fetch_selected_unit_lessons(selected_unit)
+    selected_unit_row = next((row for row in units if row.get("unit_plan") == selected_unit), None)
+    selected_programs = [
+        planning.normalize_text(selected_unit_row.get("program")) if selected_unit_row else "",
+        *[
+            planning.normalize_text(row.get("program"))
+            for row in (selected_unit_row or {}).get("standards", [])
+            if planning.normalize_text(row.get("program"))
+        ],
+    ]
 
     quiz_question_banks = _fetch_course_quiz_question_banks(course_plan_row.get("course"))
     selected_quiz_question_bank = planning.normalize_text(quiz_question_bank)
@@ -1578,6 +1845,17 @@ def _build_staff_course_plan_bundle(
         frappe.throw(_("Selected quiz question bank does not belong to this course."), frappe.PermissionError)
     if not selected_quiz_question_bank and quiz_question_banks:
         selected_quiz_question_bank = quiz_question_banks[0].get("quiz_question_bank")
+
+    academic_year_options = _fetch_academic_year_options_for_schools(
+        [course_plan_row.get("school")],
+        pinned_years={course_plan_row.get("school"): course_plan_row.get("academic_year")}
+        if planning.normalize_text(course_plan_row.get("school"))
+        else None,
+    ).get(planning.normalize_text(course_plan_row.get("school")), [])
+    program_options = _fetch_program_options_for_course(
+        course_plan_row.get("course"),
+        pinned_programs=selected_programs,
+    )
 
     return {
         "meta": {
@@ -1598,6 +1876,10 @@ def _build_staff_course_plan_bundle(
         },
         "resources": {
             "course_plan_resources": materials_by_anchor.get(("Course Plan", course_plan_doc.name), []),
+        },
+        "field_options": {
+            "academic_years": academic_year_options,
+            "programs": program_options,
         },
         "curriculum": {
             "units": units,
@@ -1719,6 +2001,10 @@ def create_course_plan(payload=None, **kwargs) -> dict[str, Any]:
         course_name=course_row.get("course_name") or course_name
     )
     doc.academic_year = planning.normalize_text(data.get("academic_year")) or None
+    _validate_course_plan_academic_year(
+        course_school=course_row.get("school"),
+        academic_year=doc.academic_year,
+    )
     doc.cycle_label = planning.normalize_text(data.get("cycle_label")) or None
     if data.get("plan_status") not in (None, ""):
         doc.plan_status = data.get("plan_status")
@@ -1876,6 +2162,11 @@ def save_course_plan(payload=None, **kwargs) -> dict[str, Any]:
 
     doc.title = data.get("title")
     doc.academic_year = data.get("academic_year")
+    _validate_course_plan_academic_year(
+        course_school=getattr(doc, "school", None),
+        academic_year=doc.academic_year,
+        previous_academic_year=doc.get_db_value("academic_year") if hasattr(doc, "get_db_value") else None,
+    )
     doc.cycle_label = data.get("cycle_label")
     doc.plan_status = data.get("plan_status")
     doc.summary = data.get("summary")
@@ -1957,6 +2248,11 @@ def save_unit_plan(
 
     doc.title = title
     doc.program = program
+    _validate_course_program_link(
+        course=course_plan_row.get("course"),
+        program=doc.program,
+        previous_program=doc.get_db_value("program") if hasattr(doc, "get_db_value") else None,
+    )
     doc.unit_code = unit_code
     doc.unit_order = int(unit_order) if unit_order not in (None, "") else None
     if unit_status not in (None, ""):

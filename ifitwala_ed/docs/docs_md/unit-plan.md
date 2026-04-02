@@ -3,7 +3,7 @@ title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 slug: unit-plan
 category: Curriculum
 doc_order: 5
-version: "1.3.0"
+version: "1.3.2"
 last_change_date: "2026-04-02"
 summary: "Define the shared unit backbone for a course plan, including standards alignment, pedagogy, reflections, and thin lesson outlines that class teaching plans inherit and can assign from."
 seo_title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
@@ -25,8 +25,9 @@ Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_
 Test refs: None
 
 - Create the parent `Course Plan` first because `course_plan` is required.
-- Decide whether the unit also needs `program`, `unit_code`, versioning, and publication state.
+- Decide whether the unit also needs a linked `Program`, `unit_code`, versioning, and publication state.
 - Prepare any inline standards rows and shared planning reflections you want to capture on the unit.
+- Unit pedagogy and reflection fields marked as Desk `Text Editor` now use the same rich-text editing and display model in the staff SPA, preserving formatting across surfaces.
 
 ## Where It Is Used Across The ERP
 
@@ -101,6 +102,9 @@ Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`
 - `Unit Plan` owns ordering within a `Course Plan` through `unit_order`.
 - `unit_plan.py` normalizes the carried curriculum fields and repairs `unit_order` collisions in steps of 10.
 - `ifitwala_ed.api.teaching_plans.save_unit_plan` now owns SPA-side governed unit mutations, including inline standards and shared reflection rows.
+- In the staff course-plan workspace, `program` is now selected from actual `Program` docs already linked to the unit course; save mutations reject changed program values that are not linked to that course while preserving unchanged legacy values.
+- Shared reflection `academic_year` and `school` remain parent-derived from the selected `Course Plan` in the SPA instead of being hand-entered in the governed unit overlay.
+- The staff course-plan workspace now edits and renders unit `Text Editor` fields (`overview`, `essential_understanding`, `misconceptions`, `content`, `skills`, `concepts`) and reflection `Text Editor` fields with Desk-compatible rich text instead of plain textareas/plain interpolation.
 - `ifitwala_ed.api.teaching_plans.save_lesson_outline` now owns SPA-side lesson-outline mutations for the selected unit.
 - Published lesson outlines in the course-plan workspace can prefill the existing task-delivery overlay with both `unit_plan` and `lesson` context.
 - Desk List View expands parent-program filters to the full descendant program subtree before fetching rows.

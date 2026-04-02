@@ -41,7 +41,7 @@ import CourseDetail from '@/pages/student/CourseDetail.vue'
 
 const cleanupFns: Array<() => void> = []
 
-function buildPayload(): StudentLearningSpaceResponse {
+function buildPayload(message: string | null = null): StudentLearningSpaceResponse {
 	return {
 		meta: {
 			generated_at: '2026-03-31T10:00:00',
@@ -70,7 +70,7 @@ function buildPayload(): StudentLearningSpaceResponse {
 			planning_status: 'Active',
 			course_plan: 'COURSE-PLAN-00001',
 		},
-		message: null,
+		message,
 		learning: {
 			focus: {
 				current_unit: {
@@ -298,5 +298,21 @@ describe('CourseDetail', () => {
 		const headerImage = document.querySelector('header img')
 		expect(headerImage).toBeTruthy()
 		expect(headerImage?.className).toContain('aspect-square')
+	})
+
+	it('keeps the learning space visible when shared-plan messaging is present', async () => {
+		getStudentLearningSpaceMock.mockResolvedValue(
+			buildPayload('Showing the shared course plan while your class is being assigned.')
+		)
+
+		mountCourseDetail()
+		await flushUi()
+
+		expect(document.body.textContent).toContain(
+			'Showing the shared course plan while your class is being assigned.'
+		)
+		expect(document.body.textContent).toContain('Learning Focus')
+		expect(document.body.textContent).toContain('Cells and Systems')
+		expect(document.body.textContent).toContain('Microscope evidence walk')
 	})
 })

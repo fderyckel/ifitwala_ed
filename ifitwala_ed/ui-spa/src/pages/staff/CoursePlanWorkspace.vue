@@ -85,12 +85,27 @@
 					</label>
 					<label class="block space-y-2">
 						<span class="type-caption text-ink/70">Academic Year</span>
-						<input
+						<select
 							v-model="coursePlanForm.academic_year"
-							type="text"
 							class="if-input w-full"
-							placeholder="e.g. 2026-2027"
-						/>
+							:disabled="!coursePlanAcademicYearOptions.length"
+						>
+							<option value="">Optional academic year</option>
+							<option
+								v-for="option in coursePlanAcademicYearOptions"
+								:key="option.value"
+								:value="option.value"
+							>
+								{{ option.label }}
+							</option>
+						</select>
+						<p class="type-caption text-ink/60">
+							{{
+								coursePlanAcademicYearOptions.length
+									? 'Only Academic Year records in this course school scope are available here.'
+									: 'No Academic Year records are available for this course school yet.'
+							}}
+						</p>
 					</label>
 					<label class="block space-y-2">
 						<span class="type-caption text-ink/70">Cycle Label</span>
@@ -111,11 +126,10 @@
 					</label>
 					<label class="block space-y-2 lg:col-span-2">
 						<span class="type-caption text-ink/70">Summary</span>
-						<textarea
+						<PlanningRichTextField
 							v-model="coursePlanForm.summary"
-							rows="5"
-							class="if-input min-h-[9rem] w-full resize-y"
 							placeholder="State the shared purpose, scope, and non-negotiables for this course plan."
+							min-height-class="min-h-[9rem]"
 						/>
 					</label>
 					<div class="flex justify-end lg:col-span-2">
@@ -131,9 +145,12 @@
 				</div>
 
 				<div v-else class="mt-6 rounded-2xl border border-line-soft bg-surface-soft p-5">
-					<p v-if="surface.course_plan.summary" class="type-body text-ink/80">
-						{{ surface.course_plan.summary }}
-					</p>
+					<PlanningRichTextField
+						v-if="hasRichTextContent(surface.course_plan.summary)"
+						:model-value="surface.course_plan.summary"
+						:editable="false"
+						display-class="text-ink/80"
+					/>
 					<p v-else class="type-caption text-ink/70">
 						No shared summary has been captured for this course plan yet.
 					</p>
@@ -244,12 +261,23 @@
 						</label>
 						<label class="block space-y-2">
 							<span class="type-caption text-ink/70">Program</span>
-							<input
-								v-model="unitForm.program"
-								type="text"
-								class="if-input w-full"
-								placeholder="Optional program"
-							/>
+							<select v-model="unitForm.program" class="if-input w-full">
+								<option value="">Optional program</option>
+								<option
+									v-for="option in courseProgramOptions"
+									:key="option.value"
+									:value="option.value"
+								>
+									{{ option.label }}
+								</option>
+							</select>
+							<p class="type-caption text-ink/60">
+								{{
+									courseProgramOptions.length
+										? 'Only Program records already linked to this course are available here.'
+										: 'No Program records currently link to this course.'
+								}}
+							</p>
 						</label>
 						<label class="block space-y-2">
 							<span class="type-caption text-ink/70">Unit Code</span>
@@ -318,104 +346,120 @@
 						</label>
 						<label class="block space-y-2 lg:col-span-2">
 							<span class="type-caption text-ink/70">Overview & Rationale</span>
-							<textarea
+							<PlanningRichTextField
 								v-model="unitForm.overview"
-								rows="4"
-								class="if-input min-h-[8rem] w-full resize-y"
 								placeholder="State the unit arc, rationale, and what makes this backbone important."
+								min-height-class="min-h-[8rem]"
 							/>
 						</label>
 						<label class="block space-y-2 lg:col-span-2">
 							<span class="type-caption text-ink/70">Essential Understanding</span>
-							<textarea
+							<PlanningRichTextField
 								v-model="unitForm.essential_understanding"
-								rows="4"
-								class="if-input min-h-[8rem] w-full resize-y"
 								placeholder="Capture the shared understanding every class should build."
+								min-height-class="min-h-[8rem]"
 							/>
 						</label>
 						<label class="block space-y-2 lg:col-span-2">
 							<span class="type-caption text-ink/70">Likely Misconceptions</span>
-							<textarea
+							<PlanningRichTextField
 								v-model="unitForm.misconceptions"
-								rows="4"
-								class="if-input min-h-[8rem] w-full resize-y"
 								placeholder="List likely misunderstandings students may bring into the unit."
+								min-height-class="min-h-[8rem]"
 							/>
 						</label>
 						<label class="block space-y-2">
 							<span class="type-caption text-ink/70">Content</span>
-							<textarea
+							<PlanningRichTextField
 								v-model="unitForm.content"
-								rows="4"
-								class="if-input min-h-[8rem] w-full resize-y"
 								placeholder="What should students know?"
+								min-height-class="min-h-[8rem]"
 							/>
 						</label>
 						<label class="block space-y-2">
 							<span class="type-caption text-ink/70">Skills</span>
-							<textarea
+							<PlanningRichTextField
 								v-model="unitForm.skills"
-								rows="4"
-								class="if-input min-h-[8rem] w-full resize-y"
 								placeholder="What should students be able to do?"
+								min-height-class="min-h-[8rem]"
 							/>
 						</label>
 						<label class="block space-y-2 lg:col-span-2">
 							<span class="type-caption text-ink/70">Concepts</span>
-							<textarea
+							<PlanningRichTextField
 								v-model="unitForm.concepts"
-								rows="4"
-								class="if-input min-h-[8rem] w-full resize-y"
 								placeholder="Which big ideas or concepts should anchor the unit?"
+								min-height-class="min-h-[8rem]"
 							/>
 						</label>
 					</div>
 
 					<div v-else class="grid gap-4 lg:grid-cols-2">
 						<div
-							v-if="selectedUnit?.overview"
+							v-if="hasRichTextContent(selectedUnit?.overview)"
 							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 						>
 							<p class="type-overline text-ink/60">Overview</p>
-							<p class="mt-2 type-body text-ink/80">{{ selectedUnit.overview }}</p>
+							<PlanningRichTextField
+								:model-value="selectedUnit?.overview"
+								:editable="false"
+								display-class="mt-2 text-ink/80"
+							/>
 						</div>
 						<div
-							v-if="selectedUnit?.essential_understanding"
+							v-if="hasRichTextContent(selectedUnit?.essential_understanding)"
 							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 						>
 							<p class="type-overline text-ink/60">Essential Understanding</p>
-							<p class="mt-2 type-body text-ink/80">
-								{{ selectedUnit.essential_understanding }}
-							</p>
+							<PlanningRichTextField
+								:model-value="selectedUnit?.essential_understanding"
+								:editable="false"
+								display-class="mt-2 text-ink/80"
+							/>
 						</div>
 						<div
-							v-if="selectedUnit?.content"
+							v-if="hasRichTextContent(selectedUnit?.content)"
 							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 						>
 							<p class="type-overline text-ink/60">Content</p>
-							<p class="mt-2 type-body text-ink/80">{{ selectedUnit.content }}</p>
+							<PlanningRichTextField
+								:model-value="selectedUnit?.content"
+								:editable="false"
+								display-class="mt-2 text-ink/80"
+							/>
 						</div>
 						<div
-							v-if="selectedUnit?.skills"
+							v-if="hasRichTextContent(selectedUnit?.skills)"
 							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 						>
 							<p class="type-overline text-ink/60">Skills</p>
-							<p class="mt-2 type-body text-ink/80">{{ selectedUnit.skills }}</p>
+							<PlanningRichTextField
+								:model-value="selectedUnit?.skills"
+								:editable="false"
+								display-class="mt-2 text-ink/80"
+							/>
 						</div>
 						<div
-							v-if="selectedUnit?.concepts"
+							v-if="hasRichTextContent(selectedUnit?.concepts)"
 							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 						>
 							<p class="type-overline text-ink/60">Concepts</p>
-							<p class="mt-2 type-body text-ink/80">{{ selectedUnit.concepts }}</p>
+							<PlanningRichTextField
+								:model-value="selectedUnit?.concepts"
+								:editable="false"
+								display-class="mt-2 text-ink/80"
+							/>
 						</div>
 						<div
-							v-if="selectedUnit?.misconceptions"
+							v-if="hasRichTextContent(selectedUnit?.misconceptions)"
 							class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 						>
 							<p class="type-overline text-ink/60">Likely Misconceptions</p>
-							<p class="mt-2 type-body text-ink/80">{{ selectedUnit.misconceptions }}</p>
+							<PlanningRichTextField
+								:model-value="selectedUnit?.misconceptions"
+								:editable="false"
+								display-class="mt-2 text-ink/80"
+							/>
 						</div>
 					</div>
 
@@ -483,12 +527,20 @@
 									</label>
 									<label class="block space-y-2">
 										<span class="type-caption text-ink/70">Program</span>
-										<input
+										<select
 											v-model="standard.program"
-											type="text"
 											class="if-input w-full"
 											:disabled="!canManagePlan"
-										/>
+										>
+											<option value="">Optional program</option>
+											<option
+												v-for="option in courseProgramOptions"
+												:key="option.value"
+												:value="option.value"
+											>
+												{{ option.label }}
+											</option>
+										</select>
 									</label>
 									<label class="block space-y-2">
 										<span class="type-caption text-ink/70">Strand</span>
@@ -630,64 +682,62 @@
 									<label class="block space-y-2">
 										<span class="type-caption text-ink/70">Academic Year</span>
 										<input
-											v-model="reflection.academic_year"
+											:value="reflection.academic_year || derivedReflectionAcademicYear"
 											type="text"
 											class="if-input w-full"
-											:disabled="!canManagePlan"
+											disabled
 										/>
 									</label>
 									<label class="block space-y-2">
 										<span class="type-caption text-ink/70">School</span>
 										<input
-											v-model="reflection.school"
+											:value="reflection.school || derivedReflectionSchool"
 											type="text"
 											class="if-input w-full"
-											:disabled="!canManagePlan"
+											disabled
 										/>
 									</label>
+									<p class="type-caption text-ink/60 lg:col-span-2">
+										Academic Year and School stay derived from the parent course plan.
+									</p>
 									<label class="block space-y-2 lg:col-span-2">
 										<span class="type-caption text-ink/70">Prior To The Unit</span>
-										<textarea
+										<PlanningRichTextField
 											v-model="reflection.prior_to_the_unit"
-											rows="3"
-											class="if-input min-h-[6rem] w-full resize-y"
-											:disabled="!canManagePlan"
+											:editable="canManagePlan"
+											min-height-class="min-h-[6rem]"
 										/>
 									</label>
 									<label class="block space-y-2 lg:col-span-2">
 										<span class="type-caption text-ink/70">During The Unit</span>
-										<textarea
+										<PlanningRichTextField
 											v-model="reflection.during_the_unit"
-											rows="3"
-											class="if-input min-h-[6rem] w-full resize-y"
-											:disabled="!canManagePlan"
+											:editable="canManagePlan"
+											min-height-class="min-h-[6rem]"
 										/>
 									</label>
 									<label class="block space-y-2 lg:col-span-2">
 										<span class="type-caption text-ink/70">What Worked Well</span>
-										<textarea
+										<PlanningRichTextField
 											v-model="reflection.what_work_well"
-											rows="3"
-											class="if-input min-h-[6rem] w-full resize-y"
-											:disabled="!canManagePlan"
+											:editable="canManagePlan"
+											min-height-class="min-h-[6rem]"
 										/>
 									</label>
 									<label class="block space-y-2 lg:col-span-2">
 										<span class="type-caption text-ink/70">What Didn't Work Well</span>
-										<textarea
+										<PlanningRichTextField
 											v-model="reflection.what_didnt_work_well"
-											rows="3"
-											class="if-input min-h-[6rem] w-full resize-y"
-											:disabled="!canManagePlan"
+											:editable="canManagePlan"
+											min-height-class="min-h-[6rem]"
 										/>
 									</label>
 									<label class="block space-y-2 lg:col-span-2">
 										<span class="type-caption text-ink/70">Change Suggestions</span>
-										<textarea
+										<PlanningRichTextField
 											v-model="reflection.changes_suggestions"
-											rows="3"
-											class="if-input min-h-[6rem] w-full resize-y"
-											:disabled="!canManagePlan"
+											:editable="canManagePlan"
+											min-height-class="min-h-[6rem]"
 										/>
 									</label>
 								</div>
@@ -721,21 +771,55 @@
 										{{ reflection.academic_year }}
 									</span>
 								</div>
-								<p v-if="reflection.prior_to_the_unit" class="mt-3 type-body text-ink/80">
-									{{ reflection.prior_to_the_unit }}
-								</p>
-								<p v-if="reflection.during_the_unit" class="mt-2 type-body text-ink/80">
-									{{ reflection.during_the_unit }}
-								</p>
-								<p v-if="reflection.what_work_well" class="mt-2 type-caption text-ink/70">
-									Worked well: {{ reflection.what_work_well }}
-								</p>
-								<p v-if="reflection.what_didnt_work_well" class="mt-2 type-caption text-ink/70">
-									Watch for: {{ reflection.what_didnt_work_well }}
-								</p>
-								<p v-if="reflection.changes_suggestions" class="mt-2 type-caption text-ink/70">
-									Next change: {{ reflection.changes_suggestions }}
-								</p>
+								<div
+									v-if="hasRichTextContent(reflection.prior_to_the_unit)"
+									class="mt-3 space-y-2"
+								>
+									<p class="type-overline text-ink/60">Prior To The Unit</p>
+									<PlanningRichTextField
+										:model-value="reflection.prior_to_the_unit"
+										:editable="false"
+										display-class="text-ink/80"
+									/>
+								</div>
+								<div v-if="hasRichTextContent(reflection.during_the_unit)" class="mt-3 space-y-2">
+									<p class="type-overline text-ink/60">During The Unit</p>
+									<PlanningRichTextField
+										:model-value="reflection.during_the_unit"
+										:editable="false"
+										display-class="text-ink/80"
+									/>
+								</div>
+								<div v-if="hasRichTextContent(reflection.what_work_well)" class="mt-3 space-y-2">
+									<p class="type-overline text-ink/60">What Worked Well</p>
+									<PlanningRichTextField
+										:model-value="reflection.what_work_well"
+										:editable="false"
+										display-class="text-ink/70"
+									/>
+								</div>
+								<div
+									v-if="hasRichTextContent(reflection.what_didnt_work_well)"
+									class="mt-3 space-y-2"
+								>
+									<p class="type-overline text-ink/60">Watch For</p>
+									<PlanningRichTextField
+										:model-value="reflection.what_didnt_work_well"
+										:editable="false"
+										display-class="text-ink/70"
+									/>
+								</div>
+								<div
+									v-if="hasRichTextContent(reflection.changes_suggestions)"
+									class="mt-3 space-y-2"
+								>
+									<p class="type-overline text-ink/60">Next Change</p>
+									<PlanningRichTextField
+										:model-value="reflection.changes_suggestions"
+										:editable="false"
+										display-class="text-ink/70"
+									/>
+								</div>
 							</article>
 						</div>
 					</section>
@@ -1035,11 +1119,10 @@
 													class="block space-y-2 lg:col-span-2"
 												>
 													<span class="type-caption text-ink/70">Reading Content</span>
-													<textarea
+													<PlanningRichTextField
 														v-model="activity.reading_content"
-														rows="4"
-														class="if-input min-h-[8rem] w-full resize-y"
-														:disabled="!canManagePlan"
+														:editable="canManagePlan"
+														min-height-class="min-h-[8rem]"
 													/>
 												</label>
 												<label
@@ -1409,11 +1492,10 @@
 										</label>
 										<label class="block space-y-2 lg:col-span-2">
 											<span class="type-caption text-ink/70">Prompt</span>
-											<textarea
+											<PlanningRichTextField
 												v-model="question.prompt"
-												rows="4"
-												class="if-input min-h-[8rem] w-full resize-y"
-												:disabled="!canManagePlan"
+												:editable="canManagePlan"
+												min-height-class="min-h-[8rem]"
 											/>
 										</label>
 										<label
@@ -1488,12 +1570,11 @@
 
 									<label class="mt-4 block space-y-2">
 										<span class="type-caption text-ink/70">Explanation</span>
-										<textarea
+										<PlanningRichTextField
 											v-model="question.explanation"
-											rows="3"
-											class="if-input min-h-[6rem] w-full resize-y"
 											placeholder="Optional feedback or explanation shown when allowed."
-											:disabled="!canManagePlan"
+											:editable="canManagePlan"
+											min-height-class="min-h-[6rem]"
 										/>
 									</label>
 
@@ -1546,6 +1627,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { toast } from 'frappe-ui';
 import { useRoute, useRouter } from 'vue-router';
 
+import PlanningRichTextField from '@/components/planning/PlanningRichTextField.vue';
 import PlanningResourcePanel from '@/components/planning/PlanningResourcePanel.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import {
@@ -1714,6 +1796,14 @@ const selectedQuizQuestionBank = computed<StaffCoursePlanQuizQuestionBank | null
 });
 
 const canManagePlan = computed(() => Boolean(surface.value?.course_plan.can_manage_resources));
+const coursePlanAcademicYearOptions = computed(
+	() => surface.value?.field_options.academic_years || []
+);
+const courseProgramOptions = computed(() => surface.value?.field_options.programs || []);
+const derivedReflectionAcademicYear = computed(
+	() => surface.value?.course_plan.academic_year || ''
+);
+const derivedReflectionSchool = computed(() => surface.value?.course_plan.school || '');
 const showUnitEditor = computed(() => Boolean(selectedUnit.value || creatingUnit.value));
 const showLessonEditor = computed(() => Boolean(selectedLesson.value || creatingLesson.value));
 const showQuizBankEditor = computed(() =>
@@ -1728,13 +1818,24 @@ function isChoiceQuestion(questionType?: string | null) {
 	return ['Single Choice', 'Multiple Answer', 'True / False'].includes(questionType || '');
 }
 
+function hasRichTextContent(value?: string | null) {
+	return Boolean(
+		String(value || '')
+			.replace(/<style[\s\S]*?<\/style>/gi, ' ')
+			.replace(/<script[\s\S]*?<\/script>/gi, ' ')
+			.replace(/<[^>]*>/g, ' ')
+			.replace(/&nbsp;|&#160;/gi, ' ')
+			.trim()
+	);
+}
+
 function buildEditableStandard(standard?: StaffPlanningStandard): EditableStandard {
 	return {
 		local_id: nextId(),
 		framework_name: standard?.framework_name || '',
 		framework_version: standard?.framework_version || '',
 		subject_area: standard?.subject_area || '',
-		program: standard?.program || '',
+		program: standard?.program || unitForm.program || '',
 		strand: standard?.strand || '',
 		substrand: standard?.substrand || '',
 		standard_code: standard?.standard_code || '',
@@ -1749,8 +1850,8 @@ function buildEditableStandard(standard?: StaffPlanningStandard): EditableStanda
 function buildEditableReflection(reflection?: StaffPlanningReflection): EditableReflection {
 	return {
 		local_id: nextId(),
-		academic_year: reflection?.academic_year || '',
-		school: reflection?.school || '',
+		academic_year: reflection?.academic_year || derivedReflectionAcademicYear.value || '',
+		school: reflection?.school || derivedReflectionSchool.value || '',
 		prior_to_the_unit: reflection?.prior_to_the_unit || '',
 		during_the_unit: reflection?.during_the_unit || '',
 		what_work_well: reflection?.what_work_well || '',
@@ -1990,7 +2091,7 @@ function cancelNewUnit() {
 }
 
 function addStandard() {
-	unitForm.standards.push(buildEditableStandard());
+	unitForm.standards.push(buildEditableStandard({ program: unitForm.program || undefined }));
 }
 
 function removeStandard(localId: number) {
@@ -1998,11 +2099,7 @@ function removeStandard(localId: number) {
 }
 
 function addReflection() {
-	unitForm.reflections.push(
-		buildEditableReflection({
-			academic_year: coursePlanForm.academic_year || undefined,
-		})
-	);
+	unitForm.reflections.push(buildEditableReflection());
 }
 
 function removeReflection(localId: number) {
@@ -2016,7 +2113,11 @@ function serializeStandards(): StaffPlanningStandard[] {
 }
 
 function serializeReflections(): StaffPlanningReflection[] {
-	return unitForm.reflections.map(({ local_id, ...row }) => row);
+	return unitForm.reflections.map(({ local_id, academic_year, school, ...row }) => ({
+		...row,
+		academic_year: derivedReflectionAcademicYear.value || academic_year || null,
+		school: derivedReflectionSchool.value || school || null,
+	}));
 }
 
 function openAssignFromLesson(lesson: StaffCoursePlanLesson) {
@@ -2202,7 +2303,7 @@ async function handleSaveCoursePlan() {
 		await saveCoursePlan({
 			course_plan: surface.value.course_plan.course_plan,
 			title: coursePlanForm.title.trim(),
-			academic_year: coursePlanForm.academic_year.trim() || null,
+			academic_year: coursePlanForm.academic_year || null,
 			cycle_label: coursePlanForm.cycle_label.trim() || null,
 			plan_status: coursePlanForm.plan_status,
 			summary: coursePlanForm.summary || null,
@@ -2224,7 +2325,7 @@ async function handleSaveUnitPlan() {
 			course_plan: props.coursePlan,
 			unit_plan: wasCreating ? undefined : unitForm.unit_plan || undefined,
 			title: unitForm.title.trim(),
-			program: unitForm.program.trim() || null,
+			program: unitForm.program || null,
 			unit_code: unitForm.unit_code.trim() || null,
 			unit_order: unitForm.unit_order,
 			unit_status: unitForm.unit_status,

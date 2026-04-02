@@ -1,3 +1,11 @@
+export type CoursePlanAcademicYearOption = {
+	value: string
+	label: string
+	school?: string | null
+	year_start_date?: string | null
+	year_end_date?: string | null
+}
+
 export type CoursePlanIndexRow = {
 	course_plan: string
 	title: string
@@ -18,6 +26,7 @@ export type CoursePlanIndexCourseOption = {
 	course_group?: string | null
 	school?: string | null
 	status?: string | null
+	academic_year_options: CoursePlanAcademicYearOption[]
 }
 
 export type Response = {
