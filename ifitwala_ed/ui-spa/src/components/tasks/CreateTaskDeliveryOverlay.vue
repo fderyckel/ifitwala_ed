@@ -401,7 +401,15 @@
 										v-if="errorMessage"
 										class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame"
 									>
-										{{ errorMessage }}
+										<p>{{ errorMessage }}</p>
+										<div
+											v-if="errorRecovery === 'open-class-planning' && form.student_group"
+											class="mt-3"
+										>
+											<Button appearance="secondary" @click="openClassPlanning">
+												Open class planning
+											</Button>
+										</div>
 									</div>
 								</template>
 
@@ -677,6 +685,7 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue';
 import { Button, FormControl, createResource, toast, FeatherIcon } from 'frappe-ui';
+import { useRouter } from 'vue-router';
 import type { CreateTaskDeliveryInput, CreateTaskDeliveryPayload } from '@/types/tasks';
 
 const props = defineProps<{
@@ -698,6 +707,12 @@ const props = defineProps<{
 }>();
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
+type ErrorRecoveryAction = 'open-class-planning' | null;
+
+const MISSING_ACTIVE_PLAN_MESSAGE =
+	'This class needs an active Class Teaching Plan before assigned work can be created.';
+const SELECT_CLASS_PLAN_MESSAGE =
+	'Select the Class Teaching Plan for this class before creating assigned work.';
 
 const emit = defineEmits<{
 	(e: 'close', reason: CloseReason): void;
@@ -707,9 +722,11 @@ const emit = defineEmits<{
 
 const open = computed(() => props.open);
 const zIndex = computed(() => props.zIndex ?? 60);
+const router = useRouter();
 
 const submitting = ref(false);
 const errorMessage = ref('');
+const errorRecovery = ref<ErrorRecoveryAction>(null);
 const createdTask = ref<CreateTaskDeliveryPayload | null>(null);
 const taskMaterials = ref<TaskMaterialRow[]>([]);
 const materialComposerMode = ref<'link' | 'file'>('link');
@@ -1005,7 +1022,17 @@ function initializeForm() {
 	form.max_points = '';
 	gradingEnabled.value = false;
 	errorMessage.value = '';
+	errorRecovery.value = null;
 	resetMaterialComposer();
+}
+
+function openClassPlanning() {
+	if (!form.student_group) return;
+	emitClose('programmatic');
+	void router.push({
+		name: 'staff-class-planning',
+		params: { studentGroup: form.student_group },
+	});
 }
 
 function setGradingEnabled(value: boolean) {
@@ -1136,6 +1163,91 @@ function parseServerMessages(raw: unknown): string[] {
 	} catch {
 		return [];
 	}
+}
+
+function isTransportOnlyErrorMessage(value: string) {
+	const message = String(value || '').trim();
+	if (!message) return false;
+	return message.includes('/api/method/') && /(?:Validation|Permission)Error\b/.test(message);
+}
+
+function extractTaskCreateErrorMessage(
+	error: unknown,
+	fallback = 'Unable to create the assignment right now.'
+) {
+	if (!error) return fallback;
+	if (typeof error === 'string' && error.trim()) return error.trim();
+
+	const maybe = error as Record<string, unknown> & {
+		response?: Record<string, unknown>;
+	};
+	const serverMessages = [
+		...parseServerMessages(maybe.response?._server_messages),
+		...parseServerMessages(maybe._server_messages),
+		...parseServerMessages(maybe.response?._messages),
+		...parseServerMessages(maybe._messages),
+	].filter(message => !isTransportOnlyErrorMessage(message));
+	if (serverMessages.length) {
+		return serverMessages.join('\n');
+	}
+
+	const candidates = [
+		maybe.response?.message,
+		maybe.message,
+		maybe.response?.statusText,
+		maybe.response?.exception,
+		maybe.exception,
+		maybe.response?.exc,
+		maybe.exc,
+	];
+	for (const candidate of candidates) {
+		if (
+			typeof candidate === 'string' &&
+			candidate.trim() &&
+			!isTransportOnlyErrorMessage(candidate)
+		) {
+			return candidate.trim();
+		}
+		if (
+			candidate &&
+			typeof candidate === 'object' &&
+			'message' in candidate &&
+			typeof (candidate as Record<string, unknown>).message === 'string'
+		) {
+			const nestedMessage = String((candidate as Record<string, unknown>).message || '').trim();
+			if (nestedMessage && !isTransportOnlyErrorMessage(nestedMessage)) {
+				return nestedMessage;
+			}
+		}
+	}
+
+	if (error instanceof Error && error.message && !isTransportOnlyErrorMessage(error.message)) {
+		return error.message;
+	}
+
+	return fallback;
+}
+
+function normalizeTaskCreateError(message: string) {
+	const cleanMessage = String(message || '').trim();
+	if (cleanMessage.includes(MISSING_ACTIVE_PLAN_MESSAGE)) {
+		return {
+			message:
+				'This class needs an active Class Teaching Plan before assigned work can be created. Open Class Planning for this class, create or activate the plan, then try again.',
+			recovery: 'open-class-planning' as ErrorRecoveryAction,
+		};
+	}
+	if (cleanMessage.includes(SELECT_CLASS_PLAN_MESSAGE)) {
+		return {
+			message:
+				'This class has more than one active Class Teaching Plan. Open Class Planning for this class, choose the correct plan there, then create the task from that surface.',
+			recovery: 'open-class-planning' as ErrorRecoveryAction,
+		};
+	}
+	return {
+		message: cleanMessage || 'Unable to create the assignment right now.',
+		recovery: null as ErrorRecoveryAction,
+	};
 }
 
 function resetMaterialDraftFields() {
@@ -1286,12 +1398,14 @@ async function submit() {
 			? `Please complete: ${missing.join(', ')}.`
 			: 'Please complete the required fields.';
 		errorMessage.value = msg;
+		errorRecovery.value = null;
 		toast.create({ appearance: 'warning', message: msg });
 		return;
 	}
 
 	submitting.value = true;
 	errorMessage.value = '';
+	errorRecovery.value = null;
 
 	const payload: CreateTaskDeliveryInput = {
 		title: form.title.trim(),
@@ -1344,10 +1458,11 @@ async function submit() {
 		});
 	} catch (error) {
 		console.error('[CreateTaskDeliveryOverlay] submit:error', error);
-		const msg =
-			error instanceof Error ? error.message : 'Unable to create the assignment right now.';
-		errorMessage.value = msg;
-		toast.create({ appearance: 'danger', message: msg });
+		const rawMessage = extractTaskCreateErrorMessage(error);
+		const normalized = normalizeTaskCreateError(rawMessage);
+		errorMessage.value = normalized.message;
+		errorRecovery.value = normalized.recovery;
+		toast.create({ appearance: 'danger', message: normalized.message });
 	} finally {
 		submitting.value = false;
 	}
