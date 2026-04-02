@@ -2,8 +2,8 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "format:INVRT-{YYYY}-{####}",
- "creation": "2026-01-14 00:00:00.000000",
+ "autoname": "INVRT-.YY.-.MM.-.####",
+ "creation": "2026-01-14 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -13,7 +13,8 @@
   "status",
   "opened_on",
   "closed_on",
-  "notes"
+  "notes",
+  "amended_from"
  ],
  "fields": [
   {
@@ -23,6 +24,7 @@
   {
    "fieldname": "inventory_unit",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Inventory Unit",
    "options": "Inventory Unit",
    "reqd": 1
@@ -30,6 +32,7 @@
   {
    "fieldname": "issue_summary",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Issue Summary",
    "reqd": 1
   },
@@ -54,15 +57,26 @@
    "fieldname": "notes",
    "fieldtype": "Text",
    "label": "Notes"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Inventory Repair Ticket",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-14 00:00:00.000000",
+ "modified": "2026-04-02 13:09:42.145932",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Inventory Repair Ticket",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

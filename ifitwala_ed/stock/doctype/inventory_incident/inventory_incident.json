@@ -2,8 +2,8 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "format:INVINC-{YYYY}-{####}",
- "creation": "2026-01-14 00:00:00.000000",
+ "autoname": "INVINC-.YY.-.MM.-.###",
+ "creation": "2026-01-14 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -15,7 +15,8 @@
   "notes",
   "section_break_linked",
   "linked_voucher_type",
-  "linked_voucher_name"
+  "linked_voucher_name",
+  "amended_from"
  ],
  "fields": [
   {
@@ -25,6 +26,7 @@
   {
    "fieldname": "inventory_unit",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Inventory Unit",
    "options": "Inventory Unit",
    "reqd": 1
@@ -32,6 +34,7 @@
   {
    "fieldname": "incident_type",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Incident Type",
    "options": "Lost\nDamaged\nUnreturned",
    "reqd": 1
@@ -66,15 +69,26 @@
    "fieldname": "linked_voucher_name",
    "fieldtype": "Data",
    "label": "Linked Voucher Name"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Inventory Incident",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-14 00:00:00.000000",
+ "modified": "2026-04-02 13:11:12.094130",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Inventory Incident",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

@@ -44,6 +44,7 @@ declare module 'vue' {
     MyTeachingPanel: typeof import('./src/components/class-hub/MyTeachingPanel.vue')['default']
     OrgChartNodeCard: typeof import('./src/components/org-chart/OrgChartNodeCard.vue')['default']
     OrgCommunicationQuickCreateModal: typeof import('./src/components/communication/OrgCommunicationQuickCreateModal.vue')['default']
+    PlanningResourcePanel: typeof import('./src/components/planning/PlanningResourcePanel.vue')['default']
     PortalFooter: typeof import('./src/components/PortalFooter.vue')['default']
     PortalNavbar: typeof import('./src/components/PortalNavbar.vue')['default']
     PortalNotification: typeof import('./src/components/PortalNotification.vue')['default']
@@ -68,5 +69,6 @@ declare module 'vue' {
     TagCloudBar: typeof import('./src/components/analytics/TagCloudBar.vue')['default']
     TaskReviewOverlay: typeof import('./src/components/overlays/class-hub/TaskReviewOverlay.vue')['default']
     TodayList: typeof import('./src/components/class-hub/TodayList.vue')['default']
+    WheelPickerOverlay: typeof import('./src/components/overlays/class-hub/WheelPickerOverlay.vue')['default']
   }
 }

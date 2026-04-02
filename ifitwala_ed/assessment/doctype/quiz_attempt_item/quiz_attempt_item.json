@@ -1,8 +1,8 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:QAI-{YYYY}-{#####}",
- "creation": "2026-03-13 11:30:42.000000",
+ "autoname": "QAI-.YY.-.MM.-.#####",
+ "creation": "2026-03-13 11:30:42",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -102,10 +102,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-13 11:30:42.000000",
+ "modified": "2026-04-02 13:20:51.387162",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Quiz Attempt Item",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

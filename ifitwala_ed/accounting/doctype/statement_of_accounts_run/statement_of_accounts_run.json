@@ -1,8 +1,8 @@
 {
  "actions": [],
  "allow_import": 1,
- "autoname": "format:SOA-.#####",
- "creation": "2026-03-11 00:00:00.000000",
+ "autoname": "SOA-.#####",
+ "creation": "2026-03-11 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -85,10 +85,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-11 00:00:00.000000",
+ "modified": "2026-04-02 13:19:22.537838",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Statement Of Accounts Run",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -127,6 +128,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

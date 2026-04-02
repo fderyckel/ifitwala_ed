@@ -2,19 +2,20 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "CLASS-PLAN-.#####",
- "creation": "2026-03-31 18:00:00.000000",
+ "creation": "2026-03-31 18:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_identity",
   "title",
   "course_plan",
-  "student_group",
-  "column_break_meta",
   "course",
+  "student_group",
   "academic_year",
+  "column_break_meta",
   "planning_status",
   "team_note",
+  "section_break_ojt0",
   "units"
  ],
  "fields": [
@@ -82,15 +83,20 @@
    "label": "Unit Backbone",
    "options": "Class Teaching Plan Unit",
    "read_only": 1
+  },
+  {
+   "fieldname": "section_break_ojt0",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-31 18:00:00.000000",
+ "modified": "2026-04-02 17:18:29.359090",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Class Teaching Plan",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -129,6 +135,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
