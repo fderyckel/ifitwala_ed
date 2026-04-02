@@ -29,7 +29,11 @@ required_apps = ["ifitwala_drive"]
 
 # include js, css files in header of desk.html
 
-app_include_js = ["/assets/ifitwala_ed/js/ifitwala_ed.bundle.js", "/assets/ifitwala_ed/js/initial_setup.js"]
+app_include_js = [
+    "/assets/ifitwala_ed/js/ifitwala_ed.bundle.js",
+    "/assets/ifitwala_ed/js/initial_setup.js",
+    "/assets/ifitwala_ed/js/governed_drive_links.js",
+]
 
 # app_include_css = "/assets/ifitwala_ed/css/desk_overrides.bundle.css"
 

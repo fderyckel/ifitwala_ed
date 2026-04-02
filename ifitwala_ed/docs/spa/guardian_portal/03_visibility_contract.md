@@ -211,6 +211,10 @@ Rules:
 4. Finance rows must not expose account holders outside the authority rule, even if the guardian can see the student.
 5. Any new guardian-visible data class must add an explicit server gate and be documented here before release.
 
+Planned curriculum-awareness additions are tracked in:
+
+- `ifitwala_ed/docs/curriculum/05_student_and_guardian_learning_experience_proposal.md`
+
 ## 10. Contract Matrix
 
 Status: Implemented

@@ -212,6 +212,20 @@ function setup_organization_media_manager(frm) {
 	frm.add_custom_button(__("Manage Organization Media"), openManager, __("Actions"));
 }
 
+function setup_governed_drive_link(frm) {
+	const drive = window.ifitwala_ed && window.ifitwala_ed.drive;
+	if (!drive || typeof drive.addOpenContextButton !== "function" || frm.is_new()) {
+		return;
+	}
+
+	drive.addOpenContextButton(frm, {
+		doctype: "School",
+		name: frm.doc.name,
+		label: __("Open in Drive"),
+		group: __("Actions"),
+	});
+}
+
 frappe.ui.form.on("School", {
 	onload: function (frm) {
 		_store_saved_publish_state(frm);
@@ -262,6 +276,7 @@ frappe.ui.form.on("School", {
 		setup_governed_school_logo_upload(frm);
 		setup_governed_gallery_upload(frm);
 		setup_organization_media_manager(frm);
+		setup_governed_drive_link(frm);
 
 		frm.set_query("current_school_calendar", function () {
 			return {

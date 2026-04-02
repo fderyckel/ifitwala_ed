@@ -21,6 +21,7 @@ frappe.ui.form.on('Student', {
 		}
 
 		frm.trigger("setup_governed_image_upload");
+		frm.trigger("setup_governed_drive_link");
 		frm.trigger("setup_sibling_guardian_sync");
 	},
 
@@ -275,6 +276,20 @@ frappe.ui.form.on("Student", {
 			const governed = res?.message?.governed ? __("Governed ✅") : __("Governed ❌");
 			const base = __("Use the Upload Student Image action to attach a governed file.");
 			frm.set_df_property(fieldname, "description", `${base} ${governed}`);
+		});
+	},
+
+	setup_governed_drive_link: function(frm) {
+		const drive = window.ifitwala_ed && window.ifitwala_ed.drive;
+		if (!drive || typeof drive.addOpenContextButton !== "function" || frm.is_new()) {
+			return;
+		}
+
+		drive.addOpenContextButton(frm, {
+			doctype: "Student",
+			name: frm.doc.name,
+			label: __("Open in Drive"),
+			group: __("Actions"),
 		});
 	}
 });

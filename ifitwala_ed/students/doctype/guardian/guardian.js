@@ -22,6 +22,7 @@ frappe.ui.form.on("Guardian", {
 		}
 
 		frm.trigger("setup_governed_image_upload");
+		frm.trigger("setup_governed_drive_link");
 	},
 
 	setup_governed_image_upload(frm) {
@@ -104,6 +105,20 @@ frappe.ui.form.on("Guardian", {
 			const governed = res?.message?.governed ? __("Governed ✅") : __("Governed ❌");
 			const base = __("Use the Upload Guardian Photo action to attach a governed file.");
 			frm.set_df_property(fieldname, "description", `${base} ${governed}`);
+		});
+	},
+
+	setup_governed_drive_link(frm) {
+		const drive = window.ifitwala_ed && window.ifitwala_ed.drive;
+		if (!drive || typeof drive.addOpenContextButton !== "function" || frm.is_new()) {
+			return;
+		}
+
+		drive.addOpenContextButton(frm, {
+			doctype: "Guardian",
+			name: frm.doc.name,
+			label: __("Open in Drive"),
+			group: __("Actions"),
 		});
 	},
 

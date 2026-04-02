@@ -15,6 +15,7 @@ frappe.ui.form.on("Task", {
 		set_lesson_query(frm);
 		set_quiz_question_bank_query(frm);
 		frm.trigger("setup_governed_resource_upload");
+		frm.trigger("setup_governed_drive_link");
 	},
 
 	course(frm) {
@@ -84,6 +85,20 @@ frappe.ui.form.on("Task", {
 			__("Upload Task Resource"),
 			openUploader
 		);
+	},
+
+	setup_governed_drive_link(frm) {
+		const drive = window.ifitwala_ed && window.ifitwala_ed.drive;
+		if (!drive || typeof drive.addOpenContextButton !== "function" || frm.is_new()) {
+			return;
+		}
+
+		drive.addOpenContextButton(frm, {
+			doctype: "Task",
+			name: frm.doc.name,
+			label: __("Open in Drive"),
+			group: __("Actions"),
+		});
 	}
 });
 

@@ -4,6 +4,7 @@
 frappe.ui.form.on("Task Submission", {
 	refresh(frm) {
 		frm.trigger("setup_governed_attachment_upload");
+		frm.trigger("setup_governed_drive_link");
 	},
 
 	setup_governed_attachment_upload(frm) {
@@ -53,5 +54,19 @@ frappe.ui.form.on("Task Submission", {
 			__("Upload Submission Attachment"),
 			openUploader
 		);
+	},
+
+	setup_governed_drive_link(frm) {
+		const drive = window.ifitwala_ed && window.ifitwala_ed.drive;
+		if (!drive || typeof drive.addOpenContextButton !== "function" || frm.is_new()) {
+			return;
+		}
+
+		drive.addOpenContextButton(frm, {
+			doctype: "Task Submission",
+			name: frm.doc.name,
+			label: __("Open in Drive"),
+			group: __("Actions"),
+		});
 	},
 });

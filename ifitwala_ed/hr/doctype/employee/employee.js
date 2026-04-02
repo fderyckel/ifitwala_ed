@@ -40,6 +40,7 @@ frappe.ui.form.on("Employee", {
     frm.trigger("add_contact_button");
     frm.trigger("style_employee_history_rows");
     frm.trigger("setup_governed_image_upload");
+    frm.trigger("setup_governed_drive_link");
     frm.trigger("apply_employee_image_variant");
   },
 
@@ -180,6 +181,20 @@ frappe.ui.form.on("Employee", {
       const governed = res?.message?.governed ? __("Governed ✅") : __("Governed ❌");
       const base = __("Use the Upload Employee Image action to attach a governed file.");
       frm.set_df_property(fieldname, "description", `${base} ${governed}`);
+    });
+  },
+
+  setup_governed_drive_link(frm) {
+    const drive = window.ifitwala_ed && window.ifitwala_ed.drive;
+    if (!drive || typeof drive.addOpenContextButton !== "function" || frm.is_new()) {
+      return;
+    }
+
+    drive.addOpenContextButton(frm, {
+      doctype: "Employee",
+      name: frm.doc.name,
+      label: __("Open in Drive"),
+      group: __("Actions"),
     });
   },
 

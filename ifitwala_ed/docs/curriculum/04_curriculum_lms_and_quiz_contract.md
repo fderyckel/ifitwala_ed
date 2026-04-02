@@ -191,6 +191,10 @@ Not implemented now:
 
 These are not missing documentation. They are real product boundaries today.
 
+Planned next-phase student and guardian audience shaping is tracked separately in:
+
+- `ifitwala_ed/docs/curriculum/05_student_and_guardian_learning_experience_proposal.md`
+
 ## Related Docs
 
 Status: Canonical map
@@ -199,6 +203,7 @@ Test refs: None
 
 - `ifitwala_ed/docs/curriculum/01_curriculum_task_delivery_contract.md`
 - `ifitwala_ed/docs/curriculum/03_curriculum_materials_and_resource_contract.md`
+- `ifitwala_ed/docs/curriculum/05_student_and_guardian_learning_experience_proposal.md`
 - `ifitwala_ed/docs/assessment/04_task_notes.md`
 
 ## Technical Notes (IT)

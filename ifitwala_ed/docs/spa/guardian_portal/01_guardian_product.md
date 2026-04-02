@@ -29,6 +29,7 @@ Rules:
 2. The default experience is family-first and parent-centric.
 3. The portal answers three questions first: what is happening, what needs attention, and what needs preparation.
 4. The portal is an awareness surface, not a live gradebook or a staff tool.
+5. Any curriculum-aware expansion must stay a family briefing layer, not a second student LMS.
 
 ## 2. User Model And Interaction Model
 
@@ -122,6 +123,10 @@ Rules:
 4. Uploads and direct guardian messaging remain outside the current `/hub/guardian` implementation.
 5. Any new guardian-facing action must use a named workflow endpoint and server-owned permissions.
 6. Family signatures, permission slips, and mutable consents are planned work and are governed by `ifitwala_ed/docs/files_and_policies/policy_04_family_signature_and_consent_contract.md` until implementation lands.
+
+Planned curriculum-awareness expansion is tracked separately in:
+
+- `ifitwala_ed/docs/curriculum/05_student_and_guardian_learning_experience_proposal.md`
 
 ## 5. Contract Matrix
 
