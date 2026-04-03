@@ -22,11 +22,27 @@
 					</div>
 				</div>
 				<div class="flex flex-wrap gap-2 lg:justify-end">
-					<span class="chip">{{ surface?.course_plan.course_name || 'Course pending' }}</span>
-					<span class="chip">{{ surface?.curriculum.unit_count || 0 }} units</span>
-					<span class="chip"
-						>{{ surface?.assessment.quiz_question_banks.length || 0 }} quiz banks</span
+					<button
+						type="button"
+						class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-sky/20 hover:text-ink"
+						@click="jumpToSection(SECTION_IDS.overview)"
 					>
+						{{ surface?.course_plan.course_name || 'Course pending' }}
+					</button>
+					<button
+						type="button"
+						class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-sky/20 hover:text-ink"
+						@click="jumpToSection(SECTION_IDS.units)"
+					>
+						{{ surface?.curriculum.unit_count || 0 }} units
+					</button>
+					<button
+						type="button"
+						class="chip cursor-pointer transition hover:border-jacaranda/40 hover:bg-sky/20 hover:text-ink"
+						@click="jumpToSection(SECTION_IDS.quizBanks)"
+					>
+						{{ surface?.assessment.quiz_question_banks.length || 0 }} quiz banks
+					</button>
 					<span class="chip">{{ surface?.course_plan.plan_status || 'Draft' }}</span>
 					<span class="chip">{{ canManagePlan ? 'Editable' : 'Read only' }}</span>
 				</div>
@@ -49,7 +65,10 @@
 		</section>
 
 		<template v-else-if="surface">
-			<section class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
+			<section
+				:id="SECTION_IDS.overview"
+				class="scroll-mt-40 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
+			>
 				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 					<div>
 						<p class="type-overline text-ink/60">Course Plan Overview</p>
@@ -157,23 +176,107 @@
 				</div>
 			</section>
 
+			<section
+				v-if="navigationSections.length"
+				class="sticky top-20 z-20 rounded-[2rem] border border-line-soft bg-white/95 p-4 shadow-soft backdrop-blur supports-[backdrop-filter]:bg-white/85"
+			>
+				<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+					<div>
+						<p class="type-overline text-ink/60">Quick Access</p>
+						<p class="mt-1 type-caption text-ink/70">
+							Jump straight to the next planning task without digging through the full page.
+						</p>
+					</div>
+
+					<div v-if="canManagePlan" class="flex flex-wrap gap-2">
+						<button
+							type="button"
+							class="if-action if-action--subtle"
+							:disabled="!selectedUnit"
+							@click="quickEditUnit"
+						>
+							Edit Unit
+						</button>
+						<button
+							type="button"
+							class="if-action if-action--subtle"
+							:disabled="!selectedUnit"
+							@click="quickUploadUnitFile"
+						>
+							Upload Unit PDF
+						</button>
+						<button
+							type="button"
+							class="if-action if-action--subtle"
+							:disabled="!selectedUnit"
+							@click="quickStartLesson"
+						>
+							New Lesson
+						</button>
+						<button
+							type="button"
+							class="if-action if-action--subtle"
+							:disabled="!selectedUnit"
+							@click="quickAddReflection"
+						>
+							Add Reflection
+						</button>
+						<button type="button" class="if-action if-action--subtle" @click="quickStartQuizBank">
+							New Quiz Bank
+						</button>
+					</div>
+				</div>
+
+				<div class="mt-4 flex gap-2 overflow-x-auto pb-1">
+					<button
+						v-for="section in navigationSections"
+						:key="section.id"
+						type="button"
+						class="flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition"
+						:class="
+							activeSectionId === section.id
+								? 'border-jacaranda bg-jacaranda/10 text-ink shadow-soft'
+								: 'border-line-soft bg-white text-ink/70 hover:border-jacaranda/40 hover:text-ink'
+						"
+						@click="jumpToSection(section.id)"
+					>
+						<span>{{ section.label }}</span>
+						<span
+							v-if="section.count !== undefined && section.count !== null"
+							class="rounded-full bg-white/80 px-2 py-0.5 text-xs text-ink/70"
+						>
+							{{ section.count }}
+						</span>
+					</button>
+				</div>
+
+				<p v-if="canManagePlan && !selectedUnit" class="mt-3 type-caption text-ink/70">
+					Select a governed unit first to unlock lesson, reflection, and unit-resource shortcuts.
+				</p>
+			</section>
+
 			<section class="grid gap-6 xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]">
 				<aside class="space-y-6 xl:self-start">
-					<PlanningResourcePanel
-						anchor-doctype="Course Plan"
-						:anchor-name="surface.course_plan.course_plan"
-						:can-manage="canManagePlan"
-						eyebrow="Shared Plan Resources"
-						title="Resources for every class using this plan"
-						description="Keep governed references, anchor texts, and shared files at the course-plan level."
-						empty-message="No shared course-plan resources yet."
-						blocked-message="Choose a course plan before sharing resources."
-						read-only-message="Only approved curriculum staff can edit shared course-plan resources."
-						:resources="surface.resources.course_plan_resources"
-						@changed="loadSurface"
-					/>
+					<div :id="SECTION_IDS.courseResources" class="scroll-mt-40">
+						<PlanningResourcePanel
+							anchor-doctype="Course Plan"
+							:anchor-name="surface.course_plan.course_plan"
+							:can-manage="canManagePlan"
+							eyebrow="Shared Plan Resources"
+							title="Resources for every class using this plan"
+							description="Keep governed references, anchor texts, and shared files at the course-plan level."
+							empty-message="No shared course-plan resources yet."
+							blocked-message="Choose a course plan before sharing resources."
+							read-only-message="Only approved curriculum staff can edit shared course-plan resources."
+							:resources="surface.resources.course_plan_resources"
+							@changed="loadSurface"
+						/>
+					</div>
 
-					<section class="rounded-[2rem] border border-line-soft bg-white p-5 shadow-soft">
+					<section
+						:id="SECTION_IDS.units"
+						class="scroll-mt-40 rounded-[2rem] border border-line-soft bg-white p-5 shadow-soft"
+					>
 						<div class="mb-4 flex items-center justify-between gap-3">
 							<div>
 								<p class="type-overline text-ink/60">Unit Backbone</p>
@@ -224,7 +327,8 @@
 
 				<section
 					v-if="showUnitEditor"
-					class="space-y-6 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
+					:id="SECTION_IDS.unitEditor"
+					class="scroll-mt-40 space-y-6 rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
 				>
 					<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 						<div>
@@ -254,6 +358,7 @@
 							<span class="type-caption text-ink/70">Unit Title</span>
 							<input
 								v-model="unitForm.title"
+								data-quick-focus="unit-title"
 								type="text"
 								class="if-input w-full"
 								placeholder="e.g. Cells and Systems"
@@ -463,7 +568,7 @@
 						</div>
 					</div>
 
-					<section class="space-y-3">
+					<section :id="SECTION_IDS.standards" class="scroll-mt-40 space-y-3">
 						<div class="flex items-center justify-between gap-3">
 							<div>
 								<p class="type-overline text-ink/60">Standards Alignment</p>
@@ -644,7 +749,7 @@
 						</div>
 					</section>
 
-					<section class="space-y-3">
+					<section :id="SECTION_IDS.reflections" class="scroll-mt-40 space-y-3">
 						<div class="flex items-center justify-between gap-3">
 							<div>
 								<p class="type-overline text-ink/60">Shared Reflections</p>
@@ -826,6 +931,7 @@
 
 					<section
 						v-if="!creatingUnit && selectedUnit"
+						:id="SECTION_IDS.lessons"
 						class="space-y-4 rounded-[2rem] border border-line-soft bg-surface-soft p-5"
 					>
 						<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -964,6 +1070,7 @@
 										<span class="type-caption text-ink/70">Lesson Title</span>
 										<input
 											v-model="lessonForm.title"
+											data-quick-focus="lesson-title"
 											type="text"
 											class="if-input w-full"
 											placeholder="e.g. Microscopy foundations"
@@ -1244,19 +1351,21 @@
 						</button>
 					</div>
 
-					<PlanningResourcePanel
-						anchor-doctype="Unit Plan"
-						:anchor-name="selectedUnit?.unit_plan || null"
-						:can-manage="canManagePlan"
-						eyebrow="Unit Resources"
-						title="Shared resources for this unit"
-						description="Use this layer for governed materials every class should inherit while teaching the unit."
-						empty-message="No governed unit resources yet."
-						blocked-message="Save the unit plan before sharing unit resources."
-						read-only-message="Only approved curriculum staff can edit shared unit resources."
-						:resources="selectedUnit?.shared_resources || []"
-						@changed="loadSurface"
-					/>
+					<div :id="SECTION_IDS.unitResources" class="scroll-mt-40">
+						<PlanningResourcePanel
+							anchor-doctype="Unit Plan"
+							:anchor-name="selectedUnit?.unit_plan || null"
+							:can-manage="canManagePlan"
+							eyebrow="Unit Resources"
+							title="Shared resources for this unit"
+							description="Use this layer for governed materials every class should inherit while teaching the unit."
+							empty-message="No governed unit resources yet."
+							blocked-message="Save the unit plan before sharing unit resources."
+							read-only-message="Only approved curriculum staff can edit shared unit resources."
+							:resources="selectedUnit?.shared_resources || []"
+							@changed="loadSurface"
+						/>
+					</div>
 				</section>
 
 				<section v-else class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
@@ -1266,7 +1375,10 @@
 				</section>
 			</section>
 
-			<section class="grid gap-6 xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]">
+			<section
+				:id="SECTION_IDS.quizBanks"
+				class="scroll-mt-40 grid gap-6 xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]"
+			>
 				<aside class="space-y-4 xl:self-start">
 					<section class="rounded-[2rem] border border-line-soft bg-white p-5 shadow-soft">
 						<div class="mb-4 flex items-center justify-between gap-3">
@@ -1387,6 +1499,7 @@
 								<span class="type-caption text-ink/70">Bank Title</span>
 								<input
 									v-model="quizBankForm.bank_title"
+									data-quick-focus="quiz-bank-title"
 									type="text"
 									class="if-input w-full"
 									placeholder="e.g. Cell Structure Check-in"
@@ -1623,7 +1736,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { toast } from 'frappe-ui';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -1687,6 +1800,20 @@ const route = useRoute();
 const router = useRouter();
 const overlay = useOverlayStack();
 
+const SECTION_IDS = {
+	overview: 'course-plan-overview',
+	courseResources: 'course-plan-resources',
+	units: 'course-plan-units',
+	unitEditor: 'course-plan-unit-editor',
+	standards: 'course-plan-standards',
+	reflections: 'course-plan-reflections',
+	lessons: 'course-plan-lessons',
+	unitResources: 'course-plan-unit-resources',
+	quizBanks: 'course-plan-quiz-banks',
+} as const;
+
+type WorkspaceSectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
+
 const surface = ref<StaffCoursePlanSurfaceResponse | null>(null);
 const loading = ref(false);
 const errorMessage = ref('');
@@ -1703,6 +1830,8 @@ const creatingLesson = ref(false);
 const creatingQuizQuestionBank = ref(false);
 const loadToken = ref(0);
 const nextLocalId = ref(1);
+const activeSectionId = ref<WorkspaceSectionId>(SECTION_IDS.overview);
+let scrollFrame = 0;
 
 const coursePlanForm = reactive({
 	title: '',
@@ -1809,6 +1938,61 @@ const showLessonEditor = computed(() => Boolean(selectedLesson.value || creating
 const showQuizBankEditor = computed(() =>
 	Boolean(selectedQuizQuestionBank.value || creatingQuizQuestionBank.value)
 );
+const navigationSections = computed<
+	{ id: WorkspaceSectionId; label: string; count?: number | null }[]
+>(() => {
+	const sections: { id: WorkspaceSectionId; label: string; count?: number | null }[] = [
+		{ id: SECTION_IDS.overview, label: 'Overview' },
+		{
+			id: SECTION_IDS.courseResources,
+			label: 'Plan Resources',
+			count: surface.value?.resources.course_plan_resources.length || 0,
+		},
+		{
+			id: SECTION_IDS.units,
+			label: 'Units',
+			count: surface.value?.curriculum.unit_count || 0,
+		},
+	];
+
+	if (showUnitEditor.value) {
+		sections.push({ id: SECTION_IDS.unitEditor, label: 'Unit Content' });
+		sections.push({
+			id: SECTION_IDS.standards,
+			label: 'Standards',
+			count: unitForm.standards.length,
+		});
+		sections.push({
+			id: SECTION_IDS.reflections,
+			label: 'Reflections',
+			count: unitForm.reflections.length,
+		});
+	}
+
+	if (!creatingUnit.value && selectedUnit.value) {
+		sections.push({
+			id: SECTION_IDS.lessons,
+			label: 'Lessons',
+			count: currentUnitLessons.value.length,
+		});
+	}
+
+	if (showUnitEditor.value) {
+		sections.push({
+			id: SECTION_IDS.unitResources,
+			label: 'Unit Resources',
+			count: selectedUnit.value?.shared_resources.length || 0,
+		});
+	}
+
+	sections.push({
+		id: SECTION_IDS.quizBanks,
+		label: 'Quiz Banks',
+		count: surface.value?.assessment.quiz_question_banks.length || 0,
+	});
+
+	return sections;
+});
 
 function nextId() {
 	return nextLocalId.value++;
@@ -1913,6 +2097,149 @@ function buildBlankQuizQuestion(questionType = 'Single Choice'): EditableQuizQue
 	});
 	handleQuizQuestionTypeChange(question);
 	return question;
+}
+
+function getSectionElement(sectionId: WorkspaceSectionId) {
+	if (typeof document === 'undefined') return null;
+	return document.getElementById(sectionId);
+}
+
+function focusWithinSection(sectionId: WorkspaceSectionId, selector: string) {
+	window.setTimeout(() => {
+		const target = getSectionElement(sectionId)?.querySelector<HTMLElement>(selector);
+		target?.focus();
+	}, 220);
+}
+
+async function setSectionHash(sectionId: WorkspaceSectionId) {
+	const nextHash = `#${sectionId}`;
+	if (route.hash === nextHash) return;
+	await router.replace({
+		name: 'staff-course-plan',
+		params: { coursePlan: props.coursePlan },
+		query: { ...route.query },
+		hash: nextHash,
+	});
+}
+
+async function replaceQuizQuestionBankRoute(quizQuestionBank?: string | null) {
+	await router.replace({
+		name: 'staff-course-plan',
+		params: { coursePlan: props.coursePlan },
+		query: {
+			...route.query,
+			quiz_question_bank: quizQuestionBank || undefined,
+		},
+		hash: route.hash,
+	});
+}
+
+function syncActiveSectionFromViewport() {
+	if (!navigationSections.value.length || typeof window === 'undefined') return;
+	let currentSection = navigationSections.value[0]?.id || SECTION_IDS.overview;
+
+	for (const section of navigationSections.value) {
+		const element = getSectionElement(section.id);
+		if (!element) continue;
+		if (element.getBoundingClientRect().top <= 180) {
+			currentSection = section.id;
+			continue;
+		}
+		break;
+	}
+
+	activeSectionId.value = currentSection;
+}
+
+function requestActiveSectionSync() {
+	if (typeof window === 'undefined') return;
+	if (scrollFrame) {
+		window.cancelAnimationFrame(scrollFrame);
+	}
+	scrollFrame = window.requestAnimationFrame(() => {
+		scrollFrame = 0;
+		syncActiveSectionFromViewport();
+	});
+}
+
+function syncRouteHashSection(behavior: ScrollBehavior = 'auto') {
+	const sectionId = String(route.hash || '').replace(/^#/, '') as WorkspaceSectionId;
+	if (!sectionId) return;
+	const element = getSectionElement(sectionId);
+	if (!element) return;
+	activeSectionId.value = sectionId;
+	element.scrollIntoView({ behavior, block: 'start' });
+}
+
+async function jumpToSection(sectionId: WorkspaceSectionId, focusSelector?: string) {
+	await setSectionHash(sectionId);
+	await nextTick();
+	const element = getSectionElement(sectionId);
+	if (!element) return;
+	activeSectionId.value = sectionId;
+	element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	if (focusSelector) {
+		focusWithinSection(sectionId, focusSelector);
+	}
+}
+
+function setResourceComposerMode(sectionId: WorkspaceSectionId, mode: 'link' | 'file') {
+	getSectionElement(sectionId)
+		?.querySelector<HTMLElement>(`[data-resource-mode="${mode}"]`)
+		?.click();
+}
+
+function ensureSelectedUnitForQuickAction(message: string) {
+	if (selectedUnit.value) return true;
+	toast.error(message);
+	void jumpToSection(SECTION_IDS.units);
+	return false;
+}
+
+async function quickEditUnit() {
+	if (
+		!ensureSelectedUnitForQuickAction('Select a governed unit before editing shared unit content.')
+	) {
+		return;
+	}
+	await jumpToSection(SECTION_IDS.unitEditor, '[data-quick-focus="unit-title"]');
+}
+
+async function quickUploadUnitFile() {
+	if (
+		!ensureSelectedUnitForQuickAction(
+			'Select a governed unit before adding shared unit resources.'
+		)
+	) {
+		return;
+	}
+	setResourceComposerMode(SECTION_IDS.unitResources, 'file');
+	await jumpToSection(SECTION_IDS.unitResources, '[data-resource-choose-file="true"]');
+}
+
+async function quickStartLesson() {
+	if (
+		!ensureSelectedUnitForQuickAction('Select a governed unit before drafting a lesson outline.')
+	) {
+		return;
+	}
+	startNewLesson();
+	await jumpToSection(SECTION_IDS.lessons, '[data-quick-focus="lesson-title"]');
+}
+
+async function quickAddReflection() {
+	if (
+		!ensureSelectedUnitForQuickAction('Select a governed unit before adding shared reflections.')
+	) {
+		return;
+	}
+	addReflection();
+	await jumpToSection(SECTION_IDS.reflections);
+}
+
+async function quickStartQuizBank() {
+	await startNewQuizQuestionBank();
+	await jumpToSection(SECTION_IDS.quizBanks, '[data-quick-focus="quiz-bank-title"]');
 }
 
 function syncCoursePlanForm(payload: StaffCoursePlanSurfaceResponse | null) {
@@ -2030,11 +2357,18 @@ async function loadSurface() {
 		const payload = await getStaffCoursePlanSurface({
 			course_plan: props.coursePlan,
 			unit_plan: props.unitPlan || undefined,
-			quiz_question_bank: selectedQuizQuestionBankName.value || undefined,
+			quiz_question_bank:
+				props.quizQuestionBank || selectedQuizQuestionBankName.value || undefined,
 		});
 		if (ticket !== loadToken.value) return;
 		surface.value = payload;
 		applySurfaceSelection(payload);
+		await nextTick();
+		if (route.hash) {
+			syncRouteHashSection('auto');
+		} else {
+			requestActiveSectionSync();
+		}
 	} catch (error) {
 		if (ticket !== loadToken.value) return;
 		surface.value = null;
@@ -2060,6 +2394,7 @@ async function selectUnit(unitPlan: string) {
 			...route.query,
 			unit_plan: unitPlan || undefined,
 		},
+		hash: route.hash,
 	});
 }
 
@@ -2077,6 +2412,7 @@ async function startNewUnit() {
 			...route.query,
 			unit_plan: undefined,
 		},
+		hash: route.hash,
 	});
 }
 
@@ -2204,10 +2540,11 @@ async function moveLesson(lessonName: string, direction: -1 | 1) {
 	}
 }
 
-function startNewQuizQuestionBank() {
+async function startNewQuizQuestionBank() {
 	creatingQuizQuestionBank.value = true;
 	selectedQuizQuestionBankName.value = '';
 	syncQuizBankForm(null);
+	await replaceQuizQuestionBankRoute(null);
 }
 
 function openAssignFromQuizBank(bank: StaffCoursePlanQuizQuestionBank) {
@@ -2229,18 +2566,19 @@ function openAssignFromQuizBank(bank: StaffCoursePlanQuizQuestionBank) {
 async function selectQuizQuestionBank(questionBank: string) {
 	creatingQuizQuestionBank.value = false;
 	selectedQuizQuestionBankName.value = questionBank;
-	await loadSurface();
+	await replaceQuizQuestionBankRoute(questionBank);
 }
 
-function cancelNewQuizQuestionBank() {
+async function cancelNewQuizQuestionBank() {
 	creatingQuizQuestionBank.value = false;
 	const fallbackBank = surface.value?.assessment.quiz_question_banks[0]?.quiz_question_bank || '';
 	selectedQuizQuestionBankName.value = fallbackBank;
 	if (fallbackBank) {
-		void loadSurface();
+		await replaceQuizQuestionBankRoute(fallbackBank);
 		return;
 	}
 	syncQuizBankForm(null);
+	await replaceQuizQuestionBankRoute(null);
 }
 
 function addQuizQuestion() {
@@ -2350,6 +2688,7 @@ async function handleSaveUnitPlan() {
 				...route.query,
 				unit_plan: result.unit_plan,
 			},
+			hash: route.hash,
 		});
 		await loadSurface();
 		toast.success(wasCreating ? 'Unit plan created.' : 'Unit plan updated.');
@@ -2417,7 +2756,12 @@ async function handleSaveQuizQuestionBank() {
 		});
 		creatingQuizQuestionBank.value = false;
 		selectedQuizQuestionBankName.value = result.quiz_question_bank;
-		await loadSurface();
+		const routeWillChange =
+			String(props.quizQuestionBank || '').trim() !== result.quiz_question_bank;
+		await replaceQuizQuestionBankRoute(result.quiz_question_bank);
+		if (!routeWillChange) {
+			await loadSurface();
+		}
 		toast.success(wasCreating ? 'Quiz bank created.' : 'Quiz bank updated.');
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : 'Could not save the quiz bank.');
@@ -2427,10 +2771,39 @@ async function handleSaveQuizQuestionBank() {
 }
 
 watch(
-	() => [props.coursePlan, props.unitPlan],
+	() => [props.coursePlan, props.unitPlan, props.quizQuestionBank],
 	() => {
 		loadSurface();
 	},
 	{ immediate: true }
 );
+
+watch(
+	() => route.hash,
+	hash => {
+		const sectionId = String(hash || '').replace(/^#/, '') as WorkspaceSectionId;
+		if (!sectionId) return;
+		activeSectionId.value = sectionId;
+	}
+);
+
+watch(navigationSections, () => {
+	if (route.hash) return;
+	void nextTick(() => {
+		requestActiveSectionSync();
+	});
+});
+
+onMounted(() => {
+	window.addEventListener('scroll', requestActiveSectionSync, { passive: true });
+	requestActiveSectionSync();
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('scroll', requestActiveSectionSync);
+	if (scrollFrame) {
+		window.cancelAnimationFrame(scrollFrame);
+		scrollFrame = 0;
+	}
+});
 </script>

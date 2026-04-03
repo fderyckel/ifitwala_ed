@@ -85,13 +85,16 @@ Cell content rules (one glance, no clutter):
   * primary: Official grade/score (or “—”)
   * secondary: status dot
   * badges: New Evidence, Needs Review, Needs Moderation
+  * comment box: only when the delivery explicitly allows comments
 * Collect Work:
 
   * primary: Submitted / Late / Missing
   * badges: New Evidence
+  * comment box: only when the delivery explicitly allows comments
 * Assign Only:
 
   * primary: Complete checkbox
+  * comment box: only when the delivery explicitly allows comments
 
 **Click target:** the whole cell.
 Click opens drawer.
@@ -157,7 +160,7 @@ Not used for bulk grading.
 3. Teacher enters:
 
    * Points OR Criteria levels OR quick grade
-   * Optional feedback
+   * Optional comment, only when the delivery allows comments
 4. Teacher hits **Save** (creates/updates Contribution)
 5. UI updates cell optimistically
 
@@ -172,7 +175,7 @@ Not used for bulk grading.
 
 1. Teacher clicks a cell
 2. Drawer opens → Evidence panel
-3. Teacher leaves feedback (optional)
+3. Teacher leaves a comment only if the delivery allows comments
 4. Teacher hits Save
 
 Outcome stays non-graded; no score required.

@@ -9,7 +9,7 @@ from frappe import _
 from ifitwala_ed.assessment.check_flags import to_check_value
 from ifitwala_ed.assessment.task_delivery_service import resolve_planning_context
 
-V1_GRADING_MODES = {"None", "Completion", "Binary", "Points"}
+V1_GRADING_MODES = {"None", "Completion", "Binary", "Points", "Criteria"}
 
 
 def _parse_options(doctype, fieldname):
@@ -38,6 +38,7 @@ def _validate_payload(payload: dict) -> dict:
         "allow_late_submission",
         "group_submission",
         "grading_mode",
+        "allow_feedback",
         "max_points",
         "grade_scale",
         "quiz_question_bank",
@@ -111,6 +112,7 @@ def _validate_payload(payload: dict) -> dict:
         "allow_late_submission": payload.get("allow_late_submission"),
         "group_submission": payload.get("group_submission"),
         "grading_mode": grading_mode,
+        "allow_feedback": to_check_value(payload.get("allow_feedback")),
         "max_points": payload.get("max_points"),
         "grade_scale": grade_scale,
         "quiz_question_bank": payload.get("quiz_question_bank"),
@@ -139,6 +141,7 @@ def create_task_and_delivery(
     unit_plan=None,
     lesson=None,
     grading_mode=None,
+    allow_feedback=None,
     max_points=None,
     grade_scale=None,
     quiz_question_bank=None,
@@ -175,6 +178,7 @@ def create_task_and_delivery(
         "allow_late_submission": allow_late_submission,
         "group_submission": group_submission,
         "grading_mode": grading_mode,
+        "allow_feedback": allow_feedback,
         "max_points": max_points,
         "grade_scale": grade_scale,
         "quiz_question_bank": quiz_question_bank,
@@ -239,6 +243,7 @@ def create_task_and_delivery(
         task.default_requires_submission = (
             0 if data.get("task_type") == "Quiz" else 1 if data["delivery_mode"] in ("Collect Work", "Assess") else 0
         )
+        task.default_allow_feedback = to_check_value(data.get("allow_feedback"))
 
         if data.get("grade_scale") and data["grading_mode"] not in (None, "None"):
             task.default_grade_scale = data["grade_scale"]
@@ -250,6 +255,7 @@ def create_task_and_delivery(
         delivery.student_group = data["student_group"]
         delivery.class_teaching_plan = planning_context["class_teaching_plan"]
         delivery.delivery_mode = data["delivery_mode"]
+        delivery.allow_feedback = to_check_value(data.get("allow_feedback"))
         if planning_context.get("class_session"):
             delivery.class_session = planning_context["class_session"]
 

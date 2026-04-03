@@ -1,12 +1,13 @@
 <template>
 	<div
 		v-if="editable"
-		class="overflow-hidden rounded-2xl border border-line-soft bg-white shadow-sm"
+		class="planning-richtext-field overflow-hidden rounded-2xl border border-line-soft bg-white shadow-sm"
 	>
 		<TextEditor
 			:content="normalizedContent"
 			:editable="editable"
 			:fixed-menu="editorButtons"
+			:extensions="editorExtensions"
 			:placeholder="placeholder"
 			:editor-class="editorClass"
 			@change="handleChange"
@@ -23,6 +24,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { TextEditor } from 'frappe-ui';
+import PlanningUnderline from '@/components/planning/extensions/underline';
 
 const props = withDefaults(
 	defineProps<{
@@ -59,6 +61,7 @@ const editorButtons = [
 	'Link',
 	'Blockquote',
 ];
+const editorExtensions = [PlanningUnderline];
 
 const normalizedContent = computed(() => String(props.modelValue || ''));
 const editorClass = computed(
@@ -86,3 +89,53 @@ function hasRichTextContent(value: string): boolean {
 	);
 }
 </script>
+
+<style>
+.planning-richtext-field .ProseMirror ul:not([data-type='taskList']),
+.planning-richtext-display ul {
+	list-style-type: disc;
+	padding-inline-start: 1.5rem;
+}
+
+.planning-richtext-field .ProseMirror ol,
+.planning-richtext-display ol {
+	list-style-type: decimal;
+	padding-inline-start: 1.5rem;
+}
+
+.planning-richtext-field .ProseMirror ul[data-type='taskList'] {
+	padding-inline-start: 0;
+}
+
+.planning-richtext-field .ProseMirror li,
+.planning-richtext-display li {
+	margin: 0.25rem 0;
+}
+
+.planning-richtext-field .ProseMirror a,
+.planning-richtext-display a {
+	color: rgb(var(--jacaranda-rgb) / 1);
+	text-decoration: underline;
+	text-underline-offset: 0.14em;
+}
+
+.planning-richtext-field .ProseMirror u,
+.planning-richtext-display u {
+	text-decoration: underline;
+	text-underline-offset: 0.14em;
+}
+
+.planning-richtext-field .ProseMirror h2,
+.planning-richtext-display h2 {
+	font-size: 1.25rem;
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.planning-richtext-field .ProseMirror h3,
+.planning-richtext-display h3 {
+	font-size: 1.125rem;
+	font-weight: 600;
+	line-height: 1.4;
+}
+</style>

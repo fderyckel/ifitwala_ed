@@ -189,6 +189,8 @@ class TaskDelivery(Document):
         if not self.delivery_mode:
             return
 
+        self._set_allow_feedback_from_defaults()
+
         if self.delivery_mode == "Assign Only":
             self.requires_submission = 0
             self.require_grading = 0
@@ -253,6 +255,17 @@ class TaskDelivery(Document):
             self.requires_submission = 1
         else:
             self.requires_submission = 0
+
+    def _set_allow_feedback_from_defaults(self):
+        if not self._has_field("allow_feedback"):
+            return
+        if getattr(self, "allow_feedback", None) not in (None, ""):
+            return
+
+        defaults = self._get_task_defaults()
+        default_feedback = defaults.get("default_allow_feedback")
+        if default_feedback in (0, 1, "0", "1", True, False):
+            self.allow_feedback = 1 if int(default_feedback) else 0
 
     def _clear_grading_fields(self, keep_mode=False):
         if not keep_mode:
@@ -389,6 +402,7 @@ class TaskDelivery(Document):
             for fieldname in (
                 "default_requires_submission",
                 "default_grading_mode",
+                "default_allow_feedback",
                 "default_rubric_scoring_strategy",
                 "default_grade_scale",
                 "default_max_points",
@@ -484,6 +498,7 @@ class TaskDelivery(Document):
         if frappe.db.get_value("Task Outcome", {"task_delivery": self.name}, "name"):
             for fieldname in (
                 "grading_mode",
+                "allow_feedback",
                 "max_points",
                 "grade_scale",
                 "rubric_version",

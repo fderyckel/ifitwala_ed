@@ -7,6 +7,8 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
 
+from ifitwala_ed.tests.factories.organization import make_organization, make_school
+
 
 class TestStudentPatientVisit(FrappeTestCase):
     def setUp(self):
@@ -46,6 +48,24 @@ class TestStudentPatientVisit(FrappeTestCase):
 
         self.assertEqual(visit.docstatus, 1)
         self.assertEqual(frappe.db.count("Student Log", {"student": student.name}), logs_before)
+
+    def test_visit_validate_sets_school_from_student_anchor_school(self):
+        organization = make_organization("Visit School Org")
+        school = make_school(organization.name, prefix="Visit School")
+        student = _make_student("Visit School")
+        frappe.db.set_value("Student", student.name, "anchor_school", school.name, update_modified=False)
+        patient = _make_student_patient(student.name)
+
+        visit = frappe.get_doc(
+            {
+                "doctype": "Student Patient Visit",
+                "date": nowdate(),
+                "student_patient": patient.name,
+                "note": "Student visited the nurse with school resolved server-side.",
+            }
+        ).insert()
+
+        self.assertEqual(visit.school, school.name)
 
     def test_visit_insert_joins_student_group_for_parent_fields(self):
         student = _make_student("Visit Group Join")

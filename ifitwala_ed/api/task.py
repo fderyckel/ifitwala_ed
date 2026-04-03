@@ -58,6 +58,8 @@ def get_task_for_delivery(task):
         "task_type": doc.task_type,
         "default_course": doc.default_course,
         "grading_defaults": {
+            "default_allow_feedback": doc.default_allow_feedback,
+            "default_grading_mode": doc.default_grading_mode,
             "default_max_points": doc.default_max_points,
             "default_grade_scale": doc.default_grade_scale,
         },

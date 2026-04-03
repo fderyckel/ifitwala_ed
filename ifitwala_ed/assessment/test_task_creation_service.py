@@ -99,6 +99,7 @@ class TestTaskCreationService(TestCase):
                 lesson="LESSON-1",
                 delivery_mode="Assess",
                 grading_mode="Points",
+                allow_feedback="1",
                 max_points="20",
                 allow_late_submission="1",
                 group_submission="0",
@@ -107,11 +108,13 @@ class TestTaskCreationService(TestCase):
         self.assertEqual(task.insert_calls, 1)
         self.assertEqual(task.unit_plan, "UNIT-1")
         self.assertEqual(task.lesson, "LESSON-1")
+        self.assertEqual(task.default_allow_feedback, 1)
         self.assertEqual(delivery.task, "TASK-0001")
         self.assertEqual(delivery.student_group, "GRP-1")
         self.assertEqual(delivery.class_teaching_plan, "CLASS-PLAN-1")
         self.assertEqual(delivery.group_submission, 0)
         self.assertEqual(delivery.allow_late_submission, 1)
+        self.assertEqual(delivery.allow_feedback, 1)
         self.assertEqual(delivery.insert_calls, [True])
         self.assertTrue(delivery.flags.ignore_permissions)
         self.assertEqual(delivery.submit_calls, 1)

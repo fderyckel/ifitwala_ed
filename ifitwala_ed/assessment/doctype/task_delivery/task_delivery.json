@@ -22,6 +22,7 @@
   "lock_date",
   "section_break_hybw",
   "grading_mode",
+  "allow_feedback",
   "max_points",
   "grade_scale",
   "rubric_scoring_strategy",
@@ -137,6 +138,12 @@
    "fieldtype": "Select",
    "label": "Grading Mode",
    "options": "None\nCompletion\nBinary\nPoints\nCriteria"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_feedback",
+   "fieldtype": "Check",
+   "label": "Allow Feedback"
   },
   {
    "depends_on": "eval:doc.grading_mode=='Points'",
@@ -265,7 +272,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-01 21:00:00.000000",
+ "modified": "2026-04-02 18:14:49.000000",
  "modified_by": "Administrator",
  "module": "Assessment",
  "name": "Task Delivery",

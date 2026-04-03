@@ -110,6 +110,27 @@ class TestTaskDelivery(TestCase):
         self.assertIsNone(delivery.rubric_version)
         self.assertIsNone(delivery.rubric_scoring_strategy)
 
+    def test_apply_delivery_mode_defaults_inherits_feedback_flag_from_task_defaults(self):
+        task_delivery_service = types.ModuleType("ifitwala_ed.assessment.task_delivery_service")
+        task_delivery_service.get_delivery_context = lambda student_group: {}
+        task_delivery_service.get_eligible_students = Mock(return_value=[])
+        task_delivery_service.bulk_create_outcomes = Mock(return_value=0)
+
+        with stubbed_frappe(extra_modules={"ifitwala_ed.assessment.task_delivery_service": task_delivery_service}):
+            module = import_fresh("ifitwala_ed.assessment.doctype.task_delivery.task_delivery")
+
+        delivery = module.TaskDelivery()
+        delivery.delivery_mode = "Collect Work"
+        delivery.allow_feedback = None
+        delivery._has_field = Mock(
+            side_effect=lambda fieldname: fieldname in {"allow_feedback", "allow_late_submission"}
+        )
+        delivery._get_task_defaults = Mock(return_value={"default_allow_feedback": 1})
+
+        delivery._apply_delivery_mode_defaults()
+
+        self.assertEqual(delivery.allow_feedback, 1)
+
     def test_validate_class_session_context_rejects_other_student_group(self):
         task_delivery_service = types.ModuleType("ifitwala_ed.assessment.task_delivery_service")
         task_delivery_service.get_delivery_context = lambda student_group: {}

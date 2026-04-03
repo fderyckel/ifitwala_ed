@@ -21,7 +21,8 @@ export type CreateTaskDeliveryInput = {
 	lock_date?: string;
 	allow_late_submission?: 0 | 1;
 	group_submission?: 0 | 1;
-	grading_mode?: 'None' | 'Completion' | 'Binary' | 'Points';
+	grading_mode?: 'None' | 'Completion' | 'Binary' | 'Points' | 'Criteria';
+	allow_feedback?: 0 | 1;
 	max_points?: number | string;
 	quiz_question_bank?: string;
 	quiz_question_count?: number | string;

@@ -195,6 +195,101 @@ function mountPage() {
 	});
 }
 
+function mockGradebookFlow(options?: {
+	task?: Record<string, unknown>;
+	students?: Array<Record<string, unknown>>;
+	criteria?: Array<Record<string, unknown>>;
+}) {
+	const group = {
+		name: 'SG-1',
+		label: 'G6 Math',
+		school: 'SCH-1',
+		academic_year: '2025-2026',
+		program: 'IIS',
+		course: 'Math 1',
+		cohort: 'G6',
+	};
+
+	const task = {
+		name: 'TDL-1',
+		title: 'Task 1',
+		student_group: group.name,
+		due_date: '2026-04-03 10:00:00',
+		grading_mode: 'Points',
+		allow_feedback: 0,
+		rubric_scoring_strategy: null,
+		points: 1,
+		binary: 0,
+		criteria: 0,
+		observations: 0,
+		max_points: 20,
+		task_type: 'Assignment',
+		delivery_type: 'Assess',
+		...options?.task,
+	};
+
+	const students = options?.students || [
+		{
+			task_student: 'OUT-1',
+			student: 'STU-1',
+			student_name: 'Ada Lovelace',
+			student_id: 'S-001',
+			student_image: null,
+			status: 'Not Started',
+			complete: 0,
+			mark_awarded: null,
+			feedback: null,
+			visible_to_student: 0,
+			visible_to_guardian: 0,
+			updated_on: null,
+			criteria_scores: [],
+		},
+	];
+
+	routeState.query = { student_group: group.name };
+	fetchSchoolContextMock.mockResolvedValue({
+		default_school: 'SCH-1',
+		schools: [{ name: 'SCH-1', school_name: 'Main School' }],
+	});
+	fetchGroupsMock.mockResolvedValue([group]);
+	fetchGroupTasksMock.mockResolvedValue({
+		tasks: [
+			{
+				name: String(task.name),
+				title: String(task.title),
+				due_date: task.due_date as string | null,
+				status: null,
+				grading_mode: task.grading_mode as string | null,
+				allow_feedback: task.allow_feedback as 0 | 1,
+				rubric_scoring_strategy: task.rubric_scoring_strategy as 'Sum Total' | 'Separate Criteria' | null,
+				points: task.points as 0 | 1,
+				binary: task.binary as 0 | 1,
+				criteria: task.criteria as 0 | 1,
+				observations: task.observations as 0 | 1,
+				max_points: task.max_points as number | null,
+				task_type: task.task_type as string | null,
+				delivery_type: task.delivery_type as string | null,
+			},
+		],
+	});
+	getTaskGradebookMock.mockResolvedValue({
+		task,
+		criteria: options?.criteria || [],
+		students,
+	});
+
+	return { group, task };
+}
+
+async function openTask(title: string) {
+	const taskButton = Array.from(document.querySelectorAll('button')).find(button =>
+		(button.textContent || '').includes(title)
+	);
+	expect(taskButton).not.toBeNull();
+	taskButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	await flushUi();
+}
+
 afterEach(() => {
 	routeState.query = {};
 	replaceMock.mockClear();
@@ -280,5 +375,110 @@ describe('Gradebook page', () => {
 		expect(schoolSelect.value).toBe('SCH-2');
 		expect(groupSelect.value).toBe(linkedGroup.name);
 		expect(document.body.textContent || '').toContain(linkedGroup.label);
+	});
+
+	it('renders binary grading without points or comment controls when comments are disabled', async () => {
+		mockGradebookFlow({
+			task: {
+				title: 'Binary check',
+				grading_mode: 'Binary',
+				allow_feedback: 0,
+				points: 0,
+				binary: 1,
+				criteria: 0,
+				max_points: null,
+			},
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Binary check');
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Yes / No');
+		expect(text).toContain('Yes');
+		expect(text).toContain('No');
+		expect(text).not.toContain('Points Awarded');
+		expect(text).not.toContain('Comment');
+	});
+
+	it('renders completion grading with complete copy instead of yes/no copy', async () => {
+		mockGradebookFlow({
+			task: {
+				title: 'Completion check',
+				grading_mode: 'Completion',
+				allow_feedback: 0,
+				points: 0,
+				binary: 1,
+				criteria: 0,
+				max_points: null,
+			},
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Completion check');
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Complete');
+		expect(text).toContain('Not complete');
+		expect(text).not.toContain('Yes / No');
+	});
+
+	it('renders criteria grading with criteria controls and comment box only when enabled', async () => {
+		mockGradebookFlow({
+			task: {
+				title: 'Rubric task',
+				grading_mode: 'Criteria',
+				allow_feedback: 1,
+				rubric_scoring_strategy: 'Separate Criteria',
+				points: 0,
+				binary: 0,
+				criteria: 1,
+				max_points: null,
+			},
+			criteria: [
+				{
+					assessment_criteria: 'CRIT-1',
+					criteria_name: 'Clarity',
+					criteria_weighting: 50,
+					levels: [{ level: 'Secure', points: 4 }],
+				},
+			],
+			students: [
+				{
+					task_student: 'OUT-1',
+					student: 'STU-1',
+					student_name: 'Ada Lovelace',
+					student_id: 'S-001',
+					student_image: null,
+					status: 'Not Started',
+					complete: 0,
+					mark_awarded: null,
+					feedback: 'Strong reflection.',
+					visible_to_student: 0,
+					visible_to_guardian: 0,
+					updated_on: null,
+					criteria_scores: [
+						{
+							assessment_criteria: 'CRIT-1',
+							level: 'Secure',
+							level_points: 4,
+							feedback: null,
+						},
+					],
+				},
+			],
+		});
+
+		mountPage();
+		await flushUi();
+		await openTask('Rubric task');
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Criteria Breakdown');
+		expect(text).toContain('Comment');
+		expect(text).not.toContain('Points Awarded');
+		expect(text).not.toContain('Max Points:');
 	});
 });

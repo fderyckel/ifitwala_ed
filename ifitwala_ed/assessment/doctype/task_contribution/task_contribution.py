@@ -142,6 +142,11 @@ class TaskContribution(Document):
         delivery = self._get_delivery_flags()
         grading_mode = (delivery.get("grading_mode") or "").strip()
         requires_grading = int(delivery.get("require_grading") or 0)
+        allow_feedback = int(delivery.get("allow_feedback") or 0) == 1
+        has_feedback = bool((self.feedback or "").strip())
+
+        if has_feedback and not allow_feedback:
+            frappe.throw(_("Comments are not enabled for this delivery."))
 
         if not requires_grading:
             if self.score not in (None, "") or (self.grade or "").strip():
@@ -150,13 +155,13 @@ class TaskContribution(Document):
                 frappe.throw(_("Ungraded deliveries only allow feedback contributions."))
             return
 
-        if grading_mode == "Points" and self.score in (None, ""):
-            frappe.throw(_("Score is required for points grading."))
+        if grading_mode == "Points" and self.score in (None, "") and not has_feedback:
+            frappe.throw(_("Score or comment is required for points grading."))
 
         if grading_mode == "Criteria":
             rows = self.get("rubric_scores") or []
-            if not rows:
-                frappe.throw(_("Rubric scores are required for criteria grading."))
+            if not rows and not has_feedback:
+                frappe.throw(_("Rubric scores or comment are required for criteria grading."))
 
     def _validate_submission_requirement(self):
         status = (self.status or "Submitted").strip()
@@ -170,7 +175,7 @@ class TaskContribution(Document):
         if not outcome.get("task_delivery"):
             return {}
 
-        fields = ["grading_mode", "require_grading", "delivery_mode", "requires_submission"]
+        fields = ["grading_mode", "require_grading", "delivery_mode", "requires_submission", "allow_feedback"]
         return (
             frappe.db.get_value(
                 "Task Delivery",

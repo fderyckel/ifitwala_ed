@@ -124,6 +124,8 @@ A Task may operate in **one and only one** grading mode at a time:
 5. **Criteria** — rubric‑based assessment using Assessment Criteria
 
 The grading mode is **explicit**, never inferred at read time.
+Comments are additive, not a separate grading mode. `Task.default_allow_feedback` and
+`Task Delivery.allow_feedback` decide whether the gradebook should expose a comment box.
 
 ---
 

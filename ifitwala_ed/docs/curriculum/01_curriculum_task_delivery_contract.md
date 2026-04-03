@@ -76,11 +76,12 @@ Ownership rule:
 ## Class Planning Layer
 
 Status: Implemented
-Code refs: `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan_unit/class_teaching_plan_unit.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/doctype/class_session_activity/class_session_activity.json`, `ifitwala_ed/curriculum/planning.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`
-Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/lib/services/staff/__tests__/staffTeachingService.test.ts`
+Code refs: `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan_unit/class_teaching_plan_unit.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/doctype/class_session_activity/class_session_activity.json`, `ifitwala_ed/curriculum/planning.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`
+Test refs: `ifitwala_ed/schedule/doctype/student_group/test_student_group.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/lib/services/staff/__tests__/staffTeachingService.test.ts`
 
 - `Class Teaching Plan` is the class-owned planning layer for one teaching group.
 - Every class teaching plan must point to exactly one governing `Course Plan`.
+- Creating an active course-based `Student Group` auto-provisions one active `Class Teaching Plan` when exactly one non-archived governing `Course Plan` can be resolved for that course and academic-year context. If course-plan resolution is missing or ambiguous, class-plan creation remains an explicit Class Planning step.
 - `Class Session` is the educator-facing lifecycle object for a real teaching event.
 - `Class Session Activity` is the ordered session flow inside one class session.
 
@@ -179,12 +180,13 @@ Test refs: None
 ## Technical Notes (IT)
 
 Status: Canonical
-Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`
-Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/assessment/test_task_delivery_service.py`
+Code refs: `ifitwala_ed/curriculum/planning.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`
+Test refs: `ifitwala_ed/schedule/doctype/student_group/test_student_group.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/assessment/test_task_delivery_service.py`
 
 - `get_student_learning_space` is the student bootstrap. Do not rebuild the student curriculum reader on `api/courses.py` lesson-tree payloads.
 - `get_staff_class_planning_surface`, `list_staff_course_plans`, and `get_staff_course_plan_surface` are the staff read-model owners for curriculum planning.
 - `create_course_plan` is the canonical mutation for starting a new governed course plan from the SPA index.
+- `StudentGroup.after_insert()` calls `planning.bootstrap_student_group_class_teaching_plan(...)` so course-based class setup can create the default class-plan anchor in one save when course-plan resolution is unambiguous.
 - Shared course-plan editing rights are not derived from static DocType role writes; they are resolved from active teaching assignments on `Student Group`.
 - `Task Delivery` remains the live doctype name. Educator-facing language can evolve, but workflow invariants and schema claims must be grounded in the current files.
 - Any future change that alters plan ownership, read-order, or class-scoped assignment rules must update this document and the LMS/resource contracts in the same change.

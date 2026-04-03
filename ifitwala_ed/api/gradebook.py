@@ -465,6 +465,7 @@ def fetch_group_tasks(student_group: str):
             "due_date",
             "delivery_mode",
             "grading_mode",
+            "allow_feedback",
             "max_points",
             "rubric_scoring_strategy",
         ],
@@ -494,6 +495,9 @@ def fetch_group_tasks(student_group: str):
                 "title": task_row.get("title") or delivery.get("task"),
                 "due_date": delivery.get("due_date"),
                 "status": None,
+                "grading_mode": grading_mode or None,
+                "allow_feedback": 1 if _bool_flag(delivery.get("allow_feedback")) else 0,
+                "rubric_scoring_strategy": delivery.get("rubric_scoring_strategy") or None,
                 "points": 1 if grading_mode == "Points" else 0,
                 "binary": 1 if grading_mode in {"Binary", "Completion"} else 0,
                 "criteria": 1 if grading_mode == "Criteria" else 0,
@@ -617,6 +621,9 @@ def get_task_gradebook(task: str):
         "title": task_row.get("title") or task_row.get("name"),
         "student_group": delivery.get("student_group"),
         "due_date": delivery.get("due_date"),
+        "grading_mode": grading_mode or None,
+        "allow_feedback": 1 if _bool_flag(delivery.get("allow_feedback")) else 0,
+        "rubric_scoring_strategy": delivery.get("rubric_scoring_strategy") or None,
         "points": 1 if grading_mode == "Points" else 0,
         "binary": 1 if grading_mode in {"Binary", "Completion"} else 0,
         "criteria": 1 if grading_mode == "Criteria" else 0,
@@ -705,7 +712,7 @@ def update_task_student(task_student: str, updates=None, **kwargs):
         frappe.db.get_value(
             "Task Delivery",
             outcome_row.get("task_delivery"),
-            ["name", "student_group", "grading_mode"],
+            ["name", "student_group", "delivery_mode", "grading_mode", "allow_feedback"],
             as_dict=True,
         )
         or {}
@@ -713,9 +720,25 @@ def update_task_student(task_student: str, updates=None, **kwargs):
     _assert_group_access(delivery_row.get("student_group"))
 
     grading_mode = (delivery_row.get("grading_mode") or "").strip()
+    delivery_mode = (delivery_row.get("delivery_mode") or "").strip()
+    allow_feedback = _bool_flag(delivery_row.get("allow_feedback"))
+    boolean_mode = grading_mode in {"Binary", "Completion"} or delivery_mode == "Assign Only"
     score_provided = "mark_awarded" in payload and payload.get("mark_awarded") not in (None, "")
     feedback_provided = "feedback" in payload
     criteria_provided = isinstance(payload.get("criteria_scores"), list)
+    complete_provided = "complete" in payload
+
+    if score_provided and grading_mode != "Points":
+        frappe.throw(_("Points can only be recorded for points grading."))
+
+    if criteria_provided and grading_mode != "Criteria":
+        frappe.throw(_("Criteria scores can only be recorded for criteria grading."))
+
+    if complete_provided and not boolean_mode:
+        frappe.throw(_("Completion can only be recorded for completion, binary, or assign-only work."))
+
+    if feedback_provided and not allow_feedback:
+        frappe.throw(_("Comments are not enabled for this delivery."))
 
     if score_provided or feedback_provided or criteria_provided:
         contribution_payload = {"task_outcome": task_student}
@@ -754,9 +777,7 @@ def update_task_student(task_student: str, updates=None, **kwargs):
                 contribution_payload["rubric_scores"] = existing_scores
             elif criteria_provided:
                 frappe.throw(_("Criteria levels are required before saving criteria marks."))
-            else:
-                # Criteria deliveries require rubric scores; skip feedback-only autosaves
-                # until at least one rubric level exists for this outcome.
+            elif not feedback_provided:
                 should_submit_contribution = False
 
         if should_submit_contribution:
@@ -767,8 +788,9 @@ def update_task_student(task_student: str, updates=None, **kwargs):
             task_contribution_service.submit_contribution(contribution_payload, contributor=frappe.session.user)
 
     status_value = _normalize_grading_status(payload.get("status")) if "status" in payload else None
-    complete_provided = "complete" in payload
     visibility_provided = "visible_to_student" in payload or "visible_to_guardian" in payload
+    if status_value is not None and delivery_mode != "Assess":
+        frappe.throw(_("Grading status can only be updated for assessed work."))
     if status_value is not None or complete_provided or visibility_provided:
         outcome_doc = frappe.get_doc("Task Outcome", task_student)
         if status_value is not None:
@@ -1167,6 +1189,7 @@ def _resolve_delivery(delivery_id):
             "due_date",
             "delivery_mode",
             "grading_mode",
+            "allow_feedback",
             "max_points",
             "rubric_version",
             "rubric_scoring_strategy",

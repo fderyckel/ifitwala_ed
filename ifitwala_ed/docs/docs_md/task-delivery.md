@@ -3,8 +3,8 @@ title: "Task Delivery: Assigning Work to a Real Class"
 slug: task-delivery
 category: Assessment
 doc_order: 5
-version: "1.5.0"
-last_change_date: "2026-04-01"
+version: "1.6.0"
+last_change_date: "2026-04-03"
 summary: "Assign a reusable task to a specific class through its class teaching plan, with dates, grading mode, optional class-session context, and scalable outcome generation."
 seo_title: "Task Delivery: Assigning Work to a Real Class"
 seo_description: "Assign a reusable task to a class through its teaching plan with dates, grading mode, evidence rules, and optional class-session context."
@@ -16,7 +16,7 @@ Status: Partial
 Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`, `ifitwala_ed/api/gradebook.py`
 Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/assessment/test_task_delivery_service.py`, `ifitwala_ed/api/test_gradebook.py`
 
-`Task Delivery` is where a reusable task becomes real for a specific student group, within a specific time window and grading/evidence policy.
+`Task Delivery` is where a reusable task becomes real for a specific student group, within a specific time window and grading/evidence/comment policy.
 
 Current workspace note: delivery launch is now submit-driven across both creation services, the live schema requires `class_teaching_plan`, and the taught-context link is optional `class_session` instead of `lesson_instance`.
 
@@ -28,7 +28,7 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task_delivery/te
 
 - Create the parent `Task` first.
 - Create the `Student Group` first, with roster and context aligned to the teaching situation.
-- Ensure the class has an active `Class Teaching Plan`.
+- Ensure the class has an active `Class Teaching Plan`. Creating a course-based `Student Group` now provisions one automatically when a single governing `Course Plan` can be resolved; otherwise initialize or select the class plan in Class Planning before assigning work.
 - Prepare grading setup first (`Grade Scale`, and task criteria readiness if using criteria grading mode).
 
 ## Where It Is Used Across the ERP
@@ -110,6 +110,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 
 - `before_validate()` stamps denormalized context from `Student Group`, checks task/course alignment, validates the required `class_teaching_plan` anchor, and then validates any optional `class_session` anchor.
 - `validate()` enforces delivery-mode coherence, date rules, criteria requirements, and the current hard block on `group_submission`.
+- `allow_feedback` is an additive delivery policy. It does not replace grading mode; it only governs whether gradebook comments are allowed for that delivery.
 - `on_submit()` is the canonical place for:
   - criteria snapshot creation
   - bulk `Task Outcome` creation for eligible students
@@ -122,6 +123,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 - `group_submission` remains intentionally blocked until the subgroup model exists.
 - Legacy deliveries created before the fixed launch path may still need `api/gradebook.py::repair_task_roster()` to generate their outcomes.
 - Current delivery payloads must resolve a `class_teaching_plan` first, then may link to taught curriculum through `class_session` when that context is explicitly supplied.
+- Course-based `Student Group` creation now reduces assignment setup friction by auto-provisioning one active `Class Teaching Plan` when course-plan resolution is unambiguous. Missing or ambiguous course-plan cases remain explicit manual setup rather than guessed linkage.
 - Any future change in delivery launch semantics must update:
   - this page
   - [**Class Session**](/docs/en/class-session/)

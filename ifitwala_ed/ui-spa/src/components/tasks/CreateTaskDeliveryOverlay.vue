@@ -390,6 +390,45 @@
 													placeholder="Enter max points"
 												/>
 											</div>
+
+											<p class="text-xs text-ink/60">
+												Criteria grading is configured from the full Task record because it
+												requires Task Criteria and a rubric strategy.
+											</p>
+										</div>
+
+										<div class="space-y-2">
+											<p class="type-label">Allow comment in gradebook?</p>
+											<div class="flex flex-wrap gap-2">
+												<button
+													type="button"
+													class="rounded-full border px-4 py-2 text-sm font-medium transition"
+													:class="
+														form.allow_feedback
+															? 'border-leaf/60 bg-sky/20 text-ink'
+															: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
+													"
+													@click="form.allow_feedback = true"
+												>
+													Yes
+												</button>
+												<button
+													type="button"
+													class="rounded-full border px-4 py-2 text-sm font-medium transition"
+													:class="
+														!form.allow_feedback
+															? 'border-leaf/60 bg-sky/20 text-ink'
+															: 'border-border/70 bg-white text-ink/70 hover:border-leaf/40'
+													"
+													@click="form.allow_feedback = false"
+												>
+													No
+												</button>
+											</div>
+											<p class="text-xs text-ink/60">
+												Show a comment box in the gradebook only when this is turned on. Comments
+												stay separate from points, criteria, or completion.
+											</p>
 										</div>
 
 										<p class="text-xs text-ink/60">
@@ -839,6 +878,7 @@ type FormState = {
 	allow_late_submission: boolean;
 	group_submission: boolean;
 	grading_mode: string;
+	allow_feedback: boolean;
 	max_points: string;
 };
 type MaterialFormState = {
@@ -867,6 +907,7 @@ const form = reactive<FormState>({
 	allow_late_submission: false,
 	group_submission: false,
 	grading_mode: '',
+	allow_feedback: false,
 	max_points: '',
 });
 const materialForm = reactive<MaterialFormState>({
@@ -1019,6 +1060,7 @@ function initializeForm() {
 	form.allow_late_submission = false;
 	form.group_submission = false;
 	form.grading_mode = '';
+	form.allow_feedback = false;
 	form.max_points = '';
 	gradingEnabled.value = false;
 	errorMessage.value = '';
@@ -1442,6 +1484,7 @@ async function submit() {
 	} else {
 		payload.grading_mode = 'None' as any;
 	}
+	payload.allow_feedback = form.allow_feedback ? 1 : 0;
 
 	try {
 		const res = await createTaskResource.submit(payload);

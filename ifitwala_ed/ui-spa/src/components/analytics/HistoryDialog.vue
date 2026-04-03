@@ -84,7 +84,10 @@
 									</div>
 								</section>
 
-								<section class="history-dialog__content-grid">
+								<section
+									class="history-dialog__content-grid"
+									:class="{ 'history-dialog__content-grid--solo': !showCommentsPanel }"
+								>
 									<div class="history-dialog__chart-card">
 										<div class="history-dialog__card-head">
 											<div>
@@ -126,7 +129,7 @@
 										</div>
 									</div>
 
-									<div class="history-dialog__context-card">
+									<div v-if="showCommentsPanel" class="history-dialog__context-card">
 										<div class="history-dialog__card-head">
 											<div>
 												<p
@@ -265,6 +268,7 @@ const props = defineProps<{
 	params?: Record<string, any>;
 	title?: string;
 	initialSchool?: string;
+	showComments?: boolean;
 	comments?: HistoryComment[];
 	loadingComments?: boolean;
 	rangeOptions?: ReadonlyArray<{ label: string; value: string }>;
@@ -355,6 +359,7 @@ const displayedComments = computed<HistoryComment[]>(() => props.comments || [])
 const commentCount = computed(() => displayedComments.value.length);
 const hasComments = computed(() => commentCount.value > 0);
 const commentsLoading = computed(() => props.loadingComments ?? false);
+const showCommentsPanel = computed(() => props.showComments !== false);
 
 function closeDialog() {
 	show.value = false;
@@ -591,6 +596,10 @@ const chartOption = computed(() => {
 	gap: 1rem;
 	grid-template-columns: minmax(0, 1.65fr) minmax(22rem, 1fr);
 	min-height: 0;
+}
+
+.history-dialog__content-grid--solo {
+	grid-template-columns: minmax(0, 1fr);
 }
 
 .history-dialog__chart-card,

@@ -176,6 +176,23 @@ describe('HistoryDialog', () => {
 		expect(document.body.textContent).not.toContain('Loading...');
 	});
 
+	it('hides the comments panel when the caller disables comments', async () => {
+		mocks.resourceState.data = {
+			message: {
+				school: 'Ifitwala Secondary School + 2 schools',
+				data: [{ date: '2026-03-09', count: 1 }],
+			},
+		};
+
+		mountDialog({
+			showComments: false,
+		});
+		await nextTick();
+
+		expect(document.body.textContent).not.toContain('Context & comments');
+		expect(document.body.querySelector('[data-analytics-chart="1"]')).not.toBeNull();
+	});
+
 	it('shows an actionable error when the history fetch fails', async () => {
 		mocks.resourceState.error = new Error(
 			'Assign a default school or Employee.school before opening clinic volume.'

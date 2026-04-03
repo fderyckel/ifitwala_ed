@@ -33,6 +33,7 @@
 				<div class="flex flex-wrap gap-2">
 					<button
 						type="button"
+						data-resource-mode="link"
 						class="rounded-full border px-4 py-2 text-sm font-medium transition"
 						:class="
 							composerMode === 'link'
@@ -45,6 +46,7 @@
 					</button>
 					<button
 						type="button"
+						data-resource-mode="file"
 						class="rounded-full border px-4 py-2 text-sm font-medium transition"
 						:class="
 							composerMode === 'file'
@@ -113,7 +115,13 @@
 				<div v-else class="mt-4 space-y-3">
 					<input ref="fileInput" type="file" class="hidden" @change="onFileSelected" />
 					<div class="flex flex-wrap items-center gap-3">
-						<Button appearance="secondary" @click="fileInput?.click()">Choose file</Button>
+						<Button
+							appearance="secondary"
+							data-resource-choose-file="true"
+							@click="fileInput?.click()"
+						>
+							Choose file
+						</Button>
 						<p class="type-caption text-ink/70">
 							{{ selectedFile?.name || 'No file selected yet.' }}
 						</p>

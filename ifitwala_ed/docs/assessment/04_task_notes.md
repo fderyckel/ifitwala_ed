@@ -65,7 +65,7 @@ Test refs:
 ### 1.1 Task
 
 `Task` is the reusable definition.
-It owns title, instructions, resources, task type, and grading defaults.
+It owns title, instructions, resources, task type, grading defaults, and the default comment policy.
 It does not own class membership, dates, or per-student truth.
 
 ### 1.2 Task Delivery
@@ -79,6 +79,7 @@ It owns:
 - `delivery_mode`
 - availability and deadline fields
 - grading snapshot fields
+- additive comment policy snapshot (`allow_feedback`)
 - optional `class_session`
 - denormalized class context such as `course`, `academic_year`, and `school`
 

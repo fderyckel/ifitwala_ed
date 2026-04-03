@@ -239,6 +239,15 @@ afterEach(() => {
 });
 
 describe('CreateTaskDeliveryOverlay', () => {
+	it('explains that comments are an additive gradebook option', async () => {
+		mountOverlay();
+		await flushUi();
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Allow comment in gradebook?');
+		expect(text).toContain('Comments stay separate from points, criteria, or completion.');
+	});
+
 	it('turns missing class planning validation into an actionable recovery path', async () => {
 		mountOverlay();
 		await flushUi();

@@ -3,8 +3,8 @@ title: "Student Group: Operational Teaching Group Contract"
 slug: student-group
 category: Schedule
 doc_order: 1
-version: "1.0.5"
-last_change_date: "2026-04-02"
+version: "1.1.0"
+last_change_date: "2026-04-03"
 summary: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, attendance scope, and downstream teaching materialization."
 seo_title: "Student Group: Operational Teaching Group Contract"
 seo_description: "Define the operational class, cohort, activity, or pastoral group used for rostering, instructor assignment, schedule intent, and attendance scope."
@@ -14,7 +14,7 @@ seo_description: "Define the operational class, cohort, activity, or pastoral gr
 
 `Student Group` is the operational teaching-group record for the Schedule domain. It binds roster, instructor set, attendance scope, and timetable intent to a specific `Program Offering` and `Academic Year`, then feeds downstream scheduling, attendance, and teaching workflows.
 
-Current workspace note: when a selected Program Offering has exactly one Academic Year in its offering spine, the Student Group form now auto-fills `academic_year`. Schedule rows also default `instructor` when exactly one instructor is attached to the group, and save-time validation warns, without blocking, only for course-based Student Groups that land in non-instructional or mismatched schedule blocks.
+Current workspace note: when a selected Program Offering has exactly one Academic Year in its offering spine, the Student Group form now auto-fills `academic_year`. Schedule rows also default `instructor` when exactly one instructor is attached to the group, save-time validation warns, without blocking, only for course-based Student Groups that land in non-instructional or mismatched schedule blocks, and creating a course-based Student Group now auto-provisions one active `Class Teaching Plan` when a single governing `Course Plan` can be resolved unambiguously.
 
 ## Before You Start (Prerequisites)
 
@@ -61,6 +61,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
    - schedule row times are stamped from `School Schedule Block`
    - overlap, capacity, and room checks run
    - for course-based groups only, non-instructional or mismatched schedule blocks raise warnings only
+   - for course-based groups only, one active `Class Teaching Plan` is auto-created when exactly one non-archived governing `Course Plan` can be resolved; ambiguous or missing course-plan cases remain manual in Class Planning
 7. On later saves, active-student changes, instructor changes, and schedule changes trigger downstream sync and materialization updates.
    Instructor membership changes also open or close durable `Instructor Log` history rows for affected instructors.
 
@@ -95,6 +96,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 - **Controller file**: `ifitwala_ed/schedule/doctype/student_group/student_group.py`
 - **Client script**: `ifitwala_ed/schedule/doctype/student_group/student_group.js`
 - **Supporting scheduling helper**: `ifitwala_ed/schedule/student_group_scheduling.py`
+- **Supporting class-plan bootstrap helper**: `ifitwala_ed/curriculum/planning.py`
 - **Required fields (`reqd=1`)**:
   - `program_offering` (`Link` -> `Program Offering`)
   - `academic_year` (`Link` -> `Academic Year`)
@@ -107,6 +109,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 - **Lifecycle hooks in controller**:
   - `autoname`
   - `validate`
+  - `after_insert`
   - `before_save`
   - `after_save`
   - `on_update`
@@ -136,6 +139,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
   - course-based groups scheduled in non-instructional blocks such as recess, assembly, and lunch-style blocks
   - course-based groups scheduled in block types that do not match course teaching, for example a course group scheduled in an activity block
 - `validate_location_conflicts_absolute()` expands abstract schedule rows into real datetimes via rotation dates, then checks governed room conflicts against materialized bookings.
+- `after_insert()` calls the curriculum bootstrap helper so a new active course-based group gets a default `Class Teaching Plan` automatically when exactly one non-archived `Course Plan` is available for that course/academic-year context.
 - `before_save()` and `after_save()` compute change deltas for students, instructors, and schedule rows so downstream sync stays bounded, including durable Instructor Log history updates.
 - `on_update()` rebuilds employee bookings only for active groups that actually have schedule rows.
 
@@ -175,6 +179,7 @@ Current workspace note: when a selected Program Offering has exactly one Academi
 
 - `Student Group Schedule` remains abstract intent. Concrete room and employee bookings come from controlled materialization flows.
 - Child-table workflow logic must remain in the parent `Student Group` controller.
+- Class-plan auto-provisioning must stay idempotent and must skip, not guess, when multiple eligible `Course Plan` rows exist for the group’s course.
 - Any future change to schedule resolution, block booking warnings, or materialization triggers must be updated together with:
   - this page
   - [**Program Offering**](/docs/en/program-offering/)

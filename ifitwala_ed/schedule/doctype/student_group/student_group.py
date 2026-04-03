@@ -122,6 +122,11 @@ class StudentGroup(Document):
         else:
             self.title = self.student_group_abbreviation
 
+    def after_insert(self):
+        from ifitwala_ed.curriculum import planning
+
+        planning.bootstrap_student_group_class_teaching_plan(self)
+
     def before_save(self):
         """
         Detect changes efficiently:

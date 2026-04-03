@@ -340,6 +340,27 @@ def _build_clinic_count_map(rows: list[dict]) -> dict[tuple[str, object], int]:
     return count_map
 
 
+def _collect_clinic_count_dates(
+    count_map: dict[tuple[str, object], int],
+    school_scope: list[str],
+    start_date,
+    end_date,
+) -> list:
+    allowed_schools = set(school_scope or [])
+    start_value = getdate(start_date)
+    end_value = getdate(end_date)
+    dates = {
+        day_value
+        for (school, day_value), count in (count_map or {}).items()
+        if count
+        and school
+        and day_value
+        and (not allowed_schools or school in allowed_schools)
+        and start_value <= getdate(day_value) <= end_value
+    }
+    return sorted(dates)
+
+
 def _sum_clinic_counts_for_day(
     count_map: dict[tuple[str, object], int],
     calendar_context: dict[str, list[dict]],
@@ -923,6 +944,8 @@ def get_clinic_visits_trend(time_range="1M"):
             if _is_scope_business_day(calendar_context, scope["school_scope"], curr):
                 trend_dates.append(curr)
             curr = add_days(curr, 1)
+        if not trend_dates:
+            trend_dates = _collect_clinic_count_dates(count_map, scope["school_scope"], start_date, end_date)
 
     for day_value in trend_dates:
         final_data.append(

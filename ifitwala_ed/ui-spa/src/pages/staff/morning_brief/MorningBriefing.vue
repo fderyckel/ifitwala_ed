@@ -675,6 +675,7 @@
 			subtitle="Student patient visits over time"
 			method="ifitwala_ed.api.morning_brief.get_clinic_visits_trend"
 			:initial-school="clinicVolume?.school || ''"
+			:show-comments="false"
 			:range-options="clinicHistoryRangeOptions"
 			:default-range="clinicVolumeView"
 		/>

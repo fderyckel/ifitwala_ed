@@ -291,6 +291,183 @@ def sync_all_class_teaching_plans(course_plan: str) -> None:
         doc.save(ignore_permissions=True)
 
 
+def _log_class_teaching_plan_bootstrap(payload: dict) -> None:
+    logger_factory = getattr(frappe, "logger", None)
+    if not callable(logger_factory):
+        return
+    logger_factory("ifitwala.curriculum").info(payload)
+
+
+def _resolve_bootstrap_course_plan_for_group(course: str, academic_year: str | None) -> dict[str, str | None]:
+    course = normalize_text(course)
+    academic_year = normalize_text(academic_year)
+    if not course:
+        return {"course_plan": None, "reason": "missing_course"}
+
+    base_filters = {
+        "course": course,
+        "plan_status": ["!=", "Archived"],
+    }
+    if academic_year:
+        exact_year_rows = frappe.get_all(
+            "Course Plan",
+            filters={**base_filters, "academic_year": academic_year},
+            fields=["name"],
+            order_by="modified desc, creation desc",
+            limit=2,
+        )
+        if len(exact_year_rows) == 1:
+            return {
+                "course_plan": normalize_text(exact_year_rows[0].get("name")) or None,
+                "reason": None,
+            }
+        if len(exact_year_rows) > 1:
+            return {
+                "course_plan": None,
+                "reason": "multiple_course_plans_for_academic_year",
+            }
+
+    fallback_rows = frappe.get_all(
+        "Course Plan",
+        filters=base_filters,
+        fields=["name"],
+        order_by="modified desc, creation desc",
+        limit=2,
+    )
+    if len(fallback_rows) == 1:
+        return {
+            "course_plan": normalize_text(fallback_rows[0].get("name")) or None,
+            "reason": None,
+        }
+    if len(fallback_rows) > 1:
+        return {"course_plan": None, "reason": "multiple_course_plans"}
+    return {"course_plan": None, "reason": "missing_course_plan"}
+
+
+def bootstrap_student_group_class_teaching_plan(student_group_doc) -> dict[str, str | None]:
+    student_group = normalize_text(getattr(student_group_doc, "name", None))
+    group_based_on = normalize_text(getattr(student_group_doc, "group_based_on", None))
+    status = normalize_text(getattr(student_group_doc, "status", None)) or "Active"
+    course = normalize_text(getattr(student_group_doc, "course", None))
+    academic_year = normalize_text(getattr(student_group_doc, "academic_year", None)) or None
+
+    if group_based_on != "Course":
+        return {
+            "status": "skipped",
+            "reason": "non_course_group",
+            "student_group": student_group or None,
+            "course_plan": None,
+            "class_teaching_plan": None,
+        }
+    if status != "Active":
+        return {
+            "status": "skipped",
+            "reason": "inactive_student_group",
+            "student_group": student_group or None,
+            "course_plan": None,
+            "class_teaching_plan": None,
+        }
+    if not student_group or not course:
+        result = {
+            "status": "skipped",
+            "reason": "missing_student_group_or_course",
+            "student_group": student_group or None,
+            "course_plan": None,
+            "class_teaching_plan": None,
+        }
+        _log_class_teaching_plan_bootstrap(
+            {
+                "event": "class_teaching_plan_bootstrap_skipped",
+                "result": result,
+                "academic_year": academic_year,
+            }
+        )
+        return result
+
+    resolved = _resolve_bootstrap_course_plan_for_group(course, academic_year)
+    course_plan = normalize_text(resolved.get("course_plan")) or None
+    if not course_plan:
+        result = {
+            "status": "skipped",
+            "reason": resolved.get("reason") or "unresolved_course_plan",
+            "student_group": student_group,
+            "course_plan": None,
+            "class_teaching_plan": None,
+        }
+        _log_class_teaching_plan_bootstrap(
+            {
+                "event": "class_teaching_plan_bootstrap_skipped",
+                "result": result,
+                "course": course,
+                "academic_year": academic_year,
+            }
+        )
+        return result
+
+    existing_plan = normalize_text(
+        frappe.db.get_value(
+            "Class Teaching Plan",
+            {
+                "student_group": student_group,
+                "course_plan": course_plan,
+            },
+            "name",
+        )
+    )
+    if existing_plan:
+        return {
+            "status": "existing",
+            "reason": None,
+            "student_group": student_group,
+            "course_plan": course_plan,
+            "class_teaching_plan": existing_plan,
+        }
+
+    doc = frappe.new_doc("Class Teaching Plan")
+    doc.student_group = student_group
+    doc.course_plan = course_plan
+    doc.planning_status = "Active"
+    try:
+        doc.insert(ignore_permissions=True)
+    except frappe.ValidationError:
+        existing_plan = normalize_text(
+            frappe.db.get_value(
+                "Class Teaching Plan",
+                {
+                    "student_group": student_group,
+                    "course_plan": course_plan,
+                },
+                "name",
+            )
+        )
+        if existing_plan:
+            return {
+                "status": "existing",
+                "reason": None,
+                "student_group": student_group,
+                "course_plan": course_plan,
+                "class_teaching_plan": existing_plan,
+            }
+        raise
+
+    result = {
+        "status": "created",
+        "reason": None,
+        "student_group": student_group,
+        "course_plan": course_plan,
+        "class_teaching_plan": doc.name,
+    }
+    _log_class_teaching_plan_bootstrap(
+        {
+            "event": "class_teaching_plan_bootstrap_created",
+            "result": result,
+            "course": course,
+            "academic_year": academic_year,
+        }
+    )
+    return result
+
+
 def replace_session_activities(doc, rows: Iterable[dict] | None) -> None:
     sanitized: list[dict] = []
     for idx, row in enumerate(rows or [], start=1):

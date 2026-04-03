@@ -226,6 +226,7 @@ def create_delivery(payload):
         "class_teaching_plan",
         "delivery_mode",
         "grading_mode",
+        "allow_feedback",
         "max_points",
         "grade_scale",
         "rubric_scoring_strategy",

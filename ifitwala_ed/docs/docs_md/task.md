@@ -3,8 +3,8 @@ title: "Task: The Reusable Learning and Assessment Blueprint"
 slug: task
 category: Assessment
 doc_order: 4
-version: "1.5.0"
-last_change_date: "2026-04-01"
+version: "1.5.1"
+last_change_date: "2026-04-02"
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and task-specific supporting materials."
 seo_title: "Task: The Reusable Learning and Assessment Blueprint"
 seo_description: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
@@ -16,7 +16,7 @@ Status: Partial
 Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/api/task.py`
 Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.py`)
 
-`Task` is the reusable definition layer for learning work. It holds author intent, instructions, and default assessment behavior, but it is not itself assigned to a class.
+`Task` is the reusable definition layer for learning work. It holds author intent, instructions, default assessment behavior, and default comment policy, but it is not itself assigned to a class.
 
 Current workspace note: the task definition model is in place, downstream launch paths are still split between the direct delivery service and the create-task overlay transaction, and task materials now live in the separate `Supporting Material` plus `Material Placement` domain instead of competing with lesson content.
 
@@ -54,7 +54,7 @@ Code refs: `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessmen
 Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.py`)
 
 1. Author the reusable task definition with required curriculum anchor (`default_course`) and optional deeper planned-curriculum anchors (`unit_plan`, `lesson`).
-2. Configure default delivery and grading behavior, including optional `task_criteria` rows.
+2. Configure default delivery, grading, and comment behavior, including optional `task_criteria` rows.
 3. Create a `Task Delivery` as the execution instance for a specific `Student Group`.
 4. Downstream outcomes, submissions, contributions, and rubric snapshots should inherit delivery/task context.
 
@@ -102,6 +102,7 @@ Test refs: `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 
 - `Task` is the reusable definition artifact. It is not the grading fact table.
 - `task.py` enforces curriculum alignment, duplicate criterion guards, and coherent default grading configuration.
+- `Task` also carries `default_allow_feedback`, which decides whether downstream deliveries should expose a comment box by default.
 - `task.js` filters `unit_plan` and `lesson` choices by course context, clears stale curriculum links when course changes, and replaces generic Task resource uploads with the governed Task-resource action.
 - `task.py` now treats `attachments` as a legacy compatibility surface only: new reusable task materials live in `Supporting Material` and are shared onto the task through `Material Placement`.
 - The current task schema stops at `lesson`; it does not currently expose `lesson_activity` or `class_session`.
