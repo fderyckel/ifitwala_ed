@@ -1,166 +1,104 @@
-# Product UI-UX Friction Reduction Roadmap
+# Product UI-UX Friction Roadmap Anchored To Shipped SPA Surfaces
 
 **Date:** 2026-04-03
 **Status:** Planned proposal, non-authoritative audit note
 **Scope:** Staff, admin, and student SPA experience in `ifitwala_ed/ui-spa/`
-**Primary objective:** Reduce routine workflow friction and make each persona's next action obvious without adding new navigation burden.
+**Primary objective:** Reduce routine workflow friction by improving continuity and context preservation inside the hubs, overlays, and workspaces that already exist.
 
 ## Rating Model
 
-Each roadmap item is scored on a **1-5 UX Impact Score** using this weighted model:
+Each roadmap item is scored on a **1-5 UX Impact Score** using this weighted user-impact model:
 
-- **Frequency (35%)**: How often the target users hit this flow in real work or learning.
-- **Friction Removed (35%)**: How much click count, context switching, re-entry, or dead-end recovery the change removes.
-- **Decision Clarity (20%)**: How much easier it becomes to understand status, next action, and why something is blocked.
-- **Experience Elevation (10%)**: Visual/interaction quality, mobile comfort, accessibility, and perceived polish.
+- **Workflow Frequency (30%)**: How often educators, admins, or students touch this flow.
+- **Context Switch Reduction (30%)**: How much tab hopping, re-navigation, or repeated selection the change removes.
+- **Action Clarity (25%)**: How much easier it becomes to understand what to do next and why something is blocked.
+- **Presentation Quality (15%)**: How much better the content is rendered, scanned, and used on real screens.
 
 **Score interpretation**
 
-- **5.0-4.5** = Critical UX leverage, should be scheduled first.
-- **4.4-3.8** = Strong UX leverage, worth sequencing in the next product cycle.
-- **3.7-3.0** = Useful but narrower improvement.
-- **Below 3.0** = Defer unless bundled with higher-impact work.
+- **5.0-4.5** = High-priority UX leverage; schedule first.
+- **4.4-3.8** = Strong improvement; sequence in the next product cycle.
+- **3.7-3.0** = Useful, but narrower.
+- **Below 3.0** = Defer unless bundled.
 
 ## Bottom Line
 
-The highest-leverage product work is to redesign the SPA around **task-first flows by persona** rather than record-first editing.
-For educators, that means a tighter "what do I need to teach/assign/review today?" cockpit.
-For admins, that means exception queues and bulk action surfaces.
-For students, that means one-tap continuation into the next learning action with clearer progress and due-state.
+The next product work should **not** rebuild Staff Home, Morning Briefing, Focus, Student Home, Course Detail, or Admissions Cockpit. Those hubs already exist and already carry a lot of the right workflow structure.
+
+The highest-leverage work is to **tighten the handoffs between those existing surfaces**, preserve the user's current context when they jump from a calendar/event/card into a workspace, and render authored learning content with the same fidelity that educators create in Desk/SPA editors.
+
+## Current Product Baseline Observed In Code
+
+| Persona | What already exists | Code refs |
+|---|---|---|
+| Staff / Educators | Staff Home already has a schedule calendar with source chips and event overlays, a Focus card routed through a Focus overlay, quick actions, and a Morning Brief entry point. Class Hub already has session start/end, quick evidence, student picker, notes/tasks, pulse, follow-ups, and an entry into Class Planning. Morning Briefing already has announcements, critical incidents, clinic volume, admissions pulse, absent students, recent logs, and community cards. | `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/ui-spa/src/components/calendar/ScheduleCalendar.vue`, `ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue`, `ifitwala_ed/ui-spa/src/components/focus/FocusListCard.vue`, `ifitwala_ed/ui-spa/src/overlays/focus/FocusRouterOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassHub.vue`, `ifitwala_ed/ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue` |
+| Students | Student Home already has current/next class cards, a four-lane Work Board, a Timeline, StudentCalendar, and Quick Links. Course Detail already has Learning Focus, Next Actions, a sticky section navigator, Unit Journey, Session Journey, Assigned Work, and Resources. StudentCalendar already opens event overlays and class events already expose an "Open Course" action. | `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/components/calendar/StudentCalendar.vue`, `ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue` |
+| Admin / Ops | Admissions Cockpit already has org/school/my-assignment filters, KPIs, blocker chips, a kanban-style applicant board, workspace overlays, interview actions, and a message drawer. Student Attendance Tool already has school/program/group/default-code filters, a meeting-date calendar, roster editing, remark tips, autosave state, and a direct student-log overlay. | `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`, `ifitwala_ed/ui-spa/src/pages/staff/schedule/StudentAttendanceTool.vue` |
 
 ## Ranked Roadmap
 
-| Rank | Persona | Roadmap Item | Target Surfaces | Frequency | Friction Removed | Decision Clarity | Experience Elevation | UX Impact Score |
-|---|---|---|---|---:|---:|---:|---:|---:|
-| 1 | Educators | Convert Staff Home into a true "today cockpit" with next class, pending grading, attendance exceptions, and one-click lesson/assignment handoff. | `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassHub.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue` | 5 | 5 | 5 | 4 | **4.9** |
-| 2 | Students | Make Course Detail action-first: "Continue lesson", "Resume quiz", "Submit next task", and "View feedback", with visible progress and due-state. | `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue` | 5 | 5 | 5 | 4 | **4.9** |
-| 3 | Admins | Build exception-first queues with bulk resolve, inline blockers, and explainable states for admissions, attendance, enrollment, and policy signatures. | `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`, `ifitwala_ed/ui-spa/src/pages/staff/schedule/StudentAttendanceTool.vue`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/EnrollmentAnalytics.vue`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue` | 5 | 5 | 5 | 3 | **4.8** |
-| 4 | Educators | Add autosave draft states, visible unsaved-change indicators, and conflict recovery prompts across class planning, course planning, and gradebook editing. | `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/Gradebook.vue` | 5 | 5 | 4 | 3 | **4.6** |
-| 5 | Students | Unify assignment cards into one consistent action model with submission status, quiz attempts, feedback availability, and lock/due messaging. | `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentActivities.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue` | 5 | 4 | 5 | 4 | **4.5** |
-| 6 | Educators | Reduce overlay depth in planning and assignment flows by replacing stacked modals with anchored side panels and inline task drawers. | `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue` | 4 | 5 | 4 | 4 | **4.4** |
-| 7 | Admins | Add global search + quick open with role-aware result grouping so staff can jump to student, class, plan, task, or applicant records without sidebar hunting. | `ifitwala_ed/ui-spa/src/apps/portal`, `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue` | 4 | 5 | 4 | 3 | **4.3** |
-| 8 | Students | Upgrade mobile-first reading and task interaction for course content, quiz review, and feedback, including sticky primary actions and thumb-safe layouts. | `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentLogs.vue` | 4 | 4 | 4 | 5 | **4.1** |
-| 9 | Admins | Add inline "why blocked / what to fix next" guidance to failed or incomplete admin actions instead of generic toasts and silent disabled states. | `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/*`, `ifitwala_ed/ui-spa/src/components/*` | 4 | 4 | 5 | 3 | **4.1** |
-| 10 | Educators | Improve lesson and unit authoring ergonomics: reusable snippets, duplicate-from-previous, drag ordering, and richer preview before publish/assign. | `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue` | 4 | 4 | 4 | 4 | **4.0** |
-| 11 | Students | Add "My week" planning view that merges upcoming sessions, due tasks, quiz windows, and feedback release dates into one timeline. | `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/Courses.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentActivities.vue` | 4 | 4 | 5 | 3 | **4.0** |
-| 12 | Admins | Replace dense analytics pages with progressive disclosure: KPI summary, exception drill-down, and saved filters/views. | `ifitwala_ed/ui-spa/src/pages/staff/analytics/AttendanceAnalytics.vue`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentOverview.vue`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/EnrollmentAnalytics.vue` | 3 | 4 | 4 | 4 | **3.7** |
+| Rank | Persona | Existing baseline | Remaining friction | Proposed increment | Target code refs | Frequency | Context Switch Reduction | Action Clarity | Presentation Quality | UX Impact Score |
+|---|---|---|---|---|---|---:|---:|---:|---:|---:|
+| 1 | Staff / Educators | Staff schedule events already open `ClassEventModal`, and that modal already has Take Attendance, Open Gradebook, Create Announcement, and Create Task. Class Hub and Class Planning already exist as separate destination pages. | A teacher clicking a class on Staff Home still cannot jump straight into **Class Hub** or **Class Planning** with the clicked event's `student_group`, `session_date`, and `block_number` context preserved. That breaks the handoff from schedule → live teaching workflow. | Add **Open Class Hub** and **Open Class Planning** CTAs to `ClassEventModal`, pass `student_group` plus date/block query context into the destination route, and make the staff class-event modal the main bridge from calendar to the live class workspace. | `ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassHub.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue` | 5 | 5 | 5 | 4 | **4.85** |
+| 2 | Staff / Educators | Morning Briefing already has rich operational cards and Staff Home already has a Morning Brief button, but it opens the full briefing in a new tab and Staff Home itself stays mostly calendar + Focus + quick actions. | Critical incidents, key announcements, absences, or log spikes discovered in Morning Brief are not summarized inline on Staff Home, so users still split attention across two pages at the exact start-of-day moment. | Add a **compact Morning Brief strip/card on Staff Home** with only high-signal counts and one spotlight item, plus a drill-in link to the full Morning Brief page. Do not duplicate the full Morning Brief layout; surface only the top daily exceptions. | `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue` | 5 | 4 | 5 | 4 | **4.55** |
+| 3 | Students | StudentCalendar class events already open `ClassEventModal`, and Course Detail already supports query-driven context selection and in-page jump navigation. | The student "Open Course" action from a class event currently routes only by `course_id`, so the student may land in the course but lose the clicked class/group context instead of being taken to the relevant session/unit. | Preserve **clicked class context** in the student calendar → course handoff. At minimum pass `student_group` into `student-course-detail`; ideally enrich the class-event payload and route so Course Detail can land on the matching unit/session section immediately. | `ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/components/calendar/StudentCalendar.vue` | 5 | 5 | 4 | 4 | **4.55** |
+| 4 | Staff / Educators | Focus items already show title, subtitle, badge, and assignee metadata, and `FocusItem` already carries `priority` and `due_date`. FocusRouterOverlay already handles several workflow types. | Due timing and urgency are not visible in `FocusListItem`, so all rows can look equally urgent. Unsupported focus action types still fall into a "Not supported yet" dead end inside the overlay. | Render **due-date and priority chips** in Focus rows, sort/visually weight urgency more explicitly, and close the unsupported-action gap by either routing those items to a valid workspace or suppressing them until they are truly actionable. | `ifitwala_ed/ui-spa/src/components/focus/FocusListCard.vue`, `ifitwala_ed/ui-spa/src/components/focus/FocusListItem.vue`, `ifitwala_ed/ui-spa/src/types/focusItem.ts`, `ifitwala_ed/ui-spa/src/overlays/focus/FocusRouterOverlay.vue` | 5 | 4 | 5 | 4 | **4.55** |
+| 5 | Students | Course Detail already shows unit summaries, session activities, resource descriptions, and assigned work. Educators now author several of those fields with rich text editors in the planning workspace. | Course Detail still renders many unit/session fields as plain text interpolation, so lists, headings, links, and emphasis authored by educators do not survive into the student experience. | Introduce a **shared rich-text display component** for student-facing learning content and apply it to unit overview, essential understanding, content, skills, concepts, activity directions, resource descriptions, and similar authored fields. | `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/components/planning/PlanningRichTextField.vue` | 5 | 3 | 4 | 5 | **4.25** |
+| 6 | Students | Student Home already has Current Class / Next Up / Continue Learning, a Work Board, a Timeline, a Calendar, and Quick Links. Course Detail already has Next Actions and section-level jump controls. | The student experience is strong but still split across multiple decision surfaces that can compete with each other: Current/Next class, Continue Learning, Work Board, Timeline, Calendar, and Course Detail Next Actions all present "what now" signals with slightly different semantics. | Define a **single student action hierarchy** across Student Home and Course Detail: one primary "Continue" action, one secondary "Due soon" queue, and one "Plan ahead" timeline. Keep the current surfaces, but align labels, badge semantics, and CTA precedence so students learn one mental model. | `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue` | 5 | 3 | 5 | 4 | **4.20** |
+| 7 | Admin / Ops | Admissions Cockpit already filters by blocker and stage and exposes per-applicant actions. | High-volume review is still card-by-card. There is no bulk selection or batch transition/assignment/message handling for obvious queue work. | Add **bulk selection + batch actions** inside each cockpit column, starting with low-risk actions such as assign to me, mark reviewed, or send templated follow-up where server workflows support it. | `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue` | 4 | 5 | 4 | 3 | **4.15** |
+| 8 | Staff / Admin | ClassEventModal can open the Attendance Tool with `student_group`; StudentAttendanceTool consumes that query and already picks a meeting date, loads roster, shows save status, and supports remarks/logs. | The date of the clicked class event is not carried into the Attendance Tool route, and the tool currently clears the `student_group` query after consumption. That makes browser-level recovery/shareability weaker and can force a second date selection. | Make attendance deep links **fully context-preserving** by passing the clicked class `session_date` from `ClassEventModal`, hydrating that date in `StudentAttendanceTool`, and retaining school/program/group/date in the route query rather than consuming only `student_group` once. | `ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue`, `ifitwala_ed/ui-spa/src/pages/staff/schedule/StudentAttendanceTool.vue` | 4 | 5 | 4 | 3 | **4.15** |
+| 9 | Admin / Ops | Admissions Cockpit already has blocker chips, per-card actions, applicant workspace overlays, direct interview creation, and a right-side message drawer. | The action model is fragmented: some actions open overlays, some open Desk in a new tab, and communication opens a local drawer. That makes the applicant card feel powerful but not fully coherent. | Consolidate applicant-card actions around a **single right-side case workspace pattern** where possible, and reserve new-tab Desk escape hatches for explicit advanced actions only. Keep blocker deep-links, but make the landing state consistent. | `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue` | 4 | 4 | 4 | 4 | **4.00** |
+| 10 | Staff / Educators | Class Hub already has the live workflow surface and Staff Home already has Quick Actions plus the schedule calendar. | Quick Actions are mostly global, not event-aware. When a teacher is looking at a specific class event, the fastest next action should often be class-scoped, not global. | Add **context-aware quick-action variants** that prefill the active student group/course/session when the action is launched from a class event, Class Hub, or a recent calendar click. | `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassHub.vue`, `ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue` | 4 | 4 | 4 | 4 | **4.00** |
 
-## Educators
+## Persona-Specific Proposal Notes
 
-Status: Planned proposal
-Code refs: `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassHub.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/Gradebook.vue`
-Test refs: `ifitwala_ed/ui-spa/src/pages/staff/__tests__/Gradebook.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/ProfessionalDevelopment.test.ts`
-
-### 1) Staff Home As A Daily Teaching Cockpit
-
-**Impact score:** 4.9
-**Problem:** Staff Home is the natural entry point, but if it does not answer "what do I need to do next?" educators still bounce between pages and remember state manually.
-**Proposal:** Make Staff Home action-first: next class session, attendance not taken, grading awaiting attention, drafts needing publish, course-plan edits pending, and direct links to the exact unit/session/task surface.
-**UX acceptance bar:** An instructor can start the day, identify top 3 actions, and open the exact working surface in one click without scanning multiple menus.
-
-### 2) Autosave + Unsaved-State Visibility + Conflict Recovery
-
-**Impact score:** 4.6
-**Problem:** Long-form planning and grade entry are high-loss workflows when save boundaries are unclear or another editor has changed the record.
-**Proposal:** Add visible save state, background autosave for drafts where server invariants allow it, and inline "newer version exists" recovery prompts that preserve the user's unsaved text for copy/merge.
-**UX acceptance bar:** Users never wonder whether their work is saved, and stale-write conflicts produce a guided recovery path instead of a surprise failure at the end.
-
-### 3) Reduce Modal Stacking In Planning And Assignment
-
-**Impact score:** 4.4
-**Problem:** Stacked overlays create spatial confusion, weak back-navigation, and higher error risk in multi-step planning.
-**Proposal:** Move high-frequency secondary actions into anchored side panels/drawers tied to the current row/card, while keeping one primary task in view.
-**UX acceptance bar:** A teacher can edit a unit, inspect linked resources, and create an assignment without losing the mental map of where they are.
-
-### 4) Faster Unit/Lesson Authoring
-
-**Impact score:** 4.0
-**Problem:** Repetitive unit and lesson setup still forces manual re-entry of patterns educators already used before.
-**Proposal:** Add duplicate-from-previous, reusable lesson/activity snippets, drag ordering with clearer drop states, and a publish preview that shows exactly what students/classes inherit.
-**UX acceptance bar:** Creating a new reusable lesson outline feels closer to editing a template than filling a blank form.
-
-## Admins
+## Staff / Educators
 
 Status: Planned proposal
-Code refs: `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`, `ifitwala_ed/ui-spa/src/pages/staff/schedule/StudentAttendanceTool.vue`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/EnrollmentAnalytics.vue`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/StudentOverview.vue`
-Test refs: `ifitwala_ed/ui-spa/src/pages/staff/__tests__/EnrollmentAnalytics.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AcademicLoad.test.ts`
+Code refs: `ifitwala_ed/ui-spa/src/pages/staff/StaffHome.vue`, `ifitwala_ed/ui-spa/src/components/calendar/ScheduleCalendar.vue`, `ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue`, `ifitwala_ed/ui-spa/src/components/focus/FocusListCard.vue`, `ifitwala_ed/ui-spa/src/components/focus/FocusListItem.vue`, `ifitwala_ed/ui-spa/src/overlays/focus/FocusRouterOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassHub.vue`, `ifitwala_ed/ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`
+Test refs: No direct tests found for `StaffHome.vue`, `ScheduleCalendar.vue`, or `FocusRouterOverlay.vue` in this audit pass; any implementation slice should add component/page-level tests for the affected handoff and blocked-state behavior.
 
-### 1) Exception-First Queues And Bulk Resolution
+**Proposal 1: Calendar → Class Hub / Class Planning bridge**
+The class-event modal is already the right event hub. The missing piece is a direct handoff into the live teaching surface and class planning surface with class/date/block context intact.
 
-**Impact score:** 4.8
-**Problem:** Admin work is usually about resolving outliers, blockers, and pending decisions. Record-by-record navigation wastes time and obscures what matters first.
-**Proposal:** Build queue-style views grouped by exception type, with bulk approve/reject/assign actions, inline row expansion, and persistent filters for school/program/year scope.
-**UX acceptance bar:** An admin can process a batch of pending items without opening each record in a separate context unless they choose to.
+**Proposal 2: Staff Home Morning Brief digest**
+Do not move Morning Briefing into Staff Home wholesale. Add only a compact digest card that surfaces the highest-priority counts and one spotlight announcement, so users can stay in Staff Home unless they need the full briefing.
 
-### 2) Global Quick Search With Role-Aware Results
-
-**Impact score:** 4.3
-**Problem:** Staff often know the student/applicant/class/task they need but still have to navigate through page trees.
-**Proposal:** Add a command-palette or global quick-search entry with scoped result groups and deep links to exact student, class, applicant, course-plan, and task contexts.
-**UX acceptance bar:** If a staff user knows a name or ID, they can reach the right screen in under 5 seconds.
-
-### 3) Inline Blocker Explanation
-
-**Impact score:** 4.1
-**Problem:** Disabled buttons and generic toasts force users to infer whether the issue is permission, missing prerequisite data, or workflow state.
-**Proposal:** Standardize row-level blocker messaging with "why blocked" and "next fix" copy, especially in admissions/enrollment and policy-signature flows.
-**UX acceptance bar:** Every blocked action explains the exact missing condition and the fastest next step.
-
-### 4) Progressive Disclosure For Analytics
-
-**Impact score:** 3.7
-**Problem:** Dense analytics screens can overload staff who only need one answer first, then detail second.
-**Proposal:** Shift each analytics page to a KPI strip + exception list + drill-down layout, with saved views for recurring operational reviews.
-**UX acceptance bar:** A user can understand "is this okay, where is the problem, what do I inspect next?" without reading the entire page.
+**Proposal 3: Stronger Focus row semantics**
+Focus is already a router and should stay that way. The improvement is to expose urgency (`due_date`, `priority`) and remove unsupported-action dead ends so every row that appears in Focus is actually actionable.
 
 ## Students
 
 Status: Planned proposal
-Code refs: `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentActivities.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentLogs.vue`, `ifitwala_ed/ui-spa/src/pages/student/Courses.vue`
-Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentLogs.test.ts`
+Code refs: `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/components/calendar/StudentCalendar.vue`, `ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue`
+Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
-### 1) Course Detail As A Next-Action Surface
+**Proposal 1: Preserve clicked class context from calendar into Course Detail**
+StudentCalendar already gets students to the right course, but not reliably to the right class context. The route handoff should preserve at least `student_group`, and ideally the selected session/unit anchor as well.
 
-**Impact score:** 4.9
-**Problem:** Students should not have to infer whether to continue a lesson, resume a quiz, submit work, or review feedback.
-**Proposal:** Add a primary "Continue" action, a clearly ranked "Next up" list, progress indicators per unit/session, and due/lock messaging tied directly to the relevant action card.
-**UX acceptance bar:** A student landing on a course can immediately answer "what should I do now?" and act without scrolling through unrelated content.
+**Proposal 2: Render authored curriculum content as rich text**
+Now that planning content is authored with text editors, the student-facing side should render the same content with headings, links, lists, and emphasis preserved, not flattened into plain text.
 
-### 2) Unified Assignment/Quiz Card Model
+**Proposal 3: One student action hierarchy across Home and Course Detail**
+Student Home and Course Detail are both task-oriented already. The remaining design work is not adding more surfaces, but making the labels, badges, and CTA priority consistent so "Continue", "Due soon", and "Plan ahead" mean the same thing everywhere.
 
-**Impact score:** 4.5
-**Problem:** Different task types can look and behave inconsistently, especially around attempt state, submission state, feedback readiness, and deadlines.
-**Proposal:** Standardize one card model with state badges, next action, deadline/lock timer copy, feedback availability, and retry/resume semantics for quizzes.
-**UX acceptance bar:** Students learn one interaction model and can predict what each card will do before clicking.
-
-### 3) Mobile-First Learning Interaction
-
-**Impact score:** 4.1
-**Problem:** Student usage is often mobile-heavy, and long content, quiz review, or feedback reading can feel awkward when primary actions move out of reach.
-**Proposal:** Introduce sticky primary actions, thumb-safe spacing, clearer section anchors, and better small-screen treatment for rich text, question options, and feedback blocks.
-**UX acceptance bar:** Course learning, quiz attempts, and feedback review remain comfortable on a phone without layout collapse or hidden actions.
-
-### 4) "My Week" Timeline
-
-**Impact score:** 4.0
-**Problem:** Students often need a cross-course mental model of what is due, what is happening in class, and where feedback has arrived.
-**Proposal:** Add a weekly timeline that merges upcoming sessions, assignments, quiz windows, and feedback releases, then deep-links into each exact course/task context.
-**UX acceptance bar:** Students can plan the week from one place and jump into the correct task without reconstructing deadlines from multiple screens.
-
-## Sequencing Recommendation
+## Admin / Ops
 
 Status: Planned proposal
-Code refs: Same SPA surfaces listed above
-Test refs: Existing page-level tests listed above; new interaction tests should be added per implemented slice
+Code refs: `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`, `ifitwala_ed/ui-spa/src/pages/staff/schedule/StudentAttendanceTool.vue`, `ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue`
+Test refs: No direct page-level tests found for `AdmissionsCockpit.vue` or `StudentAttendanceTool.vue` in this audit pass; queue/bulk-action and deep-link hydration work should include interaction tests.
 
-1. Ship the **educator Staff Home cockpit** and **student Course Detail next-action redesign** first. These two surfaces likely touch the highest-frequency daily interactions.
-2. In parallel, define the **shared assignment/task card state model** so educator and student surfaces converge on one visual/status language.
-3. Then build **admin exception queues + bulk actions** for admissions, attendance, and enrollment bottlenecks.
-4. After the flow model stabilizes, add **autosave/unsaved-state UX** and **reduced overlay depth** to long-form planning/editing.
-5. Finally, raise polish through **mobile-first refinements**, **global quick search**, and **progressive-disclosure analytics**.
+**Proposal 1: Make Admissions Cockpit action patterns more coherent**
+The cockpit already exposes most of the right case actions. The UX debt is that those actions fan out into overlays, Desk tabs, and a local drawer. Converging on one case-workspace interaction pattern would reduce cognitive switching.
 
-## Open Product Questions
+**Proposal 2: Add bulk queue operations where workflow state is unambiguous**
+Admissions Cockpit is already organized as a board. Bulk actions should be layered on that existing board rather than introducing a separate queue page.
 
-- Should the first educator cockpit optimize for **daily teaching execution** or **planning/grading recovery**, if one must win the top hero area?
-- For students, should the primary "Continue" action prioritize **next scheduled lesson** or **nearest due assignment**, when those conflict?
-- For admins, which queue has the biggest real operational pain today: **admissions decisions**, **attendance exceptions**, **enrollment cleanup**, or **policy-signature follow-up**?
+**Proposal 3: Make Attendance Tool links fully recoverable**
+Attendance Tool is already usable and save-aware. The next improvement is route-level context persistence so a class-event click, browser refresh, or copied URL retains the intended school/program/group/date.
+
+## Open Questions
+
+- For staff class events, should **Open Class Hub** be the primary CTA and **Take Attendance / Open Gradebook** become secondary, or should that vary by role/capability?
+- For Student Course Detail deep-linking, do we want to extend the class-event payload with `class_session` / `unit_plan`, or should the backend resolve the matching learning context from `student_group` + `session_date` + `block_number`?
+- For Admissions Cockpit, which Desk-tab actions are intentionally kept as escape hatches for power users, and which should be migrated into the SPA workspace to reduce context switching?
