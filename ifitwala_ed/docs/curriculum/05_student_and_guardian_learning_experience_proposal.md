@@ -16,7 +16,7 @@ Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 
 Current live behavior:
 
-- the student course page leads with `Learning Focus`, `Next Actions`, `This Unit`, `Session Journey`, a dedicated `Assigned Work` zone, and scoped resources
+- the student course page leads with `Learning Focus`, `Next Actions`, a sticky `Jump to` strip, `Session Journey` before the denser `This Unit` summary, a dedicated `Assigned Work` zone, and scoped resources
 - student-facing surfaces now hide shared-plan management labels and raw planning-state language
 - guardian home uses `learning_highlights` cards with a family-safe current theme, upcoming step, and a talk-at-home prompt
 - the guardian child brief now foregrounds current theme, next class experience, upcoming learning experiences, and helpful-at-home resources
@@ -125,25 +125,26 @@ Contents:
 - next class session date when relevant
 - only the resources needed for the next task or session
 
-### 3. This Unit
+### 3. Jump To And Unit Rail
 
 Purpose:
 
-- show the big picture for what the student is learning
+- remove long-scroll drag when a student wants the current session, assigned work, or resources
+- keep unit switching and section switching available without sending the student back to the top of the page
 
 Contents:
 
-- unit title
-- overview
-- essential understanding
-- simplified learning goals drawn from `content`, `skills`, and `concepts`
-- optional standards drawer labeled as learning goals or curriculum goals
+- sticky `Jump to` strip under the course header
+- clickable summary chips for units and assignments
+- compact unit navigation rail on desktop
+- horizontal unit strip on mobile
 
 ### 4. Session Journey
 
 Purpose:
 
 - show the sequence of student-facing class sessions inside the selected unit
+- bring the current or selected lesson path above broader curriculum background text
 
 Contents:
 
@@ -154,7 +155,22 @@ Contents:
 - session resources
 - session-linked assigned work
 
-### 5. Everything Else In This Course
+### 5. This Unit
+
+Purpose:
+
+- show the big picture for what the student is learning
+- preserve curriculum context without forcing the student to scroll through it before reaching lessons
+
+Contents:
+
+- unit title
+- overview
+- essential understanding
+- simplified learning goals drawn from `content`, `skills`, and `concepts`
+- optional standards drawer labeled as learning goals or curriculum goals
+
+### 6. Everything Else In This Course
 
 Purpose:
 
@@ -417,7 +433,7 @@ Test refs: None yet
 
 Recommended order:
 
-1. Reframe the student course page around `Learning Focus`, `Next Actions`, and `This Unit`.
+1. Reframe the student course page around `Learning Focus`, `Next Actions`, `Jump to`, `Session Journey`, and a lower `This Unit` summary.
 2. Extend the student read model with server-derived focus and next-action helpers.
 3. Add `learning_highlights` to guardian home.
 4. Add a guardian child learning-brief endpoint and redesign the child drill-down around `Learning Now`.

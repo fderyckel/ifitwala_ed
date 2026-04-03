@@ -17,6 +17,7 @@ from ifitwala_ed.website.utils import (
     validate_cta_link,
     validate_props_schema,
 )
+from ifitwala_ed.website.vite_utils import get_website_bundle_urls
 
 ROOT_ROUTE_ALIASES = {
     "/",
@@ -55,6 +56,8 @@ HERO_RADIUS = {
     "split": "0.9rem",
     "spotlight": "1.4rem",
 }
+APP_PUBLIC_DIR = frappe.get_app_path("ifitwala_ed", "public")
+PUBLIC_ASSET_BASE = "/assets/ifitwala_ed/"
 
 
 def _coerce_theme_color(value: str | None, fallback: str) -> str:
@@ -924,4 +927,10 @@ def render_page(*, route: str, preview: bool = False) -> str:
         frappe.local.flags.redirect_location = redirect_location
         raise frappe.Redirect
     template = context.pop("template", "ifitwala_ed/website/templates/page.html")
+    website_css_url, website_js_url = get_website_bundle_urls(
+        app_public_dir=APP_PUBLIC_DIR,
+        public_base=PUBLIC_ASSET_BASE,
+    )
+    context.setdefault("website_css_url", website_css_url)
+    context.setdefault("website_js_url", website_js_url)
     return frappe.render_template(template, context)

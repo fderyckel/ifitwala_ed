@@ -32,7 +32,10 @@
 
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 
-	<link rel="stylesheet" href="/assets/ifitwala_ed/css/ifitwala_site.bundle.css">
+	<link
+		rel="stylesheet"
+		href="{{ website_css_url or '/assets/ifitwala_ed/css/ifitwala_site.bundle.css' }}"
+	>
 </head>
 
 <body
@@ -246,7 +249,10 @@
 	</div>
 
 	<script src="/assets/ifitwala_ed/website/image_fallback.js" defer></script>
-	<script src="/assets/ifitwala_ed/js/ifitwala_site.bundle.js" defer></script>
+	<script
+		src="{{ website_js_url or '/assets/ifitwala_ed/js/ifitwala_site.bundle.js' }}"
+		defer
+	></script>
 	{% for script in block_scripts %}
 		<script src="{{ script }}" defer></script>
 	{% endfor %}

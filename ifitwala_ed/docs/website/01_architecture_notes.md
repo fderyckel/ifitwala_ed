@@ -262,12 +262,18 @@ This replaces **Builder Data Scripts** safely.
 ### 7.1 Canonical Assets
 
 * `website.css` (Tailwind entrypoint)
-* `ifitwala_site.bundle.css` (build output)
+* `ifitwala_site.<hash>.bundle.css` (primary build output for browser/CDN caching)
+* `ifitwala_site.bundle.css` (stable fallback alias only)
 * `website.js`
-* `ifitwala_site.bundle.js` (build output)
+* `ifitwala_site.<hash>.bundle.js` (primary build output for browser/CDN caching)
+* `ifitwala_site.bundle.js` (stable fallback alias only)
 * `image_fallback.js`
 
 These are **authoritative** and reused across pages.
+
+Runtime templates should emit the hash-named website bundles when available so deploys can use
+immutable browser/CDN caching without stale-asset drift. Stable aliases remain as a fallback for
+partial-build or manifest-missing states, not as the primary render contract.
 
 ---
 

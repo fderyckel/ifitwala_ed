@@ -55,10 +55,20 @@
 
 						<div class="mt-4 flex flex-wrap gap-2">
 							<span class="chip">{{ resolvedClassLabel }}</span>
-							<span class="chip">{{ learningSpace.curriculum.counts.units }} units</span>
-							<span class="chip"
-								>{{ learningSpace.curriculum.counts.assigned_work }} assignments</span
+							<button
+								type="button"
+								class="chip transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+								@click="jumpToSection(SECTION_IDS.unitJourney)"
 							>
+								{{ learningSpace.curriculum.counts.units }} units
+							</button>
+							<button
+								type="button"
+								class="chip transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+								@click="jumpToSection(SECTION_IDS.assignedWork)"
+							>
+								{{ learningSpace.curriculum.counts.assigned_work }} assignments
+							</button>
 						</div>
 
 						<div
@@ -104,8 +114,59 @@
 				<p class="type-body text-ink/80">{{ learningSpace.message }}</p>
 			</section>
 
+			<section
+				class="sticky top-4 z-20 rounded-[1.5rem] border border-white/70 bg-white/90 p-3 shadow-[0_18px_45px_-28px_rgba(33,53,71,0.45)] backdrop-blur-xl sm:p-4"
+			>
+				<div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+					<div class="flex flex-wrap gap-2">
+						<button
+							v-if="selectedSession"
+							type="button"
+							class="if-action"
+							@click="jumpToSection(SECTION_IDS.sessionJourney)"
+						>
+							Current session
+						</button>
+						<button
+							type="button"
+							class="inline-flex items-center justify-center rounded-full border border-line-soft bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+							@click="jumpToSection(SECTION_IDS.assignedWork)"
+						>
+							Assignments
+						</button>
+						<button
+							type="button"
+							class="inline-flex items-center justify-center rounded-full border border-line-soft bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+							@click="jumpToSection(SECTION_IDS.resources)"
+						>
+							Resources
+						</button>
+					</div>
+
+					<nav
+						aria-label="Jump to course sections"
+						class="flex gap-2 overflow-x-auto pb-1 xl:flex-wrap xl:justify-end xl:overflow-visible xl:pb-0"
+					>
+						<button
+							v-for="section in learningSections"
+							:key="section.id"
+							type="button"
+							class="shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition"
+							:class="
+								activeSectionId === section.id
+									? 'border-jacaranda bg-jacaranda/10 text-jacaranda'
+									: 'border-line-soft bg-white text-ink/70 hover:border-jacaranda/30 hover:text-ink'
+							"
+							@click="jumpToSection(section.id)"
+						>
+							{{ section.label }}
+						</button>
+					</nav>
+				</div>
+			</section>
+
 			<section class="grid gap-6 xl:grid-cols-[minmax(0,1.2fr),minmax(0,0.8fr)]">
-				<article class="card-surface p-6">
+				<article :id="SECTION_IDS.focus" class="card-surface scroll-mt-40 p-6">
 					<p class="type-overline text-ink/60">Learning Focus</p>
 					<h2 class="mt-2 type-h2 text-ink">
 						{{ learningFocus.current_unit?.title || selectedUnit?.title || 'Current learning' }}
@@ -158,9 +219,27 @@
 							</p>
 						</article>
 					</div>
+
+					<div class="mt-5 flex flex-wrap gap-2">
+						<button
+							v-if="selectedSession"
+							type="button"
+							class="if-action"
+							@click="jumpToSection(SECTION_IDS.sessionJourney)"
+						>
+							Continue current session
+						</button>
+						<button
+							type="button"
+							class="inline-flex items-center justify-center rounded-full border border-line-soft bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+							@click="jumpToSection(SECTION_IDS.assignedWork)"
+						>
+							Open assignments
+						</button>
+					</div>
 				</article>
 
-				<article class="card-surface p-6">
+				<article :id="SECTION_IDS.nextActions" class="card-surface scroll-mt-40 p-6">
 					<div class="flex items-center justify-between gap-3">
 						<div>
 							<p class="type-overline text-ink/60">Next Actions</p>
@@ -214,8 +293,8 @@
 			<section
 				class="grid gap-6 xl:grid-cols-[minmax(0,18rem),minmax(0,1fr)] 2xl:grid-cols-[minmax(0,20rem),minmax(0,1fr)]"
 			>
-				<aside class="space-y-6 xl:self-start">
-					<section class="card-surface p-5">
+				<aside class="space-y-6 xl:sticky xl:top-32 xl:self-start">
+					<section :id="SECTION_IDS.unitJourney" class="card-surface scroll-mt-40 p-5">
 						<div class="mb-4 flex items-center justify-between gap-3">
 							<div>
 								<h2 class="type-h3 text-ink">Unit Journey</h2>
@@ -233,12 +312,15 @@
 							<p class="type-body text-ink/70">No units are available yet.</p>
 						</div>
 
-						<div v-else class="space-y-3">
+						<div
+							v-else
+							class="flex gap-3 overflow-x-auto pb-1 xl:block xl:space-y-3 xl:overflow-visible xl:pb-0"
+						>
 							<button
 								v-for="unit in unitNavigation"
 								:key="unit.unit_plan"
 								type="button"
-								class="w-full rounded-2xl border p-4 text-left transition"
+								class="min-w-[14rem] shrink-0 rounded-2xl border p-4 text-left transition xl:min-w-0 xl:w-full"
 								:class="
 									selectedUnit?.unit_plan === unit.unit_plan
 										? 'border-jacaranda bg-jacaranda/10 shadow-soft'
@@ -257,89 +339,10 @@
 				</aside>
 
 				<div v-if="selectedUnit" class="space-y-6">
-					<section class="card-surface p-6">
-						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-							<div>
-								<p class="type-overline text-ink/60">This Unit</p>
-								<h2 class="mt-2 type-h2 text-ink">{{ selectedUnit.title }}</h2>
-								<p v-if="selectedUnit.essential_understanding" class="mt-3 type-body text-ink/80">
-									{{ selectedUnit.essential_understanding }}
-								</p>
-								<p v-else-if="selectedUnit.overview" class="mt-3 type-body text-ink/80">
-									{{ selectedUnit.overview }}
-								</p>
-							</div>
-							<div class="flex flex-wrap gap-2">
-								<span class="chip">Unit {{ selectedUnit.unit_order || '—' }}</span>
-								<span v-if="selectedUnit.duration" class="chip">{{ selectedUnit.duration }}</span>
-								<span v-if="selectedUnit.estimated_duration" class="chip">
-									{{ selectedUnit.estimated_duration }}
-								</span>
-							</div>
-						</div>
-
-						<div class="mt-6 grid gap-4 xl:grid-cols-3">
-							<article
-								v-if="selectedUnit.content"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-							>
-								<p class="type-overline text-ink/60">What you will explore</p>
-								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.content }}</p>
-							</article>
-							<article
-								v-if="selectedUnit.skills"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-							>
-								<p class="type-overline text-ink/60">Skills you will practice</p>
-								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.skills }}</p>
-							</article>
-							<article
-								v-if="selectedUnit.concepts"
-								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-							>
-								<p class="type-overline text-ink/60">Big ideas</p>
-								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.concepts }}</p>
-							</article>
-						</div>
-
-						<details
-							v-if="selectedUnit.standards.length"
-							class="mt-6 rounded-2xl border border-line-soft bg-surface-soft p-4"
-						>
-							<summary class="cursor-pointer list-none">
-								<div class="flex items-center justify-between gap-3">
-									<div>
-										<p class="type-body-strong text-ink">Learning goals</p>
-										<p class="mt-1 type-caption text-ink/70">
-											See the published curriculum goals for this unit.
-										</p>
-									</div>
-									<span class="chip">{{ selectedUnit.standards.length }}</span>
-								</div>
-							</summary>
-							<div class="mt-4 space-y-3">
-								<article
-									v-for="standard in selectedUnit.standards"
-									:key="`${selectedUnit.unit_plan}-${standard.standard_code}-${standard.standard_description}`"
-									class="rounded-2xl border border-line-soft bg-white p-4"
-								>
-									<div class="flex flex-wrap items-center gap-2">
-										<p class="type-body-strong text-ink">
-											{{ standard.standard_code || 'Learning goal' }}
-										</p>
-										<span v-if="standard.coverage_level" class="chip">{{
-											standard.coverage_level
-										}}</span>
-									</div>
-									<p v-if="standard.standard_description" class="mt-2 type-body text-ink/80">
-										{{ standard.standard_description }}
-									</p>
-								</article>
-							</div>
-						</details>
-					</section>
-
-					<section class="grid gap-6 lg:grid-cols-[minmax(0,16rem),minmax(0,1fr)]">
+					<section
+						:id="SECTION_IDS.sessionJourney"
+						class="grid scroll-mt-40 gap-6 lg:grid-cols-[minmax(0,16rem),minmax(0,1fr)]"
+					>
 						<div class="card-surface p-5">
 							<div class="mb-4 flex items-center justify-between gap-3">
 								<div>
@@ -514,6 +517,88 @@
 							</p>
 						</section>
 					</section>
+
+					<section :id="SECTION_IDS.unitOverview" class="card-surface scroll-mt-40 p-6">
+						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+							<div>
+								<p class="type-overline text-ink/60">This Unit</p>
+								<h2 class="mt-2 type-h2 text-ink">{{ selectedUnit.title }}</h2>
+								<p v-if="selectedUnit.essential_understanding" class="mt-3 type-body text-ink/80">
+									{{ selectedUnit.essential_understanding }}
+								</p>
+								<p v-else-if="selectedUnit.overview" class="mt-3 type-body text-ink/80">
+									{{ selectedUnit.overview }}
+								</p>
+							</div>
+							<div class="flex flex-wrap gap-2">
+								<span class="chip">Unit {{ selectedUnit.unit_order || '—' }}</span>
+								<span v-if="selectedUnit.duration" class="chip">{{ selectedUnit.duration }}</span>
+								<span v-if="selectedUnit.estimated_duration" class="chip">
+									{{ selectedUnit.estimated_duration }}
+								</span>
+							</div>
+						</div>
+
+						<div class="mt-6 grid gap-4 xl:grid-cols-3">
+							<article
+								v-if="selectedUnit.content"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">What you will explore</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.content }}</p>
+							</article>
+							<article
+								v-if="selectedUnit.skills"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Skills you will practice</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.skills }}</p>
+							</article>
+							<article
+								v-if="selectedUnit.concepts"
+								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
+							>
+								<p class="type-overline text-ink/60">Big ideas</p>
+								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.concepts }}</p>
+							</article>
+						</div>
+
+						<details
+							v-if="selectedUnit.standards.length"
+							class="mt-6 rounded-2xl border border-line-soft bg-surface-soft p-4"
+						>
+							<summary class="cursor-pointer list-none">
+								<div class="flex items-center justify-between gap-3">
+									<div>
+										<p class="type-body-strong text-ink">Learning goals</p>
+										<p class="mt-1 type-caption text-ink/70">
+											See the published curriculum goals for this unit.
+										</p>
+									</div>
+									<span class="chip">{{ selectedUnit.standards.length }}</span>
+								</div>
+							</summary>
+							<div class="mt-4 space-y-3">
+								<article
+									v-for="standard in selectedUnit.standards"
+									:key="`${selectedUnit.unit_plan}-${standard.standard_code}-${standard.standard_description}`"
+									class="rounded-2xl border border-line-soft bg-white p-4"
+								>
+									<div class="flex flex-wrap items-center gap-2">
+										<p class="type-body-strong text-ink">
+											{{ standard.standard_code || 'Learning goal' }}
+										</p>
+										<span v-if="standard.coverage_level" class="chip">{{
+											standard.coverage_level
+										}}</span>
+									</div>
+									<p v-if="standard.standard_description" class="mt-2 type-body text-ink/80">
+										{{ standard.standard_description }}
+									</p>
+								</article>
+							</div>
+						</details>
+					</section>
 				</div>
 
 				<section v-else class="card-surface p-6">
@@ -523,7 +608,11 @@
 				</section>
 			</section>
 
-			<section v-if="selectedUnit || displayedAssignedWork.length" class="card-surface p-6">
+			<section
+				v-if="selectedUnit || displayedAssignedWork.length"
+				:id="SECTION_IDS.assignedWork"
+				class="card-surface scroll-mt-40 p-6"
+			>
 				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 					<div>
 						<p class="type-overline text-ink/60">Assigned Work</p>
@@ -594,7 +683,8 @@
 					learningSpace.resources.class_resources.length ||
 					learningSpace.resources.shared_resources.length
 				"
-				class="card-surface p-6"
+				:id="SECTION_IDS.resources"
+				class="card-surface scroll-mt-40 p-6"
 			>
 				<div class="flex items-center justify-between gap-3">
 					<div>
@@ -682,8 +772,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 import { getStudentLearningSpace } from '@/lib/services/student/studentLearningHubService';
 import type {
@@ -700,6 +790,18 @@ const PLACEHOLDER =
 		`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><rect width="600" height="600" fill="#f3ede2"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="#8a7963">Course</text></svg>`
 	);
 
+const SECTION_IDS = {
+	focus: 'learning-focus',
+	nextActions: 'next-actions',
+	unitJourney: 'unit-journey',
+	sessionJourney: 'session-journey',
+	unitOverview: 'unit-overview',
+	assignedWork: 'assigned-work',
+	resources: 'resources',
+} as const;
+
+type LearningSectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
+
 const props = defineProps<{
 	course_id: string;
 	student_group?: string;
@@ -708,6 +810,7 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 
 const learningSpace = ref<StudentLearningSpaceResponse | null>(null);
 const loading = ref(false);
@@ -715,6 +818,8 @@ const errorMessage = ref('');
 const selectedUnitPlan = ref('');
 const selectedSessionId = ref('');
 const loadToken = ref(0);
+const activeSectionId = ref<LearningSectionId>(SECTION_IDS.focus);
+const scrollFrame = ref<number | null>(null);
 
 const learningFocus = computed(() => learningSpace.value?.learning.focus || {});
 const nextActions = computed(() => learningSpace.value?.learning.next_actions || []);
@@ -752,6 +857,122 @@ const resolvedClassLabel = computed(() => {
 		)?.label || resolvedGroup
 	);
 });
+
+const hasVisibleResources = computed(() => {
+	return !!(
+		selectedUnit.value?.shared_resources.length ||
+		learningSpace.value?.resources.class_resources.length ||
+		learningSpace.value?.resources.shared_resources.length
+	);
+});
+
+const learningSections = computed(() => {
+	const sections: Array<{ id: LearningSectionId; label: string }> = [
+		{ id: SECTION_IDS.focus, label: 'Focus' },
+		{ id: SECTION_IDS.nextActions, label: `Next Actions (${nextActions.value.length})` },
+		{ id: SECTION_IDS.unitJourney, label: `Units (${unitNavigation.value.length})` },
+	];
+
+	if (selectedUnit.value) {
+		sections.push(
+			{
+				id: SECTION_IDS.sessionJourney,
+				label: `Sessions (${selectedUnit.value.sessions.length})`,
+			},
+			{ id: SECTION_IDS.unitOverview, label: 'Unit Summary' }
+		);
+	}
+
+	if (selectedUnit.value || displayedAssignedWork.value.length) {
+		sections.push({
+			id: SECTION_IDS.assignedWork,
+			label: `Assigned Work (${displayedAssignedWork.value.length})`,
+		});
+	}
+
+	if (hasVisibleResources.value) {
+		sections.push({ id: SECTION_IDS.resources, label: 'Resources' });
+	}
+
+	return sections;
+});
+
+function isLearningSectionId(value: string): value is LearningSectionId {
+	return Object.values(SECTION_IDS).includes(value as LearningSectionId);
+}
+
+function getSectionElement(sectionId: LearningSectionId) {
+	if (typeof document === 'undefined') return null;
+	return document.getElementById(sectionId);
+}
+
+function syncActiveSectionFromViewport() {
+	if (typeof window === 'undefined') return;
+	const sections = learningSections.value;
+	if (!sections.length) return;
+
+	let currentSection = sections[0].id;
+	for (const section of sections) {
+		const element = getSectionElement(section.id);
+		if (!element) continue;
+		if (element.getBoundingClientRect().top <= 180) {
+			currentSection = section.id;
+		}
+	}
+	activeSectionId.value = currentSection;
+}
+
+function requestActiveSectionSync() {
+	if (typeof window === 'undefined') return;
+	if (scrollFrame.value !== null) {
+		window.cancelAnimationFrame(scrollFrame.value);
+	}
+	scrollFrame.value = window.requestAnimationFrame(() => {
+		scrollFrame.value = null;
+		syncActiveSectionFromViewport();
+	});
+}
+
+function scrollToSection(sectionId: LearningSectionId) {
+	activeSectionId.value = sectionId;
+	const sectionElement = getSectionElement(sectionId);
+	if (!sectionElement) return;
+	sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	requestActiveSectionSync();
+}
+
+async function jumpToSection(sectionId: LearningSectionId) {
+	if (route.hash !== `#${sectionId}`) {
+		await router.replace({
+			query: { ...route.query },
+			hash: `#${sectionId}`,
+		});
+	}
+	await nextTick();
+	scrollToSection(sectionId);
+}
+
+async function replaceLearningContextRoute(unitPlan: string, classSession: string) {
+	const nextStudentGroup =
+		learningSpace.value?.access.resolved_student_group || props.student_group || '';
+	const nextQuery = {
+		...route.query,
+		student_group: nextStudentGroup || undefined,
+		unit_plan: unitPlan || undefined,
+		class_session: classSession || undefined,
+	};
+	if (
+		String(route.query.student_group || '').trim() === nextStudentGroup &&
+		String(route.query.unit_plan || '').trim() === unitPlan &&
+		String(route.query.class_session || '').trim() === classSession
+	) {
+		return;
+	}
+	await router.replace({
+		query: nextQuery,
+		hash: route.hash || undefined,
+	});
+}
 
 function applySelection(payload: StudentLearningSpaceResponse) {
 	const requestedSession = String(props.class_session || '').trim();
@@ -817,6 +1038,15 @@ async function loadLearningSpace() {
 		if (ticket !== loadToken.value) return;
 		learningSpace.value = payload;
 		applySelection(payload);
+		await nextTick();
+		const hashSection = String(route.hash || '')
+			.replace(/^#/, '')
+			.trim();
+		if (isLearningSectionId(hashSection)) {
+			scrollToSection(hashSection);
+		} else {
+			requestActiveSectionSync();
+		}
 	} catch (error) {
 		if (ticket !== loadToken.value) return;
 		learningSpace.value = null;
@@ -828,15 +1058,29 @@ async function loadLearningSpace() {
 	}
 }
 
-function selectUnit(unitPlan: string) {
+async function selectUnit(unitPlan: string) {
 	selectedUnitPlan.value = unitPlan;
 	selectedSessionId.value =
 		learningSpace.value?.curriculum.units.find(unit => unit.unit_plan === unitPlan)?.sessions[0]
 			?.class_session || '';
+	await replaceLearningContextRoute(selectedUnitPlan.value, selectedSessionId.value);
+	await nextTick();
+	await jumpToSection(
+		selectedSessionId.value ? SECTION_IDS.sessionJourney : SECTION_IDS.unitOverview
+	);
 }
 
-function selectSession(classSession: string) {
+async function selectSession(classSession: string) {
+	const parentUnit = learningSpace.value?.curriculum.units.find(unit =>
+		unit.sessions.some(session => session.class_session === classSession)
+	);
+	if (parentUnit && parentUnit.unit_plan !== selectedUnitPlan.value) {
+		selectedUnitPlan.value = parentUnit.unit_plan;
+	}
 	selectedSessionId.value = classSession;
+	await replaceLearningContextRoute(selectedUnitPlan.value, selectedSessionId.value);
+	await nextTick();
+	await jumpToSection(SECTION_IDS.sessionJourney);
 }
 
 function isQuizAssignedWork(item: StudentAssignedWork) {
@@ -958,22 +1202,28 @@ function assignedWorkContextLine(item: StudentAssignedWork) {
 	return '';
 }
 
-function handleNextAction(action: StudentLearningNextAction) {
+async function handleNextAction(action: StudentLearningNextAction) {
 	if (action.unit_plan) {
-		selectUnit(action.unit_plan);
+		await selectUnit(action.unit_plan);
 	}
 	if (action.class_session) {
-		selectSession(action.class_session);
+		await selectSession(action.class_session);
+		return;
 	}
+	await jumpToSection(
+		action.kind === 'session' ? SECTION_IDS.sessionJourney : SECTION_IDS.assignedWork
+	);
 }
 
-function focusAssignedWork(item: StudentAssignedWork) {
+async function focusAssignedWork(item: StudentAssignedWork) {
 	if (item.unit_plan) {
-		selectUnit(item.unit_plan);
+		await selectUnit(item.unit_plan);
 	}
 	if (item.class_session) {
-		selectSession(item.class_session);
+		await selectSession(item.class_session);
+		return;
 	}
+	await jumpToSection(item.unit_plan ? SECTION_IDS.unitOverview : SECTION_IDS.assignedWork);
 }
 
 async function handleStudentGroupChange(event: Event) {
@@ -983,14 +1233,66 @@ async function handleStudentGroupChange(event: Event) {
 		query: {
 			student_group: value || undefined,
 		},
+		hash: route.hash || undefined,
 	});
 }
 
 watch(
-	() => [props.course_id, props.student_group, props.unit_plan, props.class_session],
+	() => [props.course_id, props.student_group],
 	() => {
 		loadLearningSpace();
 	},
 	{ immediate: true }
 );
+
+watch(
+	() => [props.unit_plan, props.class_session],
+	async () => {
+		if (!learningSpace.value) return;
+		applySelection(learningSpace.value);
+		await nextTick();
+		const hashSection = String(route.hash || '')
+			.replace(/^#/, '')
+			.trim();
+		if (isLearningSectionId(hashSection)) {
+			scrollToSection(hashSection);
+		} else {
+			requestActiveSectionSync();
+		}
+	}
+);
+
+watch(
+	() => route.hash,
+	async hash => {
+		const hashSection = String(hash || '')
+			.replace(/^#/, '')
+			.trim();
+		if (!isLearningSectionId(hashSection)) return;
+		await nextTick();
+		scrollToSection(hashSection);
+	}
+);
+
+watch(learningSections, () => {
+	if (!learningSections.value.some(section => section.id === activeSectionId.value)) {
+		activeSectionId.value = learningSections.value[0]?.id || SECTION_IDS.focus;
+	}
+	requestActiveSectionSync();
+});
+
+onMounted(() => {
+	if (typeof window === 'undefined') return;
+	window.addEventListener('scroll', requestActiveSectionSync, { passive: true });
+	requestActiveSectionSync();
+});
+
+onBeforeUnmount(() => {
+	if (typeof window === 'undefined') return;
+	window.removeEventListener('scroll', requestActiveSectionSync);
+	if (scrollFrame.value !== null) {
+		window.cancelAnimationFrame(scrollFrame.value);
+		scrollFrame.value = null;
+	}
+});
 </script>
