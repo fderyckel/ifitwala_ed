@@ -2,7 +2,7 @@ import types
 from unittest import TestCase
 from unittest.mock import patch
 
-from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
+from ifitwala_ed.tests.frappe_stubs import StubValidationError, import_fresh, stubbed_frappe
 
 
 class TestQuizApi(TestCase):
@@ -16,13 +16,26 @@ class TestQuizApi(TestCase):
         planning_stub = types.ModuleType("ifitwala_ed.curriculum.planning")
         planning_stub.normalize_text = lambda value: str(value or "").strip()
         planning_stub.normalize_long_text = lambda value: str(value or "").strip() or None
+        planning_stub.normalize_rich_text = lambda value, *, allow_headings_from="h2": (
+            str(value or "").replace("<script>alert(1)</script>", "").strip() or None
+        )
         planning_stub.normalize_flag = lambda value: 1 if str(value or "").strip() in {"1", "True", "true"} else 0
+        planning_stub.normalize_record_modified = lambda value: str(value or "").strip()
         planning_stub.user_has_global_curriculum_access = lambda user, roles=None: False
         planning_stub.get_curriculum_manageable_course_names = lambda user, roles=None: ["COURSE-1"]
         planning_stub.user_can_read_course_curriculum = lambda user, course, roles=None: course == "COURSE-1"
         planning_stub.user_can_manage_course_curriculum = lambda user, course, roles=None: course == "COURSE-1"
         planning_stub.assert_can_read_course_curriculum = lambda user, course, roles=None, action_label=None: None
         planning_stub.assert_can_manage_course_curriculum = lambda user, course, roles=None, action_label=None: None
+
+        def _assert_record_modified_matches(*, expected_modified, current_modified, section_label):
+            if expected_modified is None:
+                return
+            if str(expected_modified or "").strip() == str(current_modified or "").strip():
+                return
+            raise StubValidationError(f"{section_label} was updated by another user.")
+
+        planning_stub.assert_record_modified_matches = _assert_record_modified_matches
         planning_stub.get_course_plan_row = lambda course_plan: {
             "name": course_plan,
             "course": "COURSE-1",
@@ -186,6 +199,108 @@ class TestQuizApi(TestCase):
         self.assertEqual(created["bank"], 1)
         self.assertEqual(created["question"], 2)
         self.assertEqual(payload["quiz_question_bank"], "QBK-1")
+
+    def test_save_question_bank_sanitizes_prompt_and_explanation(self):
+        created_questions = []
+
+        class FakeBankDoc:
+            def __init__(self):
+                self.name = "QBK-1"
+                self.course = "COURSE-1"
+                self.bank_title = None
+                self.description = None
+                self.is_published = 0
+
+            def is_new(self):
+                return True
+
+            def insert(self, ignore_permissions=False):
+                return None
+
+        class FakeQuestionDoc:
+            def __init__(self):
+                self.name = "QQ-1"
+                self.question_bank = None
+                self.title = None
+                self.question_type = None
+                self.is_published = 0
+                self.prompt = None
+                self.accepted_answers = None
+                self.explanation = None
+                self.options = []
+
+            def set(self, fieldname, value):
+                setattr(self, fieldname, value)
+
+            def is_new(self):
+                return True
+
+            def insert(self, ignore_permissions=False):
+                created_questions.append(self)
+
+        def fake_new_doc(doctype):
+            if doctype == "Quiz Question Bank":
+                return FakeBankDoc()
+            if doctype == "Quiz Question":
+                return FakeQuestionDoc()
+            raise AssertionError(f"Unexpected new_doc call: {doctype}")
+
+        with (
+            patch.object(self.quiz_api.frappe, "new_doc", side_effect=fake_new_doc),
+            patch.object(self.quiz_api.frappe, "get_all", return_value=[]),
+        ):
+            self.quiz_api.save_question_bank(
+                {
+                    "course_plan": "COURSE-PLAN-1",
+                    "bank_title": "Cells Check-in",
+                    "questions_json": [
+                        {
+                            "title": "Where is the nucleus?",
+                            "question_type": "Single Choice",
+                            "prompt": "<p>Choose one</p><script>alert(1)</script>",
+                            "explanation": "<p>Because DNA is stored there.</p><script>alert(1)</script>",
+                            "options": [{"option_text": "Nucleus", "is_correct": 1}],
+                        }
+                    ],
+                }
+            )
+
+        self.assertEqual(created_questions[0].prompt, "<p>Choose one</p>")
+        self.assertEqual(created_questions[0].explanation, "<p>Because DNA is stored there.</p>")
+
+    def test_save_question_bank_rejects_stale_expected_modified(self):
+        class FakeBankDoc:
+            def __init__(self):
+                self.name = "QBK-1"
+                self.course = "COURSE-1"
+
+            def save(self, ignore_permissions=False):
+                raise AssertionError("save() must not run after a stale expected_modified check.")
+
+        with self.assertRaises(self.quiz_api.frappe.ValidationError):
+            with (
+                patch.object(self.quiz_api.frappe, "get_doc", return_value=FakeBankDoc()),
+                patch.object(
+                    self.quiz_api.frappe.db,
+                    "get_value",
+                    return_value={"modified": "2026-04-02 09:00:00"},
+                    create=True,
+                ),
+                patch.object(
+                    self.quiz_api.frappe,
+                    "get_all",
+                    return_value=[{"name": "QQ-1", "modified": "2026-04-02 09:00:00"}],
+                ),
+            ):
+                self.quiz_api.save_question_bank(
+                    {
+                        "course_plan": "COURSE-PLAN-1",
+                        "quiz_question_bank": "QBK-1",
+                        "bank_title": "Cells Check-in",
+                        "expected_modified": "stale-token",
+                        "questions_json": [],
+                    }
+                )
 
     def test_list_question_banks_filters_to_manageable_instructor_courses(self):
         with (

@@ -3,6 +3,9 @@
 
 from __future__ import annotations
 
+import hashlib
+from time import perf_counter
+
 import frappe
 from frappe import _
 
@@ -48,40 +51,68 @@ def list_question_banks(course: str | None = None):
 
 @frappe.whitelist()
 def save_question_bank(payload=None, **kwargs):
-    data = _normalize_payload(payload, kwargs)
-    course_plan = planning.normalize_text(data.get("course_plan"))
-    question_bank_name = planning.normalize_text(
-        data.get("quiz_question_bank") or data.get("question_bank") or data.get("name")
-    )
-    if question_bank_name:
-        bank_doc = frappe.get_doc("Quiz Question Bank", question_bank_name)
-        _require_course_plan_write_access(course_plan, expected_course=bank_doc.course)
-    else:
-        course_row = _require_course_plan_write_access(course_plan)
-        bank_doc = frappe.new_doc("Quiz Question Bank")
-        bank_doc.course = course_row.get("course")
+    started_at = perf_counter()
+    status = "success"
+    course_plan = ""
+    question_bank_name = ""
+    question_count = 0
+    try:
+        data = _normalize_payload(payload, kwargs)
+        course_plan = planning.normalize_text(data.get("course_plan"))
+        question_bank_name = planning.normalize_text(
+            data.get("quiz_question_bank") or data.get("question_bank") or data.get("name")
+        )
+        if question_bank_name:
+            bank_doc = frappe.get_doc("Quiz Question Bank", question_bank_name)
+            _require_course_plan_write_access(course_plan, expected_course=bank_doc.course)
+            if data.get("expected_modified") is not None:
+                planning.assert_record_modified_matches(
+                    expected_modified=data.get("expected_modified"),
+                    current_modified=_question_bank_record_modified(question_bank_name),
+                    section_label=_("Quiz question bank"),
+                )
+        else:
+            course_row = _require_course_plan_write_access(course_plan)
+            bank_doc = frappe.new_doc("Quiz Question Bank")
+            bank_doc.course = course_row.get("course")
 
-    bank_title = planning.normalize_text(data.get("bank_title"))
-    if not bank_title:
-        frappe.throw(_("Bank Title is required."))
+        bank_title = planning.normalize_text(data.get("bank_title"))
+        if not bank_title:
+            frappe.throw(_("Bank Title is required."))
 
-    bank_doc.bank_title = bank_title
-    bank_doc.description = planning.normalize_long_text(data.get("description"))
-    bank_doc.is_published = planning.normalize_flag(data.get("is_published"))
+        bank_doc.bank_title = bank_title
+        bank_doc.description = planning.normalize_long_text(data.get("description"))
+        bank_doc.is_published = planning.normalize_flag(data.get("is_published"))
 
-    if bank_doc.is_new():
-        bank_doc.insert(ignore_permissions=True)
-    else:
-        bank_doc.save(ignore_permissions=True)
+        if bank_doc.is_new():
+            bank_doc.insert(ignore_permissions=True)
+        else:
+            bank_doc.save(ignore_permissions=True)
 
-    question_rows = _normalize_rows_payload(data.get("questions_json") or data.get("questions"), label=_("Questions"))
-    _sync_question_bank_questions(bank_doc.name, question_rows)
+        question_rows = _normalize_rows_payload(
+            data.get("questions_json") or data.get("questions"),
+            label=_("Questions"),
+        )
+        question_count = len(question_rows)
+        _sync_question_bank_questions(bank_doc.name, question_rows)
 
-    return {
-        "quiz_question_bank": bank_doc.name,
-        "course": bank_doc.course,
-        "is_published": int(bank_doc.is_published or 0),
-    }
+        return {
+            "quiz_question_bank": bank_doc.name,
+            "course": bank_doc.course,
+            "is_published": int(bank_doc.is_published or 0),
+        }
+    except Exception:
+        status = "error"
+        raise
+    finally:
+        _log_quiz_event(
+            "quiz_question_bank_save",
+            started_at=started_at,
+            status=status,
+            course_plan=course_plan,
+            quiz_question_bank=question_bank_name,
+            question_count=question_count,
+        )
 
 
 @frappe.whitelist()
@@ -184,9 +215,9 @@ def _sync_question_bank_questions(question_bank: str, rows: list[dict]) -> None:
         doc.title = planning.normalize_text(row.get("title"))
         doc.question_type = planning.normalize_text(row.get("question_type"))
         doc.is_published = planning.normalize_flag(row.get("is_published"))
-        doc.prompt = row.get("prompt")
+        doc.prompt = planning.normalize_rich_text(row.get("prompt"))
         doc.accepted_answers = planning.normalize_long_text(row.get("accepted_answers"))
-        doc.explanation = planning.normalize_long_text(row.get("explanation"))
+        doc.explanation = planning.normalize_rich_text(row.get("explanation"))
         doc.set("options", _normalize_question_options(doc.question_type, row.get("options")))
 
         if doc.is_new():
@@ -244,3 +275,56 @@ def _require_course_plan_write_access(course_plan: str, *, expected_course: str 
     if expected_course_name and planning.normalize_text(course_row.get("course")) != expected_course_name:
         frappe.throw(_("Course Plan does not govern this quiz question bank."), frappe.PermissionError)
     return course_row
+
+
+def _question_bank_record_modified(question_bank: str) -> str:
+    bank_row = (
+        frappe.db.get_value(
+            "Quiz Question Bank",
+            question_bank,
+            ["modified"],
+            as_dict=True,
+        )
+        or {}
+    )
+    question_rows = frappe.get_all(
+        "Quiz Question",
+        filters={"question_bank": question_bank},
+        fields=["name", "modified"],
+        order_by="name asc",
+        limit=0,
+    )
+
+    digest = hashlib.sha256()
+    digest.update(planning.normalize_record_modified(bank_row.get("modified")).encode("utf-8"))
+    for row in sorted(
+        question_rows or [],
+        key=lambda item: (
+            planning.normalize_text(item.get("name")),
+            planning.normalize_record_modified(item.get("modified")),
+        ),
+    ):
+        digest.update(b"|")
+        digest.update(planning.normalize_text(row.get("name")).encode("utf-8"))
+        digest.update(b":")
+        digest.update(planning.normalize_record_modified(row.get("modified")).encode("utf-8"))
+    return digest.hexdigest()
+
+
+def _log_quiz_event(event: str, *, started_at: float | None = None, **context) -> None:
+    logger_factory = getattr(frappe, "logger", None)
+    if not callable(logger_factory):
+        return
+
+    payload = {"event": planning.normalize_text(event) or "quiz_event"}
+    if started_at is not None:
+        payload["elapsed_ms"] = round((perf_counter() - started_at) * 1000, 2)
+    for key, value in context.items():
+        if value in (None, ""):
+            continue
+        payload[key] = value
+
+    try:
+        logger_factory("ifitwala.curriculum").info(payload)
+    except Exception:
+        return

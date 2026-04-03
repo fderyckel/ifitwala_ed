@@ -3,8 +3,8 @@ title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 slug: unit-plan
 category: Curriculum
 doc_order: 5
-version: "1.3.2"
-last_change_date: "2026-04-02"
+version: "1.3.3"
+last_change_date: "2026-04-03"
 summary: "Define the shared unit backbone for a course plan, including standards alignment, pedagogy, reflections, and thin lesson outlines that class teaching plans inherit and can assign from."
 seo_title: "Unit Plan: Governed Curriculum Backbone Inside a Course Plan"
 seo_description: "Define the shared unit backbone for a course plan, including standards alignment, pedagogy, and reflections that class teaching plans inherit."
@@ -106,6 +106,8 @@ Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`
 - Shared reflection `academic_year` and `school` remain parent-derived from the selected `Course Plan` in the SPA instead of being hand-entered in the governed unit overlay.
 - The staff course-plan workspace now edits and renders unit `Text Editor` fields (`overview`, `essential_understanding`, `misconceptions`, `content`, `skills`, `concepts`) and reflection `Text Editor` fields with Desk-compatible rich text instead of plain textareas/plain interpolation.
 - `ifitwala_ed.api.teaching_plans.save_lesson_outline` now owns SPA-side lesson-outline mutations for the selected unit.
+- Unit and lesson rich-text fields are sanitized server-side before save, and existing unit/lesson saves now reject stale `expected_modified` tokens instead of silently overwriting another staff member's newer edit.
+- Course-plan unit and lesson save endpoints now emit bounded `ifitwala.curriculum` timing/status logs for production observability.
 - Published lesson outlines in the course-plan workspace can prefill the existing task-delivery overlay with both `unit_plan` and `lesson` context.
 - Desk List View expands parent-program filters to the full descendant program subtree before fetching rows.
 - `unit_plan.js` still exposes Desk lesson helpers, but the staff course-plan workspace is now the primary SPA lesson authoring surface.

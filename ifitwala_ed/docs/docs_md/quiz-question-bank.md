@@ -3,8 +3,8 @@ title: "Quiz Question Bank: Shared Quiz Authoring Set For A Course"
 slug: quiz-question-bank
 category: Assessment
 doc_order: 18
-version: "1.0.0"
-last_change_date: "2026-04-02"
+version: "1.0.1"
+last_change_date: "2026-04-03"
 summary: "Define a reusable course-level quiz question bank that staff can author in the course-plan workspace and assign later through quiz-backed tasks."
 seo_title: "Quiz Question Bank: Shared Quiz Authoring Set For A Course"
 seo_description: "Define a reusable course-level quiz question bank that staff can author in the course-plan workspace and assign later through quiz-backed tasks."
@@ -70,5 +70,7 @@ Test refs: `ifitwala_ed/api/test_quiz.py`
 - `Quiz Question Bank` currently stores `bank_title`, `course`, `is_published`, and `description`.
 - Questions are separate parent docs in `Quiz Question`, not child rows on the bank.
 - `ifitwala_ed.api.quiz.save_question_bank` now owns SPA-side bank saves plus question replacement.
+- Quiz question `prompt` and `explanation` are sanitized server-side before save, and bank updates now reject stale `expected_modified` tokens using an aggregate fingerprint over the bank and its current question rows.
+- Quiz-bank saves now emit bounded `ifitwala.curriculum` timing/status logs so GCP Cloud Logging metrics can track latency and failures on this hot authoring path.
 - Published question banks are the only ones shown in the quiz selection step of the task-delivery overlay.
 - Keep quiz attempt rules and LMS runtime behavior documented in `ifitwala_ed/docs/curriculum/04_curriculum_lms_and_quiz_contract.md`.

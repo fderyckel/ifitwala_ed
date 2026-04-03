@@ -25,6 +25,7 @@ export type StaffCoursePlanLessonActivity = {
 
 export type StaffCoursePlanLesson = {
 	lesson: string
+	record_modified?: string | null
 	course?: string | null
 	unit_plan: string
 	title: string
@@ -63,6 +64,7 @@ export type StaffCoursePlanQuizQuestionBankSummary = {
 
 export type StaffCoursePlanQuizQuestionBank = {
 	quiz_question_bank: string
+	record_modified?: string | null
 	bank_title: string
 	course?: string | null
 	is_published?: number
@@ -88,6 +90,7 @@ export type StaffCoursePlanProgramOption = {
 
 export type StaffCoursePlanUnit = {
 	unit_plan: string
+	record_modified?: string | null
 	title: string
 	unit_order?: number | null
 	program?: string | null
@@ -116,6 +119,7 @@ export type Response = {
 	}
 	course_plan: {
 		course_plan: string
+		record_modified?: string | null
 		title: string
 		course: string
 		course_name?: string | null

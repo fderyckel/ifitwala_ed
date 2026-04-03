@@ -4,9 +4,9 @@ from contextlib import contextmanager
 from datetime import datetime
 from types import ModuleType, SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
+from ifitwala_ed.tests.frappe_stubs import StubValidationError, import_fresh, stubbed_frappe
 
 
 @contextmanager
@@ -40,7 +40,20 @@ def _teaching_plans_module():
     planning_domain = ModuleType("ifitwala_ed.curriculum.planning")
     planning_domain.normalize_text = lambda value: str(value or "").strip()
     planning_domain.normalize_long_text = lambda value: value
+    planning_domain.normalize_rich_text = lambda value, *, allow_headings_from="h2": (
+        str(value or "").replace("<script>alert(1)</script>", "").strip() or None
+    )
     planning_domain.normalize_flag = lambda value: 1 if str(value or "").strip() in {"1", "True", "true"} else 0
+    planning_domain.normalize_record_modified = lambda value: str(value or "").strip()
+
+    def _assert_record_modified_matches(*, expected_modified, current_modified, section_label):
+        if expected_modified is None:
+            return
+        if str(expected_modified or "").strip() == str(current_modified or "").strip():
+            return
+        raise StubValidationError(f"{section_label} was updated by another user.")
+
+    planning_domain.assert_record_modified_matches = _assert_record_modified_matches
     planning_domain.user_has_global_curriculum_access = lambda user, roles=None: False
     planning_domain.get_instructor_course_names = lambda user: []
     planning_domain.get_coordinator_course_names = lambda user: []
@@ -59,9 +72,44 @@ def _teaching_plans_module():
     planning_domain.get_student_group_row = lambda student_group: {"name": student_group, "course": "COURSE-1"}
     planning_domain.get_unit_plan_rows = lambda course_plan: []
     planning_domain.replace_session_activities = lambda doc, activities: None
-    planning_domain.replace_lesson_activities = lambda doc, rows: doc.set("lesson_activities", rows)
+
+    def _replace_lesson_activities(doc, rows):
+        doc.set(
+            "lesson_activities",
+            [
+                {
+                    **(row or {}),
+                    "reading_content": planning_domain.normalize_rich_text((row or {}).get("reading_content")),
+                }
+                for row in rows or []
+            ],
+        )
+
+    planning_domain.replace_lesson_activities = _replace_lesson_activities
     planning_domain.replace_unit_plan_standards = lambda doc, rows: doc.set("standards", rows)
-    planning_domain.replace_unit_plan_reflections = lambda doc, rows, course_plan_row=None: doc.set("reflections", rows)
+
+    def _replace_unit_plan_reflections(doc, rows, course_plan_row=None):
+        defaults = course_plan_row or {}
+        doc.set(
+            "reflections",
+            [
+                {
+                    **(row or {}),
+                    "academic_year": (row or {}).get("academic_year") or defaults.get("academic_year"),
+                    "school": (row or {}).get("school") or defaults.get("school"),
+                    "prior_to_the_unit": planning_domain.normalize_rich_text((row or {}).get("prior_to_the_unit")),
+                    "during_the_unit": planning_domain.normalize_rich_text((row or {}).get("during_the_unit")),
+                    "what_work_well": planning_domain.normalize_rich_text((row or {}).get("what_work_well")),
+                    "what_didnt_work_well": planning_domain.normalize_rich_text(
+                        (row or {}).get("what_didnt_work_well")
+                    ),
+                    "changes_suggestions": planning_domain.normalize_rich_text((row or {}).get("changes_suggestions")),
+                }
+                for row in rows or []
+            ],
+        )
+
+    planning_domain.replace_unit_plan_reflections = _replace_unit_plan_reflections
     planning_domain.next_lesson_order = lambda unit_plan: 10
 
     governed_uploads = ModuleType("ifitwala_ed.utilities.governed_uploads")
@@ -362,6 +410,99 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["curriculum"]["counts"]["units"], 1)
         self.assertIn("Showing the shared course plan", payload["message"])
 
+    def test_resolve_student_plan_rejects_spoofed_student_group(self):
+        with _teaching_plans_module() as module:
+            with self.assertRaises(module.frappe.PermissionError):
+                module._resolve_student_plan(
+                    "COURSE-1",
+                    [{"student_group": "GROUP-1", "label": "Biology A"}],
+                    "GROUP-2",
+                )
+
+    def test_serialize_material_entry_uses_governed_open_url_for_file_material(self):
+        with _teaching_plans_module() as module:
+            with patch.object(
+                module,
+                "resolve_academic_file_open_url",
+                return_value="/api/method/ifitwala_ed.api.file_access.open_academic_file?f=FILE-1",
+            ) as resolve_open_url:
+                payload = module._serialize_material_entry(
+                    {
+                        "material": "MAT-1",
+                        "title": "Lab PDF",
+                        "material_type": "File",
+                        "file": "FILE-1",
+                        "file_url": "/private/files/lab.pdf",
+                        "file_name": "lab.pdf",
+                        "placements": [
+                            {
+                                "placement": "PLC-1",
+                                "origin": "shared_in_class",
+                                "usage_role": "Core",
+                                "placement_note": "Read before class",
+                                "placement_order": 10,
+                            }
+                        ],
+                    }
+                )
+
+        resolve_open_url.assert_called_once_with(
+            file_name="FILE-1",
+            file_url="/private/files/lab.pdf",
+            context_doctype="Material Placement",
+            context_name="PLC-1",
+        )
+        self.assertEqual(
+            payload["open_url"],
+            "/api/method/ifitwala_ed.api.file_access.open_academic_file?f=FILE-1",
+        )
+        self.assertNotIn("file_url", payload)
+
+    def test_get_student_learning_space_logs_payload_metrics(self):
+        with _teaching_plans_module() as module:
+            module.frappe.db.query_count = 40
+            logger = SimpleNamespace(info=Mock(), warning=Mock())
+
+            def build_payload(*args, **kwargs):
+                module.frappe.db.query_count = 47
+                return {
+                    "access": {
+                        "resolved_student_group": "GROUP-1",
+                    },
+                    "teaching_plan": {
+                        "source": "class_teaching_plan",
+                    },
+                    "curriculum": {
+                        "counts": {
+                            "units": 2,
+                            "sessions": 12,
+                            "assigned_work": 5,
+                        },
+                    },
+                }
+
+            with (
+                patch.object(module, "_require_student_name", return_value="STU-1"),
+                patch.object(module, "_build_student_learning_space_payload", side_effect=build_payload),
+                patch.object(module.frappe, "logger", return_value=logger, create=True),
+            ):
+                payload = module.get_student_learning_space("COURSE-1", "GROUP-1")
+
+        self.assertEqual(payload["curriculum"]["counts"]["units"], 2)
+        logger.info.assert_called_once()
+        logger.warning.assert_not_called()
+        event = logger.info.call_args.args[0]
+        self.assertEqual(event["event"], "student_learning_space_load")
+        self.assertEqual(event["status"], "success")
+        self.assertEqual(event["course_id"], "COURSE-1")
+        self.assertEqual(event["student_group"], "GROUP-1")
+        self.assertEqual(event["source"], "class_teaching_plan")
+        self.assertEqual(event["unit_count"], 2)
+        self.assertEqual(event["session_count"], 12)
+        self.assertEqual(event["assigned_work_count"], 5)
+        self.assertGreater(event["payload_bytes"], 0)
+        self.assertEqual(event["db_query_count"], 7)
+
     def test_build_unit_lookup_includes_shared_and_class_reflections_for_staff(self):
         with _teaching_plans_module() as module:
             with (
@@ -639,6 +780,7 @@ class TestTeachingPlansApi(TestCase):
                     "get_doc",
                     return_value=SimpleNamespace(
                         name="COURSE-PLAN-1",
+                        modified="2026-04-02 09:00:00",
                         summary="Shared course summary",
                         check_permission=lambda ptype: None,
                     ),
@@ -764,6 +906,7 @@ class TestTeachingPlansApi(TestCase):
                     "get_doc",
                     return_value=SimpleNamespace(
                         name="COURSE-PLAN-1",
+                        modified="2026-04-02 09:00:00",
                         summary="Shared course summary",
                         check_permission=lambda ptype: None,
                     ),
@@ -1009,6 +1152,62 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(saved["count"], 1)
         self.assertEqual(payload["course_plan"], "COURSE-PLAN-1")
 
+    def test_save_course_plan_sanitizes_summary_rich_text(self):
+        with _teaching_plans_module() as module:
+
+            class CoursePlanDoc:
+                def __init__(self):
+                    self.name = "COURSE-PLAN-1"
+                    self.course = "COURSE-1"
+                    self.school = "SCH-1"
+                    self.modified = "2026-04-02 09:00:00"
+                    self.summary = None
+
+                def save(self, ignore_permissions=False):
+                    return None
+
+            doc = CoursePlanDoc()
+
+            with (
+                patch.object(module, "_validate_course_plan_academic_year"),
+                patch.object(module.frappe, "get_doc", return_value=doc),
+            ):
+                module.save_course_plan(
+                    {
+                        "course_plan": "COURSE-PLAN-1",
+                        "title": "Biology Plan",
+                        "summary": "<h2>Overview</h2><script>alert(1)</script>",
+                    }
+                )
+
+        self.assertEqual(doc.summary, "<h2>Overview</h2>")
+
+    def test_save_course_plan_rejects_stale_expected_modified(self):
+        with _teaching_plans_module() as module:
+
+            class CoursePlanDoc:
+                def __init__(self):
+                    self.name = "COURSE-PLAN-1"
+                    self.course = "COURSE-1"
+                    self.school = "SCH-1"
+                    self.modified = "2026-04-02 09:00:00"
+
+                def save(self, ignore_permissions=False):
+                    raise AssertionError("save() must not run after a stale expected_modified check.")
+
+            with self.assertRaises(module.frappe.ValidationError):
+                with (
+                    patch.object(module, "_validate_course_plan_academic_year"),
+                    patch.object(module.frappe, "get_doc", return_value=CoursePlanDoc()),
+                ):
+                    module.save_course_plan(
+                        {
+                            "course_plan": "COURSE-PLAN-1",
+                            "title": "Biology Plan",
+                            "expected_modified": "2026-04-02 08:00:00",
+                        }
+                    )
+
     def test_save_course_plan_rejects_academic_year_outside_course_school_scope(self):
         with _teaching_plans_module() as module:
             with self.assertRaises(module.frappe.ValidationError):
@@ -1090,9 +1289,104 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(unit_doc.title, "Cells and Systems")
         self.assertEqual(unit_doc.is_published, 1)
         self.assertEqual(unit_doc.standards, [{"standard_code": "STD-1"}])
-        self.assertEqual(unit_doc.reflections, [{"prior_to_the_unit": "Start with microscope norms."}])
+        self.assertEqual(
+            unit_doc.reflections,
+            [
+                {
+                    "academic_year": "2026-2027",
+                    "school": "SCH-1",
+                    "prior_to_the_unit": "Start with microscope norms.",
+                    "during_the_unit": None,
+                    "what_work_well": None,
+                    "what_didnt_work_well": None,
+                    "changes_suggestions": None,
+                }
+            ],
+        )
         self.assertEqual(inserted["count"], 1)
         self.assertEqual(payload["unit_plan"], "UNIT-PLAN-NEW")
+
+    def test_save_unit_plan_sanitizes_rich_text_fields_and_reflections(self):
+        with _teaching_plans_module() as module:
+
+            class FakeUnitDoc:
+                def __init__(self):
+                    self.name = "UNIT-PLAN-NEW"
+                    self.course_plan = None
+                    self.title = None
+                    self.program = None
+                    self.unit_order = None
+                    self.is_published = 0
+                    self.overview = None
+                    self.reflections = []
+
+                def set(self, fieldname, value):
+                    setattr(self, fieldname, value)
+
+                def is_new(self):
+                    return True
+
+                def insert(self, ignore_permissions=False):
+                    return None
+
+            unit_doc = FakeUnitDoc()
+
+            with (
+                patch.object(module, "_validate_course_program_link"),
+                patch.object(
+                    module.frappe,
+                    "get_doc",
+                    return_value=SimpleNamespace(check_permission=lambda ptype: None),
+                ),
+                patch.object(module.frappe, "new_doc", return_value=unit_doc),
+            ):
+                module.save_unit_plan(
+                    {
+                        "course_plan": "COURSE-PLAN-1",
+                        "title": "Cells and Systems",
+                        "overview": "<h2>Unit overview</h2><script>alert(1)</script>",
+                        "reflections_json": [
+                            {
+                                "prior_to_the_unit": "<p>Start here</p><script>alert(1)</script>",
+                            }
+                        ],
+                    }
+                )
+
+        self.assertEqual(unit_doc.overview, "<h2>Unit overview</h2>")
+        self.assertEqual(unit_doc.reflections[0]["prior_to_the_unit"], "<p>Start here</p>")
+
+    def test_save_unit_plan_rejects_stale_expected_modified(self):
+        with _teaching_plans_module() as module:
+
+            class FakeUnitDoc:
+                def __init__(self):
+                    self.name = "UNIT-PLAN-1"
+                    self.course_plan = "COURSE-PLAN-1"
+                    self.modified = "2026-04-02 09:00:00"
+
+                def get_db_value(self, fieldname):
+                    return None
+
+                def save(self, ignore_permissions=False):
+                    raise AssertionError("save() must not run after a stale expected_modified check.")
+
+            def fake_get_doc(doctype, name):
+                if doctype == "Unit Plan":
+                    return FakeUnitDoc()
+                if doctype == "Course Plan":
+                    return SimpleNamespace(check_permission=lambda ptype: None)
+                raise AssertionError(f"Unexpected get_doc call: {doctype} {name}")
+
+            with self.assertRaises(module.frappe.ValidationError):
+                with patch.object(module.frappe, "get_doc", side_effect=fake_get_doc):
+                    module.save_unit_plan(
+                        {
+                            "unit_plan": "UNIT-PLAN-1",
+                            "title": "Cells and Systems",
+                            "expected_modified": "2026-04-02 08:00:00",
+                        }
+                    )
 
     def test_validate_course_program_link_rejects_unlinked_program(self):
         with _teaching_plans_module() as module:
@@ -1171,6 +1465,82 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(lesson_doc.lesson_activities[0]["title"], "Observe the slide")
         self.assertEqual(inserted["count"], 1)
         self.assertEqual(payload["lesson"], "LESSON-1")
+
+    def test_save_lesson_outline_sanitizes_reading_content(self):
+        with _teaching_plans_module() as module:
+
+            class FakeLessonDoc:
+                def __init__(self):
+                    self.name = "LESSON-1"
+                    self.unit_plan = None
+                    self.course = None
+                    self.title = None
+                    self.lesson_order = None
+                    self.lesson_activities = []
+
+                def set(self, fieldname, value):
+                    setattr(self, fieldname, value)
+
+                def is_new(self):
+                    return True
+
+                def insert(self, ignore_permissions=False):
+                    return None
+
+            lesson_doc = FakeLessonDoc()
+
+            with (
+                patch.object(
+                    module.frappe,
+                    "get_doc",
+                    return_value=SimpleNamespace(name="UNIT-1", course="COURSE-1"),
+                ),
+                patch.object(module.frappe, "new_doc", return_value=lesson_doc),
+            ):
+                module.save_lesson_outline(
+                    {
+                        "unit_plan": "UNIT-1",
+                        "title": "Microscope setup",
+                        "activities_json": [
+                            {
+                                "reading_content": "<p>Read this</p><script>alert(1)</script>",
+                            }
+                        ],
+                    }
+                )
+
+        self.assertEqual(lesson_doc.lesson_activities[0]["reading_content"], "<p>Read this</p>")
+
+    def test_save_lesson_outline_rejects_stale_expected_modified(self):
+        with _teaching_plans_module() as module:
+
+            class FakeLessonDoc:
+                def __init__(self):
+                    self.name = "LESSON-1"
+                    self.unit_plan = "UNIT-1"
+                    self.course = "COURSE-1"
+                    self.modified = "2026-04-02 09:00:00"
+
+                def save(self, ignore_permissions=False):
+                    raise AssertionError("save() must not run after a stale expected_modified check.")
+
+            def fake_get_doc(doctype, name):
+                if doctype == "Lesson":
+                    return FakeLessonDoc()
+                if doctype == "Unit Plan":
+                    return SimpleNamespace(name="UNIT-1", course="COURSE-1")
+                raise AssertionError(f"Unexpected get_doc call: {doctype} {name}")
+
+            with self.assertRaises(module.frappe.ValidationError):
+                with patch.object(module.frappe, "get_doc", side_effect=fake_get_doc):
+                    module.save_lesson_outline(
+                        {
+                            "unit_plan": "UNIT-1",
+                            "lesson": "LESSON-1",
+                            "title": "Microscope setup",
+                            "expected_modified": "2026-04-02 08:00:00",
+                        }
+                    )
 
     def test_remove_lesson_outline_deletes_unlinked_lesson(self):
         with _teaching_plans_module() as module:

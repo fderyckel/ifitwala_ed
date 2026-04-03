@@ -5,8 +5,14 @@ import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 
 import type { Response as StudentLearningSpaceResponse } from '@/types/contracts/student_learning/get_student_learning_space'
 
-const { getStudentLearningSpaceMock, routerReplaceMock } = vi.hoisted(() => ({
+const { getStudentLearningSpaceMock, routeState, routerReplaceMock } = vi.hoisted(() => ({
 	getStudentLearningSpaceMock: vi.fn(),
+	routeState: {
+		query: {
+			student_group: 'GROUP-1',
+		},
+		hash: '',
+	},
 	routerReplaceMock: vi.fn(),
 }))
 
@@ -30,6 +36,7 @@ vi.mock('vue-router', async () => {
 		useRouter: () => ({
 			replace: routerReplaceMock,
 		}),
+		useRoute: () => routeState,
 	}
 })
 
@@ -238,9 +245,25 @@ async function flushUi() {
 	await nextTick()
 }
 
+function resetRouteState() {
+	routeState.query = {
+		student_group: 'GROUP-1',
+	}
+	routeState.hash = ''
+	routerReplaceMock.mockImplementation(async location => {
+		if (location?.query) {
+			routeState.query = { ...location.query }
+		}
+		if ('hash' in (location || {})) {
+			routeState.hash = location.hash || ''
+		}
+	})
+}
+
 function mountCourseDetail() {
 	const host = document.createElement('div')
 	document.body.appendChild(host)
+	window.HTMLElement.prototype.scrollIntoView = vi.fn()
 
 	const app: App = createApp(
 		defineComponent({
@@ -260,6 +283,7 @@ function mountCourseDetail() {
 afterEach(() => {
 	getStudentLearningSpaceMock.mockReset()
 	routerReplaceMock.mockReset()
+	resetRouteState()
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.()
 	}
@@ -268,6 +292,7 @@ afterEach(() => {
 
 describe('CourseDetail', () => {
 	it('renders the class-aware learning space shell', async () => {
+		resetRouteState()
 		getStudentLearningSpaceMock.mockResolvedValue(buildPayload())
 
 		mountCourseDetail()
@@ -301,6 +326,7 @@ describe('CourseDetail', () => {
 	})
 
 	it('keeps the learning space visible when shared-plan messaging is present', async () => {
+		resetRouteState()
 		getStudentLearningSpaceMock.mockResolvedValue(
 			buildPayload('Showing the shared course plan while your class is being assigned.')
 		)
@@ -314,5 +340,29 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Learning Focus')
 		expect(document.body.textContent).toContain('Cells and Systems')
 		expect(document.body.textContent).toContain('Microscope evidence walk')
+	})
+
+	it('syncs section and session query state without reloading the bootstrap payload', async () => {
+		resetRouteState()
+		getStudentLearningSpaceMock.mockResolvedValue(buildPayload())
+
+		mountCourseDetail()
+		await flushUi()
+
+		const unitButtons = Array.from(document.querySelectorAll('button')).filter(
+			button => button.textContent?.includes('Unit 1')
+		)
+		expect(unitButtons.length).toBeGreaterThan(0)
+		unitButtons[0]?.click()
+		await flushUi()
+
+		expect(routerReplaceMock).toHaveBeenCalled()
+		expect(routeState.query).toMatchObject({
+			student_group: 'GROUP-1',
+			unit_plan: 'UNIT-PLAN-1',
+			class_session: 'CLASS-SESSION-1',
+		})
+		expect(routeState.hash).toBe('#session-journey')
+		expect(getStudentLearningSpaceMock).toHaveBeenCalledTimes(1)
 	})
 })

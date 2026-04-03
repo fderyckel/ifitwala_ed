@@ -76,6 +76,7 @@ export type CreateCoursePlanResponse = {
 
 export type SaveCoursePlanRequest = {
 	course_plan: string
+	expected_modified?: string | null
 	title: string
 	academic_year?: string | null
 	cycle_label?: string | null
@@ -91,6 +92,7 @@ export type SaveCoursePlanResponse = {
 export type SaveGovernedUnitPlanRequest = {
 	course_plan: string
 	unit_plan?: string
+	expected_modified?: string | null
 	title: string
 	program?: string | null
 	unit_code?: string | null
@@ -119,6 +121,7 @@ export type SaveGovernedUnitPlanResponse = {
 export type SaveLessonOutlineRequest = {
 	unit_plan: string
 	lesson?: string
+	expected_modified?: string | null
 	title: string
 	lesson_type?: string | null
 	lesson_order?: number | null
@@ -205,6 +208,7 @@ export type SaveClassSessionResponse = {
 export type SaveQuizQuestionBankRequest = {
 	course_plan: string
 	quiz_question_bank?: string
+	expected_modified?: string | null
 	bank_title: string
 	description?: string | null
 	is_published?: number | boolean | null

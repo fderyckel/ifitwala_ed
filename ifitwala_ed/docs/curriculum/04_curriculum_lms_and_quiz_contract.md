@@ -40,6 +40,13 @@ Current product behavior:
 - the server resolves `learning.focus`, `learning.next_actions`, `learning.selected_context`, and `learning.unit_navigation`
 - the student page stays learning-first and does not expose shared-plan management labels
 
+Operational guardrails:
+
+- `get_student_learning_space` emits a structured `student_learning_space_load` planning event with `elapsed_ms`, `payload_bytes`, `db_query_count` when available, source mode, and unit/session/assigned-work counts
+- successful responses over 1200 ms or 350 KB should emit a warning-level planning event and be treated as a hot-path regression to investigate
+- file-backed student materials must serialize a server-resolved `open_url` only; raw private `file_url` values must not appear in the student LMS payload
+- the class-plan bootstrap path should stay within a 40-query review budget in Frappe Recorder until a site-runtime query counter is available for hard enforcement
+
 ## Curriculum Read Model In The LMS
 
 Status: Implemented

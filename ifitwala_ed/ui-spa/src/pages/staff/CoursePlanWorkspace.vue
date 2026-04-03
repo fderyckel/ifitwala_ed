@@ -1834,6 +1834,7 @@ const activeSectionId = ref<WorkspaceSectionId>(SECTION_IDS.overview);
 let scrollFrame = 0;
 
 const coursePlanForm = reactive({
+	record_modified: '',
 	title: '',
 	academic_year: '',
 	cycle_label: '',
@@ -1843,6 +1844,7 @@ const coursePlanForm = reactive({
 
 const unitForm = reactive({
 	unit_plan: '',
+	record_modified: '',
 	title: '',
 	program: '',
 	unit_code: '',
@@ -1864,6 +1866,7 @@ const unitForm = reactive({
 
 const lessonForm = reactive({
 	lesson: '',
+	record_modified: '',
 	title: '',
 	lesson_type: '',
 	lesson_order: null as number | null,
@@ -1875,6 +1878,7 @@ const lessonForm = reactive({
 
 const quizBankForm = reactive({
 	quiz_question_bank: '',
+	record_modified: '',
 	bank_title: '',
 	description: '',
 	is_published: true,
@@ -2243,6 +2247,7 @@ async function quickStartQuizBank() {
 }
 
 function syncCoursePlanForm(payload: StaffCoursePlanSurfaceResponse | null) {
+	coursePlanForm.record_modified = payload?.course_plan.record_modified || '';
 	coursePlanForm.title = payload?.course_plan.title || '';
 	coursePlanForm.academic_year = payload?.course_plan.academic_year || '';
 	coursePlanForm.cycle_label = payload?.course_plan.cycle_label || '';
@@ -2252,6 +2257,7 @@ function syncCoursePlanForm(payload: StaffCoursePlanSurfaceResponse | null) {
 
 function syncUnitForm(unit: StaffCoursePlanUnit | null) {
 	unitForm.unit_plan = unit?.unit_plan || '';
+	unitForm.record_modified = unit?.record_modified || '';
 	unitForm.title = unit?.title || '';
 	unitForm.program = unit?.program || '';
 	unitForm.unit_code = unit?.unit_code || '';
@@ -2275,6 +2281,7 @@ function syncUnitForm(unit: StaffCoursePlanUnit | null) {
 
 function syncLessonForm(lesson: StaffCoursePlanLesson | null) {
 	lessonForm.lesson = lesson?.lesson || '';
+	lessonForm.record_modified = lesson?.record_modified || '';
 	lessonForm.title = lesson?.title || '';
 	lessonForm.lesson_type = lesson?.lesson_type || '';
 	lessonForm.lesson_order = lesson?.lesson_order ?? null;
@@ -2288,6 +2295,7 @@ function syncLessonForm(lesson: StaffCoursePlanLesson | null) {
 
 function syncQuizBankForm(bank: StaffCoursePlanQuizQuestionBank | null) {
 	quizBankForm.quiz_question_bank = bank?.quiz_question_bank || '';
+	quizBankForm.record_modified = bank?.record_modified || '';
 	quizBankForm.bank_title = bank?.bank_title || '';
 	quizBankForm.description = bank?.description || '';
 	quizBankForm.is_published = bank?.is_published !== 0;
@@ -2640,6 +2648,7 @@ async function handleSaveCoursePlan() {
 	try {
 		await saveCoursePlan({
 			course_plan: surface.value.course_plan.course_plan,
+			expected_modified: coursePlanForm.record_modified || null,
 			title: coursePlanForm.title.trim(),
 			academic_year: coursePlanForm.academic_year || null,
 			cycle_label: coursePlanForm.cycle_label.trim() || null,
@@ -2662,6 +2671,7 @@ async function handleSaveUnitPlan() {
 		const result = await saveGovernedUnitPlan({
 			course_plan: props.coursePlan,
 			unit_plan: wasCreating ? undefined : unitForm.unit_plan || undefined,
+			expected_modified: wasCreating ? null : unitForm.record_modified || null,
 			title: unitForm.title.trim(),
 			program: unitForm.program || null,
 			unit_code: unitForm.unit_code.trim() || null,
@@ -2707,6 +2717,7 @@ async function handleSaveLesson() {
 		const result = await saveLessonOutline({
 			unit_plan: selectedUnit.value.unit_plan,
 			lesson: wasCreating ? undefined : lessonForm.lesson || undefined,
+			expected_modified: wasCreating ? null : lessonForm.record_modified || null,
 			title: lessonForm.title.trim(),
 			lesson_type: lessonForm.lesson_type || null,
 			lesson_order: lessonForm.lesson_order,
@@ -2749,6 +2760,7 @@ async function handleSaveQuizQuestionBank() {
 		const result = await saveQuizQuestionBank({
 			course_plan: props.coursePlan,
 			quiz_question_bank: wasCreating ? undefined : quizBankForm.quiz_question_bank || undefined,
+			expected_modified: wasCreating ? null : quizBankForm.record_modified || null,
 			bank_title: quizBankForm.bank_title.trim(),
 			description: quizBankForm.description || null,
 			is_published: quizBankForm.is_published ? 1 : 0,

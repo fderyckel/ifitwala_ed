@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 
 import frappe
 from frappe import _
 
 from ifitwala_ed.api import student_groups as student_groups_api
+from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 ORDER_STEP = 10
 CURRICULUM_GLOBAL_MANAGER_ROLES = {"System Manager", "Academic Admin", "Administrator"}
+_RICH_TEXT_TAG_RE = re.compile(r"<[^>]*>")
+_RICH_TEXT_MEDIA_RE = re.compile(r"<(audio|hr|iframe|img|table|video)\b", re.IGNORECASE)
+_RICH_TEXT_SCRIPT_STYLE_RE = re.compile(r"<(script|style)\b[\s\S]*?</\1>", re.IGNORECASE)
+_RICH_TEXT_NBSP_RE = re.compile(r"&nbsp;|&#160;", re.IGNORECASE)
 
 
 def normalize_text(value: str | None) -> str:
@@ -20,6 +26,25 @@ def normalize_long_text(value: str | None) -> str | None:
     return text or None
 
 
+def normalize_rich_text(value: str | None, *, allow_headings_from: str = "h2") -> str | None:
+    text = normalize_text(value)
+    if not text:
+        return None
+
+    cleaned = normalize_text(sanitize_html(text, allow_headings_from=allow_headings_from))
+    if not cleaned:
+        return None
+
+    visible_text = _RICH_TEXT_NBSP_RE.sub(
+        " ",
+        _RICH_TEXT_TAG_RE.sub(
+            " ",
+            _RICH_TEXT_SCRIPT_STYLE_RE.sub(" ", cleaned),
+        ),
+    ).strip()
+    return cleaned if visible_text or _RICH_TEXT_MEDIA_RE.search(cleaned) else None
+
+
 def normalize_flag(value) -> int:
     if isinstance(value, bool):
         return int(value)
@@ -27,6 +52,27 @@ def normalize_flag(value) -> int:
     if not text:
         return 0
     return 1 if text in {"1", "true", "True", "yes", "Yes"} else 0
+
+
+def normalize_record_modified(value) -> str:
+    return normalize_text(value)
+
+
+def assert_record_modified_matches(*, expected_modified, current_modified, section_label: str) -> None:
+    if expected_modified is None:
+        return
+
+    expected = normalize_record_modified(expected_modified)
+    current = normalize_record_modified(current_modified)
+    if expected == current:
+        return
+
+    frappe.throw(
+        _("{section_label} was updated by another user. Reload this page before saving again.").format(
+            section_label=section_label,
+        ),
+        frappe.ValidationError,
+    )
 
 
 def user_has_global_curriculum_access(user: str, roles: Iterable[str] | None = None) -> bool:
@@ -187,6 +233,7 @@ def get_unit_plan_rows(course_plan: str) -> list[dict]:
             "title",
             "course_plan",
             "course",
+            "modified",
             "program",
             "unit_code",
             "unit_order",
@@ -507,7 +554,7 @@ def replace_lesson_activities(doc, rows: Iterable[dict] | None) -> None:
                 "lesson_activity_order": int(lesson_activity_order)
                 if lesson_activity_order not in (None, "")
                 else idx * ORDER_STEP,
-                "reading_content": normalize_long_text((row or {}).get("reading_content")),
+                "reading_content": normalize_rich_text((row or {}).get("reading_content")),
                 "video_url": normalize_text((row or {}).get("video_url")) or None,
                 "external_link": normalize_text((row or {}).get("external_link")) or None,
                 "discussion_prompt": normalize_long_text((row or {}).get("discussion_prompt")),
@@ -551,11 +598,11 @@ def replace_unit_plan_reflections(doc, rows: Iterable[dict] | None, *, course_pl
         payload = {
             "academic_year": normalize_text((row or {}).get("academic_year")) or default_year,
             "school": normalize_text((row or {}).get("school")) or default_school,
-            "prior_to_the_unit": normalize_long_text((row or {}).get("prior_to_the_unit")),
-            "during_the_unit": normalize_long_text((row or {}).get("during_the_unit")),
-            "what_work_well": normalize_long_text((row or {}).get("what_work_well")),
-            "what_didnt_work_well": normalize_long_text((row or {}).get("what_didnt_work_well")),
-            "changes_suggestions": normalize_long_text((row or {}).get("changes_suggestions")),
+            "prior_to_the_unit": normalize_rich_text((row or {}).get("prior_to_the_unit")),
+            "during_the_unit": normalize_rich_text((row or {}).get("during_the_unit")),
+            "what_work_well": normalize_rich_text((row or {}).get("what_work_well")),
+            "what_didnt_work_well": normalize_rich_text((row or {}).get("what_didnt_work_well")),
+            "changes_suggestions": normalize_rich_text((row or {}).get("changes_suggestions")),
         }
         if not any(
             payload.get(fieldname)
