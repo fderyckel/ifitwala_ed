@@ -300,6 +300,10 @@ Exit:
 - `student_exit_date`
 - `student_exit_reason`
 
+Notes:
+
+- `additional_comment` only when present
+
 ### 7.3 Excluded Fields
 
 Exclude from the standard Student Profile by default:
@@ -308,7 +312,6 @@ Exclude from the standard Student Profile by default:
 - `contact_html`
 - `address_html`
 - `allow_direct_creation`
-- `additional_comment`
 - internal tab, section, and layout helper fields
 
 ### 7.4 Explicit Non-Goals for Phase 1

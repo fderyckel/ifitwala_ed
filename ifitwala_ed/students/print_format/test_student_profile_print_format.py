@@ -7,7 +7,9 @@ from pathlib import Path
 from jinja2 import Environment
 
 from ifitwala_ed.students.print_format.sync import (
+    STUDENT_PROFILE_CSS_PATH,
     STUDENT_PROFILE_PRINT_FORMAT_PATH,
+    STUDENT_PROFILE_TEMPLATE_PATH,
     get_student_profile_print_format_values,
     load_student_profile_print_format_payload,
 )
@@ -24,6 +26,8 @@ class TestStudentProfilePrintFormat(unittest.TestCase):
 
     def test_sync_module_targets_exported_print_format_path(self):
         self.assertEqual(STUDENT_PROFILE_PRINT_FORMAT_PATH, PRINT_FORMAT_PATH)
+        self.assertTrue(STUDENT_PROFILE_TEMPLATE_PATH.exists())
+        self.assertTrue(STUDENT_PROFILE_CSS_PATH.exists())
 
     def test_exported_metadata_matches_contract(self):
         self.assertEqual(self.payload["doctype"], "Print Format")
@@ -54,11 +58,14 @@ class TestStudentProfilePrintFormat(unittest.TestCase):
         for token in (
             "student_applicant",
             "allow_direct_creation",
-            "additional_comment",
             "contact_html",
             "address_html",
         ):
             self.assertNotIn(token, self.html)
+
+    def test_additional_comment_renders_only_when_present(self):
+        self.assertIn("doc.additional_comment", self.html)
+        self.assertIn("Additional Comment", self.html)
 
     def test_uses_real_guardian_child_fields(self):
         for token in (
@@ -99,6 +106,9 @@ class TestStudentProfilePrintFormat(unittest.TestCase):
         self.assertIn("width: 82px;", self.css)
         self.assertIn("height: 104px;", self.css)
         self.assertIn(".status-pill", self.css)
+        self.assertIn(".hero-label", self.css)
+        self.assertIn(".info-key", self.css)
+        self.assertNotIn(".label,", self.css)
 
 
 if __name__ == "__main__":

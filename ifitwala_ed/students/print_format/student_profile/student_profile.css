@@ -1,0 +1,274 @@
+.ifitwala-print.student-profile {
+  --ink: #1b2733;
+  --muted: #667085;
+  --accent: #244b5a;
+  --line: #d7dde3;
+  --soft-line: #ebeff3;
+  --warning: #8a3b12;
+  color: var(--ink);
+  font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.ifitwala-print.student-profile,
+.ifitwala-print.student-profile * {
+  box-sizing: border-box;
+}
+
+.ifitwala-print.student-profile .print-header {
+  display: table;
+  width: 100%;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ifitwala-print.student-profile .brand-block,
+.ifitwala-print.student-profile .doc-meta {
+  display: table-cell;
+  vertical-align: top;
+}
+
+.ifitwala-print.student-profile .doc-meta {
+  width: 32%;
+  text-align: right;
+}
+
+.ifitwala-print.student-profile .eyebrow,
+.ifitwala-print.student-profile .hero-kicker,
+.ifitwala-print.student-profile .section-title,
+.ifitwala-print.student-profile .hero-label,
+.ifitwala-print.student-profile .info-key,
+.ifitwala-print.student-profile .meta-key,
+.ifitwala-print.student-profile .premium-table th {
+  color: var(--muted);
+  font-size: 8.75px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: transparent;
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.ifitwala-print.student-profile h1,
+.ifitwala-print.student-profile h2 {
+  margin: 0;
+  color: #0f1720;
+  font-family: Baskerville, Georgia, serif;
+  font-weight: 600;
+}
+
+.ifitwala-print.student-profile h1 {
+  font-size: 23px;
+  margin-top: 2px;
+}
+
+.ifitwala-print.student-profile h2 {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.ifitwala-print.student-profile .subtle,
+.ifitwala-print.student-profile .preferred-name {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.ifitwala-print.student-profile .preferred-name {
+  margin-top: 6px;
+}
+
+.ifitwala-print.student-profile .meta-row {
+  margin-bottom: 7px;
+}
+
+.ifitwala-print.student-profile .meta-value,
+.ifitwala-print.student-profile .hero-value,
+.ifitwala-print.student-profile .info-value {
+  color: var(--ink);
+}
+
+.ifitwala-print.student-profile .status-pill {
+  display: inline-block;
+  min-width: 84px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ifitwala-print.student-profile .status-pill.active {
+  color: var(--accent);
+  background: rgba(36, 75, 90, 0.06);
+}
+
+.ifitwala-print.student-profile .status-pill.inactive {
+  color: var(--warning);
+  background: rgba(138, 59, 18, 0.06);
+}
+
+.ifitwala-print.student-profile .hero-card,
+.ifitwala-print.student-profile .section-card {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(248, 250, 251, 0.9), #ffffff 34px);
+}
+
+.ifitwala-print.student-profile .hero-card {
+  display: table;
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.ifitwala-print.student-profile .hero-main,
+.ifitwala-print.student-profile .hero-image {
+  display: table-cell;
+  vertical-align: top;
+  padding: 16px 18px;
+}
+
+.ifitwala-print.student-profile .hero-image {
+  width: 122px;
+  text-align: right;
+}
+
+.ifitwala-print.student-profile .hero-image img {
+  width: 82px;
+  height: 104px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.ifitwala-print.student-profile .hero-grid {
+  margin-top: 14px;
+  margin-right: 8px;
+}
+
+.ifitwala-print.student-profile .hero-item {
+  display: inline-block;
+  width: 49%;
+  margin-bottom: 11px;
+  padding-right: 12px;
+  vertical-align: top;
+}
+
+.ifitwala-print.student-profile .hero-label,
+.ifitwala-print.student-profile .meta-key {
+  margin-bottom: 2px;
+}
+
+.ifitwala-print.student-profile .section-grid {
+  margin: 0 -1.2%;
+}
+
+.ifitwala-print.student-profile .section-grid::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+.ifitwala-print.student-profile .section-grid .section-card {
+  float: left;
+  width: 47.6%;
+  margin: 0 1.2% 18px;
+}
+
+.ifitwala-print.student-profile .section-card {
+  margin-bottom: 18px;
+  padding: 14px 16px 12px;
+}
+
+.ifitwala-print.student-profile .section-card.wide-card {
+  width: 100%;
+}
+
+.ifitwala-print.student-profile .section-title {
+  margin-bottom: 12px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ifitwala-print.student-profile .info-table {
+  width: 100%;
+}
+
+.ifitwala-print.student-profile .info-row {
+  display: grid;
+  grid-template-columns: 37% 1fr;
+  column-gap: 14px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--soft-line);
+}
+
+.ifitwala-print.student-profile .info-row:last-child {
+  border-bottom: none;
+}
+
+.ifitwala-print.student-profile .info-key,
+.ifitwala-print.student-profile .info-value {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.ifitwala-print.student-profile .compact-table {
+  margin-bottom: 10px;
+}
+
+.ifitwala-print.student-profile .premium-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+
+.ifitwala-print.student-profile .premium-table th {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.ifitwala-print.student-profile .premium-table td {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--soft-line);
+  vertical-align: top;
+}
+
+.ifitwala-print.student-profile .premium-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ifitwala-print.student-profile .notes-body {
+  color: var(--ink);
+  white-space: normal;
+  line-height: 1.6;
+}
+
+.ifitwala-print.student-profile .exit-card {
+  border-color: rgba(138, 59, 18, 0.28);
+  background: linear-gradient(180deg, rgba(138, 59, 18, 0.05), #ffffff 34px);
+}
+
+@media print {
+  .ifitwala-print.student-profile .hero-label,
+  .ifitwala-print.student-profile .info-key,
+  .ifitwala-print.student-profile .meta-key {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+  }
+}

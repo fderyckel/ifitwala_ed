@@ -1,0 +1,235 @@
+{% set full_name = doc.student_full_name %}
+{% if not full_name %}
+	{% set full_name = ((doc.student_first_name or "") ~ " " ~ (doc.student_middle_name or "") ~ " " ~ (doc.student_last_name or "")).strip() %}
+{% endif %}
+{% set full_name = full_name or doc.name %}
+{% set preferred_name = (doc.student_preferred_name or "").strip() %}
+{% set is_active = 1 if doc.enabled else 0 %}
+{% set generated_on = frappe.utils.formatdate(frappe.utils.nowdate()) %}
+
+<div class="ifitwala-print student-profile">
+	<div class="print-header">
+		<div class="brand-block">
+			<div class="eyebrow">Ifitwala Ed</div>
+			<h1>Student Profile</h1>
+			<div class="subtle">Generated on {{ frappe.utils.escape_html(generated_on) }}</div>
+		</div>
+		<div class="doc-meta">
+			<div class="meta-row">
+				<div class="meta-key">Record</div>
+				<div class="meta-value">{{ frappe.utils.escape_html(doc.name) }}</div>
+			</div>
+			{% if doc.student_id %}
+			<div class="meta-row">
+				<div class="meta-key">Student ID</div>
+				<div class="meta-value">{{ frappe.utils.escape_html(doc.student_id) }}</div>
+			</div>
+			{% endif %}
+			<div class="meta-row">
+				<div class="meta-key">Status</div>
+				<div class="meta-value">
+					<span class="status-pill {{ 'active' if is_active else 'inactive' }}">{{ 'Active' if is_active else 'Inactive' }}</span>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="hero-card">
+		<div class="hero-main">
+			<div class="hero-kicker">Student</div>
+			<h2>{{ frappe.utils.escape_html(full_name) }}</h2>
+			{% if preferred_name and preferred_name != full_name %}
+			<div class="preferred-name">Preferred name: {{ frappe.utils.escape_html(preferred_name) }}</div>
+			{% endif %}
+
+			<div class="hero-grid">
+				{% if doc.anchor_school %}
+				<div class="hero-item">
+					<div class="hero-label">Anchor School</div>
+					<div class="hero-value">{{ frappe.utils.escape_html(doc.get_formatted('anchor_school')) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.cohort %}
+				<div class="hero-item">
+					<div class="hero-label">Cohort</div>
+					<div class="hero-value">{{ frappe.utils.escape_html(doc.get_formatted('cohort')) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.student_house %}
+				<div class="hero-item">
+					<div class="hero-label">House</div>
+					<div class="hero-value">{{ frappe.utils.escape_html(doc.get_formatted('student_house')) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.student_joining_date %}
+				<div class="hero-item">
+					<div class="hero-label">Joining Date</div>
+					<div class="hero-value">{{ frappe.utils.escape_html(doc.get_formatted('student_joining_date')) }}</div>
+				</div>
+				{% endif %}
+			</div>
+		</div>
+		{% if doc.student_image %}
+		<div class="hero-image">
+			<img src="{{ frappe.utils.escape_html(doc.student_image) }}" alt="{{ frappe.utils.escape_html(full_name) }}">
+		</div>
+		{% endif %}
+	</div>
+
+	<div class="section-grid">
+		<div class="section-card">
+			<div class="section-title">Personal</div>
+			<div class="info-table">
+				{% if doc.student_date_of_birth %}
+				<div class="info-row">
+					<div class="info-key">Date of Birth</div>
+					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_date_of_birth')) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.student_gender %}
+				<div class="info-row">
+					<div class="info-key">Gender</div>
+					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_gender')) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.student_email %}
+				<div class="info-row">
+					<div class="info-key">Email</div>
+					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_email')) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.student_mobile_number %}
+				<div class="info-row">
+					<div class="info-key">Mobile Number</div>
+					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_mobile_number')) }}</div>
+				</div>
+				{% endif %}
+			</div>
+		</div>
+
+		<div class="section-card">
+			<div class="section-title">Identity and Language</div>
+			<div class="info-table">
+				{% if doc.student_nationality %}
+				<div class="info-row">
+					<div class="info-key">Nationality</div>
+					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_nationality')) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.student_second_nationality %}
+				<div class="info-row">
+					<div class="info-key">Second Nationality</div>
+					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_second_nationality')) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.student_first_language %}
+				<div class="info-row">
+					<div class="info-key">First Language</div>
+					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_first_language')) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.student_second_language %}
+				<div class="info-row">
+					<div class="info-key">Second Language</div>
+					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_second_language')) }}</div>
+				</div>
+				{% endif %}
+				{% if doc.residency_status %}
+				<div class="info-row">
+					<div class="info-key">Residency Status</div>
+					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('residency_status')) }}</div>
+				</div>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+
+	{% if doc.account_holder or (doc.guardians and doc.guardians|length) %}
+	<div class="section-card wide-card">
+		<div class="section-title">Family</div>
+		{% if doc.account_holder %}
+		<div class="info-table compact-table">
+			<div class="info-row">
+				<div class="info-key">Account Holder</div>
+				<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('account_holder')) }}</div>
+			</div>
+		</div>
+		{% endif %}
+		{% if doc.guardians and doc.guardians|length %}
+		<table class="premium-table guardians-table">
+			<thead>
+				<tr>
+					<th>Guardian</th>
+					<th>Relation</th>
+					<th>Authorized Signer</th>
+					<th>Phone</th>
+					<th>Email</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for row in doc.guardians %}
+				<tr>
+					<td>{{ frappe.utils.escape_html(row.guardian_name or row.guardian or '') }}</td>
+					<td>{{ frappe.utils.escape_html(row.relation or '') }}</td>
+					<td>{{ 'Yes' if row.can_consent else 'No' }}</td>
+					<td>{{ frappe.utils.escape_html(row.phone or '') }}</td>
+					<td>{{ frappe.utils.escape_html(row.email or '') }}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+		{% endif %}
+	</div>
+	{% endif %}
+
+	{% if doc.siblings and doc.siblings|length %}
+	<div class="section-card wide-card">
+		<div class="section-title">Siblings</div>
+		<table class="premium-table siblings-table">
+			<thead>
+				<tr>
+					<th>Sibling Name</th>
+					<th>Gender</th>
+					<th>Date of Birth</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for row in doc.siblings %}
+				<tr>
+					<td>{{ frappe.utils.escape_html(row.sibling_name or row.student or '') }}</td>
+					<td>{{ frappe.utils.escape_html(row.sibling_gender or '') }}</td>
+					<td>{% if row.sibling_date_of_birth %}{{ frappe.utils.escape_html(frappe.utils.formatdate(row.sibling_date_of_birth)) }}{% endif %}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	{% endif %}
+
+	{% if doc.additional_comment %}
+	<div class="section-card wide-card notes-card">
+		<div class="section-title">Additional Comment</div>
+		<div class="notes-body">{{ frappe.utils.escape_html(doc.additional_comment).replace('\n', '<br>') | safe }}</div>
+	</div>
+	{% endif %}
+
+	{% if not is_active %}
+	<div class="section-card wide-card exit-card">
+		<div class="section-title">Exit Information</div>
+		<div class="info-table">
+			{% if doc.student_exit_date %}
+			<div class="info-row">
+				<div class="info-key">Exit Date</div>
+				<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_exit_date')) }}</div>
+			</div>
+			{% endif %}
+			{% if doc.student_exit_reason %}
+			<div class="info-row">
+				<div class="info-key">Exit Reason</div>
+				<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_exit_reason')) }}</div>
+			</div>
+			{% endif %}
+		</div>
+	</div>
+	{% endif %}
+</div>

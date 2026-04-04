@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 
 STUDENT_PROFILE_PRINT_FORMAT_PATH = Path(__file__).resolve().parent / "student_profile" / "student_profile.json"
+STUDENT_PROFILE_TEMPLATE_PATH = Path(__file__).resolve().parent / "student_profile" / "student_profile.html"
+STUDENT_PROFILE_CSS_PATH = Path(__file__).resolve().parent / "student_profile" / "student_profile.css"
 
 MANAGED_PRINT_FORMAT_FIELDS = (
     "absolute_value",
@@ -38,7 +40,10 @@ MANAGED_PRINT_FORMAT_FIELDS = (
 
 
 def load_student_profile_print_format_payload() -> dict:
-    return json.loads(STUDENT_PROFILE_PRINT_FORMAT_PATH.read_text(encoding="utf-8"))
+    payload = json.loads(STUDENT_PROFILE_PRINT_FORMAT_PATH.read_text(encoding="utf-8"))
+    payload["html"] = STUDENT_PROFILE_TEMPLATE_PATH.read_text(encoding="utf-8").strip()
+    payload["css"] = STUDENT_PROFILE_CSS_PATH.read_text(encoding="utf-8").strip()
+    return payload
 
 
 def get_student_profile_print_format_values() -> dict:
