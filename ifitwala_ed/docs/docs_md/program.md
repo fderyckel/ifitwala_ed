@@ -3,8 +3,8 @@ title: "Program: Curriculum Container and Enrollment Policy Anchor"
 slug: program
 category: Curriculum
 doc_order: 1
-version: "1.4.1"
-last_change_date: "2026-03-28"
+version: "1.4.2"
+last_change_date: "2026-04-05"
 summary: "Define the academic program tree, its catalog courses, basket-group memberships, assessment model, and prerequisite policy foundation used by offerings and enrollment validation."
 seo_title: "Program: Curriculum Container and Enrollment Policy Anchor"
 seo_description: "Define the academic program tree, its catalog courses, basket-group memberships, assessment model, and prerequisite policy foundation used by offerings and enrollment validation."
@@ -92,6 +92,20 @@ Result: the catalog keeps one course row for ESS while the basket-group table re
 - Child programs: `Grade 11`, `Grade 12`
 - Each child has its own catalog, basket-group map, and prerequisite rows while preserving tree navigation.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Academic Assistant` | Yes | Yes | No | No |
+| `Curriculum Coordinator` | Yes | Yes | Yes | No |
+| `Admission Officer` | Yes | Yes | No | No |
+| `Admission Manager` | Yes | Yes | No | No |
+| `Instructor` | Yes | No | No | No |
+| `Academic Staff` | Yes | No | No | No |
+| `Accreditation Visitor` | Yes | No | No | No |
+
 ## Related Docs
 
 - [**Program Course**](/docs/en/program-course/)
@@ -140,17 +154,3 @@ Result: the catalog keeps one course row for ESS while the basket-group table re
   - empty child programs resolve assessment categories from the nearest ancestor program at runtime
   - when `points = 1`, active category weights must exist and total must be `<= 100`
   - when a published Program is already offered by one or more schools, draft `Program Website Profile` records are prepared automatically with starter hero/intro/block/SEO defaults, without overwriting authored profile content
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Academic Assistant` | Yes | Yes | No | No |
-| `Curriculum Coordinator` | Yes | Yes | Yes | No |
-| `Admission Officer` | Yes | Yes | No | No |
-| `Admission Manager` | Yes | Yes | No | No |
-| `Instructor` | Yes | No | No | No |
-| `Academic Staff` | Yes | No | No | No |
-| `Accreditation Visitor` | Yes | No | No | No |

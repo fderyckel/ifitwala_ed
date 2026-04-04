@@ -3,8 +3,8 @@ title: "Program Offering Course: Delivery Window and Capacity Row"
 slug: program-offering-course
 category: Enrollment
 doc_order: 3
-version: "1.1.0"
-last_change_date: "2026-03-11"
+version: "1.1.1"
+last_change_date: "2026-04-05"
 summary: "Define per-course delivery windows, required status, grade-scale overrides, and capacity controls inside one Program Offering; basket-group memberships are carried on the parent offering."
 seo_title: "Program Offering Course: Delivery Window and Capacity Row"
 seo_description: "Define per-course delivery windows, required status, grade-scale overrides, and capacity controls inside one Program Offering; basket-group memberships are carried on the parent offering."
@@ -70,6 +70,10 @@ Result: the row inherits AY boundaries and is treated as individually required b
 
 Result: the request and enrollment layers require an explicit basket-group selection when ESS is chosen in a multi-group flow.
 
+## Permission Model
+
+`Program Offering Course` is a child table (`istable=1`) and follows parent [**Program Offering**](/docs/en/program-offering/) permissions.
+
 ## Related Docs
 
 - [**Program Offering**](/docs/en/program-offering/)
@@ -94,7 +98,3 @@ Result: the request and enrollment layers require an explicit basket-group selec
   - date ordering checks and head-window constraints
   - course must be in program catalog unless explicit `non_catalog` exception path is used
   - basket-group semantics come from parent `offering_course_basket_groups`, not from a field on this row
-
-### Permission Model
-
-`Program Offering Course` is a child table (`istable=1`) and follows parent [**Program Offering**](/docs/en/program-offering/) permissions.

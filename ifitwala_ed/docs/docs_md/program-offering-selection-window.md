@@ -3,8 +3,8 @@ title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
 slug: program-offering-selection-window
 category: Enrollment
 doc_order: 3
-version: "1.0.2"
-last_change_date: "2026-03-28"
+version: "1.0.3"
+last_change_date: "2026-04-05"
 summary: "Launch one time-bound student or guardian self-enrollment campaign for a Program Offering and Academic Year, pre-create draft Program Enrollment Requests, collect choices through the portal, and monitor response status from the window without bypassing the request-first architecture."
 seo_title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
 seo_description: "Launch portal self-enrollment for one Program Offering and Academic Year while keeping Program Enrollment Request as the canonical staging object."
@@ -70,6 +70,14 @@ Opening a selection window never writes committed enrollment directly. It batch-
 - Guardian visibility is always child-scoped from server-resolved links; students can only access their own window rows.
 - Students who already have a committed target `Program Enrollment` are skipped during request preparation and removed from the active window population.
 
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete |
+|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes |
+| `Academic Admin` | Yes | Yes | Yes | Yes |
+| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
+
 ## Related Docs
 
 - [**Program Offering**](/docs/en/program-offering/)
@@ -107,11 +115,3 @@ Opening a selection window never writes committed enrollment directly. It batch-
   - request preparation links each student row to one `Program Enrollment Request`
   - existing active requests are reused instead of duplicated
   - the Desk form can launch the linked `Program Enrollment Request Overview` tracker with this window prefilled
-
-### Permission Matrix
-
-| Role | Read | Write | Create | Delete |
-|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes |
-| `Academic Admin` | Yes | Yes | Yes | Yes |
-| `Curriculum Coordinator` | Yes | Yes | Yes | Yes |

@@ -3,8 +3,8 @@ title: "Program Course: Catalog Row Inside a Program"
 slug: program-course
 category: Curriculum
 doc_order: 3
-version: "1.1.0"
-last_change_date: "2026-03-11"
+version: "1.1.1"
+last_change_date: "2026-04-05"
 summary: "Configure how each course behaves inside a specific program, including required status, level, repeatability, maximum attempts, and the basket-group memberships defined on the parent Program."
 seo_title: "Program Course: Catalog Row Inside a Program"
 seo_description: "Configure how each course behaves inside a specific program, including required status, level, repeatability, maximum attempts, and the basket-group memberships defined on the parent Program."
@@ -65,6 +65,10 @@ Result: this row becomes a required part of the program catalog consumed by enro
 
 Result: the program catalog still has one course row, while downstream offering and request flows know the course can satisfy more than one basket group.
 
+## Permission Model
+
+`Program Course` is a child table (`istable=1`) and follows parent [**Program**](/docs/en/program/) permissions.
+
 ## Related Docs
 
 - [**Program**](/docs/en/program/)
@@ -93,7 +97,3 @@ Result: the program catalog still has one course row, while downstream offering 
 - **Important boundary**:
   - basket-group membership is no longer stored on the `Program Course` row itself
   - basket-group links live on parent `Program.course_basket_groups`
-
-### Permission Model
-
-`Program Course` is a child table (`istable=1`) and follows parent [**Program**](/docs/en/program/) permissions.
