@@ -117,7 +117,9 @@ Status: Implemented
 
 Code refs:
 - `ifitwala_ed/api/class_hub.py`
+- `ifitwala_ed/api/teaching_plans.py`
 - `ifitwala_ed/ui-spa/src/components/overlays/class-hub/ClassHubGroupPickerOverlay.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/ClassHub.vue`
 
 Test refs:
 - `ifitwala_ed/api/test_class_hub.py`
@@ -126,4 +128,6 @@ Test refs:
 - Staff Home and Class Hub intentionally have different entry semantics:
   - Staff Home -> choose or open a taught class
   - Class Hub -> run live class workflows, including the student picker
+- The Class Hub route is still class-scoped, but live runtime now resolves the active `Class Teaching Plan` for that class and operates on real `Class Session` records instead of demo session state.
+- `Start Session` must reuse the dated `Class Session` when one already exists for the target date. It may create a minimal in-progress `Class Session` only when the class already has a valid class teaching plan and governed unit backbone.
 - The chooser overlay supports `Esc`, backdrop close, and explicit close button behavior through the shared overlay host contract.

@@ -54,6 +54,7 @@ export type ClassHubHomeEntryResolution = {
 }
 
 export type ClassHubBundle = {
+  message?: string | null
   header: {
     student_group: string
     title: string
@@ -64,15 +65,22 @@ export type ClassHubBundle = {
     can_create_student_log: boolean
   }
   now: {
+    date_iso?: string | null
     date_label: string
     rotation_day_label?: string | null
+    block_number?: number | null
     block_label?: string | null
     time_range?: string | null
     location?: string | null
   }
   session: {
     class_session?: string | null
-    status: 'none' | 'active' | 'ended'
+    class_teaching_plan?: string | null
+    title?: string | null
+    session_status?: string | null
+    session_date?: string | null
+    unit_plan?: string | null
+    status: 'none' | 'planned' | 'active' | 'ended'
     live_success_criteria?: string | null
   }
   today_items: Array<{

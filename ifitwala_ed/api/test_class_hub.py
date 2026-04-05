@@ -1,11 +1,65 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # For license information, please see license.txt
 
+import json
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api import class_hub
+
+
+def _runtime_context(*, units=None, teaching_plan=True):
+    return {
+        "group": {
+            "student_group_name": "Grade 7 A",
+            "student_group_abbreviation": "G7-A",
+            "course": "Science",
+            "academic_year": "2025-2026",
+        },
+        "teaching_plan": {
+            "class_teaching_plan": "CTP-001",
+            "title": "Grade 7 A · Science",
+            "course_plan": "CP-001",
+            "planning_status": "Published",
+        }
+        if teaching_plan
+        else None,
+        "units": units or [],
+        "resources": {
+            "shared_resources": [],
+            "class_resources": [],
+            "general_assigned_work": [],
+        },
+    }
+
+
+class _FakeClassSessionDoc:
+    def __init__(self):
+        self.name = "CLS-001"
+        self.student_group = "SG-0001"
+        self.class_teaching_plan = "CTP-001"
+        self.unit_plan = "UP-001"
+        self.title = "Evidence walk"
+        self.session_date = "2026-04-02"
+        self.sequence_index = 10
+        self.learning_goal = "Explain change with evidence."
+        self.teacher_note = "Watch the transition to guided practice."
+        self.activities = [
+            SimpleNamespace(
+                title="Launch",
+                activity_type="Discuss",
+                estimated_minutes=10,
+                sequence_index=10,
+                student_direction="Share an initial claim.",
+                teacher_prompt="What evidence supports that claim?",
+                resource_note="Anchor chart",
+            )
+        ]
+
+    def get(self, fieldname):
+        return getattr(self, fieldname)
 
 
 class TestClassHub(FrappeTestCase):
@@ -46,27 +100,73 @@ class TestClassHub(FrappeTestCase):
     def test_get_bundle_exposes_student_log_permission_from_doctype(self):
         with (
             patch("ifitwala_ed.api.class_hub._assert_instructor"),
+            patch("ifitwala_ed.api.class_hub._resolve_runtime_context", return_value=_runtime_context()),
             patch(
-                "ifitwala_ed.api.class_hub.frappe.db.get_value",
-                return_value={
-                    "student_group_abbreviation": "G7-A",
-                    "student_group_name": "Grade 7 A",
-                    "course": "Science",
-                    "academic_year": "2025-2026",
-                },
-            ),
-            patch(
-                "ifitwala_ed.api.class_hub.frappe.get_all",
+                "ifitwala_ed.api.class_hub._get_active_roster",
                 return_value=[{"student": "STU-001", "student_name": "Amina Dar"}],
             ),
-            patch(
-                "ifitwala_ed.api.class_hub._can_create_student_log_for_session_user",
-                return_value=True,
-            ),
+            patch("ifitwala_ed.api.class_hub._can_create_student_log_for_session_user", return_value=True),
         ):
             payload = class_hub.get_bundle("SG-0001")
 
         self.assertTrue(payload["permissions"]["can_create_student_log"])
+
+    def test_get_bundle_uses_real_class_session_payload(self):
+        runtime = _runtime_context(
+            units=[
+                {
+                    "unit_plan": "UP-001",
+                    "title": "Matter and Change",
+                    "teacher_focus": "Explain change using evidence.",
+                    "essential_understanding": None,
+                    "pacing_status": "In Progress",
+                    "assigned_work": [],
+                    "sessions": [
+                        {
+                            "class_session": "CLS-001",
+                            "title": "Evidence walk",
+                            "unit_plan": "UP-001",
+                            "session_status": "Planned",
+                            "session_date": "2026-04-02",
+                            "sequence_index": 10,
+                            "learning_goal": "Explain change using evidence.",
+                            "teacher_note": "Keep the transition tight.",
+                            "activities": [],
+                            "resources": [{"title": "Observation sheet"}],
+                            "assigned_work": [
+                                {
+                                    "task_delivery": "TD-001",
+                                    "task": "TASK-001",
+                                    "title": "Exit ticket",
+                                    "due_date": "2026-04-03",
+                                    "delivery_mode": "In class",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        )
+
+        with (
+            patch("ifitwala_ed.api.class_hub._assert_instructor"),
+            patch("ifitwala_ed.api.class_hub._resolve_runtime_context", return_value=runtime),
+            patch(
+                "ifitwala_ed.api.class_hub._get_active_roster",
+                return_value=[{"student": "STU-001", "student_name": "Amina Dar"}],
+            ),
+            patch(
+                "ifitwala_ed.api.class_hub._get_student_log_permissions", return_value={"can_create_student_log": True}
+            ),
+        ):
+            payload = class_hub.get_bundle("SG-0001", date="2026-04-02", block_number=2)
+
+        self.assertIsNone(payload["message"])
+        self.assertEqual(payload["session"]["class_session"], "CLS-001")
+        self.assertEqual(payload["session"]["status"], "planned")
+        self.assertEqual(payload["task_items"][0]["id"], "TD-001")
+        self.assertEqual(payload["today_items"][0]["overlay"], "QuickEvidence")
+        self.assertEqual(payload["now"]["block_label"], "Block 2")
 
     def test_assert_instructor_uses_canonical_group_membership_helper(self):
         with (
@@ -185,3 +285,101 @@ class TestClassHub(FrappeTestCase):
         self.assertEqual(payload["status"], "multiple_current")
         self.assertEqual(len(payload["contexts"]), 2)
         self.assertEqual(payload["contexts"][1]["student_group"], "SG-0002")
+
+    def test_start_session_creates_minimal_session_from_current_unit(self):
+        runtime = _runtime_context(
+            units=[
+                {
+                    "unit_plan": "UP-001",
+                    "title": "Matter and Change",
+                    "teacher_focus": "Explain change using evidence.",
+                    "essential_understanding": None,
+                    "pacing_status": "In Progress",
+                    "assigned_work": [],
+                    "sessions": [],
+                }
+            ]
+        )
+
+        with (
+            patch("ifitwala_ed.api.class_hub._assert_instructor"),
+            patch("ifitwala_ed.api.class_hub._resolve_runtime_context", return_value=runtime),
+            patch(
+                "ifitwala_ed.api.class_hub.teaching_plans_api.save_class_session",
+                return_value={"class_session": "CLS-NEW", "session_status": "In Progress"},
+            ) as save_session,
+        ):
+            payload = class_hub.start_session("SG-0001", date="2026-04-02")
+
+        self.assertEqual(payload["class_session"], "CLS-NEW")
+        self.assertEqual(payload["created"], 1)
+        kwargs = save_session.call_args.kwargs
+        self.assertEqual(kwargs["class_teaching_plan"], "CTP-001")
+        self.assertEqual(kwargs["unit_plan"], "UP-001")
+        self.assertEqual(kwargs["title"], "Matter and Change")
+        self.assertEqual(kwargs["session_status"], "In Progress")
+        self.assertEqual(kwargs["session_date"], "2026-04-02")
+
+    def test_start_session_reuses_existing_class_session_for_date(self):
+        runtime = _runtime_context(
+            units=[
+                {
+                    "unit_plan": "UP-001",
+                    "title": "Matter and Change",
+                    "teacher_focus": "Explain change using evidence.",
+                    "essential_understanding": None,
+                    "pacing_status": "In Progress",
+                    "assigned_work": [],
+                    "sessions": [
+                        {
+                            "class_session": "CLS-001",
+                            "title": "Evidence walk",
+                            "unit_plan": "UP-001",
+                            "session_status": "Planned",
+                            "session_date": "2026-04-02",
+                            "sequence_index": 20,
+                            "learning_goal": "Explain change using evidence.",
+                            "teacher_note": "Keep the transition tight.",
+                            "activities": [{"title": "Launch"}],
+                            "resources": [],
+                            "assigned_work": [],
+                        }
+                    ],
+                }
+            ]
+        )
+
+        with (
+            patch("ifitwala_ed.api.class_hub._assert_instructor"),
+            patch("ifitwala_ed.api.class_hub._resolve_runtime_context", return_value=runtime),
+            patch(
+                "ifitwala_ed.api.class_hub.teaching_plans_api.save_class_session",
+                return_value={"class_session": "CLS-001", "session_status": "In Progress"},
+            ) as save_session,
+        ):
+            payload = class_hub.start_session("SG-0001", date="2026-04-02")
+
+        self.assertEqual(payload["class_session"], "CLS-001")
+        self.assertEqual(payload["created"], 0)
+        kwargs = save_session.call_args.kwargs
+        self.assertEqual(kwargs["class_session"], "CLS-001")
+        self.assertEqual(kwargs["title"], "Evidence walk")
+        self.assertEqual(json.loads(kwargs["activities_json"])[0]["title"], "Launch")
+
+    def test_end_session_marks_real_class_session_taught(self):
+        with (
+            patch("ifitwala_ed.api.class_hub.frappe.session.user", "teacher@example.com"),
+            patch("ifitwala_ed.api.class_hub.frappe.get_doc", return_value=_FakeClassSessionDoc()),
+            patch("ifitwala_ed.api.class_hub._assert_instructor"),
+            patch(
+                "ifitwala_ed.api.class_hub.teaching_plans_api.save_class_session",
+                return_value={"class_session": "CLS-001", "session_status": "Taught"},
+            ) as save_session,
+        ):
+            payload = class_hub.end_session("CLS-001")
+
+        self.assertEqual(payload["status"], "ended")
+        kwargs = save_session.call_args.kwargs
+        self.assertEqual(kwargs["class_session"], "CLS-001")
+        self.assertEqual(kwargs["session_status"], "Taught")
+        self.assertEqual(json.loads(kwargs["activities_json"])[0]["title"], "Launch")

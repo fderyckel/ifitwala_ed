@@ -32,10 +32,11 @@
 			<div class="flex flex-wrap items-center gap-2">
 				<button
 					type="button"
-					class="rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-jacaranda/60"
+					:disabled="session.status === 'active'"
+					class="rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-jacaranda/60 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:border-slate-200"
 					@click="$emit('start')"
 				>
-					{{ session.status === 'active' ? 'Resume Session' : 'Start Session' }}
+					{{ session.status === 'active' ? 'Session In Progress' : 'Start Session' }}
 				</button>
 				<button
 					type="button"
@@ -53,7 +54,8 @@
 				</button>
 				<button
 					type="button"
-					class="rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-jacaranda/60"
+					:disabled="!session.class_session || session.status === 'ended'"
+					class="rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-jacaranda/60 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:border-slate-200"
 					@click="$emit('end')"
 				>
 					End Session
@@ -74,6 +76,14 @@
 				<span v-if="now.time_range">{{ now.time_range }}</span>
 				<span v-if="now.location" class="mx-2 text-slate-token/40">|</span>
 				<span v-if="now.location">{{ now.location }}</span>
+			</div>
+			<div
+				v-if="session.title"
+				class="rounded-full border border-slate-200 bg-white/80 px-4 py-2 type-caption text-slate-token/70 shadow-sm"
+			>
+				<span>{{ session.title }}</span>
+				<span v-if="session.session_status" class="mx-2 text-slate-token/40">|</span>
+				<span v-if="session.session_status">{{ session.session_status }}</span>
 			</div>
 			<div v-if="session.live_success_criteria" class="type-caption text-slate-token/70">
 				Focus: {{ session.live_success_criteria }}

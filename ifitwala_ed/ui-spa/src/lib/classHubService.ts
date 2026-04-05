@@ -18,12 +18,15 @@ type BundlePayload = {
 type StartSessionResponse = {
   class_session: string
   status: 'active'
+  session_status?: string | null
+  created?: number
   started_at?: string | null
 }
 
 type EndSessionResponse = {
   class_session: string
   status: 'ended'
+  session_status?: string | null
   ended_at?: string | null
 }
 

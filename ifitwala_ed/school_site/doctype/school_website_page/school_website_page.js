@@ -91,6 +91,44 @@ const SEO_ASSISTANT_METHOD =
 const WORKFLOW_METHOD =
 	"ifitwala_ed.school_site.doctype.school_website_page.school_website_page.transition_workflow_state";
 
+function getSchoolBasePath(schoolSlug) {
+	const cleanSlug = String(schoolSlug || "").trim();
+	return cleanSlug ? `/schools/${cleanSlug}` : "/schools/{school_slug}";
+}
+
+function setRouteFieldGuidance(frm, schoolSlug) {
+	const basePath = getSchoolBasePath(schoolSlug);
+	const routeDescription = schoolSlug
+		? __(
+				"Relative path inside this school website. Base path: {0}. Use '/' for the home page, or enter only the part after the school website slug, for example 'about' or 'programs'.",
+				[basePath]
+			)
+		: __(
+				"Relative path inside this school website. Choose a School first. Use '/' for the home page, or enter only the part after the school website slug, for example 'about' or 'programs'."
+			);
+	const fullRouteDescription = schoolSlug
+		? __("Read-only canonical route resolved from the school website slug. Base path: {0}.", [basePath])
+		: __("Read-only canonical route resolved from the selected school's website slug.");
+
+	frm.set_df_property("route", "description", routeDescription);
+	frm.set_df_property("full_route", "description", fullRouteDescription);
+}
+
+async function refreshRouteFieldGuidance(frm) {
+	if (!frm.doc.school) {
+		setRouteFieldGuidance(frm, "");
+		return;
+	}
+
+	try {
+		const res = await frappe.db.get_value("School", frm.doc.school, "website_slug");
+		const schoolSlug = res && res.message ? res.message.website_slug : "";
+		setRouteFieldGuidance(frm, schoolSlug);
+	} catch (err) {
+		setRouteFieldGuidance(frm, "");
+	}
+}
+
 function normalizeBlockTypes(value) {
 	if (!Array.isArray(value)) return [];
 	return [...new Set(value.map((entry) => String(entry || "").trim()).filter(Boolean))];
@@ -301,6 +339,7 @@ frappe.ui.form.on("School Website Page", {
 		frm.clear_custom_buttons();
 		syncAllowedBlockTypes(frm);
 		refreshSeoAssistant(frm);
+		refreshRouteFieldGuidance(frm);
 
 		const workflowActions = getWorkflowActions(frm);
 		workflowActions.forEach((actionConfig) => {
@@ -389,6 +428,14 @@ frappe.ui.form.on("School Website Page", {
 	page_type(frm) {
 		syncAllowedBlockTypes(frm);
 		refreshSeoAssistant(frm);
+	},
+
+	school(frm) {
+		refreshRouteFieldGuidance(frm);
+	},
+
+	route(frm) {
+		refreshRouteFieldGuidance(frm);
 	},
 
 	seo_profile(frm) {

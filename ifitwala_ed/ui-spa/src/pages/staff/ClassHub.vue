@@ -4,10 +4,13 @@
 			class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line-soft bg-white/90 px-4 py-3"
 		>
 			<div>
-				<p class="type-body-strong text-ink">Planning for this class now lives in the SPA.</p>
+				<p class="type-body-strong text-ink">
+					Class Teaching Plan holds the class-wide pacing. Class Session is today&apos;s live
+					lesson.
+				</p>
 				<p class="type-caption text-ink/70">
-					Open the class teaching plan to adjust pacing, units, and class sessions without leaving
-					this workflow.
+					Start or end the live session here. Open Class Planning when you need to change units,
+					pacing, resources, or the session design itself.
 				</p>
 			</div>
 			<RouterLink
@@ -28,8 +31,8 @@
 			@end="handleEndSession"
 		/>
 
-		<div v-if="actionMessage" class="rounded-xl border border-slate-200 bg-white/90 px-4 py-3">
-			<p class="type-caption text-flame">{{ actionMessage }}</p>
+		<div v-if="visibleMessage" class="rounded-xl border border-slate-200 bg-white/90 px-4 py-3">
+			<p class="type-caption text-ink/75">{{ visibleMessage }}</p>
 		</div>
 
 		<TodayList :items="currentBundle.today_items" @open="openTodayItem" />
@@ -68,6 +71,8 @@ import MyTeachingPanel from '@/components/class-hub/MyTeachingPanel.vue';
 import ClassPulse from '@/components/class-hub/ClassPulse.vue';
 import FollowUpsList from '@/components/class-hub/FollowUpsList.vue';
 
+type HubServerMessageEntry = { message?: string };
+
 const route = useRoute();
 const overlay = useOverlayStack();
 const service = createClassHubService();
@@ -84,16 +89,68 @@ const queryBlock = computed(() => {
 	return Number.isFinite(parsed) ? parsed : null;
 });
 
-const demoBundle = computed(() => buildDemoBundle(studentGroup.value || 'DEMO-GROUP'));
+const emptyBundle = computed(() => buildEmptyBundle(studentGroup.value || '', queryDate.value));
+const currentBundle = computed(() => bundle.value || emptyBundle.value);
+const visibleMessage = computed(() => actionMessage.value || currentBundle.value.message || '');
 
-const currentBundle = computed(() => bundle.value || demoBundle.value);
+function parseServerMessages(raw: unknown): string[] {
+	if (typeof raw !== 'string' || !raw.trim()) return [];
+	try {
+		const parsed = JSON.parse(raw) as unknown[];
+		if (!Array.isArray(parsed)) return [];
+		return parsed
+			.map(entry => {
+				if (typeof entry === 'string') {
+					try {
+						const nested = JSON.parse(entry) as HubServerMessageEntry;
+						if (nested && typeof nested.message === 'string') return nested.message;
+					} catch {
+						return entry;
+					}
+				}
+				if (entry && typeof entry === 'object' && 'message' in entry) {
+					return String((entry as HubServerMessageEntry).message || '');
+				}
+				return '';
+			})
+			.filter(Boolean);
+	} catch {
+		return [raw];
+	}
+}
+
+function extractHubErrorMessage(error: unknown, fallback: string): string {
+	if (!error || typeof error !== 'object') return fallback;
+	const maybe = error as {
+		message?: string;
+		_server_messages?: string;
+		response?: { message?: string; _server_messages?: string };
+	};
+	return (
+		parseServerMessages(maybe.response?._server_messages)[0] ||
+		parseServerMessages(maybe._server_messages)[0] ||
+		maybe.response?.message ||
+		maybe.message ||
+		fallback
+	);
+}
+
+function formatFallbackDateLabel(dateIso: string): string {
+	const parsed = new Date(`${dateIso}T00:00:00`);
+	if (Number.isNaN(parsed.getTime())) return dateIso;
+	return parsed.toLocaleDateString(undefined, {
+		weekday: 'short',
+		day: 'numeric',
+		month: 'short',
+	});
+}
 
 async function loadBundle() {
 	actionMessage.value = '';
 
 	if (!studentGroup.value) {
 		actionMessage.value = 'Student group is required to load the Class Hub.';
-		bundle.value = demoBundle.value;
+		bundle.value = emptyBundle.value;
 		return;
 	}
 
@@ -108,12 +165,12 @@ async function loadBundle() {
 		if (payload && typeof payload === 'object' && payload.header) {
 			bundle.value = payload;
 		} else {
-			bundle.value = demoBundle.value;
-			actionMessage.value = 'Using demo data while the bundle loads.';
+			bundle.value = emptyBundle.value;
+			actionMessage.value = 'Unable to load the Class Hub right now.';
 		}
 	} catch (err) {
-		bundle.value = demoBundle.value;
-		actionMessage.value = 'Unable to load live data. Showing demo data.';
+		bundle.value = emptyBundle.value;
+		actionMessage.value = extractHubErrorMessage(err, 'Unable to load the Class Hub right now.');
 		console.error('[ClassHub] bundle load failed', err);
 	} finally {
 		loading.value = false;
@@ -279,9 +336,9 @@ function openWheelPicker() {
 			student_name: student.student_name,
 		})),
 		now: {
-			date_iso: queryDate.value,
+			date_iso: currentBundle.value.now.date_iso ?? queryDate.value,
 			date_label: currentBundle.value.now.date_label,
-			block_number: queryBlock.value,
+			block_number: currentBundle.value.now.block_number ?? queryBlock.value,
 			block_label: currentBundle.value.now.block_label ?? null,
 			time_range: currentBundle.value.now.time_range ?? null,
 			location: currentBundle.value.now.location ?? null,
@@ -295,22 +352,22 @@ async function handleStartSession() {
 		actionMessage.value = 'Select a student group before starting.';
 		return;
 	}
+	if (currentBundle.value.session.status === 'active') {
+		actionMessage.value = 'This session is already in progress.';
+		return;
+	}
 	try {
 		const res = await service.startSession({
 			student_group: studentGroup.value,
 			date: queryDate.value,
 			block_number: queryBlock.value,
 		});
-		bundle.value = {
-			...currentBundle.value,
-			session: {
-				...currentBundle.value.session,
-				class_session: res.class_session,
-				status: 'active',
-			},
-		};
+		await loadBundle();
+		actionMessage.value = res.created
+			? 'Started a new class session from the current unit.'
+			: 'Session is now in progress.';
 	} catch (err) {
-		actionMessage.value = 'Unable to start session right now.';
+		actionMessage.value = extractHubErrorMessage(err, 'Unable to start session right now.');
 		console.error('[ClassHub] startSession failed', err);
 	}
 }
@@ -319,139 +376,59 @@ async function handleEndSession() {
 	actionMessage.value = '';
 	const classSession = currentBundle.value.session.class_session;
 	if (!classSession) {
-		actionMessage.value = 'Start a session before ending it.';
+		actionMessage.value = currentBundle.value.message || 'Start a session before ending it.';
 		return;
 	}
 
 	try {
 		await service.endSession(classSession);
-		bundle.value = {
-			...currentBundle.value,
-			session: {
-				...currentBundle.value.session,
-				status: 'ended',
-			},
-		};
+		await loadBundle();
+		actionMessage.value = 'Session marked taught.';
 	} catch (err) {
-		actionMessage.value = 'Unable to end session right now.';
+		actionMessage.value = extractHubErrorMessage(err, 'Unable to end session right now.');
 		console.error('[ClassHub] endSession failed', err);
 	}
 }
 
-function buildDemoBundle(studentGroupValue: string): ClassHubBundle {
-	const students = Array.from({ length: 20 }).map((_, idx) => ({
-		student: `STU-MOCK-${String(idx + 1).padStart(3, '0')}`,
-		student_name: `Student ${idx + 1}`,
-		evidence_count_today: idx % 4,
-		signal: idx % 4 === 0 ? 'Got It' : idx % 3 === 0 ? 'Almost' : null,
-		has_note_today: idx % 5 === 0,
-	})) as ClassHubBundle['students'];
-
+function buildEmptyBundle(studentGroupValue: string, dateIso?: string | null): ClassHubBundle {
+	const resolvedDate = dateIso || new Date().toISOString().slice(0, 10);
 	return {
+		message: null,
 		header: {
 			student_group: studentGroupValue,
-			title: `Class Hub - ${studentGroupValue}`,
-			academic_year: '2024-2025',
-			course: 'Science',
+			title: studentGroupValue || 'Class Hub',
+			academic_year: null,
+			course: null,
 		},
 		permissions: {
 			can_create_student_log: false,
 		},
 		now: {
-			date_label: 'Today',
-			rotation_day_label: 'Rotation Day 3',
-			block_label: 'Block B',
-			time_range: '08:45-09:30',
-			location: 'Room 204',
+			date_iso: resolvedDate,
+			date_label: formatFallbackDateLabel(resolvedDate),
+			rotation_day_label: null,
+			block_number: queryBlock.value,
+			block_label: queryBlock.value ? `Block ${queryBlock.value}` : null,
+			time_range: null,
+			location: null,
 		},
 		session: {
 			class_session: null,
+			class_teaching_plan: null,
+			title: null,
+			session_status: null,
+			session_date: null,
+			unit_plan: null,
 			status: 'none',
-			live_success_criteria: 'Draft a hypothesis using evidence.',
+			live_success_criteria: null,
 		},
-		today_items: [
-			{
-				id: 'today-1',
-				label: 'Quick CFU: Thumbs check',
-				overlay: 'QuickCFU',
-				payload: {},
-			},
-			{
-				id: 'today-2',
-				label: 'Capture evidence for 3 students',
-				overlay: 'QuickEvidence',
-				payload: {},
-			},
-			{
-				id: 'today-3',
-				label: 'Follow up with Student 1',
-				overlay: 'StudentContext',
-				payload: { student: students[0].student, student_name: students[0].student_name },
-			},
-		],
-		focus_students: students.slice(0, 3).map(student => ({
-			student: student.student,
-			student_name: student.student_name,
-		})),
-		students,
-		notes_preview: [
-			{
-				id: 'note-1',
-				student_name: students[1].student_name,
-				preview: 'Needs support with evidence selection.',
-				created_at_label: 'Today',
-			},
-			{
-				id: 'note-2',
-				student_name: students[2].student_name,
-				preview: 'Great use of vocabulary during discussion.',
-				created_at_label: 'Today',
-			},
-			{
-				id: 'note-3',
-				student_name: students[3].student_name,
-				preview: 'Still organizing ideas in the notebook.',
-				created_at_label: 'Yesterday',
-			},
-		],
-		task_items: [
-			{
-				id: 'task-1',
-				title: 'Exit ticket review',
-				status_label: '3 submissions pending',
-				pending_count: 3,
-				overlay: 'TaskReview',
-				payload: { title: 'Exit ticket review' },
-			},
-			{
-				id: 'task-2',
-				title: 'Lab observation notes',
-				status_label: 'Needs quick scan',
-				pending_count: 1,
-				overlay: 'TaskReview',
-				payload: { title: 'Lab observation notes' },
-			},
-		],
-		pulse_items: [
-			{
-				id: 'pulse-1',
-				label: '3 students marked Not Yet',
-				route: { name: 'staff-student-overview' },
-			},
-			{
-				id: 'pulse-2',
-				label: '5 students missing evidence today',
-				route: { name: 'staff-student-overview' },
-			},
-		],
-		follow_up_items: [
-			{
-				id: 'follow-1',
-				label: 'Check in with Student 2',
-				overlay: 'StudentContext',
-				payload: { student: students[1].student, student_name: students[1].student_name },
-			},
-		],
+		today_items: [],
+		focus_students: [],
+		students: [],
+		notes_preview: [],
+		task_items: [],
+		pulse_items: [],
+		follow_up_items: [],
 	};
 }
 </script>
