@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from frappe.tests.utils import FrappeTestCase
+from frappe.utils import get_datetime
 
 from ifitwala_ed.api import class_hub
 
@@ -210,7 +211,7 @@ class TestClassHub(FrappeTestCase):
             patch("ifitwala_ed.api.class_hub._system_tzinfo"),
             patch(
                 "ifitwala_ed.api.class_hub._to_system_datetime",
-                side_effect=lambda value, _tz: value,
+                side_effect=lambda value, _tz: get_datetime(value),
             ),
         ):
             payload = class_hub.resolve_current_picker_context()
@@ -277,7 +278,7 @@ class TestClassHub(FrappeTestCase):
             patch("ifitwala_ed.api.class_hub._system_tzinfo"),
             patch(
                 "ifitwala_ed.api.class_hub._to_system_datetime",
-                side_effect=lambda value, _tz: value,
+                side_effect=lambda value, _tz: get_datetime(value),
             ),
         ):
             payload = class_hub.resolve_current_picker_context()

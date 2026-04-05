@@ -918,6 +918,7 @@ async function loadTasks(groupName: string) {
 			student_group: groupName,
 		});
 		taskSummaries.value = payload?.tasks ?? [];
+		applyRouteTaskFromQuery(taskSummaries.value);
 	} catch (error) {
 		console.error('Failed to load tasks', error);
 		showDangerToast('Could not load tasks');
@@ -1182,7 +1183,11 @@ watch(derivedTasks, newList => {
 /* OTHER LOGIC (UNCHANGED MOSTLY) -------------------------------- */
 
 function selectGroup(group: GroupSummary | null) {
+	const previousGroup = selectedGroup.value?.name || null;
 	selectedGroup.value = group;
+	if (previousGroup !== (group?.name || null)) {
+		updateRouteTask(null);
+	}
 	if (group) {
 		// Reset task filters when switching group? Only if desired.
 		// Let's keep them as sticky filters might be useful.
@@ -1194,6 +1199,7 @@ function selectGroup(group: GroupSummary | null) {
 
 function selectTask(task: TaskSummary | null) {
 	selectedTask.value = task;
+	updateRouteTask(task?.name || null);
 }
 
 /* FORMATTERS & UTILS -------------------------------------------- */
@@ -1308,7 +1314,13 @@ function currentRouteStudentGroup(): string | null {
 	return typeof value === 'string' && value ? value : null;
 }
 
+function currentRouteTask(): string | null {
+	const value = route.query.task;
+	return typeof value === 'string' && value ? value : null;
+}
+
 const pendingRouteGroup = ref<string | null>(currentRouteStudentGroup());
+const pendingRouteTask = ref<string | null>(currentRouteTask());
 
 async function findRouteGroup(target: string) {
 	const rows = await gradebookService.fetchGroups({
@@ -1361,6 +1373,43 @@ function updateRouteStudentGroup(groupName: string | null) {
 		nextQuery.student_group = groupName;
 	} else {
 		delete nextQuery.student_group;
+	}
+	router.replace({ query: nextQuery }).catch(() => {});
+}
+
+function applyRouteTaskFromQuery(taskList: TaskSummary[] = taskSummaries.value) {
+	const target = pendingRouteTask.value;
+	if (!target) return;
+
+	const match = taskList.find(task => task.name === target) || null;
+	if (match) {
+		selectedTask.value = match;
+		pendingRouteTask.value = null;
+		return;
+	}
+
+	if (!taskList.length) {
+		if (tasksLoading.value || !selectedGroup.value) {
+			return;
+		}
+		pendingRouteTask.value = null;
+		return;
+	}
+
+	pendingRouteTask.value = null;
+	showDangerToast('Linked assigned work is no longer available for this class.');
+}
+
+function updateRouteTask(taskName: string | null) {
+	const current = currentRouteTask();
+	if (current === taskName || (!current && !taskName)) {
+		return;
+	}
+	const nextQuery = { ...route.query };
+	if (taskName) {
+		nextQuery.task = taskName;
+	} else {
+		delete nextQuery.task;
 	}
 	router.replace({ query: nextQuery }).catch(() => {});
 }
@@ -1459,6 +1508,16 @@ watch(
 		pendingRouteGroup.value = currentRouteStudentGroup();
 		if (pendingRouteGroup.value) {
 			void applyRouteGroupFromQuery();
+		}
+	}
+);
+
+watch(
+	() => route.query.task,
+	() => {
+		pendingRouteTask.value = currentRouteTask();
+		if (pendingRouteTask.value) {
+			applyRouteTaskFromQuery();
 		}
 	}
 );

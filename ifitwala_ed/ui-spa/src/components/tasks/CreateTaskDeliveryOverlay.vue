@@ -963,6 +963,7 @@ import {
 } from '@headlessui/vue';
 import { Button, FormControl, createResource, toast, FeatherIcon } from 'frappe-ui';
 import { useRouter } from 'vue-router';
+import { SIGNAL_TASK_DELIVERY_CREATED, uiSignals } from '@/lib/uiSignals';
 import type {
 	CreateTaskDeliveryInput,
 	CreateTaskDeliveryPayload,
@@ -1980,6 +1981,14 @@ async function submit() {
 		if (!out?.task || !out?.task_delivery) throw new Error('Unexpected server response.');
 
 		emit('created', out);
+		uiSignals.emit(SIGNAL_TASK_DELIVERY_CREATED, {
+			task: out.task,
+			task_delivery: out.task_delivery,
+			student_group: form.student_group || null,
+			class_teaching_plan: props.prefillClassTeachingPlan || null,
+			unit_plan: props.prefillUnitPlan || null,
+			class_session: props.prefillClassSession || null,
+		});
 		createdTask.value = out;
 		createdTaskMode.value = taskMode.value;
 		if (taskMode.value === 'create') {

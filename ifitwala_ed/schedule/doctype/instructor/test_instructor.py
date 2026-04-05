@@ -60,7 +60,9 @@ class TestInstructor(FrappeTestCase):
     def test_instructor_employee_query_is_school_scoped_and_keeps_current_employee(self):
         captured = {}
 
-        def fake_sql(query, params):
+        def fake_sql(query, params=None, *args, **kwargs):
+            if "FROM `tabDocType`" in query:
+                return [("Employee",)]
             captured["query"] = query
             captured["params"] = params
             return [["EMP-0001", "Ada Lovelace"]]
@@ -107,7 +109,9 @@ class TestInstructor(FrappeTestCase):
     def test_instructor_employee_query_without_current_employee_excludes_linked_employees(self):
         captured = {}
 
-        def fake_sql(query, params):
+        def fake_sql(query, params=None, *args, **kwargs):
+            if "FROM `tabDocType`" in query:
+                return [("Employee",)]
             captured["query"] = query
             captured["params"] = params
             return []

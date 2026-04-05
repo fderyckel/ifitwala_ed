@@ -269,7 +269,11 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         with (
             patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
             patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="student@example.com"),
-            patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="COURSE-1"),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_supporting_material_context_for_file",
+                return_value=("MAT-1", "COURSE-1"),
+            ),
+            patch("ifitwala_ed.api.file_access._assert_internal_material_context", return_value=None),
             patch("ifitwala_ed.curriculum.materials.user_can_read_supporting_material", return_value=True),
             patch("ifitwala_ed.api.file_access._read_file_bytes", return_value=b"material-bytes"),
         ):
@@ -297,7 +301,11 @@ class TestFileAccessUrlContracts(FrappeTestCase):
         with (
             patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
             patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="student@example.com"),
-            patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="COURSE-1"),
+            patch(
+                "ifitwala_ed.api.file_access._resolve_supporting_material_context_for_file",
+                return_value=("MAT-1", "COURSE-1"),
+            ),
+            patch("ifitwala_ed.api.file_access._assert_internal_material_context", return_value=None),
             patch("ifitwala_ed.curriculum.materials.user_can_read_supporting_material", return_value=False),
         ):
             with self.assertRaises(frappe.PermissionError):

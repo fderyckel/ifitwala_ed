@@ -388,6 +388,27 @@ def build_task_submission_context(*, student: str, task_name: str, settings=None
     }
 
 
+def _materialize_file_from_doc(file_doc, target_path: str) -> bool:
+    get_content = getattr(file_doc, "get_content", None)
+    if not callable(get_content):
+        return False
+
+    try:
+        content = get_content()
+    except Exception:
+        return False
+
+    if content is None:
+        return False
+    if isinstance(content, str):
+        content = content.encode()
+
+    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+    with open(target_path, "wb") as handle:
+        handle.write(content)
+    return os.path.exists(target_path)
+
+
 # ────────────────────────────────────────────────────────────────────────────
 # Main entrypoint for File hooks
 # ────────────────────────────────────────────────────────────────────────────
@@ -531,6 +552,9 @@ def route_uploaded_file(doc, method: Optional[str] = None, context_override: Opt
             moved_ok = new_exists
         elif new_exists:
             moved_ok = True
+        else:
+            moved_ok = _materialize_file_from_doc(doc, new_abs_path)
+            new_exists = os.path.exists(new_abs_path)
 
     if not moved_ok:
         frappe.log_error(

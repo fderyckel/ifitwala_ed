@@ -263,7 +263,7 @@
 					</template>
 				</div>
 
-				<div class="grid grid-cols-1 gap-4 px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
+				<div class="staff-home__analytics-category-grid px-6 py-6">
 					<div
 						v-for="category in visibleAnalyticsCategories"
 						:key="category.title"
@@ -960,6 +960,12 @@ function openOrgCommunication() {
 	gap: 1rem;
 }
 
+.staff-home__analytics-category-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 1rem;
+}
+
 @media (min-width: 640px) {
 	.staff-home__header {
 		flex-direction: row;
@@ -977,10 +983,18 @@ function openOrgCommunication() {
 	.staff-home__analytics-quick-links {
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 	}
+
+	.staff-home__analytics-category-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
 	.staff-home__analytics-quick-links {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.staff-home__analytics-category-grid {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }

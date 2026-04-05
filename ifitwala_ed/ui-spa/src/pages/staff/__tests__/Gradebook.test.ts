@@ -377,6 +377,18 @@ describe('Gradebook page', () => {
 		expect(document.body.textContent || '').toContain(linkedGroup.label);
 	});
 
+	it('preselects the linked assigned work when a task query is provided', async () => {
+		const { task } = mockGradebookFlow();
+		routeState.query = { student_group: 'SG-1', task: task.name };
+
+		mountPage();
+		await flushUi();
+
+		expect(fetchGroupTasksMock).toHaveBeenCalledWith({ student_group: 'SG-1' });
+		expect(getTaskGradebookMock).toHaveBeenCalledWith({ task: task.name });
+		expect(document.body.textContent || '').toContain('Ada Lovelace');
+	});
+
 	it('renders binary grading without points or comment controls when comments are disabled', async () => {
 		mockGradebookFlow({
 			task: {

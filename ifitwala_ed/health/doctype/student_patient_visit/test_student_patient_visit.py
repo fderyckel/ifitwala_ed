@@ -74,13 +74,14 @@ class TestStudentPatientVisit(FrappeTestCase):
         saw_group_lookup = {"value": False}
 
         def guarded_sql(query, values=None, *args, **kwargs):
-            if "FROM `tabStudent Group Student` sgs" in query and "INNER JOIN `tabStudent Group` sg" in query:
+            sql = str(query)
+            if "`tabStudent Group Student`" in sql and "`tabStudent Group`" in sql:
                 saw_group_lookup["value"] = True
-                self.assertIn("sg.academic_year", query)
-                self.assertIn("sg.school", query)
-                self.assertIn("sg.school_schedule", query)
-                self.assertIn("IFNULL(sgs.active, 1) = 1", query)
-                self.assertIn("IFNULL(sg.status, 'Active') = 'Active'", query)
+                self.assertIn("sg.academic_year", sql)
+                self.assertIn("sg.school", sql)
+                self.assertIn("sg.school_schedule", sql)
+                self.assertIn("IFNULL(sgs.active, 1) = 1", sql)
+                self.assertIn("IFNULL(sg.status, 'Active') = 'Active'", sql)
                 return []
             return original_sql(query, values, *args, **kwargs)
 

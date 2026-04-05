@@ -17,6 +17,8 @@ Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 Current live behavior:
 
 - the student course page leads with `Learning Focus`, `Next Actions`, a sticky `Jump to` strip, `Session Journey` before the denser `This Unit` summary, a dedicated `Assigned Work` zone, and scoped resources
+- assigned-work cards now surface linked task materials and use `CourseDetail.vue` as the workspace entry for non-quiz work instead of forcing a second task page
+- student hub work-board and timeline links now preserve `class_session` context when available so students land on the right class experience directly
 - student-facing surfaces now hide shared-plan management labels and raw planning-state language
 - guardian home uses `learning_highlights` cards with a family-safe current theme, upcoming step, and a talk-at-home prompt
 - the guardian child brief now foregrounds current theme, next class experience, upcoming learning experiences, and helpful-at-home resources

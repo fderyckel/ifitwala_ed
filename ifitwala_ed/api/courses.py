@@ -50,6 +50,7 @@ def _build_course_href(
     *,
     student_group: str | None = None,
     unit_plan: str | None = None,
+    class_session: str | None = None,
 ) -> dict[str, Any]:
     href: dict[str, Any] = {
         "name": "student-course-detail",
@@ -58,6 +59,7 @@ def _build_course_href(
     query = {
         "student_group": student_group,
         "unit_plan": unit_plan,
+        "class_session": class_session,
     }
     query = {key: value for key, value in query.items() if value}
     if query:
@@ -539,6 +541,7 @@ def _build_work_item_href(row: dict[str, Any]) -> dict[str, Any] | None:
         course_id,
         student_group=row.get("student_group"),
         unit_plan=row.get("unit_plan"),
+        class_session=row.get("class_session"),
     )
 
 

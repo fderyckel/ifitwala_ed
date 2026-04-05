@@ -629,6 +629,11 @@
 									<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
 										Due {{ item.due_date }}
 									</p>
+									<div class="mt-3 flex flex-wrap gap-2">
+										<button type="button" class="if-action" @click="openGradebook(item)">
+											{{ gradebookActionLabel(item) }}
+										</button>
+									</div>
 								</article>
 							</div>
 						</article>
@@ -644,9 +649,9 @@
 								<button
 									type="button"
 									class="if-action if-action--subtle"
-									@click="openAssignedWorkOverlay"
+									@click="openAssignedWorkOverlay()"
 								>
-									Create Assigned Work
+									Assign Work To This Class
 								</button>
 								<button type="button" class="if-action" @click="startNewSession">
 									New Class Session
@@ -865,6 +870,19 @@
 
 								<div class="flex flex-wrap gap-3">
 									<button
+										v-if="selectedSessionId"
+										type="button"
+										class="if-action if-action--subtle"
+										@click="
+											openAssignedWorkOverlay({
+												unitPlan: selectedUnit?.unit_plan || null,
+												classSession: selectedSessionId || null,
+											})
+										"
+									>
+										Assign Work To This Session
+									</button>
+									<button
 										type="button"
 										class="if-action"
 										:disabled="sessionPending || !sessionForm.title.trim()"
@@ -917,6 +935,11 @@
 											<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
 												Due {{ item.due_date }}
 											</p>
+											<div class="mt-3 flex flex-wrap gap-2">
+												<button type="button" class="if-action" @click="openGradebook(item)">
+													{{ gradebookActionLabel(item) }}
+												</button>
+											</div>
 										</article>
 									</div>
 								</div>
@@ -970,6 +993,11 @@
 													<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
 														Due {{ item.due_date }}
 													</p>
+													<div class="mt-3 flex flex-wrap gap-2">
+														<button type="button" class="if-action" @click="openGradebook(item)">
+															{{ gradebookActionLabel(item) }}
+														</button>
+													</div>
 												</article>
 											</div>
 										</article>
@@ -989,12 +1017,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { toast } from 'frappe-ui';
 import { useRoute, useRouter } from 'vue-router';
 
 import PlanningResourcePanel from '@/components/planning/PlanningResourcePanel.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { SIGNAL_TASK_DELIVERY_CREATED, uiSignals } from '@/lib/uiSignals';
 import {
 	createClassTeachingPlan,
 	getStaffClassPlanningSurface,
@@ -1004,6 +1033,7 @@ import {
 } from '@/lib/services/staff/staffTeachingService';
 import type {
 	Response as StaffClassPlanningSurfaceResponse,
+	StaffAssignedWork,
 	StaffPlanningActivity,
 	StaffPlanningSession,
 	StaffPlanningUnit,
@@ -1011,6 +1041,15 @@ import type {
 
 type EditableActivity = StaffPlanningActivity & {
 	local_id: number;
+};
+
+type TaskDeliveryCreatedSignal = {
+	task?: string;
+	task_delivery?: string;
+	student_group?: string | null;
+	class_teaching_plan?: string | null;
+	unit_plan?: string | null;
+	class_session?: string | null;
 };
 
 const route = useRoute();
@@ -1147,7 +1186,10 @@ function selectSession(classSession: string) {
 	syncSessionForm(session);
 }
 
-function openAssignedWorkOverlay() {
+function openAssignedWorkOverlay(options?: {
+	unitPlan?: string | null;
+	classSession?: string | null;
+}) {
 	if (!surface.value?.teaching_plan?.class_teaching_plan) {
 		toast.error('Create the class teaching plan before assigning work.');
 		return;
@@ -1156,8 +1198,27 @@ function openAssignedWorkOverlay() {
 		prefillStudentGroup: studentGroup.value,
 		prefillCourse: surface.value.group.course,
 		prefillClassTeachingPlan: surface.value.teaching_plan.class_teaching_plan,
-		prefillUnitPlan: selectedUnit.value?.unit_plan || null,
-		prefillClassSession: selectedSessionId.value || null,
+		prefillUnitPlan: options?.unitPlan ?? selectedUnit.value?.unit_plan ?? null,
+		prefillClassSession: (options?.classSession ?? selectedSessionId.value) || null,
+	});
+}
+
+function gradebookActionLabel(item: StaffAssignedWork) {
+	const deliveryMode = String(item.delivery_mode || '').trim();
+	const gradingMode = String(item.grading_mode || '').trim();
+	if (deliveryMode === 'Assign Only' && !gradingMode) {
+		return 'Review completion';
+	}
+	return 'Open gradebook';
+}
+
+function openGradebook(item: StaffAssignedWork) {
+	void router.push({
+		name: 'staff-gradebook',
+		query: {
+			student_group: studentGroup.value,
+			task: item.task_delivery,
+		},
 	});
 }
 
@@ -1347,4 +1408,22 @@ watch(
 	},
 	{ immediate: true }
 );
+
+const unsubscribeTaskDeliveryCreated = uiSignals.subscribe<TaskDeliveryCreatedSignal>(
+	SIGNAL_TASK_DELIVERY_CREATED,
+	payload => {
+		const signalGroup = String(payload?.student_group || '').trim();
+		if (!signalGroup || signalGroup !== studentGroup.value) return;
+
+		const signalPlan = String(payload?.class_teaching_plan || '').trim();
+		const currentPlan = String(surface.value?.teaching_plan?.class_teaching_plan || '').trim();
+		if (signalPlan && currentPlan && signalPlan !== currentPlan) return;
+
+		void loadSurface();
+	}
+);
+
+onBeforeUnmount(() => {
+	unsubscribeTaskDeliveryCreated();
+});
 </script>

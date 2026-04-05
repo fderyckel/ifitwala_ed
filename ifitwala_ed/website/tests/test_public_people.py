@@ -17,7 +17,7 @@ class TestPublicPeopleService(FrappeTestCase):
     def tearDown(self):
         public_people.invalidate_public_people_cache()
 
-    def test_published_profile_overrides_public_people_fields(self):
+    def test_public_people_reads_employee_and_designation_fields(self):
         organization = make_organization(prefix="Public People Org")
         school = make_school(organization.name, prefix="Public People School")
         designation = _make_designation(
@@ -26,26 +26,12 @@ class TestPublicPeopleService(FrappeTestCase):
             title="Teacher",
             role_profile="Academic Staff",
         )
-        employee = _make_employee(
+        _make_employee(
             school=school.name,
             organization=organization.name,
             designation=designation.name,
             first_name="Amina",
         )
-        frappe.get_doc(
-            {
-                "doctype": "Employee Website Profile",
-                "school": school.name,
-                "employee": employee.name,
-                "workflow_state": "Published",
-                "display_name_override": "Amina Public",
-                "public_title_override": "Founding Teacher",
-                "public_bio": "Shapes the learning journey each day.",
-                "public_email": "public@example.com",
-                "public_phone": "+66 555 0100",
-                "sort_order": 2,
-            }
-        ).insert()
 
         with patch(
             "ifitwala_ed.website.public_people.build_employee_image_variants",
@@ -58,14 +44,14 @@ class TestPublicPeopleService(FrappeTestCase):
 
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["name"], "Amina Public")
-        self.assertEqual(rows[0]["title"], "Founding Teacher")
-        self.assertEqual(rows[0]["bio"], "Shapes the learning journey each day.")
+        self.assertEqual(rows[0]["title"], "Teacher")
+        self.assertEqual(rows[0]["bio"], "Amina supports the school community.")
         self.assertEqual(rows[0]["role_profile"], "Academic Staff")
-        self.assertEqual(rows[0]["public_email"], "public@example.com")
-        self.assertEqual(rows[0]["public_phone"], "+66 555 0100")
-        self.assertEqual(rows[0]["sort_order"], 2)
+        self.assertIsNone(rows[0]["public_email"])
+        self.assertIsNone(rows[0]["public_phone"])
+        self.assertIsNone(rows[0]["sort_order"])
 
-    def test_draft_profile_does_not_override_public_people_fields(self):
+    def test_public_people_hides_employees_without_show_on_website(self):
         organization = make_organization(prefix="Public People Draft Org")
         school = make_school(organization.name, prefix="Public People Draft School")
         designation = _make_designation(
@@ -74,24 +60,13 @@ class TestPublicPeopleService(FrappeTestCase):
             title="Counselor",
             role_profile="Counselor",
         )
-        employee = _make_employee(
+        _make_employee(
             school=school.name,
             organization=organization.name,
             designation=designation.name,
             first_name="Bianca",
+            show_on_website=0,
         )
-        frappe.get_doc(
-            {
-                "doctype": "Employee Website Profile",
-                "school": school.name,
-                "employee": employee.name,
-                "workflow_state": "Draft",
-                "display_name_override": "Hidden Override",
-                "public_title_override": "Hidden Title",
-                "public_bio": "Hidden bio",
-                "sort_order": 1,
-            }
-        ).insert()
 
         with patch(
             "ifitwala_ed.website.public_people.build_employee_image_variants",
@@ -102,12 +77,7 @@ class TestPublicPeopleService(FrappeTestCase):
                 organization_name=organization.name,
             )
 
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["name"], "Bianca Public")
-        self.assertEqual(rows[0]["title"], designation.name)
-        self.assertEqual(rows[0]["bio"], "Bianca supports the school community.")
-        self.assertIsNone(rows[0]["public_email"])
-        self.assertIsNone(rows[0]["sort_order"])
+        self.assertEqual(rows, [])
 
 
 def _make_designation(*, organization: str, school: str | None, title: str, role_profile: str):

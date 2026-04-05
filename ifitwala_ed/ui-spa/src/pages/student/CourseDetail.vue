@@ -279,10 +279,10 @@
 									:to="quizRouteForAction(action)"
 									class="if-action"
 								>
-									Open now
+									{{ nextActionButtonLabel(action) }}
 								</RouterLink>
 								<button v-else type="button" class="if-action" @click="handleNextAction(action)">
-									Show in this course
+									{{ nextActionButtonLabel(action) }}
 								</button>
 							</div>
 						</article>
@@ -501,10 +501,41 @@
 										<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
 											Due {{ item.due_date }}
 										</p>
-										<div v-if="isQuizAssignedWork(item)" class="mt-3">
-											<RouterLink :to="quizRouteFor(item)" class="if-action">
+										<div v-if="item.materials.length" class="mt-4 space-y-2">
+											<p class="type-caption text-ink/60">What you may need</p>
+											<div class="flex flex-wrap gap-2">
+												<template
+													v-for="resource in item.materials"
+													:key="resource.placement || resource.material"
+												>
+													<a
+														v-if="resource.open_url"
+														:href="resource.open_url"
+														target="_blank"
+														rel="noreferrer"
+														class="inline-flex items-center rounded-full border border-line-soft bg-white px-3 py-1 text-xs font-medium text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+													>
+														{{ resource.title }}
+													</a>
+												</template>
+											</div>
+										</div>
+										<div class="mt-3 flex flex-wrap gap-2">
+											<RouterLink
+												v-if="isQuizAssignedWork(item)"
+												:to="quizRouteFor(item)"
+												class="if-action"
+											>
 												{{ quizActionLabel(item) }}
 											</RouterLink>
+											<button
+												v-else
+												type="button"
+												class="if-action"
+												@click="focusAssignedWork(item)"
+											>
+												{{ assignedWorkActionLabel(item) }}
+											</button>
 										</div>
 									</article>
 								</div>
@@ -656,6 +687,25 @@
 						<p v-if="assignedWorkContextLine(item)" class="mt-1 type-caption text-ink/60">
 							{{ assignedWorkContextLine(item) }}
 						</p>
+						<div v-if="item.materials.length" class="mt-4 space-y-2">
+							<p class="type-caption text-ink/60">What you may need</p>
+							<div class="flex flex-wrap gap-2">
+								<template
+									v-for="resource in item.materials"
+									:key="resource.placement || resource.material"
+								>
+									<a
+										v-if="resource.open_url"
+										:href="resource.open_url"
+										target="_blank"
+										rel="noreferrer"
+										class="inline-flex items-center rounded-full border border-line-soft bg-white px-3 py-1 text-xs font-medium text-ink transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
+									>
+										{{ resource.title }}
+									</a>
+								</template>
+							</div>
+						</div>
 						<div class="mt-3 flex flex-wrap gap-2">
 							<RouterLink
 								v-if="isQuizAssignedWork(item)"
@@ -670,7 +720,7 @@
 								class="if-action"
 								@click="focusAssignedWork(item)"
 							>
-								Show in this course
+								{{ assignedWorkActionLabel(item) }}
 							</button>
 						</div>
 					</article>
@@ -1179,6 +1229,12 @@ function nextActionChip(action: StudentLearningNextAction) {
 	return 'Assigned work';
 }
 
+function nextActionButtonLabel(action: StudentLearningNextAction) {
+	if (action.kind === 'quiz') return 'Open now';
+	if (action.kind === 'session') return 'Open session';
+	return 'Open task workspace';
+}
+
 function assignedWorkStatusLabel(item: StudentAssignedWork) {
 	if (item.quiz_state?.status_label) return item.quiz_state.status_label;
 	if (item.is_complete) return 'Completed';
@@ -1199,6 +1255,13 @@ function assignedWorkContextLine(item: StudentAssignedWork) {
 	const unit = findUnitByPlan(item.unit_plan);
 	if (unit) return `In ${unit.title}`;
 	return '';
+}
+
+function assignedWorkActionLabel(item: StudentAssignedWork) {
+	if (isQuizAssignedWork(item)) return quizActionLabel(item);
+	if (item.class_session) return 'Open task workspace';
+	if (item.unit_plan) return 'Open unit workspace';
+	return 'Open course workspace';
 }
 
 async function handleNextAction(action: StudentLearningNextAction) {

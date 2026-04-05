@@ -5,57 +5,9 @@ from __future__ import annotations
 import copy
 
 import frappe
-from frappe import _
 from frappe.utils.caching import redis_cache
 
 from ifitwala_ed.utilities.image_utils import build_employee_image_variants
-
-WORKFLOW_DEFAULT_STATE = "Draft"
-WORKFLOW_STATES = (
-    "Draft",
-    "In Review",
-    "Approved",
-    "Published",
-)
-WORKFLOW_TRANSITIONS = {
-    "request_review": {
-        "from_states": ("Draft",),
-        "to_state": "In Review",
-        "roles": ("Marketing User", "Website Manager", "System Manager"),
-    },
-    "approve": {
-        "from_states": ("In Review",),
-        "to_state": "Approved",
-        "roles": ("Website Manager", "System Manager"),
-    },
-    "publish": {
-        "from_states": ("Approved",),
-        "to_state": "Published",
-        "roles": ("Website Manager", "System Manager"),
-    },
-    "return_to_draft": {
-        "from_states": ("In Review", "Approved", "Published"),
-        "to_state": "Draft",
-        "roles": ("Marketing User", "Website Manager", "System Manager"),
-    },
-}
-
-
-def normalize_workflow_state(workflow_state: str | None) -> str:
-    value = (workflow_state or "").strip() or WORKFLOW_DEFAULT_STATE
-    if value not in WORKFLOW_STATES:
-        frappe.throw(
-            _("Invalid workflow state: {0}").format(value),
-            frappe.ValidationError,
-        )
-    return value
-
-
-def compute_employee_profile_status(*, employee_is_public: bool, workflow_state: str) -> str:
-    state = normalize_workflow_state(workflow_state)
-    if employee_is_public and state == "Published":
-        return "Published"
-    return "Draft"
 
 
 def _normalize_school_names(school_names) -> tuple[str, ...]:
@@ -76,16 +28,6 @@ def _build_initials(full_name: str | None) -> str:
     return "".join(parts[:2])
 
 
-def _coerce_sort_order(value) -> int | None:
-    text = str(value or "").strip()
-    if not text:
-        return None
-    try:
-        return int(text)
-    except ValueError:
-        return None
-
-
 def _get_designation_map(designation_names: tuple[str, ...]) -> dict[str, dict]:
     if not designation_names:
         return {}
@@ -99,51 +41,10 @@ def _get_designation_map(designation_names: tuple[str, ...]) -> dict[str, dict]:
     return {row["name"]: row for row in rows if row.get("name")}
 
 
-def _get_published_profile_map(employee_names: tuple[str, ...], school_names: tuple[str, ...]) -> dict[str, dict]:
-    if not employee_names or not school_names or not frappe.db.exists("DocType", "Employee Website Profile"):
-        return {}
-
-    rows = frappe.get_all(
-        "Employee Website Profile",
-        filters={
-            "employee": ["in", list(employee_names)],
-            "school": ["in", list(school_names)],
-            "status": "Published",
-        },
-        fields=[
-            "name",
-            "employee",
-            "school",
-            "display_name_override",
-            "public_title_override",
-            "public_bio",
-            "public_email",
-            "public_phone",
-            "sort_order",
-        ],
-        order_by="modified desc",
-        limit=max(len(employee_names) * 2, 200),
-    )
-
-    profile_map: dict[str, dict] = {}
-    for row in rows:
-        employee_name = (row.get("employee") or "").strip()
-        if employee_name and employee_name not in profile_map:
-            profile_map[employee_name] = row
-    return profile_map
-
-
-def _build_public_person(row: dict, designation_row: dict | None, profile_row: dict | None) -> dict[str, object]:
-    display_name = (
-        (profile_row or {}).get("display_name_override") or row.get("employee_full_name") or row.get("name") or ""
-    ).strip()
-    title = (
-        (profile_row or {}).get("public_title_override")
-        or (designation_row or {}).get("designation_name")
-        or row.get("designation")
-        or ""
-    ).strip()
-    bio = ((profile_row or {}).get("public_bio") or row.get("small_bio") or "").strip()
+def _build_public_person(row: dict, designation_row: dict | None) -> dict[str, object]:
+    display_name = (row.get("employee_full_name") or row.get("name") or "").strip()
+    title = ((designation_row or {}).get("designation_name") or row.get("designation") or "").strip()
+    bio = (row.get("small_bio") or "").strip()
 
     return {
         "employee": (row.get("name") or "").strip(),
@@ -155,9 +56,9 @@ def _build_public_person(row: dict, designation_row: dict | None, profile_row: d
         "title": title or None,
         "bio": bio or None,
         "initials": _build_initials(display_name),
-        "public_email": ((profile_row or {}).get("public_email") or "").strip() or None,
-        "public_phone": ((profile_row or {}).get("public_phone") or "").strip() or None,
-        "sort_order": _coerce_sort_order((profile_row or {}).get("sort_order")),
+        "public_email": None,
+        "public_phone": None,
+        "sort_order": None,
         "photo": build_employee_image_variants(
             row.get("name"),
             original_url=row.get("employee_image"),
@@ -207,18 +108,15 @@ def _get_published_public_people_records(
     if not employee_rows:
         return []
 
-    employee_names = tuple((row.get("name") or "").strip() for row in employee_rows if row.get("name"))
     designation_names = tuple(
         sorted({(row.get("designation") or "").strip() for row in employee_rows if row.get("designation")})
     )
     designation_map = _get_designation_map(designation_names)
-    profile_map = _get_published_profile_map(employee_names, school_names)
 
     people = [
         _build_public_person(
             row,
             designation_map.get((row.get("designation") or "").strip()),
-            profile_map.get((row.get("name") or "").strip()),
         )
         for row in employee_rows
     ]

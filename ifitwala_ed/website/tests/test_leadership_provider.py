@@ -247,7 +247,7 @@ class TestLeadershipProvider(FrappeTestCase):
             ["Erin Leadership"],
         )
 
-    def test_leadership_uses_published_employee_website_profile_overrides(self):
+    def test_leadership_uses_employee_fields_from_canonical_public_people_service(self):
         organization = make_organization(prefix="Leadership Public Profile Org")
         school = make_school(organization.name, prefix="Leadership Public Profile School")
 
@@ -264,18 +264,8 @@ class TestLeadershipProvider(FrappeTestCase):
             designation=principal.name,
             first_name="Amina",
         )
-        frappe.get_doc(
-            {
-                "doctype": "Employee Website Profile",
-                "school": school.name,
-                "employee": employee.name,
-                "workflow_state": "Published",
-                "display_name_override": "Amina Public",
-                "public_title_override": "Head of School",
-                "public_bio": "Guides the academic vision.",
-                "sort_order": 1,
-            }
-        ).insert()
+        employee.small_bio = "Guides the academic vision."
+        employee.save()
 
         with patch(
             "ifitwala_ed.website.public_people.build_employee_image_variants",
@@ -292,8 +282,8 @@ class TestLeadershipProvider(FrappeTestCase):
             )
 
         person = payload["data"]["sections"][0]["people"][0]
-        self.assertEqual(person["name"], "Amina Public")
-        self.assertEqual(person["title"], "Head of School")
+        self.assertEqual(person["name"], "Amina Leadership")
+        self.assertEqual(person["title"], "Principal")
         self.assertEqual(person["bio"], "Guides the academic vision.")
 
 

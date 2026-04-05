@@ -29,6 +29,7 @@ Teachers must never navigate to doctypes.
 
 * Teachers think: “I’m grading **this assignment** for my class.”
 * Student-centric is a secondary tool (interventions), not the default grading surface.
+* Staff surfaces that already own class context, especially `ClassPlanning.vue`, should deep-link into Gradebook with `student_group` + `task` (`Task Delivery`) query context so the teacher lands on the exact delivery without reselecting it.
 
 #### A) Context & Filters (top bar)
 

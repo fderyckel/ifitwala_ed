@@ -61,6 +61,14 @@ def _trim_meta_text(raw_html: str | None, *, limit: int = 160) -> str:
     return clean[:limit].rstrip() + "..."
 
 
+def _prune_none_values(value):
+    if isinstance(value, dict):
+        return {key: _prune_none_values(item) for key, item in value.items() if item is not None}
+    if isinstance(value, list):
+        return [_prune_none_values(item) for item in value if item is not None]
+    return value
+
+
 def _safe_link(value: str | None, *, fallback: str) -> str:
     link = (value or "").strip()
     if link.startswith("/") or link.startswith("https://"):
@@ -774,7 +782,7 @@ def _append_blocks(page, block_specs: list[dict]):
             {
                 "block_type": row["block_type"],
                 "order": row["order"],
-                "props": json.dumps(row["props"]),
+                "props": json.dumps(_prune_none_values(row["props"])),
                 "is_enabled": 1,
             },
         )

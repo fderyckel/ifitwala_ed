@@ -15,7 +15,7 @@ Current canonical runtime remains defined by:
 - `ifitwala_ed/docs/hr/emlpoyee.md`
 - `ifitwala_ed/docs/files_and_policies/files_05_organization_media_governance.md`
 
-This proposal exists to define the target public people model before schema changes, new directory/profile surfaces, or cross-module public staff behavior changes are approved.
+This proposal exists to define the target public people model before additional schema changes, new directory/profile surfaces, or cross-module public staff behavior changes are approved.
 
 ## 1. Decision Goal
 
@@ -27,7 +27,7 @@ Target runtime outcome:
 
 1. Ifitwala_Ed has one canonical public people model for school websites.
 2. `Employee` remains the public staff source of truth.
-3. Website-owned public presentation fields may exist, but they must layer on top of `Employee`, not replace it.
+3. The current implementation stays `Employee`-first. Any future public presentation fields should be justified explicitly and should not replace `Employee` as the source of truth.
 4. Public people rendering supports leadership, teachers, counselors, operational staff, and other school-visible employee groups through one shared contract.
 5. Public directory pages, leadership blocks, and optional personal pages all consume the same underlying people service.
 6. Exact-school scope remains the public default, with explicit and bounded descendant inclusion only where the module contract allows it.
@@ -93,7 +93,7 @@ This proposal adopts the following product posture:
 ### 3.2 Public people posture
 
 - `Employee` owns identity truth
-- the website may own presentation truth
+- current implementation reads public people directly from `Employee`
 - the website must not duplicate HR identity management
 
 ### 3.3 Optionality posture
@@ -120,31 +120,11 @@ Test refs: `ifitwala_ed/website/tests/test_leadership_provider.py`, `ifitwala_ed
 - visibility anchor (`show_on_website`)
 - governed image anchor (`employee_image`)
 
-### 4.2 Proposed website-owned presentation layer
+### 4.2 Current posture on presentation fields
 
-This proposal recommends a website-owned public presentation layer for employees.
+The current approved direction is to keep public people data on `Employee` unless and until a future product need proves otherwise.
 
-Exact schema names are intentionally not locked yet, but the record should support fields such as:
-
-- public display toggle
-- display-name override
-- public title override
-- short intro
-- public bio
-- public contact choices
-- featured flag
-- directory sort order
-- optional profile slug
-- optional personal-page enablement
-
-This layer exists for presentation only.
-It must not become a second source of truth for:
-
-- school
-- organization
-- designation
-- employment status
-- identity ownership
+If additional public website fields become necessary later, they should be evaluated as `Employee` fields first, with explicit ownership and workflow reasoning.
 
 ### 4.3 Service ownership
 
@@ -254,9 +234,9 @@ These fields are good candidates to remain directly `Employee`-owned:
 - canonical image anchor
 - employee full name unless overridden for presentation
 
-### 7.2 Website-owned presentation candidates
+### 7.2 Future Employee field candidates
 
-These are good candidates for the website presentation layer:
+If future public website requirements justify more fields, they should be evaluated on `Employee` first:
 
 - public headline / title override
 - short marketing intro
@@ -358,7 +338,7 @@ The public people platform should support non-technical school teams.
 
 Recommended expectations:
 
-- website managers can curate directories and spotlights without editing HR truth incorrectly
+- website managers can curate directories and spotlights without weakening `Employee` as the source of truth
 - review/publish states remain clear
 - public profile changes should be previewable
 - schools with multiple editors should have clear ownership boundaries
@@ -378,9 +358,9 @@ Test refs: `None`
 
 ### Phase 1
 
-- introduce the website-owned public presentation layer
 - create one canonical people provider/service
 - refactor leadership block to consume the shared people service
+- keep the first implementation `Employee`-first
 
 ### Phase 2
 
@@ -391,6 +371,7 @@ Test refs: `None`
 
 - add optional profile pages
 - add school- or organization-level syndication rules where approved
+- decide whether additional public presentation fields are needed on `Employee`
 
 ## 13. Risks If We Skip This Contract
 
@@ -413,11 +394,10 @@ Status: Planned
 Code refs: `None`
 Test refs: `None`
 
-1. Should the website-owned public presentation record be school-scoped, organization-scoped, or support both?
-2. Which `Employee` contact fields, if any, are publicly safe by default?
-3. Should public people search be school-local only at first, or support explicit organization-level hub search?
-4. Should personal pages support posts/updates in phase one, or only static profile content initially?
-5. What is the exact schema and workflow boundary between HR-managed changes and website-manager-managed presentation changes?
+1. Which `Employee` contact fields, if any, are publicly safe by default?
+2. Should public people search be school-local only at first, or support explicit organization-level hub search?
+3. Should personal pages support posts/updates in phase one, or only static profile content initially?
+4. What is the exact schema and workflow boundary between HR-managed changes and website-manager-managed public presentation edits on `Employee`?
 
 ## 15. Market Reference Links
 

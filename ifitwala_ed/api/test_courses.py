@@ -391,4 +391,31 @@ class TestCoursesApi(TestCase):
             payload["learning"]["work_board"]["now"][0]["href"]["query"]["student_group"],
             "GROUP-1",
         )
+        self.assertEqual(
+            payload["learning"]["work_board"]["now"][0]["href"]["query"]["class_session"],
+            "CLASS-SESSION-1",
+        )
         self.assertEqual(payload["learning"]["timeline"][0]["items"][0]["kind"], "scheduled_class")
+
+    def test_build_work_item_href_preserves_class_session_context(self):
+        href = courses_api._build_work_item_href(
+            {
+                "course": "COURSE-1",
+                "student_group": "GROUP-1",
+                "unit_plan": "UNIT-1",
+                "class_session": "SESSION-3",
+            }
+        )
+
+        self.assertEqual(
+            href,
+            {
+                "name": "student-course-detail",
+                "params": {"course_id": "COURSE-1"},
+                "query": {
+                    "student_group": "GROUP-1",
+                    "unit_plan": "UNIT-1",
+                    "class_session": "SESSION-3",
+                },
+            },
+        )
