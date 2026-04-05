@@ -63,6 +63,7 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
             "staff@example.com",
             ["Academic Staff"],
             {"name": "EMP-1", "school": "SCH-1", "organization": "ORG-1"},
+            allow_owner=True,
         )
         self.assertEqual(result["message_html"], "<p><strong>Full body</strong></p>")
         self.assertEqual(result["audience_label"], "Staff · ISS")

@@ -9,6 +9,40 @@ from ifitwala_ed.api import class_hub
 
 
 class TestClassHub(FrappeTestCase):
+    def test_resolve_staff_home_entry_returns_single_group_when_only_one_is_taught(self):
+        with (
+            patch("ifitwala_ed.api.class_hub.frappe.session.user", "teacher@example.com"),
+            patch("ifitwala_ed.api.class_hub._instructor_group_names", return_value={"SG-0001"}),
+            patch(
+                "ifitwala_ed.api.class_hub.frappe.get_all",
+                return_value=[
+                    {
+                        "name": "SG-0001",
+                        "student_group_name": "Grade 7 A",
+                        "student_group_abbreviation": "G7-A",
+                        "course": "Science",
+                        "academic_year": "2025-2026",
+                    }
+                ],
+            ),
+        ):
+            payload = class_hub.resolve_staff_home_entry()
+
+        self.assertEqual(payload["status"], "single")
+        self.assertEqual(payload["groups"][0]["student_group"], "SG-0001")
+        self.assertEqual(payload["groups"][0]["title"], "G7-A - Science")
+
+    def test_resolve_staff_home_entry_returns_empty_state_without_groups(self):
+        with (
+            patch("ifitwala_ed.api.class_hub.frappe.session.user", "teacher@example.com"),
+            patch("ifitwala_ed.api.class_hub._instructor_group_names", return_value=set()),
+        ):
+            payload = class_hub.resolve_staff_home_entry()
+
+        self.assertEqual(payload["status"], "empty")
+        self.assertEqual(payload["groups"], [])
+        self.assertIn("not assigned", payload["message"])
+
     def test_get_bundle_exposes_student_log_permission_from_doctype(self):
         with (
             patch("ifitwala_ed.api.class_hub._assert_instructor"),

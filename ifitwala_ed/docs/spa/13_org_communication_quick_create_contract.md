@@ -38,6 +38,14 @@ Rules:
    - future `publish_from` => `Scheduled`
    - blank or current/past `publish_from` => `Published`
 8. The `Save as draft` action always persists `status='Draft'`.
+9. `entryMode='class-event'` is a compact single-column composer for busy teachers and shows only:
+   - locked class context
+   - title
+   - message
+   - delivery status / schedule
+   - a single guardian-visibility toggle
+   - optional internal note
+10. In `entryMode='class-event'`, organization, issuing school, communication type, thread settings, and the full audience builder remain payload-owned but are not shown as editable UI controls.
 
 ## 2. API and Payload Contract
 
@@ -90,6 +98,14 @@ Rules:
 4. Role-based restrictions for wide-audience rows remain server-owned and are only mirrored in the SPA to make blocked actions obvious earlier:
    - `School Scope` rows targeting `Staff` or `Community`
    - `Organization` rows targeting `Staff`
+5. `entryMode='class-event'` hard-locks these payload values even though they are hidden from the overlay:
+   - `communication_type='Class Announcement'`
+   - `portal_surface='Everywhere'`
+   - `interaction_mode='None'`
+   - `allow_private_notes=0`
+   - `allow_public_thread=0`
+   - one `Student Group` audience row with `to_students=1`
+6. In `entryMode='class-event'`, guardian visibility starts unchecked and is controlled only by the single exposed guardian toggle.
 
 ## 4. Overlay and Invalidation Contract
 

@@ -59,46 +59,27 @@
 			<div class="min-w-0 space-y-4 md:col-span-5 lg:col-span-4 xl:sticky xl:top-6">
 				<h3 class="px-1 type-h3 text-canopy">Quick Actions</h3>
 
-				<div class="grid min-w-0 gap-3">
+				<div data-testid="staff-home-quick-actions" class="grid min-w-0 gap-3">
 					<button
-						v-if="showPickStudentQuickAction"
+						v-if="userCapabilities.quick_action_class_hub"
 						type="button"
-						class="action-tile group w-full min-w-0"
-						@click="openPickStudent"
+						class="action-tile group w-full min-w-0 disabled:cursor-not-allowed disabled:opacity-70"
+						:disabled="classHubQuickActionLoading"
+						@click="openClassHubQuickAction"
 					>
 						<div class="action-tile__icon shrink-0">
-							<FeatherIcon name="disc" class="h-6 w-6" />
+							<FeatherIcon name="book-open" class="h-6 w-6" />
 						</div>
 						<div class="flex-1 min-w-0">
 							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								Pick student
+								Open Class Hub
 							</p>
 							<p class="truncate type-caption text-slate-token/70">
-								Choose who answers next in your live class
-							</p>
-						</div>
-						<FeatherIcon
-							name="chevron-right"
-							class="h-4 w-4 shrink-0 text-slate-token/40 transition-colors group-hover:text-jacaranda"
-						/>
-					</button>
-
-					<!-- Create task uses overlay stack (single overlay system) -->
-					<button
-						v-if="userCapabilities.quick_action_create_task"
-						type="button"
-						class="action-tile group w-full min-w-0"
-						@click="openCreateTask"
-					>
-						<div class="action-tile__icon shrink-0">
-							<FeatherIcon name="clipboard" class="h-6 w-6" />
-						</div>
-						<div class="flex-1 min-w-0">
-							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								Create task
-							</p>
-							<p class="truncate type-caption text-slate-token/70">
-								Assign work to a class in seconds
+								{{
+									classHubQuickActionLoading
+										? 'Checking your teaching groups'
+										: 'Choose one of your teaching groups and open the class workspace'
+								}}
 							</p>
 						</div>
 						<FeatherIcon
@@ -178,32 +159,6 @@
 						/>
 					</button>
 
-					<!-- Standard Quick Actions (router links, not overlays) -->
-					<RouterLink
-						v-for="action in visibleQuickActions"
-						:key="action.label"
-						:to="action.to"
-						class="action-tile group w-full min-w-0"
-					>
-						<div class="action-tile__icon shrink-0">
-							<FeatherIcon :name="action.icon" class="h-6 w-6" />
-						</div>
-
-						<div class="flex-1 min-w-0">
-							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								{{ action.label }}
-							</p>
-							<p class="truncate type-caption text-slate-token/70">
-								{{ action.caption }}
-							</p>
-						</div>
-
-						<FeatherIcon
-							name="chevron-right"
-							class="h-4 w-4 shrink-0 text-slate-token/40 transition-colors group-hover:text-jacaranda"
-						/>
-					</RouterLink>
-
 					<p
 						v-if="!hasVisibleQuickActions"
 						class="rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 type-caption text-slate-token/80"
@@ -215,75 +170,97 @@
 		</section>
 
 		<!-- ============================================================
-		     ANALYTICS HUB
+		     EXPLORE HUB
 		     Intent:
-		     - Keep it “browseable”: quick hits + category clusters
-		     - Links open new tab by default (analytics browsing is a side-activity)
+		     - Keep secondary destinations browseable without polluting the main action rail
+		     - Start with high-value workspaces and records, then fan into analytics categories
 		     - No data fetching here (it’s link-only)
 		   ============================================================ -->
 		<section v-if="hasVisibleAnalyticsLinks" class="rounded-2xl bg-surface shadow-soft">
 			<div class="rounded-2xl border border-[rgb(var(--sand-rgb)/0.35)]">
-				<div
-					class="flex flex-col gap-4 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 pb-6 pt-7 sm:flex-row sm:items-center sm:justify-between"
-				>
+				<div class="border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 pb-6 pt-7">
 					<div class="space-y-2">
-						<p class="type-overline text-slate-token/70">Analytics</p>
-						<h3 class="type-h2">Insights & Dashboards</h3>
+						<p class="type-overline text-slate-token/70">Explore</p>
+						<h3 class="type-h2">Insights & Key Destinations</h3>
 						<p class="max-w-2xl type-body text-slate-token/80">
-							Jump straight into the dashboards you need. Start with the quick hitters, or browse
-							by category when you are exploring trends.
+							Open the most-used planning, records, and announcement surfaces first, then browse
+							analytics by category when you need the wider picture.
 						</p>
 					</div>
-
-					<RouterLink
-						to="/analytics"
-						target="_blank"
-						rel="noopener"
-						class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-jacaranda hover:text-jacaranda"
-					>
-						<FeatherIcon name="grid" class="h-4 w-4 text-slate-token/60" />
-						<span>View all analytics</span>
-					</RouterLink>
 				</div>
 
 				<div
+					data-testid="staff-home-explore-links"
 					class="grid grid-cols-1 gap-3 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6 md:grid-cols-2 xl:grid-cols-3"
 				>
-					<RouterLink
-						v-for="link in visibleAnalyticsQuickLinks"
-						:key="link.label"
-						:to="link.to"
-						target="_blank"
-						rel="noopener"
-						class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
-					>
-						<div
-							class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+					<template v-for="link in visibleExploreLinks" :key="link.label">
+						<button
+							v-if="link.kind === 'action'"
+							type="button"
+							class="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
+							@click="link.action?.()"
 						>
-							<FeatherIcon :name="link.icon" class="h-5 w-5" />
-						</div>
+							<div
+								class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+							>
+								<FeatherIcon :name="link.icon" class="h-5 w-5" />
+							</div>
 
-						<div class="min-w-0 flex-1">
-							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								{{ link.label }}
-							</p>
-							<p class="truncate type-caption text-slate-token/70">
-								{{ link.caption }}
-							</p>
-						</div>
+							<div class="min-w-0 flex-1">
+								<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+									{{ link.label }}
+								</p>
+								<p class="truncate type-caption text-slate-token/70">
+									{{ link.caption }}
+								</p>
+							</div>
 
-						<span
-							v-if="link.badge"
-							class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
+							<span
+								v-if="link.badge"
+								class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
+							>
+								{{ link.badge }}
+							</span>
+
+							<FeatherIcon
+								name="chevron-right"
+								class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
+							/>
+						</button>
+
+						<RouterLink
+							v-else
+							:to="link.to"
+							class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
 						>
-							{{ link.badge }}
-						</span>
+							<div
+								class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+							>
+								<FeatherIcon :name="link.icon" class="h-5 w-5" />
+							</div>
 
-						<FeatherIcon
-							name="arrow-up-right"
-							class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
-						/>
-					</RouterLink>
+							<div class="min-w-0 flex-1">
+								<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+									{{ link.label }}
+								</p>
+								<p class="truncate type-caption text-slate-token/70">
+									{{ link.caption }}
+								</p>
+							</div>
+
+							<span
+								v-if="link.badge"
+								class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
+							>
+								{{ link.badge }}
+							</span>
+
+							<FeatherIcon
+								name="chevron-right"
+								class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
+							/>
+						</RouterLink>
+					</template>
 				</div>
 
 				<div class="grid grid-cols-1 gap-4 px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
@@ -344,7 +321,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import type { RouteLocationRaw } from 'vue-router';
+import { useRouter, type RouteLocationRaw } from 'vue-router';
 import { FeatherIcon, toast } from 'frappe-ui';
 
 import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue';
@@ -385,14 +362,13 @@ import {
 
 /* USER --------------------------------------------------------- */
 const userDoc = ref<StaffHomeHeader | null>(null);
+const router = useRouter();
 const classHubService = createClassHubService();
-const pickStudentHasCurrentClass = ref(false);
-const pickStudentAvailabilityLoading = ref(false);
+const classHubQuickActionLoading = ref(false);
 
 onMounted(async () => {
 	try {
 		userDoc.value = await getStaffHomeHeader();
-		await refreshPickStudentQuickActionAvailability();
 	} catch (err) {
 		console.error('[StaffHome] Failed to load header:', err);
 	}
@@ -409,42 +385,14 @@ const firstName = computed(() => {
 const userCapabilities = computed<Record<string, boolean>>(
 	() => userDoc.value?.capabilities ?? {}
 );
-const showPickStudentQuickAction = computed(
-	() =>
-		Boolean(userCapabilities.value.quick_action_pick_student) && pickStudentHasCurrentClass.value
-);
 
 /* QUICK ACTIONS ------------------------------------------------ */
-const quickActions = [
-	{
-		label: 'Update Gradebook',
-		caption: 'Capture evidence, notes, and marks',
-		icon: 'edit-3',
-		to: { name: 'staff-gradebook' },
-		capability: 'quick_action_gradebook',
-	},
-	{
-		label: 'Course Plans',
-		caption: 'Open the governed curriculum backbone and shared resources',
-		icon: 'layers',
-		to: { name: 'staff-course-plan-index' },
-	},
-];
-
-function isQuickActionVisible(action: { capability?: string }) {
-	if (!action.capability) return true;
-	return Boolean(userCapabilities.value[action.capability]);
-}
-
-const visibleQuickActions = computed(() => quickActions.filter(isQuickActionVisible));
 const hasVisibleQuickActions = computed(
 	() =>
-		showPickStudentQuickAction.value ||
-		Boolean(userCapabilities.value.quick_action_create_task) ||
+		Boolean(userCapabilities.value.quick_action_class_hub) ||
 		Boolean(userCapabilities.value.quick_action_create_event) ||
 		Boolean(userCapabilities.value.quick_action_student_log) ||
-		Boolean(userCapabilities.value.quick_action_org_communication) ||
-		visibleQuickActions.value.length > 0
+		Boolean(userCapabilities.value.quick_action_org_communication)
 );
 
 /* FOCUS -------------------------------------------------------- */
@@ -560,33 +508,9 @@ let disposeOrgCommunicationInvalidate: (() => void) | null = null;
 // Avoids global spam if student_log:invalidate is emitted from other surfaces.
 const pendingStudentLogSavedToast = ref(false);
 
-async function refreshPickStudentQuickActionAvailability() {
-	if (!userCapabilities.value.quick_action_pick_student) {
-		pickStudentHasCurrentClass.value = false;
-		return;
-	}
-
-	if (pickStudentAvailabilityLoading.value) return;
-
-	pickStudentAvailabilityLoading.value = true;
-	try {
-		const payload = await classHubService.resolveCurrentPickerContext();
-		pickStudentHasCurrentClass.value =
-			payload.status === 'ready' || payload.status === 'multiple_current';
-	} catch (err) {
-		pickStudentHasCurrentClass.value = false;
-		console.error('[StaffHome] Failed to resolve current class for pick student:', err);
-	} finally {
-		pickStudentAvailabilityLoading.value = false;
-	}
-}
-
 function onVisibilityChange() {
 	if (document.visibilityState === 'visible' && shouldRefreshOnVisibility()) {
 		refreshFocus('visibility');
-	}
-	if (document.visibilityState === 'visible') {
-		void refreshPickStudentQuickActionAvailability();
 	}
 }
 
@@ -634,7 +558,6 @@ onMounted(async () => {
 		focusTimer = setInterval(() => {
 			if (document.visibilityState === 'visible') {
 				refreshFocus('interval');
-				void refreshPickStudentQuickActionAvailability();
 			}
 		}, FOCUS_POLL_MS);
 	}
@@ -678,12 +601,23 @@ function openFocusItem(item: FocusItem) {
 
 /* ANALYTICS ---------------------------------------------------- */
 type StaffHomeAnalyticsLink = {
+	kind?: 'route';
 	label: string;
 	caption?: string;
 	icon?: string;
 	to: RouteLocationRaw;
 	badge?: string;
 	capability?: string;
+};
+
+type StaffHomeExploreAction = {
+	kind: 'action';
+	label: string;
+	caption?: string;
+	icon?: string;
+	badge?: string;
+	capability?: string;
+	action: () => void;
 };
 
 type StaffHomeAnalyticsCategory = {
@@ -693,15 +627,40 @@ type StaffHomeAnalyticsCategory = {
 	links: StaffHomeAnalyticsLink[];
 };
 
-const analyticsQuickLinks: StaffHomeAnalyticsLink[] = [
+const exploreLinks: Array<StaffHomeAnalyticsLink | StaffHomeExploreAction> = [
 	{
-		label: 'Annoucement Archive',
+		kind: 'route',
+		label: 'Announcement Archive',
 		caption: 'Check all current and past announcements',
 		icon: 'activity',
 		to: '/staff/announcements',
 		badge: 'Hot',
 	},
 	{
+		kind: 'action',
+		label: 'Create task',
+		caption: 'Assign work to a class in seconds',
+		icon: 'clipboard',
+		capability: 'quick_action_create_task',
+		action: openCreateTask,
+	},
+	{
+		kind: 'route',
+		label: 'Update Gradebook',
+		caption: 'Capture evidence, notes, and marks',
+		icon: 'edit-3',
+		to: { name: 'staff-gradebook' },
+		capability: 'quick_action_gradebook',
+	},
+	{
+		kind: 'route',
+		label: 'Course Plans',
+		caption: 'Open the governed curriculum backbone and shared resources',
+		icon: 'layers',
+		to: { name: 'staff-course-plan-index' },
+	},
+	{
+		kind: 'route',
 		label: 'Room Utilization',
 		caption: 'Which rooms are free, over or under-used this week',
 		icon: 'clock',
@@ -854,9 +813,12 @@ function isAnalyticsLinkVisible(link: StaffHomeAnalyticsLink) {
 	return Boolean(userCapabilities.value[link.capability]);
 }
 
-const visibleAnalyticsQuickLinks = computed(() =>
-	analyticsQuickLinks.filter(isAnalyticsLinkVisible)
-);
+function isExploreLinkVisible(link: StaffHomeAnalyticsLink | StaffHomeExploreAction) {
+	if (!link.capability) return true;
+	return Boolean(userCapabilities.value[link.capability]);
+}
+
+const visibleExploreLinks = computed(() => exploreLinks.filter(isExploreLinkVisible));
 const visibleAnalyticsCategories = computed<StaffHomeAnalyticsCategory[]>(() =>
 	analyticsCategories
 		.map(category => ({
@@ -866,7 +828,7 @@ const visibleAnalyticsCategories = computed<StaffHomeAnalyticsCategory[]>(() =>
 		.filter(category => category.links.length > 0)
 );
 const hasVisibleAnalyticsLinks = computed(
-	() => visibleAnalyticsQuickLinks.value.length > 0 || visibleAnalyticsCategories.value.length > 0
+	() => visibleExploreLinks.value.length > 0 || visibleAnalyticsCategories.value.length > 0
 );
 
 /* GREETING ----------------------------------------------------- */
@@ -900,12 +862,37 @@ function openCreateTask() {
 	});
 }
 
-function openPickStudent() {
-	overlay.open('class-hub-wheel-picker', {
-		source_label: 'Staff Home',
-		resolve_current_class: true,
-		class_session: null,
-	});
+async function openClassHubQuickAction() {
+	if (!userCapabilities.value.quick_action_class_hub || classHubQuickActionLoading.value) return;
+
+	classHubQuickActionLoading.value = true;
+	try {
+		const payload = await classHubService.resolveStaffHomeEntry();
+		const groups = Array.isArray(payload.groups) ? payload.groups : [];
+
+		if (payload.status === 'single' && groups.length === 1) {
+			await router.push({
+				name: 'ClassHub',
+				params: { studentGroup: groups[0].student_group },
+			});
+			return;
+		}
+
+		overlay.open('class-hub-group-picker', {
+			source_label: 'Staff Home',
+			groups,
+			message: payload.message ?? null,
+		});
+	} catch (err) {
+		console.error('[StaffHome] Failed to resolve Class Hub quick action:', err);
+		toast.create({
+			title: 'Could not open Class Hub',
+			text: 'Try again in a moment.',
+			icon: 'info',
+		});
+	} finally {
+		classHubQuickActionLoading.value = false;
+	}
 }
 
 /* OVERLAY: Event Quick Create --------------------------------- */

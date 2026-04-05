@@ -302,7 +302,7 @@ def get_org_communication_item(name=None):
 
     # NOTE: check_audience_match MUST be updated to use Team Member doctype
     # and not Employee.department. (This is the real underlying bug.)
-    if not check_audience_match(name, user, roles, employee):
+    if not check_audience_match(name, user, roles, employee, allow_owner=True):
         frappe.throw(_("You do not have permission to view this communication."), frappe.PermissionError)
 
     doc = frappe.get_doc("Org Communication", name)
@@ -624,6 +624,7 @@ def get_org_communication_feed(
             filter_team=filter_team_val,
             filter_student_group=filter_sg_val,
             filter_school=filter_school_val,
+            allow_owner=True,
         ):
             raw_text = strip_html(c.message or "") if c.message else ""
             if raw_text and len(raw_text) > 260:

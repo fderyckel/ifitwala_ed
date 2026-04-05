@@ -81,7 +81,195 @@
 							</div>
 
 							<form v-else class="space-y-5" @submit.prevent="submit">
+								<div v-if="isClassEventMode" class="space-y-5">
+									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
+										<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+											<div class="space-y-1">
+												<p class="type-overline text-ink/55">Class event</p>
+												<h3 class="type-h3 text-ink">Locked context</h3>
+												<p class="type-caption text-ink/65">
+													This announcement stays tied to the selected class event and remains in
+													your org communication archive for history.
+												</p>
+											</div>
+											<span class="rounded-full bg-sky/25 px-3 py-1.5 type-caption text-canopy">
+												Class event context locked
+											</span>
+										</div>
+
+										<div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+											<div
+												v-for="item in classEventContextCards"
+												:key="item.label"
+												class="rounded-2xl border border-border/70 bg-surface-soft/70 px-4 py-3"
+											>
+												<p class="type-caption text-ink/55">{{ item.label }}</p>
+												<p class="mt-1 type-body-strong text-ink">{{ item.value }}</p>
+											</div>
+										</div>
+									</section>
+
+									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
+										<div class="space-y-1">
+											<p class="type-overline text-ink/55">Message</p>
+											<h3 class="type-h3 text-ink">Announcement</h3>
+											<p class="type-caption text-ink/65">
+												Write the announcement once. Class context, issuing scope, and thread rules
+												are applied automatically.
+											</p>
+										</div>
+
+										<div class="mt-4 space-y-1">
+											<label class="type-label">Title</label>
+											<FormControl
+												v-model="form.title"
+												type="text"
+												placeholder="Class announcement"
+												:disabled="submitting"
+											/>
+										</div>
+
+										<div class="mt-4 space-y-1">
+											<label class="type-label">Message</label>
+											<div
+												class="if-org-communication-message-editor overflow-hidden rounded-2xl border border-border/80 bg-white shadow-sm"
+											>
+												<TextEditor
+													:content="form.message"
+													placeholder="Share the update, reminder, or call to action."
+													:editable="!submitting"
+													:fixed-menu="messageEditorButtons"
+													editor-class="prose prose-sm max-w-none min-h-[14rem] bg-white px-4 py-3 text-sm text-ink focus:outline-none"
+													@change="updateMessage"
+												/>
+											</div>
+										</div>
+									</section>
+
+									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
+										<div class="space-y-1">
+											<p class="type-overline text-ink/55">Delivery</p>
+											<h3 class="type-h3 text-ink">Send options</h3>
+											<p class="type-caption text-ink/65">
+												Pick whether to save this draft, schedule it, or publish it now. Students
+												in the selected class are always included.
+											</p>
+										</div>
+
+										<div class="mt-4 flex flex-wrap gap-2">
+											<button
+												v-for="statusOption in statusOptions"
+												:key="statusOption"
+												type="button"
+												class="rounded-full px-3 py-1.5 type-button-label transition"
+												:class="
+													form.status === statusOption
+														? 'bg-jacaranda text-white'
+														: 'bg-slate-100 text-slate-token hover:bg-slate-200'
+												"
+												:disabled="submitting"
+												@click="form.status = statusOption"
+											>
+												{{ statusOption }}
+											</button>
+										</div>
+
+										<div v-if="form.status === 'Scheduled'" class="mt-4 space-y-1">
+											<label class="type-label">Publish from</label>
+											<input
+												v-model="form.publish_from"
+												type="datetime-local"
+												class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
+												:disabled="submitting"
+											/>
+											<p class="type-caption text-ink/55">
+												Schedule when this announcement should become visible.
+											</p>
+										</div>
+
+										<div
+											class="mt-4 rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
+										>
+											<div class="space-y-1">
+												<p class="type-overline text-ink/55">Recipients</p>
+												<h4 class="type-h4 text-ink">Audience</h4>
+											</div>
+
+											<div class="mt-4 space-y-3">
+												<div
+													class="flex items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
+												>
+													<input
+														checked
+														type="checkbox"
+														class="mt-0.5 rounded border-slate-300 text-jacaranda"
+														disabled
+													/>
+													<div>
+														<p class="type-body-strong text-ink">Students</p>
+														<p class="mt-1 type-caption text-ink/65">
+															The selected student group is always included.
+														</p>
+													</div>
+												</div>
+
+												<label
+													v-if="classEventAudienceRow"
+													class="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 type-caption text-ink/75"
+												>
+													<input
+														v-model="classEventAudienceRow.to_guardians"
+														type="checkbox"
+														class="mt-0.5 rounded border-slate-300 text-jacaranda"
+														:disabled="submitting"
+													/>
+													<div>
+														<p class="type-body-strong text-ink">Visible to guardians</p>
+														<p class="mt-1 type-caption text-ink/65">
+															Turn this on only when guardians should also receive the class
+															announcement.
+														</p>
+													</div>
+												</label>
+											</div>
+										</div>
+									</section>
+
+									<details class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
+										<summary class="cursor-pointer list-none">
+											<div
+												class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+											>
+												<div class="space-y-1">
+													<p class="type-overline text-ink/55">Staff note</p>
+													<h3 class="type-h3 text-ink">Internal note</h3>
+													<p class="type-caption text-ink/65">
+														Optional context for staff managing this communication later.
+													</p>
+												</div>
+												<span
+													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-caption text-ink/65"
+												>
+													Optional
+												</span>
+											</div>
+										</summary>
+
+										<div class="mt-4 space-y-1">
+											<label class="type-label">Internal note</label>
+											<FormControl
+												v-model="form.internal_note"
+												type="textarea"
+												:rows="3"
+												placeholder="Optional staff note for managing this communication."
+												:disabled="submitting"
+											/>
+										</div>
+									</details>
+								</div>
+
 								<div
+									v-else
 									class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.9fr)]"
 								>
 									<div class="space-y-5">
@@ -665,6 +853,7 @@ const props = defineProps<{
 	school?: string | null;
 	title?: string | null;
 	sessionDate?: string | null;
+	sessionTimeLabel?: string | null;
 	courseLabel?: string | null;
 	sourceLabel?: string | null;
 }>();
@@ -825,7 +1014,9 @@ const primarySubmitLabel = computed(() =>
 	isClassEventMode.value
 		? form.status === 'Draft'
 			? 'Save draft'
-			: 'Create communication'
+			: form.status === 'Scheduled'
+				? 'Schedule announcement'
+				: 'Publish announcement'
 		: 'Publish'
 );
 const summaryTitle = computed(() =>
@@ -869,6 +1060,40 @@ const schoolHelpText = computed(() => {
 	}
 	return 'No issuing school scope is configured. Use organization-level communication or ask admin to configure school scope.';
 });
+const classEventAudienceRow = computed(() => {
+	if (!isClassEventMode.value) return null;
+	return audienceRows.value[0] ?? null;
+});
+const classEventStudentGroupLabel = computed(() => {
+	const studentGroupName = classEventAudienceRow.value?.student_group || props.studentGroup;
+	if (!studentGroupName) return 'Selected student group';
+	return (
+		studentGroupSelectOptions.value.find(option => option.value === studentGroupName)?.label ||
+		studentGroupName
+	);
+});
+const classEventScheduleLabel = computed(() => {
+	const parts = [props.sessionDate, props.sessionTimeLabel].filter(Boolean);
+	return parts.length ? parts.join(' · ') : 'Selected class event';
+});
+const classEventContextCards = computed(() => [
+	{
+		label: 'Course',
+		value: props.courseLabel || summaryTitle.value,
+	},
+	{
+		label: 'Student group',
+		value: classEventStudentGroupLabel.value,
+	},
+	{
+		label: 'Session',
+		value: classEventScheduleLabel.value,
+	},
+	{
+		label: 'Issuing scope',
+		value: issuingScopeLabel.value,
+	},
+]);
 
 const audienceSummaryRows = computed(() =>
 	audienceRows.value.map(row => {
@@ -1097,19 +1322,25 @@ function initializeForm() {
 	form.school = defaultSchool;
 	form.message = '';
 	form.internal_note = '';
-	form.interaction_mode = defaults.interaction_mode;
-	form.allow_private_notes =
-		defaults.interaction_mode === 'None' ? false : Boolean(defaults.allow_private_notes);
-	form.allow_public_thread =
-		defaults.interaction_mode === 'None' ? false : Boolean(defaults.allow_public_thread);
+	form.interaction_mode = isClassEventMode.value ? 'None' : defaults.interaction_mode;
+	form.allow_private_notes = isClassEventMode.value
+		? false
+		: defaults.interaction_mode === 'None'
+			? false
+			: Boolean(defaults.allow_private_notes);
+	form.allow_public_thread = isClassEventMode.value
+		? false
+		: defaults.interaction_mode === 'None'
+			? false
+			: Boolean(defaults.allow_public_thread);
 
-	if (isClassEventMode.value && props.studentGroup) {
+	if (isClassEventMode.value) {
 		audienceRows.value = [
 			createAudienceRow({
 				target_mode: 'Student Group',
-				student_group: props.studentGroup,
+				student_group: props.studentGroup || '',
 				to_students: true,
-				to_guardians: true,
+				to_guardians: false,
 				to_staff: false,
 				to_community: false,
 			}),
@@ -1199,6 +1430,12 @@ function applyAudienceDefaults(row: AudienceRowState) {
 	}
 
 	if (row.target_mode === 'Student Group') {
+		if (isClassEventMode.value) {
+			row.to_staff = false;
+			row.to_students = true;
+			row.to_community = false;
+			return;
+		}
 		if (!row.to_staff && !row.to_students && !row.to_guardians) {
 			row.to_students = true;
 			row.to_guardians = true;
@@ -1269,6 +1506,23 @@ function toTimestamp(value: string) {
 }
 
 function buildAudiencePayload(): OrgCommunicationQuickAudienceRow[] {
+	if (isClassEventMode.value) {
+		const row = classEventAudienceRow.value;
+		return [
+			{
+				target_mode: 'Student Group',
+				school: null,
+				team: null,
+				student_group: row?.student_group || props.studentGroup || null,
+				include_descendants: 0,
+				to_staff: 0,
+				to_students: 1,
+				to_guardians: row?.to_guardians ? 1 : 0,
+				to_community: 0,
+				note: null,
+			},
+		];
+	}
 	return audienceRows.value.map(row => ({
 		target_mode: row.target_mode,
 		school: row.school || null,
@@ -1286,12 +1540,13 @@ function buildAudiencePayload(): OrgCommunicationQuickAudienceRow[] {
 function buildPayload(statusOverride?: string): CreateOrgCommunicationQuickRequest {
 	const briefStartDate = form.brief_start_date || null;
 	const briefEndDate = form.brief_end_date || briefStartDate;
+	const classEventMode = isClassEventMode.value;
 	return {
 		title: form.title.trim(),
-		communication_type: form.communication_type,
+		communication_type: classEventMode ? 'Class Announcement' : form.communication_type,
 		status: statusOverride || form.status,
 		priority: form.priority,
-		portal_surface: form.portal_surface,
+		portal_surface: classEventMode ? 'Everywhere' : form.portal_surface,
 		publish_from: toFrappeDatetime(form.publish_from),
 		publish_to: toFrappeDatetime(form.publish_to),
 		brief_start_date: briefStartDate,
@@ -1301,9 +1556,9 @@ function buildPayload(statusOverride?: string): CreateOrgCommunicationQuickReque
 		school: form.school || null,
 		message: form.message || null,
 		internal_note: form.internal_note || null,
-		interaction_mode: form.interaction_mode || null,
-		allow_private_notes: form.allow_private_notes ? 1 : 0,
-		allow_public_thread: form.allow_public_thread ? 1 : 0,
+		interaction_mode: classEventMode ? 'None' : form.interaction_mode || null,
+		allow_private_notes: classEventMode ? 0 : form.allow_private_notes ? 1 : 0,
+		allow_public_thread: classEventMode ? 0 : form.allow_public_thread ? 1 : 0,
 		audiences: buildAudiencePayload(),
 		client_request_id: `org_comm_${Date.now()}_${Math.random().toString(16).slice(2)}`,
 	};

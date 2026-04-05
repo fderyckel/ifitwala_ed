@@ -1,6 +1,7 @@
 import { createResource } from 'frappe-ui'
 import type {
   ClassHubBundle,
+  ClassHubHomeEntryResolution,
   ClassHubQuickEvidencePayload,
   ClassHubSignal,
   ClassHubWheelResolution,
@@ -86,6 +87,13 @@ export function createClassHubService() {
     transform: unwrapMessage,
   })
 
+  const staffHomeEntryResource = createResource<ClassHubHomeEntryResolution>({
+    url: 'ifitwala_ed.api.class_hub.resolve_staff_home_entry',
+    method: 'POST',
+    auto: false,
+    transform: unwrapMessage,
+  })
+
   async function getBundle(payload: BundlePayload) {
     return bundleResource.submit(payload)
   }
@@ -115,6 +123,10 @@ export function createClassHubService() {
     return currentPickerContextResource.submit({})
   }
 
+  async function resolveStaffHomeEntry() {
+    return staffHomeEntryResource.submit({})
+  }
+
   return {
     bundleResource,
     startSessionResource,
@@ -122,11 +134,13 @@ export function createClassHubService() {
     saveSignalsResource,
     quickEvidenceResource,
     currentPickerContextResource,
+    staffHomeEntryResource,
     getBundle,
     startSession,
     endSession,
     saveSignals,
     quickEvidence,
     resolveCurrentPickerContext,
+    resolveStaffHomeEntry,
   }
 }

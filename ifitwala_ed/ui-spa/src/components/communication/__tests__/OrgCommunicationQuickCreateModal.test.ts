@@ -203,7 +203,14 @@ const quickCreateOptions = {
 		organizations: [{ name: 'ORG-1', organization_name: 'Root Org', abbr: 'RO' }],
 		schools: [{ name: 'SCH-1', school_name: 'Main School', abbr: 'MS', organization: 'ORG-1' }],
 		teams: [],
-		student_groups: [],
+		student_groups: [
+			{
+				name: 'SG-1',
+				student_group_name: 'Grade 6 Math',
+				student_group_abbreviation: 'G6 Math',
+				school: 'SCH-1',
+			},
+		],
 	},
 	permissions: {
 		can_create: true,
@@ -238,7 +245,7 @@ async function flushUi() {
 	await nextTick();
 }
 
-function mountModal() {
+function mountModal(props: Record<string, unknown> = {}) {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
 
@@ -249,6 +256,7 @@ function mountModal() {
 					open: true,
 					entryMode: 'staff-home',
 					title: 'Weekly staff update',
+					...props,
 				});
 			},
 		})
@@ -436,5 +444,75 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				to_community: 0,
 			}),
 		]);
+	});
+
+	it('renders a compact locked composer for class-event mode', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+
+		mountModal({
+			entryMode: 'class-event',
+			title: '25-26-G6-Math1/IIS 2025-2026',
+			studentGroup: 'SG-1',
+			school: 'SCH-1',
+			sessionDate: '2026-04-03',
+			sessionTimeLabel: '8:00 AM - 8:45 AM',
+			courseLabel: 'IB MYP mathematics (Grade 6)',
+		});
+		await flushUi();
+
+		const text = document.body.textContent || '';
+		expect(text).toContain('Locked context');
+		expect(text).toContain('Send options');
+		expect(text).not.toContain('Communication type');
+		expect(text).not.toContain('Organization');
+		expect(text).not.toContain('Thread settings');
+		expect(document.querySelector('.if-org-communication-ready-check')).toBeNull();
+	});
+
+	it('submits class-event payload with guardian visibility off by default', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+		createOrgCommunicationQuickMock.mockResolvedValue({
+			ok: true,
+			status: 'created',
+			name: 'COMM-0006',
+			title: '25-26-G6-Math1/IIS 2025-2026',
+		});
+
+		mountModal({
+			entryMode: 'class-event',
+			title: '25-26-G6-Math1/IIS 2025-2026',
+			studentGroup: 'SG-1',
+			school: 'SCH-1',
+			sessionDate: '2026-04-03',
+			sessionTimeLabel: '8:00 AM - 8:45 AM',
+			courseLabel: 'IB MYP mathematics (Grade 6)',
+		});
+		await flushUi();
+
+		clickButton('Publish announcement');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenCalledTimes(1);
+		expect(createOrgCommunicationQuickMock.mock.calls[0][0]).toMatchObject({
+			title: '25-26-G6-Math1/IIS 2025-2026',
+			communication_type: 'Class Announcement',
+			status: 'Published',
+			portal_surface: 'Everywhere',
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			interaction_mode: 'None',
+			allow_private_notes: 0,
+			allow_public_thread: 0,
+			audiences: [
+				expect.objectContaining({
+					target_mode: 'Student Group',
+					student_group: 'SG-1',
+					to_students: 1,
+					to_guardians: 0,
+					to_staff: 0,
+					to_community: 0,
+				}),
+			],
+		});
 	});
 });

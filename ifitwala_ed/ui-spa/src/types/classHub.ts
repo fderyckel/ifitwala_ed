@@ -39,6 +39,20 @@ export type ClassHubWheelResolution = {
   } | null
 }
 
+export type ClassHubHomeEntryGroup = {
+  student_group: string
+  student_group_name: string
+  title: string
+  academic_year?: string | null
+  course?: string | null
+}
+
+export type ClassHubHomeEntryResolution = {
+  status: 'single' | 'choose' | 'empty'
+  message?: string | null
+  groups: ClassHubHomeEntryGroup[]
+}
+
 export type ClassHubBundle = {
   header: {
     student_group: string

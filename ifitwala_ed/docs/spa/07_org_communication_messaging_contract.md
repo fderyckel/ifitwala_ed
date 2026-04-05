@@ -111,6 +111,7 @@ Rules:
 5. Unread/read state is derived from `Portal Read Receipt`.
 6. For guardian/activity summary logic, a user’s own interaction entry also counts as seen.
 7. Hidden rows never contribute to threads, comment counts, or unread counts.
+8. Staff archive and shared interaction endpoints may allow the `Org Communication.owner` to access their own authored communication when no explicit audience scope filter (`team`, `student_group`, `school`) is being enforced.
 
 ## 5. Migration
 

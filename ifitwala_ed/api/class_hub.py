@@ -183,6 +183,37 @@ def _build_picker_summary(
     }
 
 
+def _list_staff_home_groups(user: str) -> List[Dict[str, Any]]:
+    group_names = sorted(_instructor_group_names(user))
+    if not group_names:
+        return []
+
+    rows = frappe.get_all(
+        "Student Group",
+        filters={"name": ["in", group_names]},
+        fields=[
+            "name",
+            "student_group_name",
+            "student_group_abbreviation",
+            "course",
+            "academic_year",
+        ],
+        order_by="student_group_name asc, name asc",
+    )
+
+    return [
+        {
+            "student_group": row.get("name"),
+            "student_group_name": row.get("student_group_name") or row.get("name"),
+            "title": _build_group_title(row.get("name"), row),
+            "course": row.get("course") or None,
+            "academic_year": row.get("academic_year") or None,
+        }
+        for row in rows
+        if row.get("name")
+    ]
+
+
 def _resolve_live_class_rows(employee_id: str) -> tuple[list[Dict[str, Any]], Optional[Dict[str, Any]]]:
     if not employee_id or not frappe.db.table_exists("Employee Booking"):
         return [], None
@@ -391,6 +422,32 @@ def get_bundle(
 ) -> Dict[str, Any]:
     _assert_instructor(student_group)
     return _build_bundle(student_group, date=date, block_number=block_number)
+
+
+@frappe.whitelist()
+def resolve_staff_home_entry() -> Dict[str, Any]:
+    user = frappe.session.user
+    if not user or user == "Guest":
+        frappe.throw(_("Login required"))
+
+    groups = _list_staff_home_groups(user)
+    if len(groups) == 1:
+        return {"status": "single", "message": None, "groups": groups}
+
+    if groups:
+        return {
+            "status": "choose",
+            "message": _("Choose the class hub you want to open."),
+            "groups": groups,
+        }
+
+    return {
+        "status": "empty",
+        "message": _(
+            "You are not assigned to any student groups yet. Ask an academic admin to add you as an instructor on a student group."
+        ),
+        "groups": [],
+    }
 
 
 @frappe.whitelist()

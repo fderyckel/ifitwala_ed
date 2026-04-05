@@ -108,6 +108,7 @@ class TestAnalyticsPermissions(FrappeTestCase):
 
     def test_staff_home_quick_actions_for_instructor(self):
         caps = _build_staff_home_capabilities({"Instructor"})
+        self.assertTrue(caps.get("quick_action_class_hub"))
         self.assertTrue(caps.get("quick_action_create_task"))
         self.assertTrue(caps.get("quick_action_gradebook"))
         self.assertFalse(caps.get("quick_action_student_log"))
@@ -118,6 +119,7 @@ class TestAnalyticsPermissions(FrappeTestCase):
 
     def test_staff_home_quick_actions_for_academic_staff(self):
         caps = _build_staff_home_capabilities({"Academic Staff"})
+        self.assertFalse(caps.get("quick_action_class_hub"))
         self.assertFalse(caps.get("quick_action_create_task"))
         self.assertFalse(caps.get("quick_action_gradebook"))
         self.assertTrue(caps.get("quick_action_student_log"))

@@ -370,6 +370,7 @@ function emitCreateAnnouncement() {
 		school: data.value.school || null,
 		title: data.value.title || '',
 		sessionDate: data.value.session_date || null,
+		sessionTimeLabel: timeLabel.value || null,
 		courseLabel: data.value.course_name || data.value.course || null,
 		sourceLabel: 'Class Event',
 	});
