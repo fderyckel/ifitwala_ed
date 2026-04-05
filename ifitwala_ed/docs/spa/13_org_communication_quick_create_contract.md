@@ -66,6 +66,7 @@ Rules:
    - reference lists for organizations, schools, teams, and student groups
 4. `create_org_communication_quick(...)` is the only SPA mutation path for quick-create and inserts through the existing `Org Communication` controller validations.
 5. The quick-create mutation supports `client_request_id` and returns semantic success as `status='created' | 'already_processed'`.
+6. Response `name` is the internal `Org Communication` record id. Visible `title` remains user-authored display text and is not required to be unique.
 
 ## 3. Validation and Scope Ownership
 

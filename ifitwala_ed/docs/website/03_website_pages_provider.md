@@ -280,8 +280,10 @@ StaffProfile[] = {
 
 * Only employees with `Employee.show_on_website = 1`
 * Default grouping resolves from `Designation.default_role_profile = "Academic Admin"` for the current school scope
-* School-scoped designations match the current school; organization-scoped designations (blank `Designation.school`) are also allowed for the same organization
+* School-scoped designations match the current school by default; organization-scoped designations (blank `Designation.school`) are also allowed for the same organization
 * A manual designation filter may override the default role-profile grouping
+* Descendant-school inclusion is opt-in per designation or per role profile through block props; each rule may include all descendants or stop at a specific child depth
+* The secondary staff carousel remains exact-school unless a future contract explicitly widens it
 * Bio is plain text or sanitized HTML
 
 ---

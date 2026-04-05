@@ -50,6 +50,7 @@
 			staff_limit: 8,
 			roles: [],
 			role_profiles: ['Academic Admin'],
+			role_scopes: [],
 			show_staff_carousel: true,
 		},
 	};

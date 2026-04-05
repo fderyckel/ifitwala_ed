@@ -44,6 +44,16 @@ class _DummyOrgCommunicationDoc:
 
 
 class TestOrgCommunicationQuickCreate(FrappeTestCase):
+    def _create_organization(self) -> str:
+        organization = frappe.get_doc(
+            {
+                "doctype": "Organization",
+                "organization_name": f"Quick Create Org {frappe.generate_hash(length=6)}",
+                "abbr": f"QC{frappe.generate_hash(length=4)}",
+            }
+        ).insert(ignore_permissions=True)
+        return organization.name
+
     def test_get_options_returns_context_and_reference_lists(self):
         with (
             patch("ifitwala_ed.api.org_communication_quick_create.frappe.has_permission", return_value=True),
@@ -243,3 +253,52 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
                     communication_type="Information",
                     status="Draft",
                 )
+
+    def test_create_quick_allows_duplicate_visible_titles(self):
+        organization = self._create_organization()
+        cache = Mock()
+        cache.get_value.return_value = None
+        cache.lock.return_value = nullcontext()
+
+        with (
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.cache", return_value=cache),
+        ):
+            first = org_communication_quick_create.create_org_communication_quick(
+                title="Grade 6 Math Update",
+                communication_type="Information",
+                status="Draft",
+                portal_surface="Desk",
+                organization=organization,
+                audiences=[
+                    {
+                        "target_mode": "Organization",
+                        "to_staff": 1,
+                    }
+                ],
+            )
+            second = org_communication_quick_create.create_org_communication_quick(
+                title="Grade 6 Math Update",
+                communication_type="Information",
+                status="Draft",
+                portal_surface="Desk",
+                organization=organization,
+                audiences=[
+                    {
+                        "target_mode": "Organization",
+                        "to_staff": 1,
+                    }
+                ],
+            )
+
+        self.assertNotEqual(first["name"], second["name"])
+        self.assertEqual(first["title"], "Grade 6 Math Update")
+        self.assertEqual(second["title"], "Grade 6 Math Update")
+
+        rows = frappe.get_all(
+            "Org Communication",
+            filters={"organization": organization, "title": "Grade 6 Math Update"},
+            fields=["name", "title"],
+        )
+        self.assertEqual(len(rows), 2)
+        self.assertNotEqual(rows[0]["name"], rows[1]["name"])

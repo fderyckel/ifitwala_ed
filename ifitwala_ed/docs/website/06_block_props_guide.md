@@ -423,6 +423,7 @@ Snippet resolution order is deterministic:
   * `Academic Leadership`
   * `Faculty & Staff`
 * The leadership carousel resolves from `Designation.default_role_profile = "Academic Admin"` unless a manual `roles` designation filter is provided.
+* Descendant-school inclusion is off by default; page authors must opt in per designation or role profile with `role_scopes`.
 
 ### Props (schema)
 
@@ -434,6 +435,7 @@ Snippet resolution order is deterministic:
 | `staff_title` | string | no | `Faculty & Staff` | Secondary carousel title |
 | `role_profiles` | array | no | `["Academic Admin"]` | Role profiles used to resolve the primary carousel from `Designation.default_role_profile` |
 | `roles` | array | no | — | Manual designation override for the primary carousel |
+| `role_scopes` | array | no | `[]` | Optional per-role school-scope overrides for the primary carousel. Each item targets either a `role` (Designation name) or `role_profile`, uses `school_scope = "current"` or `"current_and_descendants"`, and may set `descendant_depth` to stop at direct children or another explicit depth. |
 | `limit` | integer | no | `4` | Max people to show in the primary carousel |
 | `staff_limit` | integer | no | `8` | Max people to show in the staff carousel |
 | `show_staff_carousel` | boolean | no | `true` | Hide/show the secondary staff carousel |
@@ -441,11 +443,22 @@ Snippet resolution order is deterministic:
 ### Example
 ```json
 {
-  "title": "Leadership & Administration",
-  "description": "Meet the academic leaders, faculty, and staff who shape the character of our school.",
-  "leadership_title": "Academic Leadership",
+  "title": "Teachers & Counselors",
+  "description": "Meet the teachers and counselors shaping learning each day.",
+  "leadership_title": "Academic Staff",
   "staff_title": "Faculty & Staff",
-  "role_profiles": ["Academic Admin"],
+  "roles": ["Teacher", "Counselor"],
+  "role_scopes": [
+    {
+      "role": "Teacher",
+      "school_scope": "current_and_descendants",
+      "descendant_depth": 1
+    },
+    {
+      "role": "Counselor",
+      "school_scope": "current"
+    }
+  ],
   "limit": 6,
   "staff_limit": 12,
   "show_staff_carousel": true

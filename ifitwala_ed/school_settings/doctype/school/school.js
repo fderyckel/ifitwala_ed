@@ -5,6 +5,21 @@
 
 frappe.provide("ifitwala_ed.school");
 
+const PARENT_CURRENT_SETTINGS_FIELDS = [
+	{
+		fieldname: "current_academic_year",
+		label: __("Current Academic Year"),
+	},
+	{
+		fieldname: "current_term",
+		label: __("Current Term"),
+	},
+	{
+		fieldname: "current_school_calendar",
+		label: __("Current School Calendar"),
+	},
+];
+
 /**
  * UX guardrails (NOT the invariant):
  * The server controller enforces:
@@ -83,6 +98,126 @@ function _ensure_saved_school(frm, actionLabel) {
 		return false;
 	}
 	return true;
+}
+
+function _has_value(value) {
+	return value !== undefined && value !== null && String(value).trim() !== "";
+}
+
+function _clear_parent_current_settings_decline(frm) {
+	frm.__declined_parent_current_settings_prompt = false;
+}
+
+function _get_missing_parent_current_settings_preview(frm) {
+	if (!frm.doc.parent_school) {
+		return Promise.resolve(null);
+	}
+
+	const missingFields = PARENT_CURRENT_SETTINGS_FIELDS.filter(
+		({ fieldname }) => !_has_value(frm.doc[fieldname])
+	);
+	if (!missingFields.length) {
+		return Promise.resolve(null);
+	}
+
+	return frappe.db
+		.get_value(
+			"School",
+			frm.doc.parent_school,
+			["school_name", ...PARENT_CURRENT_SETTINGS_FIELDS.map(({ fieldname }) => fieldname)]
+		)
+		.then((response) => {
+			const parent = response?.message || {};
+			const updates = {};
+			const items = [];
+
+			missingFields.forEach(({ fieldname, label }) => {
+				const value = parent[fieldname];
+				if (!_has_value(value)) return;
+
+				updates[fieldname] = value;
+				items.push({ label, value });
+			});
+
+			if (!items.length) {
+				return null;
+			}
+
+			return {
+				parentSchoolLabel: parent.school_name || frm.doc.parent_school,
+				childSchoolLabel: frm.doc.school_name || frm.doc.name || __("this school"),
+				updates,
+				items,
+			};
+		});
+}
+
+function _build_parent_current_settings_message(preview) {
+	const intro = __(
+		'Parent School "{0}" already has current academic settings. Do you want these settings to also apply to child School "{1}"?',
+		[preview.parentSchoolLabel, preview.childSchoolLabel]
+	);
+	const lines = preview.items
+		.map(
+			(item) =>
+				`• <strong>${frappe.utils.escape_html(item.label)}</strong>: ${frappe.utils.escape_html(item.value)}`
+		)
+		.join("<br>");
+	const outro = __(
+		"Choose Yes to fill the empty fields on the child school. Choose No to leave the child school unchanged."
+	);
+
+	return `${intro}<br><br>${lines}<br><br>${outro}`;
+}
+
+function _resume_save_after_parent_current_settings_prompt(frm, { rememberDecline = false } = {}) {
+	frm.__parent_current_settings_prompt_open = false;
+	frm.__resume_after_parent_current_settings_prompt = true;
+	if (rememberDecline) {
+		frm.__declined_parent_current_settings_prompt = true;
+	}
+	frm.save();
+}
+
+function _prompt_parent_current_settings_copy(frm) {
+	if (
+		frm.__parent_current_settings_prompt_open
+		|| frm.__resume_after_parent_current_settings_prompt
+		|| frm.__declined_parent_current_settings_prompt
+	) {
+		return;
+	}
+
+	frappe.validated = false;
+	frm.__parent_current_settings_prompt_open = true;
+
+	_get_missing_parent_current_settings_preview(frm)
+		.then((preview) => {
+			if (!preview) {
+				_resume_save_after_parent_current_settings_prompt(frm, { rememberDecline: true });
+				return;
+			}
+
+			frappe.confirm(
+				_build_parent_current_settings_message(preview),
+				() => {
+					frm.set_value(preview.updates).then(() => {
+						_resume_save_after_parent_current_settings_prompt(frm);
+					});
+				},
+				() => {
+					_resume_save_after_parent_current_settings_prompt(frm, { rememberDecline: true });
+				}
+			);
+		})
+		.catch(() => {
+			frappe.msgprint(
+				__(
+					"Could not check parent school current settings. The school was not updated automatically."
+				)
+			);
+			_resume_save_after_parent_current_settings_prompt(frm, { rememberDecline: true });
+		});
 }
 
 function getOrganizationMediaDialog() {
@@ -291,9 +426,24 @@ frappe.ui.form.on("School", {
 		frm._pre_save_is_published = frm._saved_is_published;
 	},
 
+	validate: function (frm) {
+		if (frm.__resume_after_parent_current_settings_prompt) {
+			frm.__resume_after_parent_current_settings_prompt = false;
+			return;
+		}
+
+		if (!frm.doc.parent_school) {
+			return;
+		}
+
+		_prompt_parent_current_settings_copy(frm);
+	},
+
 	after_save: function (frm) {
 		const was_published = Boolean(parseInt(frm._pre_save_is_published || 0, 10));
 		const now_published = _is_published(frm);
+		frm.__parent_current_settings_prompt_open = false;
+		frm.__resume_after_parent_current_settings_prompt = false;
 		if (!was_published && now_published) {
 			_open_school_website_page(frm);
 		}
@@ -316,6 +466,7 @@ frappe.ui.form.on("School", {
 	},
 
 	organization: function (frm) {
+		_clear_parent_current_settings_decline(frm);
 		// If organization changes, the current parent may now be invalid under the "same org" rule.
 		// Clear parent early to avoid predictable server-side validation errors.
 		if (frm.doc.parent_school) {
@@ -324,6 +475,7 @@ frappe.ui.form.on("School", {
 	},
 
 	parent_school: function (frm) {
+		_clear_parent_current_settings_decline(frm);
 		// Keep existing behavior
 		var bool = frm.doc.parent_school ? true : false;
 		frm.set_value("existing_school", bool ? frm.doc.parent_school : "");
@@ -332,6 +484,18 @@ frappe.ui.form.on("School", {
 		if (frm.doc.parent_school) {
 			ensure_parent_is_valid(frm);
 		}
+	},
+
+	current_academic_year: function (frm) {
+		_clear_parent_current_settings_decline(frm);
+	},
+
+	current_term: function (frm) {
+		_clear_parent_current_settings_decline(frm);
+	},
+
+	current_school_calendar: function (frm) {
+		_clear_parent_current_settings_decline(frm);
 	},
 });
 

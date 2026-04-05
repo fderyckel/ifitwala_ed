@@ -287,7 +287,21 @@ doc_events = {
         ],
         "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions",
     },
-    "Employee": {"after_save": "ifitwala_ed.hr.employee_access.sync_user_access_from_employee"},
+    "Employee": {
+        "after_save": [
+            "ifitwala_ed.hr.employee_access.sync_user_access_from_employee",
+            "ifitwala_ed.website.providers.leadership.invalidate_leadership_cache",
+        ],
+        "on_trash": "ifitwala_ed.website.providers.leadership.invalidate_leadership_cache",
+    },
+    "Designation": {
+        "after_save": "ifitwala_ed.website.providers.leadership.invalidate_leadership_cache",
+        "on_trash": "ifitwala_ed.website.providers.leadership.invalidate_leadership_cache",
+    },
+    "School": {
+        "after_save": "ifitwala_ed.website.providers.leadership.invalidate_leadership_cache",
+        "on_trash": "ifitwala_ed.website.providers.leadership.invalidate_leadership_cache",
+    },
     "File": {
         "validate": "ifitwala_ed.utilities.file_management.validate_admissions_attachment",
         "after_insert": "ifitwala_ed.utilities.file_dispatcher.handle_file_after_insert",

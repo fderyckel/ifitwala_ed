@@ -140,6 +140,56 @@ def get_descendant_schools(user_school: str | None = None):
     return get_descendants_inclusive("School", user_school, cache_ttl=CACHE_TTL)
 
 
+def get_descendant_school_scope(user_school: str | None, *, max_depth: int | None = None) -> list[str]:
+    """
+    Return user_school + descendants, optionally bounded to N child levels.
+
+    `max_depth=None` means the full descendant subtree.
+    `max_depth=1` means self + direct children only.
+    """
+    if not user_school:
+        return []
+
+    subtree = [school for school in (get_descendant_schools(user_school) or []) if school]
+    if not subtree:
+        return [user_school]
+
+    if max_depth is None:
+        return subtree
+
+    depth_limit = max(int(max_depth), 0)
+    if depth_limit == 0:
+        return [user_school]
+
+    rows = frappe.get_all(
+        "School",
+        filters={"name": ["in", subtree]},
+        fields=["name", "parent_school"],
+        limit=max(len(subtree), 1),
+    )
+
+    children_by_parent: dict[str, list[str]] = {}
+    for row in rows:
+        parent_school = (row.get("parent_school") or "").strip()
+        school_name = (row.get("name") or "").strip()
+        if not parent_school or not school_name:
+            continue
+        children_by_parent.setdefault(parent_school, []).append(school_name)
+
+    allowed = {user_school}
+    frontier = [user_school]
+    for _ in range(depth_limit):
+        next_frontier: list[str] = []
+        for school_name in frontier:
+            next_frontier.extend(children_by_parent.get(school_name, []))
+        if not next_frontier:
+            break
+        allowed.update(next_frontier)
+        frontier = next_frontier
+
+    return [school for school in subtree if school in allowed]
+
+
 # Used to get a list of schools that are ancestors of a given school
 # Used in Term.
 def get_ancestor_schools(user_school):

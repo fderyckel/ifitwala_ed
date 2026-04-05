@@ -3,7 +3,7 @@ title: "School: Academic Scope and Hierarchy Node"
 slug: school
 category: School Settings
 doc_order: 1
-version: "1.3.0"
+version: "1.4.0"
 last_change_date: "2026-04-05"
 summary: "Define schools as NestedSet academic scope records anchored to an Organization, with hierarchy integrity, governed public media, website publication bootstrap, and explicit DocType permissions."
 seo_title: "School: Academic Scope and Hierarchy Node"
@@ -25,6 +25,7 @@ seo_description: "Define schools as NestedSet academic scope records anchored to
 - Parent and child schools must belong to the same organization.
 - A school with child schools cannot change `organization`.
 - New child schools inherit attendance thresholds from the selected parent at create time.
+- When a child school is saved from Desk with empty `current_academic_year`, `current_term`, or `current_school_calendar` fields and the parent school has values, Desk prompts the user to copy the parent's values into that child school explicitly.
 - Attendance thresholds must stay within `0..100`, and warning must be greater than or equal to critical.
 - Publishing requires a usable `website_slug`; when blank, save generates the next available slug automatically.
 - Existing `School Website Page` rows are kept in sync with school publication state.
@@ -100,7 +101,7 @@ Test refs:
 | Attendance defaults and thresholds | `School.validate()` owns parent-threshold inheritance for new child schools and numeric threshold validation | `school_settings/doctype/school/school.py` | None specific in current repo |
 | Website publication bootstrap | `School.after_save()` and website bootstrap utilities own slug generation, publication sync, starter page creation, and SEO profile linking | `school_settings/doctype/school/school.py`, `website/bootstrap.py` | `school_settings/doctype/school/test_school.py` |
 | Governed public media | `School.validate_governed_public_media()` owns logo/gallery enforcement; governed upload and media utilities own file routing and visibility resolution | `school_settings/doctype/school/school.py`, `school_settings/doctype/school/school.js`, `utilities/governed_uploads.py`, `utilities/organization_media.py` | `utilities/test_organization_media.py` |
-| Desk UX guardrails | `school.js` helps users avoid invalid parent selection and routes uploads/buttons into governed flows; server remains authoritative | `school_settings/doctype/school/school.js` | None specific in current repo |
+| Desk UX guardrails | `school.js` helps users avoid invalid parent selection, offers explicit parent-to-child current-settings copy for missing child values, and routes uploads/buttons into governed flows; server remains authoritative | `school_settings/doctype/school/school.js` | None specific in current repo |
 | Background work | `enqueue_replace_abbr()` defers expensive dependent renames to the `long` queue; `replace_abbr()` only renames explicit school-scoped doctypes | `school_settings/doctype/school/school.py` | `school_settings/doctype/school/test_school.py` |
 
 ### Permission Matrix

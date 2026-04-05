@@ -345,6 +345,24 @@ WEBSITE_BLOCK_DEFINITIONS = [
                 "staff_title": {"type": "string"},
                 "roles": {"type": "array", "items": {"type": "string"}},
                 "role_profiles": {"type": "array", "items": {"type": "string"}},
+                "role_scopes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "role": {"type": "string"},
+                            "role_profile": {"type": "string"},
+                            "school_scope": {
+                                "type": "string",
+                                "enum": ["current", "current_and_descendants"],
+                            },
+                            "descendant_depth": {"type": "integer", "minimum": 1},
+                        },
+                        "required": ["school_scope"],
+                        "oneOf": [{"required": ["role"]}, {"required": ["role_profile"]}],
+                        "additionalProperties": False,
+                    },
+                },
                 "limit": {"type": "integer", "minimum": 1},
                 "staff_limit": {"type": "integer", "minimum": 1},
                 "show_staff_carousel": {"type": "boolean"},

@@ -1,14 +1,23 @@
-{% macro smart_image(hero=None, medium=None, card=None, thumb=None, original=None, alt='', class='', fallback='card') %}
-  {# initial paint: card or (if no card) original #}
-  {% set src = card or original %}
+{% macro smart_image(hero=None, medium=None, card=None, thumb=None, original=None, alt='', class='', fallback='card', sizes='') %}
+  {% if sizes and (thumb or card or medium) %}
+    {% set src = thumb or card or medium or original %}
+  {% else %}
+    {% set src = card or original %}
+  {% endif %}
 
   <img
     src="{{ src }}"
     alt="{{ alt }}"
     class="{{ class }}"
     loading="{{ 'eager' if fallback=='carousel' else 'lazy' }}"
+    decoding="async"
     fallback="{{ fallback }}"
+    {% if sizes and (thumb or card or medium) %}
+      srcset="{% if thumb %}{{ thumb }} 160w{% endif %}{% if thumb and card %}, {% endif %}{% if card %}{{ card }} 400w{% endif %}{% if (thumb or card) and medium %}, {% endif %}{% if medium %}{{ medium }} 960w{% endif %}"
+      sizes="{{ sizes }}"
+    {% endif %}
     {# expose just the variants we need for JS #}
+    {% if thumb    %} data-src-thumb="{{ thumb }}"{% endif %}
     {% if card     %} data-src-card="{{ card }}"{% endif %}
     {% if medium   %} data-src-medium="{{ medium }}"{% endif %}
     {% if hero     %} data-src-hero="{{ hero }}"{% endif %}

@@ -276,6 +276,13 @@ class TestSchoolWebsitePage(FrappeTestCase):
                             "leadership_title": "Academic Leadership",
                             "staff_title": "Faculty & Staff",
                             "role_profiles": ["Academic Admin"],
+                            "role_scopes": [
+                                {
+                                    "role_profile": "Academic Admin",
+                                    "school_scope": "current_and_descendants",
+                                    "descendant_depth": 1,
+                                }
+                            ],
                             "limit": 4,
                             "staff_limit": 8,
                             "show_staff_carousel": True,

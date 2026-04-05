@@ -6,6 +6,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.model.naming import make_autoname
 from frappe.utils import get_datetime, now_datetime
 from frappe.utils.nestedset import get_descendants_of
 
@@ -43,6 +44,7 @@ TARGET_MODE_ALLOWED_RECIPIENTS = {
     "Team": {"to_staff"},
     "Student Group": {"to_staff", "to_students", "to_guardians"},
 }
+ORG_COMMUNICATION_NAME_PATTERN = "ORG-COMM-.YY.-.MM.-.#####"
 
 
 def _user_has_any_role(user: str, roles: set[str]) -> bool:
@@ -72,6 +74,9 @@ def _get_enabled_recipient_fields(row) -> set[str]:
 
 
 class OrgCommunication(Document):
+    def autoname(self):
+        self.name = make_autoname(ORG_COMMUNICATION_NAME_PATTERN)
+
     def validate(self):
         """Main validation pipeline.
 
