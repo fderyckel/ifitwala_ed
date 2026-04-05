@@ -13,14 +13,14 @@
   "existing_school",
   "is_group",
   "abbr",
-  "school_logo",
   "school_logo_file",
-  "address__html",
   "organization",
   "column_break_zyeu",
   "parent_school",
   "change_abbr",
+  "address__html",
   "contact_html",
+  "school_logo",
   "school_settings_section",
   "default_follow_up_due_in_days",
   "require_health_profile_for_approval",
@@ -33,6 +33,9 @@
   "current_school_calendar",
   "calendar_colors_section",
   "meeting_color",
+  "portal_calendar_end_time",
+  "portal_calendar_start_time",
+  "column_break_gyme",
   "weekend_color",
   "break_color",
   "attendance_thresholds_section",
@@ -43,9 +46,9 @@
   "todo_color",
   "mission_vision_values_section",
   "school_philosophy",
-  "lft",
-  "rgt",
-  "old_parent",
+  "school_mission",
+  "school_vision",
+  "school_values",
   "dashboard_tab",
   "website_tab",
   "admissions_cta_section",
@@ -63,8 +66,9 @@
   "web_page_content_section",
   "about_snippet",
   "more_info",
-  "portal_calendar_start_time",
-  "portal_calendar_end_time"
+  "lft",
+  "rgt",
+  "old_parent"
  ],
  "fields": [
   {
@@ -141,7 +145,7 @@
   {
    "collapsible": 1,
    "fieldname": "mission_vision_values_section",
-   "fieldtype": "Section Break",
+   "fieldtype": "Tab Break",
    "label": "Mission Vision Values"
   },
   {
@@ -411,6 +415,25 @@
    "fieldname": "label_cta_roi",
    "fieldtype": "Data",
    "label": "Label CTA ROI"
+  },
+  {
+   "fieldname": "column_break_gyme",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "school_mission",
+   "fieldtype": "Text Editor",
+   "label": "School Mission"
+  },
+  {
+   "fieldname": "school_vision",
+   "fieldtype": "Text Editor",
+   "label": "School Vision"
+  },
+  {
+   "fieldname": "school_values",
+   "fieldtype": "Text Editor",
+   "label": "School Values"
   }
  ],
  "grid_page_length": 50,
@@ -418,7 +441,11 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
+<<<<<<< Updated upstream
  "modified": "2026-04-05 17:17:55",
+=======
+ "modified": "2026-04-05 16:30:23.355980",
+>>>>>>> Stashed changes
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",

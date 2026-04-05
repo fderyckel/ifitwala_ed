@@ -18,6 +18,7 @@
   {
    "fieldname": "meta_title",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Meta Title"
   },
   {
@@ -43,6 +44,7 @@
   {
    "fieldname": "canonical_url",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Canonical URL"
   },
   {
@@ -55,10 +57,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-11 08:58:14.057803",
+ "modified": "2026-04-05 16:38:56.254000",
  "modified_by": "Administrator",
  "module": "School Site",
  "name": "Website SEO Profile",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {
@@ -124,5 +127,6 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "meta_title"
 }
