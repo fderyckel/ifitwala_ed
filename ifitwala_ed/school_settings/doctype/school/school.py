@@ -114,28 +114,11 @@ class School(NestedSet):
 
     def on_update(self):
         NestedSet.on_update(self)
-
-    def after_save(self):
-        publication_changed = self.has_value_changed("is_published") or self.has_value_changed("website_slug")
-        has_pages = bool(frappe.db.exists("School Website Page", {"school": self.name}))
-        if publication_changed:
-            self.sync_website_page_publication()
-        should_publish = int(self.is_published or 0) == 1
-        organization_default_school = (
-            frappe.db.get_value("Organization", self.organization, "default_website_school")
-            if self.organization
-            else None
-        )
-        if should_publish and (publication_changed or not has_pages or not (organization_default_school or "").strip()):
-            from ifitwala_ed.website.bootstrap import ensure_default_school_website
-
-            ensure_default_school_website(
-                school_name=self.name,
-                set_default_organization=True,
-            )
+        self._sync_website_publication_assets()
 
     def after_insert(self):
         ensure_default_policy_for_school(self.name, ignore_permissions=True)
+        self._sync_website_publication_assets()
 
     def on_trash(self):
         NestedSet.validate_if_child_exists(self)
@@ -325,8 +308,32 @@ class School(NestedSet):
             frappe.db.set_value(
                 "School Website Page",
                 name,
-                {"status": status, "is_published": is_published},
+                {"workflow_state": status, "is_published": is_published},
                 update_modified=False,
+            )
+
+    def _sync_website_publication_assets(self):
+        has_value_changed = getattr(self, "has_value_changed", None)
+        publication_changed = bool(
+            callable(has_value_changed) and (has_value_changed("is_published") or has_value_changed("website_slug"))
+        )
+        has_pages = bool(frappe.db.exists("School Website Page", {"school": self.name}))
+
+        if publication_changed:
+            self.sync_website_page_publication()
+
+        should_publish = int(self.is_published or 0) == 1
+        organization_default_school = (
+            frappe.db.get_value("Organization", self.organization, "default_website_school")
+            if self.organization
+            else None
+        )
+        if should_publish and (publication_changed or not has_pages or not (organization_default_school or "").strip()):
+            from ifitwala_ed.website.bootstrap import ensure_default_school_website
+
+            ensure_default_school_website(
+                school_name=self.name,
+                set_default_organization=True,
             )
 
 

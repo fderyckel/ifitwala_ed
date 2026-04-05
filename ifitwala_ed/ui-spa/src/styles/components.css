@@ -82,16 +82,18 @@
 		border-right: 0;
 	}
 
-	.if-overlay__panel--drawer-sm {
-		max-width: 28rem;
-	}
+	@media (min-width: 1024px) {
+		.if-overlay--drawer .if-overlay__panel--drawer-sm {
+			max-width: 28rem;
+		}
 
-	.if-overlay__panel--drawer-md {
-		max-width: 36rem;
-	}
+		.if-overlay--drawer .if-overlay__panel--drawer-md {
+			max-width: 36rem;
+		}
 
-	.if-overlay__panel--drawer-lg {
-		max-width: 42rem;
+		.if-overlay--drawer .if-overlay__panel--drawer-lg {
+			max-width: 42rem;
+		}
 	}
 
 	.if-overlay--drawer .if-overlay__panel-from {

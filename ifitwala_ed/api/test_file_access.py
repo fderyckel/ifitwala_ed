@@ -270,7 +270,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
             patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="student@example.com"),
             patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="COURSE-1"),
-            patch("ifitwala_ed.curriculum.materials.user_can_read_course_material", return_value=True),
+            patch("ifitwala_ed.curriculum.materials.user_can_read_supporting_material", return_value=True),
             patch("ifitwala_ed.api.file_access._read_file_bytes", return_value=b"material-bytes"),
         ):
             frappe.local.response = {}
@@ -298,7 +298,7 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             patch("ifitwala_ed.api.file_access._resolve_any_file_row", return_value=file_row),
             patch("ifitwala_ed.api.file_access._require_authenticated_user", return_value="student@example.com"),
             patch("ifitwala_ed.api.file_access.frappe.db.get_value", return_value="COURSE-1"),
-            patch("ifitwala_ed.curriculum.materials.user_can_read_course_material", return_value=False),
+            patch("ifitwala_ed.curriculum.materials.user_can_read_supporting_material", return_value=False),
         ):
             with self.assertRaises(frappe.PermissionError):
                 download_academic_file(
@@ -313,10 +313,16 @@ class TestFileAccessUrlContracts(FrappeTestCase):
             file="/private/files/policy.pdf",
             external_url=None,
         )
-        comm_doc = frappe._dict(
-            name="COMM-0001",
-            get=lambda fieldname: [attachment_row] if fieldname == "attachments" else [],
-        )
+
+        class _CommDoc:
+            name = "COMM-0001"
+
+            def get(self, fieldname):
+                if fieldname == "attachments":
+                    return [attachment_row]
+                return []
+
+        comm_doc = _CommDoc()
 
         def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False):
             if doctype == "Employee":

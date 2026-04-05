@@ -50,7 +50,7 @@ class TestInstructor(FrappeTestCase):
 
     def test_instructor_employee_query_requires_instructor_access(self):
         with (
-            patch("ifitwala_ed.schedule.doctype.instructor.instructor.frappe.session.user", "aa@example.com"),
+            patch.object(frappe, "session", frappe._dict(user="aa@example.com")),
             patch("ifitwala_ed.schedule.doctype.instructor.instructor.frappe.has_permission", return_value=False),
         ):
             rows = instructor_employee_query("Employee", "", "name", 0, 20, {})
@@ -66,7 +66,7 @@ class TestInstructor(FrappeTestCase):
             return [["EMP-0001", "Ada Lovelace"]]
 
         with (
-            patch("ifitwala_ed.schedule.doctype.instructor.instructor.frappe.session.user", "aa@example.com"),
+            patch.object(frappe, "session", frappe._dict(user="aa@example.com")),
             patch(
                 "ifitwala_ed.schedule.doctype.instructor.instructor.frappe.has_permission",
                 side_effect=lambda doctype, ptype=None, user=None: ptype in {"create", "write"},
@@ -113,7 +113,7 @@ class TestInstructor(FrappeTestCase):
             return []
 
         with (
-            patch("ifitwala_ed.schedule.doctype.instructor.instructor.frappe.session.user", "aa@example.com"),
+            patch.object(frappe, "session", frappe._dict(user="aa@example.com")),
             patch(
                 "ifitwala_ed.schedule.doctype.instructor.instructor.frappe.has_permission",
                 side_effect=lambda doctype, ptype=None, user=None: ptype in {"create", "write"},

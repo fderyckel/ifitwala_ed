@@ -225,6 +225,7 @@ def _classify_file_doc(
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Governed Image Derivative Failed")
 
+    file_doc.reload()
     return file_doc
 
 

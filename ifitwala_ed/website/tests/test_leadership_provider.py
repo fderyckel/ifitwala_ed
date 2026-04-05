@@ -61,8 +61,8 @@ class TestLeadershipProvider(FrappeTestCase):
         )
 
         with patch(
-            "ifitwala_ed.website.providers.leadership.build_employee_image_variants",
-            return_value={"original": None, "card": None},
+            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             payload = provider.get_context(
                 school=frappe.get_doc("School", school.name),
@@ -114,8 +114,8 @@ class TestLeadershipProvider(FrappeTestCase):
         _make_employee(school=school.name, organization=organization.name, designation=teacher.name, first_name="Cleo")
 
         with patch(
-            "ifitwala_ed.website.providers.leadership.build_employee_image_variants",
-            return_value={"original": None, "card": None},
+            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             payload = provider.get_context(
                 school=frappe.get_doc("School", school.name),
@@ -211,7 +211,7 @@ class TestLeadershipProvider(FrappeTestCase):
         )
 
         with patch(
-            "ifitwala_ed.website.providers.leadership.build_employee_image_variants",
+            "ifitwala_ed.website.public_people.build_employee_image_variants",
             return_value={"original": None, "card": None, "medium": None, "thumb": None},
         ):
             payload = provider.get_context(
@@ -247,6 +247,55 @@ class TestLeadershipProvider(FrappeTestCase):
             ["Erin Leadership"],
         )
 
+    def test_leadership_uses_published_employee_website_profile_overrides(self):
+        organization = make_organization(prefix="Leadership Public Profile Org")
+        school = make_school(organization.name, prefix="Leadership Public Profile School")
+
+        _ensure_role("Academic Admin")
+        principal = _make_designation(
+            organization=organization.name,
+            school=school.name,
+            title="Principal",
+            role_profile="Academic Admin",
+        )
+        employee = _make_employee(
+            school=school.name,
+            organization=organization.name,
+            designation=principal.name,
+            first_name="Amina",
+        )
+        frappe.get_doc(
+            {
+                "doctype": "Employee Website Profile",
+                "school": school.name,
+                "employee": employee.name,
+                "workflow_state": "Published",
+                "display_name_override": "Amina Public",
+                "public_title_override": "Head of School",
+                "public_bio": "Guides the academic vision.",
+                "sort_order": 1,
+            }
+        ).insert()
+
+        with patch(
+            "ifitwala_ed.website.public_people.build_employee_image_variants",
+            return_value={"original": None, "card": None, "medium": None, "thumb": None},
+        ):
+            payload = provider.get_context(
+                school=frappe.get_doc("School", school.name),
+                page=frappe._dict(),
+                block_props={
+                    "role_profiles": ["Academic Admin"],
+                    "limit": 4,
+                    "show_staff_carousel": False,
+                },
+            )
+
+        person = payload["data"]["sections"][0]["people"][0]
+        self.assertEqual(person["name"], "Amina Public")
+        self.assertEqual(person["title"], "Head of School")
+        self.assertEqual(person["bio"], "Guides the academic vision.")
+
 
 def _ensure_role(role_name: str):
     if frappe.db.exists("Role", role_name):
@@ -276,6 +325,11 @@ def _make_employee(
     first_name: str,
     show_on_website: int = 1,
 ):
+    full_name = f"{first_name} Leadership"
+    for existing in frappe.get_all("Employee", filters={"employee_full_name": full_name}, pluck="name"):
+        if frappe.db.exists("Employee", existing):
+            frappe.delete_doc("Employee", existing, force=1, ignore_permissions=True)
+
     employee = frappe.get_doc(
         {
             "doctype": "Employee",

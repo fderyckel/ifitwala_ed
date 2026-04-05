@@ -39,10 +39,10 @@
 			</header>
 
 			<!-- Chips row -->
-			<div class="mt-4 space-y-3">
+			<div class="schedule-calendar__filters mt-4">
 				<!-- Weekend / Full-day toggles -->
 				<div
-					class="-mx-1 flex items-center gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
+					class="schedule-calendar__filter-group -mx-1 flex items-center gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
 				>
 					<button
 						class="if-pill type-button-label"
@@ -64,7 +64,7 @@
 
 				<!-- Source chips -->
 				<div
-					class="-mx-1 flex items-center gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
+					class="schedule-calendar__filter-group -mx-1 flex items-center gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
 				>
 					<button
 						v-for="chip in sourceChips"
@@ -630,3 +630,25 @@ onBeforeUnmount(() => {
 	if (disposeCalendarInvalidate) disposeCalendarInvalidate();
 });
 </script>
+
+<style scoped>
+.schedule-calendar__filters {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+	.schedule-calendar__filters {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem 1rem;
+	}
+
+	.schedule-calendar__filter-group {
+		flex: 1 1 auto;
+	}
+}
+</style>

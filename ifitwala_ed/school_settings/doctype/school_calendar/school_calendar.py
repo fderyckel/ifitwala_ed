@@ -342,7 +342,7 @@ def get_events(start, end, filters=None):
     if end:
         event_filters.append(["School Calendar Holidays", "holiday_date", "<=", getdate(end)])
 
-    events = frappe.get_list(
+    events = frappe.get_all(
         "School Calendar Holidays",
         fields=[
             "name",

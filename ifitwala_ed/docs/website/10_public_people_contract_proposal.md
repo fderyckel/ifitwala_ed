@@ -3,6 +3,10 @@
 
 This note is a non-authoritative proposal.
 
+Implemented runtime contract now lives in:
+
+- `ifitwala_ed/docs/website/10_public_people_contract.md`
+
 Current canonical runtime remains defined by:
 
 - `ifitwala_ed/docs/website/01_architecture_notes.md`

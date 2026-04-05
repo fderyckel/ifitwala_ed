@@ -290,17 +290,17 @@ doc_events = {
     "Employee": {
         "after_save": [
             "ifitwala_ed.hr.employee_access.sync_user_access_from_employee",
-            "ifitwala_ed.website.providers.leadership.invalidate_leadership_cache",
+            "ifitwala_ed.website.public_people.invalidate_public_people_cache",
         ],
-        "on_trash": "ifitwala_ed.website.providers.leadership.invalidate_leadership_cache",
+        "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
     },
     "Designation": {
-        "after_save": "ifitwala_ed.website.providers.leadership.invalidate_leadership_cache",
-        "on_trash": "ifitwala_ed.website.providers.leadership.invalidate_leadership_cache",
+        "after_save": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+        "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
     },
     "School": {
-        "after_save": "ifitwala_ed.website.providers.leadership.invalidate_leadership_cache",
-        "on_trash": "ifitwala_ed.website.providers.leadership.invalidate_leadership_cache",
+        "after_save": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+        "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
     },
     "File": {
         "validate": "ifitwala_ed.utilities.file_management.validate_admissions_attachment",

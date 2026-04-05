@@ -7,7 +7,7 @@
 		     - Lightweight “welcome” + one high-signal shortcut (Morning Brief)
 		     - No data-heavy calls here (header is cached server-side)
 		   ============================================================ -->
-		<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+		<header class="staff-home__header">
 			<div>
 				<h1 class="type-h1">
 					{{ greeting }},
@@ -40,9 +40,9 @@
 		     - Left: “what needs attention” (Focus)
 		     - Right: “what can I do quickly” (Quick Actions)
 		   ============================================================ -->
-		<section class="grid grid-cols-1 gap-6 md:grid-cols-12 md:items-start xl:gap-10">
+		<section class="staff-home__primary-grid">
 			<!-- LEFT COL: TASKS / FOCUS -------------------------------->
-			<div class="min-w-0 space-y-4 md:col-span-7 lg:col-span-8">
+			<div class="staff-home__focus-column min-w-0 space-y-4">
 				<!-- Focus is a read-only attention surface, not a task manager -->
 				<FocusListCard
 					:items="focusItems"
@@ -56,7 +56,7 @@
 			</div>
 
 			<!-- RIGHT COL: QUICK ACTIONS ------------------------------->
-			<div class="min-w-0 space-y-4 md:col-span-5 lg:col-span-4 xl:sticky xl:top-6">
+			<div class="staff-home__actions-column min-w-0 space-y-4 xl:sticky xl:top-6">
 				<h3 class="px-1 type-h3 text-canopy">Quick Actions</h3>
 
 				<div data-testid="staff-home-quick-actions" class="grid min-w-0 gap-3">
@@ -180,168 +180,87 @@
 			<div class="rounded-2xl border border-[rgb(var(--sand-rgb)/0.35)]">
 				<div class="border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 pb-6 pt-7">
 					<div class="space-y-2">
-						<p class="type-overline text-slate-token/70">Explore</p>
-						<h3 class="type-h2">Insights & Key Destinations</h3>
+						<p class="type-overline text-slate-token/70">Analytics</p>
+						<h3 class="type-h2">Insights & Dashboards</h3>
 						<p class="max-w-2xl type-body text-slate-token/80">
-							Open the most-used planning, records, and announcement surfaces first, then browse
-							analytics by category when you need the wider picture.
+							Jump straight into the dashboards you need. Start with the key destinations, or
+							browse by category when you are exploring trends.
 						</p>
 					</div>
 				</div>
 
 				<div
 					data-testid="staff-home-explore-links"
-					class="grid grid-cols-1 gap-4 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6 lg:grid-cols-12"
+					class="staff-home__analytics-quick-links border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6"
 				>
-					<div class="space-y-3 lg:col-span-7">
-						<template v-for="link in visiblePrimaryExploreLinks" :key="link.label">
-							<button
-								v-if="link.kind === 'action'"
-								type="button"
-								class="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
-								@click="link.action?.()"
+					<template v-for="link in visibleExploreLinks" :key="link.label">
+						<button
+							v-if="link.kind === 'action'"
+							type="button"
+							class="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
+							@click="link.action?.()"
+						>
+							<div
+								class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
 							>
-								<div
-									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
-								>
-									<FeatherIcon :name="link.icon" class="h-5 w-5" />
-								</div>
+								<FeatherIcon :name="link.icon" class="h-5 w-5" />
+							</div>
 
-								<div class="min-w-0 flex-1">
-									<p
-										class="type-body-strong text-ink transition-colors group-hover:text-jacaranda"
-									>
-										{{ link.label }}
-									</p>
-									<p class="truncate type-caption text-slate-token/70">
-										{{ link.caption }}
-									</p>
-								</div>
+							<div class="min-w-0 flex-1">
+								<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+									{{ link.label }}
+								</p>
+								<p class="truncate type-caption text-slate-token/70">
+									{{ link.caption }}
+								</p>
+							</div>
 
-								<span
-									v-if="link.badge"
-									class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
-								>
-									{{ link.badge }}
-								</span>
-
-								<FeatherIcon
-									name="chevron-right"
-									class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
-								/>
-							</button>
-
-							<RouterLink
-								v-else
-								:to="link.to"
-								class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
+							<span
+								v-if="link.badge"
+								class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
 							>
-								<div
-									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
-								>
-									<FeatherIcon :name="link.icon" class="h-5 w-5" />
-								</div>
+								{{ link.badge }}
+							</span>
 
-								<div class="min-w-0 flex-1">
-									<p
-										class="type-body-strong text-ink transition-colors group-hover:text-jacaranda"
-									>
-										{{ link.label }}
-									</p>
-									<p class="truncate type-caption text-slate-token/70">
-										{{ link.caption }}
-									</p>
-								</div>
+							<FeatherIcon
+								name="chevron-right"
+								class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
+							/>
+						</button>
 
-								<span
-									v-if="link.badge"
-									class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
-								>
-									{{ link.badge }}
-								</span>
-
-								<FeatherIcon
-									name="chevron-right"
-									class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
-								/>
-							</RouterLink>
-						</template>
-					</div>
-
-					<div class="space-y-3 lg:col-span-5">
-						<template v-for="link in visibleSecondaryExploreLinks" :key="link.label">
-							<button
-								v-if="link.kind === 'action'"
-								type="button"
-								class="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
-								@click="link.action?.()"
+						<RouterLink
+							v-else
+							:to="link.to"
+							class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
+						>
+							<div
+								class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
 							>
-								<div
-									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
-								>
-									<FeatherIcon :name="link.icon" class="h-5 w-5" />
-								</div>
+								<FeatherIcon :name="link.icon" class="h-5 w-5" />
+							</div>
 
-								<div class="min-w-0 flex-1">
-									<p
-										class="type-body-strong text-ink transition-colors group-hover:text-jacaranda"
-									>
-										{{ link.label }}
-									</p>
-									<p class="truncate type-caption text-slate-token/70">
-										{{ link.caption }}
-									</p>
-								</div>
+							<div class="min-w-0 flex-1">
+								<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
+									{{ link.label }}
+								</p>
+								<p class="truncate type-caption text-slate-token/70">
+									{{ link.caption }}
+								</p>
+							</div>
 
-								<span
-									v-if="link.badge"
-									class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
-								>
-									{{ link.badge }}
-								</span>
-
-								<FeatherIcon
-									name="chevron-right"
-									class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
-								/>
-							</button>
-
-							<RouterLink
-								v-else
-								:to="link.to"
-								class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
+							<span
+								v-if="link.badge"
+								class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
 							>
-								<div
-									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
-								>
-									<FeatherIcon :name="link.icon" class="h-5 w-5" />
-								</div>
+								{{ link.badge }}
+							</span>
 
-								<div class="min-w-0 flex-1">
-									<p
-										class="type-body-strong text-ink transition-colors group-hover:text-jacaranda"
-									>
-										{{ link.label }}
-									</p>
-									<p class="truncate type-caption text-slate-token/70">
-										{{ link.caption }}
-									</p>
-								</div>
-
-								<span
-									v-if="link.badge"
-									class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
-								>
-									{{ link.badge }}
-								</span>
-
-								<FeatherIcon
-									name="chevron-right"
-									class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
-								/>
-							</RouterLink>
-						</template>
-					</div>
+							<FeatherIcon
+								name="chevron-right"
+								class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
+							/>
+						</RouterLink>
+					</template>
 				</div>
 
 				<div class="grid grid-cols-1 gap-4 px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
@@ -900,16 +819,6 @@ function isExploreLinkVisible(link: StaffHomeAnalyticsLink | StaffHomeExploreAct
 }
 
 const visibleExploreLinks = computed(() => exploreLinks.filter(isExploreLinkVisible));
-const visiblePrimaryExploreLinks = computed(() =>
-	visibleExploreLinks.value.filter(link =>
-		['Announcement Archive', 'Room Utilization'].includes(link.label)
-	)
-);
-const visibleSecondaryExploreLinks = computed(() =>
-	visibleExploreLinks.value.filter(link =>
-		['Create task', 'Update Gradebook', 'Course Plans'].includes(link.label)
-	)
-);
 const visibleAnalyticsCategories = computed<StaffHomeAnalyticsCategory[]>(() =>
 	analyticsCategories
 		.map(category => ({
@@ -919,10 +828,7 @@ const visibleAnalyticsCategories = computed<StaffHomeAnalyticsCategory[]>(() =>
 		.filter(category => category.links.length > 0)
 );
 const hasVisibleAnalyticsLinks = computed(
-	() =>
-		visiblePrimaryExploreLinks.value.length > 0 ||
-		visibleSecondaryExploreLinks.value.length > 0 ||
-		visibleAnalyticsCategories.value.length > 0
+	() => visibleExploreLinks.value.length > 0 || visibleAnalyticsCategories.value.length > 0
 );
 
 /* GREETING ----------------------------------------------------- */
@@ -1033,3 +939,49 @@ function openOrgCommunication() {
 	});
 }
 </script>
+
+<style scoped>
+.staff-home__header {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.staff-home__primary-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 1.5rem;
+	align-items: start;
+}
+
+.staff-home__analytics-quick-links {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 1rem;
+}
+
+@media (min-width: 640px) {
+	.staff-home__header {
+		flex-direction: row;
+		align-items: flex-end;
+		justify-content: space-between;
+	}
+}
+
+@media (min-width: 1024px) {
+	.staff-home__primary-grid {
+		grid-template-columns: minmax(0, 1.9fr) minmax(21rem, 1fr);
+		gap: 2rem;
+	}
+
+	.staff-home__analytics-quick-links {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+	.staff-home__analytics-quick-links {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+</style>
