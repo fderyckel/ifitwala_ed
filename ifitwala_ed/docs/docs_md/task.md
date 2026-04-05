@@ -3,7 +3,7 @@ title: "Task: The Reusable Learning and Assessment Blueprint"
 slug: task
 category: Assessment
 doc_order: 4
-version: "1.6.0"
+version: "1.7.0"
 last_change_date: "2026-04-05"
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and task-specific supporting materials."
 seo_title: "Task: The Reusable Learning and Assessment Blueprint"
@@ -60,6 +60,17 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.p
 
 Current workspace note: delivery launch semantics are not yet unified. The direct API path delegates to `assessment/task_delivery_service.py`, while the overlay path uses `assessment/task_creation_service.py`. That split is the main task-stack drift currently documented in the task feature.
 
+## Permission Matrix
+
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/api/task.py`, `ifitwala_ed/assessment/task_creation_service.py`
+Test refs: None
+
+- `System Manager`, `Academic Admin`, `Curriculum Coordinator`, and `Instructor` currently manage `Task` through the live schema/API contract.
+- The current `Task` schema does not yet distinguish shared-baseline tasks from class-originated tasks through a dedicated ownership field.
+- Shared-plan governance and class-plan scope are therefore enforced by the surrounding planning and delivery flows, not by a `Task`-only ownership model.
+- Students and guardians do not manage raw `Task` records directly; they consume assigned work through `Task Delivery`-driven LMS payloads.
+
 ## Related Docs
 
 Status: Implemented
@@ -100,13 +111,16 @@ Test refs: `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 ### Current Contract
 
 - `Task` is the reusable definition artifact. It is not the grading fact table.
+- A task may be authored directly for shared reuse or originate from one class workflow, but the current schema does not yet persist that distinction as a dedicated governance field.
 - `task.py` enforces curriculum alignment, duplicate criterion guards, and coherent default grading configuration.
 - `Task` also carries `default_allow_feedback`, which decides whether downstream deliveries should expose a comment box by default.
 - `task.js` filters `unit_plan` and quiz-bank choices by course context, clears stale curriculum links when course changes, and replaces generic Task resource uploads with the governed Task-resource action.
 - `task.py` now treats `attachments` as a legacy compatibility surface only: new reusable task materials live in `Supporting Material` and are shared onto the task through `Material Placement`.
 - The current task schema stops at `unit_plan`; it does not expose `class_session`.
+- `is_template` currently controls wizard ordering and task-library discoverability only; it is not a shared-versus-local governance flag.
 - `assessment/task_creation_service.py` supports the overlay path that creates both `Task` and `Task Delivery` in one transaction.
 - The task overlay keeps teachers in-context after task creation so they can add task materials without leaving the workflow.
+- No current workflow may treat a task created from one class/session flow as silently promoted shared curriculum just because it is reusable later.
 
 ### Current Drift To Preserve In Review
 

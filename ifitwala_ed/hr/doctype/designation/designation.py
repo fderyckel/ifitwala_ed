@@ -707,8 +707,6 @@ def _merge_designation_employee_matches(primary_rows: list[dict], history_rows: 
 
     employees.sort(
         key=lambda item: (
-            item["organizations"][0] if item["organizations"] else "",
-            item["schools"][0] if item["schools"] else "",
             cstr(item.get("employee_full_name")).strip().lower(),
             cstr(item.get("employee")).strip(),
         )

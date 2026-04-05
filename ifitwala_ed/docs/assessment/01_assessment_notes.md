@@ -4,7 +4,7 @@
 >
 > This document defines the assessment architecture in Ifitwala_Ed. It explains where criteria, scales, and grading logic come from and how they interact. Written for **humans and coding agents**.
 >
-> Last updated: 2026-01-07
+> Last updated: 2026-04-05
 
 ---
 
@@ -112,6 +112,13 @@ Tasks define evidence intent; Delivery turns that intent into Outcomes and Submi
 Task supports multiple criteria via `task_criteria`, and Delivery snapshots those rows for rubric grading.
 Delivery applies `rubric_scoring_strategy` (defaulted from Task) to decide whether totals are computed.
 Evidence may be offline and is represented via a **Submission stub** when `requires_submission = 1`; otherwise grading can occur without a submission.
+
+Current curriculum boundary:
+
+* Task is still below the curriculum-planning layer.
+* A shared or common-assessment baseline may exist as a reusable task definition, but promotion from one class's locally created work into shared baseline space must be explicit.
+* One class assignment or one class session must not silently rewrite the reusable baseline for other classes.
+* Current workspace class context lives on `Task Delivery.class_teaching_plan` and optional `Task Delivery.class_session`; `Task` remains the reusable definition layer.
 
 ### Supported grading modes (exactly one active)
 

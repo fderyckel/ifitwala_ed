@@ -239,7 +239,7 @@ def _get_staff_showcase(
     }
 
 
-def invalidate_leadership_cache():
+def invalidate_leadership_cache(*_args, **_kwargs):
     clear_cache = getattr(_get_staff_showcase, "clear_cache", None)
     if callable(clear_cache):
         clear_cache()

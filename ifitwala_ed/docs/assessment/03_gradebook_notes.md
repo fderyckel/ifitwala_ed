@@ -3,7 +3,7 @@
 Status: **UX LOCK DRAFT (Thin)**
 Audience: Product + Engineering + Codex agents
 Goal: A teacher should grade and return work with **minimum clicks** and **zero doctype awareness**.
-Last updated: 2026-01-07
+Last updated: 2026-04-05
 
 ---
 
@@ -375,7 +375,11 @@ Instructions (optional)
 
 Attachments / link (optional)
 
-“Save to library” toggle (default ON if teacher edits content meaningfully)
+Shared reuse control:
+
+- default for new work created from class or session context should be **This class only**
+- promotion into shared reusable task or common-assessment space should be an explicit later action
+- the current workspace does not yet expose a dedicated promotion workflow, so no flow should silently treat new class-authored work as shared baseline by default
 
 Step 2 — Who
 
@@ -415,9 +419,11 @@ Common to all modes (always)
 
 Ensure there is a Task definition:
 
-If “From library”: reuse existing Task
+If teacher intentionally selects from a shared library: reuse existing Task
 
-If teacher typed/edited content: create a new Task or new version (implementation choice later)
+If teacher typed/edited new class-specific content: create a new Task definition plus one class-scoped Task Delivery
+
+Do not silently promote that new class-authored work into shared library or common-assessment space
 
 Optional Task.course can be stamped for library filtering (tagging)
 

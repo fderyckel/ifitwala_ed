@@ -30,6 +30,7 @@ def get_descendants_inclusive(doctype: str, node: str, cache_ttl: int = DEFAULT_
         doctype,
         filters={"lft": (">=", doc.lft), "rgt": ("<=", doc.rgt)},
         pluck="name",
+        order_by="lft asc",
     )
     cache.set_value(key, rows, expires_in_sec=cache_ttl)
     return rows
@@ -53,6 +54,7 @@ def get_ancestors_inclusive(doctype: str, node: str, cache_ttl: int = DEFAULT_TR
         doctype,
         filters={"lft": ("<=", doc.lft), "rgt": (">=", doc.rgt)},
         pluck="name",
+        order_by="lft desc",
     )
     cache.set_value(key, rows, expires_in_sec=cache_ttl)
     return rows

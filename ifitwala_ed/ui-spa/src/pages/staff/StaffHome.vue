@@ -191,76 +191,157 @@
 
 				<div
 					data-testid="staff-home-explore-links"
-					class="grid grid-cols-1 gap-3 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6 md:grid-cols-2 xl:grid-cols-3"
+					class="grid grid-cols-1 gap-4 border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 py-6 lg:grid-cols-12"
 				>
-					<template v-for="link in visibleExploreLinks" :key="link.label">
-						<button
-							v-if="link.kind === 'action'"
-							type="button"
-							class="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
-							@click="link.action?.()"
-						>
-							<div
-								class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+					<div class="space-y-3 lg:col-span-7">
+						<template v-for="link in visiblePrimaryExploreLinks" :key="link.label">
+							<button
+								v-if="link.kind === 'action'"
+								type="button"
+								class="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
+								@click="link.action?.()"
 							>
-								<FeatherIcon :name="link.icon" class="h-5 w-5" />
-							</div>
+								<div
+									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+								>
+									<FeatherIcon :name="link.icon" class="h-5 w-5" />
+								</div>
 
-							<div class="min-w-0 flex-1">
-								<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-									{{ link.label }}
-								</p>
-								<p class="truncate type-caption text-slate-token/70">
-									{{ link.caption }}
-								</p>
-							</div>
+								<div class="min-w-0 flex-1">
+									<p
+										class="type-body-strong text-ink transition-colors group-hover:text-jacaranda"
+									>
+										{{ link.label }}
+									</p>
+									<p class="truncate type-caption text-slate-token/70">
+										{{ link.caption }}
+									</p>
+								</div>
 
-							<span
-								v-if="link.badge"
-								class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
+								<span
+									v-if="link.badge"
+									class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
+								>
+									{{ link.badge }}
+								</span>
+
+								<FeatherIcon
+									name="chevron-right"
+									class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
+								/>
+							</button>
+
+							<RouterLink
+								v-else
+								:to="link.to"
+								class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
 							>
-								{{ link.badge }}
-							</span>
+								<div
+									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+								>
+									<FeatherIcon :name="link.icon" class="h-5 w-5" />
+								</div>
 
-							<FeatherIcon
-								name="chevron-right"
-								class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
-							/>
-						</button>
+								<div class="min-w-0 flex-1">
+									<p
+										class="type-body-strong text-ink transition-colors group-hover:text-jacaranda"
+									>
+										{{ link.label }}
+									</p>
+									<p class="truncate type-caption text-slate-token/70">
+										{{ link.caption }}
+									</p>
+								</div>
 
-						<RouterLink
-							v-else
-							:to="link.to"
-							class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
-						>
-							<div
-								class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+								<span
+									v-if="link.badge"
+									class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
+								>
+									{{ link.badge }}
+								</span>
+
+								<FeatherIcon
+									name="chevron-right"
+									class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
+								/>
+							</RouterLink>
+						</template>
+					</div>
+
+					<div class="space-y-3 lg:col-span-5">
+						<template v-for="link in visibleSecondaryExploreLinks" :key="link.label">
+							<button
+								v-if="link.kind === 'action'"
+								type="button"
+								class="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
+								@click="link.action?.()"
 							>
-								<FeatherIcon :name="link.icon" class="h-5 w-5" />
-							</div>
+								<div
+									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+								>
+									<FeatherIcon :name="link.icon" class="h-5 w-5" />
+								</div>
 
-							<div class="min-w-0 flex-1">
-								<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-									{{ link.label }}
-								</p>
-								<p class="truncate type-caption text-slate-token/70">
-									{{ link.caption }}
-								</p>
-							</div>
+								<div class="min-w-0 flex-1">
+									<p
+										class="type-body-strong text-ink transition-colors group-hover:text-jacaranda"
+									>
+										{{ link.label }}
+									</p>
+									<p class="truncate type-caption text-slate-token/70">
+										{{ link.caption }}
+									</p>
+								</div>
 
-							<span
-								v-if="link.badge"
-								class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
+								<span
+									v-if="link.badge"
+									class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
+								>
+									{{ link.badge }}
+								</span>
+
+								<FeatherIcon
+									name="chevron-right"
+									class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
+								/>
+							</button>
+
+							<RouterLink
+								v-else
+								:to="link.to"
+								class="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-jacaranda/70 hover:shadow-md"
 							>
-								{{ link.badge }}
-							</span>
+								<div
+									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-canopy ring-1 ring-slate-200 transition group-hover:bg-sky/20"
+								>
+									<FeatherIcon :name="link.icon" class="h-5 w-5" />
+								</div>
 
-							<FeatherIcon
-								name="chevron-right"
-								class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
-							/>
-						</RouterLink>
-					</template>
+								<div class="min-w-0 flex-1">
+									<p
+										class="type-body-strong text-ink transition-colors group-hover:text-jacaranda"
+									>
+										{{ link.label }}
+									</p>
+									<p class="truncate type-caption text-slate-token/70">
+										{{ link.caption }}
+									</p>
+								</div>
+
+								<span
+									v-if="link.badge"
+									class="rounded-full bg-jacaranda/20 px-2 py-0.5 type-badge-label text-jacaranda ring-1 ring-jacaranda/25"
+								>
+									{{ link.badge }}
+								</span>
+
+								<FeatherIcon
+									name="chevron-right"
+									class="h-4 w-4 shrink-0 text-slate-token/40 transition group-hover:text-jacaranda"
+								/>
+							</RouterLink>
+						</template>
+					</div>
 				</div>
 
 				<div class="grid grid-cols-1 gap-4 px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
@@ -819,6 +900,16 @@ function isExploreLinkVisible(link: StaffHomeAnalyticsLink | StaffHomeExploreAct
 }
 
 const visibleExploreLinks = computed(() => exploreLinks.filter(isExploreLinkVisible));
+const visiblePrimaryExploreLinks = computed(() =>
+	visibleExploreLinks.value.filter(link =>
+		['Announcement Archive', 'Room Utilization'].includes(link.label)
+	)
+);
+const visibleSecondaryExploreLinks = computed(() =>
+	visibleExploreLinks.value.filter(link =>
+		['Create task', 'Update Gradebook', 'Course Plans'].includes(link.label)
+	)
+);
 const visibleAnalyticsCategories = computed<StaffHomeAnalyticsCategory[]>(() =>
 	analyticsCategories
 		.map(category => ({
@@ -828,7 +919,10 @@ const visibleAnalyticsCategories = computed<StaffHomeAnalyticsCategory[]>(() =>
 		.filter(category => category.links.length > 0)
 );
 const hasVisibleAnalyticsLinks = computed(
-	() => visibleExploreLinks.value.length > 0 || visibleAnalyticsCategories.value.length > 0
+	() =>
+		visiblePrimaryExploreLinks.value.length > 0 ||
+		visibleSecondaryExploreLinks.value.length > 0 ||
+		visibleAnalyticsCategories.value.length > 0
 );
 
 /* GREETING ----------------------------------------------------- */

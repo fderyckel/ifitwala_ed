@@ -93,6 +93,7 @@ Test refs: `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/
 
 - `Task` is the reusable work definition.
 - `Task Delivery` is the class-scoped runtime assignment.
+- A task may be authored directly for shared reuse or originate from one class flow; ownership semantics are governed by the persistence rules below, not guessed from the doctype name alone.
 - A task may be shared or reused; assignment is still explicit per class.
 - A task delivery must belong to one `Student Group` and one `Class Teaching Plan`.
 - A task delivery may also point at a `Class Session` when the assignment is session-specific.
@@ -102,6 +103,28 @@ Product rule:
 - assigned work is a teaching outcome of the curriculum flow
 - assigned work is not a substitute for missing planning objects
 - common work definitions do not imply that a class has actually received that work
+
+## Shared Versus Local Work Persistence
+
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/api/task.py`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
+Test refs: `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
+
+Locked product rule:
+
+- work created from one class-planning or class-session flow is class-originated by default
+- a shared reusable task or common-assessment baseline must be authored intentionally in shared planning or promoted explicitly from class-originated work
+- reusing a shared task in one class does not authorize that class to rewrite the shared baseline
+- local edits to dates, release policy, scaffolds, instructions, or class-owned resources must remain local to that class assignment unless an explicit promotion or update workflow is run
+- no implicit upstream sync is allowed from one class back into shared curriculum
+
+Current workspace reality:
+
+- the current `Task` schema stores `default_course`, optional `unit_plan`, and `is_template`; it does not yet store a first-class ownership state such as `shared_baseline` versus `class_authored`
+- the current create flow already captures class context through required `Task Delivery.class_teaching_plan` and optional `Task Delivery.class_session`
+- `is_template` currently controls delivery-wizard ordering and library discoverability only; it is not a governance flag
+- `api/task.py::search_tasks()` is a generic task-library read, not a governed promotion workflow
+- explicit promotion from class-originated work into shared reusable or common-assessment space is not yet a dedicated product workflow; treat that as an implementation gap, not permission to blur ownership
 
 ## Resolution Rules For Read Surfaces
 

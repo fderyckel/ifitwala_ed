@@ -119,6 +119,33 @@ Test refs:
 - `ifitwala_ed/assessment/test_task_delivery_service.py`
 - `ifitwala_ed/assessment/test_task_creation_service.py`
 
+### 2.0 Shared versus local persistence rule
+
+Status: **Partial**
+
+Code refs:
+- `ifitwala_ed/assessment/doctype/task/task.json`
+- `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`
+- `ifitwala_ed/assessment/task_creation_service.py`
+- `ifitwala_ed/api/task.py`
+- `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`
+
+Test refs:
+- `ifitwala_ed/assessment/test_task_creation_service.py`
+- `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
+
+- A task created from one class-planning or class-session workflow is class-originated by default in product semantics.
+- Sharing that work across classes is deliberate reuse, not a silent side effect of creation.
+- Promoting one class's work into shared reusable or common-assessment baseline space must be explicit and reviewable.
+- Local delivery edits stay on `Task Delivery`, class-session context, or class-owned resource surfaces; they must not rewrite a shared baseline implicitly.
+
+Current workspace reality:
+
+- `Task` currently stores `default_course`, optional `unit_plan`, and `is_template`; it does not yet store a first-class ownership state such as `shared_baseline` or `class_authored`.
+- `is_template` currently affects wizard and library behavior only. It is not a governance or promotion flag.
+- The class-owned context currently lives on required `Task Delivery.class_teaching_plan` and optional `Task Delivery.class_session`.
+- `api/task.py::search_tasks()` is a generic task-library read. It must not be treated as a governed promotion workflow.
+
 ### 2.1 Context ownership
 
 `Task Delivery` is anchored to `Student Group` and `Class Teaching Plan`.

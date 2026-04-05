@@ -3,7 +3,7 @@ title: "Task Delivery: Assigning Work to a Real Class"
 slug: task-delivery
 category: Assessment
 doc_order: 5
-version: "1.6.1"
+version: "1.7.0"
 last_change_date: "2026-04-05"
 summary: "Assign a reusable task to a specific class through its class teaching plan, with dates, grading mode, optional class-session context, and scalable outcome generation."
 seo_title: "Task Delivery: Assigning Work to a Real Class"
@@ -62,6 +62,16 @@ Current workspace constraints:
 - `api/gradebook.py::repair_task_roster()` exists to backfill outcomes for deliveries created before the launch contract was restored, and to catch up later roster additions safely.
 - The current schema exposes required `class_teaching_plan` plus optional `class_session`.
 
+## Permission Matrix
+
+Status: Partial
+Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.py`
+Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
+
+- `System Manager`, `Academic Admin`, and `Instructor` currently have create/write/submit/cancel access on `Task Delivery`; `Curriculum Coordinator` is read-only in the live schema.
+- Students and guardians do not manage `Task Delivery` directly; they consume assigned-work state through LMS and guardian endpoints.
+- Class scope is enforced server-side through `Student Group`, `Class Teaching Plan`, and optional `Class Session` validation.
+
 ## Related Docs
 
 Status: Implemented
@@ -89,6 +99,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 - **Required fields (`reqd=1`)**:
   - `task` (`Link` -> `Task`)
   - `student_group` (`Link` -> `Student Group`)
+  - `class_teaching_plan` (`Link` -> `Class Teaching Plan`)
   - `delivery_mode` (`Select`)
 - **Lifecycle hooks in controller**:
   - `before_validate`
@@ -111,12 +122,14 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 - `before_validate()` stamps denormalized context from `Student Group`, checks task/course alignment, validates the required `class_teaching_plan` anchor, and then validates any optional `class_session` anchor.
 - `validate()` enforces delivery-mode coherence, date rules, criteria requirements, and the current hard block on `group_submission`.
 - `allow_feedback` is an additive delivery policy. It does not replace grading mode; it only governs whether gradebook comments are allowed for that delivery.
+- `Task Delivery` is where class-local variation lives: dates, release policy, feedback/comment policy, roster materialization, and optional session linkage.
 - `on_submit()` is the canonical place for:
   - criteria snapshot creation
   - bulk `Task Outcome` creation for eligible students
 - `materialize_roster()` is the idempotent parent-controller helper used by submit flows and the gradebook repair endpoint.
 - `on_cancel()` removes linked outcomes only when no evidence exists.
 - Delivery services no longer auto-create taught-session records. If a delivery needs live class-session context, it must link to an existing `Class Session`.
+- Reusing a shared task does not authorize a class to mutate the shared baseline through delivery edits, and no delivery flow may silently promote local class changes back into shared curriculum.
 
 ### Current Constraints To Preserve In Review
 

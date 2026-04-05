@@ -256,14 +256,8 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
 
     def test_create_quick_allows_duplicate_visible_titles(self):
         organization = self._create_organization()
-        cache = Mock()
-        cache.get_value.return_value = None
-        cache.lock.return_value = nullcontext()
 
-        with (
-            patch("ifitwala_ed.api.org_communication_quick_create.frappe.has_permission", return_value=True),
-            patch("ifitwala_ed.api.org_communication_quick_create.frappe.cache", return_value=cache),
-        ):
+        with patch("ifitwala_ed.api.org_communication_quick_create.frappe.has_permission", return_value=True):
             first = org_communication_quick_create.create_org_communication_quick(
                 title="Grade 6 Math Update",
                 communication_type="Information",
