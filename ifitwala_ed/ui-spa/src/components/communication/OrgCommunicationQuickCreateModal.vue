@@ -147,6 +147,134 @@
 									</section>
 
 									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
+										<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+											<div class="space-y-1">
+												<p class="type-overline text-ink/55">Attachments</p>
+												<h3 class="type-h3 text-ink">Files and links</h3>
+												<p class="type-caption text-ink/65">
+													Add a governed file or a link without leaving this class flow. The first
+													attachment saves a draft automatically so the communication owns the file
+													history.
+												</p>
+											</div>
+											<div class="flex flex-wrap gap-2">
+												<button
+													type="button"
+													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
+													:disabled="submitting || attachmentSubmitting"
+													@click="triggerAttachmentFilePicker"
+												>
+													Add file
+												</button>
+												<button
+													type="button"
+													class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
+													:disabled="submitting || attachmentSubmitting"
+													@click="showLinkComposer = !showLinkComposer"
+												>
+													{{ showLinkComposer ? 'Close link' : 'Add link' }}
+												</button>
+											</div>
+										</div>
+
+										<input
+											ref="attachmentFileInput"
+											type="file"
+											class="hidden"
+											multiple
+											@change="onAttachmentFileSelected"
+										/>
+
+										<div
+											v-if="attachmentErrorMessage"
+											class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
+										>
+											<p class="type-caption text-rose-900">{{ attachmentErrorMessage }}</p>
+										</div>
+
+										<div
+											v-if="showLinkComposer"
+											class="mt-4 rounded-[24px] border border-border/70 bg-surface-soft/70 p-4"
+										>
+											<div class="grid grid-cols-1 gap-3">
+												<div class="space-y-1">
+													<label class="type-label">Link URL</label>
+													<FormControl
+														v-model="linkDraft.external_url"
+														type="text"
+														placeholder="https://example.com/resource.pdf"
+														:disabled="submitting || attachmentSubmitting"
+													/>
+												</div>
+												<div class="space-y-1">
+													<label class="type-label">Link label</label>
+													<FormControl
+														v-model="linkDraft.title"
+														type="text"
+														placeholder="Optional display label"
+														:disabled="submitting || attachmentSubmitting"
+													/>
+												</div>
+											</div>
+											<div class="mt-3 flex flex-wrap justify-end gap-2">
+												<Button
+													appearance="secondary"
+													:disabled="submitting || attachmentSubmitting"
+													@click="resetLinkDraft"
+												>
+													Cancel
+												</Button>
+												<Button
+													appearance="primary"
+													:loading="attachmentSubmitting"
+													:disabled="submitting || attachmentSubmitting || !linkDraftReady"
+													@click="submitLinkAttachment"
+												>
+													Add link
+												</Button>
+											</div>
+										</div>
+
+										<div class="mt-4 space-y-3">
+											<div
+												v-for="attachment in attachmentRows"
+												:key="attachment.row_name"
+												class="flex flex-col gap-3 rounded-2xl border border-border/70 bg-surface-soft/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+											>
+												<div class="min-w-0">
+													<p class="type-body-strong text-ink">{{ attachment.title }}</p>
+													<p class="mt-1 truncate type-caption text-ink/60">
+														{{ formatAttachmentMeta(attachment) }}
+													</p>
+												</div>
+												<div class="flex flex-wrap gap-2">
+													<a
+														v-if="attachment.open_url"
+														:href="attachment.open_url"
+														target="_blank"
+														rel="noopener noreferrer"
+														class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
+													>
+														Open
+													</a>
+													<button
+														type="button"
+														class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-slate-token transition hover:border-rose-300 hover:text-rose-700"
+														:disabled="submitting || attachmentSubmitting"
+														@click="deleteAttachment(attachment)"
+													>
+														Remove
+													</button>
+												</div>
+											</div>
+											<p v-if="!attachmentRows.length" class="type-caption text-ink/60">
+												No attachments yet. Keep it light: add only the file or link teachers and
+												families actually need.
+											</p>
+										</div>
+									</section>
+
+									<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
 										<div class="space-y-1">
 											<p class="type-overline text-ink/55">Delivery</p>
 											<h3 class="type-h3 text-ink">Send options</h3>
@@ -818,9 +946,13 @@ import {
 import { Button, FeatherIcon, FormControl, Spinner, TextEditor } from 'frappe-ui';
 
 import {
+	addOrgCommunicationLink,
 	createOrgCommunicationQuick,
 	getOrgCommunicationQuickCreateOptions,
+	removeOrgCommunicationAttachment,
+	uploadOrgCommunicationAttachment,
 } from '@/lib/services/orgCommunicationQuickCreateService';
+import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';
 import type {
 	Request as CreateOrgCommunicationQuickRequest,
 	OrgCommunicationQuickAudienceRow,
@@ -865,11 +997,17 @@ const emit = defineEmits<{
 }>();
 
 const initialFocus = ref<HTMLElement | null>(null);
+const attachmentFileInput = ref<HTMLInputElement | null>(null);
 const optionsLoading = ref(false);
 const submitting = ref(false);
+const attachmentSubmitting = ref(false);
 const errorMessage = ref('');
+const attachmentErrorMessage = ref('');
 const options = ref<OrgCommunicationQuickCreateOptionsResponse | null>(null);
 const audienceRows = ref<AudienceRowState[]>([]);
+const attachmentRows = ref<OrgCommunicationAttachmentRow[]>([]);
+const savedCommunicationName = ref('');
+const showLinkComposer = ref(false);
 
 const form = reactive({
 	title: '',
@@ -889,6 +1027,11 @@ const form = reactive({
 	interaction_mode: '',
 	allow_private_notes: true,
 	allow_public_thread: false,
+});
+
+const linkDraft = reactive({
+	title: '',
+	external_url: '',
 });
 
 const overlayStyle = computed(() => ({
@@ -1094,6 +1237,7 @@ const classEventContextCards = computed(() => [
 		value: issuingScopeLabel.value,
 	},
 ]);
+const linkDraftReady = computed(() => Boolean(linkDraft.external_url.trim()));
 
 const audienceSummaryRows = computed(() =>
 	audienceRows.value.map(row => {
@@ -1133,10 +1277,10 @@ const audienceSummaryRows = computed(() =>
 	})
 );
 
-const validationMessage = computed(() => {
+function getValidationMessage(draftMode = false) {
 	if (!form.title.trim()) return 'Title is required.';
 	if (!form.communication_type) return 'Communication type is required.';
-	if (!form.status) return 'Status is required.';
+	if (!draftMode && !form.status) return 'Status is required.';
 	if (!form.organization) return 'Organization is required.';
 	if (briefDatesRequired.value && !form.brief_start_date) {
 		return 'Brief Start Date is required when Portal Surface is Morning Brief or Everywhere.';
@@ -1155,10 +1299,11 @@ const validationMessage = computed(() => {
 	) {
 		return 'Publish Until cannot be earlier than Publish From.';
 	}
-	if (form.status === 'Scheduled' && !form.publish_from) {
+	if (!draftMode && form.status === 'Scheduled' && !form.publish_from) {
 		return "Scheduled communications must have a 'Publish From' datetime.";
 	}
 	if (
+		!draftMode &&
 		form.status === 'Scheduled' &&
 		form.publish_from &&
 		toTimestamp(form.publish_from) <= Date.now()
@@ -1193,7 +1338,9 @@ const validationMessage = computed(() => {
 		}
 	}
 	return '';
-});
+}
+
+const validationMessage = computed(() => getValidationMessage(false));
 
 const submitDisabled = computed(
 	() =>
@@ -1333,6 +1480,12 @@ function initializeForm() {
 		: defaults.interaction_mode === 'None'
 			? false
 			: Boolean(defaults.allow_public_thread);
+	savedCommunicationName.value = '';
+	attachmentRows.value = [];
+	attachmentErrorMessage.value = '';
+	showLinkComposer.value = false;
+	linkDraft.title = '';
+	linkDraft.external_url = '';
 
 	if (isClassEventMode.value) {
 		audienceRows.value = [
@@ -1542,6 +1695,7 @@ function buildPayload(statusOverride?: string): CreateOrgCommunicationQuickReque
 	const briefEndDate = form.brief_end_date || briefStartDate;
 	const classEventMode = isClassEventMode.value;
 	return {
+		name: savedCommunicationName.value || null,
 		title: form.title.trim(),
 		communication_type: classEventMode ? 'Class Announcement' : form.communication_type,
 		status: statusOverride || form.status,
@@ -1564,6 +1718,129 @@ function buildPayload(statusOverride?: string): CreateOrgCommunicationQuickReque
 	};
 }
 
+function upsertAttachmentRow(attachment: OrgCommunicationAttachmentRow) {
+	const index = attachmentRows.value.findIndex(row => row.row_name === attachment.row_name);
+	if (index >= 0) {
+		attachmentRows.value.splice(index, 1, attachment);
+		return;
+	}
+	attachmentRows.value.push(attachment);
+}
+
+function removeAttachmentRow(rowName: string) {
+	attachmentRows.value = attachmentRows.value.filter(row => row.row_name !== rowName);
+}
+
+function resetLinkDraft() {
+	linkDraft.title = '';
+	linkDraft.external_url = '';
+	showLinkComposer.value = false;
+}
+
+function formatAttachmentMeta(attachment: OrgCommunicationAttachmentRow) {
+	if (attachment.kind === 'link') {
+		return attachment.external_url || 'External link';
+	}
+	const parts = [attachment.file_name];
+	if (attachment.file_size) {
+		parts.push(formatFileSize(attachment.file_size));
+	}
+	return parts.filter(Boolean).join(' · ') || 'Governed file';
+}
+
+function formatFileSize(value: number | string | null | undefined) {
+	const size = typeof value === 'number' ? value : Number(value || 0);
+	if (!Number.isFinite(size) || size <= 0) return '';
+	if (size < 1024) return `${size} B`;
+	if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+	return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function ensureSavedDraft() {
+	if (savedCommunicationName.value) return savedCommunicationName.value;
+	const draftValidationError = getValidationMessage(true);
+	if (draftValidationError) {
+		throw new Error(draftValidationError);
+	}
+	const response = await createOrgCommunicationQuick(buildPayload('Draft'));
+	savedCommunicationName.value = response.name;
+	return response.name;
+}
+
+function triggerAttachmentFilePicker() {
+	if (attachmentSubmitting.value || submitting.value) return;
+	attachmentErrorMessage.value = '';
+	attachmentFileInput.value?.click();
+}
+
+async function onAttachmentFileSelected(event: Event) {
+	const target = event.target as HTMLInputElement | null;
+	const files = Array.from(target?.files || []);
+	if (!files.length) return;
+
+	attachmentSubmitting.value = true;
+	attachmentErrorMessage.value = '';
+	try {
+		const orgCommunication = await ensureSavedDraft();
+		for (const file of files) {
+			const response = await uploadOrgCommunicationAttachment({
+				org_communication: orgCommunication,
+				file,
+			});
+			upsertAttachmentRow(response.attachment);
+		}
+	} catch (error) {
+		attachmentErrorMessage.value =
+			error instanceof Error ? error.message : 'Unable to upload the attachment.';
+	} finally {
+		attachmentSubmitting.value = false;
+		if (target) target.value = '';
+	}
+}
+
+async function submitLinkAttachment() {
+	if (!linkDraftReady.value) {
+		attachmentErrorMessage.value = 'A valid https link is required.';
+		return;
+	}
+
+	attachmentSubmitting.value = true;
+	attachmentErrorMessage.value = '';
+	try {
+		const orgCommunication = await ensureSavedDraft();
+		const response = await addOrgCommunicationLink({
+			org_communication: orgCommunication,
+			title: linkDraft.title.trim() || null,
+			external_url: linkDraft.external_url.trim(),
+		});
+		upsertAttachmentRow(response.attachment);
+		resetLinkDraft();
+	} catch (error) {
+		attachmentErrorMessage.value =
+			error instanceof Error ? error.message : 'Unable to add the link.';
+	} finally {
+		attachmentSubmitting.value = false;
+	}
+}
+
+async function deleteAttachment(attachment: OrgCommunicationAttachmentRow) {
+	if (!savedCommunicationName.value) return;
+	attachmentSubmitting.value = true;
+	attachmentErrorMessage.value = '';
+	try {
+		await removeOrgCommunicationAttachment({
+			org_communication: savedCommunicationName.value,
+			row_name: attachment.row_name,
+		});
+		removeAttachmentRow(attachment.row_name);
+	} catch (error) {
+		attachmentErrorMessage.value =
+			error instanceof Error ? error.message : 'Unable to remove the attachment.';
+	} finally {
+		attachmentSubmitting.value = false;
+	}
+}
+
 async function submit() {
 	if (!isClassEventMode.value) {
 		await submitPublish();
@@ -1581,7 +1858,7 @@ async function submitPublish() {
 }
 
 async function submitWithStatus(statusOverride: string) {
-	const validationError = validationMessage.value;
+	const validationError = getValidationMessage(false);
 	if (validationError) {
 		errorMessage.value = validationError;
 		return;
@@ -1592,6 +1869,7 @@ async function submitWithStatus(statusOverride: string) {
 
 	try {
 		const response = await createOrgCommunicationQuick(buildPayload(statusOverride));
+		savedCommunicationName.value = response.name;
 		emit('close', 'programmatic');
 		emit('done', response);
 	} catch (error) {

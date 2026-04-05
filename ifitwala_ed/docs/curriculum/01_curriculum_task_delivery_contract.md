@@ -122,9 +122,11 @@ Current workspace reality:
 
 - the current `Task` schema stores `default_course`, optional `unit_plan`, and `is_template`; it does not yet store a first-class ownership state such as `shared_baseline` versus `class_authored`
 - the current create flow already captures class context through required `Task Delivery.class_teaching_plan` and optional `Task Delivery.class_session`
-- `is_template` currently controls delivery-wizard ordering and library discoverability only; it is not a governance flag
-- `api/task.py::search_tasks()` is a generic task-library read, not a governed promotion workflow
-- explicit promotion from class-originated work into shared reusable or common-assessment space is not yet a dedicated product workflow; treat that as an implementation gap, not permission to blur ownership
+- `is_template` now marks whether a reusable task is intentionally shared with the course team. It does not promote the task into governed curriculum or common-assessment baseline space
+- `api/task.py::search_reusable_tasks()` and `api/task.py::search_tasks()` now expose a course-scoped reusable-task library, not a broad unscoped task read. The current user sees their own tasks for that course plus tasks the course team explicitly shared
+- same-teacher reuse across multiple groups or later school years works through task ownership; cross-teacher reuse on the same course requires explicit course-library sharing
+- `api/task.py::create_task_delivery()` now covers the assign-existing workflow. Delivery edits remain class-local and do not rewrite the reusable task definition
+- explicit promotion from class-originated work into shared reusable or common-assessment baseline space is still not a dedicated governance workflow; treat that as an implementation gap, not permission to blur ownership
 
 ## Resolution Rules For Read Surfaces
 

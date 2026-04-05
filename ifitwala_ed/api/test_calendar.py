@@ -113,6 +113,25 @@ class TestCalendarApi(TestCase):
         def _fake_get_all(doctype, filters=None, fields=None, **kwargs):
             if doctype == "Employee":
                 return []
+            if doctype == "Student":
+                requested = (filters or {}).get("student_email", [None, []])[1] or []
+                return [
+                    frappe._dict(
+                        {
+                            "name": "STU-1",
+                            "student_email": name,
+                            "student_full_name": user_rows[name]["full_name"],
+                            "student_preferred_name": None,
+                            "anchor_school": "SCHOOL-1",
+                        }
+                    )
+                    for name in requested
+                    if name == "student@example.com"
+                ]
+            if doctype == "Guardian":
+                return []
+            if doctype == "Student Group Student":
+                return []
             if doctype == "User":
                 requested = (filters or {}).get("name", [None, []])[1] or []
                 return [user_rows[name] for name in requested if name in user_rows]

@@ -279,6 +279,36 @@
 								No full announcement content is available for this item.
 							</div>
 						</div>
+
+						<div
+							v-if="detailAttachments.length"
+							class="mt-4 rounded-2xl border border-line-soft bg-white/80 p-5 shadow-soft"
+						>
+							<div class="flex items-center gap-2">
+								<FeatherIcon name="paperclip" class="h-4 w-4 text-slate-token/60" />
+								<h3 class="text-sm font-semibold text-ink">Attachments</h3>
+							</div>
+							<div class="mt-4 space-y-3">
+								<a
+									v-for="attachment in detailAttachments"
+									:key="attachment.row_name"
+									:href="attachment.open_url || attachment.external_url || '#'"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="flex items-center justify-between gap-3 rounded-xl border border-line-soft bg-surface-soft px-4 py-3 transition hover:border-jacaranda/40 hover:bg-white"
+								>
+									<div class="min-w-0">
+										<p class="truncate text-sm font-medium text-ink">
+											{{ attachment.title }}
+										</p>
+										<p class="mt-1 truncate text-xs text-slate-token/60">
+											{{ formatAttachmentMeta(attachment) }}
+										</p>
+									</div>
+									<FeatherIcon name="external-link" class="h-4 w-4 shrink-0 text-slate-token/50" />
+								</a>
+							</div>
+						</div>
 					</div>
 
 					<!-- Interactions Footer -->
@@ -349,6 +379,7 @@ import {
 	type PolicyInformLinkPayload,
 } from '@/utils/policyInformLink';
 import type { ReactionCode } from '@/types/interactions';
+import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';
 import type { Response as OrgCommunicationItemResponse } from '@/types/contracts/org_communication_archive/get_org_communication_item';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import DateRangePills from '@/components/filters/DateRangePills.vue';
@@ -421,6 +452,27 @@ const detailSnippetFallback = computed(() => {
 		typeof selectedComm.value?.snippet === 'string' ? selectedComm.value.snippet : '';
 	return snippet.trim();
 });
+
+const detailAttachments = computed(() => fullContent.value?.attachments || []);
+
+function formatAttachmentMeta(attachment: OrgCommunicationAttachmentRow) {
+	if (attachment.kind === 'link') {
+		return attachment.external_url || 'External link';
+	}
+	const parts = [attachment.file_name];
+	if (attachment.file_size) {
+		parts.push(formatFileSize(attachment.file_size));
+	}
+	return parts.filter(Boolean).join(' · ') || 'Governed file';
+}
+
+function formatFileSize(value: number | string | null | undefined) {
+	const size = typeof value === 'number' ? value : Number(value || 0);
+	if (!Number.isFinite(size) || size <= 0) return '';
+	if (size < 1024) return `${size} B`;
+	if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+	return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 // User Context for Filters
 const myTeams = ref<Array<{ label: string; value: string }>>([]);

@@ -235,6 +235,7 @@ def get_org_communication_quick_create_options() -> dict:
 
 @frappe.whitelist()
 def create_org_communication_quick(
+    name: str | None = None,
     title: str | None = None,
     communication_type: str | None = None,
     status: str | None = None,
@@ -258,12 +259,13 @@ def create_org_communication_quick(
     user = frappe.session.user
     if not user or user == "Guest":
         frappe.throw(_("You must be logged in."), frappe.PermissionError)
-    if not frappe.has_permission("Org Communication", ptype="create", user=user):
+    doc_name = _clean_text(name)
+    if not doc_name and not frappe.has_permission("Org Communication", ptype="create", user=user):
         frappe.throw(_("You do not have permission to create communications."), frappe.PermissionError)
 
     request_id = _clean_text(client_request_id)
     cache = frappe.cache()
-    cache_key = _idempotency_key(user, request_id) if request_id else None
+    cache_key = _idempotency_key(user, request_id) if request_id and not doc_name else None
 
     if cache_key:
         cached = cache.get_value(cache_key)
@@ -283,7 +285,11 @@ def create_org_communication_quick(
                     result["status"] = "already_processed"
                     return result
 
-        doc = frappe.new_doc("Org Communication")
+        if doc_name:
+            doc = frappe.get_doc("Org Communication", doc_name)
+            doc.check_permission("write")
+        else:
+            doc = frappe.new_doc("Org Communication")
         if title is not None:
             doc.title = title
         if communication_type is not None:
@@ -319,14 +325,18 @@ def create_org_communication_quick(
         if allow_public_thread is not None:
             doc.allow_public_thread = _as_check(allow_public_thread)
 
+        doc.set("audiences", [])
         for row in _parse_audiences(audiences):
             doc.append("audiences", row)
 
-        doc.insert()
+        if doc_name:
+            doc.save()
+        else:
+            doc.insert()
 
         result = {
             "ok": True,
-            "status": "created",
+            "status": "updated" if doc_name else "created",
             "name": doc.name,
             "title": doc.title,
         }

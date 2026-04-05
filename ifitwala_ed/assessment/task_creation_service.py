@@ -8,6 +8,7 @@ from frappe import _
 
 from ifitwala_ed.assessment.check_flags import to_check_value
 from ifitwala_ed.assessment.task_delivery_service import resolve_planning_context
+from ifitwala_ed.curriculum import planning as curriculum_planning
 
 V1_GRADING_MODES = {"None", "Completion", "Binary", "Points", "Criteria"}
 
@@ -195,6 +196,12 @@ def create_task_and_delivery(
             data["student_group"],
             data.get("class_teaching_plan"),
             data.get("class_session"),
+        )
+        curriculum_planning.assert_can_manage_course_curriculum(
+            frappe.session.user,
+            planning_context.get("course"),
+            frappe.get_roles(frappe.session.user),
+            action_label="create assigned work for this course",
         )
 
         resolved_unit_plan = (data.get("unit_plan") or "").strip() or None

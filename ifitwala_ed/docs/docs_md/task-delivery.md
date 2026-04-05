@@ -3,7 +3,7 @@ title: "Task Delivery: Assigning Work to a Real Class"
 slug: task-delivery
 category: Assessment
 doc_order: 5
-version: "1.7.0"
+version: "1.8.0"
 last_change_date: "2026-04-05"
 summary: "Assign a reusable task to a specific class through its class teaching plan, with dates, grading mode, optional class-session context, and scalable outcome generation."
 seo_title: "Task Delivery: Assigning Work to a Real Class"
@@ -42,7 +42,7 @@ Test refs: None
 - Criteria-mode deliveries feed [**Task Rubric Version**](/docs/en/task-rubric-version/).
 - `/staff/gradebook` reads delivery rows through `ifitwala_ed/api/gradebook.py`.
 - Guardian home chips read due-task and upcoming-assessment context from `ifitwala_ed/api/guardian_home.py`.
-- The staff overlay `ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue` creates deliveries through `assessment/task_creation_service.py`.
+- The staff overlay `ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue` creates new-task deliveries through `assessment/task_creation_service.py` and reuses existing tasks through `api/task.py::create_task_delivery()`.
 
 ## Lifecycle and Linked Documents
 
@@ -59,6 +59,7 @@ Current workspace constraints:
 
 - `task_delivery.py` keeps outcome generation and rubric snapshotting behind delivery launch semantics.
 - `task_creation_service.py::create_task_and_delivery()` and `task_delivery_service.py::create_delivery()` both submit the delivery and then enforce roster materialization idempotently.
+- `api/task.py::create_task_delivery()` now validates course-scoped reusable-task visibility before delegating to `task_delivery_service.py::create_delivery()`.
 - `api/gradebook.py::repair_task_roster()` exists to backfill outcomes for deliveries created before the launch contract was restored, and to catch up later roster additions safely.
 - The current schema exposes required `class_teaching_plan` plus optional `class_session`.
 
@@ -69,6 +70,7 @@ Code refs: `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `i
 Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
 
 - `System Manager`, `Academic Admin`, and `Instructor` currently have create/write/submit/cancel access on `Task Delivery`; `Curriculum Coordinator` is read-only in the live schema.
+- Reusing a task through the live API is course-scoped: teachers can assign their own tasks again, and they can assign another teacher's task only when that task was explicitly shared with the course library.
 - Students and guardians do not manage `Task Delivery` directly; they consume assigned-work state through LMS and guardian endpoints.
 - Class scope is enforced server-side through `Student Group`, `Class Teaching Plan`, and optional `Class Session` validation.
 
@@ -123,6 +125,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 - `validate()` enforces delivery-mode coherence, date rules, criteria requirements, and the current hard block on `group_submission`.
 - `allow_feedback` is an additive delivery policy. It does not replace grading mode; it only governs whether gradebook comments are allowed for that delivery.
 - `Task Delivery` is where class-local variation lives: dates, release policy, feedback/comment policy, roster materialization, and optional session linkage.
+- The assign-existing workflow creates a new delivery only. It does not edit the reusable `Task`, and it does not reopen shared task materials from the assignment success state.
 - `on_submit()` is the canonical place for:
   - criteria snapshot creation
   - bulk `Task Outcome` creation for eligible students

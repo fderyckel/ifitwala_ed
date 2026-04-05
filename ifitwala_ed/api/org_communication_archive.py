@@ -8,6 +8,7 @@ from frappe import _
 from frappe.utils import add_days, getdate, strip_html, today
 
 from ifitwala_ed.api.org_comm_utils import build_audience_summary, check_audience_match
+from ifitwala_ed.api.org_communication_attachments import serialize_org_communication_attachment_row
 from ifitwala_ed.utilities.employee_utils import (
     get_descendant_organizations,
     get_user_base_org,
@@ -319,6 +320,11 @@ def get_org_communication_item(name=None):
         "activity_student_group": doc.activity_student_group,
         "audience_label": get_audience_label(doc.name),
         "audience_summary": build_audience_summary(doc.name),
+        "attachments": [
+            serialize_org_communication_attachment_row(doc.name, row)
+            for row in (doc.get("attachments") or [])
+            if str(getattr(row, "file", "") or "").strip() or str(getattr(row, "external_url", "") or "").strip()
+        ],
     }
 
 

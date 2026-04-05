@@ -11,8 +11,8 @@ from ifitwala_ed.api import org_communication_quick_create
 
 
 class _DummyOrgCommunicationDoc:
-    def __init__(self):
-        self.name = "COMM-NEW"
+    def __init__(self, name="COMM-NEW"):
+        self.name = name
         self.title = None
         self.communication_type = None
         self.status = None
@@ -32,15 +32,29 @@ class _DummyOrgCommunicationDoc:
         self.allow_public_thread = None
         self.audiences = []
         self.insert_calls = 0
+        self.save_calls = 0
 
     def append(self, fieldname, row):
         if fieldname != "audiences":
             raise AssertionError(f"Unexpected child table: {fieldname}")
         self.audiences.append(row)
 
+    def set(self, fieldname, value):
+        if fieldname != "audiences":
+            setattr(self, fieldname, value)
+            return
+        self.audiences = list(value or [])
+
     def insert(self):
         self.insert_calls += 1
         return self
+
+    def save(self):
+        self.save_calls += 1
+        return self
+
+    def check_permission(self, _ptype):
+        return None
 
 
 class TestOrgCommunicationQuickCreate(FrappeTestCase):
@@ -222,6 +236,43 @@ class TestOrgCommunicationQuickCreate(FrappeTestCase):
         )
         self.assertEqual(doc.insert_calls, 1)
         cache.set_value.assert_called_once()
+
+    def test_create_quick_updates_existing_org_communication_when_name_is_provided(self):
+        doc = _DummyOrgCommunicationDoc(name="COMM-EXISTING")
+        cache = Mock()
+        cache.get_value.return_value = None
+        cache.lock.return_value = nullcontext()
+
+        with (
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.get_doc", return_value=doc),
+            patch("ifitwala_ed.api.org_communication_quick_create.frappe.has_permission") as has_permission_mock,
+        ):
+            result = org_communication_quick_create.create_org_communication_quick(
+                name="COMM-EXISTING",
+                title="Updated class announcement",
+                communication_type="Class Announcement",
+                status="Published",
+                priority="Normal",
+                portal_surface="Everywhere",
+                organization="ORG-1",
+                school="SCH-1",
+                client_request_id="req-update",
+                audiences=[
+                    {
+                        "target_mode": "Student Group",
+                        "student_group": "SG-1",
+                        "to_students": 1,
+                    }
+                ],
+            )
+
+        self.assertEqual(result["status"], "updated")
+        self.assertEqual(result["name"], "COMM-EXISTING")
+        self.assertEqual(doc.save_calls, 1)
+        self.assertEqual(doc.insert_calls, 0)
+        has_permission_mock.assert_not_called()
+        cache.set_value.assert_not_called()
 
     def test_create_quick_returns_cached_result_for_same_client_request_id(self):
         cache = Mock()

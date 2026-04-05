@@ -142,9 +142,11 @@ Test refs:
 Current workspace reality:
 
 - `Task` currently stores `default_course`, optional `unit_plan`, and `is_template`; it does not yet store a first-class ownership state such as `shared_baseline` or `class_authored`.
-- `is_template` currently affects wizard and library behavior only. It is not a governance or promotion flag.
+- `is_template` now controls explicit course-library sharing for reusable tasks. It does not promote work into governed curriculum or common-assessment baseline space.
 - The class-owned context currently lives on required `Task Delivery.class_teaching_plan` and optional `Task Delivery.class_session`.
-- `api/task.py::search_tasks()` is a generic task-library read. It must not be treated as a governed promotion workflow.
+- `api/task.py::search_reusable_tasks()` and `api/task.py::search_tasks()` now resolve one course-scoped reusable-task library at a time. They return only tasks the current user owns for that course or tasks explicitly shared with the course team.
+- `api/task.py::create_task_delivery()` now supports the assign-existing path. Reusing a task creates a new class-scoped delivery only; it does not rewrite the reusable task definition.
+- Same-teacher reuse across groups or school years stays available through task ownership. Cross-teacher reuse requires explicit course-library sharing.
 
 ### 2.1 Context ownership
 

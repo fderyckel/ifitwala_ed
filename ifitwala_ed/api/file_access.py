@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import mimetypes
 import os
 from urllib.parse import urlencode
@@ -19,6 +20,7 @@ from ifitwala_ed.admission.admission_utils import (
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
+from ifitwala_ed.api.org_comm_utils import check_audience_match
 from ifitwala_ed.routing.policy import has_active_employee_profile
 
 ADMISSIONS_ATTACHMENT_DOCTYPES = {"Applicant Document Item", "Student Applicant", "Contact"}
@@ -31,6 +33,7 @@ CONTEXT_MATERIAL_PLACEMENT = "Material Placement"
 CONTEXT_STUDENT = "Student"
 CONTEXT_GUARDIAN = "Guardian"
 CONTEXT_EMPLOYEE = "Employee"
+CONTEXT_ORG_COMMUNICATION = "Org Communication"
 
 
 def build_admissions_file_open_url(
@@ -207,6 +210,21 @@ def resolve_employee_file_open_url(
     return open_url or raw_url or None
 
 
+def build_org_communication_attachment_open_url(
+    *,
+    org_communication: str,
+    row_name: str,
+) -> str:
+    resolved_org_communication = (org_communication or "").strip()
+    resolved_row_name = (row_name or "").strip()
+    if not resolved_org_communication or not resolved_row_name:
+        return ""
+
+    return "/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?" + urlencode(
+        {"org_communication": resolved_org_communication, "row_name": resolved_row_name}
+    )
+
+
 def _require_authenticated_user() -> str:
     user = (frappe.session.user or "").strip()
     if not user or user == "Guest":
@@ -256,6 +274,84 @@ def _resolve_any_file_row(file_name: str) -> dict:
     if not row:
         frappe.throw(_("File not found."), frappe.DoesNotExistError)
     return row
+
+
+def _load_drive_access_callable(attribute: str):
+    try:
+        drive_api = importlib.import_module("ifitwala_drive.api.access")
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed file access: {0}").format(exc))
+
+    callable_obj = getattr(drive_api, attribute, None)
+    if callable(callable_obj):
+        return callable_obj
+
+    frappe.throw(_("Ifitwala Drive access method is unavailable: {0}").format(attribute))
+
+
+def _require_org_communication_attachment_context(org_communication: str, row_name: str):
+    resolved_org_communication = (org_communication or "").strip()
+    resolved_row_name = (row_name or "").strip()
+    if not resolved_org_communication:
+        frappe.throw(_("Org Communication is required."), frappe.ValidationError)
+    if not resolved_row_name:
+        frappe.throw(_("Attachment row name is required."), frappe.ValidationError)
+
+    user = _require_authenticated_user()
+    roles = frappe.get_roles(user)
+    employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": user},
+        ["name", "school", "organization"],
+        as_dict=True,
+    )
+    if not check_audience_match(resolved_org_communication, user, roles, employee, allow_owner=True):
+        frappe.throw(_("You do not have permission to access this communication attachment."), frappe.PermissionError)
+
+    doc = frappe.get_doc("Org Communication", resolved_org_communication)
+    target_row = None
+    for row in doc.get("attachments") or []:
+        if str(getattr(row, "name", "") or "").strip() == resolved_row_name:
+            target_row = row
+            break
+    if not target_row:
+        frappe.throw(_("Attachment row was not found."), frappe.DoesNotExistError)
+
+    return doc, target_row
+
+
+def _resolve_org_communication_drive_file(org_communication: str, row_name: str) -> tuple[str, str]:
+    row_slot = f"communication_attachment__{row_name}"
+    drive_file = frappe.db.get_value(
+        "Drive Binding",
+        {
+            "binding_doctype": "Org Communication",
+            "binding_name": org_communication,
+            "binding_role": "communication_attachment",
+            "slot": row_slot,
+            "status": "active",
+        },
+        ["drive_file", "file"],
+        as_dict=True,
+    )
+    if drive_file and drive_file.get("drive_file") and drive_file.get("file"):
+        return drive_file.get("drive_file"), drive_file.get("file")
+
+    drive_file = frappe.db.get_value(
+        "Drive File",
+        {
+            "owner_doctype": "Org Communication",
+            "owner_name": org_communication,
+            "slot": row_slot,
+            "status": "active",
+        },
+        ["name", "file"],
+        as_dict=True,
+    )
+    if drive_file and drive_file.get("name") and drive_file.get("file"):
+        return drive_file.get("name"), drive_file.get("file")
+
+    frappe.throw(_("Governed attachment file was not found."), frappe.DoesNotExistError)
 
 
 def _resolve_guardian_from_file(file_row: dict) -> str:
@@ -700,6 +796,44 @@ def download_admissions_file(
     frappe.local.response["filecontent"] = content
     frappe.local.response["display_content_as"] = "inline"
     frappe.local.response["content_type"] = content_type
+
+
+@frappe.whitelist()
+def open_org_communication_attachment(
+    org_communication: str | None = None,
+    row_name: str | None = None,
+):
+    doc, target_row = _require_org_communication_attachment_context(
+        str(org_communication or "").strip(),
+        str(row_name or "").strip(),
+    )
+
+    external_url = str(getattr(target_row, "external_url", "") or "").strip()
+    if external_url:
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = external_url
+        return
+
+    file_url = str(getattr(target_row, "file", "") or "").strip()
+    if not file_url:
+        frappe.throw(_("Attachment file is missing."), frappe.DoesNotExistError)
+
+    drive_file_id, file_id = _resolve_org_communication_drive_file(doc.name, str(row_name or "").strip())
+    preview_status = frappe.db.get_value("Drive File", drive_file_id, "preview_status")
+    if preview_status == "ready":
+        grant = _load_drive_access_callable("issue_preview_grant")(drive_file_id=drive_file_id)
+    else:
+        grant = _load_drive_access_callable("issue_download_grant")(drive_file_id=drive_file_id)
+
+    target_url = str((grant or {}).get("url") or "").strip()
+    if not target_url:
+        fallback_url = frappe.db.get_value("File", file_id, "file_url")
+        target_url = str(fallback_url or "").strip()
+    if not target_url:
+        frappe.throw(_("Could not resolve an attachment open URL."), frappe.DoesNotExistError)
+
+    frappe.local.response["type"] = "redirect"
+    frappe.local.response["location"] = target_url
 
 
 @frappe.whitelist(allow_guest=True)

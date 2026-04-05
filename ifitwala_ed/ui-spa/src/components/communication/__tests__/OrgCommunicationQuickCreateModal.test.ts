@@ -1,9 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, type App } from 'vue';
 
-const { createOrgCommunicationQuickMock, getOptionsMock } = vi.hoisted(() => ({
+const {
+	addOrgCommunicationLinkMock,
+	createOrgCommunicationQuickMock,
+	getOptionsMock,
+	removeOrgCommunicationAttachmentMock,
+	uploadOrgCommunicationAttachmentMock,
+} = vi.hoisted(() => ({
+	addOrgCommunicationLinkMock: vi.fn(),
 	createOrgCommunicationQuickMock: vi.fn(),
 	getOptionsMock: vi.fn(),
+	removeOrgCommunicationAttachmentMock: vi.fn(),
+	uploadOrgCommunicationAttachmentMock: vi.fn(),
 }));
 
 vi.mock('@headlessui/vue', () => {
@@ -147,8 +156,11 @@ vi.mock('frappe-ui', () => ({
 }));
 
 vi.mock('@/lib/services/orgCommunicationQuickCreateService', () => ({
+	addOrgCommunicationLink: addOrgCommunicationLinkMock,
 	createOrgCommunicationQuick: createOrgCommunicationQuickMock,
 	getOrgCommunicationQuickCreateOptions: getOptionsMock,
+	removeOrgCommunicationAttachment: removeOrgCommunicationAttachmentMock,
+	uploadOrgCommunicationAttachment: uploadOrgCommunicationAttachmentMock,
 }));
 
 import OrgCommunicationQuickCreateModal from '@/components/communication/OrgCommunicationQuickCreateModal.vue';
@@ -300,9 +312,21 @@ function setRichMessage(value: string) {
 	editor.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+function setInputByPlaceholder(placeholder: string, value: string) {
+	const input = Array.from(document.querySelectorAll('input')).find(node =>
+		(node.getAttribute('placeholder') || '').includes(placeholder)
+	) as HTMLInputElement | undefined;
+	if (!input) return;
+	input.value = value;
+	input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 afterEach(() => {
+	addOrgCommunicationLinkMock.mockReset();
 	createOrgCommunicationQuickMock.mockReset();
 	getOptionsMock.mockReset();
+	removeOrgCommunicationAttachmentMock.mockReset();
+	uploadOrgCommunicationAttachmentMock.mockReset();
 	while (cleanupFns.length) cleanupFns.pop()?.();
 	document.body.innerHTML = '';
 });
@@ -514,5 +538,75 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				}),
 			],
 		});
+	});
+
+	it('auto-saves a class-event draft before adding a link attachment and publishes by update', async () => {
+		getOptionsMock.mockResolvedValue(quickCreateOptions);
+		createOrgCommunicationQuickMock
+			.mockResolvedValueOnce({
+				ok: true,
+				status: 'created',
+				name: 'COMM-DRAFT-1',
+				title: '25-26-G6-Math1/IIS 2025-2026',
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				status: 'updated',
+				name: 'COMM-DRAFT-1',
+				title: '25-26-G6-Math1/IIS 2025-2026',
+			});
+		addOrgCommunicationLinkMock.mockResolvedValue({
+			ok: true,
+			org_communication: 'COMM-DRAFT-1',
+			attachment: {
+				row_name: 'row-link',
+				kind: 'link',
+				title: 'Reference sheet',
+				external_url: 'https://example.com/reference',
+				open_url: 'https://example.com/reference',
+			},
+		});
+
+		mountModal({
+			entryMode: 'class-event',
+			title: '25-26-G6-Math1/IIS 2025-2026',
+			studentGroup: 'SG-1',
+			school: 'SCH-1',
+			sessionDate: '2026-04-03',
+			sessionTimeLabel: '8:00 AM - 8:45 AM',
+			courseLabel: 'IB MYP mathematics (Grade 6)',
+		});
+		await flushUi();
+
+		clickButton('Add link');
+		await flushUi();
+		setInputByPlaceholder('https://example.com/resource.pdf', 'https://example.com/reference');
+		setInputByPlaceholder('Optional display label', 'Reference sheet');
+		await flushUi();
+		clickButton('Add link');
+		await flushUi();
+		clickButton('Publish announcement');
+		await flushUi();
+
+		expect(createOrgCommunicationQuickMock).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				name: null,
+				status: 'Draft',
+			})
+		);
+		expect(addOrgCommunicationLinkMock).toHaveBeenCalledWith({
+			org_communication: 'COMM-DRAFT-1',
+			title: 'Reference sheet',
+			external_url: 'https://example.com/reference',
+		});
+		expect(createOrgCommunicationQuickMock).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				name: 'COMM-DRAFT-1',
+				status: 'Published',
+			})
+		);
+		expect(document.body.textContent || '').toContain('Reference sheet');
 	});
 });

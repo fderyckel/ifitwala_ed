@@ -29,6 +29,7 @@ class TestTreeUtils(TestCase):
             "School",
             filters={"lft": (">=", 1), "rgt": ("<=", 4)},
             pluck="name",
+            order_by="lft asc",
         )
 
     @patch("ifitwala_ed.utilities.tree_utils.frappe.get_all", return_value=["ORG-ROOT"])
@@ -51,4 +52,5 @@ class TestTreeUtils(TestCase):
             "Organization",
             filters={"lft": ("<=", 2), "rgt": (">=", 3)},
             pluck="name",
+            order_by="lft desc",
         )

@@ -347,17 +347,18 @@ def get_events(start, end, filters=None):
         fields=[
             "name",
             "parent as school_calendar",
-            "holiday_date as start",
-            "description as title",
+            "holiday_date",
+            "description",
             "color",
         ],
         filters=event_filters,
         order_by="holiday_date asc",
-        update={"allDay": 1},
     )
 
     for event in events:
-        event["end"] = event.get("start")
+        event["title"] = event.get("description") or _("Holiday")
+        event["start"] = event.get("holiday_date")
+        event["end"] = event.get("holiday_date")
         event["allDay"] = 1
 
     return events

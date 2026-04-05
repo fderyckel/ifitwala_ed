@@ -53,27 +53,36 @@ Status: Implemented
 
 Code refs:
 - `ifitwala_ed/api/org_communication_quick_create.py`
+- `ifitwala_ed/api/org_communication_attachments.py`
 - `ifitwala_ed/ui-spa/src/lib/services/orgCommunicationQuickCreateService.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/org_communication_quick_create/get_org_communication_quick_create_options.ts`
 - `ifitwala_ed/ui-spa/src/types/contracts/org_communication_quick_create/create_org_communication_quick.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/org_communication_attachments/*`
 
 Test refs:
 - `ifitwala_ed/api/test_org_communication_quick_create.py`
+- `ifitwala_ed/api/test_org_communication_archive.py`
 - `ifitwala_ed/ui-spa/src/lib/services/__tests__/orgCommunicationQuickCreateService.test.ts`
+- `ifitwala_ed/ui-spa/src/components/communication/__tests__/OrgCommunicationQuickCreateModal.test.ts`
 
 Rules:
 
 1. The SPA must use named POST endpoints only:
    - `ifitwala_ed.api.org_communication_quick_create.get_org_communication_quick_create_options`
    - `ifitwala_ed.api.org_communication_quick_create.create_org_communication_quick`
+   - `ifitwala_ed.api.org_communication_attachments.upload_org_communication_attachment`
+   - `ifitwala_ed.api.org_communication_attachments.add_org_communication_link`
+   - `ifitwala_ed.api.org_communication_attachments.remove_org_communication_attachment`
 2. The SPA sends the payload as the flat JSON body directly, not wrapped inside a nested `payload` or `doc` object.
 3. `get_org_communication_quick_create_options()` is the canonical source for:
    - organization and school authoring scope
    - allowed communication/status/priority/surface/interaction options
    - recipient rules per audience target mode
    - reference lists for organizations, schools, teams, and student groups
-4. `create_org_communication_quick(...)` is the only SPA mutation path for quick-create and inserts through the existing `Org Communication` controller validations.
-5. The quick-create mutation supports `client_request_id` and returns semantic success as `status='created' | 'already_processed'`.
+4. `create_org_communication_quick(...)` is the canonical SPA mutation path for saving class-event and Staff Home quick-create state.
+5. When `name` is omitted, `create_org_communication_quick(...)` creates a new `Org Communication`.
+6. When `name` is provided, `create_org_communication_quick(...)` updates that existing `Org Communication` through the same controller validations.
+7. Create requests support `client_request_id` and return semantic success as `status='created' | 'updated' | 'already_processed'`.
 6. Response `name` is the internal `Org Communication` record id. Visible `title` remains user-authored display text and is not required to be unique.
 
 ## 3. Validation and Scope Ownership
@@ -107,7 +116,47 @@ Rules:
    - one `Student Group` audience row with `to_students=1`
 6. In `entryMode='class-event'`, guardian visibility starts unchecked and is controlled only by the single exposed guardian toggle.
 
-## 4. Overlay and Invalidation Contract
+## 4. Class-Event Attachment Contract
+
+Status: Implemented
+
+Code refs:
+- `ifitwala_ed/api/org_communication_attachments.py`
+- `ifitwala_ed/api/file_access.py`
+- `ifitwala_ed/setup/doctype/org_communication/attachments.py`
+- `ifitwala_ed/integrations/drive/org_communications.py`
+- `ifitwala_drive/api/communications.py`
+- `ifitwala_drive/services/integration/ifitwala_ed_org_communications.py`
+- `ifitwala_drive/services/folders/resolution.py`
+- `ifitwala_ed/ui-spa/src/components/communication/OrgCommunicationQuickCreateModal.vue`
+- `ifitwala_ed/ui-spa/src/pages/staff/OrgCommunicationArchive.vue`
+
+Test refs:
+- `ifitwala_ed/api/test_org_communication_archive.py`
+- `ifitwala_ed/api/test_file_access.py`
+- `ifitwala_drive/tests/test_org_communication_attachment_upload_flow.py`
+- `ifitwala_ed/ui-spa/src/components/communication/__tests__/OrgCommunicationQuickCreateModal.test.ts`
+
+Rules:
+
+1. `entryMode='class-event'` is the only quick-create mode that exposes attachment actions in this contract version.
+2. The overlay exposes only:
+   - `Add file`
+   - `Add link`
+3. The first attachment action auto-saves a draft `Org Communication` before uploading or appending the attachment row.
+4. File uploads are governed uploads only. The SPA must not use generic Desk `Attach` behavior or raw `upload_file` transport as product truth.
+5. Each governed file row is stored on `Org Communication.attachments` and must resolve to:
+   - owner `Org Communication`
+   - one deterministic slot `communication_attachment__<row_name>`
+   - Drive binding role `communication_attachment`
+6. Attachment governance remains organization-owned, but folder placement and browse context are derived from the locked class context:
+   - course
+   - student group
+   - issuing school
+7. External links are allowed as attachment rows, but they remain explicit `https://` links and do not replace governed upload for local files.
+8. The archive/detail surface receives attachment rows with server-owned `open_url` values. The SPA must not construct or guess private media paths.
+
+## 5. Overlay and Invalidation Contract
 
 Status: Implemented
 
@@ -128,8 +177,9 @@ Rules:
 3. The overlay never owns cross-surface refresh.
 4. Refresh owners such as the archive page remain responsible for reloading their own org-communication data.
 5. Staff Home quick-create must not rely on the DocType default status to decide the primary action.
+6. Attachment create/remove mutations also emit `SIGNAL_ORG_COMMUNICATION_INVALIDATE` for the owning communication record.
 
-## 5. Technical Notes (IT)
+## 6. Technical Notes (IT)
 
 Status: Implemented
 
@@ -142,6 +192,8 @@ Test refs:
 - `ifitwala_ed/ui-spa/src/components/communication/__tests__/OrgCommunicationQuickCreateModal.test.ts`
 
 - Quick-create idempotency TTL: `900s`
+- Attachment slot prefix: `communication_attachment__`
+- Attachment binding role: `communication_attachment`
 - Audience target modes are:
   - `School Scope`
   - `Team`

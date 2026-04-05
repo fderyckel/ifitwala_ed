@@ -11,6 +11,8 @@ Status: Implemented
 Code refs:
 - `ifitwala_ed/api/org_communication_interactions.py`
 - `ifitwala_ed/api/admissions_communication.py`
+- `ifitwala_ed/api/org_communication_archive.py`
+- `ifitwala_ed/api/file_access.py`
 - `ifitwala_ed/api/guardian_home.py`
 - `ifitwala_ed/api/org_communication_archive.py`
 - `ifitwala_ed/setup/doctype/communication_interaction_entry/communication_interaction_entry.py`
@@ -61,6 +63,7 @@ Rules:
 2. Clients must not assemble messaging behavior from generic CRUD calls.
 3. Admissions endpoints remain context-specific wrappers over the same canonical entry/read-state model.
 4. `get_org_communication_item` must expose full-body HTML as `message_html`, not `message`, so the SPA transport envelope unwrapping cannot collide with the domain payload.
+5. `get_org_communication_item` may expose attachment rows for archive/detail rendering, but governed file rows must be returned with server-owned `open_url` values instead of raw private paths.
 
 ## 3. Surface Matrix
 
@@ -95,6 +98,7 @@ Code refs:
 - `ifitwala_ed/api/org_communication_interactions.py`
 - `ifitwala_ed/api/admissions_communication.py`
 - `ifitwala_ed/api/guardian_home.py`
+- `ifitwala_ed/api/file_access.py`
 
 Test refs:
 - `ifitwala_ed/api/test_org_comm_utils.py`
@@ -112,6 +116,7 @@ Rules:
 6. For guardian/activity summary logic, a user’s own interaction entry also counts as seen.
 7. Hidden rows never contribute to threads, comment counts, or unread counts.
 8. Staff archive and shared interaction endpoints may allow the `Org Communication.owner` to access their own authored communication when no explicit audience scope filter (`team`, `student_group`, `school`) is being enforced.
+9. Org Communication attachment open routes must enforce the same audience visibility contract as archive detail, including owner visibility for authored history.
 
 ## 5. Migration
 

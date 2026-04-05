@@ -143,17 +143,28 @@ class TestCoursesApi(TestCase):
                 return_value={"date": "2026-03-12", "weekday": "Thursday", "courses": []},
             ),
             patch(
-                "ifitwala_ed.api.courses.get_courses_data",
-                return_value={
-                    "selected_year": "2025-2026",
-                    "courses": [
-                        {
-                            "course": "COURSE-2",
-                            "course_name": "History",
-                            "href": {"name": "student-course-detail", "params": {"course_id": "COURSE-2"}},
-                        }
-                    ],
-                },
+                "ifitwala_ed.api.courses._build_student_courses_payload",
+                return_value=(
+                    {
+                        "selected_year": "2025-2026",
+                        "courses": [
+                            {
+                                "course": "COURSE-2",
+                                "course_name": "History",
+                                "href": {"name": "student-course-detail", "params": {"course_id": "COURSE-2"}},
+                                "learning_space": {
+                                    "status": "shared_plan_only",
+                                    "status_label": "Shared Plan",
+                                    "summary": "Open the shared course plan for now.",
+                                    "cta_label": "Open shared plan",
+                                    "can_open": 1,
+                                    "href": {"name": "student-course-detail", "params": {"course_id": "COURSE-2"}},
+                                },
+                            }
+                        ],
+                    },
+                    {"COURSE-1": {}, "COURSE-2": {}},
+                ),
             ),
         ):
             payload = courses_api.get_student_hub_home()

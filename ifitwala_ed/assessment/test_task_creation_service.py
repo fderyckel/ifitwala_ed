@@ -58,10 +58,17 @@ class TestTaskCreationService(TestCase):
         task = _FakeTask()
         delivery = _FakeDelivery()
         created_docs = [task, delivery]
+        permission_calls: list[tuple[str, str, tuple[str, ...] | None, str | None]] = []
 
-        with stubbed_frappe() as frappe:
+        planning_module = types.ModuleType("ifitwala_ed.curriculum.planning")
+        planning_module.assert_can_manage_course_curriculum = lambda user, course, roles=None, action_label=None: (
+            permission_calls.append((user, course, tuple(roles or []), action_label))
+        )
+
+        with stubbed_frappe(extra_modules={"ifitwala_ed.curriculum.planning": planning_module}) as frappe:
             frappe.db.savepoint = lambda name: None
             frappe.db.rollback = lambda save_point=None: None
+            frappe.get_roles = lambda user: ["Instructor"]
 
             def fake_get_value(doctype, name, fieldname=None, as_dict=False):
                 if doctype == "Student Group":
@@ -106,6 +113,17 @@ class TestTaskCreationService(TestCase):
         self.assertEqual(task.insert_calls, 1)
         self.assertEqual(task.unit_plan, "UNIT-1")
         self.assertEqual(task.default_allow_feedback, 1)
+        self.assertEqual(
+            permission_calls,
+            [
+                (
+                    "unit.test@example.com",
+                    "COURSE-1",
+                    ("Instructor",),
+                    "create assigned work for this course",
+                )
+            ],
+        )
         self.assertEqual(delivery.task, "TASK-0001")
         self.assertEqual(delivery.student_group, "GRP-1")
         self.assertEqual(delivery.class_teaching_plan, "CLASS-PLAN-1")

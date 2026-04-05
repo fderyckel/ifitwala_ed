@@ -32,6 +32,7 @@
   "audiences",
   "section_break_dcte",
   "message",
+  "attachments",
   "section_break_vuxv",
   "portal_surface",
   "internal_note",
@@ -224,6 +225,12 @@
    "label": "Message"
   },
   {
+   "fieldname": "attachments",
+   "fieldtype": "Table",
+   "label": "Attachments",
+   "options": "Attached Document"
+  },
+  {
    "default": "None",
    "description": "Controls reactions/comments behaviour for this communication on portal and Morning Brief surfaces.",
    "fieldname": "interaction_mode",
@@ -249,7 +256,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-05 11:38:23.542732",
+ "modified": "2026-04-05 15:17:58.369493",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Org Communication",
