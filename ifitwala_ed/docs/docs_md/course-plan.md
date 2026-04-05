@@ -3,8 +3,8 @@ title: "Course Plan: Shared Curriculum Version For A Course"
 slug: course-plan
 category: Curriculum
 doc_order: 4
-version: "1.3.3"
-last_change_date: "2026-04-03"
+version: "1.4.0"
+last_change_date: "2026-04-05"
 summary: "Define the governed shared curriculum version for a course, including SPA-first creation from the course-plan index, cycle labeling, publication status, shared summary context, and the governed workspace used to author units, quiz banks, and assignment-ready curriculum assets."
 seo_title: "Course Plan: Shared Curriculum Version For A Course"
 seo_description: "Define the governed shared curriculum version for a course, including the shared summary and the unit-plan backbone inherited by linked classes."
@@ -40,7 +40,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/lib
 - Parent planning context for [**Unit Plan**](/docs/en/unit-plan/) rows.
 - Governing curriculum selection for [**Class Teaching Plan**](/docs/en/class-teaching-plan/) records.
 - Shared curriculum workspace in the staff SPA for editing summary, status, governed unit sequence, and course quiz banks.
-- Launch point for prefilled assignment flows from published shared lesson outlines and published quiz banks.
+- Launch point for prefilled assignment flows from published quiz banks.
 - Shared course-level resource anchor through `Material Placement`.
 
 ## Lifecycle And Linked Documents
@@ -55,7 +55,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 3. Add one or more `Unit Plan` rows as the governed backbone for linked classes.
 4. Staff can edit the shared course-plan fields directly from the staff course-plan workspace in the SPA.
 5. The same SPA workspace also surfaces course-level quiz-bank authoring for the linked course.
-6. Published shared lesson outlines and published quiz banks can hand off into the existing task-delivery overlay without creating a second assignment workflow.
+6. Published quiz banks can hand off into the existing task-delivery overlay without creating a second assignment workflow.
 7. Class teaching plans then inherit one selected course plan and adapt delivery without mutating the shared plan.
 
 ## Related Docs
@@ -97,8 +97,8 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.
 - The staff course-plan index bootstraps both existing plans and create-ready course options in one bounded payload.
 - New course-plan creation now starts from the staff SPA index and routes directly into the course-plan workspace.
 - Course-plan `academic_year` in the staff SPA is now chosen from actual `Academic Year` docs resolved for the selected course school scope; create/update mutations reject out-of-scope changes while preserving unchanged legacy values.
-- The staff course-plan workspace now edits and renders Desk `Text Editor` fields as Desk-compatible rich text, including course summary, governed unit rich-text fields, lesson reading content, and quiz question prompt/explanation.
-- Shared course-plan, unit-plan, and lesson save mutations now enforce optimistic concurrency with `record_modified` read tokens and `expected_modified` write tokens, and they reject stale saves with a reload-required validation message.
+- The staff course-plan workspace now edits and renders Desk `Text Editor` fields as Desk-compatible rich text, including course summary, governed unit rich-text fields, and quiz question prompt/explanation.
+- Shared course-plan and unit-plan save mutations now enforce optimistic concurrency with `record_modified` read tokens and `expected_modified` write tokens, and they reject stale saves with a reload-required validation message.
 - Rich course-plan HTML is sanitized server-side before save so Desk/SPAs can preserve formatting without storing script-bearing markup.
 - Hot course-plan index/load/save endpoints now emit bounded `ifitwala.curriculum` event logs with status and elapsed time for Cloud Logging metrics and alerting.
 - The staff course-plan workspace uses one bounded bootstrap payload and explicit save mutations rather than client waterfalls.

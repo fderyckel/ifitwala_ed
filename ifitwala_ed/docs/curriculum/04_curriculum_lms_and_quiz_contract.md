@@ -120,8 +120,7 @@ Test refs: `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/
 
 - A reusable `Task` is quiz-backed when `task_type = Quiz` and a `quiz_question_bank` is configured.
 - Staff can author and update shared course quiz banks from the staff `Course Plan` workspace before assigning them.
-- Staff can launch the existing task-delivery overlay directly from a selected shared lesson outline or selected published quiz bank in the course-plan workspace.
-- Assign-from-lesson now carries the existing `Task.lesson` anchor through task creation; `Task Delivery` still remains class-plan and optional class-session scoped.
+- Staff can launch the existing task-delivery overlay directly from a selected published quiz bank in the course-plan workspace.
 - Task creation snapshots quiz settings onto `Task Delivery`.
 - Practice versus assessed behavior is determined by `Task Delivery.delivery_mode`:
   - `Assess` = assessed quiz
@@ -196,7 +195,6 @@ Test refs: None
 
 Not implemented now:
 
-- direct `Lesson Activity` anchoring for quiz runtime
 - waiting-period-between-attempts policy
 - a second gradebook or second LMS tree
 - inline quiz-bank quick-create inside the task-delivery overlay

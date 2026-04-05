@@ -159,8 +159,17 @@
 									</RouterLink>
 
 									<template v-else>
-										<RouterLink
+										<button
+											type="button"
 											class="meeting-modal__action-button"
+											@click="emitPlanSession"
+										>
+											<FeatherIcon name="edit-3" class="h-4 w-4" />
+											Plan This Session
+										</button>
+
+										<RouterLink
+											class="meeting-modal__action-button meeting-modal__action-button--secondary"
 											:to="attendanceLink"
 											target="_blank"
 											rel="noreferrer"
@@ -294,7 +303,8 @@ const courseLabel = computed(() => data.value?.course_name || data.value?.course
 const sessionDateLabel = computed(() => {
 	if (!data.value?.session_date) return '';
 	try {
-		const date = new Date(data.value.session_date);
+		const raw = data.value.session_date;
+		const date = new Date(raw.includes('T') ? raw : `${raw}T12:00:00`);
 		return new Intl.DateTimeFormat(undefined, {
 			weekday: 'long',
 			month: 'long',
@@ -372,6 +382,22 @@ function emitCreateTask() {
 	overlay.replaceTop('create-task', {
 		prefillStudentGroup: data.value.student_group,
 		prefillDueDate: data.value.end || data.value.start || null,
+	});
+}
+
+function emitPlanSession() {
+	if (!data.value?.student_group) return;
+
+	overlay.replaceTop('quick-class-session', {
+		studentGroup: data.value.student_group,
+		classTitle: data.value.title || null,
+		course: data.value.course || null,
+		courseName: data.value.course_name || null,
+		sessionDate: data.value.session_date || null,
+		blockLabel: data.value.block_label || null,
+		start: data.value.start || null,
+		end: data.value.end || null,
+		timezone: data.value.timezone || null,
 	});
 }
 

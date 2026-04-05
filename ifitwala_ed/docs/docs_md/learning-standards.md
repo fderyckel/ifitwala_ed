@@ -3,8 +3,8 @@ title: "Learning Standards: Standards Catalog for Curriculum Taxonomy"
 slug: learning-standards
 category: Curriculum
 doc_order: 3
-version: "1.1.0"
-last_change_date: "2026-04-01"
+version: "1.1.1"
+last_change_date: "2026-04-05"
 summary: "Catalog standards-framework rows for curriculum taxonomy, even though current task and unit flows do not yet link to this master directly."
 seo_title: "Learning Standards: Standards Catalog for Curriculum Taxonomy"
 seo_description: "Catalog standards-framework rows for curriculum taxonomy, even though current task and unit flows do not yet link to this master directly."
@@ -59,7 +59,6 @@ Test refs: None
 
 - [**Unit Plan**](/docs/en/unit-plan/)
 - [**Learning Unit Standard Alignment**](/docs/en/learning-unit-standard-alignment/)
-- [**Lesson**](/docs/en/lesson/)
 - [**Task**](/docs/en/task/)
 - [**Task Delivery**](/docs/en/task-delivery/)
 

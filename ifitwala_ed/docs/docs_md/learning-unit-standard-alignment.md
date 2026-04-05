@@ -3,8 +3,8 @@ title: "Learning Unit Standard Alignment: Unit-Level Standards Snapshot"
 slug: learning-unit-standard-alignment
 category: Curriculum
 doc_order: 4
-version: "1.1.0"
-last_change_date: "2026-04-01"
+version: "1.1.1"
+last_change_date: "2026-04-05"
 summary: "Record the standards coverage and alignment notes that a specific unit plan claims, stored inline as child rows on the parent unit."
 seo_title: "Learning Unit Standard Alignment: Unit-Level Standards Snapshot"
 seo_description: "Record the standards coverage and alignment notes that a specific learning unit claims, stored inline as child rows on the parent unit."
@@ -59,7 +59,6 @@ Test refs: None
 
 - [**Unit Plan**](/docs/en/unit-plan/)
 - [**Learning Standards**](/docs/en/learning-standards/)
-- [**Lesson**](/docs/en/lesson/)
 - [**Task**](/docs/en/task/)
 
 ## Technical Notes (IT)

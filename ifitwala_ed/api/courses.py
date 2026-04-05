@@ -50,7 +50,6 @@ def _build_course_href(
     *,
     student_group: str | None = None,
     unit_plan: str | None = None,
-    lesson: str | None = None,
 ) -> dict[str, Any]:
     href: dict[str, Any] = {
         "name": "student-course-detail",
@@ -59,7 +58,6 @@ def _build_course_href(
     query = {
         "student_group": student_group,
         "unit_plan": unit_plan,
-        "lesson": lesson,
     }
     query = {key: value for key, value in query.items() if value}
     if query:
@@ -492,7 +490,6 @@ def _fetch_student_hub_task_rows(student_name: str, student_groups: list[str]) -
             t.title,
             t.task_type,
             t.unit_plan AS unit_plan,
-            t.lesson,
             COALESCE(c.course_name, td.course, t.default_course) AS course_name,
             o.name AS task_outcome,
             o.submission_status,
@@ -542,7 +539,6 @@ def _build_work_item_href(row: dict[str, Any]) -> dict[str, Any] | None:
         course_id,
         student_group=row.get("student_group"),
         unit_plan=row.get("unit_plan"),
-        lesson=row.get("lesson"),
     )
 
 
@@ -608,7 +604,6 @@ def _serialize_work_item(row: dict[str, Any], anchor_dt: datetime, lane: str, la
         "requires_submission": int(row.get("requires_submission") or 0),
         "require_grading": int(row.get("require_grading") or 0),
         "unit_plan": row.get("unit_plan"),
-        "lesson": row.get("lesson"),
         "class_session": row.get("class_session"),
         "available_from": _serialize_scalar(row.get("available_from")),
         "due_date": _serialize_scalar(row.get("due_date")),

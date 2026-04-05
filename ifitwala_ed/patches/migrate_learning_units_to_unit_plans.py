@@ -65,7 +65,6 @@ def execute():
                 parentfield="reflections",
             )
 
-    _backfill_unit_plan_link("Lesson", "learning_unit", "unit_plan")
     _backfill_unit_plan_link("Task", "learning_unit", "unit_plan")
 
     if frappe.db.table_exists("Material Placement"):
@@ -185,17 +184,6 @@ def _backfill_unit_plan_link(doctype: str, source_field: str, target_field: str)
     if not frappe.db.table_exists(doctype):
         return
     if not frappe.db.has_column(doctype, source_field) or not frappe.db.has_column(doctype, target_field):
-        return
-
-    if doctype == "Lesson" and source_field == "learning_unit" and target_field == "unit_plan":
-        frappe.db.sql(
-            """
-            UPDATE `tabLesson`
-            SET `unit_plan` = `learning_unit`
-            WHERE COALESCE(`unit_plan`, '') = ''
-              AND COALESCE(`learning_unit`, '') != ''
-            """
-        )
         return
 
     if doctype == "Task" and source_field == "learning_unit" and target_field == "unit_plan":

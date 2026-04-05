@@ -390,7 +390,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Curriculum",
-   "link_count": 5,
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -418,16 +418,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Lesson",
-   "link_count": 0,
-   "link_to": "Lesson",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Learning Standards",
    "link_count": 0,
    "link_to": "Learning Standards",
@@ -446,7 +436,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-04-02 17:05:08.916528",
+ "modified": "2026-04-05 01:26:54.000000",
  "modified_by": "Administrator",
  "module": "Curriculum",
  "name": "Curriculum",

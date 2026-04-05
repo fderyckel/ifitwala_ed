@@ -112,18 +112,11 @@
 										</div>
 
 										<div
-											v-if="
-												props.prefillLessonLabel ||
-												props.prefillQuizQuestionBankLabel ||
-												props.prefillUnitPlan
-											"
+											v-if="props.prefillQuizQuestionBankLabel || props.prefillUnitPlan"
 											class="flex flex-wrap gap-2"
 										>
 											<span v-if="props.prefillUnitPlan" class="chip">
 												Unit {{ props.prefillUnitPlan }}
-											</span>
-											<span v-if="props.prefillLessonLabel" class="chip">
-												Lesson {{ props.prefillLessonLabel }}
 											</span>
 											<span v-if="props.prefillQuizQuestionBankLabel" class="chip">
 												Quiz {{ props.prefillQuizQuestionBankLabel }}
@@ -459,8 +452,9 @@
 											<h3 class="type-h3 text-ink">Task saved</h3>
 										</div>
 										<p class="type-body text-ink/80">
-											Add supporting materials while you are still in the task flow. Lesson text
-											stays in lessons; these are separately openable materials for students.
+											Add supporting materials while you are still in the task flow. Shared plan
+											content stays in curriculum planning; these are separately openable materials
+											for students.
 										</p>
 										<div class="grid gap-3 md:grid-cols-3">
 											<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
@@ -735,8 +729,6 @@ const props = defineProps<{
 	prefillClassTeachingPlan?: string | null;
 	prefillClassSession?: string | null;
 	prefillUnitPlan?: string | null;
-	prefillLesson?: string | null;
-	prefillLessonLabel?: string | null;
 	prefillQuizQuestionBank?: string | null;
 	prefillQuizQuestionBankLabel?: string | null;
 	prefillTitle?: string | null;
@@ -1455,7 +1447,6 @@ async function submit() {
 		class_teaching_plan: props.prefillClassTeachingPlan || undefined,
 		class_session: props.prefillClassSession || undefined,
 		unit_plan: props.prefillUnitPlan || undefined,
-		lesson: props.prefillLesson || undefined,
 		delivery_mode: form.delivery_mode,
 		allow_late_submission:
 			form.delivery_mode === 'Assign Only' ? 0 : form.allow_late_submission ? 1 : 0,

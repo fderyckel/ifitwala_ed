@@ -3,8 +3,8 @@ title: "Class Session: The Live Teaching Session for a Class"
 slug: class-session
 category: Curriculum
 doc_order: 8
-version: "1.0.0"
-last_change_date: "2026-04-01"
+version: "1.0.2"
+last_change_date: "2026-04-05"
 summary: "Plan and run a real class session for one class teaching plan, with lifecycle status, learning goal, teacher notes, and session activities."
 seo_title: "Class Session: The Live Teaching Session for a Class"
 seo_description: "Use Class Session as the educator-facing runtime object for planned, in-progress, taught, changed, or canceled teaching sessions."
@@ -18,7 +18,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/assessment/doc
 
 `Class Session` is the educator-facing runtime record for one real teaching session with one class. It belongs to a `Class Teaching Plan`, inherits governed class context, and moves through one lifecycle from planning to taught state.
 
-Current workspace note: `Lesson Instance` has been retired. `Task Delivery`, Class Hub contracts, and reflection context now use `class_session` when they need live class-session context.
+Current workspace note: `Class Session` is the only live session object for planning, teaching, and session-linked assigned work.
 
 ## Before You Start (Prerequisites)
 
@@ -37,6 +37,7 @@ Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/class_hub.py`, 
 Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`
 
 - Live session object on the staff planning surface in `ui-spa/src/pages/staff/ClassPlanning.vue`.
+- Quick calendar-to-session authoring overlay in `ui-spa/src/components/calendar/ClassEventModal.vue` and `ui-spa/src/overlays/planning/QuickClassSessionOverlay.vue`.
 - Student LMS session context on `ui-spa/src/pages/student/CourseDetail.vue`.
 - Optional runtime anchor on [**Task Delivery**](/docs/en/task-delivery/) through `class_session`.
 - Optional reflection context on `Student Reflection Entry`.
@@ -51,8 +52,9 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`
 1. Create the session under a `Class Teaching Plan`.
 2. Link it to one governed `Unit Plan`.
 3. Add session-specific title, date, learning goal, teacher note, and `Class Session Activity` rows.
-4. Move the session through lifecycle states such as `Draft`, `Planned`, `In Progress`, `Taught`, `Changed`, or `Canceled`.
-5. Optionally link downstream assigned work or reflections to the session when the class context matters.
+4. The main low-friction authoring path may start from the staff calendar class-event overlay, which prefills the clicked class and date context before save.
+5. Move the session through lifecycle states such as `Draft`, `Planned`, `In Progress`, `Taught`, `Changed`, or `Canceled`.
+6. Optionally link downstream assigned work or reflections to the session when the class context matters.
 
 ## Related Docs
 
@@ -60,10 +62,9 @@ Status: Implemented
 Code refs: None
 Test refs: None
 
-- [**Lesson Instance**](/docs/en/lesson-instance/)
+- [**Class Teaching Plan**](/docs/en/class-teaching-plan/)
 - [**Task Delivery**](/docs/en/task-delivery/)
-- [**Lesson**](/docs/en/lesson/)
-- [**Lesson Activity**](/docs/en/lesson-activity/)
+- [**Unit Plan**](/docs/en/unit-plan/)
 - [**Student Group**](/docs/en/student-group/)
 
 ## Technical Notes (IT)

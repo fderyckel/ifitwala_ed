@@ -70,7 +70,7 @@ def resolve_anchor_context(anchor_doctype: str, anchor_name: str) -> dict[str, s
             "academic_year",
             "unit_plan",
         ],
-        "Task": ["name", "default_course", "unit_plan", "lesson"],
+        "Task": ["name", "default_course", "unit_plan"],
     }
     row = frappe.db.get_value(anchor_doctype, anchor_name, fields_by_doctype[anchor_doctype], as_dict=True) or {}
     if not row:
@@ -98,10 +98,6 @@ def resolve_anchor_context(anchor_doctype: str, anchor_name: str) -> dict[str, s
     elif anchor_doctype == "Task":
         course = context.get("default_course")
         context["course"] = course
-        if context.get("lesson") and not context.get("unit_plan"):
-            context["unit_plan"] = (
-                _normalize_text(frappe.db.get_value("Lesson", context.get("lesson"), "unit_plan")) or None
-            )
         if context.get("unit_plan"):
             context["course_plan"] = (
                 _normalize_text(frappe.db.get_value("Unit Plan", context.get("unit_plan"), "course_plan")) or None

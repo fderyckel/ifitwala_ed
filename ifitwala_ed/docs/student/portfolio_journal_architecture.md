@@ -37,7 +37,7 @@ Guardians and external viewers are constrained to showcase-approved portfolio it
     - `artefact_file`
   - Includes showcase and moderation fields
 - `Student Reflection Entry`
-  - Universal context anchors (course, student_group, program_enrollment, activity_booking, lesson, class_session, lesson_activity, task_delivery, task_submission)
+  - Universal context anchors (course, student_group, program_enrollment, activity_booking, class_session, task_delivery, task_submission)
 - `Tag Taxonomy`
   - Controlled school/framework taxonomy with optional `Learning Standards` linkage
 - `Evidence Tag`
@@ -54,7 +54,7 @@ Portfolio/Journal attaches to existing ERP entities without duplication:
 
 - `Task Submission`: canonical assessed evidence container
 - `Task Delivery`: assignment context anchor for reflections
-- `Lesson`, `Class Session`, `Lesson Activity`: instructional context anchors for reflections
+- `Class Session`: instructional context anchor for reflections
 - `Course`, `Student Group`: classroom context anchors
 - `Program Enrollment`: program-level context and filtering
 - `Academic Year`: annual portfolio boundary

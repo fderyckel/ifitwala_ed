@@ -275,11 +275,6 @@ def next_session_sequence(class_teaching_plan: str, unit_plan: str | None = None
     return int(current or 0) + ORDER_STEP
 
 
-def next_lesson_order(unit_plan: str) -> int:
-    current = frappe.db.get_value("Lesson", {"unit_plan": unit_plan}, "MAX(lesson_order)")
-    return int(current or 0) + ORDER_STEP
-
-
 def build_class_teaching_plan_title(group_row: dict, course_plan_row: dict) -> str:
     label = normalize_text(group_row.get("student_group_name")) or normalize_text(group_row.get("name"))
     plan_title = normalize_text(course_plan_row.get("title")) or normalize_text(course_plan_row.get("name"))
@@ -534,35 +529,6 @@ def replace_session_activities(doc, rows: Iterable[dict] | None) -> None:
             }
         )
     doc.set("activities", sanitized)
-
-
-def replace_lesson_activities(doc, rows: Iterable[dict] | None) -> None:
-    sanitized: list[dict] = []
-    for idx, row in enumerate(rows or [], start=1):
-        title = normalize_text((row or {}).get("title"))
-        activity_type = normalize_text((row or {}).get("activity_type")) or "Interactive"
-        if not title and not any(
-            normalize_text((row or {}).get(fieldname))
-            for fieldname in ("reading_content", "video_url", "external_link", "discussion_prompt")
-        ):
-            continue
-        lesson_activity_order = (row or {}).get("lesson_activity_order")
-        sanitized.append(
-            {
-                "title": title or None,
-                "activity_type": activity_type,
-                "lesson_activity_order": int(lesson_activity_order)
-                if lesson_activity_order not in (None, "")
-                else idx * ORDER_STEP,
-                "reading_content": normalize_rich_text((row or {}).get("reading_content")),
-                "video_url": normalize_text((row or {}).get("video_url")) or None,
-                "external_link": normalize_text((row or {}).get("external_link")) or None,
-                "discussion_prompt": normalize_long_text((row or {}).get("discussion_prompt")),
-                "is_required": normalize_flag((row or {}).get("is_required")),
-                "estimated_duration": (row or {}).get("estimated_duration") or None,
-            }
-        )
-    doc.set("lesson_activities", sanitized)
 
 
 def replace_unit_plan_standards(doc, rows: Iterable[dict] | None) -> None:

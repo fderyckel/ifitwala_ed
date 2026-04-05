@@ -3,8 +3,8 @@ title: "Task: The Reusable Learning and Assessment Blueprint"
 slug: task
 category: Assessment
 doc_order: 4
-version: "1.5.1"
-last_change_date: "2026-04-02"
+version: "1.6.0"
+last_change_date: "2026-04-05"
 summary: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and task-specific supporting materials."
 seo_title: "Task: The Reusable Learning and Assessment Blueprint"
 seo_description: "Author reusable learning tasks once, then deliver them to groups with the right grading mode, evidence expectations, and rubric strategy."
@@ -18,7 +18,7 @@ Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.p
 
 `Task` is the reusable definition layer for learning work. It holds author intent, instructions, default assessment behavior, and default comment policy, but it is not itself assigned to a class.
 
-Current workspace note: the task definition model is in place, downstream launch paths are still split between the direct delivery service and the create-task overlay transaction, and task materials now live in the separate `Supporting Material` plus `Material Placement` domain instead of competing with lesson content.
+Current workspace note: the task definition model is in place, downstream launch paths are still split between the direct delivery service and the create-task overlay transaction, and task materials now live in the separate `Supporting Material` plus `Material Placement` domain instead of competing with planning content.
 
 ## Before You Start (Prerequisites)
 
@@ -37,7 +37,7 @@ Code refs: `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessmen
 Test refs: None
 
 - [**Task Delivery**](/docs/en/task-delivery/) references `Task` as the assignable source.
-- [**Unit Plan**](/docs/en/unit-plan/) and [**Lesson**](/docs/en/lesson/) are the deepest current curriculum anchors available on the task definition.
+- [**Unit Plan**](/docs/en/unit-plan/) is the deepest current curriculum anchor available on the task definition.
 - [**Task Rubric Version**](/docs/en/task-rubric-version/) snapshots `Task Template Criterion` rows at delivery launch.
 - [**Task Outcome**](/docs/en/task-outcome/), [**Task Submission**](/docs/en/task-submission/), and [**Task Contribution**](/docs/en/task-contribution/) inherit delivery/task context.
 - Staff portal planning uses the create-task overlay at `ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`.
@@ -53,7 +53,7 @@ Status: Partial
 Code refs: `ifitwala_ed/assessment/doctype/task/task.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`, `ifitwala_ed/api/task.py`
 Test refs: None (scaffold only: `ifitwala_ed/assessment/doctype/task/test_task.py`)
 
-1. Author the reusable task definition with required curriculum anchor (`default_course`) and optional deeper planned-curriculum anchors (`unit_plan`, `lesson`).
+1. Author the reusable task definition with required curriculum anchor (`default_course`) and optional deeper planned-curriculum anchor (`unit_plan`).
 2. Configure default delivery, grading, and comment behavior, including optional `task_criteria` rows.
 3. Create a `Task Delivery` as the execution instance for a specific `Student Group`.
 4. Downstream outcomes, submissions, contributions, and rubric snapshots should inherit delivery/task context.
@@ -68,7 +68,6 @@ Test refs: None
 
 - [**Task Delivery**](/docs/en/task-delivery/)
 - [**Unit Plan**](/docs/en/unit-plan/)
-- [**Lesson**](/docs/en/lesson/)
 - [**Class Session**](/docs/en/class-session/)
 - [**Task Template Criterion**](/docs/en/task-template-criterion/)
 - [**Task Rubric Version**](/docs/en/task-rubric-version/)
@@ -103,9 +102,9 @@ Test refs: `ifitwala_ed/utilities/test_governed_uploads_task_flows.py`
 - `Task` is the reusable definition artifact. It is not the grading fact table.
 - `task.py` enforces curriculum alignment, duplicate criterion guards, and coherent default grading configuration.
 - `Task` also carries `default_allow_feedback`, which decides whether downstream deliveries should expose a comment box by default.
-- `task.js` filters `unit_plan` and `lesson` choices by course context, clears stale curriculum links when course changes, and replaces generic Task resource uploads with the governed Task-resource action.
+- `task.js` filters `unit_plan` and quiz-bank choices by course context, clears stale curriculum links when course changes, and replaces generic Task resource uploads with the governed Task-resource action.
 - `task.py` now treats `attachments` as a legacy compatibility surface only: new reusable task materials live in `Supporting Material` and are shared onto the task through `Material Placement`.
-- The current task schema stops at `lesson`; it does not currently expose `lesson_activity` or `class_session`.
+- The current task schema stops at `unit_plan`; it does not expose `class_session`.
 - `assessment/task_creation_service.py` supports the overlay path that creates both `Task` and `Task Delivery` in one transaction.
 - The task overlay keeps teachers in-context after task creation so they can add task materials without leaving the workflow.
 

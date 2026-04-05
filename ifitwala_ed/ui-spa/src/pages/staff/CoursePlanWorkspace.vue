@@ -16,8 +16,8 @@
 							{{ surface?.course_plan.title || coursePlan || 'Course Plan' }}
 						</h1>
 						<p class="mt-2 max-w-3xl type-body text-ink/80">
-							Shape the shared course backbone, keep lesson guidance thin, and build quiz banks
-							teachers can assign without leaving the staff SPA.
+							Shape the shared course backbone, capture reusable unit guidance, and build quiz
+							banks teachers can assign without leaving the staff SPA.
 						</p>
 					</div>
 				</div>
@@ -209,14 +209,6 @@
 							type="button"
 							class="if-action if-action--subtle"
 							:disabled="!selectedUnit"
-							@click="quickStartLesson"
-						>
-							New Lesson
-						</button>
-						<button
-							type="button"
-							class="if-action if-action--subtle"
-							:disabled="!selectedUnit"
 							@click="quickAddReflection"
 						>
 							Add Reflection
@@ -251,7 +243,7 @@
 				</div>
 
 				<p v-if="canManagePlan && !selectedUnit" class="mt-3 type-caption text-ink/70">
-					Select a governed unit first to unlock lesson, reflection, and unit-resource shortcuts.
+					Select a governed unit first to unlock reflection and unit-resource shortcuts.
 				</p>
 			</section>
 
@@ -929,407 +921,6 @@
 						</div>
 					</section>
 
-					<section
-						v-if="!creatingUnit && selectedUnit"
-						:id="SECTION_IDS.lessons"
-						class="space-y-4 rounded-[2rem] border border-line-soft bg-surface-soft p-5"
-					>
-						<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-							<div>
-								<p class="type-overline text-ink/60">Lesson Outlines</p>
-								<h3 class="mt-1 type-h3 text-ink">Shared lesson guidance for this unit</h3>
-								<p class="mt-2 max-w-2xl type-caption text-ink/70">
-									Keep lessons thin and reusable here. Class sessions remain the live teaching
-									record.
-								</p>
-							</div>
-							<div class="flex items-center gap-2">
-								<span class="chip">{{ currentUnitLessons.length }}</span>
-								<button
-									v-if="canManagePlan"
-									type="button"
-									class="if-action if-action--subtle"
-									@click="startNewLesson"
-								>
-									New Lesson Outline
-								</button>
-							</div>
-						</div>
-
-						<div class="grid gap-5 xl:grid-cols-[minmax(0,18rem),minmax(0,1fr)]">
-							<aside class="space-y-3">
-								<button
-									v-for="lesson in currentUnitLessons"
-									:key="lesson.lesson"
-									type="button"
-									class="w-full rounded-2xl border p-4 text-left transition"
-									:class="
-										selectedLesson?.lesson === lesson.lesson && !creatingLesson
-											? 'border-jacaranda bg-white shadow-soft'
-											: 'border-line-soft bg-white hover:border-jacaranda/40'
-									"
-									@click="selectLesson(lesson.lesson)"
-								>
-									<div class="flex items-start justify-between gap-3">
-										<div class="min-w-0">
-											<p class="type-overline text-ink/60">
-												Lesson {{ lesson.lesson_order || '—' }}
-											</p>
-											<p class="mt-1 type-body-strong text-ink">{{ lesson.title }}</p>
-											<p v-if="lesson.lesson_type" class="mt-1 type-caption text-ink/70">
-												{{ lesson.lesson_type }}
-											</p>
-										</div>
-										<div class="flex flex-col items-end gap-2">
-											<span class="chip"> {{ lesson.activities.length }} activities </span>
-											<div
-												v-if="canManagePlan && currentUnitLessons.length > 1"
-												class="flex items-center gap-1"
-											>
-												<button
-													type="button"
-													class="if-action if-action--subtle px-2 py-1"
-													:disabled="lessonReorderPending"
-													@click.stop="moveLesson(lesson.lesson, -1)"
-												>
-													↑
-												</button>
-												<button
-													type="button"
-													class="if-action if-action--subtle px-2 py-1"
-													:disabled="lessonReorderPending"
-													@click.stop="moveLesson(lesson.lesson, 1)"
-												>
-													↓
-												</button>
-											</div>
-										</div>
-									</div>
-								</button>
-
-								<div
-									v-if="!currentUnitLessons.length"
-									class="rounded-2xl border border-dashed border-line-soft bg-white p-4"
-								>
-									<p class="type-caption text-ink/70">No lesson outlines yet for this unit.</p>
-								</div>
-							</aside>
-
-							<section
-								v-if="showLessonEditor"
-								class="space-y-4 rounded-2xl border border-line-soft bg-white p-5"
-							>
-								<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-									<div>
-										<p class="type-overline text-ink/60">
-											{{ creatingLesson ? 'New Lesson Outline' : 'Selected Lesson' }}
-										</p>
-										<h4 class="mt-1 type-h3 text-ink">
-											{{
-												creatingLesson
-													? 'Capture shared lesson guidance'
-													: lessonForm.title || 'Lesson Outline'
-											}}
-										</h4>
-									</div>
-									<div class="flex flex-wrap gap-2">
-										<span v-if="lessonForm.lesson_order" class="chip">
-											Order {{ lessonForm.lesson_order }}
-										</span>
-										<span v-if="lessonForm.lesson_type" class="chip">
-											{{ lessonForm.lesson_type }}
-										</span>
-										<span class="chip">
-											{{ lessonForm.is_published ? 'Published' : 'Draft only' }}
-										</span>
-										<button
-											v-if="canManagePlan && !creatingLesson && selectedLesson"
-											type="button"
-											class="if-action if-action--subtle"
-											:disabled="!selectedLesson.is_published"
-											@click="openAssignFromLesson(selectedLesson)"
-										>
-											Assign From Lesson
-										</button>
-									</div>
-								</div>
-								<p
-									v-if="
-										canManagePlan &&
-										!creatingLesson &&
-										selectedLesson &&
-										!selectedLesson.is_published
-									"
-									class="type-caption text-ink/70"
-								>
-									Publish the lesson outline before assigning from shared lesson guidance.
-								</p>
-
-								<div v-if="canManagePlan" class="grid gap-4 lg:grid-cols-2">
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Lesson Title</span>
-										<input
-											v-model="lessonForm.title"
-											data-quick-focus="lesson-title"
-											type="text"
-											class="if-input w-full"
-											placeholder="e.g. Microscopy foundations"
-										/>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Lesson Type</span>
-										<select v-model="lessonForm.lesson_type" class="if-input w-full">
-											<option value="">Select</option>
-											<option v-for="option in lessonTypeOptions" :key="option" :value="option">
-												{{ option }}
-											</option>
-										</select>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Lesson Order</span>
-										<input
-											v-model.number="lessonForm.lesson_order"
-											type="number"
-											min="1"
-											step="1"
-											class="if-input w-full"
-										/>
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Start Date</span>
-										<input v-model="lessonForm.start_date" type="date" class="if-input w-full" />
-									</label>
-									<label class="block space-y-2">
-										<span class="type-caption text-ink/70"
-											>Estimated Duration (teaching periods)</span
-										>
-										<input
-											v-model.number="lessonForm.duration"
-											type="number"
-											min="1"
-											step="1"
-											class="if-input w-full"
-										/>
-									</label>
-									<label
-										class="flex items-center gap-3 rounded-2xl border border-line-soft bg-surface-soft px-4 py-4"
-									>
-										<input v-model="lessonForm.is_published" type="checkbox" class="h-4 w-4" />
-										<div>
-											<p class="type-body-strong text-ink">Published in the shared plan</p>
-											<p class="type-caption text-ink/70">
-												Show this lesson as ready for class teams to reference.
-											</p>
-										</div>
-									</label>
-								</div>
-
-								<section class="space-y-3">
-									<div class="flex items-center justify-between gap-3">
-										<div>
-											<p class="type-overline text-ink/60">Lesson Activities</p>
-											<h5 class="mt-1 type-body-strong text-ink">Thin shared lesson flow</h5>
-										</div>
-										<button
-											v-if="canManagePlan"
-											type="button"
-											class="if-action if-action--subtle"
-											@click="addLessonActivity"
-										>
-											Add Activity
-										</button>
-									</div>
-
-									<div
-										v-if="!lessonForm.activities.length"
-										class="rounded-2xl border border-dashed border-line-soft p-4"
-									>
-										<p class="type-caption text-ink/70">
-											No lesson activities yet. Add only the reusable flow; keep class-specific
-											adaptation in class sessions.
-										</p>
-									</div>
-
-									<div v-else class="space-y-4">
-										<article
-											v-for="activity in lessonForm.activities"
-											:key="activity.local_id"
-											class="rounded-2xl border border-line-soft bg-surface-soft p-4"
-										>
-											<div class="grid gap-4 lg:grid-cols-2">
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Activity Title</span>
-													<input
-														v-model="activity.title"
-														type="text"
-														class="if-input w-full"
-														placeholder="e.g. Observe slide examples"
-														:disabled="!canManagePlan"
-													/>
-												</label>
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Activity Type</span>
-													<select
-														v-model="activity.activity_type"
-														class="if-input w-full"
-														:disabled="!canManagePlan"
-													>
-														<option
-															v-for="option in lessonActivityTypeOptions"
-															:key="option"
-															:value="option"
-														>
-															{{ option }}
-														</option>
-													</select>
-												</label>
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Order</span>
-													<input
-														v-model.number="activity.lesson_activity_order"
-														type="number"
-														min="1"
-														step="1"
-														class="if-input w-full"
-														:disabled="!canManagePlan"
-													/>
-												</label>
-												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Estimated Minutes</span>
-													<input
-														v-model.number="activity.estimated_duration"
-														type="number"
-														min="1"
-														step="1"
-														class="if-input w-full"
-														:disabled="!canManagePlan"
-													/>
-												</label>
-												<label
-													class="flex items-center gap-3 rounded-2xl border border-line-soft bg-white px-4 py-4 lg:col-span-2"
-												>
-													<input
-														v-model="activity.is_required"
-														type="checkbox"
-														class="h-4 w-4"
-														:disabled="!canManagePlan"
-													/>
-													<div>
-														<p class="type-body-strong text-ink">Required in the shared flow</p>
-														<p class="type-caption text-ink/70">
-															Mark this only when every class should encounter this activity.
-														</p>
-													</div>
-												</label>
-												<label
-													v-if="activity.activity_type === 'Reading'"
-													class="block space-y-2 lg:col-span-2"
-												>
-													<span class="type-caption text-ink/70">Reading Content</span>
-													<PlanningRichTextField
-														v-model="activity.reading_content"
-														:editable="canManagePlan"
-														min-height-class="min-h-[8rem]"
-													/>
-												</label>
-												<label
-													v-if="activity.activity_type === 'Video'"
-													class="block space-y-2 lg:col-span-2"
-												>
-													<span class="type-caption text-ink/70">Video URL</span>
-													<input
-														v-model="activity.video_url"
-														type="url"
-														class="if-input w-full"
-														placeholder="https://..."
-														:disabled="!canManagePlan"
-													/>
-												</label>
-												<label
-													v-if="activity.activity_type === 'Link'"
-													class="block space-y-2 lg:col-span-2"
-												>
-													<span class="type-caption text-ink/70">External Link</span>
-													<input
-														v-model="activity.external_link"
-														type="url"
-														class="if-input w-full"
-														placeholder="https://..."
-														:disabled="!canManagePlan"
-													/>
-												</label>
-												<label
-													v-if="activity.activity_type === 'Discussion'"
-													class="block space-y-2 lg:col-span-2"
-												>
-													<span class="type-caption text-ink/70">Discussion Prompt</span>
-													<textarea
-														v-model="activity.discussion_prompt"
-														rows="3"
-														class="if-input min-h-[6rem] w-full resize-y"
-														:disabled="!canManagePlan"
-													/>
-												</label>
-											</div>
-											<div v-if="canManagePlan" class="mt-4 flex justify-end">
-												<button
-													type="button"
-													class="if-action if-action--subtle"
-													@click="removeLessonActivity(activity.local_id)"
-												>
-													Remove Activity
-												</button>
-											</div>
-										</article>
-									</div>
-								</section>
-
-								<div v-if="canManagePlan" class="flex flex-wrap justify-end gap-3">
-									<button
-										v-if="creatingLesson"
-										type="button"
-										class="if-action if-action--subtle"
-										@click="cancelNewLesson"
-									>
-										Cancel New Lesson
-									</button>
-									<button
-										v-if="!creatingLesson && selectedLesson"
-										type="button"
-										class="if-action if-action--subtle"
-										:disabled="lessonPending"
-										@click="handleDeleteLesson"
-									>
-										Delete Lesson
-									</button>
-									<button
-										type="button"
-										class="if-action"
-										:disabled="lessonPending"
-										@click="handleSaveLesson"
-									>
-										{{
-											lessonPending
-												? 'Saving...'
-												: creatingLesson
-													? 'Create Lesson Outline'
-													: 'Save Lesson Outline'
-										}}
-									</button>
-								</div>
-							</section>
-
-							<section
-								v-else
-								class="rounded-2xl border border-dashed border-line-soft bg-white p-5"
-							>
-								<p class="type-caption text-ink/70">
-									Select a lesson outline or start a new one for this unit.
-								</p>
-							</section>
-						</div>
-					</section>
-
 					<div v-if="canManagePlan" class="flex justify-end gap-3">
 						<button
 							v-if="creatingUnit"
@@ -1745,17 +1336,12 @@ import PlanningResourcePanel from '@/components/planning/PlanningResourcePanel.v
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import {
 	getStaffCoursePlanSurface,
-	removeLessonOutline,
-	reorderUnitLessons,
 	saveCoursePlan,
 	saveGovernedUnitPlan,
-	saveLessonOutline,
 	saveQuizQuestionBank,
 } from '@/lib/services/staff/staffTeachingService';
 import type {
 	Response as StaffCoursePlanSurfaceResponse,
-	StaffCoursePlanLesson,
-	StaffCoursePlanLessonActivity,
 	StaffCoursePlanQuizQuestion,
 	StaffCoursePlanQuizQuestionBank,
 	StaffCoursePlanQuizQuestionOption,
@@ -1772,11 +1358,6 @@ type EditableStandard = StaffPlanningStandard & {
 
 type EditableReflection = StaffPlanningReflection & {
 	local_id: number;
-};
-
-type EditableLessonActivity = StaffCoursePlanLessonActivity & {
-	local_id: number;
-	is_required: boolean;
 };
 
 type EditableQuizQuestionOption = StaffCoursePlanQuizQuestionOption & {
@@ -1807,7 +1388,6 @@ const SECTION_IDS = {
 	unitEditor: 'course-plan-unit-editor',
 	standards: 'course-plan-standards',
 	reflections: 'course-plan-reflections',
-	lessons: 'course-plan-lessons',
 	unitResources: 'course-plan-unit-resources',
 	quizBanks: 'course-plan-quiz-banks',
 } as const;
@@ -1819,14 +1399,10 @@ const loading = ref(false);
 const errorMessage = ref('');
 const coursePlanPending = ref(false);
 const unitPending = ref(false);
-const lessonPending = ref(false);
-const lessonReorderPending = ref(false);
 const quizBankPending = ref(false);
 const selectedUnitPlan = ref('');
-const selectedLessonName = ref('');
 const selectedQuizQuestionBankName = ref(String(props.quizQuestionBank || '').trim());
 const creatingUnit = ref(false);
-const creatingLesson = ref(false);
 const creatingQuizQuestionBank = ref(false);
 const loadToken = ref(0);
 const nextLocalId = ref(1);
@@ -1864,18 +1440,6 @@ const unitForm = reactive({
 	reflections: [] as EditableReflection[],
 });
 
-const lessonForm = reactive({
-	lesson: '',
-	record_modified: '',
-	title: '',
-	lesson_type: '',
-	lesson_order: null as number | null,
-	is_published: false,
-	start_date: '',
-	duration: null as number | null,
-	activities: [] as EditableLessonActivity[],
-});
-
 const quizBankForm = reactive({
 	quiz_question_bank: '',
 	record_modified: '',
@@ -1890,8 +1454,6 @@ const unitStatusOptions = ['Draft', 'Active', 'Archived'];
 const coverageLevelOptions = ['Introduced', 'Reinforced', 'Mastered'];
 const alignmentStrengthOptions = ['Exact', 'Partial', 'Broad'];
 const alignmentTypeOptions = ['Knowledge', 'Skill', 'Practice', 'Process'];
-const lessonTypeOptions = ['Instruction', 'Practice', 'Assessment', 'Project', 'Review', 'Other'];
-const lessonActivityTypeOptions = ['Reading', 'Video', 'Link', 'Discussion', 'Interactive'];
 const quizQuestionTypeOptions = [
 	'Single Choice',
 	'Multiple Answer',
@@ -1903,16 +1465,6 @@ const quizQuestionTypeOptions = [
 const selectedUnit = computed<StaffCoursePlanUnit | null>(() => {
 	return (
 		surface.value?.curriculum.units.find(unit => unit.unit_plan === selectedUnitPlan.value) || null
-	);
-});
-
-const currentUnitLessons = computed<StaffCoursePlanLesson[]>(() => {
-	return surface.value?.curriculum.selected_unit_lessons || [];
-});
-
-const selectedLesson = computed<StaffCoursePlanLesson | null>(() => {
-	return (
-		currentUnitLessons.value.find(lesson => lesson.lesson === selectedLessonName.value) || null
 	);
 });
 
@@ -1938,7 +1490,6 @@ const derivedReflectionAcademicYear = computed(
 );
 const derivedReflectionSchool = computed(() => surface.value?.course_plan.school || '');
 const showUnitEditor = computed(() => Boolean(selectedUnit.value || creatingUnit.value));
-const showLessonEditor = computed(() => Boolean(selectedLesson.value || creatingLesson.value));
 const showQuizBankEditor = computed(() =>
 	Boolean(selectedQuizQuestionBank.value || creatingQuizQuestionBank.value)
 );
@@ -1970,14 +1521,6 @@ const navigationSections = computed<
 			id: SECTION_IDS.reflections,
 			label: 'Reflections',
 			count: unitForm.reflections.length,
-		});
-	}
-
-	if (!creatingUnit.value && selectedUnit.value) {
-		sections.push({
-			id: SECTION_IDS.lessons,
-			label: 'Lessons',
-			count: currentUnitLessons.value.length,
 		});
 	}
 
@@ -2045,23 +1588,6 @@ function buildEditableReflection(reflection?: StaffPlanningReflection): Editable
 		what_work_well: reflection?.what_work_well || '',
 		what_didnt_work_well: reflection?.what_didnt_work_well || '',
 		changes_suggestions: reflection?.changes_suggestions || '',
-	};
-}
-
-function buildEditableLessonActivity(
-	activity?: StaffCoursePlanLessonActivity
-): EditableLessonActivity {
-	return {
-		local_id: nextId(),
-		title: activity?.title || '',
-		activity_type: activity?.activity_type || 'Interactive',
-		lesson_activity_order: activity?.lesson_activity_order ?? null,
-		reading_content: activity?.reading_content || '',
-		video_url: activity?.video_url || '',
-		external_link: activity?.external_link || '',
-		discussion_prompt: activity?.discussion_prompt || '',
-		is_required: Boolean(activity?.is_required),
-		estimated_duration: activity?.estimated_duration ?? null,
 	};
 }
 
@@ -2221,16 +1747,6 @@ async function quickUploadUnitFile() {
 	await jumpToSection(SECTION_IDS.unitResources, '[data-resource-choose-file="true"]');
 }
 
-async function quickStartLesson() {
-	if (
-		!ensureSelectedUnitForQuickAction('Select a governed unit before drafting a lesson outline.')
-	) {
-		return;
-	}
-	startNewLesson();
-	await jumpToSection(SECTION_IDS.lessons, '[data-quick-focus="lesson-title"]');
-}
-
 async function quickAddReflection() {
 	if (
 		!ensureSelectedUnitForQuickAction('Select a governed unit before adding shared reflections.')
@@ -2279,20 +1795,6 @@ function syncUnitForm(unit: StaffCoursePlanUnit | null) {
 	);
 }
 
-function syncLessonForm(lesson: StaffCoursePlanLesson | null) {
-	lessonForm.lesson = lesson?.lesson || '';
-	lessonForm.record_modified = lesson?.record_modified || '';
-	lessonForm.title = lesson?.title || '';
-	lessonForm.lesson_type = lesson?.lesson_type || '';
-	lessonForm.lesson_order = lesson?.lesson_order ?? null;
-	lessonForm.is_published = Boolean(lesson?.is_published);
-	lessonForm.start_date = lesson?.start_date || '';
-	lessonForm.duration = lesson?.duration ?? null;
-	lessonForm.activities = (lesson?.activities || []).map(activity =>
-		buildEditableLessonActivity(activity)
-	);
-}
-
 function syncQuizBankForm(bank: StaffCoursePlanQuizQuestionBank | null) {
 	quizBankForm.quiz_question_bank = bank?.quiz_question_bank || '';
 	quizBankForm.record_modified = bank?.record_modified || '';
@@ -2302,16 +1804,6 @@ function syncQuizBankForm(bank: StaffCoursePlanQuizQuestionBank | null) {
 	quizBankForm.questions = (bank?.questions || []).map(question =>
 		buildEditableQuizQuestion(question)
 	);
-}
-
-function applyLessonSelection(payload: StaffCoursePlanSurfaceResponse) {
-	const lessons = payload.curriculum.selected_unit_lessons || [];
-	if (creatingLesson.value) return;
-	const nextSelectedLesson = lessons.some(lesson => lesson.lesson === selectedLessonName.value)
-		? selectedLessonName.value
-		: lessons[0]?.lesson || '';
-	selectedLessonName.value = nextSelectedLesson;
-	syncLessonForm(lessons.find(lesson => lesson.lesson === nextSelectedLesson) || null);
 }
 
 function applyQuizBankSelection(payload: StaffCoursePlanSurfaceResponse) {
@@ -2351,7 +1843,6 @@ function applySurfaceSelection(payload: StaffCoursePlanSurfaceResponse) {
 		);
 	}
 
-	applyLessonSelection(payload);
 	applyQuizBankSelection(payload);
 }
 
@@ -2390,9 +1881,6 @@ async function loadSurface() {
 
 async function selectUnit(unitPlan: string) {
 	creatingUnit.value = false;
-	creatingLesson.value = false;
-	selectedLessonName.value = '';
-	syncLessonForm(null);
 	selectedUnitPlan.value = unitPlan;
 	syncUnitForm(surface.value?.curriculum.units.find(unit => unit.unit_plan === unitPlan) || null);
 	await router.replace({
@@ -2408,11 +1896,8 @@ async function selectUnit(unitPlan: string) {
 
 async function startNewUnit() {
 	creatingUnit.value = true;
-	creatingLesson.value = false;
-	selectedLessonName.value = '';
 	selectedUnitPlan.value = '';
 	syncUnitForm(null);
-	syncLessonForm(null);
 	await router.replace({
 		name: 'staff-course-plan',
 		params: { coursePlan: props.coursePlan },
@@ -2462,90 +1947,6 @@ function serializeReflections(): StaffPlanningReflection[] {
 		academic_year: derivedReflectionAcademicYear.value || academic_year || null,
 		school: derivedReflectionSchool.value || school || null,
 	}));
-}
-
-function openAssignFromLesson(lesson: StaffCoursePlanLesson) {
-	if (!surface.value) return;
-	if (!lesson.is_published) {
-		toast.error('Publish the lesson outline before assigning from it.');
-		return;
-	}
-	overlay.open('create-task', {
-		prefillCourse: surface.value.course_plan.course,
-		prefillUnitPlan: lesson.unit_plan,
-		prefillLesson: lesson.lesson,
-		prefillLessonLabel: lesson.title,
-		prefillTitle: lesson.title,
-	});
-}
-
-function startNewLesson() {
-	if (!selectedUnit.value) return;
-	creatingLesson.value = true;
-	selectedLessonName.value = '';
-	syncLessonForm(null);
-	const fallbackOrder =
-		currentUnitLessons.value[currentUnitLessons.value.length - 1]?.lesson_order || 0;
-	lessonForm.lesson_order = fallbackOrder + 10;
-}
-
-function selectLesson(lessonName: string) {
-	creatingLesson.value = false;
-	selectedLessonName.value = lessonName;
-	syncLessonForm(currentUnitLessons.value.find(lesson => lesson.lesson === lessonName) || null);
-}
-
-function cancelNewLesson() {
-	creatingLesson.value = false;
-	const fallbackLesson = currentUnitLessons.value[0]?.lesson || '';
-	selectedLessonName.value = fallbackLesson;
-	syncLessonForm(
-		currentUnitLessons.value.find(lesson => lesson.lesson === fallbackLesson) || null
-	);
-}
-
-function addLessonActivity() {
-	lessonForm.activities.push(
-		buildEditableLessonActivity({
-			activity_type: 'Interactive',
-			is_required: 0,
-		})
-	);
-}
-
-function removeLessonActivity(localId: number) {
-	lessonForm.activities = lessonForm.activities.filter(activity => activity.local_id !== localId);
-}
-
-function serializeLessonActivities(): StaffCoursePlanLessonActivity[] {
-	return lessonForm.activities.map(({ local_id, is_required, ...row }) => ({
-		...row,
-		is_required: is_required ? 1 : 0,
-	}));
-}
-
-async function moveLesson(lessonName: string, direction: -1 | 1) {
-	if (!selectedUnit.value) return;
-	const reordered = [...currentUnitLessons.value];
-	const index = reordered.findIndex(lesson => lesson.lesson === lessonName);
-	const targetIndex = index + direction;
-	if (index < 0 || targetIndex < 0 || targetIndex >= reordered.length) return;
-
-	lessonReorderPending.value = true;
-	try {
-		const [row] = reordered.splice(index, 1);
-		reordered.splice(targetIndex, 0, row);
-		await reorderUnitLessons({
-			unit_plan: selectedUnit.value.unit_plan,
-			lesson_names: reordered.map(lesson => lesson.lesson),
-		});
-		await loadSurface();
-		toast.success('Lesson order updated.');
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : 'Could not reorder the lesson outlines.');
-	} finally {
-		lessonReorderPending.value = false;
-	}
 }
 
 async function startNewQuizQuestionBank() {
@@ -2706,50 +2107,6 @@ async function handleSaveUnitPlan() {
 		toast.error(error instanceof Error ? error.message : 'Could not save the unit plan.');
 	} finally {
 		unitPending.value = false;
-	}
-}
-
-async function handleSaveLesson() {
-	if (!selectedUnit.value) return;
-	lessonPending.value = true;
-	try {
-		const wasCreating = creatingLesson.value;
-		const result = await saveLessonOutline({
-			unit_plan: selectedUnit.value.unit_plan,
-			lesson: wasCreating ? undefined : lessonForm.lesson || undefined,
-			expected_modified: wasCreating ? null : lessonForm.record_modified || null,
-			title: lessonForm.title.trim(),
-			lesson_type: lessonForm.lesson_type || null,
-			lesson_order: lessonForm.lesson_order,
-			is_published: lessonForm.is_published ? 1 : 0,
-			start_date: lessonForm.start_date || null,
-			duration: lessonForm.duration,
-			activities: serializeLessonActivities(),
-		});
-		creatingLesson.value = false;
-		selectedLessonName.value = result.lesson;
-		await loadSurface();
-		toast.success(wasCreating ? 'Lesson outline created.' : 'Lesson outline updated.');
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : 'Could not save the lesson outline.');
-	} finally {
-		lessonPending.value = false;
-	}
-}
-
-async function handleDeleteLesson() {
-	if (!selectedLesson.value) return;
-	if (!window.confirm('Delete this lesson outline?')) return;
-	lessonPending.value = true;
-	try {
-		await removeLessonOutline({ lesson: selectedLesson.value.lesson });
-		selectedLessonName.value = '';
-		await loadSurface();
-		toast.success('Lesson outline deleted.');
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : 'Could not delete the lesson outline.');
-	} finally {
-		lessonPending.value = false;
 	}
 }
 

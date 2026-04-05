@@ -360,7 +360,6 @@ class TestCoursesApi(TestCase):
                         "require_grading": 1,
                         "due_date": "2026-03-14 09:00:00",
                         "unit_plan": "LU-1",
-                        "lesson": "LESSON-1",
                         "class_session": "CLASS-SESSION-1",
                         "submission_status": "Not Submitted",
                         "grading_status": "Not Started",

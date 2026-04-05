@@ -53,7 +53,7 @@
 					Start the governed backbone where teachers already work
 				</h2>
 				<p class="mt-3 max-w-2xl type-body text-ink/80">
-					Create the shared course plan here, then move straight into units, lesson outlines, quiz
+					Create the shared course plan here, then move straight into units, shared resources, quiz
 					banks, and assign-ready curriculum assets without switching tools.
 				</p>
 				<div class="mt-5 flex flex-wrap gap-2">

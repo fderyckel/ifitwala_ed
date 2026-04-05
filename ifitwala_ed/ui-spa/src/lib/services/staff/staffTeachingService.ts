@@ -16,7 +16,6 @@ import type {
 import type {
 	Request as GetStaffCoursePlanSurfaceRequest,
 	Response as GetStaffCoursePlanSurfaceResponse,
-	StaffCoursePlanLessonActivity,
 	StaffCoursePlanQuizQuestion,
 } from '@/types/contracts/staff_teaching/get_staff_course_plan_surface'
 
@@ -28,9 +27,6 @@ const METHODS = {
 	createPlan: 'ifitwala_ed.api.teaching_plans.create_class_teaching_plan',
 	saveCoursePlan: 'ifitwala_ed.api.teaching_plans.save_course_plan',
 	saveGovernedUnit: 'ifitwala_ed.api.teaching_plans.save_unit_plan',
-	saveLessonOutline: 'ifitwala_ed.api.teaching_plans.save_lesson_outline',
-	reorderUnitLessons: 'ifitwala_ed.api.teaching_plans.reorder_unit_lessons',
-	removeLessonOutline: 'ifitwala_ed.api.teaching_plans.remove_lesson_outline',
 	savePlan: 'ifitwala_ed.api.teaching_plans.save_class_teaching_plan',
 	saveUnit: 'ifitwala_ed.api.teaching_plans.save_class_teaching_plan_unit',
 	saveSession: 'ifitwala_ed.api.teaching_plans.save_class_session',
@@ -116,44 +112,6 @@ export type SaveGovernedUnitPlanResponse = {
 	course_plan: string
 	unit_plan: string
 	unit_order?: number | null
-}
-
-export type SaveLessonOutlineRequest = {
-	unit_plan: string
-	lesson?: string
-	expected_modified?: string | null
-	title: string
-	lesson_type?: string | null
-	lesson_order?: number | null
-	is_published?: number | boolean | null
-	start_date?: string | null
-	duration?: number | null
-	activities: StaffCoursePlanLessonActivity[]
-}
-
-export type SaveLessonOutlineResponse = {
-	lesson: string
-	unit_plan: string
-	lesson_order?: number | null
-}
-
-export type ReorderUnitLessonsRequest = {
-	unit_plan: string
-	lesson_names: string[]
-}
-
-export type ReorderUnitLessonsResponse = {
-	updated: number
-	order_step: number
-}
-
-export type RemoveLessonOutlineRequest = {
-	lesson: string
-}
-
-export type RemoveLessonOutlineResponse = {
-	lesson: string
-	removed: number
 }
 
 export type SaveClassTeachingPlanRequest = {
@@ -345,28 +303,6 @@ export async function saveGovernedUnitPlan(
 		standards_json: JSON.stringify(standards || []),
 		reflections_json: JSON.stringify(reflections || []),
 	})
-}
-
-export async function saveLessonOutline(
-	payload: SaveLessonOutlineRequest
-): Promise<SaveLessonOutlineResponse> {
-	const { activities, ...rest } = payload
-	return apiMethod<SaveLessonOutlineResponse>(METHODS.saveLessonOutline, {
-		...rest,
-		activities_json: JSON.stringify(activities || []),
-	})
-}
-
-export async function reorderUnitLessons(
-	payload: ReorderUnitLessonsRequest
-): Promise<ReorderUnitLessonsResponse> {
-	return apiMethod<ReorderUnitLessonsResponse>(METHODS.reorderUnitLessons, payload)
-}
-
-export async function removeLessonOutline(
-	payload: RemoveLessonOutlineRequest
-): Promise<RemoveLessonOutlineResponse> {
-	return apiMethod<RemoveLessonOutlineResponse>(METHODS.removeLessonOutline, payload)
 }
 
 export async function saveClassTeachingPlan(

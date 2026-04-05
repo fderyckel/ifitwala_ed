@@ -6,13 +6,11 @@
 frappe.ui.form.on("Task", {
 	setup(frm) {
 		set_unit_plan_query(frm);
-		set_lesson_query(frm);
 		set_quiz_question_bank_query(frm);
 	},
 
 	refresh(frm) {
 		set_unit_plan_query(frm);
-		set_lesson_query(frm);
 		set_quiz_question_bank_query(frm);
 		frm.trigger("setup_governed_resource_upload");
 		frm.trigger("setup_governed_drive_link");
@@ -31,7 +29,6 @@ frappe.ui.form.on("Task", {
 	},
 
 	unit_plan(frm) {
-		reset_lesson_field(frm);
 	},
 
 	default_delivery_mode(frm) {
@@ -116,21 +113,6 @@ function set_unit_plan_query(frm) {
 	});
 }
 
-function set_lesson_query(frm) {
-	frm.set_query("lesson", () => {
-		const unit_plan = (frm.doc.unit_plan || "").trim();
-		if (unit_plan) {
-			return { filters: { unit_plan } };
-		}
-
-		const course = get_course_value(frm);
-		if (course) {
-			return { filters: { course } };
-		}
-		return {};
-	});
-}
-
 function set_quiz_question_bank_query(frm) {
 	frm.set_query("quiz_question_bank", () => {
 		const course = get_course_value(frm);
@@ -145,18 +127,7 @@ function reset_curriculum_fields(frm) {
 	if (frm.doc.unit_plan) {
 		frm.set_value("unit_plan", null);
 	}
-	if (frm.doc.lesson) {
-		frm.set_value("lesson", null);
-	}
 	set_unit_plan_query(frm);
-	set_lesson_query(frm);
-}
-
-function reset_lesson_field(frm) {
-	if (frm.doc.lesson) {
-		frm.set_value("lesson", null);
-	}
-	set_lesson_query(frm);
 }
 
 function enforce_delivery_mode_defaults(frm) {

@@ -72,20 +72,6 @@ def _teaching_plans_module():
     planning_domain.get_student_group_row = lambda student_group: {"name": student_group, "course": "COURSE-1"}
     planning_domain.get_unit_plan_rows = lambda course_plan: []
     planning_domain.replace_session_activities = lambda doc, activities: None
-
-    def _replace_lesson_activities(doc, rows):
-        doc.set(
-            "lesson_activities",
-            [
-                {
-                    **(row or {}),
-                    "reading_content": planning_domain.normalize_rich_text((row or {}).get("reading_content")),
-                }
-                for row in rows or []
-            ],
-        )
-
-    planning_domain.replace_lesson_activities = _replace_lesson_activities
     planning_domain.replace_unit_plan_standards = lambda doc, rows: doc.set("standards", rows)
 
     def _replace_unit_plan_reflections(doc, rows, course_plan_row=None):
@@ -110,7 +96,6 @@ def _teaching_plans_module():
         )
 
     planning_domain.replace_unit_plan_reflections = _replace_unit_plan_reflections
-    planning_domain.next_lesson_order = lambda unit_plan: 10
 
     governed_uploads = ModuleType("ifitwala_ed.utilities.governed_uploads")
     governed_uploads.upload_supporting_material_file = lambda material: None
@@ -163,7 +148,6 @@ class TestTeachingPlansApi(TestCase):
                             "title": "Cells Checkpoint",
                             "task_type": "Quiz",
                             "unit_plan": "UNIT-1",
-                            "lesson": "LESSON-1",
                         }
                     ],
                 ),
@@ -808,7 +792,7 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["resources"]["course_plan_resources"][0]["title"], "Scope and sequence")
         self.assertEqual(payload["curriculum"]["units"][0]["shared_resources"][0]["title"], "Lab handout")
 
-    def test_build_staff_course_plan_bundle_includes_lessons_and_quiz_bank_detail(self):
+    def test_build_staff_course_plan_bundle_includes_quiz_bank_detail(self):
         with _teaching_plans_module() as module:
             with (
                 patch.object(
@@ -852,11 +836,6 @@ class TestTeachingPlansApi(TestCase):
                     },
                 ),
                 patch.object(module, "_fetch_material_map", return_value={}),
-                patch.object(
-                    module,
-                    "_fetch_selected_unit_lessons",
-                    return_value=[{"lesson": "LESSON-1", "title": "Microscope setup", "activities": []}],
-                ),
                 patch.object(
                     module,
                     "_fetch_course_quiz_question_banks",
@@ -919,7 +898,6 @@ class TestTeachingPlansApi(TestCase):
             ):
                 payload = module._build_staff_course_plan_bundle("COURSE-PLAN-1")
 
-        self.assertEqual(payload["curriculum"]["selected_unit_lessons"][0]["lesson"], "LESSON-1")
         self.assertEqual(payload["assessment"]["quiz_question_banks"][0]["quiz_question_bank"], "QBK-1")
         self.assertEqual(payload["field_options"]["academic_years"][0]["value"], "2026-2027")
         self.assertEqual(payload["field_options"]["programs"][0]["value"], "MYP")
@@ -1397,181 +1375,6 @@ class TestTeachingPlansApi(TestCase):
                     side_effect=lambda doctype, filters=None: doctype == "Program",
                 ):
                     module._validate_course_program_link(course="COURSE-1", program="MYP")
-
-    def test_save_lesson_outline_creates_lesson_with_activities(self):
-        with _teaching_plans_module() as module:
-            inserted = {"count": 0}
-
-            class FakeLessonDoc:
-                def __init__(self):
-                    self.name = "LESSON-1"
-                    self.unit_plan = None
-                    self.course = None
-                    self.title = None
-                    self.lesson_type = None
-                    self.lesson_order = None
-                    self.is_published = 0
-                    self.start_date = None
-                    self.duration = None
-                    self.lesson_activities = []
-
-                def set(self, fieldname, value):
-                    setattr(self, fieldname, value)
-
-                def is_new(self):
-                    return True
-
-                def insert(self, ignore_permissions=False):
-                    inserted["count"] += 1
-                    inserted["ignore_permissions"] = ignore_permissions
-
-            unit_doc = SimpleNamespace(
-                name="UNIT-1",
-                course="COURSE-1",
-                check_permission=lambda ptype: None,
-            )
-            lesson_doc = FakeLessonDoc()
-
-            def fake_get_doc(doctype, name):
-                if doctype == "Unit Plan":
-                    return unit_doc
-                raise AssertionError(f"Unexpected get_doc call: {doctype} {name}")
-
-            with (
-                patch.object(module.frappe, "get_doc", side_effect=fake_get_doc),
-                patch.object(module.frappe, "new_doc", return_value=lesson_doc),
-            ):
-                payload = module.save_lesson_outline(
-                    {
-                        "unit_plan": "UNIT-1",
-                        "title": "Microscope setup",
-                        "lesson_type": "Instruction",
-                        "lesson_order": 20,
-                        "is_published": 1,
-                        "duration": 2,
-                        "activities_json": [
-                            {
-                                "title": "Observe the slide",
-                                "activity_type": "Discussion",
-                                "lesson_activity_order": 10,
-                            }
-                        ],
-                    }
-                )
-
-        self.assertEqual(lesson_doc.unit_plan, "UNIT-1")
-        self.assertEqual(lesson_doc.course, "COURSE-1")
-        self.assertEqual(lesson_doc.title, "Microscope setup")
-        self.assertEqual(lesson_doc.lesson_activities[0]["title"], "Observe the slide")
-        self.assertEqual(inserted["count"], 1)
-        self.assertEqual(payload["lesson"], "LESSON-1")
-
-    def test_save_lesson_outline_sanitizes_reading_content(self):
-        with _teaching_plans_module() as module:
-
-            class FakeLessonDoc:
-                def __init__(self):
-                    self.name = "LESSON-1"
-                    self.unit_plan = None
-                    self.course = None
-                    self.title = None
-                    self.lesson_order = None
-                    self.lesson_activities = []
-
-                def set(self, fieldname, value):
-                    setattr(self, fieldname, value)
-
-                def is_new(self):
-                    return True
-
-                def insert(self, ignore_permissions=False):
-                    return None
-
-            lesson_doc = FakeLessonDoc()
-
-            with (
-                patch.object(
-                    module.frappe,
-                    "get_doc",
-                    return_value=SimpleNamespace(name="UNIT-1", course="COURSE-1"),
-                ),
-                patch.object(module.frappe, "new_doc", return_value=lesson_doc),
-            ):
-                module.save_lesson_outline(
-                    {
-                        "unit_plan": "UNIT-1",
-                        "title": "Microscope setup",
-                        "activities_json": [
-                            {
-                                "reading_content": "<p>Read this</p><script>alert(1)</script>",
-                            }
-                        ],
-                    }
-                )
-
-        self.assertEqual(lesson_doc.lesson_activities[0]["reading_content"], "<p>Read this</p>")
-
-    def test_save_lesson_outline_rejects_stale_expected_modified(self):
-        with _teaching_plans_module() as module:
-
-            class FakeLessonDoc:
-                def __init__(self):
-                    self.name = "LESSON-1"
-                    self.unit_plan = "UNIT-1"
-                    self.course = "COURSE-1"
-                    self.modified = "2026-04-02 09:00:00"
-
-                def save(self, ignore_permissions=False):
-                    raise AssertionError("save() must not run after a stale expected_modified check.")
-
-            def fake_get_doc(doctype, name):
-                if doctype == "Lesson":
-                    return FakeLessonDoc()
-                if doctype == "Unit Plan":
-                    return SimpleNamespace(name="UNIT-1", course="COURSE-1")
-                raise AssertionError(f"Unexpected get_doc call: {doctype} {name}")
-
-            with self.assertRaises(module.frappe.ValidationError):
-                with patch.object(module.frappe, "get_doc", side_effect=fake_get_doc):
-                    module.save_lesson_outline(
-                        {
-                            "unit_plan": "UNIT-1",
-                            "lesson": "LESSON-1",
-                            "title": "Microscope setup",
-                            "expected_modified": "2026-04-02 08:00:00",
-                        }
-                    )
-
-    def test_remove_lesson_outline_deletes_unlinked_lesson(self):
-        with _teaching_plans_module() as module:
-            deleted = {"count": 0}
-
-            class LessonDoc:
-                def __init__(self):
-                    self.unit_plan = "UNIT-1"
-
-                def delete(self, ignore_permissions=False):
-                    deleted["count"] += 1
-                    deleted["ignore_permissions"] = ignore_permissions
-
-            lesson_doc = LessonDoc()
-            unit_doc = SimpleNamespace(course="COURSE-1", check_permission=lambda ptype: None)
-
-            def fake_get_doc(doctype, name):
-                if doctype == "Lesson":
-                    return lesson_doc
-                if doctype == "Unit Plan":
-                    return unit_doc
-                raise AssertionError(f"Unexpected get_doc call: {doctype} {name}")
-
-            with (
-                patch.object(module.frappe, "get_doc", side_effect=fake_get_doc),
-                patch.object(module.frappe.db, "exists", return_value=False),
-            ):
-                payload = module.remove_lesson_outline("LESSON-1")
-
-        self.assertEqual(payload["removed"], 1)
-        self.assertEqual(deleted["count"], 1)
 
     def test_create_planning_reference_material_uses_class_owned_origin(self):
         with _teaching_plans_module() as module:

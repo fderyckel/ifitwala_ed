@@ -16,7 +16,6 @@ from ifitwala_ed.api.student_groups import TRIAGE_ROLES, _instructor_group_names
 from ifitwala_ed.assessment import quiz_service
 from ifitwala_ed.curriculum import materials as materials_domain
 from ifitwala_ed.curriculum import planning
-from ifitwala_ed.curriculum.doctype.lesson import lesson as lesson_controller
 from ifitwala_ed.utilities import governed_uploads
 
 PLANNING_RESOURCE_ANCHORS = {
@@ -617,95 +616,6 @@ def _serialize_material_entry(entry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _fetch_selected_unit_lessons(unit_plan: str | None) -> list[dict[str, Any]]:
-    unit_name = planning.normalize_text(unit_plan)
-    if not unit_name:
-        return []
-
-    lessons = frappe.get_all(
-        "Lesson",
-        filters={"unit_plan": unit_name},
-        fields=[
-            "name",
-            "modified",
-            "course",
-            "unit_plan",
-            "title",
-            "lesson_type",
-            "lesson_order",
-            "is_published",
-            "start_date",
-            "duration",
-        ],
-        order_by="lesson_order asc, title asc, creation asc",
-        limit=0,
-    )
-    if not lessons:
-        return []
-
-    lesson_names = [row["name"] for row in lessons if row.get("name")]
-    activity_rows = frappe.get_all(
-        "Lesson Activity",
-        filters={
-            "parent": ["in", lesson_names],
-            "parenttype": "Lesson",
-            "parentfield": "lesson_activities",
-        },
-        fields=[
-            "parent",
-            "title",
-            "activity_type",
-            "lesson_activity_order",
-            "reading_content",
-            "video_url",
-            "external_link",
-            "discussion_prompt",
-            "is_required",
-            "estimated_duration",
-            "idx",
-        ],
-        order_by="parent asc, lesson_activity_order asc, idx asc",
-        limit=0,
-    )
-    activities_by_parent: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for row in activity_rows or []:
-        parent = row.get("parent")
-        if not parent:
-            continue
-        activities_by_parent[parent].append(
-            {
-                "title": row.get("title"),
-                "activity_type": row.get("activity_type"),
-                "lesson_activity_order": row.get("lesson_activity_order"),
-                "reading_content": row.get("reading_content"),
-                "video_url": row.get("video_url"),
-                "external_link": row.get("external_link"),
-                "discussion_prompt": row.get("discussion_prompt"),
-                "is_required": int(row.get("is_required") or 0),
-                "estimated_duration": row.get("estimated_duration"),
-            }
-        )
-
-    payload: list[dict[str, Any]] = []
-    for row in lessons:
-        payload.append(
-            {
-                "lesson": row.get("name"),
-                "record_modified": _serialize_scalar(row.get("modified")),
-                "course": row.get("course"),
-                "unit_plan": row.get("unit_plan"),
-                "title": row.get("title") or row.get("name"),
-                "lesson_type": row.get("lesson_type"),
-                "lesson_order": row.get("lesson_order"),
-                "is_published": int(row.get("is_published") or 0),
-                "start_date": _serialize_scalar(row.get("start_date")),
-                "duration": row.get("duration"),
-                "activities": activities_by_parent.get(row.get("name"), []),
-            }
-        )
-    return payload
-
-
 def _fetch_course_quiz_question_banks(course: str | None) -> list[dict[str, Any]]:
     course_name = planning.normalize_text(course)
     if not course_name:
@@ -879,8 +789,7 @@ def _fetch_assigned_work(
             td.quiz_pass_percentage,
             t.title,
             t.task_type,
-            t.unit_plan,
-            t.lesson
+            t.unit_plan
         FROM `tabTask Delivery` td
         INNER JOIN `tabTask` t ON t.name = td.task
         WHERE td.class_teaching_plan = %(class_teaching_plan)s
@@ -936,7 +845,6 @@ def _fetch_assigned_work(
             "title": row.get("title") or row.get("task"),
             "task_type": row.get("task_type"),
             "unit_plan": row.get("unit_plan"),
-            "lesson": row.get("lesson"),
             "class_session": row.get("class_session"),
             "delivery_mode": row.get("delivery_mode"),
             "grading_mode": row.get("grading_mode"),
@@ -1917,7 +1825,6 @@ def _build_staff_course_plan_bundle(
         frappe.throw(_("Selected unit plan does not belong to this course plan."), frappe.PermissionError)
     if not selected_unit and units:
         selected_unit = units[0].get("unit_plan")
-    selected_unit_lessons = _fetch_selected_unit_lessons(selected_unit)
     selected_unit_row = next((row for row in units if row.get("unit_plan") == selected_unit), None)
     selected_programs = [
         planning.normalize_text(selected_unit_row.get("program")) if selected_unit_row else "",
@@ -1976,7 +1883,6 @@ def _build_staff_course_plan_bundle(
         "curriculum": {
             "units": units,
             "unit_count": len(units),
-            "selected_unit_lessons": selected_unit_lessons,
         },
         "assessment": {
             "quiz_question_banks": quiz_question_banks,
@@ -2499,151 +2405,6 @@ def save_unit_plan(
             unit_plan=planning.normalize_text(getattr(doc, "name", None)),
             course=course_name,
         )
-
-
-@frappe.whitelist()
-def save_lesson_outline(
-    payload=None,
-    *,
-    unit_plan: str | None = None,
-    lesson: str | None = None,
-    title: str | None = None,
-    lesson_type: str | None = None,
-    lesson_order: int | None = None,
-    is_published: int | None = None,
-    expected_modified: str | None = None,
-    start_date: str | None = None,
-    duration: int | None = None,
-    activities_json: str | None = None,
-    **kwargs,
-) -> dict[str, Any]:
-    started_at = perf_counter()
-    status = "success"
-    unit_plan_name = planning.normalize_text(unit_plan)
-    lesson_name = planning.normalize_text(lesson)
-    doc = None
-    try:
-        data = _normalize_payload(payload if payload is not None else kwargs)
-        unit_plan_name = planning.normalize_text(unit_plan or data.get("unit_plan"))
-        lesson_name = planning.normalize_text(lesson or data.get("lesson"))
-        title = title if title is not None else data.get("title")
-        lesson_type = lesson_type if lesson_type is not None else data.get("lesson_type")
-        lesson_order = lesson_order if lesson_order is not None else data.get("lesson_order")
-        is_published = is_published if is_published is not None else data.get("is_published")
-        start_date = start_date if start_date is not None else data.get("start_date")
-        duration = duration if duration is not None else data.get("duration")
-        activities_json = activities_json if activities_json is not None else data.get("activities_json")
-        expected_modified = expected_modified if expected_modified is not None else data.get("expected_modified")
-
-        if lesson_name:
-            doc = frappe.get_doc("Lesson", lesson_name)
-            unit_doc = frappe.get_doc("Unit Plan", doc.unit_plan)
-            _assert_course_curriculum_access(
-                unit_doc.course,
-                ptype="write",
-                action_label=_("update this lesson outline"),
-            )
-            if unit_plan_name and planning.normalize_text(doc.unit_plan) != unit_plan_name:
-                frappe.throw(_("Lesson does not belong to the selected unit plan."), frappe.PermissionError)
-            planning.assert_record_modified_matches(
-                expected_modified=expected_modified,
-                current_modified=getattr(doc, "modified", None),
-                section_label=_("Lesson outline"),
-            )
-        else:
-            if not unit_plan_name:
-                frappe.throw(_("Unit Plan is required."))
-            unit_doc = frappe.get_doc("Unit Plan", unit_plan_name)
-            _assert_course_curriculum_access(
-                unit_doc.course,
-                ptype="write",
-                action_label=_("create a lesson outline for this unit"),
-            )
-            doc = frappe.new_doc("Lesson")
-            doc.unit_plan = unit_doc.name
-            doc.course = unit_doc.course
-
-        doc.unit_plan = unit_doc.name
-        doc.course = unit_doc.course
-        doc.title = planning.normalize_text(title) or None
-        if lesson_type not in (None, ""):
-            doc.lesson_type = planning.normalize_text(lesson_type) or None
-        doc.lesson_order = (
-            int(lesson_order)
-            if lesson_order not in (None, "")
-            else (doc.lesson_order or planning.next_lesson_order(unit_doc.name))
-        )
-        doc.is_published = planning.normalize_flag(is_published)
-        doc.start_date = start_date or None
-        doc.duration = int(duration) if duration not in (None, "") else None
-        planning.replace_lesson_activities(
-            doc,
-            _normalize_rows_payload(activities_json, label=_("Lesson activities")),
-        )
-
-        if doc.is_new():
-            doc.insert(ignore_permissions=True)
-        else:
-            doc.save(ignore_permissions=True)
-
-        return {
-            "lesson": doc.name,
-            "unit_plan": doc.unit_plan,
-            "lesson_order": doc.lesson_order,
-        }
-    except Exception:
-        status = "error"
-        raise
-    finally:
-        _log_planning_event(
-            "lesson_outline_save",
-            started_at=started_at,
-            status=status,
-            unit_plan=planning.normalize_text(getattr(doc, "unit_plan", None)),
-            lesson=planning.normalize_text(getattr(doc, "name", None)),
-            course=planning.normalize_text(getattr(doc, "course", None)),
-        )
-
-
-@frappe.whitelist()
-def reorder_unit_lessons(unit_plan: str, lesson_names=None) -> dict[str, Any]:
-    unit_plan_name = planning.normalize_text(unit_plan)
-    if not unit_plan_name:
-        frappe.throw(_("Unit Plan is required."))
-    unit_doc = frappe.get_doc("Unit Plan", unit_plan_name)
-    _assert_course_curriculum_access(
-        unit_doc.course,
-        ptype="write",
-        action_label=_("reorder lesson outlines for this unit"),
-    )
-    return lesson_controller.reorder_lessons(unit_plan=unit_doc.name, lesson_names=lesson_names)
-
-
-@frappe.whitelist()
-def remove_lesson_outline(lesson: str) -> dict[str, Any]:
-    lesson_name = planning.normalize_text(lesson)
-    if not lesson_name:
-        frappe.throw(_("Lesson is required."))
-
-    doc = frappe.get_doc("Lesson", lesson_name)
-    unit_doc = frappe.get_doc("Unit Plan", doc.unit_plan)
-    _assert_course_curriculum_access(
-        unit_doc.course,
-        ptype="write",
-        action_label=_("remove this lesson outline"),
-    )
-
-    if frappe.db.exists("Task", {"lesson": lesson_name}):
-        frappe.throw(
-            _("This lesson is already linked to a task. Remove the task anchor before deleting the lesson."),
-            frappe.ValidationError,
-        )
-
-    doc.delete(ignore_permissions=True)
-    return {
-        "lesson": lesson_name,
-        "removed": 1,
-    }
 
 
 @frappe.whitelist()

@@ -3,8 +3,8 @@ title: "Task Delivery: Assigning Work to a Real Class"
 slug: task-delivery
 category: Assessment
 doc_order: 5
-version: "1.6.0"
-last_change_date: "2026-04-03"
+version: "1.6.1"
+last_change_date: "2026-04-05"
 summary: "Assign a reusable task to a specific class through its class teaching plan, with dates, grading mode, optional class-session context, and scalable outcome generation."
 seo_title: "Task Delivery: Assigning Work to a Real Class"
 seo_description: "Assign a reusable task to a class through its teaching plan with dates, grading mode, evidence rules, and optional class-session context."
@@ -18,7 +18,7 @@ Test refs: `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`,
 
 `Task Delivery` is where a reusable task becomes real for a specific student group, within a specific time window and grading/evidence/comment policy.
 
-Current workspace note: delivery launch is now submit-driven across both creation services, the live schema requires `class_teaching_plan`, and the taught-context link is optional `class_session` instead of `lesson_instance`.
+Current workspace note: delivery launch is now submit-driven across both creation services, the live schema requires `class_teaching_plan`, and the taught-context link is optional `class_session`.
 
 ## Before You Start (Prerequisites)
 
@@ -60,7 +60,7 @@ Current workspace constraints:
 - `task_delivery.py` keeps outcome generation and rubric snapshotting behind delivery launch semantics.
 - `task_creation_service.py::create_task_and_delivery()` and `task_delivery_service.py::create_delivery()` both submit the delivery and then enforce roster materialization idempotently.
 - `api/gradebook.py::repair_task_roster()` exists to backfill outcomes for deliveries created before the launch contract was restored, and to catch up later roster additions safely.
-- The current schema exposes required `class_teaching_plan` plus optional `class_session`. It does not expose `lesson` or `lesson_activity` fields on `Task Delivery`.
+- The current schema exposes required `class_teaching_plan` plus optional `class_session`.
 
 ## Related Docs
 

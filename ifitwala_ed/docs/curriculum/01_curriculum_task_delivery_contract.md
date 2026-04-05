@@ -31,21 +31,15 @@ This split is locked.
 
 ## Live Runtime Reality
 
-Status: Implemented with legacy overlap
-Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/api/teaching_plans.py`
+Status: Implemented
+Code refs: `ifitwala_ed/curriculum/doctype/unit_plan/unit_plan.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/api/teaching_plans.py`
 Test refs: `ifitwala_ed/curriculum/doctype/unit_plan/test_unit_plan.py`, `ifitwala_ed/assessment/doctype/task_delivery/test_task_delivery.py`, `ifitwala_ed/api/test_teaching_plans.py`
 
 - `Learning Unit` is no longer part of the live runtime; `Unit Plan` owns the shared unit backbone.
-- `Lesson Instance` is retired from the live schema and runtime.
-- `Lesson` and `Lesson Activity` still exist, but only as legacy shared-guidance structures.
+- `Lesson`, `Lesson Activity`, and `Lesson Instance` are not part of the live curriculum runtime.
 - The student learning surface no longer depends on the old lesson-instance tree.
 - `Task Delivery` now requires `Class Teaching Plan` and may also link to `Class Session`.
-- `Task` still carries legacy `lesson` and `unit_plan` fields because some shared-guidance and compatibility paths still reference them.
-
-Interpretation rule:
-
-- `Lesson` and `Lesson Activity` are no longer the operational source of truth for a class.
-- If class-specific planning or class-specific teaching history exists, `Class Teaching Plan` and `Class Session` win.
+- `Task` now anchors at `default_course` with optional `unit_plan`; it does not carry a lesson link.
 
 ## Shared Curriculum Layer
 
@@ -69,7 +63,7 @@ belong to the shared plan layer unless an explicit design says otherwise.
 
 Ownership rule:
 
-- instructors attached to at least one `Student Group` for a course may create and edit the shared `Course Plan`, `Unit Plan`, lesson outlines, quiz banks, and shared curriculum resources for that course
+- instructors attached to at least one `Student Group` for a course may create and edit the shared `Course Plan`, `Unit Plan`, quiz banks, and shared curriculum resources for that course
 - curriculum coordinators and academic administrators may also manage shared curriculum for the courses they govern
 - shared curriculum is course-team owned; it is not limited to a coordinator-only workflow
 
@@ -153,19 +147,7 @@ Do not:
 - store class-specific pacing or teacher-only execution detail on shared curriculum by default
 - use assigned work or resource placement as a workaround for missing class-planning data
 - build lesson-tree client waterfalls on student or staff hot paths
-- treat legacy `Lesson` or `Lesson Activity` records as the authoritative class runtime
-
-## Current Gaps That Remain Real
-
-Status: Partial
-Code refs: `ifitwala_ed/curriculum/doctype/lesson/lesson.json`, `ifitwala_ed/curriculum/doctype/lesson_activity/lesson_activity.json`, `ifitwala_ed/docs/docs_md/lesson.md`, `ifitwala_ed/docs/docs_md/lesson-activity.md`
-Test refs: None
-
-- Legacy `Lesson` and `Lesson Activity` doctypes still exist and still need semantic cleanup in downstream docs and labels.
-- Published `docs_md` pages are not yet fully rewritten around the educator-centered class-session model.
-- Some compatibility-facing labels in code still use backend-first terms such as `Task Delivery`.
-
-These are documentation and naming debts, not permission to drift back to the lesson-instance architecture.
+- reintroduce retired lesson doctypes as a shadow planning layer
 
 ## Related Docs
 

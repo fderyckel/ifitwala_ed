@@ -30,7 +30,6 @@ def _validate_payload(payload: dict) -> dict:
         "class_teaching_plan",
         "class_session",
         "unit_plan",
-        "lesson",
         "delivery_mode",
         "available_from",
         "due_date",
@@ -104,7 +103,6 @@ def _validate_payload(payload: dict) -> dict:
         "class_teaching_plan": payload.get("class_teaching_plan"),
         "class_session": payload.get("class_session"),
         "unit_plan": payload.get("unit_plan"),
-        "lesson": payload.get("lesson"),
         "delivery_mode": delivery_mode,
         "available_from": payload.get("available_from"),
         "due_date": payload.get("due_date"),
@@ -139,7 +137,6 @@ def create_task_and_delivery(
     class_teaching_plan=None,
     class_session=None,
     unit_plan=None,
-    lesson=None,
     grading_mode=None,
     allow_feedback=None,
     max_points=None,
@@ -170,7 +167,6 @@ def create_task_and_delivery(
         "class_teaching_plan": class_teaching_plan,
         "class_session": class_session,
         "unit_plan": unit_plan,
-        "lesson": lesson,
         "delivery_mode": delivery_mode,
         "available_from": available_from,
         "due_date": due_date,
@@ -232,8 +228,6 @@ def create_task_and_delivery(
         task.default_course = course
         if resolved_unit_plan:
             task.unit_plan = resolved_unit_plan
-        if data.get("lesson"):
-            task.lesson = data.get("lesson")
         task.default_delivery_mode = data["delivery_mode"]
         task.default_grading_mode = (
             "Points"

@@ -14,6 +14,8 @@ seo_description: "Define schools as NestedSet academic scope records anchored to
 
 `School` is the canonical academic scope record used by admissions, academic calendars, school websites, and school-level policy matching.
 
+[[fig:school-tree size=auto]]
+
 ## What It Enforces
 
 - `School` is a tree (`NestedSet`) using `parent_school`.

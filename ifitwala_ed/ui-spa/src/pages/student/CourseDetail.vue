@@ -1154,7 +1154,6 @@ function quizRouteFor(item: StudentAssignedWork) {
 			student_group: learningSpace.value?.access.resolved_student_group || undefined,
 			unit_plan: item.unit_plan || selectedUnitPlan.value || undefined,
 			class_session: item.class_session || selectedSessionId.value || undefined,
-			lesson: item.lesson || undefined,
 		},
 	};
 }

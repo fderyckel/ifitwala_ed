@@ -53,7 +53,6 @@ export type StaffAssignedWork = {
 	title: string
 	task_type?: string | null
 	unit_plan?: string | null
-	lesson?: string | null
 	class_session?: string | null
 	delivery_mode?: string | null
 	grading_mode?: string | null

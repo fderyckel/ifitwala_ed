@@ -87,7 +87,6 @@ export type WorkItem = {
 	requires_submission: number
 	require_grading: number
 	unit_plan?: string | null
-	lesson?: string | null
 	class_session?: string | null
 	available_from?: string | null
 	due_date?: string | null

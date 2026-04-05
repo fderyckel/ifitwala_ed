@@ -29,7 +29,6 @@ class _FakeTask:
         self.name = "TASK-0001"
         self.insert_calls = 0
         self.unit_plan = None
-        self.lesson = None
 
     def insert(self):
         self.insert_calls += 1
@@ -96,7 +95,6 @@ class TestTaskCreationService(TestCase):
                 student_group="GRP-1",
                 class_teaching_plan="CLASS-PLAN-1",
                 unit_plan="UNIT-1",
-                lesson="LESSON-1",
                 delivery_mode="Assess",
                 grading_mode="Points",
                 allow_feedback="1",
@@ -107,7 +105,6 @@ class TestTaskCreationService(TestCase):
 
         self.assertEqual(task.insert_calls, 1)
         self.assertEqual(task.unit_plan, "UNIT-1")
-        self.assertEqual(task.lesson, "LESSON-1")
         self.assertEqual(task.default_allow_feedback, 1)
         self.assertEqual(delivery.task, "TASK-0001")
         self.assertEqual(delivery.student_group, "GRP-1")

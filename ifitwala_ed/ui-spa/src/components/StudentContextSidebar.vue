@@ -135,7 +135,7 @@ const portfolioPanel: Panel = {
 		},
 		{
 			label: 'My Courses',
-			helper: 'Return to lesson work',
+			helper: 'Return to class work',
 			icon: 'book-open',
 			to: { name: 'student-courses' },
 			activeNames: ['student-courses', 'student-course-detail', 'student-quiz'],
@@ -163,7 +163,7 @@ const coursesPanel = computed<Panel>(() => {
 	return {
 		kicker: 'Courses',
 		title: 'Learning Workspace',
-		description: 'Move between course overview and active lesson work without losing context.',
+		description: 'Move between course overview and active class work without losing context.',
 		links: [
 			{
 				label: 'All Courses',

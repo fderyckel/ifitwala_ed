@@ -205,7 +205,6 @@ const props = defineProps<{
 	student_group?: string;
 	unit_plan?: string;
 	class_session?: string;
-	lesson?: string;
 }>();
 
 const loading = ref(false);
@@ -226,7 +225,6 @@ const backRoute = computed(() => ({
 		student_group: props.student_group || undefined,
 		unit_plan: props.unit_plan || undefined,
 		class_session: props.class_session || undefined,
-		lesson: props.lesson || undefined,
 	},
 }));
 
