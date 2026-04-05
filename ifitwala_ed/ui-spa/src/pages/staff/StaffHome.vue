@@ -182,10 +182,6 @@
 					<div class="space-y-2">
 						<p class="type-overline text-slate-token/70">Analytics</p>
 						<h3 class="type-h2">Insights & Dashboards</h3>
-						<p class="max-w-2xl type-body text-slate-token/80">
-							Jump straight into the dashboards you need. Start with the key destinations, or
-							browse by category when you are exploring trends.
-						</p>
 					</div>
 				</div>
 
