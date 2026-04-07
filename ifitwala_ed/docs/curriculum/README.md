@@ -11,7 +11,7 @@ Current canonical set:
 - `01_curriculum_task_delivery_contract.md`
   live curriculum, class-planning, and assigned-work architecture
 - `02_educator_centered_curriculum_replatform_plan.md`
-  remaining semantic and documentation cleanup work
+  governed year-to-year reuse rules and legacy cleanup status
 - `03_curriculum_materials_and_resource_contract.md`
   reusable materials and placement rules
 - `04_curriculum_lms_and_quiz_contract.md`
