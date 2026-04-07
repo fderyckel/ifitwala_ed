@@ -5,8 +5,10 @@ import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 
 import type { Response as StudentLearningSpaceResponse } from '@/types/contracts/student_learning/get_student_learning_space'
 
-const { getStudentLearningSpaceMock, routeState, routerReplaceMock } = vi.hoisted(() => ({
+const { getStudentLearningSpaceMock, createReflectionEntryMock, routeState, routerReplaceMock } =
+	vi.hoisted(() => ({
 	getStudentLearningSpaceMock: vi.fn(),
+	createReflectionEntryMock: vi.fn(),
 	routeState: {
 		query: {
 			student_group: 'GROUP-1',
@@ -42,6 +44,17 @@ vi.mock('vue-router', async () => {
 
 vi.mock('@/lib/services/student/studentLearningHubService', () => ({
 	getStudentLearningSpace: getStudentLearningSpaceMock,
+}))
+
+vi.mock('@/lib/services/portfolio/portfolioService', () => ({
+	createReflectionEntry: createReflectionEntryMock,
+}))
+
+vi.mock('frappe-ui', () => ({
+	toast: {
+		success: vi.fn(),
+		error: vi.fn(),
+	},
 }))
 
 import CourseDetail from '@/pages/student/CourseDetail.vue'
@@ -106,6 +119,20 @@ function buildPayload(message: string | null = null): StudentLearningSpaceRespon
 				unit_plan: 'UNIT-PLAN-1',
 				class_session: 'CLASS-SESSION-1',
 			},
+			reflection_entries: [
+				{
+					name: 'REF-1',
+					entry_date: '2026-04-01',
+					entry_type: 'Reflection',
+					visibility: 'Teacher',
+					moderation_state: 'Draft',
+					body: 'Microscope evidence helped me compare the two cell types.',
+					body_preview: 'Microscope evidence helped me compare the two cell types.',
+					course: 'COURSE-1',
+					student_group: 'GROUP-1',
+					class_session: 'CLASS-SESSION-1',
+				},
+			],
 			unit_navigation: [
 				{
 					unit_plan: 'UNIT-PLAN-1',
@@ -282,6 +309,7 @@ function mountCourseDetail() {
 
 afterEach(() => {
 	getStudentLearningSpaceMock.mockReset()
+	createReflectionEntryMock.mockReset()
 	routerReplaceMock.mockReset()
 	resetRouteState()
 	while (cleanupFns.length) {
@@ -311,6 +339,11 @@ describe('CourseDetail', () => {
 		expect(document.body.textContent).toContain('Assigned Work')
 		expect(document.body.textContent).toContain('Resources for this session')
 		expect(document.body.textContent).toContain('Work connected to this class')
+		expect(document.body.textContent).toContain('Reflection & Journal')
+		expect(document.body.textContent).toContain('Recent entries')
+		expect(document.body.textContent).toContain(
+			'Microscope evidence helped me compare the two cell types.'
+		)
 		expect(document.body.textContent).toContain('Structure and function are linked in living systems.')
 		expect(document.body.textContent).toContain('Microscope evidence walk')
 		expect(document.body.textContent).toContain('Observation walk')

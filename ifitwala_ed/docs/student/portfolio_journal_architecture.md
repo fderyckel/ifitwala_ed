@@ -1,7 +1,7 @@
 # Student Portfolio + Journal Architecture (Students Module)
 
 Status: Implemented v1
-Last updated: 2026-02-12
+Last updated: 2026-04-07
 
 ## 1. Scope and placement
 
@@ -100,6 +100,21 @@ SPA service layer:
 Type contracts:
 
 - `ui-spa/src/types/contracts/portfolio/*`
+
+## 6.1 Learning-loop integration
+
+Status: Implemented
+
+The student course workspace now uses the portfolio/journal stack directly instead of sending students away to a separate journal-first flow for routine class reflection.
+
+Current runtime behavior:
+
+- `get_student_learning_space()` returns bounded `learning.reflection_entries` for the current course/class context
+- `CourseDetail.vue` shows a contextual reflection composer inside the learning workspace
+- `create_reflection_entry` now allows the student actor to omit `student` so the server can resolve the current student identity directly
+- full annual portfolio/journal filtering still lives in the dedicated portfolio feed surfaces
+
+This keeps quick reflection inside the current class/session flow while preserving the portfolio feed as the annual archive and curation surface.
 
 ## 7. File governance and GDPR
 

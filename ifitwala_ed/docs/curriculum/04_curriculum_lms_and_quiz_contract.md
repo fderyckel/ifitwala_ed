@@ -1,8 +1,8 @@
 # Curriculum LMS And Quiz Contract
 
 Status: Canonical current-state contract
-Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/api/quiz.py`, `ifitwala_ed/assessment/quiz_service.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/quiz_question_bank/quiz_question_bank.json`, `ifitwala_ed/assessment/doctype/quiz_question/quiz_question.json`, `ifitwala_ed/assessment/doctype/quiz_attempt/quiz_attempt.json`, `ifitwala_ed/assessment/doctype/quiz_attempt_item/quiz_attempt_item.json`, `ifitwala_ed/ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student_quiz/open_student_quiz_session.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student_hub/get_student_hub_home.ts`, `ifitwala_ed/ui-spa/src/lib/services/student/studentLearningHubService.ts`, `ifitwala_ed/ui-spa/src/lib/services/student/studentQuizService.ts`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`, `ifitwala_ed/ui-spa/src/router/index.ts`
-Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/api/test_quiz.py`, `ifitwala_ed/assessment/test_quiz_service.py`, `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentQuizService.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`
+Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/courses.py`, `ifitwala_ed/api/quiz.py`, `ifitwala_ed/api/student_portfolio.py`, `ifitwala_ed/assessment/quiz_service.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/doctype/task/task.json`, `ifitwala_ed/assessment/doctype/task_delivery/task_delivery.json`, `ifitwala_ed/assessment/doctype/quiz_question_bank/quiz_question_bank.json`, `ifitwala_ed/assessment/doctype/quiz_question/quiz_question.json`, `ifitwala_ed/assessment/doctype/quiz_attempt/quiz_attempt.json`, `ifitwala_ed/assessment/doctype/quiz_attempt_item/quiz_attempt_item.json`, `ifitwala_ed/ui-spa/src/types/contracts/student_learning/get_student_learning_space.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student_quiz/open_student_quiz_session.ts`, `ifitwala_ed/ui-spa/src/types/contracts/student_hub/get_student_hub_home.ts`, `ifitwala_ed/ui-spa/src/lib/services/student/studentLearningHubService.ts`, `ifitwala_ed/ui-spa/src/lib/services/student/studentQuizService.ts`, `ifitwala_ed/ui-spa/src/lib/services/portfolio/portfolioService.ts`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentHome.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentQuiz.vue`, `ifitwala_ed/ui-spa/src/router/index.ts`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_courses.py`, `ifitwala_ed/api/test_quiz.py`, `ifitwala_ed/api/test_student_portfolio.py`, `ifitwala_ed/assessment/test_quiz_service.py`, `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentLearningHubService.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/student/__tests__/studentQuizService.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/StudentHome.test.ts`
 
 This is the canonical source of truth for the student learning space and native quiz runtime.
 
@@ -37,7 +37,7 @@ Current product behavior:
 - class-aware planning is the primary student reality
 - shared course-plan content is fallback only
 - the student sees explicit unavailable or fallback messaging instead of silent failure
-- the server resolves `learning.focus`, `learning.next_actions`, `learning.selected_context`, and `learning.unit_navigation`
+- the server resolves `learning.focus`, `learning.next_actions`, `learning.reflection_entries`, `learning.selected_context`, and `learning.unit_navigation`
 - the student page stays learning-first and does not expose shared-plan management labels
 - non-quiz assigned work opens back into `CourseDetail.vue` as the task workspace; quiz work launches `StudentQuiz.vue` only for attempt runtime
 
@@ -58,6 +58,7 @@ The student learning space currently renders:
 
 - learning focus
 - next actions
+- reflection and journal capture inside the course workspace
 - unit journey
 - class sessions inside each unit
 - session resources inside the selected class experience
@@ -70,6 +71,17 @@ The student learning space currently renders:
 This is the live LMS model.
 
 The old lesson-tree bootstrap is not the current source of truth for the student learning surface.
+
+## Reflection In The Learning Loop
+
+Status: Implemented
+Code refs: `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/api/student_portfolio.py`, `ifitwala_ed/ui-spa/src/lib/services/portfolio/portfolioService.ts`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`
+Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_student_portfolio.py`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
+
+- `get_student_learning_space()` now includes bounded `learning.reflection_entries` for the current course and class context.
+- `CourseDetail.vue` exposes a contextual reflection composer and recent reflection stream inside the same class-owned learning workspace.
+- Student reflection creation uses `Student Reflection Entry` with course, class, and optional session anchors; it does not create a second LMS tree or a second bootstrap contract.
+- Reflections are learning evidence and journal context. Official assessed truth still lives in `Task Outcome` and `Task Outcome Criterion`; the reflection flow does not rewrite gradebook or reporting truth.
 
 ## Student Hub Handoff Into Course Context
 
