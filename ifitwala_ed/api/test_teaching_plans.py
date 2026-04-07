@@ -103,8 +103,14 @@ def _teaching_plans_module():
     quiz_service = ModuleType("ifitwala_ed.assessment.quiz_service")
     quiz_service.get_student_delivery_state_map = lambda **kwargs: {}
 
+    frappe_utils = ModuleType("frappe.utils")
+    frappe_utils.get_datetime = lambda value: value
+    frappe_utils.now_datetime = lambda: "2026-04-07 10:30:00"
+    frappe_utils.strip_html = lambda value: str(value or "").replace("<p>", "").replace("</p>", "")
+
     with stubbed_frappe(
         extra_modules={
+            "frappe.utils": frappe_utils,
             "ifitwala_ed.api.student_groups": student_groups_api,
             "ifitwala_ed.api.file_access": file_access_api,
             "ifitwala_ed.curriculum.materials": materials_domain,

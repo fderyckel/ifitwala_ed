@@ -17,6 +17,7 @@ Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 Current live behavior:
 
 - the student course page leads with `Learning Focus`, `Next Actions`, a sticky `Jump to` strip, `Session Journey` before the denser `This Unit` summary, a dedicated `Assigned Work` zone, and scoped resources
+- the student course page now includes a contextual `Reflection & Journal` zone inside the same course workspace instead of pushing quick reflection into a second student flow
 - assigned-work cards now surface linked task materials and use `CourseDetail.vue` as the workspace entry for non-quiz work instead of forcing a second task page
 - student hub work-board and timeline links now preserve `class_session` context when available so students land on the right class experience directly
 - student-facing surfaces now hide shared-plan management labels and raw planning-state language
