@@ -392,6 +392,37 @@ WEBSITE_BLOCK_DEFINITIONS = [
         "seo_role": "supporting",
         "is_core": 1,
     },
+    {
+        "block_type": "staff_directory",
+        "label": "Staff Directory",
+        "template_path": "ifitwala_ed/website/blocks/staff_directory.html",
+        "script_path": "/assets/ifitwala_ed/website/blocks/staff_directory.js",
+        "provider_path": "ifitwala_ed.website.providers.staff_directory.get_context",
+        "props_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "description": {"type": "string"},
+                "designations": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+                "role_profiles": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+                "show_search": {"type": "boolean"},
+                "show_designation_filter": {"type": "boolean"},
+                "show_role_profile_filter": {"type": "boolean"},
+                "limit": {"type": ["integer", "null"], "minimum": 1},
+                "empty_state_title": {"type": "string"},
+                "empty_state_text": {"type": "string"},
+            },
+            "additionalProperties": False,
+        },
+        "seo_role": "supporting",
+        "is_core": 1,
+    },
 ]
 
 BASE_SURFACE_BLOCK_TYPES = (
@@ -405,6 +436,7 @@ BASE_SURFACE_BLOCK_TYPES = (
     "faq",
     "content_snippet",
 )
+SCHOOL_SURFACE_BLOCK_TYPES = ("staff_directory",)
 ADMISSIONS_SURFACE_BLOCK_TYPES = (
     "admissions_overview",
     "admissions_steps",
@@ -473,7 +505,7 @@ def get_allowed_block_types(*, parent_doctype: str | None, page_type: str | None
     canonical_order = [row["block_type"] for row in WEBSITE_BLOCK_DEFINITIONS]
 
     if parent_doctype == "School Website Page":
-        allowed = set(BASE_SURFACE_BLOCK_TYPES)
+        allowed = set(BASE_SURFACE_BLOCK_TYPES) | set(SCHOOL_SURFACE_BLOCK_TYPES)
         if page_type == "Admissions":
             allowed.update(ADMISSIONS_SURFACE_BLOCK_TYPES)
     elif parent_doctype == "Program Website Profile":

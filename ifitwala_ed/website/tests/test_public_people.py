@@ -44,7 +44,7 @@ class TestPublicPeopleService(FrappeTestCase):
 
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["name"], "Amina Public")
-        self.assertEqual(rows[0]["title"], "Teacher")
+        self.assertEqual(rows[0]["title"], designation.designation_name)
         self.assertEqual(rows[0]["bio"], "Amina supports the school community.")
         self.assertEqual(rows[0]["role_profile"], "Academic Staff")
         self.assertIsNone(rows[0]["public_email"])

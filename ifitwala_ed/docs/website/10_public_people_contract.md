@@ -132,11 +132,11 @@ Stale public-people cache without an invalidation owner is a bug.
 ### 8.1 Implemented now
 
 - leadership block consumes the canonical public-people service
+- staff directory block consumes the canonical public-people service
 - public people payloads resolve from `Employee` and `Designation`
 
 ### 8.2 Not implemented yet
 
-- public faculty/staff directory route
 - public employee profile pages
 - organization-level people hub search
 

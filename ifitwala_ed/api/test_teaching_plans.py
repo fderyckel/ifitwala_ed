@@ -318,6 +318,26 @@ class TestTeachingPlansApi(TestCase):
                         ],
                     },
                 ),
+                patch.object(
+                    module,
+                    "_fetch_student_learning_reflections",
+                    return_value=[
+                        {
+                            "name": "REF-1",
+                            "entry_date": "2026-04-02",
+                            "entry_type": "Reflection",
+                            "visibility": "Teacher",
+                            "moderation_state": "Draft",
+                            "body": "I can now compare plant and animal cells.",
+                            "body_preview": "I can now compare plant and animal cells.",
+                            "course": "COURSE-1",
+                            "student_group": "GROUP-1",
+                            "class_session": "SESSION-1",
+                            "task_delivery": None,
+                            "task_submission": None,
+                        }
+                    ],
+                ),
                 patch.object(module, "now_datetime", return_value=datetime(2026, 4, 2, 9, 0, 0)),
             ):
                 payload = module.get_student_learning_space("COURSE-1", "GROUP-1")
@@ -326,6 +346,8 @@ class TestTeachingPlansApi(TestCase):
         self.assertEqual(payload["learning"]["focus"]["current_session"]["class_session"], "SESSION-1")
         self.assertEqual(payload["learning"]["selected_context"]["unit_plan"], "UNIT-1")
         self.assertEqual(payload["learning"]["selected_context"]["class_session"], "SESSION-1")
+        self.assertEqual(payload["learning"]["reflection_entries"][0]["name"], "REF-1")
+        self.assertEqual(payload["learning"]["reflection_entries"][0]["class_session"], "SESSION-1")
         self.assertEqual(payload["learning"]["next_actions"][0]["kind"], "quiz")
         self.assertIn("Cell Structure Checkpoint", payload["learning"]["next_actions"][0]["label"])
 

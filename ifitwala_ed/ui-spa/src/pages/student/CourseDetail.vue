@@ -630,6 +630,96 @@
 							</div>
 						</details>
 					</section>
+
+					<section :id="SECTION_IDS.reflections" class="card-surface scroll-mt-40 p-6">
+						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+							<div>
+								<p class="type-overline text-ink/60">Reflection & Journal</p>
+								<h2 class="mt-2 type-h2 text-ink">Capture what you are learning</h2>
+								<p class="mt-3 type-body text-ink/80">{{ reflectionPrompt }}</p>
+								<p class="mt-2 type-caption text-ink/60">{{ reflectionContextNote }}</p>
+							</div>
+							<RouterLink :to="{ name: 'student-portfolio' }" class="if-action">
+								Open full journal
+							</RouterLink>
+						</div>
+
+						<div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,0.95fr),minmax(0,1.05fr)]">
+							<article class="rounded-2xl border border-line-soft bg-surface-soft p-4">
+								<p class="type-body-strong text-ink">New reflection</p>
+								<p class="mt-2 type-caption text-ink/70">
+									Keep a quick record of what clicked, what feels hard, or what you want to ask
+									next.
+								</p>
+								<label class="mt-4 flex flex-col gap-2">
+									<span class="type-caption text-ink/60">Reflection</span>
+									<textarea
+										v-model="reflectionBody"
+										rows="5"
+										placeholder="Write a short reflection..."
+										class="if-input min-h-[9rem] resize-y"
+									/>
+								</label>
+								<p v-if="reflectionError" class="mt-3 type-caption text-flame" role="alert">
+									{{ reflectionError }}
+								</p>
+								<div class="mt-4 flex flex-wrap items-center gap-3">
+									<button
+										type="button"
+										class="if-action"
+										:disabled="reflectionSaving"
+										@click="saveReflection"
+									>
+										{{ reflectionSaving ? 'Saving…' : 'Save reflection' }}
+									</button>
+									<span class="type-caption text-ink/60">Visible to you and your teachers.</span>
+								</div>
+							</article>
+
+							<article class="rounded-2xl border border-line-soft bg-surface-soft p-4">
+								<div class="flex items-center justify-between gap-3">
+									<div>
+										<p class="type-body-strong text-ink">Recent entries</p>
+										<p class="mt-1 type-caption text-ink/70">
+											Recent reflections from this class and course.
+										</p>
+									</div>
+									<span class="chip">{{ reflectionEntries.length }}</span>
+								</div>
+
+								<div
+									v-if="!reflectionEntries.length"
+									class="mt-4 rounded-2xl border border-dashed border-line-soft bg-white p-4"
+								>
+									<p class="type-body text-ink/70">
+										Your reflections will appear here after you save them.
+									</p>
+								</div>
+
+								<div v-else class="mt-4 space-y-3">
+									<article
+										v-for="entry in reflectionEntries"
+										:key="entry.name"
+										class="rounded-2xl border border-line-soft bg-white p-4"
+									>
+										<div class="flex flex-wrap items-center gap-2">
+											<p class="type-body-strong text-ink">
+												{{ entry.entry_type || 'Reflection' }}
+											</p>
+											<span v-if="entry.entry_date" class="chip">{{ entry.entry_date }}</span>
+											<span v-if="entry.visibility" class="chip">{{ entry.visibility }}</span>
+										</div>
+										<p class="mt-2 type-caption text-ink/60">
+											{{ reflectionEntryContext(entry) }}
+										</p>
+										<p class="mt-3 type-body text-ink/80">
+											{{ entry.body_preview || entry.body }}
+										</p>
+									</article>
+								</div>
+							</article>
+						</div>
+					</section>
 				</div>
 
 				<section v-else class="card-surface p-6">
@@ -823,13 +913,16 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { toast } from 'frappe-ui';
 import { useRoute, useRouter } from 'vue-router';
 
+import { createReflectionEntry } from '@/lib/services/portfolio/portfolioService';
 import { getStudentLearningSpace } from '@/lib/services/student/studentLearningHubService';
 import type {
 	Response as StudentLearningSpaceResponse,
 	StudentAssignedWork,
 	StudentLearningNextAction,
+	StudentLearningReflectionEntry,
 	StudentLearningSession,
 	StudentLearningUnit,
 } from '@/types/contracts/student_learning/get_student_learning_space';
@@ -846,6 +939,7 @@ const SECTION_IDS = {
 	unitJourney: 'unit-journey',
 	sessionJourney: 'session-journey',
 	unitOverview: 'unit-overview',
+	reflections: 'reflection-journal',
 	assignedWork: 'assigned-work',
 	resources: 'resources',
 } as const;
@@ -870,9 +964,15 @@ const selectedSessionId = ref('');
 const loadToken = ref(0);
 const activeSectionId = ref<LearningSectionId>(SECTION_IDS.focus);
 const scrollFrame = ref<number | null>(null);
+const reflectionBody = ref('');
+const reflectionError = ref('');
+const reflectionSaving = ref(false);
 
 const learningFocus = computed(() => learningSpace.value?.learning.focus || {});
 const nextActions = computed(() => learningSpace.value?.learning.next_actions || []);
+const reflectionEntries = computed<StudentLearningReflectionEntry[]>(
+	() => learningSpace.value?.learning.reflection_entries || []
+);
 const unitNavigation = computed(() => learningSpace.value?.learning.unit_navigation || []);
 
 const selectedUnit = computed<StudentLearningUnit | null>(() => {
@@ -929,7 +1029,8 @@ const learningSections = computed(() => {
 				id: SECTION_IDS.sessionJourney,
 				label: `Sessions (${selectedUnit.value.sessions.length})`,
 			},
-			{ id: SECTION_IDS.unitOverview, label: 'Unit Summary' }
+			{ id: SECTION_IDS.unitOverview, label: 'Unit Summary' },
+			{ id: SECTION_IDS.reflections, label: `Reflections (${reflectionEntries.value.length})` }
 		);
 	}
 
@@ -1163,6 +1264,25 @@ function findSessionById(classSession?: string | null) {
 	return null;
 }
 
+function findAssignedWorkByDelivery(taskDelivery?: string | null) {
+	const target = String(taskDelivery || '').trim();
+	if (!target) return null;
+	for (const item of learningSpace.value?.resources.general_assigned_work || []) {
+		if (String(item.task_delivery || '').trim() === target) return item;
+	}
+	for (const unit of learningSpace.value?.curriculum.units || []) {
+		for (const item of unit.assigned_work || []) {
+			if (String(item.task_delivery || '').trim() === target) return item;
+		}
+		for (const session of unit.sessions || []) {
+			for (const item of session.assigned_work || []) {
+				if (String(item.task_delivery || '').trim() === target) return item;
+			}
+		}
+	}
+	return null;
+}
+
 function sessionTimingLabel(session: StudentLearningSession) {
 	return session.session_date || 'Details coming soon';
 }
@@ -1262,6 +1382,94 @@ function assignedWorkActionLabel(item: StudentAssignedWork) {
 	if (item.class_session) return 'Open task workspace';
 	if (item.unit_plan) return 'Open unit workspace';
 	return 'Open course workspace';
+}
+
+const reflectionPrompt = computed(() => {
+	if (selectedSession.value?.learning_goal) {
+		return `After ${selectedSession.value.title}, note what evidence, question, or idea is shaping your understanding.`;
+	}
+	if (selectedUnit.value?.essential_understanding) {
+		return `Capture how this unit is changing your understanding of ${selectedUnit.value.title}.`;
+	}
+	if (selectedUnit.value?.title) {
+		return `Capture what you are noticing as you work through ${selectedUnit.value.title}.`;
+	}
+	return 'Capture what you understood, what still feels unclear, or what you want to ask next.';
+});
+
+const reflectionContextNote = computed(() => {
+	if (selectedSession.value?.title) {
+		return `This reflection will stay inside ${resolvedClassLabel.value} and be linked to ${selectedSession.value.title}.`;
+	}
+	if (selectedUnit.value?.title) {
+		return `This reflection will stay inside ${resolvedClassLabel.value} for ${selectedUnit.value.title}.`;
+	}
+	return `This reflection will stay inside ${resolvedClassLabel.value}.`;
+});
+
+function reflectionEntryContext(entry: StudentLearningReflectionEntry) {
+	const session = findSessionById(entry.class_session);
+	if (session) {
+		return session.session_date ? `${session.title} · ${session.session_date}` : session.title;
+	}
+	const task = findAssignedWorkByDelivery(entry.task_delivery);
+	if (task) return task.title;
+	if (
+		entry.student_group &&
+		entry.student_group === learningSpace.value?.access.resolved_student_group
+	) {
+		return resolvedClassLabel.value;
+	}
+	return 'Course reflection';
+}
+
+async function saveReflection() {
+	const body = reflectionBody.value.trim();
+	if (!body) {
+		reflectionError.value = 'Write a short reflection before saving it.';
+		return;
+	}
+	if (!learningSpace.value) return;
+
+	reflectionSaving.value = true;
+	reflectionError.value = '';
+	try {
+		const response = await createReflectionEntry({
+			body,
+			entry_type: 'Reflection',
+			visibility: 'Teacher',
+			course: props.course_id,
+			student_group: learningSpace.value.access.resolved_student_group || undefined,
+			class_session: selectedSessionId.value || undefined,
+		});
+		const nextEntry: StudentLearningReflectionEntry = {
+			name: response.name,
+			entry_date: response.entry_date,
+			entry_type: 'Reflection',
+			visibility: 'Teacher',
+			moderation_state: response.moderation_state,
+			body,
+			body_preview: body.slice(0, 280),
+			course: props.course_id,
+			student_group: learningSpace.value.access.resolved_student_group || undefined,
+			class_session: selectedSessionId.value || undefined,
+		};
+		learningSpace.value = {
+			...learningSpace.value,
+			learning: {
+				...learningSpace.value.learning,
+				reflection_entries: [nextEntry, ...reflectionEntries.value].slice(0, 8),
+			},
+		};
+		reflectionBody.value = '';
+		toast.success('Reflection saved.');
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Could not save this reflection.';
+		reflectionError.value = message;
+		toast.error(message);
+	} finally {
+		reflectionSaving.value = false;
+	}
 }
 
 async function handleNextAction(action: StudentLearningNextAction) {

@@ -467,7 +467,54 @@ Snippet resolution order is deterministic:
 
 ---
 
-## 12) CTA
+## 12) Staff Directory
+
+Canonical provider: `ifitwala_ed.website.providers.staff_directory.get_context`
+
+### Purpose
+
+* Displays a school-scoped public staff directory from the canonical public-people service
+* Exact-school only in the current implementation
+* Intended for a dedicated `Faculty & Staff` or `Teachers & Counselors` website page
+* Search and filter interactions run client-side on the rendered directory cards
+
+### Props (schema)
+
+| prop | type | required | default | notes |
+| --- | --- | --- | --- | --- |
+| `title` | string | no | `Faculty & Staff` | Section title |
+| `description` | string | no | — | Supporting intro copy |
+| `designations` | array | no | `[]` | Optional exact `Designation.name` include list |
+| `role_profiles` | array | no | `[]` | Optional exact `Designation.default_role_profile` include list |
+| `show_search` | boolean | no | `true` | Show the search box |
+| `show_designation_filter` | boolean | no | `true` | Show the role filter when multiple designations are present |
+| `show_role_profile_filter` | boolean | no | `true` | Show the group filter when multiple role profiles are present |
+| `limit` | integer or null | no | `null` | Optional cap for visible directory cards |
+| `empty_state_title` | string | no | `No staff profiles available yet` | Empty-state heading when no staff match the server-side scope |
+| `empty_state_text` | string | no | `This directory fills automatically when employees are marked to show on the website.` | Empty-state body copy |
+
+### Filter semantics
+
+* If `designations` and `role_profiles` are both blank, the directory includes all visible staff for the current school.
+* If either list is populated, the directory includes employees matching any listed designation or any listed role profile.
+* `designations` and `role_profiles` only affect which cards are rendered server-side. The interactive search/filter controls still operate client-side on that rendered subset.
+
+### Example
+```json
+{
+  "title": "Teachers & Counselors",
+  "description": "Meet the people who shape learning, wellbeing, and school life each day.",
+  "role_profiles": ["Academic Staff", "Counselor"],
+  "show_search": true,
+  "show_designation_filter": true,
+  "show_role_profile_filter": true,
+  "limit": null
+}
+```
+
+---
+
+## 13) CTA
 
 ### Purpose
 

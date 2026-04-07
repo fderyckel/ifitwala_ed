@@ -283,7 +283,7 @@ class TestLeadershipProvider(FrappeTestCase):
 
         person = payload["data"]["sections"][0]["people"][0]
         self.assertEqual(person["name"], "Amina Leadership")
-        self.assertEqual(person["title"], "Principal")
+        self.assertEqual(person["title"], principal.designation_name)
         self.assertEqual(person["bio"], "Guides the academic vision.")
 
 

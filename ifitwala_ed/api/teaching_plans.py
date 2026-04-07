@@ -9,7 +9,7 @@ from typing import Any
 
 import frappe
 from frappe import _
-from frappe.utils import get_datetime, now_datetime
+from frappe.utils import get_datetime, now_datetime, strip_html
 
 from ifitwala_ed.api.file_access import resolve_academic_file_open_url
 from ifitwala_ed.api.student_groups import TRIAGE_ROLES, _instructor_group_names
@@ -1540,6 +1540,7 @@ def _build_student_next_actions(
 def _build_student_learning_sections(
     units: list[dict[str, Any]],
     general_assigned_work: list[dict[str, Any]] | None,
+    reflection_entries: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     focus = _build_student_learning_focus(units)
     current_unit_plan = planning.normalize_text((focus.get("current_unit") or {}).get("unit_plan"))
@@ -1547,12 +1548,71 @@ def _build_student_learning_sections(
     return {
         "focus": focus,
         "next_actions": _build_student_next_actions(units, general_assigned_work),
+        "reflection_entries": reflection_entries or [],
         "selected_context": {
             "unit_plan": current_unit_plan or None,
             "class_session": planning.normalize_text(current_session.get("class_session")) or None,
         },
         "unit_navigation": _build_student_unit_navigation(units, current_unit_plan),
     }
+
+
+def _fetch_student_learning_reflections(
+    student_name: str,
+    *,
+    course_id: str,
+    student_group: str | None = None,
+    academic_year: str | None = None,
+    limit: int = 8,
+) -> list[dict[str, Any]]:
+    filters: dict[str, Any] = {
+        "student": student_name,
+        "course": course_id,
+    }
+    if student_group:
+        filters["student_group"] = student_group
+    if academic_year:
+        filters["academic_year"] = academic_year
+
+    rows = frappe.get_all(
+        "Student Reflection Entry",
+        filters=filters,
+        fields=[
+            "name",
+            "entry_date",
+            "entry_type",
+            "visibility",
+            "moderation_state",
+            "body",
+            "course",
+            "student_group",
+            "class_session",
+            "task_delivery",
+            "task_submission",
+        ],
+        order_by="entry_date desc, modified desc",
+        limit=max(int(limit or 0), 1),
+    )
+
+    payload: list[dict[str, Any]] = []
+    for row in rows or []:
+        payload.append(
+            {
+                "name": row.get("name"),
+                "entry_date": _serialize_scalar(row.get("entry_date")),
+                "entry_type": row.get("entry_type"),
+                "visibility": row.get("visibility"),
+                "moderation_state": row.get("moderation_state"),
+                "body": row.get("body"),
+                "body_preview": strip_html(row.get("body") or "")[:280],
+                "course": row.get("course"),
+                "student_group": row.get("student_group"),
+                "class_session": row.get("class_session"),
+                "task_delivery": row.get("task_delivery"),
+                "task_submission": row.get("task_submission"),
+            }
+        )
+    return payload
 
 
 def _build_student_learning_space_payload(
@@ -1568,6 +1628,10 @@ def _build_student_learning_space_payload(
     group_options = _resolve_student_group_options(student_name, course_id)
 
     selected_group, class_plan_row = _resolve_student_plan(course_id, group_options, student_group)
+    selected_group_option = next(
+        (row for row in group_options if planning.normalize_text(row.get("student_group")) == selected_group),
+        None,
+    )
     if selected_group:
         _assert_student_group_membership(student_name, selected_group)
 
@@ -1585,6 +1649,7 @@ def _build_student_learning_space_payload(
     resolved_course_plan = None
     resources_payload = {"shared_resources": [], "class_resources": [], "general_assigned_work": []}
     assigned_work_count = 0
+    reflection_entries: list[dict[str, Any]] = []
 
     if class_plan_row:
         doc = frappe.get_doc("Class Teaching Plan", class_plan_row["name"])
@@ -1658,6 +1723,16 @@ def _build_student_learning_space_payload(
                     "Your learning space is not available yet because your class is still being assigned and no shared course plan is published yet. Check with your teacher or academic office if this course should already be available."
                 )
 
+    reflections_academic_year = planning.normalize_text(
+        (class_plan_row or {}).get("academic_year") or (selected_group_option or {}).get("academic_year")
+    )
+    reflection_entries = _fetch_student_learning_reflections(
+        student_name,
+        course_id=course_id,
+        student_group=selected_group or None,
+        academic_year=reflections_academic_year or None,
+    )
+
     return {
         "meta": {
             "generated_at": _serialize_scalar(now_datetime()),
@@ -1689,6 +1764,7 @@ def _build_student_learning_space_payload(
         "learning": _build_student_learning_sections(
             units_payload,
             resources_payload.get("general_assigned_work") or [],
+            reflection_entries,
         ),
         "resources": resources_payload,
         "curriculum": {
@@ -2554,7 +2630,7 @@ def _resolve_student_plan(course_id: str, student_groups: list[dict[str, Any]], 
         rows = frappe.get_all(
             "Class Teaching Plan",
             filters={"student_group": selected_group, "planning_status": "Active"},
-            fields=["name", "title", "course_plan", "planning_status", "team_note"],
+            fields=["name", "title", "course_plan", "planning_status", "team_note", "academic_year"],
             order_by="modified desc, creation desc",
             limit=1,
         )

@@ -148,6 +148,21 @@ export type StudentLearningNavigationUnit = {
 	is_current: number
 }
 
+export type StudentLearningReflectionEntry = {
+	name: string
+	entry_date?: string | null
+	entry_type?: string | null
+	visibility?: string | null
+	moderation_state?: string | null
+	body?: string | null
+	body_preview?: string | null
+	course?: string | null
+	student_group?: string | null
+	class_session?: string | null
+	task_delivery?: string | null
+	task_submission?: string | null
+}
+
 export type Response = {
 	meta: {
 		generated_at: string
@@ -181,6 +196,7 @@ export type Response = {
 	learning: {
 		focus: StudentLearningFocus
 		next_actions: StudentLearningNextAction[]
+		reflection_entries: StudentLearningReflectionEntry[]
 		selected_context: {
 			unit_plan?: string | null
 			class_session?: string | null

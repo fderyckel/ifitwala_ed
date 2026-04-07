@@ -1,7 +1,7 @@
 // ifitwala_ed/ui-spa/src/types/contracts/portfolio/create_reflection_entry.ts
 
 export type Request = {
-	student: string
+	student?: string
 	academic_year?: string
 	school?: string
 	organization?: string
